@@ -686,9 +686,12 @@ class World {
     this.toast(p, `🎁 รางวัลสัปดาห์: 🪙${S.WEEKLY.coin} + ${r.emoji} ${r.name}`); this.sfxTo(p, 'levelup'); this.questPush(p);
   }
 
-  cook(p, id) { // ห้องครัวที่ร้านอาหาร: ใช้วัตถุดิบข้ามสาย (ใช้ชนิดที่ถูกที่สุดก่อน) ทำอาหารที่ขายได้แพงกว่าของดิบรวมกันหลายเท่า
+  cook(p, id) { // เชฟ (อาชีพที่ 5): ใช้วัตถุดิบข้ามสาย (ชนิดที่ถูกที่สุดก่อน) ทำอาหารขายได้แพงกว่าของดิบ ปลดสูตรตามเลเวลเชฟ ได้ XP เชฟ เตาต้องพักระหว่างจาน
     const r = typeof id === 'string' ? S.COOK.find(x => x.id === id) : null; if (!r) return;
     if (this.nearShopKind(p) !== 'food') return this.toast(p, 'ต้องยืนใกล้เคาน์เตอร์ร้านอาหารถึงจะทำอาหารได้');
+    if (this.lv(p, 'cook') < r.lv) return this.toast(p, `สูตรนี้ปลดล็อกที่เชฟเลเวล ${r.lv} (ตอนนี้ ${this.lv(p, 'cook')}) — ทำเมนูง่ายขึ้นก่อนเพื่อเก็บเลเวล`);
+    const now = Date.now();
+    if (now < (p.cookReady || 0)) return this.toast(p, `เตายังร้อนอยู่ รออีก ${Math.ceil((p.cookReady - now) / 1000)} วินาที`);
     const inv = p.rec.inv, use = {};
     for (const need of r.in) {
       if (need.k) { if ((inv[need.k] || 0) < need.n) return this.toast(p, 'วัตถุดิบไม่พอ'); use[need.k] = (use[need.k] || 0) + need.n; continue; }
@@ -701,7 +704,8 @@ class World {
     if ((inv.coin || 0) < fee) return this.toast(p, `ค่าเช่าเตา 🪙 ${fee} เหรียญไม่พอ`);
     for (const [k, n] of Object.entries(use)) this.add(p, k, -n);
     this.add(p, 'coin', -fee, 'cookfee'); this.add(p, r.id, 1);
-    this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name} สำเร็จ! (ค่าเตา -🪙${fee} • ขายได้ราว 🪙${r.sell})`); this.sfx(p, 'collect');
+    this.addXp(p, 'cook', r.xp); p.cookReady = now + r.time;
+    this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name} สำเร็จ! (+${r.xp} XP เชฟ • ค่าเตา -🪙${fee} • ขายได้ราว 🪙${r.sell})`); this.sfx(p, 'collect');
   }
   craft(p, id) { // ประดิษฐ์ที่เคาน์เตอร์ร้านช่างไม้: ใช้ไม้ที่หามาได้ ได้ของ + XP ช่างไม้
     const r = typeof id === 'string' ? S.CRAFT.find(x => x.id === id) : null; if (!r) return;
@@ -797,7 +801,7 @@ class World {
     if (!rec.firstSeen) rec.firstSeen = rec.lastSeen || Date.now(); // บัญชีเก่าก่อนมีตัวนับ: ใช้เวลาเข้าล่าสุดแทน (ใกล้เคียงเท่านั้น)
     if (!HEX.test(rec.color)) rec.color = '#3498db';
     if (!HEX.test(rec.hat)) rec.hat = DEFAULT_HAT;
-    rec.skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, rec.skills);
+    rec.skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0, cook: 0 }, rec.skills);
     if (!rec.inv.lamp) rec.lamp = false;
     rec.wear = Object.assign({}, S.WEAR_DEFAULT, rec.wear);
     if (!HEX.test(rec.pc)) rec.pc = S.PANTS_COLOR;

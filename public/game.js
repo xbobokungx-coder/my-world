@@ -747,14 +747,14 @@ function renderShop() {
   }
   if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายชนิดเดิมซ้ำๆ ราคาของคุณจะตกเร็วและฟื้นช้า (ตกเหลือต่ำสุด ~20–25% ของราคาปกติ) • ขายหลายชนิดต่อวัน (ชนิดละ ≥3 ชิ้น หรือ ≥40 เหรียญ) ได้โบนัสราคา +5% ต่อชนิด สูงสุด +40% • มีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
   if (shopKind === 'food') {
-    h += '<div class="sec">👨‍🍳 ห้องครัว (ทำอาหารจากวัตถุดิบหลายสาย ขายได้แพงกว่าของดิบ)</div>';
+    h += `<div class="sec">👨‍🍳 ห้องครัวเชฟ — เชฟเลเวล ${lvl('cook')} (ทำอาหารข้ามสาย ได้ XP เชฟ ยิ่งเลเวลสูงปลดสูตรแพงขึ้น)</div>`;
     const have = c => Object.keys(inv).reduce((s, k) => s + (inv[k] > 0 && cookCat(c, k) ? inv[k] : 0), 0);
     for (const r of COOK) {
       const parts = r.in.map(n => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, nm = n.c ? COOK_CATS[n.c].name : itemInfo(n.k).name, got = n.c ? have(n.c) : (inv[n.k] || 0); return `${emo}${nm} ×${n.n}` + (got >= n.n ? '' : ` <small style="color:#c0392b">(มี ${got})</small>`); }).join(' + ');
-      const ok = r.in.every(n => (n.c ? have(n.c) : (inv[n.k] || 0)) >= n.n);
-      h += `<div class="row"><span>${r.emoji} ${r.name}<br><small>ใช้ ${parts} • ค่าเตา 🪙${Math.round(r.sell * COOK_FEE)} • ขายได้ราว 🪙${r.sell} • กินอิ่ม +${r.food}</small></span><span><button class="btn small" data-cook="${r.id}" ${ok && (inv.coin || 0) >= Math.round(r.sell * COOK_FEE) ? '' : 'disabled'}>ทำ</button></span></div>`;
+      const locked = lvl('cook') < r.lv, ok = r.in.every(n => (n.c ? have(n.c) : (inv[n.k] || 0)) >= n.n);
+      h += `<div class="row${locked ? ' lock' : ''}"><span>${r.emoji} ${r.name}${locked ? ` <small>🔒 เชฟ Lv${r.lv}</small>` : ''}<br><small>ใช้ ${parts} • +${r.xp} XP • เวลาทำ ${Math.round(r.time / 1000)} วิ • ค่าเตา 🪙${Math.round(r.sell * COOK_FEE)} • ขายได้ราว 🪙${r.sell} • กินอิ่ม +${r.food}</small></span><span><button class="btn small" data-cook="${r.id}" ${!locked && ok && (inv.coin || 0) >= Math.round(r.sell * COOK_FEE) ? '' : 'disabled'}>ทำ</button></span></div>`;
     }
-    h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ ('+'ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';
+    h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน หรือใช้กระดานใบสั่งซื้อ 📋 • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ (ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';
   }
   if (shopKind === 'food') h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">🍖 ความอิ่มลดลงเรื่อยๆ ขณะออนไลน์ ถึง 0 จะใช้เครื่องมือไม่ได้ • ผลผลิตของตัวเองก็กินได้ (อิ่มน้อยกว่า) ในกระเป๋า 🎒</p>';
   if (shopKind === 'furn') h += `<p style="font-size:12px;opacity:.65;margin:8px 0 0">🏠 ซื้อที่ดินได้ที่ป้าย "ที่ดินว่าง" แถวบนสุดของแมพ (🪙${HOUSING.price}) แล้วกดปุ่ม 🏠 เพื่อวางของ • เก้าอี้/โซฟานั่งได้ • โคมไฟสว่างตอนกลางคืน</p>`;

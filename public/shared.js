@@ -55,6 +55,7 @@
     fish:   { name: 'ชาวประมง',  emoji: '🎣' },
     animal: { name: 'คนเลี้ยงสัตว์', emoji: '🐄' },
     wood:   { name: 'ช่างไม้',    emoji: '🪵' },
+    cook:   { name: 'เชฟ',       emoji: '👨‍🍳' },
   };
   const xpFor = lv => 30 * (lv - 1) * (lv - 1);        // XP สะสมที่ต้องใช้ถึงเลเวลนั้น
   const levelOf = xp => Math.min(MAX_LV, Math.floor(Math.sqrt((xp || 0) / 30)) + 1);
@@ -251,11 +252,12 @@
   // in: c = หมวด (fish = ปลาชนิดใดก็ได้ [ใช้ชนิดที่ถูกสุดก่อน], crop = ผัก, egg = ไข่ไก่/ไข่เป็ด) หรือ k = ไอเทมระบุชนิด
   const COOK_FEE = 0.2; // ค่าเช่าเตา = สัดส่วนของราคาขายอาหาร จ่ายเป็นเหรียญทุกครั้งที่ทำ
   const COOK_CATS = { fish: { name: 'ปลา/สัตว์น้ำ', emoji: '🐟' }, crop: { name: 'ผัก/ผลไม้', emoji: '🥕' }, egg: { name: 'ไข่', emoji: '🥚' } };
+  // เชฟ (อาชีพที่ 5): แต่ละสูตรปลดล็อกตามเลเวลเชฟ (lv) ได้ XP เชฟ (xp) และใช้เวลาทำ (time มิลลิวินาที = เตาต้องพักก่อนทำจานถัดไป)
   const COOK = [
-    { id: 'dish_grill',   name: 'ปลาย่างผักสด',     emoji: '🍱', sell: 60,  food: 45, in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_omelet',  name: 'ไข่เจียวผักรวม',    emoji: '🍳', sell: 80,  food: 55, in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_seafood', name: 'ซีฟู้ดไข่นุ่ม',     emoji: '🍤', sell: 135, food: 70, in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_feast',   name: 'ชุดเลี้ยงฉลอง',     emoji: '🍽️', sell: 330, food: 100, in: [{ c: 'fish', n: 2 }, { c: 'crop', n: 2 }, { c: 'egg', n: 2 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_grill',   name: 'ปลาย่างผักสด',     emoji: '🍱', sell: 60,  food: 45,  lv: 1, xp: 12, time: 3000,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_omelet',  name: 'ไข่เจียวผักรวม',    emoji: '🍳', sell: 80,  food: 55,  lv: 3, xp: 20, time: 4000,  in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_seafood', name: 'ซีฟู้ดไข่นุ่ม',     emoji: '🍤', sell: 135, food: 70,  lv: 5, xp: 34, time: 6000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_feast',   name: 'ชุดเลี้ยงฉลอง',     emoji: '🍽️', sell: 330, food: 100, lv: 7, xp: 70, time: 9000,  in: [{ c: 'fish', n: 2 }, { c: 'crop', n: 2 }, { c: 'egg', n: 2 }, { k: 'milk', n: 1 }] },
   ];
   const cookCat = (c, k) => c === 'fish' ? /^fish_/.test(k) && k !== 'fish_boot' : c === 'crop' ? /^crop_/.test(k) : c === 'egg' ? (k === 'egg' || k === 'duck_egg') : false;
   // โครงการพัฒนาเมือง: ที่เก็บเงินขนาดใหญ่ ทุกคนลงขันที่ตู้เซฟกองกลาง ปลดล็อกตามลำดับ ครบเป้าแล้วขึ้นข่าวและประกาศชื่อผู้ร่วมสร้าง
