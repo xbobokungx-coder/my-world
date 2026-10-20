@@ -904,7 +904,9 @@ function renderCloth() {
 }
 
 // ---------- input ----------
+let lastKeyEvt = 0; // เวลาที่ได้รับ keydown ล่าสุด (รวมตัวซ้ำตอนกดค้าง) ใช้ตรวจปุ่มค้าง
 addEventListener('keydown', e => {
+  lastKeyEvt = performance.now();
   if (!joined) return;
   if (chatFocus) {
     if (e.key === 'Enter') { const v = $('chatIn').value.trim(); if (v) send({ t: 'chat', text: v }); closeChat(); }
@@ -928,8 +930,16 @@ addEventListener('keydown', e => {
   keys[c] = true;
   mouse.active = false;
 });
-addEventListener('keyup', e => { keys[e.code] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+// กันปุ่มเดินค้าง (ตัวละครเดินเองและยกเลิกการคลิกเดิน): ถ้าไม่ได้รับ keyup (เช่น เปิดเมนูคลิกขวา/สลับหน้าต่าง/IME ภาษาไทย) ปุ่มจะค้างจนรีเฟรช
+const keyName = {};
+const clearKeys = () => { for (const k in keys) keys[k] = false; };
+addEventListener('keyup', e => { keys[e.code] = false; for (const k in keyName) if (keyName[k] === e.key.toLowerCase()) keys[k] = false; delete keyName[e.code]; });
+addEventListener('keydown', e => { keyName[e.code] = String(e.key).toLowerCase(); }, true);
+addEventListener('blur', clearKeys);
+addEventListener('focusout', e => { if (!e.relatedTarget) clearKeys(); });
+addEventListener('contextmenu', clearKeys);
+document.addEventListener('visibilitychange', clearKeys);
+const KEY_STALE_MS = 1800; // กดค้างจริงเบราว์เซอร์ส่ง keydown ซ้ำเรื่อยๆ ถ้าเงียบเกินนี้ถือว่าปล่อยปุ่มแล้ว
 function openChat() { $('chatIn').classList.remove('hidden'); $('chatIn').focus(); chatFocus = true; renderChatHist(); $('chatHist').classList.remove('hidden'); $('chatLog').style.display = 'none'; for (const k in keys) keys[k] = false; }
 function closeChat() { $('chatHist').classList.add('hidden'); $('chatLog').style.display = ''; $('chatIn').value = ''; $('chatIn').classList.add('hidden'); $('chatIn').blur(); chatFocus = false; }
 
@@ -1067,7 +1077,7 @@ $('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk();
 // ---------- แชทเสียง (WebRTC, ต่อตรงระหว่างผู้เล่น / signaling ผ่าน WebSocket เดิม) ----------
 const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 const peers = new Map(), levels = new Map();
-window.__mw = { peers, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
+window.__mw = { peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
 
 function getPeer(id) {
@@ -2160,6 +2170,7 @@ function step(now) {
   const wall = Date.now() + timeOffset;
 
   // เดิน: คีย์บอร์ด/จอยสติ๊ก (ยกเลิกการเดินจากคลิก) หรือเดินตามเส้นทางที่คลิกไว้
+  if (performance.now() - lastKeyEvt > KEY_STALE_MS) clearKeys(); // ปุ่มค้าง: ไม่มี keydown เข้ามานานผิดปกติ → เคลียร์ทั้งหมด
   let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x;
   let iy = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0) + joy.y;
   if (chatFocus || modalOpen()) { ix = iy = 0; walk = null; }
