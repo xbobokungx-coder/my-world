@@ -67,9 +67,9 @@
   #fgauge .mk { position:absolute; top:-2px; bottom:-2px; width:6px; margin-left:-3px; background:#fff; border:2px solid #3d2a1a; box-sizing:border-box; }
   #fgauge.hit .mk { background:#ffe06a; }
   body.touch #fgauge { bottom:calc(86px + var(--sab)); }
-  #shop,#bag,#people,#archub,#status,#quest,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
-  #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#quest .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; overflow:auto; }
-  #shop h2,#bag h2,#people h2,#archub h2,#status h2,#quest h2,#arcade h2,#trade h2,#cinema h2,#town h2,#admin h2,#plots h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  #shop,#bag,#people,#archub,#status,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
+  #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; overflow:auto; }
+  #shop h2,#bag h2,#people h2,#archub h2,#status h2,#quest h2,#ach h2,#arcade h2,#trade h2,#cinema h2,#town h2,#admin h2,#plots h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
   #arcade .panel { background:#f3eefc; border-color:#8a6fd1; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
   .chip { border:2px solid #8a6fd1; background:#fff; border-radius:999px; padding:6px 14px; font-weight:700; font-size:15px; }
@@ -316,13 +316,14 @@
   <div class="panel hidden" id="happyChip" title="Happy Village: บัฟร่วมของทั้งเมือง">🎉</div>
   <div class="panel" id="online">👥 1</div>
   <button class="btn small" id="invite">🔗 ชวนเพื่อน</button>
-  <button class="btn small mic" id="micBtn" aria-label="เปิด/ปิดไมค์">🔇</button>
-  <button class="btn small spk" id="spkBtn" title="เปิด/ปิดเสียงเพื่อนทั้งหมด" aria-label="เปิดหรือปิดลำโพง">🔊</button>
+  <button class="btn small mic" id="micBtn" title="ไมค์: ปิดอยู่ (กดเพื่อเปิด)" aria-label="เปิด/ปิดไมค์">🎤</button>
+  <button class="btn small spk" id="spkBtn" title="ลำโพง: เปิดอยู่" aria-label="เปิดหรือปิดลำโพง">🔊</button>
   <button class="btn small hidden" id="lampBtn" title="ตะเกียง (L)" aria-label="ตะเกียง">🏮</button>
   <button class="btn small hidden" id="adminBtn" title="ผู้ดูแล: จัดการห้อง" aria-label="ผู้ดูแล">🛠️</button>
   <button class="btn small" id="townBtn" title="ข่าวเมือง" aria-label="ข่าวเมือง">📰</button>
   <button class="btn small" id="houseBtn" title="ตกแต่งบ้าน (H)" aria-label="ตกแต่งบ้าน">🏠</button>
   <button class="btn small" id="questBtn" title="เควส" aria-label="เควส" style="position:relative">📋<span id="questBadge" class="hidden" style="position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#e74c3c;color:#fff;font-size:11px;line-height:17px;font-weight:700;text-align:center;pointer-events:none"></span></button>
+  <button class="btn small" id="achBtn" title="ฉายา &amp; ความสำเร็จ" aria-label="ฉายาและความสำเร็จ">🏅</button>
   <button class="btn small" id="bagBtn" title="กระเป๋า (B)" aria-label="กระเป๋า">🎒</button>
   <button class="btn small" id="statBtn" title="สถานะ (C)" aria-label="สถานะ">📊</button>
   <button class="btn small" id="chatBtn" title="แชท (Enter)" aria-label="แชท">💬</button>
@@ -374,6 +375,11 @@
   <h2><span>📋 เควส</span> <button class="btn small" id="questClose">ปิด</button></h2>
   <div class="tabs" id="questTabs"></div>
   <div id="questBody"></div>
+</div></div>
+<div id="ach" class="hidden"><div class="panel">
+  <h2><span>🏅 ฉายา &amp; ความสำเร็จ</span> <button class="btn small" id="achClose">ปิด</button></h2>
+  <div class="tabs" id="achTabs"></div>
+  <div id="achBody"></div>
 </div></div>
 <div id="status" class="hidden"><div class="panel">
   <h2><span>💭 สถานะของฉัน</span> <button class="btn small" id="statusClose">ปิด</button></h2>

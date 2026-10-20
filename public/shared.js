@@ -324,21 +324,33 @@
   const reviveCost = type => Math.round(ANIMALS[type].price * TOWN.revive);
   // เควสประจำวัน (วันตามปฏิทินของเซิร์ฟเวอร์): แต่ละคนได้ 3 เควสจาก 3 สายอาชีพที่ต่างกัน ทำเสร็จได้ XP + เหรียญทันที ยิ่งทำสะสมยิ่งได้ฉายา
   // ev = เหตุการณ์ที่นับ, distinct = นับเฉพาะชนิดที่ยังไม่เคยทำวันนี้, min = เฉพาะปลาที่ราคาขายตั้งแต่นี้ขึ้นไป
-  const QUESTS = { // adv = ข้อที่ยากกว่า/ต้องลุ้น (ผู้เล่นใหม่ยังไม่โดนสุ่มให้) • เป้าหมายลดลงให้ทำจบได้ใน 5–10 นาที
-    harvest4: { skill: 'farm',   ev: 'harvest', goal: 4, text: 'เก็บเกี่ยวผลผลิต',               xp: 40, coin: 30 },
-    kinds2:   { skill: 'farm',   ev: 'harvest', goal: 2, distinct: true, adv: true, text: 'เก็บเกี่ยวพืช 2 ชนิดที่ต่างกัน', xp: 45, coin: 35 },
-    plant5:   { skill: 'farm',   ev: 'plant',   goal: 5, text: 'ปลูกเมล็ดพันธุ์',                xp: 30, coin: 25 },
-    water6:   { skill: 'farm',   ev: 'water',   goal: 6, text: 'รดน้ำพืชที่แห้ง',               xp: 30, coin: 25 },
-    fish3:    { skill: 'fish',   ev: 'fish',    goal: 3, text: 'ตกปลา',                         xp: 40, coin: 30 },
-    fishbig:  { skill: 'fish',   ev: 'fish',    goal: 1, min: 40, adv: true, text: 'ตกปลามีค่า (ขายได้ 40 ขึ้นไป)', xp: 55, coin: 45 },
-    chop3:    { skill: 'wood',   ev: 'chop',    goal: 3, text: 'โค่นต้นไม้',                    xp: 40, coin: 30 },
-    craft1:   { skill: 'wood',   ev: 'craft',    goal: 1, adv: true, text: 'ประดิษฐ์ของที่โรงช่างไม้',        xp: 45, coin: 35 },
-    hard1:    { skill: 'wood',   ev: 'hardwood', goal: 1, adv: true, text: 'หาไม้เนื้อแข็งให้ได้',         xp: 50, coin: 40 },
-    collect4: { skill: 'animal', ev: 'collect', goal: 4, text: 'เก็บไข่/นม/เห็ดจากสัตว์',        xp: 40, coin: 30 },
-    feed3:    { skill: 'animal', ev: 'feed',    goal: 3, text: 'ให้อาหารสัตว์',                  xp: 35, coin: 25 },
+  const QUESTS = { // cat = หมวดสำหรับสุ่มให้ครบหลายสาย • adv = ข้อที่ยากกว่า/ต้องลุ้น (ผู้เล่นใหม่ยังไม่โดนสุ่มให้) • emoji = ไอคอนเฉพาะข้อ (ไม่ใส่ = ใช้ของสาย skill) • เป้าหมายตั้งให้ทำจบได้ใน 5–10 นาที
+    dig4:     { cat: 'farm',   skill: 'farm',   ev: 'dig',     goal: 4, text: 'ขุดดินเตรียมแปลงผัก',            xp: 25, coin: 20 },
+    plant5:   { cat: 'farm',   skill: 'farm',   ev: 'plant',   goal: 5, text: 'ปลูกเมล็ดพันธุ์',                xp: 30, coin: 25 },
+    water6:   { cat: 'farm',   skill: 'farm',   ev: 'water',   goal: 6, text: 'รดน้ำพืชที่แห้ง',               xp: 30, coin: 25 },
+    harvest4: { cat: 'farm',   skill: 'farm',   ev: 'harvest', goal: 4, text: 'เก็บเกี่ยวผลผลิต',               xp: 40, coin: 30 },
+    harvest10:{ cat: 'farm',   skill: 'farm',   ev: 'harvest', goal: 10, adv: true, text: 'เก็บเกี่ยวผลผลิตให้ได้ 10 ต้น', xp: 70, coin: 55 },
+    kinds2:   { cat: 'farm',   skill: 'farm',   ev: 'harvest', goal: 2, distinct: true, adv: true, text: 'เก็บเกี่ยวพืช 2 ชนิดที่ต่างกัน', xp: 45, coin: 35 },
+    fish3:    { cat: 'fish',   skill: 'fish',   ev: 'fish',    goal: 3, text: 'ตกปลา',                         xp: 40, coin: 30 },
+    fish6:    { cat: 'fish',   skill: 'fish',   ev: 'fish',    goal: 6, adv: true, text: 'ตกปลาให้ได้ 6 ตัว',        xp: 65, coin: 50 },
+    fishbig:  { cat: 'fish',   skill: 'fish',   ev: 'fish',    goal: 1, min: 40, adv: true, text: 'ตกปลามีค่า (ขายได้ 40 ขึ้นไป)', xp: 55, coin: 45 },
+    chop3:    { cat: 'wood',   skill: 'wood',   ev: 'chop',    goal: 3, text: 'โค่นต้นไม้',                    xp: 40, coin: 30 },
+    chop6:    { cat: 'wood',   skill: 'wood',   ev: 'chop',    goal: 6, adv: true, text: 'โค่นต้นไม้ 6 ต้น',         xp: 65, coin: 50 },
+    craft1:   { cat: 'wood',   skill: 'wood',   ev: 'craft',   goal: 1, adv: true, text: 'ประดิษฐ์ของที่โรงช่างไม้',   xp: 45, coin: 35 },
+    hard1:    { cat: 'wood',   skill: 'wood',   ev: 'hardwood', goal: 1, adv: true, text: 'หาไม้เนื้อแข็งให้ได้',    xp: 50, coin: 40 },
+    feed3:    { cat: 'animal', skill: 'animal', ev: 'feed',    goal: 3, text: 'ให้อาหารสัตว์',                  xp: 35, coin: 25 },
+    collect3: { cat: 'animal', skill: 'animal', ev: 'collect', goal: 3, text: 'เก็บไข่/นม/เห็ดจากสัตว์',        xp: 40, coin: 30 },
+    collect6: { cat: 'animal', skill: 'animal', ev: 'collect', goal: 6, adv: true, text: 'เก็บผลผลิตสัตว์ 6 ครั้ง',  xp: 70, coin: 55 },
+    sellprod2:{ cat: 'animal', skill: 'animal', ev: 'sellproduct', goal: 2, text: 'ขายไข่/นม/ขนแกะที่ร้านปศุสัตว์', xp: 35, coin: 30 },
+    cook1:    { cat: 'cook',   skill: 'cook',   ev: 'cook',    goal: 1, adv: true, text: 'ทำอาหารที่ห้องครัวร้านอาหาร', xp: 50, coin: 40 },
+    cook3:    { cat: 'cook',   skill: 'cook',   ev: 'cook',    goal: 3, adv: true, text: 'ทำอาหาร 3 จาน',            xp: 90, coin: 70 },
+    eat1:     { cat: 'life',   skill: 'cook',   emoji: '🍜', ev: 'eat',  goal: 1, text: 'กินอาหารให้อิ่ม (ผลผลิตของตัวเองหรือซื้อจากร้านอาหาร)', xp: 20, coin: 15 },
+    sell3:    { cat: 'life',   skill: 'farm',   emoji: '🪙', ev: 'sell', goal: 3, text: 'ขายของที่ร้านค้า 3 ครั้ง',  xp: 30, coin: 30 },
+    sit1:     { cat: 'life',   skill: 'animal', emoji: '🪑', ev: 'sit',  goal: 1, text: 'นั่งพักที่ม้านั่งลานกองไฟ', xp: 15, coin: 10 },
   };
   const QUEST_NEWBIE = 5; // เควสสำเร็จสะสมน้อยกว่านี้ = มือใหม่: สุ่มเฉพาะสายฟาร์ม/ตกปลา/(ไม้ถ้ามีขวาน) และเฉพาะข้อง่าย
-  const QUEST_PER_DAY = 3;
+  const QUEST_PER_DAY = 6;                  // เควสประจำวัน 6 ข้อ (สุ่มให้ครบหลายหมวด) ครบทุกข้อได้โบนัสเพิ่ม
+  const QUEST_ALL = { coin: 80 };             // โบนัสทำเควสวันนี้ครบทุกข้อ
   const TITLES = [[1, 'หน้าใหม่ใจสู้'], [5, 'ชาวเมืองขยัน'], [15, 'ผู้ช่วยแห่งหมู่บ้าน'], [40, 'ปรมาจารย์ฟาร์ม'], [100, 'ตำนานแห่งเมือง']]; // [จำนวนเควสที่ทำสำเร็จสะสม, ฉายา]
   const titleFor = n => { let t = ''; for (const [c, name] of TITLES) if ((n || 0) >= c) t = name; return t; };
   // แต้มความดี: ได้จากการช่วยงานที่จำเป็นจริง (ให้อาหารสัตว์ที่หิว รักษาสัตว์ป่วย รดน้ำพืชที่แห้ง ลงขันตู้เซฟ) จำกัดต่อวัน ใช้แลกบัฟส่วนตัวชั่วคราว
@@ -373,18 +385,69 @@
   const dolePackage = (chestCoin, level) => { for (let i = DOLE.tiers.length - 1; i >= 0; i--) { const t = DOLE.tiers[i]; if (chestCoin >= t.chest && level >= t.lv) return t; } return null; };
   const NPC = { sayMin: 45000, sayMax: 110000, gap: 12000, speed: 50 }; // ชาวเมือง NPC: พิมพ์ข้อความทุก sayMin-sayMax ms, เดินด้วยความเร็ว speed px/วินาที
   // คู่มือเริ่มต้น: ทำครบทุกข้อ (ลำดับไหนก็ได้) ได้ของรางวัลเล็กทีละข้อ + รางวัลใหญ่ตอนจบ ปุ่มช่วยบนจอบอก "ข้อถัดไป" ให้เสมอ
+  // how = วิธีกดทีละขั้น (แสดงในเมนู 📋 เควส → เริ่มต้น) • ตัวเลข 1–7 = ช่องเครื่องมือด้านล่างจอ (กดเลขบนคีย์บอร์ด หรือแตะที่ช่องบนมือถือ)
   const STARTER = [
-    { id: 'dig',     ev: 'dig',       hint: 'ขุดดินในรั้วแปลงผัก ⛏️',     text: 'ขุดดินในรั้วแปลงผัก (เลือกจอบ ⛏️ แล้วแตะพื้นหญ้าในรั้ว)', coin: 15 },
-    { id: 'plant',   ev: 'plant',     hint: 'ปลูกเมล็ดลงดินที่ขุด 🥕',    text: 'ปลูกเมล็ดพันธุ์ (เลือกเมล็ด 🥕 แล้วแตะดินที่ขุดไว้)',      coin: 15 },
-    { id: 'water',   ev: 'water',     hint: 'รดน้ำต้นพืช 💧',            text: 'รดน้ำต้นพืช (เลือกบัวรดน้ำ 💧 แล้วแตะต้นพืช)',            coin: 15 },
-    { id: 'harvest', ev: 'harvest',   hint: 'เก็บเกี่ยวผลผลิตที่โตแล้ว 🌽', text: 'เก็บเกี่ยวผลผลิตเมื่อโตเต็มที่ (แตะต้นพืชที่โตแล้ว)',        coin: 20 },
-    { id: 'sell',    ev: 'sell',      hint: 'ขายของที่ร้านเมล็ดพันธุ์ 🪙', text: 'ขายผลผลิตที่ร้านเมล็ดพันธุ์ (ยืนหน้าเคาน์เตอร์แล้วแตะ)',    coin: 20 },
-    { id: 'fish',    ev: 'fish',      hint: 'ตกปลาริมสระ 🎣',            text: 'ตกปลา 1 ตัว (เลือกเบ็ด 🎣 ยืนริมสระ แล้วแตะน้ำ)',         coin: 20 },
-    { id: 'quest',   ev: 'questdone', hint: 'ทำเควสสักข้อ (ปุ่ม 📋 เควส)',     text: 'ทำเควสประจำวันให้สำเร็จ 1 ข้อ (ปุ่ม 📋 เควส)',    coin: 30 },
-    { id: 'sit',     ev: 'sit',       hint: 'แตะม้านั่งเพื่อนั่งพัก 🪑',  text: 'นั่งพักที่ม้านั่งหรือกองฟางที่ลานกองไฟ (แตะที่นั่ง)',       coin: 10 },
+    { id: 'dig',     ev: 'dig',       hint: 'ขุดดินในรั้วแปลงผัก ⛏️',     text: 'ขุดดินในรั้วแปลงผัก', coin: 15,
+      how: ['เลือกช่อง 1 ⛏️ จอบ (กดเลข 1 หรือแตะช่องที่ 1 ด้านล่างจอ)', 'ตามลูกศรสีเหลืองไปที่แปลงผักที่ล้อมรั้ว', 'คลิก/แตะที่พื้นหญ้าในรั้ว ตัวละครจะเดินไปขุดให้เอง'] },
+    { id: 'plant',   ev: 'plant',     hint: 'ปลูกเมล็ดลงดินที่ขุด 🥕',    text: 'ปลูกเมล็ดพันธุ์', coin: 15,
+      how: ['เลือกช่องเมล็ด 🥕 (ช่อง 3–5)', 'คลิก/แตะที่ดินที่ขุดไว้ (ดินสีน้ำตาลเข้ม)'] },
+    { id: 'water',   ev: 'water',     hint: 'รดน้ำต้นพืช 💧',            text: 'รดน้ำต้นพืช', coin: 15,
+      how: ['เลือกช่อง 2 💧 บัวรดน้ำ', 'ถ้าน้ำหมด: ถือบัวแล้วคลิก/แตะที่สระน้ำเพื่อตักน้ำ', 'คลิก/แตะที่ต้นพืช (พืชโตเฉพาะตอนดินเปียก)'] },
+    { id: 'harvest', ev: 'harvest',   hint: 'เก็บเกี่ยวผลผลิตที่โตแล้ว 🌽', text: 'เก็บเกี่ยวผลผลิตเมื่อโตเต็มที่', coin: 20,
+      how: ['รอจนต้นโตเต็มที่ (มีผลให้เห็น)', 'คลิก/แตะที่ต้นนั้นตัวเปล่าๆ (ไม่ต้องเลือกเครื่องมือ)', 'ผักเป็นของคนปลูก ถ้าไม่มาเก็บภายใน 1 วันในเกม คนอื่นเก็บได้'] },
+    { id: 'sell',    ev: 'sell',      hint: 'ขายของที่ร้านเมล็ดพันธุ์ 🪙', text: 'ขายผลผลิตที่ร้านเมล็ดพันธุ์', coin: 20,
+      how: ['เดินไปที่ร้านเมล็ดพันธุ์ 🌱 (ลูกศรชี้ทาง)', 'คลิก/แตะที่เคาน์เตอร์ร้านใต้หลังคาเขียว', 'ในหน้าร้าน เลื่อนลงไปที่ "ขาย" แล้วกดปุ่ม ขาย / ทั้งหมด'] },
+    { id: 'fish',    ev: 'fish',      hint: 'ตกปลาริมสระ 🎣',            text: 'ตกปลา 1 ตัว', coin: 20,
+      how: ['ซื้อเหยื่อที่ร้านตกปลา 🎣 (ไส้เดือนราคาถูก) แล้วเลือกช่องเบ็ด 🎣', 'ยืนริมสระ คลิก/แตะที่น้ำเพื่อเหวี่ยงเบ็ด', 'พอขึ้น ❗ ให้กดตอนตัวชี้อยู่ในโซนเขียวของเกจ'] },
+    { id: 'buyfeed', ev: 'buyfeed',   hint: 'ซื้ออาหารไก่ที่ร้านปศุสัตว์ 🌾', text: 'ซื้ออาหารสัตว์ที่ร้านปศุสัตว์', coin: 15,
+      how: ['เดินไปร้านปศุสัตว์ 🐄 (หลังคาส้ม ลูกศรชี้ทาง)', 'คลิก/แตะที่เคาน์เตอร์ร้าน', 'แท็บ "อาหาร / ยา" กดซื้อ 🌾 อาหารสัตว์ (อาหารไก่ราคา 5)'] },
+    { id: 'feed',    ev: 'feed',      hint: 'ให้อาหารไก่ในคอก 🐔',       text: 'ให้อาหารสัตว์ที่คอก', coin: 20,
+      how: ['เลือกช่องอาหาร 🌾 ด้านล่างจอ (อาหารที่ซื้อจะขึ้นเป็นช่องใหม่)', 'เดินเข้าคอกไก่ (รั้วทางขวาของแมพ) แล้วคลิก/แตะที่ตัวไก่', 'สัตว์ที่ให้อาหารแล้วจะผลิตไข่ใน 25–45 วินาที ผู้ที่ให้อาหารคือเจ้าของผลผลิตรอบนั้น'] },
+    { id: 'collect', ev: 'collect',   hint: 'เก็บไข่จากไก่ 🥚',          text: 'เก็บไข่/นม จากสัตว์', coin: 20,
+      how: ['รอจนมี 🥚 ลอยเหนือหัวไก่ที่คุณเลี้ยง', 'คลิก/แตะที่ไก่ตัวนั้นด้วยมือเปล่า', 'ต้องเก็บภายใน 1 วันในเกม ไม่งั้นคนอื่นมาเก็บแทนได้'] },
+    { id: 'sellprod', ev: 'sellproduct', hint: 'ขายไข่ที่ร้านปศุสัตว์ 🪙', text: 'ขายไข่/นมที่ร้านปศุสัตว์', coin: 20,
+      how: ['กลับไปที่ร้านปศุสัตว์ 🐄 คลิก/แตะที่เคาน์เตอร์', 'เลื่อนลงไปที่ "ขาย" กดปุ่ม ขาย หรือ ทั้งหมด ที่ 🥚 ไข่'] },
+    { id: 'quest',   ev: 'questdone', hint: 'ทำเควสสักข้อ (ปุ่ม 📋 เควส)',    text: 'ทำเควสประจำวันให้สำเร็จ 1 ข้อ', coin: 30,
+      how: ['กดปุ่ม 📋 ที่แถบเมนูด้านบน → แท็บ "เควสวันนี้"', 'เลือกข้อที่ง่ายที่สุด (เช่น ขุดดิน ปลูก รดน้ำ) แล้วทำตามนั้น ความคืบหน้านับให้เอง'] },
+    { id: 'sit',     ev: 'sit',       hint: 'แตะม้านั่งเพื่อนั่งพัก 🪑',  text: 'นั่งพักที่ม้านั่งหรือกองฟางที่ลานกองไฟ', coin: 10,
+      how: ['เดินไปลานกองไฟกลางหมู่บ้าน', 'คลิก/แตะที่ม้านั่งหรือกองฟาง นั่งแล้วความหิวไม่ลดและค่อยๆ อิ่มขึ้น'] },
   ];
   // จุดหมายของลูกศรนำทางแต่ละข้อ (ช่อง x,y) • null = ไม่มีลูกศร
-  const STARTER_GO = { dig: [14, 13], plant: [14, 13], water: [14, 13], harvest: [14, 13], sell: [26, 12], fish: [18, 19], quest: null, sit: [29, 26] };
+  const STARTER_GO = { dig: [14, 13], plant: [14, 13], water: [14, 13], harvest: [14, 13], sell: [26, 12], fish: [18, 19], buyfeed: [41, 16], feed: [50, 11], collect: [50, 11], sellprod: [41, 16], quest: null, sit: [29, 26] };
+  // ความสำเร็จ (Achievement): stat = ตัวนับสะสมของผู้เล่น (นับจากเหตุการณ์ในเกม) • ได้เหรียญรางวัล และบางข้อปลดล็อกฉายาให้เลือกใช้ (title) • tier ใช้จัดกลุ่ม/ความเท่
+  const ACH = [
+    { id: 'harvest1',   e: '🌾', name: 'ต้นแรกของฉัน',     desc: 'เก็บเกี่ยวผลผลิตครั้งแรก',            stat: 'harvest', goal: 1,   coin: 10 },
+    { id: 'harvest50',  e: '🌾', name: 'ชาวไร่มือทอง',      desc: 'เก็บเกี่ยวผลผลิต 50 ครั้ง',           stat: 'harvest', goal: 50,  coin: 60,   title: 'ชาวไร่มือทอง' },
+    { id: 'harvest300', e: '🌽', name: 'เจ้าพ่อไร่นา',      desc: 'เก็บเกี่ยวผลผลิต 300 ครั้ง',          stat: 'harvest', goal: 300, coin: 300,  title: 'เจ้าพ่อไร่นา' },
+    { id: 'fish1',      e: '🎣', name: 'ปลาตัวแรก',        desc: 'ตกปลาได้ครั้งแรก',                    stat: 'fish',    goal: 1,   coin: 10 },
+    { id: 'fish40',     e: '🐟', name: 'ขาประจำริมสระ',     desc: 'ตกปลา 40 ตัว',                        stat: 'fish',    goal: 40,  coin: 70,   title: 'ขาประจำริมสระ' },
+    { id: 'fish250',    e: '🐋', name: 'เซียนเบ็ดทอง',      desc: 'ตกปลา 250 ตัว',                       stat: 'fish',    goal: 250, coin: 350,  title: 'เซียนเบ็ดทอง' },
+    { id: 'fishbig1',   e: '🦈', name: 'โชคดีได้ปลาใหญ่',   desc: 'ตกปลามีค่า (ขายได้ 55 ขึ้นไป) 1 ตัว',  stat: 'fishbig', goal: 1,   coin: 40 },
+    { id: 'fishbig20',  e: '🐬', name: 'นักล่าปลายักษ์',    desc: 'ตกปลามีค่า 20 ตัว',                   stat: 'fishbig', goal: 20,  coin: 250,  title: 'นักล่าปลายักษ์' },
+    { id: 'chop1',      e: '🪓', name: 'ขวานเล่มแรก',      desc: 'โค่นต้นไม้ครั้งแรก',                  stat: 'chop',    goal: 1,   coin: 10 },
+    { id: 'chop40',     e: '🪵', name: 'ช่างตัดไม้',        desc: 'โค่นต้นไม้ 40 ต้น',                   stat: 'chop',    goal: 40,  coin: 80,   title: 'ช่างตัดไม้' },
+    { id: 'chop200',    e: '🌲', name: 'จอมขวานแห่งป่า',    desc: 'โค่นต้นไม้ 200 ต้น',                  stat: 'chop',    goal: 200, coin: 350,  title: 'จอมขวานแห่งป่า' },
+    { id: 'hard1',      e: '🟫', name: 'ไม้เนื้อแข็ง',       desc: 'หาไม้เนื้อแข็งได้ครั้งแรก',            stat: 'hardwood', goal: 1,  coin: 40 },
+    { id: 'collect1',   e: '🥚', name: 'ไข่ใบแรก',          desc: 'เก็บผลผลิตจากสัตว์ครั้งแรก',           stat: 'collect', goal: 1,   coin: 10 },
+    { id: 'collect40',  e: '🐔', name: 'พ่อบ้านฟาร์ม',      desc: 'เก็บผลผลิตสัตว์ 40 ครั้ง',             stat: 'collect', goal: 40,  coin: 80,   title: 'พ่อบ้านฟาร์ม' },
+    { id: 'collect200', e: '🐄', name: 'ราชาปศุสัตว์',      desc: 'เก็บผลผลิตสัตว์ 200 ครั้ง',            stat: 'collect', goal: 200, coin: 350,  title: 'ราชาปศุสัตว์' },
+    { id: 'feed30',     e: '🌾', name: 'ใจดีต่อสัตว์',       desc: 'ให้อาหารสัตว์ 30 ครั้ง',               stat: 'feed',    goal: 30,  coin: 60 },
+    { id: 'cook1',      e: '🍳', name: 'เชฟมือใหม่',        desc: 'ทำอาหารจานแรก',                       stat: 'cook',    goal: 1,   coin: 20 },
+    { id: 'cook25',     e: '👨‍🍳', name: 'เชฟประจำเมือง',     desc: 'ทำอาหาร 25 จาน',                      stat: 'cook',    goal: 25,  coin: 200,  title: 'เชฟประจำเมือง' },
+    { id: 'sell10',     e: '🪙', name: 'พ่อค้าแม่ค้า',       desc: 'ขายของ 10 ครั้ง',                     stat: 'sell',    goal: 10,  coin: 30 },
+    { id: 'sell150',    e: '💰', name: 'เจ้าสัวตลาดสด',     desc: 'ขายของ 150 ครั้ง',                    stat: 'sell',    goal: 150, coin: 300,  title: 'เจ้าสัวตลาดสด' },
+    { id: 'allq1',      e: '📋', name: 'เควสครบวัน',        desc: 'ทำเควสประจำวันครบทุกข้อใน 1 วัน',      stat: 'allq',    goal: 1,   coin: 60 },
+    { id: 'allq10',     e: '⭐', name: 'ขยันไม่มีวันหยุด',   desc: 'ทำเควสประจำวันครบทุกข้อ 10 วัน',       stat: 'allq',    goal: 10,  coin: 400,  title: 'ขยันไม่มีวันหยุด' },
+    { id: 'arcplay5',   e: '🎮', name: 'นักเล่นตู้เกม',      desc: 'เล่นตู้เกมกับคนจริงจบ 5 เกม',          stat: 'arcplay', goal: 5,   coin: 40 },
+    { id: 'arcwin5',    e: '🏆', name: 'เซียนตู้เกม',        desc: 'ชนะตู้เกมกับคนจริง 5 ครั้ง',           stat: 'arcwin',  goal: 5,   coin: 100,  title: 'เซียนตู้เกม' },
+    { id: 'arcwin30',   e: '👑', name: 'แชมป์อาร์เคด',       desc: 'ชนะตู้เกมกับคนจริง 30 ครั้ง',          stat: 'arcwin',  goal: 30,  coin: 500,  title: 'แชมป์อาร์เคด' },
+    { id: 'trade1',     e: '🤝', name: 'พ่อค้าแลกเปลี่ยน',   desc: 'เทรดของกับผู้เล่นอื่นสำเร็จ',          stat: 'trade',   goal: 1,   coin: 30 },
+    { id: 'sit1',       e: '🪑', name: 'พักผ่อนบ้าง',        desc: 'นั่งพักที่ลานกองไฟ',                  stat: 'sit',     goal: 1,   coin: 10 },
+    { id: 'streak3',    e: '🔥', name: 'มาทุกวัน',          desc: 'เข้าเกมติดต่อกัน 3 วัน',               stat: 'streak',  goal: 3,   coin: 50 },
+    { id: 'streak7',    e: '🌟', name: 'ชาวเมืองตัวจริง',    desc: 'เข้าเกมติดต่อกัน 7 วัน',               stat: 'streak',  goal: 7,   coin: 200,  title: 'ชาวเมืองตัวจริง' },
+    { id: 'rich1k',     e: '💵', name: 'เศรษฐีน้อย',         desc: 'มีเหรียญในกระเป๋าถึง 1,000',          stat: 'wealth',  goal: 1000, coin: 50 },
+    { id: 'rich10k',    e: '💎', name: 'เศรษฐีเมือง',        desc: 'มีเหรียญในกระเป๋าถึง 10,000',         stat: 'wealth',  goal: 10000, coin: 500, title: 'เศรษฐีเมือง' },
+  ];
   const STARTER_FINAL = { coin: 100, items: ['furn_chair', 'furn_plant'] };
   // สมุดสะสม: ได้ครบทุกชนิดในหมวดไหนรับรางวัลหมวดนั้น (ชนิดใหม่แต่ละชนิดได้ BOOK_ENTRY_COIN) rare = เฟอร์นิเจอร์หายากที่เป็นรางวัล
   const BOOK_ENTRY_COIN = 8;
@@ -452,7 +515,7 @@
     if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 58, cat: 'wood' };
     if (k === 'hardwood') return { name: 'ไม้เนื้อแข็ง', emoji: '🟫', sell: WOOD.hardwood.sell, cat: 'wood' };
     if (k === 'lamp') return { name: 'ตะเกียง (สว่างรอบตัว 5 ช่อง)', emoji: '🏮', buy: 150, once: true, cat: 'gear' };
-    if (k === 'medicine') return { name: 'ยารักษาสัตว์', emoji: '💊', buy: 30, cat: 'feed' };
+    if (k === 'medicine') return { name: 'ยารักษาสัตว์', emoji: '💊', buy: 20, cat: 'feed' };
     const fm = /^furn_(\w+)$/.exec(k);
     if (fm) return FURN[fm[1]] ? { name: FURN[fm[1]].name, emoji: FURN[fm[1]].emoji, buy: FURN[fm[1]].price, sell: FURN[fm[1]].rare ? undefined : Math.floor(FURN[fm[1]].price * FURN_SELL), cat: 'furn', furn: fm[1] } : null;
     const cm = /^can_(\d)$/.exec(k);
@@ -593,7 +656,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, bankInterest, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, bankInterest, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
