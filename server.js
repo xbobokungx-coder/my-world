@@ -221,6 +221,27 @@ class World {
     if (p) { this.addXp(p, 'animal', xp); this.addPts(p, 1); this.toast(p, '🐄 มีคนเก็บผลผลิตจากสัตว์ที่คุณเลี้ยง — คุณได้ XP การเลี้ยง'); }
     else { const rec = this.saved[key]; if (rec && rec.skills) { rec.skills.animal = (rec.skills.animal || 0) + xp; this.dirty = true; } }
   }
+  // ----- แต้มตู้เกม (arcade points): เล่นจบ/ชนะคนจริงได้แต้ม ใช้แลกของโชว์ + จัดอันดับ Leaderboard -----
+  weekKey() { return Math.floor(Date.now() / (7 * 86400000)); } // บัคเก็ตสัปดาห์ (Leaderboard รายสัปดาห์รีเซ็ตทุก 7 วัน)
+  arcOf(rec) {
+    if (!rec.arc || typeof rec.arc !== 'object') rec.arc = { pts: 0, total: 0, wk: 0, wkKey: 0 };
+    const wk = this.weekKey(); if (rec.arc.wkKey !== wk) { rec.arc.wk = 0; rec.arc.wkKey = wk; }
+    return rec.arc;
+  }
+  arcPub(rec) { const a = this.arcOf(rec); return { pts: a.pts, total: a.total, wk: a.wk }; }
+  arcAward(key, play, won) { // ให้แต้ม (ออนไลน์/ออฟไลน์): play = แต้มเล่นจบ, won = ชนะคนจริงได้โบนัส
+    if (!key) return;
+    const p = [...this.players.values()].find(q => q.key === key), rec = (p && p.rec) || this.saved[key]; if (!rec) return;
+    const a = this.arcOf(rec), gain = play + (won ? S.ARCPTS.win : 0);
+    a.pts += gain; a.total += gain; a.wk += gain; this.dirty = true;
+    if (p) { send(p, { t: 'arcpts', arc: this.arcPub(rec) }); this.toast(p, `🎮 +${gain} แต้มตู้เกม${won ? ' (ชนะ!)' : ''} • มีอยู่ ${a.pts}`); }
+  }
+  sendLeaderboard(p) { // อันดับแต้มตู้เกมในห้องนี้ (สะสมตลอดกาล + สัปดาห์นี้) Top 10
+    const arr = [];
+    for (const [k, r] of Object.entries(this.saved)) { const a = this.arcOf(r); if (a.total > 0) arr.push({ name: r.name || k, total: a.total, wk: a.wk }); }
+    const top = key => arr.slice().sort((x, y) => y[key] - x[key]).slice(0, 10);
+    send(p, { t: 'lb', total: top('total'), wk: top('wk').filter(x => x.wk > 0), me: this.arcPub(p.rec) });
+  }
   ordersPub(p) {
     const level = S.playLevel(p.rec.skills), ec = this.ordEarnOf(p);
     const list = this.orders.map(o => { const info = S.itemInfo(o.item) || {}; return { id: o.id, byName: o.byName, npc: o.npc, mine: o.by === p.key, item: o.item, name: info.name, emoji: info.emoji, qty: o.qty, filled: o.filled, perUnit: o.perUnit, net: o.npc ? o.perUnit : Math.round(o.perUnit * (1 - S.ORDER.fee)), exp: o.exp }; });
@@ -824,7 +845,7 @@ class World {
     const now = Date.now(), farm = {};
     for (const k in this.farm) farm[k] = this.pub(this.farm[k], now);
     send(p, {
-      t: 'w', admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, skills: rec.skills, hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
+      t: 'w', admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), house: this.housePub(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
       players: [...this.players.values()].map(q => ({ id: q.id, deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, x: q.x, y: q.y, dir: q.dir, voice: !!q.voice })),
     });
@@ -931,6 +952,7 @@ class World {
         break;
       }
       case 'arc': this.arcHandle(p, m); break;
+      case 'lb': this.sendLeaderboard(p); break;
       case 'buy': this.buy(p, m.item, Math.min(10, Math.max(1, m.n | 0))); break;
       case 'sell': this.sell(p, m.item, m.n); break;
     }
@@ -1466,6 +1488,10 @@ class World {
       t.msg = (msg ? `${msg} — ${W.name} ชนะ!` : `${W.name} ชนะ!`) + (bet && (!t.bot || W === t.host) ? ` ได้ 🪙 ${got}${rake ? ` (หักค่าบริการ ${rake})` : ''}${capped ? ' • ครบโควตากำไรจากบอทวันนี้' : ''}` : bet ? ` (เสียเดิมพัน 🪙 ${bet})` : '');
     }
     t.paid = true;
+    if (!t.bot) { // แต้มตู้เกม: เฉพาะเล่นกับคนจริง (เสมอ = เล่น, ชนะ = เล่น+โบนัส)
+      if (winner === 'draw') { this.arcAward(X.key, S.ARCPTS.play, false); this.arcAward(O.key, S.ARCPTS.play, false); }
+      else { this.arcAward((winner === 'X' ? X : O).key, S.ARCPTS.play, true); this.arcAward((winner === 'X' ? O : X).key, S.ARCPTS.play, false); }
+    }
     for (const side of ['X', 'O']) { // เสียงชนะ/แพ้ ให้ผู้เล่นที่ออนไลน์
       const who = side === 'X' ? X : O, q = this.players.get(who.id);
       if (q && who.key === q.key) this.sfxTo(q, winner === 'draw' ? 'draw' : winner === side ? 'win' : 'lose');
@@ -1787,6 +1813,7 @@ class World {
     if (!w.bot) this.payKey(w, pot);
     t.msg = `${w.name} ชนะ!` + (pot ? ` ได้ 🪙 ${pot}${rake ? ` (หักค่าบริการ ${rake})` : ''}` : '');
     for (const q of humans) { const o = this.players.get(q.id); if (o && o.key === q.key) this.sfxTo(o, q === w ? 'win' : 'lose'); }
+    if (!t.bot) for (const q of humans) this.arcAward(q.key, S.ARCPTS.play, q === w); // แต้มตู้เกม: เฉพาะเล่นกับคนจริง
     this.pushTable(t);
   }
   unoPlay(t, q, i, color) {

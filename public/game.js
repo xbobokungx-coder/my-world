@@ -37,6 +37,8 @@ let plotOwners = [];                  // ชื่อเจ้าของที
 let townLog = [], chestSt = { coin: 0, dead: {} }, townTab = 'log';
 let orderSt = { lock: 0, level: 0, fee: 0.05, earnLeft: 0, list: [] }; // กระดานใบสั่งซื้อ
 let orderForm = { item: 'crop_carrot', qty: 10, perUnit: 0 };          // ฟอร์มตั้งใบสั่งซื้อฝั่งผู้เล่น
+let arcSt = { pts: 0, total: 0, wk: 0 };                               // แต้มตู้เกมของเรา
+let lbSt = { total: [], wk: [], me: null }, hubTab = 'rank';           // Leaderboard + ศูนย์รวมแต้ม/รางวัล
 let projSt = [];
 let questSt = { list: [], total: 0, title: '', pts: { bal: 0, earned: 0 } }, fameSt = {};
 let bankSt = { bal: 0, cap: BANK.cap, rate: BANK.rate, next: 0 }, villageSt = { n: 0, goal: 0, done: false, left: 0 };
@@ -99,7 +101,7 @@ function handle(m) {
   switch (m.t) {
     case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
     case 'w':
-      joined = true; myId = m.id; inv = m.inv; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
+      joined = true; myId = m.id; inv = m.inv; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
       dur = m.dur || {}; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
       if (m.trees) applyTrees(m.trees);
       furn.clear(); plotOwners = (m.house && m.house.plots) || [];
@@ -190,6 +192,8 @@ function handle(m) {
     case 'fame': fameSt = m.f; if (townShown()) renderTown(); break;
     case 'title': { const p = players.get(m.id); if (p) p.title = m.title; break; }
     case 'order': orderSt = m; if (townShown()) renderTown(); break;
+    case 'arcpts': arcSt = m.arc; if (hubShown()) renderHub(); break;
+    case 'lb': lbSt = m; if (hubShown()) renderHub(); break;
     case 'town': openTown(m.w === 'chest' ? 'chest' : m.w === 'atm' ? 'bank' : m.w === 'board' ? 'order' : 'log'); break;
     case 'plot': plotOwners[m.i] = m.owner; if (plotsShown()) renderPlots(); if (build.on && myPlot() < 0) { build.on = false; renderBuild(); } break;
   }
@@ -1443,6 +1447,29 @@ $('peopleBody').addEventListener('click', e => {
 $('online').onclick = () => (peopleShown() ? closePeople() : openPeople());
 $('peopleClose').onclick = closePeople;
 $('people').addEventListener('pointerdown', e => { if (e.target === $('people')) closePeople(); });
+
+// ---------- Arcade Hub: แต้มตู้เกม + Leaderboard + ร้านรางวัล ----------
+const hubShown = () => !$('archub').classList.contains('hidden');
+function openHub() { $('archub').classList.remove('hidden'); send({ t: 'lb' }); renderHub(); }
+function closeHub() { $('archub').classList.add('hidden'); }
+function renderHub() {
+  const el = $('hubBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), medal = ['🥇', '🥈', '🥉'];
+  let h = `<div class="banner" style="background:#fff3cf">🎮 แต้มตู้เกมของคุณ: <b>${arcSt.pts}</b> • สะสมตลอดกาล ${arcSt.total} • สัปดาห์นี้ ${arcSt.wk}</div>`;
+  h += `<div class="chips" style="margin:8px 0"><button class="chip${hubTab === 'rank' ? ' sel' : ''}" data-htab="rank">🏆 อันดับ</button><button class="chip${hubTab === 'shop' ? ' sel' : ''}" data-htab="shop">🎁 ร้านรางวัล</button></div>`;
+  if (hubTab === 'shop') {
+    h += '<p style="opacity:.75;text-align:center;margin:18px 0">🎁 ร้านแลกของรางวัล (ของโชว์เฉพาะแต้ม) กำลังมา เร็วๆ นี้!</p>';
+  } else {
+    const list = (arr, unit) => (arr && arr.length) ? arr.map((x, i) => `<div class="qrow"><span>${medal[i] || ('#' + (i + 1))} <b>${esc(x.name)}</b>${x.name === (me && me.name) ? ' <small>(คุณ)</small>' : ''}</span><span><b>${x[unit]}</b> แต้ม</span></div>`).join('') : '<p style="opacity:.7">ยังไม่มีใครเล่น</p>';
+    h += '<div class="sec">🏆 สะสมตลอดกาล (Top 10)</div>' + list(lbSt.total, 'total');
+    h += '<div class="sec">📅 สัปดาห์นี้ (Top 10)</div>' + list(lbSt.wk, 'wk');
+    h += '<p style="font-size:12px;opacity:.65;margin-top:10px">ได้แต้มจากการเล่นตู้เกมกับคนจริง (เล่นจบ +2 • ชนะ +5) ไม่ได้จากบอท/คาสิโน • อันดับสัปดาห์รีเซ็ตทุก 7 วัน</p>';
+  }
+  el.innerHTML = h;
+  el.querySelectorAll('[data-htab]').forEach(b => b.onclick = () => { hubTab = b.dataset.htab; renderHub(); });
+}
+$('hubBtn').onclick = () => (hubShown() ? closeHub() : openHub());
+$('hubClose').onclick = closeHub;
+$('archub').addEventListener('pointerdown', e => { if (e.target === $('archub')) closeHub(); });
 setInterval(() => renderPeople(false), 250);
 
 // ---------- เทรดของกับผู้เล่นอื่น (ของเท่านั้น ไม่มีเหรียญ มูลค่าฝั่งละไม่เกิน TRADE.maxValue ต่อรอบ) ----------

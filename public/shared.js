@@ -341,6 +341,7 @@
   const titleFor = n => { let t = ''; for (const [c, name] of TITLES) if ((n || 0) >= c) t = name; return t; };
   // แต้มความดี: ได้จากการช่วยงานที่จำเป็นจริง (ให้อาหารสัตว์ที่หิว รักษาสัตว์ป่วย รดน้ำพืชที่แห้ง ลงขันตู้เซฟ) จำกัดต่อวัน ใช้แลกบัฟส่วนตัวชั่วคราว
   const POINTS = { dailyCap: 30 };
+  const ARCPTS = { play: 2, win: 5 }; // แต้มตู้เกม: เล่นจบได้ +play, ชนะคนจริงได้ +win เพิ่ม (ไม่ได้จากบอท/คาสิโน) — ใช้แลกของโชว์ในร้านรางวัล + จัดอันดับ Leaderboard
   const BUFFS = {
     speed:  { name: 'เท้าเบา',  emoji: '🏃', desc: 'เดินเร็วขึ้น 10%',             cost: 10, ms: 15 * 60000 },
     hunger: { name: 'อิ่มทน',   emoji: '🍖', desc: 'ความหิวลดช้าลงครึ่งหนึ่ง',      cost: 8,  ms: 15 * 60000 },
@@ -590,7 +591,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, bankInterest, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_PER_DAY, TITLES, titleFor, POINTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, bankInterest, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_PER_DAY, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
