@@ -44,6 +44,7 @@
   const PASTURE = { x0: 47, y0: 17, x1: 60, y1: 25 };  // ทุ่งวัว
   const PIGPEN = { x0: 57, y0: 9, x1: 61, y1: 13 };    // คอกหมู
   const SPAWN = { x: 31 * TS + 16, y: 22 * TS + 16 };
+  const START_SPAWN = { x: 14 * TS, y: 19 * TS + 16 }; // ผู้เล่นที่เข้าเกมครั้งแรกเกิดตรงประตูแปลงผัก (ใกล้ข้อแรกของคู่มือ) คนเก่าอยู่ตรงที่ออกไว้
   const DAY_MS = 12 * 60 * 1000;                       // 1 วันในเกม = 12 นาทีจริง
   const WATER_MS = 90000;                              // ดินเปียกนานเท่าไร
   const MAX_LV = 10;
@@ -112,20 +113,20 @@
   // เศรษฐกิจ: ตลาดรับซื้อมีราคาขึ้นลง (ขายเยอะราคาตก ปล่อยไว้ราคากลับมา) ค่าบริการตู้เกม 5% ของเงินรางวัลเป็นตัวดูดเหรียญออกจากระบบ
   // เหยื่อ 3 ระดับ: ยิ่งแพงยิ่งเจอปลาแพง (mul = ตัวคูณน้ำหนักสุ่มตามกลุ่มราคาปลา: <20 / <60 / <120 / 120+, boot = รองเท้าเก่า)
   const BAITS = {
-    1: { id: 'bait',   name: 'ไส้เดือน',        emoji: '🪱', price: 3,  mul: [1, 1, 1, 1],           boot: 1 },
+    1: { id: 'bait',   name: 'ไส้เดือน',        emoji: '🪱', price: 2,  mul: [1, 1, 1, 1],           boot: 1 },
     2: { id: 'bait_2', name: 'กุ้งฝอยสด',       emoji: '🍤', price: 8,  lv: 4, mul: [0.4, 1.4, 3, 5], boot: 0.3 },
     3: { id: 'bait_3', name: 'ปลอมทองคำ', emoji: '✨', price: 25, lv: 6, mul: [0.03, 0.35, 5, 14],  boot: 0 },
   };
   const fishClass = f => (f.sell < 20 ? 0 : f.sell < 60 ? 1 : f.sell < 120 ? 2 : 3);
   const baitWeight = (f, tier) => { const b = BAITS[tier] || BAITS[1]; return f.id === 'boot' ? b.boot : b.mul[fishClass(f)]; };
-  const BAIT_PRICE = 3;       // เหยื่อตกปลา: ใช้ 1 ชิ้นต่อการเหวี่ยง 1 ครั้ง
+  const BAIT_PRICE = 2;       // เหยื่อตกปลา: ใช้ 1 ชิ้นต่อการเหวี่ยง 1 ครั้ง
   const RAKE = 0.05;          // ค่าบริการตู้เกม (หักจากรางวัลของผู้ชนะที่มีเดิมพัน)
   // ตลาดมีลิมิต: ขายต่อเนื่องยิ่งขายเยอะ ราคาต่อชิ้นยิ่งถูกลงเรื่อยๆ (ชิ้นละ -4% ทบต่อกัน ต่ำสุด 20% ของราคาปกติ) และฟื้นตัวช้า
   const MARKET = { step: 0.96, min: 0.2, max: 1.4, recover: 0.06 };
   // ตลาดแยกต่อคน: ราคาที่ผู้เล่นเห็น = ตลาดกลาง × ตลาดส่วนตัว × โบนัสความหลากหลาย ขายชนิดเดิมซ้ำๆ ตลาดส่วนตัวของคนนั้นตกหนัก (share = สัดส่วนที่ตกเป็นของส่วนตัว) และฟื้นช้า (recover ต่อ 1 นาทีที่ออนไลน์)
   const PMARKET = { share: 0.75, min: 0.25, recover: 0.03 };
   // โบนัสความหลากหลาย: ขายหลายชนิดในวันเดียว (วันจริง) ได้ตัวคูณเพิ่มต่อชนิดที่ต่างกัน
-  const VARIETY = { per: 0.05, max: 0.4 };
+  const VARIETY = { per: 0.05, max: 0.4, minQty: 3, minCoin: 40 }; // ชนิดที่ขายนับเข้าโบนัสเมื่อขาย ≥ minQty ชิ้น หรือได้ ≥ minCoin เหรียญ
   const varietyBonus = n => Math.min(VARIETY.max, VARIETY.per * Math.max(0, n - 1)); // n = จำนวนชนิดที่ขายวันนี้ รวมชนิดที่กำลังขาย
   // ความทนทานเครื่องมือ: ใช้งานทุกครั้งสึกหรอ 1 หน่วย ใช้ครบแล้วใช้ไม่ได้จนกว่าจะซ่อมที่ร้านเสียเหรียญ (ค่าซ่อมคิดตามส่วนที่สึกหรอ) = รายจ่ายที่เกิดขึ้นสม่ำเสมอ
   const DURABILITY = {
@@ -234,6 +235,7 @@
   ];
   // ห้องครัวที่ร้านอาหาร: ทำอาหารจากวัตถุดิบข้ามสาย (ปลา + ผัก + ไข่/นม) ได้ราคาขายสูงกว่าขายของดิบแยกหลายเท่า
   // in: c = หมวด (fish = ปลาชนิดใดก็ได้ [ใช้ชนิดที่ถูกสุดก่อน], crop = ผัก, egg = ไข่ไก่/ไข่เป็ด) หรือ k = ไอเทมระบุชนิด
+  const COOK_FEE = 0.2; // ค่าเช่าเตา = สัดส่วนของราคาขายอาหาร จ่ายเป็นเหรียญทุกครั้งที่ทำ
   const COOK_CATS = { fish: { name: 'ปลา/สัตว์น้ำ', emoji: '🐟' }, crop: { name: 'ผัก/ผลไม้', emoji: '🥕' }, egg: { name: 'ไข่', emoji: '🥚' } };
   const COOK = [
     { id: 'dish_grill',   name: 'ปลาย่างผักสด',     emoji: '🍱', sell: 60,  food: 45, in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
@@ -332,9 +334,9 @@
   const BANK = { cap: 100000, rate: 0.01, tiers: [[1000, 0.01], [10000, 0.004], [100000, 0.0015]], amts: [100, 1000, 10000], idleMs: 180000 }; // ฝากได้สูงสุด cap เพื่อเก็บกินดอก ดอกเบี้ยแบบขั้นบันได: ส่วนแรกอัตราสูง ส่วนที่เกินได้อัตราต่ำลง (กันเงินเฟ้อ) ต่อ 1 วันในเกม
   const bankInterest = bal => { let sum = 0, lo = 0; for (const [hi, rt] of BANK.tiers) { if (bal > lo) sum += (Math.min(bal, hi) - lo) * rt; lo = hi; } return bal > 0 ? Math.max(1, Math.floor(sum)) : 0; };
   // Happy Village: ทั้งเมืองช่วยกันทำงานสะสมครบเป้าของวัน (เป้า = base + per × จำนวนคนออนไลน์สูงสุดของวัน) → ทุกคนได้บัฟร่วม ms มิลลิวินาที
-  const VILLAGE = { base: 30, per: 20, ms: 20 * 60000, fishMul: 0.75, hardBonus: 0.1 };
+  const VILLAGE = { maxShare: 0.5, base: 30, per: 20, ms: 20 * 60000, fishMul: 0.75, hardBonus: 0.1 };
   // เดิมพันกับบอท: เงินเดิมพันฝั่งบอทมาจากบ้าน (สร้างเหรียญใหม่) จึงจำกัดวงเงินต่อครั้ง และกำไรสุทธิจากบอทต่อวันไม่เกิน dailyWinCap (ขาดทุนไม่จำกัด)
-  const BOTBET = { bets: [0, 10, 50, 100, 200, 300], dailyWinCap: 500 };
+  const BOTBET = { bets: [0], dailyWinCap: 0 }; // ปิดการจ่ายเหรียญจากบอท (ซ้อมฟรีเท่านั้น) จนกว่าจะมีแต้มตู้เกม เดิมคือ bets [0,10,50,100,200,300] และ dailyWinCap 500
   // ของแจกจากกองกลาง: รับได้วันละ 1 ครั้ง ต้อง "เล่นจริง" = ระดับการเล่น (ผลรวมเลเวลทุกอาชีพ) ถึงเกณฑ์ และทำเควสประจำวันสำเร็จอย่างน้อย needQuests ข้อวันนี้
   // ยิ่งเงินกองกลางเยอะยิ่งปลดล็อกชุดแจกที่ใหญ่ขึ้น (ต้องผ่านทั้ง chest และ lv) ต้นทุนทั้งหมดจ่ายจากเงินกองกลาง และต้องเหลือสำรอง reserve ไว้ดูแลสัตว์
   const DOLE = {
@@ -362,6 +364,8 @@
     { id: 'quest',   ev: 'questdone', hint: 'ทำเควสสักข้อ (เมนู 🎒 แท็บเควส)',     text: 'ทำเควสประจำวันให้สำเร็จ 1 ข้อ (เมนู 🎒 แท็บเควส)',    coin: 30 },
     { id: 'sit',     ev: 'sit',       hint: 'แตะม้านั่งเพื่อนั่งพัก 🪑',  text: 'นั่งพักที่ม้านั่งหรือกองฟางที่ลานกองไฟ (แตะที่นั่ง)',       coin: 10 },
   ];
+  // จุดหมายของลูกศรนำทางแต่ละข้อ (ช่อง x,y) • null = ไม่มีลูกศร
+  const STARTER_GO = { dig: [14, 13], plant: [14, 13], water: [14, 13], harvest: [14, 13], sell: [26, 12], fish: [18, 19], quest: null, sit: [29, 26] };
   const STARTER_FINAL = { coin: 100, items: ['furn_chair', 'furn_plant'] };
   // สมุดสะสม: ได้ครบทุกชนิดในหมวดไหนรับรางวัลหมวดนั้น (ชนิดใหม่แต่ละชนิดได้ BOOK_ENTRY_COIN) rare = เฟอร์นิเจอร์หายากที่เป็นรางวัล
   const BOOK_ENTRY_COIN = 8;
@@ -378,7 +382,7 @@
     const m = MEALS.find(x => x.id === id); return { emoji: m.emoji, name: m.name };
   };
   // เป้าหมายรายสัปดาห์ของเมือง: งานรวมของทุกคน (นับเหมือน Happy Village) ถึงเป้า base + per × จำนวนคนที่ลงมือสัปดาห์นี้ → คนที่มีส่วนร่วมอย่างน้อย minShare ครั้งรับรางวัลได้ (ไม่ให้รอรับฟรี)
-  const WEEKLY = { base: 150, per: 100, minShare: 10, coin: 120 };
+  const WEEKLY = { maxShare: 0.5, base: 150, per: 100, minShare: 10, coin: 120 };
   const RARE = ['statue', 'fountain', 'cat', 'flag']; // วนเป็นรางวัลประจำสัปดาห์ / ครบ 7 วันติดต่อกัน
   // โรงงานช่างไม้ (ร้านช่างไม้): แปรรูปไม้ท่อนเป็นไม้กระดาน และประดิษฐ์เฟอร์นิเจอร์เอง (ถูกกว่าซื้อ + ได้ XP ช่างไม้) ของที่ทำได้แค่ช่างไม้: ลังไม้ ถังไม้ ป้ายชี้ทาง ตู้ไปรษณีย์ ตู้เครื่องมือ กระท่อมไม้
   // id = ไอเทมที่ได้ (1 ชิ้น), in = วัตถุดิบ, lv = เลเวลช่างไม้ที่ต้องมี
@@ -568,10 +572,10 @@
   }
   function inFarm(tx, ty) { return tx >= FARM.x0 && tx <= FARM.x1 && ty >= FARM.y0 && ty <= FARM.y1; }
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, bankInterest, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_PER_DAY, TITLES, titleFor, POINTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, DAY_MS, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, bankInterest, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_PER_DAY, TITLES, titleFor, POINTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, VARIETY, varietyBonus, COOK, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm };
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

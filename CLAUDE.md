@@ -26,6 +26,7 @@
 | `public/index.html` | หน้าเว็บและ CSS ของ UI |
 | `STYLE_GUIDE.md` | กติกาหน้าตา สี มุมกล้อง รูปทรง **อ่านก่อนเพิ่มของที่มองเห็นได้** |
 | `README.md` / `HOW-TO-PLAY.md` | รายละเอียดฟีเจอร์และวิธีเล่น อัปเดตเมื่อเพิ่มฟีเจอร์ |
+| `tools/stats.js` | สรุปตัวชี้วัดจาก `data/events/*.jsonl` และไฟล์เซฟ: `node tools/stats.js` |
 | `*.ps1` `*.bat` | สคริปต์สำหรับ Windows (ใช้บนเครื่องที่บ้านได้ ไม่ใช้บน VPS) |
 
 เทคโนโลยี: HTML5 Canvas 2D + JavaScript ล้วน ไม่มี build step ไม่มี framework ฝั่งเว็บ ฝั่งเซิร์ฟเวอร์มี dependency เดียวคือ `ws`

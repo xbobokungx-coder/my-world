@@ -3,7 +3,7 @@
 const { REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-  GAME_TITLES, COOK, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, bankInterest, CRAFT, STARTER, STARTER_FINAL, BOOK, WEEKLY, bookInfo } = Shared;
+  GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, bankInterest, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo } = Shared;
 const MAP = makeMap();
 const $ = id => document.getElementById(id);
 const canvas = $('c'), ctx = canvas.getContext('2d'), mainCtx = ctx;
@@ -704,14 +704,14 @@ function renderShop() {
       + `<button class="btn small" data-sell="${k}" data-n="1">ขาย 1</button> `
       + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all">ทั้งหมด 🪙${sellQuote(i.sell, m, inv[k]).total}</button>` : '') + `</span></div>`;
   }
-  if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายเยอะราคาจะตก ทิ้งไว้ราคาจะค่อยๆ กลับมา และมีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
+  if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายชนิดเดิมซ้ำๆ ราคาของคุณจะตกเร็วและฟื้นช้า (ตกเหลือต่ำสุด ~20–25% ของราคาปกติ) • ขายหลายชนิดต่อวัน (ชนิดละ ≥3 ชิ้น หรือ ≥40 เหรียญ) ได้โบนัสราคา +5% ต่อชนิด สูงสุด +40% • มีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
   if (shopKind === 'food') {
     h += '<div class="sec">👨‍🍳 ห้องครัว (ทำอาหารจากวัตถุดิบหลายสาย ขายได้แพงกว่าของดิบ)</div>';
     const have = c => Object.keys(inv).reduce((s, k) => s + (inv[k] > 0 && cookCat(c, k) ? inv[k] : 0), 0);
     for (const r of COOK) {
       const parts = r.in.map(n => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, nm = n.c ? COOK_CATS[n.c].name : itemInfo(n.k).name, got = n.c ? have(n.c) : (inv[n.k] || 0); return `${emo}${nm} ×${n.n}` + (got >= n.n ? '' : ` <small style="color:#c0392b">(มี ${got})</small>`); }).join(' + ');
       const ok = r.in.every(n => (n.c ? have(n.c) : (inv[n.k] || 0)) >= n.n);
-      h += `<div class="row"><span>${r.emoji} ${r.name}<br><small>ใช้ ${parts} • ขายได้ราว 🪙${r.sell} • กินอิ่ม +${r.food}</small></span><span><button class="btn small" data-cook="${r.id}" ${ok ? '' : 'disabled'}>ทำ</button></span></div>`;
+      h += `<div class="row"><span>${r.emoji} ${r.name}<br><small>ใช้ ${parts} • ค่าเตา 🪙${Math.round(r.sell * COOK_FEE)} • ขายได้ราว 🪙${r.sell} • กินอิ่ม +${r.food}</small></span><span><button class="btn small" data-cook="${r.id}" ${ok && (inv.coin || 0) >= Math.round(r.sell * COOK_FEE) ? '' : 'disabled'}>ทำ</button></span></div>`;
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ ('+'ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';
   }
@@ -1150,7 +1150,7 @@ function renderUno() {
   const lobby = () => `<div class="sec">จำนวนผู้เล่น</div><div class="chips">${[2, 3, 4].map(n => `<button class="chip${n === arcMax ? ' sel' : ''}" data-max="${n}">${n} คน</button>`).join('')}</div>`
     + `<div class="sec">เลือกเดิมพัน (ต่อคน)</div><div class="chips">${BETS.map(b => `<button class="chip${b === arcBet ? ' sel' : ''}" data-bet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ไม่เดิมพัน'}</button>`).join('')}</div>`
     + `<button class="btn" data-arc="create" style="width:100%">⚔️ สร้างห้อง UNO ${arcMax} คน${arcBet ? ' (เดิมพัน ' + arcBet + ')' : ''}</button>`
-    + `<div class="sec">🤖 เดิมพันกับบอท <small>(ได้กำไรสุทธิไม่เกิน 🪙${BOTBET.dailyWinCap}/วัน • เสียได้ไม่จำกัด)</small></div><div class="chips">${BOTBET.bets.map(b => `<button class="chip${b === arcBotBet ? ' sel' : ''}" data-botbet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ซ้อมฟรี'}</button>`).join('')}</div>`
+    + `<div class="sec">🤖 ซ้อมกับบอท <small>(ซ้อมฟรี ไม่มีเดิมพัน)</small></div><div class="chips">${BOTBET.bets.map(b => `<button class="chip${b === arcBotBet ? ' sel' : ''}" data-botbet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ซ้อมฟรี'}</button>`).join('')}</div>`
     + `<button class="btn" data-arc="bot" style="width:100%;margin-top:8px;background:#8a6fd1;border-bottom-color:#5d47a1">🤖 เล่นกับบอท ${arcMax} คน${arcBotBet ? ' (เดิมพัน ' + arcBotBet + ')' : ' (ซ้อม ไม่เดิมพัน)'}</button>`
     + `<p style="font-size:12px;opacity:.7">คนแรกที่ไพ่หมดมือชนะ ได้เหรียญเดิมพันของทุกคน • ตาละ 30 วินาที หมดเวลาจะจั่วให้อัตโนมัติ (หมดเวลา 3 ครั้งติดถูกตัดออก) • ออกจากเกมกลางคัน = เสียเดิมพัน</p>`;
   if (t.state === 'idle') h += lobby();
@@ -1205,7 +1205,7 @@ function renderArcade() {
   let h = `<div class="center" style="font-size:13px;opacity:.75">🪙 เหรียญของคุณ ${coin}</div>`;
   const lobby = () => `<div class="sec">เลือกเดิมพัน (ต่อฝ่าย)</div><div class="chips">${BETS.map(b => `<button class="chip${b === arcBet ? ' sel' : ''}" data-bet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ไม่เดิมพัน'}</button>`).join('')}</div>`
     + `<button class="btn" data-arc="create" style="width:100%">⚔️ สร้างห้อง รอคู่แข่ง${arcBet ? ' (เดิมพัน ' + arcBet + ')' : ''}</button>`
-    + `<div class="sec">🤖 เดิมพันกับบอท <small>(ได้กำไรสุทธิไม่เกิน 🪙${BOTBET.dailyWinCap}/วัน • เสียได้ไม่จำกัด)</small></div><div class="chips">${BOTBET.bets.map(b => `<button class="chip${b === arcBotBet ? ' sel' : ''}" data-botbet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ซ้อมฟรี'}</button>`).join('')}</div>`
+    + `<div class="sec">🤖 ซ้อมกับบอท <small>(ซ้อมฟรี ไม่มีเดิมพัน)</small></div><div class="chips">${BOTBET.bets.map(b => `<button class="chip${b === arcBotBet ? ' sel' : ''}" data-botbet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ซ้อมฟรี'}</button>`).join('')}</div>`
     + `<button class="btn" data-arc="bot" style="width:100%;margin-top:8px;background:#8a6fd1;border-bottom-color:#5d47a1">🤖 เล่นคนเดียวกับบอท${arcBotBet ? ' (เดิมพัน ' + arcBotBet + ')' : ' (ซ้อม ไม่เดิมพัน)'}</button>`
     + `<p style="font-size:12px;opacity:.7">${DUEL_RULES[t.game] || ''} • ผู้ชนะได้เหรียญเดิมพันของทั้งสองฝ่าย (หักค่าบริการตู้เกม 5%) เสมอคืนเหรียญ ออกจากเกมกลางคันถือว่าแพ้</p>`;
   if (t.state === 'idle') h += lobby();
@@ -1877,6 +1877,19 @@ $('miniHide').onclick = () => setMini(miniState === 'off' ? 'small' : 'off');
 addEventListener('resize', () => { sizeMini(); layoutHud(); });
 if (window.ResizeObserver) new ResizeObserver(layoutHud).observe($('hudTop'));
 let lastMini = 0;
+function drawGuideArrow(now) { // ลูกศรนำทางไปข้อถัดไปของคู่มือเริ่มต้น (หายเมื่อเดินถึงที่หมายแล้ว)
+  const st = questSt.starter, next = me && st && !st.final && STARTER.find(s => !st.done.includes(s.id)), go = next && STARTER_GO[next.id];
+  if (!go) return;
+  const dx = (go[0] + 0.5) * TS - me.x, dy = (go[1] + 0.5) * TS - me.y, dist = Math.hypot(dx, dy) / TS;
+  if (dist < 4) return;
+  const a = Math.atan2(dy, dx), sx = (me.x - camX) * zoom, sy = (me.y - camY) * zoom, r = 64 + Math.sin(now / 250) * 4, ax = sx + Math.cos(a) * r, ay = sy + Math.sin(a) * r;
+  ctx.save(); ctx.translate(ax, ay); ctx.rotate(a);
+  ctx.fillStyle = '#ffd84a'; ctx.strokeStyle = '#3a2a00'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -9); ctx.lineTo(-3, 0); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.7)';
+  const tx = sx + Math.cos(a) * (r + 26), ty = sy + Math.sin(a) * (r + 26), t = Math.round(dist) + ' ช่อง';
+  ctx.strokeText(t, tx, ty); ctx.fillStyle = '#fff'; ctx.fillText(t, tx, ty);
+}
 function drawMini(now) {
   if (miniState === 'off' || now - lastMini < 90) return;
   lastMini = now;
@@ -2068,6 +2081,7 @@ function step(now) {
   const dark = daylight(hour);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawNight(dark, now);
+  drawGuideArrow(now);
   const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);
   const icon = dark > 0.45 ? '🌙' : hour < 8 || hour >= 17 ? '🌅' : '☀️';
   const txt = `${icon} ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')}`;
