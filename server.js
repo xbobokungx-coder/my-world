@@ -941,7 +941,7 @@ class World {
         const now = Date.now();
         if (now - p.lastAct < 150) return;
         p.lastAct = p.activeAt = now;
-        if (TOOLS.has(m.tool)) p.workAt = now; // ใช้เครื่องมือ = กำลังทำกิจกรรม (ความหิวลดเร็วขึ้น)
+        if (TOOLS.has(m.tool)) { p.workAt = now; this.broadcast({ t: 'use', id: p.id }, p); } // ใช้เครื่องมือ = กำลังทำกิจกรรม (ความหิวลดเร็วขึ้น) + ให้คนอื่นเห็นท่าแกว่ง
         if (m.tool === 'rod') p.baitSel = typeof m.bait === 'string' && /^bait(_[23])?$/.test(m.bait) ? m.bait : 'bait'; // เหยื่อที่เลือกไว้ที่ช่องเบ็ด
         if (TOOLS.has(m.tool)) this.act(p, m.tool, now, m.tx, m.ty);
         break;

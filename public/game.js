@@ -123,6 +123,7 @@ function handle(m) {
     case 'chatlog': chatHist.length = 0; for (const e of m.list || []) chatHist.push(e); break;
     case 'ach': achSt = { cnt: m.cnt || {}, got: m.got || {}, sel: m.sel || '' }; if (achShown()) renderAch(); break;
     case 'deaf': { const p = players.get(m.id); if (p) p.deaf = !!m.on; break; }
+    case 'use': { const p = players.get(m.id); if (p) p.useAt = performance.now(); break; }
     case 'held': { const p = players.get(m.id); if (p) p.held = m.e || ''; break; }
     case 'status': { const p = players.get(m.id); if (p) { p.status = m.s || ''; if (peopleShown()) renderPeople(true); } break; }
     case 'voice': { const p = players.get(m.id); if (p) { p.voice = m.on; if (!m.on) p.speaking = false; } break; }
@@ -964,7 +965,7 @@ function act(tx, ty) {
     if (dx || dy) me.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
     o.tx = tx; o.ty = ty;
   }
-  lastAct = now; swing = 0.25;
+  lastAct = now; swing = 0.25; me.useAt = performance.now();
   send(o);
 }
 
@@ -1926,6 +1927,37 @@ function drawBuilding(b) {
 const SKIN = '#f5cfa0', GOLD = '#e8c04a';
 // วาดตัวละคร (รองรับเสื้อ/กางเกง/หมวกหลายแบบ) cx = canvas context อื่น (ใช้กับตัวอย่างในตู้เสื้อผ้า)
 // ตะเกียงที่ตัวละครถือไว้ตอนเปิดไฟ: ถือข้างตัว (หันซ้าย/ขึ้น = มือซ้าย นอกนั้นมือขวา) แสงกะพริบเบาๆ
+// ---------- อุปกรณ์ในมือ: วาดเป็นพิกเซลอาร์ตขนาดพอดีมือ (มือหน้า/หลัง = ขวา x+8, ด้านข้าง = กลางลำตัว) มีท่าแกว่งตอนใช้งาน ----------
+const WATER_EMOJIS = new Set(Object.values(CANS).map(c => c.emoji.replace(/️/g, '')));
+function drawHeldTool(p, now) {
+  const e = p.held.replace(/️/g, ''), OUT = PixelArt.OUT, dir = p.dir || 0;
+  const sn = p.moving && !p.sit ? Math.sin((p.anim || 0) * 14) : 0, f = sn > .35 ? 1 : sn < -.35 ? 2 : 0;
+  const lampSide = dir === 2 || dir === 1 ? -1 : 1, hs = p.lamp ? -lampSide : lampSide;
+  let hx, fx, hy = p.y + 3;
+  if (dir < 2) { fx = hs; hx = p.x + hs * 8; if (f === (hs > 0 ? 2 : 1)) hy += 2; }                      // หน้า/หลัง: มือซ้าย/ขวา (แขนที่ก้าวลงต่ำกว่า)
+  else { fx = dir === 3 ? 1 : -1; hx = p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)); }          // ข้าง: แขนอยู่กลางลำตัว
+  const k = p.useAt ? (performance.now() - p.useAt) / 260 : 2, sw = k < 1 ? Math.sin(k * Math.PI) : 0; // ท่าใช้งาน 0→1→0
+  const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+  const WOOD = '#9c6a35', WD = '#6b4423', STEEL = '#b9c2cc', STH = '#e8eef3';
+  const a0 = dir >= 2 ? 0.95 : 0.3, a1 = dir >= 2 ? 1.5 : 1.25; // มุมจอบ/ขวาน: ด้านข้างถือเอียงไปข้างหน้ามากกว่า (ไม่พาดหน้า)
+  const isHoe = e === '⛏', isAxe = e === '🪓', isRod = e === '🎣', isCan = WATER_EMOJIS.has(e);
+  if (isHoe || isAxe || isRod || isCan) {
+    ctx.save(); ctx.translate(hx, hy); ctx.scale(fx, 1);
+    if (isHoe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(-6, -14, 13, 5, OUT); R(-5, -13, 11, 3, STEEL); R(-5, -13, 11, 1, STH); R(-5, -11, 2, 2, STEEL); R(4, -11, 2, 2, STEEL); }
+    else if (isAxe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, STEEL); R(1, -13, 6, 1, STH); R(6, -13, 2, 6, STH); }
+    else if (isCan) { ctx.translate(3, 2); ctx.rotate(0.05 + 0.85 * sw); R(-5, -9, 10, 10, OUT); R(-4, -8, 8, 8, '#3f8fd6'); R(-4, -8, 8, 2, '#7fc0f5'); R(-4, -1, 8, 1, '#2a6aa8'); R(4, -7, 4, 3, OUT); R(4, -6, 3, 1, '#3f8fd6'); R(6, -9, 3, 4, OUT); R(7, -8, 1, 2, '#7fc0f5'); R(-8, -8, 4, 7, OUT); R(-7, -7, 1, 5, '#2a6aa8'); R(-7, -7, 3, 1, '#2a6aa8'); if (sw > 0.4) { R(9, -4 + Math.round(sw * 6), 1, 3, '#8fd0ff'); R(8, -1 + Math.round(sw * 6), 1, 2, '#8fd0ff'); } }
+    else { // เบ็ด: ปลายคันงอ + สายเอ็น แกว่งตอนเหวี่ยง
+      ctx.rotate((dir >= 2 ? 0.8 : 0.15) - 0.9 * Math.sin(k < 1 ? k * Math.PI * 2 : 0) * 0.8); // ด้านข้างชี้คันเบ็ดไปข้างหน้า ไม่พาดหน้า
+      ctx.lineCap = 'round'; ctx.strokeStyle = OUT; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, -9); ctx.lineTo(12, -19); ctx.stroke();
+      ctx.strokeStyle = WOOD; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, -9); ctx.lineTo(12, -19); ctx.stroke();
+      R(-2, -3, 4, 4, OUT); R(-1, -2, 2, 2, '#9aa0a6');
+      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(12, -19); ctx.lineTo(12, -8); ctx.stroke(); R(11, -8, 2, 2, '#e04b4b');
+    }
+    ctx.restore();
+  } else { // เมล็ด / อาหาร / ยา: ไอคอนเล็กในมือ (เด้งตอนใช้)
+    PixelUI.world(ctx, p.held, Math.round(hx + fx * 3), Math.round(hy - 3 - sw * 3), 10);
+  }
+}
 function drawHeldLamp(p, now) {
   const side = p.dir === 2 || p.dir === 1 ? -1 : 1, hx = Math.round(p.x + side * 11), hy = Math.round(p.y + 1 + (p.moving ? Math.round(Math.sin(p.anim * 8)) : 0));
   const fl = 0.85 + Math.sin(now / 130 + (p.id || 0)) * 0.1;
@@ -1980,10 +2012,7 @@ function drawPlayer(p, now, cx) {
   ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
   PixelChar.draw(ctx, p, now); // ตัวละครพิกเซล chibi (pixelchar.js)
   if (p.lamp) drawHeldLamp(p, now);
-  if (p.held && !(p === me && swing > 0)) { // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง)
-    const side = p.dir === 2 || p.dir === 1 ? -1 : 1, hs = p.lamp ? -side : side, bob = p.moving ? Math.round(Math.sin(p.anim * 8)) : 0;
-    PixelUI.world(ctx, p.held, Math.round(p.x + hs * 11), Math.round(p.y - 1 + bob), 15);
-  }
+  if (p.held && !p.sit) drawHeldTool(p, now); // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง)
   if (!p.name) return; // ตัวอย่างในตู้เสื้อผ้า ไม่ต้องวาดชื่อ
   // ป้ายชื่อ: กล่องกระดาษขอบเข้ม (สูงกว่าหัวตัวละครใหม่ ~9 px)
   const OUT = PixelArt.OUT, sp = !!p.speaking;
@@ -2326,7 +2355,6 @@ function step(now) {
     const pos = gaugePos({ gt0: fg.t0, per: fg.per }, performance.now()), inZ = Math.abs(pos - fg.c) <= fg.half;
     $('fgmk').style.left = pos * 100 + '%'; $('fgauge').classList.toggle('hit', inZ);
   }
-  if (swing > 0) { const d = DIRS[me.dir]; PixelUI.world(ctx, slotInfo(slot).e, me.x + d[0] * 16, me.y + d[1] * 14 - 2 + (0.25 - swing) * 10, 18); }
 
   // กลางวัน/กลางคืน
   const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
