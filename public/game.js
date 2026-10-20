@@ -1980,7 +1980,17 @@ function drawHeldTool(p, now) {
     ctx.save(); ctx.translate(hx, hy); ctx.scale(fx, 1);
     if (isHoe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(-6, -14, 13, 5, OUT); R(-5, -13, 11, 3, STEEL); R(-5, -13, 11, 1, STH); R(-5, -11, 2, 2, STEEL); R(4, -11, 2, 2, STEEL); }
     else if (isAxe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, STEEL); R(1, -13, 6, 1, STH); R(6, -13, 2, 6, STH); }
-    else if (isCan) { ctx.translate(3, 2); ctx.rotate(0.05 + 0.85 * sw); R(-5, -9, 10, 10, OUT); R(-4, -8, 8, 8, '#3f8fd6'); R(-4, -8, 8, 2, '#7fc0f5'); R(-4, -1, 8, 1, '#2a6aa8'); R(4, -7, 4, 3, OUT); R(4, -6, 3, 1, '#3f8fd6'); R(6, -9, 3, 4, OUT); R(7, -8, 1, 2, '#7fc0f5'); R(-8, -8, 4, 7, OUT); R(-7, -7, 1, 5, '#2a6aa8'); R(-7, -7, 3, 1, '#2a6aa8'); if (sw > 0.4) { R(9, -4 + Math.round(sw * 6), 1, 3, '#8fd0ff'); R(8, -1 + Math.round(sw * 6), 1, 2, '#8fd0ff'); } }
+    else if (isCan) { // บัวรดน้ำตามระดับที่ซื้อ: 1 สังกะสี (เทาเงิน) • 2 ทองแดง • 3 ทองคำ (ประกาย) ใหญ่ขึ้นตามความจุ
+      const T = +Object.keys(CANS).find(k => CANS[k].emoji.replace(/\uFE0F/g, '') === e) || 1, bw = 7 + T, bh = 7 + T, x0 = -(bw >> 1), y0 = -bh - 1, sx = x0 + bw;
+      const pal = { 1: { b: '#9fb4c8', l: '#dbe6f0', d: '#6d839a' }, 2: { b: '#c8763a', l: '#f2a868', d: '#8c4a20' }, 3: { b: '#f0c030', l: '#fff2a0', d: '#b08a10' } }[T];
+      ctx.translate(3, 2); ctx.rotate(0.05 + 0.85 * sw);
+      R(x0 - 1, y0 - 1, bw + 2, bh + 2, OUT); R(x0, y0, bw, bh, pal.b); R(x0, y0, bw, 2, pal.l); R(x0, y0 + bh - 1, bw, 1, pal.d); R(x0, y0, 1, bh, pal.l);
+      if (T >= 2) R(x0, y0 + 3, bw, 1, pal.d);                                                // แถบหมุดย้ำ
+      R(sx, -7, 4, 3, OUT); R(sx, -6, 3, 1, pal.b); R(sx + 2, -9, 3, 4, OUT); R(sx + 3, -8, 1, 2, pal.l); // ปากเทน้ำ
+      R(x0 - 4, -8, 4, 7, OUT); R(x0 - 3, -7, 1, 5, pal.d); R(x0 - 3, -7, 3, 1, pal.d);       // หูหิ้ว
+      if (T === 3 && Math.floor(now / 280) % 2) { R(x0 + 2, y0 + 1, 1, 1, '#ffffff'); R(x0 + bw - 3, y0 + 3, 1, 1, '#ffffff'); }
+      if (sw > 0.4) { R(sx + 4, -4 + Math.round(sw * 6), 1, 3, '#8fd0ff'); R(sx + 3, -1 + Math.round(sw * 6), 1, 2, '#8fd0ff'); }
+    }
     else { // เบ็ด: ปลายคันงอ + สายเอ็น แกว่งตอนเหวี่ยง
       ctx.rotate(rodAngle(p)); // ด้านข้างชี้คันเบ็ดไปข้างหน้า ไม่พาดหน้า
       ctx.lineCap = 'round'; ctx.strokeStyle = OUT; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, -9); ctx.lineTo(12, -19); ctx.stroke();
