@@ -122,6 +122,11 @@
   const RAKE = 0.05;          // ค่าบริการตู้เกม (หักจากรางวัลของผู้ชนะที่มีเดิมพัน)
   // ตลาดมีลิมิต: ขายต่อเนื่องยิ่งขายเยอะ ราคาต่อชิ้นยิ่งถูกลงเรื่อยๆ (ชิ้นละ -4% ทบต่อกัน ต่ำสุด 20% ของราคาปกติ) และฟื้นตัวช้า
   const MARKET = { step: 0.96, min: 0.2, max: 1.4, recover: 0.06 };
+  // ตลาดแยกต่อคน: ราคาที่ผู้เล่นเห็น = ตลาดกลาง × ตลาดส่วนตัว × โบนัสความหลากหลาย ขายชนิดเดิมซ้ำๆ ตลาดส่วนตัวของคนนั้นตกหนัก (share = สัดส่วนที่ตกเป็นของส่วนตัว) และฟื้นช้า (recover ต่อ 1 นาทีที่ออนไลน์)
+  const PMARKET = { share: 0.75, min: 0.25, recover: 0.03 };
+  // โบนัสความหลากหลาย: ขายหลายชนิดในวันเดียว (วันจริง) ได้ตัวคูณเพิ่มต่อชนิดที่ต่างกัน
+  const VARIETY = { per: 0.05, max: 0.4 };
+  const varietyBonus = n => Math.min(VARIETY.max, VARIETY.per * Math.max(0, n - 1)); // n = จำนวนชนิดที่ขายวันนี้ รวมชนิดที่กำลังขาย
   // ความทนทานเครื่องมือ: ใช้งานทุกครั้งสึกหรอ 1 หน่วย ใช้ครบแล้วใช้ไม่ได้จนกว่าจะซ่อมที่ร้านเสียเหรียญ (ค่าซ่อมคิดตามส่วนที่สึกหรอ) = รายจ่ายที่เกิดขึ้นสม่ำเสมอ
   const DURABILITY = {
     hoe:   { max: [0, 120, 120, 120], fix: [0, 24, 24, 24],  shop: 'farm',   name: 'จอบ' },
@@ -546,6 +551,6 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm };
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, VARIETY, varietyBonus, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

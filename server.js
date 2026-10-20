@@ -549,6 +549,11 @@ class World {
   }
 
   // ----- ตลาดราคาไดนามิก: ขายเยอะราคาตก ปล่อยไว้ราคาค่อยๆ กลับ และทุก 1 วันในเกมราคาเป้าหมายสุ่มใหม่ (มีข่าวราคาพุ่ง/ตก) -----
+  pmOf(p, k) { const o = p.rec.mk; return o && Number.isFinite(o[k]) ? o[k] : 1; }
+  varN(p, k) { const day = this.today(), o = p.rec.sold; return (o && o.day === day ? o.items.length + (o.items.includes(k) ? 0 : 1) : 1); }
+  effMult(p, k) { const g = this.market[k]; return g ? g.m * this.pmOf(p, k) * (1 + S.varietyBonus(this.varN(p, k))) : 1; }
+  mktFor(p) { const o = {}; for (const k of SELLABLE) o[k] = Math.round(this.effMult(p, k) * 100) / 100; return o; }
+  mktSend(keys) { for (const p of this.players.values()) { const o = {}; for (const k of keys || SELLABLE) o[k] = Math.round(this.effMult(p, k) * 100) / 100; send(p, { t: 'mkt', m: o }); } }
   mktPub() { const o = {}; for (const k of SELLABLE) o[k] = Math.round(this.market[k].m * 100) / 100; return o; }
   marketTick(now) {
     if (!this.players.size) return; // โลกจำศีล: ไม่มีคนออนไลน์ ตลาดไม่เดิน
@@ -563,8 +568,10 @@ class World {
       const news = `📰 ข่าวตลาด: ${iu.emoji} ${iu.name}ราคาพุ่ง! • ${id.emoji} ${id.name}ราคาตก`; this.broadcast({ t: 'msg', text: news }); this.addLog(news);
     }
     for (const k of SELLABLE) { const o = this.market[k]; o.m = Math.min(S.MARKET.max, Math.max(S.MARKET.min, o.m + (o.t - o.m) * S.MARKET.recover)); }
+    for (const p of this.players.values()) { const mk = p.rec.mk; if (!mk) continue; // ตลาดส่วนตัวค่อยๆ ฟื้นเฉพาะตอนออนไลน์
+      for (const k of Object.keys(mk)) { mk[k] += (1 - mk[k]) * S.PMARKET.recover; if (mk[k] > 0.995 || !SELLABLE.includes(k)) delete mk[k]; } }
     this.dirty = true;
-    this.broadcast({ t: 'mkt', m: this.mktPub() });
+    this.mktSend();
   }
   sfx(p, k) { this.broadcast({ t: 'sfx', k, id: p.id, x: Math.round(p.x), y: Math.round(p.y) }); }
   sfxTo(p, k) { send(p, { t: 'sfx', k, id: p.id, x: Math.round(p.x), y: Math.round(p.y), self: 1 }); }
@@ -638,7 +645,7 @@ class World {
       players: [...this.players.values()].map(q => ({ id: q.id, deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, x: q.x, y: q.y, dir: q.dir, voice: !!q.voice })),
     });
     send(p, { t: 'arcs', a: this.arcsPub() });
-    send(p, { t: 'mkt', m: this.mktPub() });
+    send(p, { t: 'mkt', m: this.mktFor(p) });
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
     this.broadcast({ t: 'p+', id: p.id, title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, x: p.x, y: p.y }, p);
@@ -974,12 +981,23 @@ class World {
     const info = S.itemInfo(item), have = p.rec.inv[item] || 0;
     if (!info || !info.sell || !have) return;
     const q = n === 'all' || !(n > 0) ? have : Math.min(have, n | 0);
-    const mk = this.market[item] || { m: 1, t: 1 };
-    const quote = S.sellQuote(info.sell, mk.m, q); // ขายหลายชิ้นต่อเนื่อง ราคาต่อชิ้นค่อยๆ ลดลง
+    const g = this.market[item], mEff = this.effMult(p, item); // ตลาดกลาง × ส่วนตัว × โบนัสความหลากหลาย
+    const quote = S.sellQuote(info.sell, mEff, q); // ขายหลายชิ้นต่อเนื่อง ราคาต่อชิ้นค่อยๆ ลดลง
     this.add(p, item, -q);
     this.add(p, 'coin', quote.total);
-    if (this.market[item]) { mk.m = quote.m; this.broadcast({ t: 'mkt', m: { [item]: Math.round(mk.m * 100) / 100 } }); }
-    this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${quote.total}`); this.event(p, 'sell');
+    let bonusTxt = '';
+    if (g) {
+      const n = this.varN(p, item), bonus = S.varietyBonus(n), r = mEff > 0 ? quote.m / mEff : 1;
+      g.m = Math.min(S.MARKET.max, Math.max(S.MARKET.min, g.m * Math.pow(r, 1 - S.PMARKET.share)));
+      const mk = p.rec.mk = p.rec.mk || {};
+      mk[item] = Math.min(1, Math.max(S.PMARKET.min, this.pmOf(p, item) * Math.pow(r, S.PMARKET.share)));
+      const day = this.today(), so = p.rec.sold = p.rec.sold && p.rec.sold.day === day ? p.rec.sold : { day, items: [] };
+      if (!so.items.includes(item)) so.items.push(item);
+      if (bonus > 0) bonusTxt = ` (โบนัสขายหลายชนิด +${Math.round(bonus * 100)}%)`;
+      this.dirty = true; send(p, { t: 'mkt', m: this.mktFor(p) }); // ผู้ขายเห็นราคาใหม่ทุกชนิด (โบนัสหลากหลายเปลี่ยนทั้งชุด)
+      for (const q2 of this.players.values()) if (q2 !== p) send(q2, { t: 'mkt', m: { [item]: Math.round(this.effMult(q2, item) * 100) / 100 } });
+    }
+    this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${quote.total}${bonusTxt}`); this.event(p, 'sell');
     this.sfxTo(p, 'coin');
   }
 
