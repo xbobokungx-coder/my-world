@@ -12,18 +12,17 @@ const HATS = ['#e8c66a'].concat(PALETTE);
 const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 
 // ---------- เครื่องมือบน hotbar ----------
-const SLOTS = [
-  { id: 'hoe', e: '⛏️', n: 'จอบ' },
-  { id: 'water', e: '🫗', n: 'บัวรดน้ำ' },
+const SLOTS = [ // ช่อง 1 = เครื่องมือ (จอบ/บัวรดน้ำ/เบ็ด/ขวาน/มือเปล่า เลือกจากเมนู) • 2 = เมล็ด • 3 = อาหารสัตว์/ยา
+  { id: 'tool', n: 'เครื่องมือ', pick: true },
   { id: 'seed', n: 'เมล็ดพันธุ์', pick: true },
-  { id: 'rod', e: '🎣', n: 'เบ็ดตกปลา', pick: true },
   { id: 'feed', n: 'อาหารสัตว์/ยา', pick: true },
-  { id: 'axe', e: '🪓', n: 'ขวาน' },
 ];
+const TOOL_LIST = ['hand', 'hoe', 'water', 'rod', 'axe'], TOOL_SHORT = { hand: 'มือเปล่า', hoe: 'จอบ', water: 'บัวรดน้ำ', rod: 'เบ็ด', axe: 'ขวาน' };
 const FEEDS = ['feed', 'hay', 'slop', 'medicine'], BAIT_KEYS = ['bait', 'bait_2', 'bait_3'];
 let selBait = ls.get('mw_bait') || 'bait';
 let slot = 0, selSeed = 'carrot', selFeed = 'feed';
-const toolId = () => { const s = SLOTS[slot].id; return s === 'seed' ? 'seed_' + selSeed : s === 'feed' ? selFeed : s; };
+let selTool = TOOL_LIST.includes(ls.get('mw_tool')) ? ls.get('mw_tool') : 'hoe';
+const toolId = () => { const s = SLOTS[slot].id; return s === 'tool' ? selTool : s === 'seed' ? 'seed_' + selSeed : selFeed; };
 
 // ---------- state ----------
 let ws, joined = false, myId = 0, me = null, roomName = '', isAdmin = false;
@@ -384,7 +383,7 @@ function renderQuestPanel() {
     el.innerHTML = '<div class="tabs-note">ยินดีต้อนรับสู่ My World 🌱 ทำตามทีละข้อ ได้เหรียญทุกข้อ (ทำข้อไหนก่อนก็ได้) ลูกศรสีเหลืองในเกมจะชี้ทางให้ • กดที่ข้อเพื่อดูวิธีกดทีละขั้น</div>'
       + `<details class="vcard" ${st.done.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700">🖱️ วิธีควบคุมเบื้องต้น</summary><ul style="margin:6px 0 2px;padding-left:20px;font-size:13px">`
       + '<li><b>เดิน:</b> คลิก/แตะที่พื้น หรือกด WASD / ลูกศร (มือถือใช้จอยสติ๊กมุมซ้ายล่าง)</li>'
-      + '<li><b>เลือกเครื่องมือ:</b> กดเลข 1–7 หรือคลิก/แตะช่องแถบด้านล่างจอ (จอบ บัวรดน้ำ เมล็ด เบ็ด อาหารสัตว์)</li>'
+      + '<li><b>เลือกเครื่องมือ:</b> กดเลข 1–3 หรือแตะช่องแถบด้านล่างจอ • ช่อง 1 = เครื่องมือ (จอบ บัวรดน้ำ เบ็ด ขวาน มือเปล่า เลือกจากเมนู หรือกด Q สลับ) • ช่อง 2 = เมล็ด • ช่อง 3 = อาหารสัตว์/ยา</li>'
       + '<li><b>ใช้งาน:</b> คลิก/แตะที่ต้นพืช สัตว์ น้ำ หรือร้านค้า ตัวละครจะเดินไปทำให้เอง (หรือกด Space / ปุ่ม A ใช้กับช่องที่หันหน้าไป)</li>'
       + '<li><b>ร้านค้า:</b> คลิก/แตะที่เคาน์เตอร์ร้านใต้หลังคา แล้วเลือกซื้อ/ขายในหน้าต่างที่เปิดขึ้น</li>'
       + '<li><b>เมนูด้านบน:</b> 🎒 กระเป๋า • 📋 เควส • 🏅 ฉายา/ความสำเร็จ • 💬 แชท • 💭 สถานะ</li></ul></details>'
@@ -614,12 +613,17 @@ function addChat(name, text, sys) {
 }
 function slotInfo(i) {
   const s = SLOTS[i];
+  if (s.id === 'tool') return toolInfo(selTool);
   if (s.id === 'seed') return { e: CROPS[selSeed].emoji, n: 'เมล็ด' + CROPS[selSeed].name, cnt: inv['seed_' + selSeed] || 0 };
   if (s.id === 'feed') { const f = itemInfo(selFeed); return { e: f.emoji, n: f.name, cnt: inv[selFeed] || 0 }; }
-  if (s.id === 'water') { const c = CANS[canTier(inv)]; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${c.cap} • แตะสระเพื่อตักน้ำ)`, cnt: wtr }; }
-  if (s.id === 'rod') { const b = itemInfo(selBait); return { e: s.e, n: RODS[rodLevel()].name + ' (' + b.name.split(' ')[0] + ' ' + (inv[selBait] || 0) + ')', cnt: inv[selBait] || 0 }; }
-  if (s.id === 'axe') { const ax = axeLevel(); return { e: s.e, n: ax ? AXES[ax].name : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', cnt: ax ? null : 0 }; }
   return { e: s.e, n: s.n, cnt: null };
+}
+function toolInfo(t) { // ข้อมูลเครื่องมือในช่อง 1: e = ไอคอน, n = ชื่อเต็ม, sub = บรรทัดย่อในเมนู, cnt = ตัวเลขมุมช่อง (null = ไม่แสดง)
+  if (t === 'hand') return { e: '✋', n: 'มือเปล่า (เก็บผลผลิต เปิดร้าน นั่ง)', sub: 'เก็บ/เปิดร้าน', cnt: null };
+  if (t === 'hoe') return { e: '⛏️', n: 'จอบ', sub: 'ขุดดิน', cnt: null };
+  if (t === 'water') { const c = CANS[canTier(inv)]; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${c.cap} • แตะสระเพื่อตักน้ำ)`, sub: `น้ำ ${wtr}/${c.cap}`, cnt: wtr }; }
+  if (t === 'rod') { const b = itemInfo(selBait); return { e: '🎣', n: RODS[rodLevel()].name + ' (' + b.name.split(' ')[0] + ' ' + (inv[selBait] || 0) + ')', sub: `เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
+  const ax = axeLevel(); return { e: '🪓', n: ax ? AXES[ax].name : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', sub: ax ? AXES[ax].name : 'ยังไม่มี', cnt: ax ? null : 0 };
 }
 function renderHud() {
   $('coins').textContent = '🪙 ' + (inv.coin || 0);
@@ -634,14 +638,32 @@ function renderHud() {
   });
 }
 let lastHeld = null;
-function heldEmoji() { const s = SLOTS[slot]; if (!s || (s.id === 'axe' && !axeLevel())) return ''; return slotInfo(slot).e || ''; } // ช่องที่เลือกอยู่ → อีโมจิที่ถือ (ขวานที่ยังไม่มีไม่ถือ)
+function heldEmoji() { const s = SLOTS[slot]; if (!s || (s.id === 'tool' && (selTool === 'hand' || (selTool === 'axe' && !axeLevel())))) return ''; return slotInfo(slot).e || ''; } // ช่องที่เลือกอยู่ → อีโมจิที่ถือ (ขวานที่ยังไม่มีไม่ถือ)
 function pickSlot(i) {
   if (i === slot && SLOTS[i].pick) { $('picker').classList.contains('hidden') ? showPicker() : hidePicker(); return; }
   slot = i; hidePicker(); renderHud(); toast(`${slotInfo(i).e} ${slotInfo(i).n}`); playSfx('click');
+  if (SLOTS[i].id === 'tool') showPicker(); // กดช่อง 1 = เมนูเลือกเครื่องมือเด้งขึ้นเลย
 }
 function hidePicker() { $('picker').classList.add('hidden'); }
 function showPicker() {
   const s = SLOTS[slot].id, el = $('picker');
+  if (s === 'tool') { // เมนูเครื่องมือ: จอบ/บัวรดน้ำ/เบ็ด/ขวาน/มือเปล่า + แถวเหยื่อตกปลา (เลือกเหยื่อ = ถือเบ็ดให้เลย)
+    el.innerHTML = '';
+    for (const t of TOOL_LIST) {
+      const inf = toolInfo(t), locked = t === 'axe' && !axeLevel(), b = document.createElement('button');
+      b.className = 'opt' + (selTool === t ? ' sel' : ''); b.disabled = locked; b.innerHTML = `<b>${inf.e}</b>${TOOL_SHORT[t]}<br>${locked ? '🔒 ยังไม่มี' : inf.sub}`;
+      b.onclick = e => { e.stopPropagation(); selTool = t; ls.set('mw_tool', t); hidePicker(); renderHud(); toast(`${inf.e} ${TOOL_SHORT[t]}`); playSfx('click'); };
+      el.appendChild(b);
+    }
+    const hd = document.createElement('div'); hd.textContent = '🎣 เหยื่อตกปลา'; hd.style.cssText = 'width:100%;flex-basis:100%;font-weight:700;font-size:12px;margin-top:4px'; el.appendChild(hd);
+    for (const k of BAIT_KEYS) {
+      const info = itemInfo(k), have = inv[k] || 0, locked = info.lv && lvl(info.skill) < info.lv && !have, b = document.createElement('button');
+      b.className = 'opt' + (selBait === k ? ' sel' : ''); b.disabled = !!locked; b.innerHTML = `<b>${info.emoji}</b>${info.name.split(' ')[0]}<br>${locked ? '🔒 Lv' + info.lv : '×' + have}`;
+      b.onclick = e => { e.stopPropagation(); selBait = k; ls.set('mw_bait', k); selTool = 'rod'; ls.set('mw_tool', 'rod'); hidePicker(); renderHud(); };
+      el.appendChild(b);
+    }
+    el.classList.remove('hidden'); return;
+  }
   const keysList = s === 'seed' ? Object.keys(CROPS).map(c => 'seed_' + c) : s === 'rod' ? BAIT_KEYS : FEEDS;
   el.innerHTML = '';
   keysList.forEach(k => {
@@ -921,6 +943,7 @@ addEventListener('keydown', e => {
   const c = e.code;
   if (c === 'Enter' || c === 'NumpadEnter') { e.preventDefault(); openChat(); return; }
   if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeHub(); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (TOOL_LIST[n] === 'axe' && !axeLevel()); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
   if (c === 'KeyB' || c === 'KeyI') { $('bagBtn').onclick(); return; }
   if (c === 'KeyC') { $('statBtn').onclick(); return; }
