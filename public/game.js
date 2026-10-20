@@ -201,9 +201,11 @@ const adminShown = () => !$('admin').classList.contains('hidden');
 function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); renderAdmin(); }
 function closeAdmin() { $('admin').classList.add('hidden'); }
 function onAdmin(m) {
-  adminSt = { rooms: m.rooms || [], current: m.current || '', err: m.err || '', users: m.users || (adminSt && adminSt.users) || [] };
+  adminSt = { rooms: m.rooms || [], current: m.current || '', err: m.err || '', users: m.users || (adminSt && adminSt.users) || [], bans: m.bans || (adminSt && adminSt.bans) || [] };
   if (m.created) { const url = roomLink(m.created); try { navigator.clipboard.writeText(url).catch(() => {}); } catch (e) { /* ไม่ได้ก็ไม่เป็นไร */ } toast('สร้างห้อง ' + m.created + ' แล้ว คัดลอกลิงก์ให้แล้ว 🔗'); }
   if (m.kicked) { toast('เตะ ' + m.kicked + ' ออกแล้ว'); setTimeout(() => send({ t: 'admin', a: 'users' }), 700); }
+  if (m.banned) toast('🚫 แบน ' + m.banned + ' แล้ว (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)');
+  if (m.unbanned) toast('✅ ปลดแบน ' + m.unbanned + ' แล้ว');
   if (m.removed) toast('เลิกใช้ห้อง ' + m.removed + ' แล้ว');
   if (adminShown()) renderAdmin();
 }
@@ -218,9 +220,13 @@ function renderAdmin() {
   const ago = t => { if (!t) return '-'; const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 90 ? 'เมื่อสักครู่' : s < 5400 ? Math.round(s / 60) + ' นาทีก่อน' : s < 129600 ? Math.round(s / 3600) + ' ชม.ก่อน' : Math.round(s / 86400) + ' วันก่อน'; };
   h += '<div class="sec">👥 ผู้เล่นและ IP <button class="btn small" id="ipRefresh">🔄 รีเฟรช</button></div>';
   h += (adminSt.users || []).map(u => `<div class="arow"><span>${u.online ? '🟢' : '⚪'} <b>${esc(u.name)}</b> <small>ห้อง ${esc(u.room)}</small><br><small>${u.online ? 'IP ตอนนี้: <b>' + esc(u.ip) + '</b>' : 'เข้าล่าสุด ' + ago(u.last)}</small>`
-    + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${u.online && !u.admin ? `<span><button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
+    + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
+  h += '<div class="sec">🚫 รายชื่อที่ถูกแบน (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)</div>';
+  h += (adminSt.bans || []).length ? (adminSt.bans || []).map(b => `<div class="arow"><span>🚫 <b>${esc(b.name)}</b> <small>ห้อง ${esc(b.room)}</small></span><span><button class="btn small" data-unban="${esc(b.name)}" data-uroom="${esc(b.room)}">✅ ปลดแบน</button></span></div>`).join('') : '<p style="opacity:.7">ยังไม่มีใครถูกแบน</p>';
   el.innerHTML = h;
   el.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => ask('เตะ ' + b.dataset.kick + ' ออกจากห้อง?\n(เขาเข้ามาใหม่ได้ทันที)', () => send({ t: 'admin', a: 'kick', room: b.dataset.kroom, name: b.dataset.kick })));
+  el.querySelectorAll('[data-ban]').forEach(b => b.onclick = () => ask('แบน ' + b.dataset.ban + '?\n(เข้าเกมด้วยชื่อนี้ไม่ได้อีก จนกว่าจะใช้ชื่ออื่น • เตะออกทันทีถ้าออนไลน์)', () => send({ t: 'admin', a: 'ban', room: b.dataset.broom, name: b.dataset.ban })));
+  el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'unban', room: b.dataset.uroom, name: b.dataset.unban }));
   $('ipRefresh').onclick = () => send({ t: 'admin', a: 'users' });
   $('mkRoom').onclick = () => { send({ t: 'admin', a: 'create', name: $('newRoom').value }); $('newRoom').value = ''; };
   el.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { const url = roomLink(b.dataset.copy); try { await navigator.clipboard.writeText(url); toast('คัดลอกลิงก์แล้ว 🔗'); } catch (e) { prompt('คัดลอกลิงก์นี้:', url); } });

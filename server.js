@@ -70,7 +70,7 @@ class World {
         for (const [x, y] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2) this.map[y][x] = T.TREE;
       }
       mk = d.market || {}; this.mktDay = Number.isInteger(d.mktDay) ? d.mktDay : -1;
-      houseSaved = d.house || {}; townSaved = { log: d.log, chest: d.chest, stats: d.stats, village: d.village, week: d.week, orders: d.orders };
+      houseSaved = d.house || {}; townSaved = { log: d.log, chest: d.chest, stats: d.stats, village: d.village, week: d.week, orders: d.orders, banned: d.banned };
     } catch (e) {
       // ไม่มีไฟล์ = โลกใหม่ แต่ถ้ามีไฟล์แต่อ่านไม่ได้ ให้สำรองไว้ก่อน ไม่งั้นการบันทึกครั้งต่อไปจะเขียนทับข้อมูลเดิมทิ้ง
       if (e.code !== 'ENOENT') { try { fs.copyFileSync(this.file, this.file + '.broken-' + Date.now()); console.error('อ่านไฟล์บันทึกไม่ได้ สำรองไว้แล้ว:', e.message); } catch (e2) { /* ไม่มีอะไรให้สำรอง */ } }
@@ -174,6 +174,7 @@ class World {
   loadTown(d) {
     this.log = (Array.isArray(d.log) ? d.log : []).filter(e => Array.isArray(e) && Number.isFinite(e[0]) && typeof e[1] === 'string').slice(-S.TOWN.logMax).map(e => [e[0], e[1].slice(0, 120)]);
     this.loadVillage(d.village); this.loadWeek(d.week); this.loadProjects(d.projects); this.loadOrders(d.orders);
+    this.banned = new Set(Array.isArray(d.banned) ? d.banned.filter(x => typeof x === 'string').map(x => x.toLowerCase().slice(0, 24)) : []); // ชื่อ (key) ที่ผู้ดูแลแบน: เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น
     const st = d.stats || {}; this.stats = { day: typeof st.day === 'string' ? st.day : '', ev: {} };
     for (const ev of Object.keys(S.FAME)) { const m = Object.create(null), o = st.ev && st.ev[ev]; if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) if (Number.isFinite(v)) m[k] = v; this.stats.ev[ev] = m; }
     const c = d.chest || {};
@@ -798,6 +799,7 @@ class World {
     name = Array.from(String(name || '').replace(/\s+/g, ' ').trim()).slice(0, 12).join('');
     if (!name) return { err: 'กรุณาใส่ชื่อตัวละคร' };
     const key = name.toLowerCase();
+    if (!admin && this.banned && this.banned.has(key)) return { err: 'ชื่อนี้ถูกระงับโดยผู้ดูแล 🚫 กรุณาใช้ชื่ออื่น' };
     for (const q of this.players.values()) if (q.key === key) return { err: 'ชื่อนี้กำลังเล่นอยู่ ลองใช้ชื่ออื่น' };
     let rec = this.saved[key];
     if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10 }, mig2: true, x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
@@ -2241,7 +2243,7 @@ class World {
     this.dirty = false;
     for (const p of this.players.values()) { p.rec.x = p.x; p.rec.y = p.y; }
     const animals = {}; for (const t of Object.keys(ANIMALS)) animals[t] = this.count(t);
-    const data = JSON.stringify({ farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: this.house, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders }, replacer);
+    const data = JSON.stringify({ farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: this.house, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, banned: [...(this.banned || [])] }, replacer);
     if (sync) { fs.writeFileSync(this.file, data); return; }
     fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
   }
@@ -2301,9 +2303,30 @@ function userList() {
   users.sort((a, b) => (b.online - a.online) || (b.last - a.last));
   return users;
 }
+function banList() { // รายชื่อที่ถูกแบนทุกห้อง
+  const out = [];
+  for (const r of ROOMS.values()) { const w = worlds.get(r.name); if (!w || !w.banned) continue; for (const key of w.banned) out.push({ room: r.name, name: key }); }
+  return out;
+}
 function adminHandle(p, world, m) {
   const reply = o => send(p, Object.assign({ t: 'admin', rooms: roomsPub(), current: world.room }, o));
   if (m.a === 'rooms') return reply({});
+  if (m.a === 'ban' || m.a === 'unban') { // แบน/ปลดแบนชื่อตัวละคร: ถูกแบนแล้วเข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น (เตะออกทันทีถ้าออนไลน์)
+    const w = worlds.get(String(m.room || '')) || getWorld(String(m.room || ''));
+    if (!w) return reply({ err: 'ไม่พบห้องนี้', users: userList(), bans: banList() });
+    const key = String(m.name || '').toLowerCase().slice(0, 24);
+    if (!key) return reply({ err: 'ไม่มีชื่อ', users: userList(), bans: banList() });
+    if (!w.banned) w.banned = new Set();
+    if (m.a === 'ban') {
+      if (key === ADMIN_NAME.toLowerCase()) return reply({ err: 'แบนผู้ดูแลไม่ได้', users: userList(), bans: banList() });
+      w.banned.add(key); w.dirty = true;
+      for (const q of [...w.players.values()]) if (q.key === key && !q.admin) { send(q, { t: 'kicked' }); try { q.ws.close(); } catch (e) { /* ปิดไม่ได้ก็ไม่เป็นไร */ } }
+      console.log('แบนผู้เล่น:', key, '(ห้อง ' + w.room + ', โดย ' + p.name + ')');
+      return reply({ banned: key, users: userList(), bans: banList() });
+    }
+    w.banned.delete(key); w.dirty = true;
+    return reply({ unbanned: key, users: userList(), bans: banList() });
+  }
   if (m.a === 'kick') { // เตะผู้เล่นออกจากห้อง (เข้ามาใหม่ได้ทันที)
     const w = worlds.get(String(m.room || '')); let t = null;
     if (w) for (const q of w.players.values()) if (q.key === String(m.name || '').toLowerCase()) t = q;
@@ -2313,8 +2336,8 @@ function adminHandle(p, world, m) {
     try { t.ws.close(); } catch (e) { /* ปิดไม่ได้ก็ไม่เป็นไร */ }
     return reply({ kicked: t.name });
   }
-  if (m.a === 'users') { // รายชื่อผู้เล่นทุกห้องพร้อม IP (ออนไลน์ก่อน แล้วเรียงตามเวลาเข้าล่าสุด)
-    return reply({ users: userList() });
+  if (m.a === 'users') { // รายชื่อผู้เล่นทุกห้องพร้อม IP (ออนไลน์ก่อน แล้วเรียงตามเวลาเข้าล่าสุด) + รายชื่อที่ถูกแบน
+    return reply({ users: userList(), bans: banList() });
   }
   if (m.a === 'create') {
     if (ROOMS.size >= 21) return reply({ err: 'สร้างห้องได้สูงสุด 20 ห้อง' });
