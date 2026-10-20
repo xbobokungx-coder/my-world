@@ -313,10 +313,11 @@ class World {
     } else return;
     this.sfxTo(p, 'coin'); this.dirty = true; this.bankPush(p);
   }
-  bankTick(dt) { // ดอกเบี้ย: นับเฉพาะตอนผู้ฝากออนไลน์ ครบ 1 วันในเกมได้ rate ของยอดฝาก (ขั้นต่ำ 1) และไม่เกินเพดาน
+  bankTick(dt) { // ดอกเบี้ย: นับเฉพาะตอนผู้ฝากออนไลน์และมีกิจกรรม (เดิน/ใช้เครื่องมือภายใน BANK.idleMs) ครบ 1 วันในเกมได้ rate ของยอดฝาก (ขั้นต่ำ 1) และไม่เกินเพดาน
     for (const p of this.players.values()) {
       const b = this.bankOf(p);
       if (b.bal <= 0) { b.acc = 0; continue; }
+      if (Date.now() - (p.activeAt || 0) > S.BANK.idleMs) continue; // ทิ้งตัวละครไว้เฉยๆ (AFK) ไม่นับเวลาดอกเบี้ย
       b.acc += dt * 1000;
       if (b.acc < S.DAY_MS) continue;
       const days = Math.min(5, Math.floor(b.acc / S.DAY_MS)); b.acc = 0;
@@ -627,7 +628,7 @@ class World {
       if (!it || (it.price > 0 && !rec.inv[S.wearKey(cat, it.id)])) rec.wear[cat] = S.WEAR_DEFAULT[cat];
     }
     if (S.blockedAt(this.map, rec.x, rec.y)) { rec.x = SPAWN.x; rec.y = SPAWN.y; }
-    const p = { id: this.nextId++, ws, key, name, admin: !!admin, color: rec.color, hat: rec.hat, pc: rec.pc, wear: rec.wear, lamp: !!rec.lamp, sit: null, title: S.titleFor(rec.qtotal), rec, x: rec.x, y: rec.y, dir: 0, fish: null, lastChat: 0, lastAct: 0, voice: false };
+    const p = { id: this.nextId++, ws, key, name, admin: !!admin, color: rec.color, hat: rec.hat, pc: rec.pc, wear: rec.wear, lamp: !!rec.lamp, sit: null, title: S.titleFor(rec.qtotal), rec, x: rec.x, y: rec.y, dir: 0, fish: null, lastChat: 0, lastAct: 0, activeAt: Date.now(), voice: false };
     this.players.set(p.id, p);
     const now = Date.now(), farm = {};
     for (const k in this.farm) farm[k] = this.pub(this.farm[k], now);
@@ -663,6 +664,7 @@ class World {
         if (d > 60 || S.blockedAt(this.map, x, y)) { send(p, { t: 'tp', x: p.x, y: p.y }); return; }
         if (d > 3 && p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); this.toast(p, 'เลิกตกปลาแล้ว'); }
         if (p.sit && d > 3) p.sit = null; // เดินออกจากที่นั่ง = ลุก
+        if (Math.hypot(x - p.x, y - p.y) > 0.5) p.activeAt = Date.now(); // ขยับจริงถึงนับว่ามีกิจกรรม (กันเงินฟรีตอนทิ้งตัวละครไว้)
         p.x = x; p.y = y;
         if (m.d >= 0 && m.d < 4) p.dir = m.d | 0;
         this.arcRangeCheck(p);
@@ -671,7 +673,7 @@ class World {
       case 'act': {
         const now = Date.now();
         if (now - p.lastAct < 150) return;
-        p.lastAct = now;
+        p.lastAct = p.activeAt = now;
         if (m.tool === 'rod') p.baitSel = typeof m.bait === 'string' && /^bait(_[23])?$/.test(m.bait) ? m.bait : 'bait'; // เหยื่อที่เลือกไว้ที่ช่องเบ็ด
         if (TOOLS.has(m.tool)) this.act(p, m.tool, now, m.tx, m.ty);
         break;
