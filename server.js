@@ -215,6 +215,11 @@ class World {
     if (p) return this.add(p, 'coin', n, why);
     const rec = this.saved[key]; if (rec) { rec.inv.coin = Math.max(0, (rec.inv.coin || 0) + n); this.dirty = true; logEv(this.room, 'coin', { p: key, n, why: why || 'order' }); }
   }
+  creditAnimalCare(key, xp) { // ปันผล XP การเลี้ยงให้คนที่ให้อาหารสัตว์ไว้ แม้คนอื่นจะมาเก็บผลผลิต (ออนไลน์/ออฟไลน์)
+    const p = [...this.players.values()].find(q => q.key === key);
+    if (p) { this.addXp(p, 'animal', xp); this.addPts(p, 1); this.toast(p, '🐄 มีคนเก็บผลผลิตจากสัตว์ที่คุณเลี้ยง — คุณได้ XP การเลี้ยง'); }
+    else { const rec = this.saved[key]; if (rec && rec.skills) { rec.skills.animal = (rec.skills.animal || 0) + xp; this.dirty = true; } }
+  }
   ordersPub(p) {
     const level = S.playLevel(p.rec.skills), ec = this.ordEarnOf(p);
     const list = this.orders.map(o => { const info = S.itemInfo(o.item) || {}; return { id: o.id, byName: o.byName, npc: o.npc, mine: o.by === p.key, item: o.item, name: info.name, emoji: info.emoji, qty: o.qty, filled: o.filled, perUnit: o.perUnit, net: o.npc ? o.perUnit : Math.round(o.perUnit * (1 - S.ORDER.fee)), exp: o.exp }; });
@@ -753,7 +758,7 @@ class World {
   zone(type) { const z = type === 'cow' || type === 'sheep' ? S.PASTURE : type === 'pig' ? S.PIGPEN : S.YARD; return { x0: (z.x0 + 0.4) * TS, x1: (z.x1 + 0.6) * TS, y0: (z.y0 + 0.5) * TS, y1: (z.y1 + 0.5) * TS }; }
   spawnAnimal(type) {
     const z = this.zone(type), x = rand(z.x0, z.x1), y = rand(z.y0, z.y1);
-    this.animals.push({ id: this.nextAid++, type, x, y, tx: x, ty: y, wait: rand(0, 3), prod: false, fed: false, layAt: 0, dx: 1, hunger: 90, zero: 0 });
+    this.animals.push({ id: this.nextAid++, type, x, y, tx: x, ty: y, wait: rand(0, 3), prod: false, fed: false, feeder: '', layAt: 0, dx: 1, hunger: 90, zero: 0 });
     this.dirty = true;
   }
   count(type) { return this.animals.filter(a => a.type === type).length; }
@@ -1239,8 +1244,14 @@ class World {
     if (prod) {
       const A = ANIMALS[prod.type], info = S.itemInfo(A.product);
       prod.prod = false;
-      this.add(p, A.product, 1); this.addXp(p, 'animal', A.xp); this.event(p, 'collect');
-      this.toast(p, `ได้${info.name} ${info.emoji}`);
+      const mine = prod.feeder && prod.feeder === p.key; // คนที่ให้อาหาร (เลี้ยง) ตัวนี้มาเก็บผลผลิตเอง
+      this.add(p, A.product, 1);
+      let extra = 0;
+      if (mine) { this.addXp(p, 'animal', A.xp); if (Math.random() < 0.5) { extra = 1; this.add(p, A.product, 1); } } // เลี้ยงเอง = XP เต็ม + ลุ้นผลผลิตงาม ×2
+      else { this.addXp(p, 'animal', Math.max(1, Math.floor(A.xp / 2))); if (prod.feeder) this.creditAnimalCare(prod.feeder, A.xp); } // คนอื่นมาเก็บ = XP ครึ่ง; คนเลี้ยงเดิมได้ XP การเลี้ยงเต็ม (ปันผลให้คนดูแล)
+      prod.feeder = '';
+      this.event(p, 'collect');
+      this.toast(p, `ได้${info.name} ${info.emoji}${mine ? (extra ? ' ×2 ✨ (คุณเลี้ยงเอง ได้ผลงาม!)' : ' (คุณเลี้ยงเอง)') : ''}`);
       this.sfx(p, 'collect');
       return;
     }
@@ -1347,7 +1358,7 @@ class World {
       if (a.hunger < 25) this.addPts(p, 2); else if (a.hunger < 60) this.addPts(p, 1); // ช่วยสัตว์ที่หิวจริงเท่านั้นได้แต้ม
       this.event(p, 'feed');
       a.hunger = 100; a.zero = 0; // อิ่มเต็ม และหลุดจากอันตรายอดตาย
-      if (!a.fed && !a.prod) { a.fed = true; a.layAt = now + rand(A.time[0], A.time[1]) * Math.max(0.5, 1 - 0.05 * (this.lv(p, 'animal') - 1)); }
+      if (!a.fed && !a.prod) { a.fed = true; a.feeder = p.key; a.layAt = now + rand(A.time[0], A.time[1]) * Math.max(0.5, 1 - 0.05 * (this.lv(p, 'animal') - 1)); } // จำคนที่เริ่มเลี้ยงรอบนี้ไว้ปันผลตอนเก็บ
       this.addXp(p, 'animal', 3);
       this.toast(p, `${A.name}กินอิ่มแล้ว ${A.emoji}`);
       this.sfx(p, 'feed_' + a.type);
