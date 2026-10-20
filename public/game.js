@@ -2250,23 +2250,8 @@ function step(now) {
     ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(walk.dest[0] * TS + 16, walk.dest[1] * TS + 16, 6 + Math.sin(now / 150) * 2, 0, 7); ctx.stroke();
   }
-  // ช่องที่ชี้/หันหน้าไป
-  let tx, ty, col = 'rgba(255,255,255,.8)';
-  if (mouse.active && !isTouch) {
-    tx = mouse.tx; ty = mouse.ty;
-    if (tx >= 0 && ty >= 0 && tx < W && ty < H) {
-      if (interactive(tx, ty)) col = inReach(tx, ty) ? 'rgba(255,255,255,.9)' : 'rgba(255,215,90,.95)';
-      else col = solidTile(tx, ty) ? 'rgba(255,255,255,.3)' : 'rgba(140,200,255,.9)';
-    }
-  } else[tx, ty] = facing(me.x, me.y, me.dir);
-  ctx.strokeStyle = col; ctx.lineWidth = 2;
-  ctx.strokeRect(tx * TS + 2, ty * TS + 2, TS - 4, TS - 4);
-  if (mouse.active) { ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(tx * TS + 2, ty * TS + 2, TS - 4, TS - 4); }
-  if (flash && now - flash.t < 450) { // แตะ/คลิกที่ช่องไหน ช่องนั้นจะกะพริบ (เหมือนกันทั้ง PC และมือถือ)
-    const a = 1 - (now - flash.t) / 450;
-    ctx.fillStyle = `rgba(255,255,255,${0.35 * a})`; ctx.fillRect(flash.tx * TS, flash.ty * TS, TS, TS);
-    ctx.strokeStyle = `rgba(255,255,255,${a})`; ctx.lineWidth = 3; ctx.strokeRect(flash.tx * TS + 1, flash.ty * TS + 1, TS - 2, TS - 2);
-  }
+  // ไม่วาดกรอบสี่เหลี่ยมบนพื้นแล้ว (ช่องที่ชี้/ช่องที่คลิก) — ใช้เคอร์เซอร์เมาส์เปลี่ยนเป็นรูปมือเมื่อชี้ของที่กดได้แทน
+  { let cur = ''; if (mouse.active && !isTouch && mouse.tx >= 0 && mouse.ty >= 0 && mouse.tx < W && mouse.ty < H && (interactive(mouse.tx, mouse.ty) || hubSignAt(mouse.tx, mouse.ty))) cur = 'pointer'; if (canvas.style.cursor !== cur) canvas.style.cursor = cur; }
 
   drawButterflies(now);
   // วาดตามลำดับ y
@@ -2313,7 +2298,6 @@ function step(now) {
     ctx.font = `bold 10px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const lw = ctx.measureText(lt).width + 12;
     ctx.fillStyle = '#3d2a1a'; ctx.fillRect(bx + bw / 2 - lw / 2 - 1, ly - 8, lw + 2, 17); ctx.fillStyle = hov ? '#ffe266' : '#fff3d6'; ctx.fillRect(bx + bw / 2 - lw / 2, ly - 7, lw, 15);
     ctx.fillStyle = '#3d2a1a'; ctx.fillText(lt, bx + bw / 2, ly);
-    const cur = hov ? 'pointer' : ''; if (canvas.style.cursor !== cur) canvas.style.cursor = cur;
   }
   // ป้ายสถานะเหนือตู้เกม (ว่าง / รอคู่ / กำลังเล่น)
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `bold 10px ${FONT}`;
