@@ -196,7 +196,7 @@ function handle(m) {
 }
 
 // ---------- ผู้ดูแล: สร้าง/ลบห้อง (โลกแยกกัน) + ลิงก์ ----------
-let adminSt = { rooms: [], current: '', err: '' };
+let adminSt = { rooms: [], current: '', err: '' }, adminTab = 'manage';
 const adminShown = () => !$('admin').classList.contains('hidden');
 function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); renderAdmin(); }
 function closeAdmin() { $('admin').classList.add('hidden'); }
@@ -211,27 +211,36 @@ function onAdmin(m) {
 }
 function renderAdmin() {
   const el = $('adminBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  let h = adminSt.err ? `<div class="banner" style="background:#fde0dc">${esc(adminSt.err)}</div>` : '';
-  h += '<div class="arow"><input type="text" id="newRoom" maxlength="20" placeholder="ชื่อห้อง (a-z 0-9 _ -) เว้นว่าง = สุ่มให้"><button class="btn small" id="mkRoom">➕ สร้างห้อง</button></div><div class="sec">ห้องทั้งหมด</div>';
-  h += adminSt.rooms.map(r => `<div class="arow${r.name === adminSt.current ? ' cur' : ''}"><span><b>${esc(r.name)}</b>${r.main ? ' (ห้องหลัก)' : ''}${r.name === adminSt.current ? ' • คุณอยู่ที่นี่' : ''}<br><small>👥 ${r.online} คน</small></span><span>`
-    + `<button class="btn small" data-copy="${esc(r.name)}">🔗 คัดลอกลิงก์</button> `
-    + (r.name !== adminSt.current ? `<button class="btn small" data-go="${esc(r.name)}">↪️ ไปห้องนี้</button> ` : '')
-    + (!r.main ? `<button class="btn small muted" data-rm="${esc(r.name)}">🗑️ เลิกใช้</button>` : '') + '</span></div>').join('');
   const ago = t => { if (!t) return '-'; const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 90 ? 'เมื่อสักครู่' : s < 5400 ? Math.round(s / 60) + ' นาทีก่อน' : s < 129600 ? Math.round(s / 3600) + ' ชม.ก่อน' : Math.round(s / 86400) + ' วันก่อน'; };
-  h += '<div class="sec">👥 ผู้เล่นและ IP <button class="btn small" id="ipRefresh">🔄 รีเฟรช</button></div>';
-  h += (adminSt.users || []).map(u => `<div class="arow"><span>${u.online ? '🟢' : '⚪'} <b>${esc(u.name)}</b> <small>ห้อง ${esc(u.room)}</small><br><small>${u.online ? 'IP ตอนนี้: <b>' + esc(u.ip) + '</b>' : 'เข้าล่าสุด ' + ago(u.last)}</small>`
-    + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
-  h += '<div class="sec">🚫 รายชื่อที่ถูกแบน (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)</div>';
-  h += (adminSt.bans || []).length ? (adminSt.bans || []).map(b => `<div class="arow"><span>🚫 <b>${esc(b.name)}</b> <small>ห้อง ${esc(b.room)}</small></span><span><button class="btn small" data-unban="${esc(b.name)}" data-uroom="${esc(b.room)}">✅ ปลดแบน</button></span></div>`).join('') : '<p style="opacity:.7">ยังไม่มีใครถูกแบน</p>';
+  const banN = (adminSt.bans || []).length;
+  let h = adminSt.err ? `<div class="banner" style="background:#fde0dc">${esc(adminSt.err)}</div>` : '';
+  h += `<div class="chips" style="margin-bottom:10px"><button class="chip${adminTab === 'manage' ? ' sel' : ''}" data-atab="manage">🏠 ห้อง & ผู้เล่น</button><button class="chip${adminTab === 'blacklist' ? ' sel' : ''}" data-atab="blacklist">🚫 Blacklist${banN ? ' (' + banN + ')' : ''}</button></div>`;
+  if (adminTab === 'blacklist') {
+    h += `<div class="arow"><input type="text" id="banName" maxlength="12" placeholder="พิมพ์ชื่อที่จะแบน (ห้อง ${esc(adminSt.current)})"><button class="btn small" id="banAdd">🚫 แบน</button></div>`;
+    h += `<p style="font-size:12px;opacity:.7;margin:4px 0 8px">ชื่อที่ถูกแบนจะเข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น (เตะออกทันทีถ้ากำลังออนไลน์) • แบนแยกตามห้อง</p>`;
+    h += `<div class="sec">🚫 รายชื่อที่ถูกแบน ทั้งหมด (${banN})</div>`;
+    h += banN ? (adminSt.bans || []).map(b => `<div class="arow"><span>🚫 <b>${esc(b.name)}</b> <small>ห้อง ${esc(b.room)}</small></span><span><button class="btn small" data-unban="${esc(b.name)}" data-uroom="${esc(b.room)}">✅ ปลดแบน</button></span></div>`).join('') : '<p style="opacity:.7">ยังไม่มีใครถูกแบน 🎉</p>';
+  } else {
+    h += '<div class="arow"><input type="text" id="newRoom" maxlength="20" placeholder="ชื่อห้อง (a-z 0-9 _ -) เว้นว่าง = สุ่มให้"><button class="btn small" id="mkRoom">➕ สร้างห้อง</button></div><div class="sec">ห้องทั้งหมด</div>';
+    h += adminSt.rooms.map(r => `<div class="arow${r.name === adminSt.current ? ' cur' : ''}"><span><b>${esc(r.name)}</b>${r.main ? ' (ห้องหลัก)' : ''}${r.name === adminSt.current ? ' • คุณอยู่ที่นี่' : ''}<br><small>👥 ${r.online} คน</small></span><span>`
+      + `<button class="btn small" data-copy="${esc(r.name)}">🔗 คัดลอกลิงก์</button> `
+      + (r.name !== adminSt.current ? `<button class="btn small" data-go="${esc(r.name)}">↪️ ไปห้องนี้</button> ` : '')
+      + (!r.main ? `<button class="btn small muted" data-rm="${esc(r.name)}">🗑️ เลิกใช้</button>` : '') + '</span></div>').join('');
+    h += '<div class="sec">👥 ผู้เล่นและ IP <button class="btn small" id="ipRefresh">🔄 รีเฟรช</button></div>';
+    h += (adminSt.users || []).map(u => `<div class="arow"><span>${u.online ? '🟢' : '⚪'} <b>${esc(u.name)}</b> <small>ห้อง ${esc(u.room)}</small><br><small>${u.online ? 'IP ตอนนี้: <b>' + esc(u.ip) + '</b>' : 'เข้าล่าสุด ' + ago(u.last)}</small>`
+      + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
+  }
   el.innerHTML = h;
+  el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; renderAdmin(); });
   el.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => ask('เตะ ' + b.dataset.kick + ' ออกจากห้อง?\n(เขาเข้ามาใหม่ได้ทันที)', () => send({ t: 'admin', a: 'kick', room: b.dataset.kroom, name: b.dataset.kick })));
   el.querySelectorAll('[data-ban]').forEach(b => b.onclick = () => ask('แบน ' + b.dataset.ban + '?\n(เข้าเกมด้วยชื่อนี้ไม่ได้อีก จนกว่าจะใช้ชื่ออื่น • เตะออกทันทีถ้าออนไลน์)', () => send({ t: 'admin', a: 'ban', room: b.dataset.broom, name: b.dataset.ban })));
   el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'unban', room: b.dataset.uroom, name: b.dataset.unban }));
-  $('ipRefresh').onclick = () => send({ t: 'admin', a: 'users' });
-  $('mkRoom').onclick = () => { send({ t: 'admin', a: 'create', name: $('newRoom').value }); $('newRoom').value = ''; };
   el.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { const url = roomLink(b.dataset.copy); try { await navigator.clipboard.writeText(url); toast('คัดลอกลิงก์แล้ว 🔗'); } catch (e) { prompt('คัดลอกลิงก์นี้:', url); } });
   el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { location.href = roomLink(b.dataset.go); });
   el.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => ask('เลิกใช้ห้อง ' + b.dataset.rm + '?\n(ข้อมูลเซฟยังอยู่ในโฟลเดอร์ data แต่เข้าผ่านลิงก์ไม่ได้แล้ว)', () => send({ t: 'admin', a: 'remove', name: b.dataset.rm })));
+  const ipR = $('ipRefresh'); if (ipR) ipR.onclick = () => send({ t: 'admin', a: 'users' });
+  const mk = $('mkRoom'); if (mk) mk.onclick = () => { send({ t: 'admin', a: 'create', name: $('newRoom').value }); $('newRoom').value = ''; };
+  const ba = $('banAdd'); if (ba) ba.onclick = () => { const n = ($('banName').value || '').trim(); if (n) ask('แบน ' + n + '?\n(เข้าเกมด้วยชื่อนี้ไม่ได้จนกว่าจะใช้ชื่ออื่น)', () => { send({ t: 'admin', a: 'ban', room: adminSt.current, name: n }); $('banName').value = ''; }); };
 }
 $('adminBtn').onclick = () => (adminShown() ? closeAdmin() : openAdmin());
 $('adminClose').onclick = closeAdmin;
