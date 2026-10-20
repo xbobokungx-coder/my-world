@@ -98,7 +98,8 @@ class World {
     this.treeHp = new Map(); this.treeTimer = 0; this.sickTimer = 0;
     this.trades = new Map(); this.nextTrade = 1;
     this.cinema = { movie: null, yt: '', name: '', startedAt: 0, pos: 0, ref: 0, playing: false, emptyAt: 0, viewers: new Set(), paid: new Set() };
-    this.treeCap = this.treeList().length + 15;
+    this.treeCap = S.TREE.cap; // เพดานคงที่ (เดิมบวกเพิ่มทุกครั้งที่ restart ทำให้ต้นไม้แน่นขึ้นเรื่อยๆ)
+    { const t = this.treeList(); if (t.length > this.treeCap) { for (let i = t.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [t[i], t[j]] = [t[j], t[i]]; } for (const [x, y] of t.slice(this.treeCap)) this.map[y][x] = T.GRASS; this.dirty = true; } } // ถ้าเกินเพดาน สุ่มตัดแต่งให้เหลือพอดี
   }
 
   // ----- บ้าน: ที่ดินคนละ 1 แปลง เจ้าของเท่านั้นที่วาง/เก็บเฟอร์นิเจอร์ได้ (ของที่เก็บคืนเข้ากระเป๋า) คนอื่นเดินเข้าชมได้ -----
@@ -390,12 +391,12 @@ class World {
   today() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
   questsOf(p) { // เควสของวันนี้ (สุ่มจากชื่อ+วัน ได้ชุดเดิมทั้งวันแม้ออกแล้วเข้าใหม่)
     const day = this.today(); let q = p.rec.quest;
-    if (q && q.day === day) return q;
+    if (q && q.day === day && q.list.every(it => S.QUESTS[it.id])) return q; // (id เควสเก่าที่ถูกเปลี่ยนชื่อ → สุ่มใหม่)
     let h = 2166136261; for (const ch of p.key + day) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-    const r = S.rng(h >>> 0), inv = p.rec.inv;
-    const skills = ['farm', 'fish', 'animal'].concat(inv.axe_1 || inv.axe_2 || inv.axe_3 ? ['wood'] : []); // เควสไม้ต้องมีขวานก่อน
+    const r = S.rng(h >>> 0), inv = p.rec.inv, newbie = (p.rec.qtotal || 0) < S.QUEST_NEWBIE; // มือใหม่: เฉพาะข้อง่าย ไม่มีสายสัตว์ (ยังอาจไม่มีสัตว์)
+    const skills = (newbie ? ['farm', 'fish'] : ['farm', 'fish', 'animal']).concat(inv.axe_1 || inv.axe_2 || inv.axe_3 ? ['wood'] : []); // เควสไม้ต้องมีขวานก่อน
     while (skills.length > S.QUEST_PER_DAY) skills.splice(Math.floor(r() * skills.length), 1);
-    q = p.rec.quest = { day, list: skills.map(sk => { const ids = Object.keys(S.QUESTS).filter(id => S.QUESTS[id].skill === sk); return { id: ids[Math.floor(r() * ids.length)], n: 0, done: false, seen: [] }; }) };
+    q = p.rec.quest = { day, list: skills.map(sk => { const ids = Object.keys(S.QUESTS).filter(id => S.QUESTS[id].skill === sk && !(newbie && S.QUESTS[id].adv)); return { id: ids[Math.floor(r() * ids.length)], n: 0, done: false, seen: [] }; }) };
     return q;
   }
   ptsOf(p) { const day = this.today(), o = p.rec.pts = p.rec.pts || { bal: 0, earned: 0, day }; if (o.day !== day) { o.day = day; o.earned = 0; } return o; }
@@ -534,7 +535,7 @@ class World {
   npcSay(n, now) {
     let i; do { i = Math.floor(Math.random() * n.lines.length); } while (i === n.lastLine && n.lines.length > 1);
     n.lastLine = i;
-    const hour = Math.floor((now % S.DAY_MS) / S.DAY_MS * 24 + 6) % 24;
+    const hour = Math.floor((now % S.CLOCK_MS) / S.CLOCK_MS * 24 + 6) % 24;
     const text = n.lines[i]
       .replace('{chest}', this.chest.coin).replace('{online}', this.players.size)
       .replace('{village}', `${this.village.n}/${this.villageGoal()}`).replace('{hour}', String(hour).padStart(2, '0') + ':00');
@@ -847,7 +848,7 @@ class World {
     send(p, {
       t: 'w', admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), house: this.housePub(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
-      players: [...this.players.values()].map(q => ({ id: q.id, deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, x: q.x, y: q.y, dir: q.dir, voice: !!q.voice })),
+      players: [...this.players.values()].map(q => ({ id: q.id, status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, x: q.x, y: q.y, dir: q.dir, voice: !!q.voice })),
     });
     send(p, { t: 'arcs', a: this.arcsPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
@@ -889,8 +890,15 @@ class World {
         const now = Date.now();
         if (now - p.lastAct < 150) return;
         p.lastAct = p.activeAt = now;
+        if (TOOLS.has(m.tool)) p.workAt = now; // ใช้เครื่องมือ = กำลังทำกิจกรรม (ความหิวลดเร็วขึ้น)
         if (m.tool === 'rod') p.baitSel = typeof m.bait === 'string' && /^bait(_[23])?$/.test(m.bait) ? m.bait : 'bait'; // เหยื่อที่เลือกไว้ที่ช่องเบ็ด
         if (TOOLS.has(m.tool)) this.act(p, m.tool, now, m.tx, m.ty);
+        break;
+      }
+      case 'status': { // สถานะของตัวเอง (ข้อความสั้นๆ แสดงใต้ตัวละคร)
+        const now = Date.now(); if (now - (p.lastStatus || 0) < 800) return; p.lastStatus = now;
+        p.status = Array.from(String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim()).slice(0, 30).join('');
+        this.broadcast({ t: 'status', id: p.id, s: p.status });
         break;
       }
       case 'deaf': { // ผู้เล่นปิดเสียงทุกคน: ให้คนอื่นเห็นป้ายที่ตัวว่าไม่ได้ยินใคร
@@ -2167,7 +2175,7 @@ class World {
     // ความหิว: นับเฉพาะตอนมีผู้เล่นออนไลน์ (กันสัตว์/คนหิวตายตอนทุกคนไม่อยู่)
     if (this.players.size) {
       this.hunTick = (this.hunTick || 0) + dt * 1000;
-      if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) { if (p.sit) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; this.setHunger(p, p.rec.hunger - 1); } } // นั่งพักอยู่ = ความหิวไม่ลด
+      if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) { if (p.sit) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul)); } } // นั่งพักอยู่ = ความหิวไม่ลด
       this.sitTick = (this.sitTick || 0) + dt * 1000;
       if (this.sitTick >= S.PLAYER_HUNGER.sitMs) { this.sitTick = 0; for (const p of this.players.values()) if (p.sit && p.rec.hunger < 100) this.setHunger(p, p.rec.hunger + S.PLAYER_HUNGER.sitGain, true); } // นั่งพักค่อยๆ อิ่มขึ้นทีละนิด
       this.bankTick(dt);
@@ -2203,7 +2211,7 @@ class World {
       }
       // ต้นไม้งอกใหม่ในที่โล่งสีเขียวที่ห่างจากสิ่งปลูกสร้าง
       this.treeTimer += dt;
-      if (this.treeTimer >= 13) { // (4C) ต้นไม้งอกเร็วขึ้น (20→13s) เพิ่มเพดานผลผลิตช่างไม้
+      if (this.treeTimer >= S.TREE.growMs / 1000) { // ต้นไม้งอกใหม่ (เพดานตาม S.TREE.cap)
         this.treeTimer = 0;
         if (this.treeList().length < this.treeCap) {
           for (let i = 0; i < 40; i++) {

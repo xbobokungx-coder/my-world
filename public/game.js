@@ -1,6 +1,6 @@
 (() => {
 'use strict';
-const { REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
+const { REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
   GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, bankInterest, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
@@ -91,7 +91,7 @@ const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 // ---------- messages ----------
 function mkPlayer(o) {
-  return { id: o.id, title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
+  return { id: o.id, status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
 }
 function applyTrees(list) { // ซิงก์ต้นไม้ที่ตัดได้ให้ตรงกับเซิร์ฟเวอร์ (ต้นไม้ขอบแมพไม่เปลี่ยน)
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (isChoppable(MAP, x, y)) MAP[y][x] = T.GRASS;
@@ -122,6 +122,7 @@ function handle(m) {
       break;
     case 'chatlog': chatHist.length = 0; for (const e of m.list || []) chatHist.push(e); break;
     case 'deaf': { const p = players.get(m.id); if (p) p.deaf = !!m.on; break; }
+    case 'status': { const p = players.get(m.id); if (p) { p.status = m.s || ''; if (peopleShown()) renderPeople(true); } break; }
     case 'voice': { const p = players.get(m.id); if (p) { p.voice = m.on; if (!m.on) p.speaking = false; } break; }
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
     case 'tree': if (MAP[m.y]) { if (m.on) { if (MAP[m.y][m.x] === T.GRASS) MAP[m.y][m.x] = T.TREE; } else if (isChoppable(MAP, m.x, m.y)) MAP[m.y][m.x] = T.GRASS; } break;
@@ -182,7 +183,7 @@ function handle(m) {
     case 'proj': projSt = m.p; if (townShown()) renderTown(); break;
     case 'quests': {
       questSt = { list: m.list, total: m.total, title: m.title, pts: m.pts, dole: m.dole, starter: m.starter, streak: m.streak, book: m.book, wk: m.wk };
-      updateGuide(); updateQuestBadge(); if (bagShown() && (bagTab === 'quest' || bagTab === 'book')) renderBag();
+      updateGuide(); updateQuestBadge(); if (questShown()) renderQuestPanel(); if (bagShown() && bagTab === 'book') renderBag();
       for (const id of Object.keys(BUFFS)) buffExp[id] = m.buffs[id] ? Date.now() + m.buffs[id] : 0;
       if (me) me.title = m.title;
       if (townShown()) renderTown(); break;
@@ -288,14 +289,14 @@ function updateQuestBadge() { // เลขบนไอคอนเควส = �
   const left = questSt.list.filter(x => !x[2]).length, b = $('questBadge');
   b.textContent = left; b.classList.toggle('hidden', !left);
 }
-$('questBtn').onclick = () => (bagShown() && bagTab === 'quest' ? closeBag() : openBag('quest'));
+$('questBtn').onclick = () => (questShown() ? closeQuest() : openQuest());
 function updateGuide() {
   const el = $('guide'); if (!el) return;
   const st = questSt.starter, next = st && !st.final && STARTER.find(s => !st.done.includes(s.id));
   if (!me || !next) { el.classList.add('hidden'); return; }
   el.classList.remove('hidden'); el.textContent = '👉 ' + next.hint + ' (' + st.done.length + '/' + STARTER.length + ')';
 }
-$('guide').onclick = () => openBag('quest');
+$('guide').onclick = () => openQuest('start');
 function guideHTML() { // คู่มือเริ่มต้น + เข้าเกมติดต่อกัน (ส่วนบนสุดของแท็บเควส)
   let h = '';
   const st = questSt.starter, sk = questSt.streak;
@@ -320,23 +321,53 @@ function renderBookTab(el) {
   }
   el.innerHTML = h;
 }
-function renderQuestTab(el) {
+// ---------- เมนูเควส (แยกจากกระเป๋า): เริ่มต้น / เควสวันนี้ / แต้มความดี ----------
+let questTab = 'daily';
+const questShown = () => !$('quest').classList.contains('hidden');
+function openQuest(tab) {
+  const st = questSt.starter;
+  questTab = tab || (st && !st.final ? 'start' : 'daily'); // มือใหม่ที่ยังทำคู่มือไม่ครบ เปิดมาเจอหน้าเริ่มต้นก่อน
+  $('quest').classList.remove('hidden'); renderQuestPanel();
+}
+function closeQuest() { $('quest').classList.add('hidden'); }
+$('questClose').onclick = closeQuest;
+$('quest').addEventListener('pointerdown', e => { if (e.target === $('quest')) closeQuest(); });
+function renderQuestPanel() {
+  const st = questSt.starter, showStart = !!(st && !st.final);
+  const tabs = (showStart ? [['start', '🌱 เริ่มต้น']] : []).concat([['daily', '📋 เควสวันนี้'], ['pts', '💛 แต้ม/บัฟ']]);
+  if (!tabs.some(t => t[0] === questTab)) questTab = 'daily';
+  $('questTabs').innerHTML = tabs.map(([c, n]) => `<button class="tab${questTab === c ? ' on' : ''}" data-qtab="${c}">${n}</button>`).join('');
+  $('questTabs').querySelectorAll('[data-qtab]').forEach(b => b.onclick = () => { questTab = b.dataset.qtab; renderQuestPanel(); });
+  const el = $('questBody');
+  if (questTab === 'start') {
+    const next = STARTER.find(s => !st.done.includes(s.id));
+    el.innerHTML = '<div class="tabs-note">ยินดีต้อนรับสู่ My World 🌱 ทำตามทีละข้อด้านล่าง ได้เหรียญทุกข้อ (ทำข้อไหนก่อนก็ได้) ลูกศรสีเหลืองในเกมจะชี้ทางให้</div>'
+      + (next ? `<div class="banner" style="background:#fff3cf">👉 ข้อต่อไป: <b>${next.hint}</b></div>` : '') + guideHTML();
+  } else if (questTab === 'pts') {
+    renderPtsTab(el);
+  } else renderDailyTab(el);
+}
+function renderDailyTab(el) {
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const next = TITLES.find(t => t[0] > questSt.total);
-  let h = `<div class="row"><span>🏅 ${questSt.title ? esc(questSt.title) : 'ยังไม่มีฉายา'}</span><small>เควสสำเร็จสะสม ${questSt.total}</small></div>`
+  let h = '<div class="tabs-note">เควสวันนี้ทำเสร็จได้ XP + เหรียญ และเปลี่ยนใหม่ทุกวัน • ทำไปเรื่อยๆ ตามปกติ ความคืบหน้านับให้เอง</div>'
+    + `<div class="row"><span>🏅 ${questSt.title ? esc(questSt.title) : 'ยังไม่มีฉายา'}</span><small>เควสสำเร็จสะสม ${questSt.total}</small></div>`
     + (next ? `<div class="tabs-note">อีก ${next[0] - questSt.total} เควสจะได้ฉายา "${next[1]}" (แสดงเหนือหัวตัวละคร)</div>` : '<div class="tabs-note">ได้ฉายาสูงสุดแล้ว 👑</div>')
-    + '<div class="sec">📋 เควสวันนี้ (เปลี่ยนใหม่ทุกวัน)</div>';
+    + '<div class="sec">📋 เควสวันนี้</div>';
   for (const [id, n, done] of questSt.list) {
     const d = QUESTS[id]; if (!d) continue;
     h += `<div class="qrow${done ? ' done' : ''}"><div>${SKILLS[d.skill].emoji} ${done ? '✅ ' : ''}${d.text} <b>${Math.min(n, d.goal)}/${d.goal}</b></div><div class="bar"><i style="width:${Math.round(Math.min(n, d.goal) / d.goal * 100)}%"></i></div><small>🎁 +${d.xp} XP  +🪙${d.coin}</small></div>`;
   }
   if (!questSt.list.length) h += '<p style="opacity:.7">กำลังโหลด...</p>';
-  h += `<div class="sec">💛 แต้มความดี: <b>${questSt.pts.bal}</b> <small>(วันนี้ได้ ${questSt.pts.earned}/${POINTS.dailyCap})</small></div><div class="tabs-note">ได้จากการช่วยงานที่จำเป็นจริง: ให้อาหารสัตว์ที่หิว รักษาสัตว์ป่วย รดน้ำพืชที่แห้ง ลงขันตู้เซฟ</div>`;
+  el.innerHTML = h;
+}
+function renderPtsTab(el) {
+  let h = `<div class="sec">💛 แต้มความดี: <b>${questSt.pts.bal}</b> <small>(วันนี้ได้ ${questSt.pts.earned}/${POINTS.dailyCap})</small></div><div class="tabs-note">ได้จากการช่วยงานที่จำเป็นจริง: ให้อาหารสัตว์ที่หิว รักษาสัตว์ป่วย รดน้ำพืชที่แห้ง ลงขันตู้เซฟ • แลกบัฟชั่วคราวได้ด้านล่าง</div>`;
   for (const [id, B] of Object.entries(BUFFS)) {
     const left = Math.max(0, (buffExp[id] || 0) - Date.now()), on = left > 0;
     h += `<div class="row"><span>${B.emoji} ${B.name}<br><small>${B.desc} • ${Math.round(B.ms / 60000)} นาที</small></span><span>${on ? `<small>เหลือ ${Math.ceil(left / 60000)} นาที</small>` : `<button class="btn small" data-buff="${id}" ${questSt.pts.bal < B.cost ? 'disabled' : ''}>แลก 💛${B.cost}</button>`}</span></div>`;
   }
-  el.innerHTML = guideHTML() + h;
+  el.innerHTML = h;
   el.querySelectorAll('[data-buff]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'buff', id: b.dataset.buff }));
 }
 function renderFameTab(el) {
@@ -591,7 +622,7 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
 } else $('fsBtn').remove();
 
 // ---------- กระเป๋า / อาชีพ / ตัวละคร ----------
-const modalOpen = () => ['bag', 'shop', 'people', 'arcade', 'trade', 'cinema', 'town', 'admin', 'plots', 'ask'].some(id => !$(id).classList.contains('hidden'));
+const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'arcade', 'trade', 'cinema', 'town', 'admin', 'plots', 'ask'].some(id => !$(id).classList.contains('hidden'));
 function openBag(tab) { if (tab) bagTab = tab; $('bag').classList.remove('hidden'); renderBag(); }
 function closeBag() { $('bag').classList.add('hidden'); }
 const bagShown = () => !$('bag').classList.contains('hidden');
@@ -618,7 +649,6 @@ const CATS = [['furn', '🛋️ เฟอร์นิเจอร์ (วาง�
 function renderBag() {
   document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('on', t.dataset.tab === bagTab));
   const el = $('bagBody');
-  if (bagTab === 'quest') return renderQuestTab(el);
   if (bagTab === 'book') return renderBookTab(el);
   if (bagTab === 'status') {
     const keysOwned = Object.keys(inv).filter(k => k !== 'coin');
@@ -701,13 +731,14 @@ function renderBag() {
 }
 
 // ---------- ร้านค้า ----------
-function openShop(kind) { shopKind = kind; farmTab = 'gear'; if (kind === 'cloth') { tryWear = Object.assign({}, me.wear); clothTab = 'shirt'; } $('shop').classList.remove('hidden'); renderShop(); }
+function openShop(kind) { shopKind = kind; farmTab = SHOP_TABS[kind] ? SHOP_TABS[kind][0][0] : 'gear'; if (kind === 'cloth') { tryWear = Object.assign({}, me.wear); clothTab = 'shirt'; } $('shop').classList.remove('hidden'); renderShop(); }
 function closeShop() { shopKind = null; $('shop').classList.add('hidden'); }
 $('shopClose').onclick = closeShop;
 $('shop').addEventListener('pointerdown', e => { if (e.target === $('shop')) closeShop(); });
 const animalCount = type => { let n = 0; animals.forEach(a => { if (a.type === type) n++; }); return n; };
 let farmTab = 'gear';
-const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '🌱 เมล็ดพันธุ์']], fish: [['gear', '🎣 อุปกรณ์ตกปลา'], ['sell', '🐟 ขายปลา']] };
+const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '🌱 เมล็ดพันธุ์']], fish: [['gear', '🎣 อุปกรณ์ตกปลา'], ['sell', '🐟 ขายปลา']],
+  food: [['buy', '🍜 ซื้ออาหาร'], ['cook', '👨‍🍳 ทำอาหาร']], animal: [['feed', '🌾 อาหาร / ยา'], ['pets', '🐾 สัตว์เลี้ยง']] };
 const seedProfit = k => { const c = CROPS[k.slice(5)]; return (c.sell - c.seed) / (c.time / 60000); };
 function renderShop() {
   const sh = SHOPS[shopKind]; if (!sh) return;
@@ -720,10 +751,10 @@ function renderShop() {
       + '<p style="font-size:12px;opacity:.65">เมื่อเปิดขายแล้วจะใช้เดินทางได้เร็วขึ้น</p>';
     return;
   }
-  const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'seed', tabs = SHOP_TABS[shopKind], sellTab = shopKind === 'fish' && farmTab === 'sell';
+  const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'seed', tabs = SHOP_TABS[shopKind], sellTab = shopKind === 'fish' && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'pets';
   let h = tabs ? `<div class="tabs">${tabs.map(([c, n]) => `<button class="tab${farmTab === c ? ' on' : ''}" data-ftab="${c}">${n}</button>`).join('')}</div>` : '';
-  h += sellTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากกำไรต่อนาทีดีที่สุด → แย่ที่สุด)</div>' : '<div class="sec">ซื้อ</div>';
-  let keys = sellTab ? [] : isFarm ? sh.buy.filter(k => k.startsWith('seed_') === seedTab) : sh.buy;
+  h += sellTab || cookTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากกำไรต่อนาทีดีที่สุด → แย่ที่สุด)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : 'ซื้อ') + '</div>';
+  let keys = sellTab || cookTab ? [] : isFarm ? sh.buy.filter(k => k.startsWith('seed_') === seedTab) : shopKind === 'animal' ? sh.buy.filter(k => !!itemInfo(k).animal === petTab) : sh.buy;
   if (seedTab) keys = keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a));
   for (const k of keys) {
     const i = itemInfo(k), locked = i.lv && lvl(i.skill) < i.lv, coin = inv.coin || 0;
@@ -753,7 +784,7 @@ function renderShop() {
         + (fx || cur <= 0 ? ` <button class="btn small${better || worn ? '' : ' muted'}" data-rebuy="${t}" ${(inv.coin || 0) < price ? 'disabled' : ''}>🛒 ซื้อใหม่ 🪙${price}</button>` : '') + `</span></div>`;
     }
   }
-  const showSell = sh.sell.length && (!tabs || seedTab || sellTab);
+  const showSell = sh.sell.length && (!tabs || seedTab || sellTab || cookTab || petTab);
   const sellKeys = showSell ? Object.keys(inv).filter(k => shopSells(shopKind, k) && itemInfo(k) && itemInfo(k).sell) : [];
   if (showSell) h += '<div class="sec">ขาย (เลือกได้ว่าจะขายอะไร)</div>';
   if (showSell && !sellKeys.length) h += '<p style="opacity:.7;margin:6px 0">ยังไม่มีของที่ร้านนี้รับซื้อ</p>';
@@ -765,7 +796,7 @@ function renderShop() {
       + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all">ทั้งหมด 🪙${sellQuote(i.sell, m, inv[k]).total}</button>` : '') + `</span></div>`;
   }
   if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายชนิดเดิมซ้ำๆ ราคาของคุณจะตกเร็วและฟื้นช้า (ตกเหลือต่ำสุด ~20–25% ของราคาปกติ) • ขายหลายชนิดต่อวัน (ชนิดละ ≥3 ชิ้น หรือ ≥40 เหรียญ) ได้โบนัสราคา +5% ต่อชนิด สูงสุด +40% • มีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
-  if (shopKind === 'food') {
+  if (cookTab) {
     h += `<div class="sec">👨‍🍳 ห้องครัวเชฟ — เชฟเลเวล ${lvl('cook')} (ทำอาหารข้ามสาย ได้ XP เชฟ ยิ่งเลเวลสูงปลดสูตรแพงขึ้น)</div>`;
     const have = c => Object.keys(inv).reduce((s, k) => s + (inv[k] > 0 && cookCat(c, k) ? inv[k] : 0), 0);
     for (const r of COOK) {
@@ -775,7 +806,7 @@ function renderShop() {
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน หรือใช้กระดานใบสั่งซื้อ 📋 • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ (ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';
   }
-  if (shopKind === 'food') h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">🍖 ความอิ่มลดลงเรื่อยๆ ขณะออนไลน์ ถึง 0 จะใช้เครื่องมือไม่ได้ • ผลผลิตของตัวเองก็กินได้ (อิ่มน้อยกว่า) ในกระเป๋า 🎒</p>';
+  if (shopKind === 'food' && !cookTab) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">🍖 ความอิ่มลดลงเรื่อยๆ ขณะออนไลน์ ถึง 0 จะใช้เครื่องมือไม่ได้ • ผลผลิตของตัวเองก็กินได้ (อิ่มน้อยกว่า) ในกระเป๋า 🎒</p>';
   if (shopKind === 'furn') h += `<p style="font-size:12px;opacity:.65;margin:8px 0 0">🏠 ซื้อที่ดินได้ที่ป้าย "ที่ดินว่าง" แถวบนสุดของแมพ (🪙${HOUSING.price}) แล้วกดปุ่ม 🏠 เพื่อวางของ • เก้าอี้/โซฟานั่งได้ • โคมไฟสว่างตอนกลางคืน</p>`;
   if (shopKind === 'wood') {
     h += '<div class="sec">🔨 โรงงานช่างไม้ (ประดิษฐ์ของจากไม้ที่หามาได้)</div>';
@@ -836,7 +867,7 @@ addEventListener('keydown', e => {
   // ใช้ e.code (ตำแหน่งปุ่มจริงบนคีย์บอร์ด) ไม่ใช่ e.key เพื่อให้ WASD และปุ่มลัดทำงานได้แม้เปลี่ยนเป็นแป้นพิมพ์ภาษาไทย
   const c = e.code;
   if (c === 'Enter' || c === 'NumpadEnter') { e.preventDefault(); openChat(); return; }
-  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeStatus(); closeHub(); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
   if (c === 'KeyB' || c === 'KeyI') { $('bagBtn').onclick(); return; }
   if (c === 'KeyC') { $('statBtn').onclick(); return; }
@@ -915,9 +946,12 @@ function interactive(tx, ty) { // ช่องนี้มีอะไรให�
   return false;
 }
 function stopWalk() { walk = null; }
+const hubSign = BUILDINGS.find(b => b.kind === 'sign');
+const hubSignAt = (tx, ty) => !!hubSign && tx >= hubSign.x0 && tx <= hubSign.x1 && ty >= hubSign.y0 - 1 && ty <= hubSign.y1;
 function onTileClick(tx, ty) {
   if (!me || chatFocus || modalOpen() || tx < 0 || ty < 0 || tx >= W || ty >= H) return;
   if (houseClick(tx, ty)) { stopWalk(); return; }
+  if (hubSignAt(tx, ty)) { stopWalk(); openHub(); return; } // กดป้าย Arcade Hub = เปิดแต้ม/อันดับ
   const [px, py] = myTile();
   if (interactive(tx, ty)) {
     if (inReach(tx, ty) && ((toolId() !== 'rod' && !(toolId() === 'water' && MAP[ty][tx] === T.WATER)) || nearWater(px, py))) { stopWalk(); act(tx, ty); return; }
@@ -986,7 +1020,7 @@ $('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk();
 // ---------- แชทเสียง (WebRTC, ต่อตรงระหว่างผู้เล่น / signaling ผ่าน WebSocket เดิม) ----------
 const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 const peers = new Map(), levels = new Map();
-window.__mw = { peers, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * DAY_MS - (Date.now() % DAY_MS); } }; // สำหรับดีบัก
+window.__mw = { peers, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
 
 function getPeer(id) {
@@ -1408,19 +1442,20 @@ function closePeople() { $('people').classList.add('hidden'); }
 // ปิดเสียงทุกคนอยู่ (และไม่ได้เปิดเสียงใครเป็นข้อยกเว้น) = ไม่ได้ยินใครเลย → บอกเซิร์ฟเวอร์ให้ติดป้ายที่ตัวละคร เพื่อนจะได้รู้
 const isDeaf = () => mute.all && !Object.values(mute.names).includes(false);
 function syncDeaf() { if (!me) return; const d = isDeaf(); if (d !== !!me.deaf) { me.deaf = d; send({ t: 'deaf', on: d }); } }
-function applyMute() { saveMute(); syncDeaf(); lastLevel = 0; updateSpeaking(performance.now() + 1000); updateOnline(); renderPeople(true); }
+function setSpkUi() { const b = $('spkBtn'); if (!b) return; b.classList.toggle('off', !!mute.all); b.textContent = mute.all ? '🔈' : '🔊'; b.title = mute.all ? 'ปิดเสียงเพื่อนอยู่ (กดเพื่อเปิด)' : 'เปิด/ปิดเสียงเพื่อนทั้งหมด'; }
+function applyMute() { saveMute(); syncDeaf(); setSpkUi(); lastLevel = 0; updateSpeaking(performance.now() + 1000); updateOnline(); renderPeople(true); }
 function renderPeople(force) {
   if (!peopleShown() || !me) return;
   const list = [...players.values()].sort((a, b) => (a === me ? -1 : b === me ? 1 : a.name.localeCompare(b.name)));
-  const sig = JSON.stringify([mute, list.map(p => [p.id, p.name, p.color, p.voice, p.deaf])]);
+  const sig = JSON.stringify([mute, list.map(p => [p.id, p.name, p.color, p.voice, p.deaf, p.status])]);
   if (force || sig !== peopleSig) {
     peopleSig = sig;
     const others = list.filter(p => p !== me), talking = others.filter(p => p.voice).length, off = others.filter(isMuted).length;
     let h = `<div class="row"><span><b>🔊 เสียงเพื่อน</b><br><small>เปิดไมค์ ${talking} คน • ปิดเสียงไว้ ${off}/${others.length} คน</small></span>`
-      + `<button class="btn small${mute.all ? ' muted' : ''}" data-all="1">${mute.all ? '🔇 เปิดเสียงทั้งหมด' : '🔊 ปิดเสียงทั้งหมด'}</button></div>`;
+      + `<small style="opacity:.7">ปิด/เปิดทั้งหมดที่ปุ่ม ${mute.all ? '🔈' : '🔊'} ข้างไมค์</small></div>`;
     for (const p of list) {
       const m = p !== me && isMuted(p);
-      h += `<div class="row prow" data-id="${p.id}"><span><span class="dot" style="background:${esc(p.color)}"></span> <b>${esc(p.name)}</b>${p === me ? ' (คุณ)' : ''} ${p.voice ? '🎙️' : ''}${p.deaf ? ' 🔇' : ''}<span class="spk"></span></span>`
+      h += `<div class="row prow" data-id="${p.id}"><span><span class="dot" style="background:${esc(p.color)}"></span> <b>${esc(p.name)}</b>${p === me ? ' (คุณ)' : ''} ${p.voice ? '🎙️' : ''}${p.deaf ? ' 🔇' : ''}<span class="spk"></span>${p.status ? `<br><small style="opacity:.8">💭 ${esc(p.status)}</small>` : ''}</span>`
         + (p === me ? '' : `<span><button class="btn small" data-trade="${p.id}" title="ชวนเทรดของ (ต้องอยู่ใกล้กัน ${TRADE.range} ช่อง)">🤝 เทรด</button> <button class="btn small${m ? ' muted' : ''}" data-mute="${p.id}">${m ? '🔇 เปิดเสียง' : '🔊 ปิดเสียง'}</button></span>`) + '</div>';
     }
     $('peopleBody').innerHTML = h;
@@ -1437,13 +1472,27 @@ $('peopleBody').addEventListener('click', e => {
     if (Math.hypot(q.x - me.x, q.y - me.y) > TRADE.range * TS) { toast(`ต้องเดินเข้าไปใกล้ ${q.name} ก่อน (ไม่เกิน ${TRADE.range} ช่อง)`); return; }
     closePeople(); send({ t: 'trade', a: 'req', to: q.id }); return;
   }
-  if (b.dataset.all) { mute.all = !mute.all; mute.names = {}; applyMute(); toast(mute.all ? '🔇 ปิดเสียงทั้งหมดแล้ว (เพื่อนจะเห็นไอคอน 🔇 ที่ตัวคุณ)' : '🔊 เปิดเสียงแล้ว'); return; }
   const p = players.get(+b.dataset.mute); if (!p) return;
   const key = p.name.toLowerCase(), now = isMuted(p);
   mute.names[key] = !now;
   if (mute.names[key] === mute.all) delete mute.names[key];
   applyMute();
 });
+$('spkBtn').onclick = () => { mute.all = !mute.all; mute.names = {}; applyMute(); toast(mute.all ? '🔈 ปิดเสียงเพื่อนทั้งหมดแล้ว (เพื่อนจะเห็นไอคอน 🔇 ที่ตัวคุณ)' : '🔊 เปิดเสียงเพื่อนแล้ว'); };
+setSpkUi();
+// ---------- สถานะของฉัน ----------
+const STATUS_PRESETS = ['🟢 ว่าง คุยได้', '🌾 กำลังทำฟาร์ม', '🎣 กำลังตกปลา', '🪓 กำลังตัดไม้', '🍜 พักกินข้าว', '🎮 อยู่ที่ตู้เกม', '💤 ไม่อยู่หน้าจอ', '🙏 มือใหม่ ช่วยหน่อย'];
+const statusShown = () => !$('status').classList.contains('hidden');
+function openStatus() { $('statusChips').innerHTML = STATUS_PRESETS.map((t, i) => `<button class="chip" data-sp="${i}">${esc(t)}</button>`).join(''); $('statusIn').value = (me && me.status) || ''; $('status').classList.remove('hidden'); setTimeout(() => $('statusIn').focus(), 50); }
+function closeStatus() { $('status').classList.add('hidden'); $('statusIn').blur(); }
+function saveStatus(text) { send({ t: 'status', text }); closeStatus(); toast(text ? '💭 ตั้งสถานะแล้ว' : 'ล้างสถานะแล้ว'); }
+$('myStatusBtn').onclick = () => (statusShown() ? closeStatus() : openStatus());
+$('statusClose').onclick = closeStatus;
+$('statusSave').onclick = () => saveStatus($('statusIn').value);
+$('statusClear').onclick = () => saveStatus('');
+$('statusChips').addEventListener('click', e => { const b = e.target.closest('[data-sp]'); if (b) saveStatus(STATUS_PRESETS[+b.dataset.sp]); });
+$('statusIn').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') saveStatus($('statusIn').value); else if (e.key === 'Escape') closeStatus(); });
+$('status').addEventListener('pointerdown', e => { if (e.target === $('status')) closeStatus(); });
 $('online').onclick = () => (peopleShown() ? closePeople() : openPeople());
 $('peopleClose').onclick = closePeople;
 $('people').addEventListener('pointerdown', e => { if (e.target === $('people')) closePeople(); });
@@ -1467,7 +1516,6 @@ function renderHub() {
   el.innerHTML = h;
   el.querySelectorAll('[data-htab]').forEach(b => b.onclick = () => { hubTab = b.dataset.htab; renderHub(); });
 }
-$('hubBtn').onclick = () => (hubShown() ? closeHub() : openHub());
 $('hubClose').onclick = closeHub;
 $('archub').addEventListener('pointerdown', e => { if (e.target === $('archub')) closeHub(); });
 setInterval(() => renderPeople(false), 250);
@@ -1669,7 +1717,7 @@ function buildBase() {
       g.fillStyle = '#6b4423'; g.fillRect(bx + 10, by + 6, 8, 26); g.fillRect(bx + bw - 18, by + 6, 8, 26);
       g.fillStyle = b.roof; g.fillRect(bx, by - 2, bw, 22); g.fillStyle = '#fff'; g.fillRect(bx + 3, by + 1, bw - 6, 16);
       g.fillStyle = b.roof; g.fillRect(bx + 5, by + 3, bw - 10, 12);
-      gh.font = `bold 14px ${FONT}`; gh.fillStyle = '#fff'; gh.fillText(`${b.sign} ${b.name} ${b.sign}`, bx + bw / 2, by + 9.5);
+      gh.font = `bold ${b.name.length > 6 ? 12 : 14}px ${FONT}`; gh.fillStyle = '#fff'; gh.fillText(`${b.sign} ${b.name} ${b.sign}`, bx + bw / 2, by + 9.5);
       continue;
     }
     if (b.kind === 'cinema') { // จอหนังกลางแปลง: เสา 2 ต้น + จอขาวใหญ่
@@ -1852,6 +1900,7 @@ function drawPlayer(p, now, cx) {
   ctx.fillStyle = sp ? '#4ab36e' : '#e2c896'; ctx.fillRect(nx, ny + 12, w, 2);
   ctx.fillStyle = '#3d2a1a'; ctx.fillText(p.name, x, y - 29);
   if (p.deaf) { const dt = '🔇'; ctx.font = `bold 10px ${FONT}`; const dw = Math.ceil(ctx.measureText(dt).width) + 8, dx = nx - dw - 3; ctx.fillStyle = OUT; ctx.fillRect(dx - 1, ny, dw + 2, 14); ctx.fillStyle = '#e07a66'; ctx.fillRect(dx, ny, dw, 14); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(dt, dx + 4, y - 28.5); ctx.textAlign = 'center'; ctx.font = `bold 11px ${FONT}`; }
+  if (p.status) { ctx.font = `bold 10px ${FONT}`; const st = p.status, sw = Math.ceil(Math.min(150, ctx.measureText(st).width)) + 10; ctx.textAlign = 'center'; ctx.fillStyle = OUT; ctx.fillRect(Math.round(x - sw / 2) - 1, y + 15, sw + 2, 14); ctx.fillStyle = '#fff3d6'; ctx.fillRect(Math.round(x - sw / 2), y + 16, sw, 12); ctx.fillStyle = '#3d2a1a'; ctx.textBaseline = 'alphabetic'; ctx.fillText(st, x, y + 26, 140); }
   if (p.title) { ctx.font = `bold 9px ${FONT}`; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = OUT; ctx.strokeText(p.title, x, y - 43); ctx.fillStyle = '#ffd966'; ctx.fillText(p.title, x, y - 43); }
   if (p.voice) {
     ctx.font = '11px sans-serif'; ctx.fillText('🎙️', x + w / 2 + 8, y - 29);
@@ -1925,12 +1974,13 @@ function drawCrop(tile, px, py, now) {
     if (tile.o && me && tile.o !== me.name) PixelUI.world(ctx, tile.l ? '🔒' : '✨', px + 25, py + 8, 12); // ผักของคนอื่น: 🔒 ยังเก็บไม่ได้ / ✨ เจ้าของไม่มาเก็บเกิน 1 วัน คนอื่นเก็บได้แล้ว
   }
 }
-function daylight(h) { // ความมืด 0..0.9 (กลางคืนมืดมาก มองเห็นเฉพาะรอบกองไฟ/ตะเกียง)
-  const MAXD = 0.9;
-  if (h >= 7 && h < 17.5) return 0;
-  if (h >= 17.5 && h < 21) return (h - 17.5) / 3.5 * MAXD;
-  if (h >= 21 || h < 4.5) return MAXD;
-  return MAXD * (1 - (h - 4.5) / 2.5);
+function daylight(h) { // ความมืด 0..0.75 (กลางคืนยังพอเห็นทาง สว่างที่กองไฟ/ตะเกียงชัดกว่า) สว่างนาน มืดสั้น
+  const MAXD = 0.75;
+  if (h >= 6.5 && h < 19) return 0;
+  if (h >= 19 && h < 21) return (h - 19) / 2 * MAXD;
+  if (h >= 21 || h < 4) return MAXD;
+  if (h < 5.5) return MAXD * (1 - (h - 4) / 1.5); // 04:00–05:30 ค่อยๆ สว่าง
+  return 0;
 }
 // ชั้นความมืด: เติมสีทึบแล้ว "เจาะ" วงสว่างที่กองไฟกลางลานและรอบตัวคนที่ถือตะเกียง (รัศมี 3 ช่อง)
 const lightCv = document.createElement('canvas'), lctx = lightCv.getContext('2d');
@@ -2185,7 +2235,7 @@ function step(now) {
   if (swing > 0) { const d = DIRS[me.dir]; PixelUI.world(ctx, slotInfo(slot).e, me.x + d[0] * 16, me.y + d[1] * 14 - 2 + (0.25 - swing) * 10, 18); }
 
   // กลางวัน/กลางคืน
-  const hour = ((wall % DAY_MS) / DAY_MS * 24 + 6) % 24;
+  const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
   const dark = daylight(hour);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawNight(dark, now);
