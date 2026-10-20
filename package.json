@@ -1,0 +1,12 @@
+{
+  "name": "my-world",
+  "version": "0.1.0",
+  "description": "เกมฟาร์มสบายๆ ออนไลน์ เข้าเล่นผ่านลิงก์",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2d4a2b">
+<title>My World</title>
+<style>
+  :root { --ink:#4a3a28; --paper:#fff8e7; --edge:#d9b97a; --accent:#e8a33d; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#2d4a2b; color:var(--ink);
+    font-family:"Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif; user-select:none; touch-action:none; }
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
+  .panel { background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  .btn { background:var(--accent); border:0; border-bottom:4px solid #b9791f; border-radius:10px; padding:8px 16px; color:#fff; font-weight:700; }
+  .btn:active { transform:translateY(2px); border-bottom-width:2px; }
+  .btn.small { padding:4px 10px; font-size:13px; }
+  .btn:disabled { opacity:.5; }
+  .btn.mic { background:#9aa0a6; border-bottom-color:#6f757b; }
+  .btn.mic.on { background:#2ecc71; border-bottom-color:#1e8f4e; }
+  #stage { cursor:crosshair; }
+
+  #login { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(#8fd3f4,#c8ecb0 60%,#7bc65a); z-index:20; }
+  #login .panel { width:min(92vw,360px); padding:22px; text-align:center; }
+  #login h1 { margin:0 0 4px; font-size:30px; }
+  #login p { margin:0 0 14px; opacity:.75; font-size:14px; }
+  #login input[type=text], #login input[type=password] { width:100%; padding:10px 12px; font:inherit; font-size:17px; border:3px solid var(--edge);
+    border-radius:10px; background:#fff; text-align:center; user-select:text; margin-bottom:10px; }
+  #login label { display:block; font-size:13px; text-align:left; margin:4px 0 2px; opacity:.7; }
+  #swatches { display:flex; gap:8px; justify-content:center; margin:6px 0 14px; flex-wrap:wrap; }
+  .sw { width:30px; height:30px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 2px rgba(0,0,0,.2); cursor:pointer; }
+  .sw.sel { box-shadow:0 0 0 3px var(--ink); transform:scale(1.12); }
+  #loginErr { color:#c0392b; min-height:20px; font-size:14px; margin-bottom:6px; }
+
+  .hidden { display:none !important; }
+  #hudTop { position:fixed; top:8px; left:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; z-index:5; }
+  #hudTop .panel { padding:5px 12px; font-weight:700; font-size:15px; }
+  #inv { position:fixed; top:8px; right:8px; padding:6px 10px; font-size:14px; max-width:170px; z-index:5; line-height:1.5; }
+  #inv:empty { display:none; }
+  #hotbar { position:fixed; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px; z-index:5; }
+  .slot { width:52px; height:56px; border:3px solid var(--edge); border-radius:10px; background:#fffdf5; position:relative;
+    display:flex; align-items:center; justify-content:center; font-size:26px; cursor:pointer; }
+  .slot.sel { border-color:var(--accent); background:#ffeaba; transform:translateY(-6px); }
+  .slot .k { position:absolute; top:0; left:3px; font-size:10px; opacity:.55; }
+  .slot .n { position:absolute; bottom:0; right:4px; font-size:12px; font-weight:700; }
+  .slot .p { position:absolute; top:0; right:4px; font-size:10px; opacity:.6; }
+  #chat { position:fixed; left:8px; bottom:84px; width:min(86vw,320px); z-index:5; pointer-events:none; }
+  #chatHist { pointer-events:auto; background:rgba(8,12,24,.42); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); border:1px solid rgba(255,255,255,.25); border-radius:12px; padding:6px 10px; max-height:30vh; overflow-y:auto; color:#fff; font-size:13px; line-height:1.45; margin-bottom:4px; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+  #chatHist .ch { word-break:break-word; padding:1px 0; }
+  #chatHist .ch b { color:#ffe28a; }
+  #chatHist .ch time { opacity:.55; font-size:11px; margin-right:5px; }
+  #chatHist .empty { opacity:.6; }
+  #chatLog div { background:rgba(0,0,0,.45); color:#fff; padding:2px 8px; border-radius:8px; margin-top:3px; font-size:13px; width:fit-content; max-width:100%; word-break:break-word; }
+  #chatIn { pointer-events:auto; margin-top:4px; width:100%; padding:6px 10px; border-radius:10px; border:3px solid var(--edge); font:inherit; font-size:14px; user-select:text; }
+  #toast { position:fixed; top:56px; left:50%; transform:translateX(-50%); z-index:6; padding:6px 16px; font-weight:700; pointer-events:none; opacity:0; transition:opacity .25s; }
+  #toast.show { opacity:1; }
+  #fgauge { position:fixed; left:50%; bottom:96px; transform:translateX(-50%); width:min(320px,80vw); z-index:6; padding:6px 10px 8px; text-align:center; font-weight:700; font-size:13px; pointer-events:none; background:#fff3cf; border:3px solid #3d2a1a; }
+  #fgauge .bar { position:relative; height:20px; margin-top:4px; background:#4a6a85; border:2px solid #3d2a1a; overflow:hidden; }
+  #fgauge .zone { position:absolute; top:0; bottom:0; background:#5fd16f; box-shadow:inset 0 0 0 2px #2e9a43; }
+  #fgauge .core { position:absolute; top:0; bottom:0; background:#2fb64a; box-shadow:inset 0 0 0 2px #1d7a30; }
+  #fgauge .mk { position:absolute; top:-2px; bottom:-2px; width:6px; margin-left:-3px; background:#fff; border:2px solid #3d2a1a; box-sizing:border-box; }
+  #fgauge.hit .mk { background:#ffe06a; }
+  body.touch #fgauge { bottom:calc(86px + var(--sab)); }
+  #shop,#bag,#people,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
+  #shop .panel,#bag .panel,#people .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; overflow:auto; }
+  #shop h2,#bag h2,#people h2,#arcade h2,#trade h2,#cinema h2,#town h2,#admin h2,#plots h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  #arcade .panel { background:#f3eefc; border-color:#8a6fd1; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
+  .chip { border:2px solid #8a6fd1; background:#fff; border-radius:999px; padding:6px 14px; font-weight:700; font-size:15px; }
+  .chip.sel { background:#8a6fd1; color:#fff; }
+  .chip:disabled { opacity:.4; }
+  .board { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:min(76vw,270px); margin:10px auto; }
+  .cell { aspect-ratio:1; border:3px solid #8a6fd1; border-radius:12px; background:#fff; font-size:min(14vw,54px); font-weight:800; line-height:1; padding:0; }
+  .cell.x { color:#e04b4b; } .cell.o { color:#2b7bd6; }
+  .cell.win { background:#fff2a8; border-color:#e8a33d; }
+  .cell:not(:disabled):not(.x):not(.o):active { background:#efe7ff; }
+  .vs { display:flex; justify-content:space-between; font-weight:700; font-size:15px; gap:8px; }
+  .vs span { flex:1; text-align:center; padding:4px; border-radius:10px; background:#fff; border:2px solid #d9d2ee; }
+  .vs span.turn { border-color:#e8a33d; background:#fff4d6; }
+  .banner { text-align:center; font-weight:800; font-size:18px; padding:8px; border-radius:12px; background:#fff2a8; margin:8px 0; }
+  .center { text-align:center; }
+  .uc { display:inline-flex; align-items:center; justify-content:center; width:48px; height:72px; border-radius:9px; border:3px solid #fff; box-shadow:0 2px 0 rgba(0,0,0,.3); font-weight:800; font-size:21px; color:#fff; flex:none; padding:0; position:relative; text-shadow:0 1px 1px rgba(0,0,0,.35); }
+  .uc.cR { background:#e04b4b; } .uc.cG { background:#3fae52; } .uc.cB { background:#2b7bd6; }
+  .uc.cY { background:#f1c40f; color:#5a4a00; text-shadow:none; }
+  .uc.cW { background:conic-gradient(#e04b4b 0 25%,#f1c40f 0 50%,#3fae52 0 75%,#2b7bd6 0); }
+  .uc.big { width:70px; height:104px; font-size:32px; }
+  .hand { display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:10px 0 6px; padding-top:8px; }
+  .hand .uc.ok { transform:translateY(-8px); box-shadow:0 0 0 3px #ffd24a; }
+  .hand .uc.dim { opacity:.5; }
+  .opps { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin:6px 0; }
+  .opp { border:2px solid #d9d2ee; background:#fff; border-radius:10px; padding:4px 8px; font-size:13px; font-weight:700; text-align:center; min-width:78px; }
+  .opp.cur { border-color:#e8a33d; background:#fff4d6; }
+  .opp.out { opacity:.4; text-decoration:line-through; }
+  .utable { display:flex; align-items:center; justify-content:center; gap:14px; margin:8px 0; }
+  .cdot { display:inline-block; width:28px; height:28px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 2px rgba(0,0,0,.25); vertical-align:middle; }
+  .colorpick { display:flex; gap:10px; justify-content:center; margin:10px 0; }
+  .colorpick button { width:56px; height:56px; border-radius:50%; border:4px solid #fff; box-shadow:0 0 0 2px rgba(0,0,0,.3); }
+  .ulog { text-align:center; font-size:13px; min-height:18px; opacity:.85; }
+  .c4 { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; width:min(88vw,320px); margin:10px auto; background:#2b5fc9; padding:8px; border-radius:12px; }
+  .c4c { aspect-ratio:1; border-radius:50%; border:0; background:#e8f0ff; padding:0; }
+  .c4c.pX { background:#e04b4b; } .c4c.pO { background:#f1c40f; }
+  .c4c.last { box-shadow:0 0 0 3px #fff; } .c4c.win { box-shadow:0 0 0 4px #1e8f4e; animation:pulse .6s infinite alternate; }
+  .c4c:not(:disabled):not(.pX):not(.pO):hover { background:#cfe0ff; }
+  @keyframes pulse { to { transform:scale(.88); } }
+  .pad { width:100%; height:150px; border-radius:16px; border:4px solid #fff; box-shadow:0 4px 0 rgba(0,0,0,.25); font-size:26px; font-weight:800; color:#fff; margin:10px 0 4px; touch-action:manipulation; }
+  .pad.wait { background:#e04b4b; } .pad.go { background:#2ecc71; font-size:40px; } .pad.res { background:#8a6fd1; }
+  .pad:disabled { opacity:.8; }
+  .pcard { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; width:54px; height:78px; margin:3px; border-radius:8px; background:#fff; border:2px solid #8a6fd1; font-size:24px; font-weight:800; color:#222; line-height:1; }
+  .pcard small { font-size:22px; } .pcard.red { color:#d63031; } .pcard.back { background:#8a6fd1; color:#fff; font-size:34px; }
+  #online, #hungerChip { cursor:pointer; }
+  #hungerChip.blink { animation:blinkr .8s infinite alternate; }
+  @keyframes blinkr { to { background:#ffd6d0; } }
+  #preview, #clothPreview { position:static; inset:auto; width:150px; height:150px; display:block; margin:4px auto 8px; background:linear-gradient(#bfe6ff,#d9f2c4); border:3px solid var(--edge); border-radius:12px; image-rendering:pixelated; }
+  .wrow { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 8px; }
+  .witem { border:2px solid var(--edge); border-radius:10px; background:#fffdf5; padding:5px 8px; font-size:12px; text-align:center; min-width:74px; }
+  .witem.on { border-color:var(--accent); background:#ffeaba; }
+  .witem.lockw { opacity:.55; }
+  .witem b { display:block; font-size:12px; }
+  .hbar { height:12px; background:#e8dcc0; border-radius:7px; overflow:hidden; margin:2px 0 4px; }
+  .hbar i { display:block; height:100%; background:#f39c12; }
+  .dot { display:inline-block; width:14px; height:14px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.25); vertical-align:middle; }
+  .spk { margin-left:6px; font-size:12px; color:#1e8f4e; font-weight:700; }
+  .prow.talk { background:rgba(46,204,113,.12); }
+  .btn.muted { background:#9aa0a6; border-bottom-color:#6f757b; }
+  .sec { font-weight:700; font-size:13px; opacity:.7; margin:10px 0 2px; }
+  .lock { opacity:.5; }
+  .tabs { display:flex; gap:6px; margin-bottom:8px; }
+  .tab { flex:1; padding:7px 4px; border:2px solid var(--edge); border-radius:10px; background:#fffdf5; font-weight:700; font-size:14px; }
+  .tab.on { background:var(--accent); color:#fff; border-color:#b9791f; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:6px; }
+  .card { border:2px solid var(--edge); border-radius:10px; background:#fffdf5; padding:6px 4px; text-align:center; font-size:12px; }
+  .card b { display:block; font-size:24px; font-weight:400; }
+  .bar { height:10px; background:#e8dcc0; border-radius:6px; overflow:hidden; margin:4px 0; }
+  .bar i { display:block; height:100%; background:#6cc04a; }
+  .skill { padding:8px 0; border-bottom:1px dashed var(--edge); font-size:14px; }
+  .skill small { display:block; opacity:.7; }
+  .swrow { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 12px; }
+  .swrow .sw { width:34px; height:34px; }
+  .swrow input[type=color] { width:38px; height:38px; border:0; padding:0; background:none; }
+  #picker { position:fixed; bottom:84px; left:50%; transform:translateX(-50%); padding:6px; display:flex; gap:6px; flex-wrap:wrap; max-width:94vw; justify-content:center; z-index:7; }
+  .opt { min-width:56px; border:2px solid var(--edge); border-radius:10px; background:#fffdf5; padding:4px 6px; font-size:12px; text-align:center; }
+  .opt b { display:block; font-size:22px; font-weight:400; }
+  .opt.sel { border-color:var(--accent); background:#ffeaba; }
+  .opt:disabled { opacity:.45; }
+  .tab { font-size:13px; padding:7px 2px; }
+  #mini { position:fixed; right:8px; top:56px; z-index:5; padding:4px; cursor:default; }
+  #mini canvas { position:static; inset:auto; display:block; border-radius:8px; cursor:pointer; background:#7bc65a; }
+  #miniBar { display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700; padding:0 2px 3px; gap:8px; }
+  .mbtn { border:0; background:transparent; font-size:14px; padding:2px 4px; }
+  #mini.off canvas, #mini.off #miniSize { display:none; }
+  #mini.off #miniTitle { display:inline; }
+  .stat { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0; }
+  .stat div { border:2px solid var(--edge); border-radius:10px; background:#fffdf5; padding:6px 8px; font-size:13px; }
+  .stat div b { display:block; font-size:16px; }
+  .row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--edge); }
+  .row span:first-child { font-size:15px; }
+  #dc { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:30; display:flex; align-items:center; justify-content:center; color:#fff; flex-direction:column; gap:12px; font-size:18px; }
+  #joy { position:fixed; left:18px; bottom:20px; width:130px; height:130px; border-radius:50%; background:rgba(255,255,255,.25);
+    border:3px solid rgba(255,255,255,.5); z-index:5; touch-action:none; }
+  #knob { position:absolute; width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,.7); left:37px; top:37px; pointer-events:none; }
+  #abtn { position:fixed; right:18px; bottom:96px; width:84px; height:84px; border-radius:50%; background:var(--accent);
+    border:4px solid #fff; color:#fff; font-size:30px; font-weight:800; z-index:5; touch-action:none; box-shadow:0 4px 0 rgba(0,0,0,.25); }
+  @media (max-width:700px) { .slot { width:44px; height:50px; font-size:22px; } #hotbar { gap:4px; bottom:6px; } #chat { bottom:70px; } }
+
+  /* ---------- มือถือ / แท็บเล็ต (หน้าจอสัมผัส) ---------- */
+  :root { --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px); --sal:env(safe-area-inset-left,0px); --sar:env(safe-area-inset-right,0px); }
+  html,body { height:100dvh; overscroll-behavior:none; -webkit-touch-callout:none; }
+  #login { overflow:auto; padding:12px; align-items:flex-start; }
+  #login .panel { margin:auto; }
+  .touchonly { display:none; }
+  body.touch .touchonly { display:inline-block; }
+  body.touch .btn { min-height:40px; }
+  body.touch #mini { right:calc(8px + var(--sar)); }
+  body.touch #chat { width:min(calc(100vw - 150px), 320px); }
+  body.touch #hudTop { top:calc(8px + var(--sat)); left:calc(8px + var(--sal)); right:calc(8px + var(--sar)); gap:6px; }
+  body.touch #hudTop .panel { font-size:14px; padding:4px 10px; }
+  body.touch #hudTop .btn { padding:6px 12px; font-size:16px; }
+  body.touch #inv { display:none; top:calc(60px + var(--sat)); right:calc(8px + var(--sar)); font-size:15px; max-width:200px; }
+  body.touch #inv.open { display:block; }
+  body.touch #hotbar { bottom:calc(8px + var(--sab)); }
+  body.touch .slot { width:46px; height:54px; font-size:24px; }
+  body.touch .slot .k { display:none; }
+  body.touch #chat { top:calc(100px + var(--sat)); bottom:auto; left:calc(8px + var(--sal)); }
+  body.touch #chatIn { font-size:16px; padding:8px 12px; }
+  body.touch #toast { top:calc(60px + var(--sat)); max-width:90vw; text-align:center; }
+  body.touch #joy { left:calc(14px + var(--sal)); bottom:calc(78px + var(--sab)); width:132px; height:132px; }
+  body.touch #knob { left:calc(50% - 28px); top:calc(50% - 28px); }
+  body.touch #abtn { right:calc(14px + var(--sar)); bottom:calc(88px + var(--sab)); }
+  body.touch .chip { padding:9px 16px; }
+  body.touch #shop .row,body.touch #bag .row,body.touch #people .row,body.touch #trade .row,body.touch #cinema .row,body.touch #town .row { padding:9px 0; }
+  body.touch #shop .btn.small,body.touch #bag .btn.small,body.touch #people .btn.small,body.touch #trade .btn.small,body.touch #cinema .btn.small,body.touch #town .btn.small { padding:8px 14px; font-size:15px; }
+  body.touch #picker { bottom:calc(76px + var(--sab)); }
+  @media (orientation:landscape) and (max-height:520px) { body.touch #picker { bottom:calc(58px + var(--sab)); } }
+  @media (min-width:700px) and (min-height:600px) { body.touch #picker { bottom:calc(100px + var(--sab)); } }
+  /* มือถือแนวนอน: จอเตี้ย ให้ปุ่มอยู่ล่างสุดข้างๆ hotbar */
+  @media (orientation:landscape) and (max-height:520px) {
+    body.touch #joy { bottom:calc(10px + var(--sab)); width:116px; height:116px; }
+    body.touch #abtn { bottom:calc(14px + var(--sab)); width:76px; height:76px; }
+    body.touch .slot { width:40px; height:46px; font-size:21px; }
+    body.touch #hotbar { gap:4px; padding:4px; bottom:calc(4px + var(--sab)); }
+    body.touch #chat { top:calc(56px + var(--sat)); width:min(46vw,300px); }
+    body.touch #inv { top:calc(56px + var(--sat)); }
+  }
+  /* แท็บเล็ต: ปุ่มใหญ่ขึ้น */
+  @media (min-width:700px) and (min-height:600px) {
+    body.touch #joy { width:170px; height:170px; bottom:calc(24px + var(--sab)); left:calc(28px + var(--sal)); }
+    body.touch #abtn { width:104px; height:104px; font-size:38px; bottom:calc(40px + var(--sab)); right:calc(36px + var(--sar)); }
+    body.touch .slot { width:62px; height:68px; font-size:30px; }
+    body.touch #hotbar { gap:8px; bottom:calc(14px + var(--sab)); }
+    body.touch #hudTop .panel { font-size:16px; }
+    body.touch #chat { top:calc(64px + var(--sat)); }
+    body.touch #inv { top:calc(64px + var(--sat)); font-size:17px; max-width:240px; }
+  }
+  #cinFrame iframe { width:100%; aspect-ratio:16/9; border:0; border-radius:8px; background:#000; display:block; margin-bottom:8px; }
+  #cinFrame:empty { display:none; }
+  #build { position:fixed; left:50%; transform:translateX(-50%); bottom:84px; z-index:6; max-width:min(96vw,640px); text-align:center; }
+  #build .bhint { font-size:13px; margin-bottom:6px; }
+  #build .bitems { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+  #build .btn.on { outline:3px solid #fff; box-shadow:0 0 0 5px var(--accent); }
+  /* มือถือ: โหมดตกแต่งซ่อน hotbar แล้วใช้แถบเดียวกันนั้นแทน (เลื่อนซ้าย-ขวาได้) ไม่ทับจอยสติ๊ก/ปุ่ม A */
+  body.touch.building #hotbar { display:none; }
+  body.touch #build { bottom:calc(8px + var(--sab)); width:calc(100vw - 16px); max-width:none; padding:6px 8px; }
+  body.touch #build .bhint { font-size:12px; margin-bottom:4px; }
+  body.touch #build .bitems { flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
+  body.touch #build .btn { flex:none; white-space:nowrap; }
+  #trade .panel { background:#fff8e6; }
+  #townBody { max-height:68vh; overflow:auto; }
+  #townBody .logrow, #bagBody .logrow { display:flex; gap:8px; padding:5px 0; border-bottom:1px dashed rgba(0,0,0,.12); font-size:14px; }
+  #townBody .logrow time, #bagBody .logrow time { flex:none; opacity:.55; font-size:12px; min-width:40px; padding-top:1px; }
+  #townBody .qrow, #bagBody .qrow { padding:7px 0; border-bottom:1px dashed rgba(0,0,0,.12); }
+  #townBody .qrow.done, #bagBody .qrow.done { opacity:.6; }
+  #townBody .tabs-note, #bagBody .tabs-note { font-size:12px; opacity:.7; margin:4px 0 8px; }
+  #townBody .vcard, #bagBody .vcard { background:#fff3cf; border:2px solid #e8c66a; border-radius:12px; padding:8px 10px; margin-bottom:8px; font-size:14px; }
+  #townBody .vcard.on, #bagBody .vcard.on { background:#dff7e1; border-color:#4caf6a; }
+  #town .tabs { flex-wrap:wrap; gap:4px; }
+  #town .tab { padding:6px 9px; font-size:13px; white-space:nowrap; flex:1 1 auto; }
+  #guide { position:fixed; left:8px; top:64px; z-index:4; font-size:13px; font-weight:700; padding:5px 11px; max-width:min(58vw,320px); cursor:pointer; background:#fff3cf; border:2px solid #e8c66a; }
+  body.touch #guide { font-size:12px; max-width:calc(100vw - 170px); }
+  #adminBody .arow { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:7px 0; border-bottom:1px dashed rgba(0,0,0,.14); flex-wrap:wrap; }
+  #adminBody .arow.cur { background:#e5f6e6; border-radius:8px; padding-left:6px; }
+  #adminBody input[type=text] { flex:1; min-width:120px; padding:8px 10px; font:inherit; border:2px solid var(--edge); border-radius:8px; }
+  #bag .tabs { flex-wrap:wrap; gap:4px; }
+  #bag .tab { padding:6px 9px; font-size:13px; white-space:nowrap; flex:1 1 auto; }
+  #hudTop.folded > :not(#hudFold):not(#coins):not(#hungerChip) { display:none !important; }
+  #ask { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:30; }
+  #ask .panel { width:min(90vw,340px); padding:16px; text-align:center; }
+  #askText { white-space:pre-line; margin-bottom:12px; font-size:15px; }
+  #tradeBody { max-height:70vh; overflow:auto; }
+
+  /* ===== UI พิกเซล (เฟส 3): ไม้ + หนัง + กระดาษ ขอบแข็ง ไม่มีมุมโค้ง เงาเป็นขั้น ===== */
+  :root { --ink:#4a3322; --paper:#f3e0b6; --paper-d:#d9bd86; --paper-l:#fff4d6; --edge:#2a1b14; --accent:#e8a33d;
+          --wood:#7a4c2b; --wood-l:#a8703f; --wood-d:#4a2e1b; }
+  .pxe { width:1.25em; height:1.25em; vertical-align:-.3em; image-rendering:pixelated; -webkit-user-drag:none; }
+  .panel { background:var(--paper); border:3px solid var(--edge); border-radius:0;
+    box-shadow:inset 0 3px 0 var(--paper-l), inset 0 -4px 0 var(--paper-d), 4px 4px 0 rgba(42,27,20,.4); }
+  #hudTop .panel, #inv { background:var(--wood); color:#fff3cf; text-shadow:0 2px 0 var(--wood-d);
+    box-shadow:inset 0 2px 0 var(--wood-l), inset 0 -3px 0 var(--wood-d), 3px 3px 0 rgba(42,27,20,.35); }
+  #hudTop #coins { background:#6b3825; box-shadow:inset 0 2px 0 #8e5036, inset 0 -3px 0 #45231a, 3px 3px 0 rgba(42,27,20,.35); }
+  .btn { border:2px solid var(--edge); border-radius:0; text-shadow:0 2px 0 rgba(0,0,0,.25);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.4), inset 0 -4px 0 rgba(0,0,0,.25); }
+  .btn:active { transform:translateY(2px); border-bottom-width:2px; box-shadow:inset 0 2px 0 rgba(0,0,0,.25); }
+  .btn.small { padding:4px 10px; }
+  #hotbar { background:var(--wood); gap:4px; padding:6px;
+    box-shadow:inset 0 3px 0 var(--wood-l), inset 0 -4px 0 var(--wood-d), 0 5px 0 rgba(42,27,20,.45); }
+  .slot { background:var(--paper); border:3px solid var(--edge); border-radius:0;
+    box-shadow:inset 0 2px 0 var(--paper-l), inset 0 -3px 0 var(--paper-d); }
+  .slot .pxe { width:30px; height:30px; vertical-align:baseline; }
+  .slot .k { color:#8a6a44; opacity:1; font-family:ui-monospace,Consolas,monospace; font-weight:700; }
+  .slot .n { color:#fff3cf; font-family:ui-monospace,Consolas,monospace;
+    text-shadow:2px 0 0 var(--edge),-2px 0 0 var(--edge),0 2px 0 var(--edge),0 -2px 0 var(--edge); }
+  .slot.sel { background:#ffe9a8; border-color:var(--edge); outline:3px solid #f2c14e; outline-offset:-3px;
+    box-shadow:inset 0 2px 0 #fff8e0, inset 0 -3px 0 #e2b65a; transform:translateY(-6px); }
+  .tab, .card, .witem, .opt, .chip, .opp, .vs span, .pcard { border-radius:0; border-color:var(--edge); }
+  .tab, .card, .witem, .opt { background:var(--paper-l); box-shadow:inset 0 -3px 0 var(--paper-d); }
+  .tab.on { background:var(--accent); color:#fff; box-shadow:inset 0 -3px 0 #b9791f; }
+  .witem.on, .opt.sel { background:#ffe9a8; box-shadow:inset 0 -3px 0 #e2b65a; outline:2px solid #f2c14e; outline-offset:-2px; }
+  .card b, .opt b, .witem b { font-family:inherit; }
+  .card .pxe, .opt .pxe { width:28px; height:28px; vertical-align:baseline; }
+  .hbar, .bar { border-radius:0; border:2px solid var(--edge); background:#b99a66; }
+  .hbar i, .bar i { box-shadow:inset 0 2px 0 rgba(255,255,255,.4); }
+  #chatHist { background:rgba(42,27,20,.82); -webkit-backdrop-filter:none; backdrop-filter:none; border:2px solid var(--edge); border-radius:0; }
+  #chatLog div { background:rgba(42,27,20,.8); border:2px solid var(--edge); border-radius:0; }
+  #chatIn, #login input[type=text], #login input[type=password] { border-radius:0; border:3px solid var(--edge); background:var(--paper-l); }
+  #preview, #clothPreview { border-radius:0; border:3px solid var(--edge); image-rendering:pixelated; }
+  .skill { border-bottom:2px dotted var(--wood-l); }
+  #toast { background:var(--paper); }
+  .banner, .chip, .vs span { border-radius:0; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="login">
+  <div class="panel">
+    <h1>🌾 My World</h1>
+    <p>ฟาร์มเล็กๆ ที่เพื่อนๆ มาอยู่ด้วยกันได้</p>
+    <div id="loginErr"></div>
+    <input id="name" type="text" maxlength="12" placeholder="ชื่อตัวละครของคุณ" autocomplete="off">
+    <input id="akey" type="password" class="hidden" placeholder="รหัสผู้ดูแล" autocomplete="off" style="margin-top:8px">
+    <div id="swatches"></div>
+    <button id="go" class="btn" style="width:100%;font-size:18px">เข้าเกม</button>
+  </div>
+</div>
+
+<div id="hudTop" class="hidden">
+  <button class="btn small" id="hudFold" title="ย่อ/ขยายแถบเมนู" aria-label="ย่อหรือขยายแถบเมนู">▴</button>
+  <div class="panel" id="coins">🪙 0</div>
+  <div class="panel" id="hungerChip">🍖 80</div>
+  <div class="panel" id="clock">🕒 --:--</div>
+  <div class="panel hidden" id="happyChip" title="Happy Village: บัฟร่วมของทั้งเมือง">🎉</div>
+  <div class="panel" id="online">👥 1</div>
+  <button class="btn small" id="invite">🔗 ชวนเพื่อน</button>
+  <button class="btn small mic" id="micBtn" aria-label="เปิด/ปิดไมค์">🔇</button>
+  <button class="btn small hidden" id="lampBtn" title="ตะเกียง (L)" aria-label="ตะเกียง">🏮</button>
+  <button class="btn small hidden" id="adminBtn" title="ผู้ดูแล: จัดการห้อง" aria-label="ผู้ดูแล">🛠️</button>
+  <button class="btn small" id="townBtn" title="ข่าวเมือง" aria-label="ข่าวเมือง">📰</button>
+  <button class="btn small" id="houseBtn" title="ตกแต่งบ้าน (H)" aria-label="ตกแต่งบ้าน">🏠</button>
+  <button class="btn small" id="questBtn" title="เควส" aria-label="เควส" style="position:relative">📋<span id="questBadge" class="hidden" style="position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#e74c3c;color:#fff;font-size:11px;line-height:17px;font-weight:700;text-align:center;pointer-events:none"></span></button>
+  <button class="btn small" id="bagBtn" title="กระเป๋า (B)" aria-label="กระเป๋า">🎒</button>
+  <button class="btn small" id="statBtn" title="สถานะ (C)" aria-label="สถานะ">📊</button>
+  <button class="btn small" id="chatBtn" title="แชท (Enter)" aria-label="แชท">💬</button>
+  <button class="btn small" id="fsBtn" title="เต็มจอ" aria-label="เต็มจอ">⛶</button>
+</div>
+<div id="mini" class="panel hidden">
+  <div id="miniBar"><span id="miniTitle">🗺️ แผนที่</span><span><button class="mbtn" id="miniSize" title="ขยาย/ย่อ" aria-label="ขยายหรือย่อแผนที่">🔍</button><button class="mbtn" id="miniHide" title="ซ่อน/แสดง" aria-label="ซ่อนแผนที่">➖</button></span></div>
+  <canvas id="miniMap"></canvas>
+</div>
+<div id="guide" class="panel hidden" title="คู่มือเริ่มต้น: แตะเพื่อดูทั้งหมด"></div>
+<div id="fgauge" class="hidden"><div id="fgtxt">🎣 กดตอนตัวชี้อยู่ในโซนเขียว (ยิ่งใกล้กลางยิ่งได้ปลาดี)!</div><div class="bar"><div class="zone" id="fgzone"></div><div class="core" id="fgcore"></div><div class="mk" id="fgmk"></div></div></div>
+<div id="hotbar" class="panel hidden"></div>
+<div id="picker" class="panel hidden"></div>
+<div id="build" class="panel hidden"></div>
+<div id="chat" class="hidden"><div id="chatHist" class="hidden"></div><div id="chatLog"></div><input id="chatIn" class="hidden" maxlength="80" enterkeyhint="send" placeholder="พิมพ์ข้อความ แล้วกด Enter"></div>
+<div id="toast" class="panel"></div>
+<div id="shop" class="hidden"><div class="panel">
+  <h2><span id="shopTitle">🏪 ร้านค้า</span> <button class="btn small" id="shopClose">ปิด</button></h2>
+  <div id="shopInfo" style="font-size:13px;opacity:.75;margin-bottom:4px"></div>
+  <div id="shopBody"></div>
+</div></div>
+<div id="bag" class="hidden"><div class="panel">
+  <h2><span>🎒 ของของฉัน</span> <button class="btn small" id="bagClose">ปิด</button></h2>
+  <div class="tabs">
+    <button class="tab on" data-tab="status">📊 สถานะ</button>
+    <button class="tab" data-tab="items">🎒 กระเป๋า</button>
+    <button class="tab" data-tab="skills">⭐ อาชีพ</button>
+    <button class="tab" data-tab="look">👕 ตัวละคร</button>
+    <button class="tab" data-tab="quest">📋 เควส</button>
+    <button class="tab" data-tab="book">📖 สมุด</button>
+  </div>
+  <div id="bagBody"></div>
+</div></div>
+<div id="arcade" class="hidden"><div class="panel">
+  <h2><span id="arcTitle">🎮 ตู้เกม XO</span> <button class="btn small" id="arcClose">ปิด</button></h2>
+  <div id="arcBody"></div>
+</div></div>
+<div id="people" class="hidden"><div class="panel">
+  <h2><span>👥 คนในแมพ</span> <button class="btn small" id="peopleClose">ปิด</button></h2>
+  <div id="peopleBody"></div>
+</div></div>
+<div id="trade" class="hidden"><div class="panel">
+  <h2><span>🤝 เทรดของ</span> <button class="btn small" id="tradeClose">ปิด</button></h2>
+  <div id="tradeBody"></div>
+</div></div>
+<div id="town" class="hidden"><div class="panel">
+  <h2><span id="townTitle">🏘️ เมืองของเรา</span> <button class="btn small" id="townClose">ปิด</button></h2>
+  
+  <div id="townBody"></div>
+</div></div>
+<div id="admin" class="hidden"><div class="panel">
+  <h2><span>🛠️ ผู้ดูแล: จัดการห้อง</span> <button class="btn small" id="adminClose">ปิด</button></h2>
+  <p style="font-size:13px;opacity:.75;margin:0 0 8px">แต่ละห้องคือโลกแยกกัน คนต่างห้องไม่เจอกัน (แชท/แมพ/เซฟแยกหมด) ส่งลิงก์ให้เพื่อนที่ต้องการให้เข้าห้องนั้น</p>
+  <div id="adminBody"></div>
+</div></div>
+<div id="plots" class="hidden"><div class="panel">
+  <h2><span>🏠 ที่ดินในหมู่บ้าน</span> <button class="btn small" id="plotsClose">ปิด</button></h2>
+  <div id="plotsBody"></div>
+</div></div>
+<div id="ask" class="hidden"><div class="panel"><div id="askText"></div><div class="center"><button class="btn small muted" id="askNo">ยกเลิก</button> <button class="btn small" id="askYes">ยืนยัน</button></div></div></div>
+<div id="cinema" class="hidden"><div class="panel" style="width:min(96vw,760px)">
+  <h2><span>🎬 หนังกลางแปลง</span> <button class="btn small" id="cinClose">ปิด</button></h2>
+  <div id="cinFrame"></div>
+  <div id="cinBody"></div>
+</div></div>
+<div id="dc" class="hidden"><div>หลุดจากการเชื่อมต่อ 😢</div><button class="btn" onclick="location.reload()">เชื่อมต่อใหม่</button></div>
+<div id="joy" class="hidden"><div id="knob"></div></div>
+<button id="abtn" class="hidden">A</button>
+
+<script src="shared.js"></script>
+<script src="pixelart.js"></script>
+<script src="pixelchar.js"></script>
+<script src="pixelui.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

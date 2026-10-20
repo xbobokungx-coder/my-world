@@ -1,0 +1,1033 @@
+<title>My World Pixel Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&family=Noto+Sans+Thai:wght@400;500;600&family=Pixelify+Sans:wght@500;700&display=swap">
+<style>
+/* Layout: one framed game screen (the mockup itself), a slim control strip above it, design notes below. Single warm-dark world, like a game launcher. */
+:root{
+  --bg:#1c140f;
+  --panel:#2a1e16;
+  --ink:#f5e6c6;
+  --muted:#c4a982;
+  --wood-d:#4a2e1b;
+  --wood:#7a4c2b;
+  --wood-l:#a8703f;
+  --paper:#f3e0b6;
+  --paper-d:#d9bd86;
+  --paper-ink:#4a3322;
+  --leather:#6b3825;
+  --gold:#f2c14e;
+  --line:#3b2a1d;
+  --outline:#2a1b14;
+  --f-display:"Mitr","Noto Sans Thai",system-ui,sans-serif;
+  --f-body:"Noto Sans Thai","Mitr",system-ui,sans-serif;
+  --f-pixel:"Pixelify Sans","Mitr",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.eyebrow{font-family:var(--f-pixel);font-size:13px;letter-spacing:.12em;color:var(--gold);text-transform:uppercase}
+h1{font-family:var(--f-display);font-weight:600;font-size:clamp(24px,3.2vw,34px);line-height:1.15;margin:2px 0 4px;text-wrap:balance}
+.lede{margin:0;color:var(--muted);max-width:62ch}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:flex;background:var(--wood-d);border:2px solid var(--outline);box-shadow:inset 0 2px 0 var(--wood)}
+.seg button,.tog{font-family:var(--f-display);font-size:14px;color:var(--ink);background:transparent;border:0;padding:6px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--wood-l);color:#2a1b14;box-shadow:inset 0 -3px 0 var(--wood)}
+.tog{background:var(--wood-d);border:2px solid var(--outline);box-shadow:inset 0 2px 0 var(--wood)}
+.tog[aria-pressed="true"]{background:var(--wood-l);color:#2a1b14;box-shadow:inset 0 -3px 0 var(--wood)}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---- game frame ---- */
+.frame{position:relative;padding:10px;background:var(--wood);border:3px solid var(--outline);
+  box-shadow:inset 0 3px 0 var(--wood-l),inset 0 -4px 0 var(--wood-d),0 10px 0 -2px #120c08}
+.game{position:relative;width:100%;aspect-ratio:5/3;max-width:100%;container-type:inline-size;overflow:hidden;border:3px solid var(--outline);background:#5d9c3f;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#view{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;cursor:pointer}
+.hint{font-size:13px;color:var(--muted);margin:0}
+
+/* HUD pieces: wood + leather + paper, hard pixel edges (no radius, stepped shadows) */
+.hud{position:absolute;pointer-events:none;font-family:var(--f-display)}
+.hud *{pointer-events:auto}
+.top{left:1.2%;right:1.2%;top:1.6%;display:flex;gap:1%;align-items:stretch}
+.plank{background:var(--wood);border:2px solid var(--outline);box-shadow:inset 0 2px 0 var(--wood-l),inset 0 -3px 0 var(--wood-d);
+  display:flex;align-items:center;gap:.5em;padding:.25em .7em;color:var(--ink);font-size:clamp(10px,1.45cqw,17px);white-space:nowrap}
+.plank b{font-family:var(--f-pixel);font-weight:700;font-size:1.15em;letter-spacing:.02em;font-variant-numeric:tabular-nums;color:#fff3cf;text-shadow:0 2px 0 var(--wood-d)}
+.plank small{color:#e8cfa0;font-size:.85em}
+.leather{background:var(--leather);box-shadow:inset 0 2px 0 #8e5036,inset 0 -3px 0 #45231a;
+  outline:1px dashed rgba(240,200,150,.35);outline-offset:-5px}
+.quest{flex:1 1 auto;min-width:0;background:var(--paper);color:var(--paper-ink);border:2px solid var(--outline);
+  box-shadow:inset 0 2px 0 #fff4d6,inset 0 -3px 0 var(--paper-d);display:flex;align-items:center;gap:.6em;padding:.25em .7em;font-size:clamp(10px,1.4cqw,16px)}
+.quest .qt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.quest .bar{flex:0 0 22%;height:.75em;background:#b99a66;border:2px solid var(--outline);position:relative}
+.quest .bar i{position:absolute;inset:0 40% 0 0;background:#e98a2c;box-shadow:inset 0 2px 0 #ffb45a}
+.quest .num{font-family:var(--f-pixel);font-weight:700}
+.games{display:flex;gap:.35em}
+.gbtn{font-family:var(--f-pixel);font-weight:700;font-size:clamp(9px,1.35cqw,16px);letter-spacing:.04em;color:#2a1b14;cursor:pointer;
+  border:2px solid var(--outline);padding:.2em .55em;background:#e8a33d;box-shadow:inset 0 2px 0 #ffd27a,inset 0 -3px 0 #b9791f}
+.gbtn:nth-child(2){background:#5fb6d9;box-shadow:inset 0 2px 0 #a6e1f5,inset 0 -3px 0 #2f7fa6}
+.gbtn:nth-child(3){background:#e2594a;box-shadow:inset 0 2px 0 #ff9a8a,inset 0 -3px 0 #a5342a;color:#fff3cf}
+.gbtn:nth-child(4){background:#7ccf5a;box-shadow:inset 0 2px 0 #b6f08c,inset 0 -3px 0 #47912f}
+.gbtn:active{transform:translateY(1px)}
+canvas.ico{width:1.6em;height:1.6em;image-rendering:pixelated;flex:0 0 auto}
+
+.mini{right:1.2%;top:12.5%;width:21%;background:var(--paper);border:2px solid var(--outline);padding:.45em .45em .35em;
+  box-shadow:inset 0 2px 0 #fff4d6,inset 0 -3px 0 var(--paper-d),3px 3px 0 rgba(42,27,20,.35)}
+.mini .mt{display:flex;justify-content:space-between;font-size:clamp(9px,1.2cqw,14px);color:var(--paper-ink);line-height:1.2;margin-bottom:.3em}
+.mini .mt span{font-family:var(--f-pixel)}
+.mini canvas{display:block;width:100%;aspect-ratio:40/24;image-rendering:pixelated;border:2px solid #8a6a44}
+
+.hotwrap{left:50%;bottom:2%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:.3em}
+.hname{font-size:clamp(9px,1.3cqw,15px);background:rgba(42,27,20,.82);color:var(--ink);padding:.05em .7em;border:2px solid var(--outline)}
+.hotbar{display:flex;gap:.3cqw;padding:.45cqw;background:var(--wood);border:2px solid var(--outline);
+  box-shadow:inset 0 2px 0 var(--wood-l),inset 0 -3px 0 var(--wood-d),0 3px 0 rgba(0,0,0,.35)}
+.slot{position:relative;width:5.4cqw;height:5.4cqw;min-width:30px;min-height:30px;background:var(--paper);border:2px solid var(--outline);cursor:pointer;padding:0;
+  box-shadow:inset 0 2px 0 #fff4d6,inset 0 -3px 0 var(--paper-d);display:grid;place-items:center}
+.slot canvas{width:76%;height:76%;image-rendering:pixelated}
+.slot .k{position:absolute;left:3px;top:0;font-family:var(--f-pixel);font-size:clamp(7px,.9cqw,11px);color:#8a6a44;line-height:1.3}
+.slot .n{position:absolute;right:2px;bottom:0;font-family:var(--f-pixel);font-weight:700;font-size:clamp(8px,1.1cqw,14px);color:#fff3cf;line-height:1.2;
+  text-shadow:1px 0 0 var(--outline),-1px 0 0 var(--outline),0 1px 0 var(--outline),0 -1px 0 var(--outline)}
+.slot.empty canvas{opacity:.4;filter:grayscale(1)}
+.slot[aria-pressed="true"]{background:#ffe9a8;outline:3px solid var(--gold);outline-offset:-1px;box-shadow:inset 0 2px 0 #fff8e0,inset 0 -3px 0 #e2b65a}
+@container (max-width:620px){
+  .quest .qt{display:none}
+  .plank small{display:none}
+  .mini{width:26%;top:15%}
+}
+@container (max-width:440px){ .quest{display:none} .mini .mt{display:none} }
+
+/* ---- notes ---- */
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}
+.note{background:var(--panel);border:2px solid var(--line);padding:14px 16px;min-width:0}
+.note h2{font-family:var(--f-display);font-weight:500;font-size:17px;margin:0 0 6px;color:var(--gold)}
+.note ul{margin:0;padding-left:1.1em;color:var(--ink)}
+.note li{margin:2px 0}
+.note li::marker{color:var(--wood-l)}
+.next{background:var(--paper);color:var(--paper-ink);border:2px solid var(--outline);box-shadow:inset 0 -3px 0 var(--paper-d);padding:14px 18px}
+.next h2{font-family:var(--f-display);font-weight:600;font-size:18px;margin:0 0 4px}
+.next ol{margin:0;padding-left:1.3em}
+.next code{font-family:var(--f-pixel);background:#e7cf9b;padding:0 .3em}
+@media (prefers-reduced-motion:reduce){.gbtn:active{transform:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Mockup · ข้อ 1</div>
+      <h1>My World โฉมใหม่แบบ 16-bit</h1>
+      <p class="lede">ฉากตัวอย่างวาดสดด้วย Canvas ทีละพิกเซล ศิลป์ 16 px ขยาย 3 เท่า (≈48×48) มีเส้นขอบเข้ม 1 พิกเซล แสงเงาอบอุ่น และไม่มีภาพเบลอ ลองสลับช่วงเวลาหรือเดินตัว Viewer ดูได้</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="ช่วงเวลา">
+        <button id="tDay" aria-pressed="false">กลางวัน</button>
+        <button id="tEve" aria-pressed="true">เย็น</button>
+        <button id="tNight" aria-pressed="false">ค่ำ</button>
+      </div>
+      <button class="tog" id="tCam" aria-pressed="false">มุมกล้องจริง</button>
+      <button class="tog" id="tGrid" aria-pressed="false">ตาราง</button>
+    </div>
+  </header>
+
+  <div class="frame">
+    <div class="game" id="game">
+      <canvas id="view" aria-label="ฉากตัวอย่างเกม My World แบบพิกเซลอาร์ต"></canvas>
+
+      <div class="hud top">
+        <div class="plank leather"><canvas class="ico" data-ico="coin"></canvas><b>1,250</b></div>
+        <div class="plank"><canvas class="ico" data-ico="sun" id="timeIco"></canvas><b id="clock">17:40</b><small>วันที่ 3</small></div>
+        <div class="quest"><canvas class="ico" data-ico="scroll"></canvas><span class="qt">ภารกิจ: เก็บแครอทส่งป้าแก้ว</span><span class="bar"><i></i></span><span class="num">3/5</span></div>
+        <div class="games">
+          <button class="gbtn">RPS</button><button class="gbtn">XO</button><button class="gbtn">UNO</button><button class="gbtn">GO!</button>
+        </div>
+      </div>
+
+      <div class="hud mini">
+        <div class="mt">แผนที่หมู่บ้าน <span id="mpos">19,12</span></div>
+        <canvas id="minimap" width="80" height="48"></canvas>
+      </div>
+
+      <div class="hud hotwrap">
+        <div class="hname" id="hname">อีเต้อ</div>
+        <div class="hotbar" id="hotbar"></div>
+      </div>
+    </div>
+  </div>
+  <p class="hint">เดิน: ลูกศร / WASD หรือแตะที่ฉาก · เลือกช่องเครื่องมือ: ปุ่ม 1–6 หรือแตะช่อง · ฉากย่อให้เห็นทุกร้านในจอเดียว กด “มุมกล้องจริง” เพื่อดูระยะ 22×14 ช่องแบบในเกม</p>
+
+  <section class="notes">
+    <div class="note">
+      <h2>สภาพแวดล้อม</h2>
+      <ul>
+        <li>หญ้า 4 เฉดผสมด้วย dither มีใบหญ้า กอหญ้า และดอกไม้ป่าเล็กๆ</li>
+        <li>ทางดินมีเม็ดทราย ก้อนกรวด ขอบกลืนกับหญ้าแบบไม่เป็นเหลี่ยม</li>
+        <li>ลานหินกรวด พื้นไม้ระเบียง ดินแปลงผักเป็นร่อง บ่อน้ำมีคลื่นแสงและฟองริมตลิ่ง</li>
+        <li>กองไฟกะพริบมีประกายไฟ แสงตะเกียงและหน้าต่างสว่างตอนค่ำ เงาเมฆลอยผ่าน</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h2>ตัวละคร</h2>
+      <ul>
+        <li>สัดส่วน chibi หัวโต ตาเงา แก้มชมพู เส้นขอบเข้ม 1 px รอบตัว</li>
+        <li>แต่ละคนต่างกันที่ทรงผม หมวก และเสื้อผ้า ไม่ใช่แค่สี</li>
+        <li>ป้าแก้ว (มวยผม ผ้ากันเปื้อน) · น้องมิ้นท์ (ผมแกละสีมิ้นท์) · ลุงสมชาย (หมวกปีกกว้าง หนวด) · Viewer (หมวกแก๊ป)</li>
+        <li>ป้ายชื่อเป็นกล่องกระดาษตัวอักษรพิกเซล</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h2>UI</h2>
+      <ul>
+        <li>แถบบนเป็นไม้และหนัง: เหรียญ เวลา ภารกิจ ปุ่มมินิเกม RPS XO UNO GO!</li>
+        <li>มินิแมพกรอบกระดาษมุมขวาบน จุดผู้เล่นกะพริบ</li>
+        <li>ฮอตบาร์ไม้ ช่องกระดาษ ไอคอนพิกเซลวาดเอง ตัวเลขจำนวนของ ช่องที่ของหมดเป็นสีเทา</li>
+        <li>ขอบแข็ง ไม่มีมุมโค้ง เงาเป็นขั้น ไม่ใช้พื้นเรียบแบบแอปสมัยใหม่</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="next">
+    <h2>ถ้าจะย้ายไปทำในเกมจริง (ข้อ 2)</h2>
+    <ol>
+      <li>ช่องในเกมคือ 32 px แต่ศิลป์ชุดนี้วาดที่ 16 px ต่อช่อง ในเกมให้วาดลง buffer 16 px แล้วขยาย 2 เท่าแบบ <code>imageSmoothingEnabled = false</code></li>
+      <li>สไปรต์ทุกชิ้นสร้างครั้งเดียวแล้วเก็บแคช (ตัวละครสร้างตามชุดที่ผู้เล่นสวม) ส่วนที่ขยับมีแค่น้ำ ไฟ นีออน และตัวละคร</li>
+      <li>ต้องแก้ STYLE_GUIDE ข้อ 3 ที่ห้ามเส้นขอบและเท็กซ์เจอร์ ให้เป็นกฎใหม่: ขอบ 1 px สี <code>#2a1b14</code> และแสงจากซ้ายบน</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+const T = 16, W = 40, H = 24, PW = W * T, PH = H * T;
+const OUT = '#2a1b14';
+
+// ---------- utils ----------
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hash(x, y, s = 0) { let h = (x * 374761393 + y * 668265263 + s * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function vnoise(x, y, sc, s) {
+  const fx = x / sc, fy = y / sc, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+  const a = hash(ix, iy, s), b = hash(ix + 1, iy, s), c = hash(ix, iy + 1, s), d = hash(ix + 1, iy + 1, s);
+  const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + .5) / 16);
+const dith = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
+const hex = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+function cv(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function r(x, c, X, Y, w, h) { x.fillStyle = c; x.fillRect(X, Y, w, h); }
+function disc(x, cx, cy, rad, c) { x.fillStyle = c; for (let dy = -rad; dy <= rad; dy++) { const w = Math.floor(Math.sqrt(rad * rad - dy * dy) + .5); x.fillRect(cx - w, cy + dy, w * 2 + 1, 1); } }
+function ell(x, cx, cy, rx, ry, c) { x.fillStyle = c; for (let dy = -ry; dy <= ry; dy++) { const w = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))) + .5); x.fillRect(cx - w, cy + dy, w * 2 + 1, 1); } }
+function addOutline(c, col = OUT) {
+  const x = c.getContext('2d'), w = c.width, h = c.height, d = x.getImageData(0, 0, w, h), a = d.data;
+  const o = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) o[i] = a[i * 4 + 3] > 90 ? 1 : 0;
+  const [R, G, B] = hex(col);
+  for (let y = 0; y < h; y++) for (let x2 = 0; x2 < w; x2++) {
+    const i = y * w + x2; if (o[i]) { a[i * 4 + 3] = 255; continue; }
+    if ((x2 > 0 && o[i - 1]) || (x2 < w - 1 && o[i + 1]) || (y > 0 && o[i - w]) || (y < h - 1 && o[i + w])) { a[i * 4] = R; a[i * 4 + 1] = G; a[i * 4 + 2] = B; a[i * 4 + 3] = 255; }
+    else a[i * 4 + 3] = 0;
+  }
+  x.putImageData(d, 0, 0);
+}
+// sprite with a 1px margin for the outline; draw at (x-1, y-1)
+function mk(w, h, fn, outline = true) {
+  const c = cv(w + 2, h + 2), x = c.getContext('2d'); x.translate(1, 1); fn(x, w, h); x.setTransform(1, 0, 0, 1, 0, 0);
+  if (outline) addOutline(c); return c;
+}
+
+// ---------- map ----------
+const G = 0, P = 1, WA = 2, SA = 3, SO = 4, ST = 5, DK = 6;
+const map = Array.from({ length: H }, () => new Array(W).fill(G));
+const fill = (x0, y0, x1, y1, t) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (y >= 0 && y < H && x >= 0 && x < W) map[y][x] = t; };
+fill(0, 11, 39, 12, P);        // ถนนหลัก
+fill(19, 0, 20, 10, P);        // ถนนขึ้นเหนือ
+fill(10, 2, 17, 9, ST);        // ลานตู้เกม
+fill(12, 10, 15, 10, ST);
+fill(1, 8, 8, 10, DK);         // ระเบียงร้านอาหาร
+fill(22, 8, 29, 10, P);        // ลานหน้าร้านยานพาหนะ
+fill(0, 18, 31, 19, P);        // ทางเดินทิศใต้
+fill(7, 13, 8, 17, P);
+fill(21, 13, 21, 17, P);
+fill(18, 14, 20, 17, P);       // ลานกองไฟ
+fill(10, 15, 16, 20, SO);      // แปลงผัก
+const POND = { cx: 584, cy: 322, rx: 90, ry: 78 };
+function pondE(px, py) { const dx = (px - POND.cx) / POND.rx, dy = (py - POND.cy) / POND.ry; return dx * dx + dy * dy + (vnoise(px, py, 14, 21) - .5) * .22; }
+const tileAt = (tx, ty) => (tx < 0 || ty < 0 || tx >= W || ty >= H) ? G : map[ty][tx];
+function typeAt(px, py) {
+  const e = pondE(px, py);
+  if (e < 1) return WA;
+  if (e < 1.2) return SA;
+  const t0 = tileAt(px >> 4, py >> 4);
+  if (t0 === ST || t0 === DK || t0 === SO) return t0;
+  const jx = (vnoise(px, py, 7, 11) - .5) * 8, jy = (vnoise(px, py, 7, 12) - .5) * 8;
+  const t = tileAt(Math.floor((px + jx) / T), Math.floor((py + jy) / T));
+  return (t === G || t === P) ? t : t0;
+}
+
+// ---------- ground (static, rendered once) ----------
+const GRASS = ['#558f3a', '#64a344', '#73b44d', '#84c458', '#9ad46a'].map(hex);
+const PATH = ['#b4854f', '#c69a62', '#d4ad76'].map(hex);
+function renderGround() {
+  const c = cv(PW, PH), x = c.getContext('2d'), img = x.createImageData(PW, PH), a = img.data;
+  const types = new Uint8Array(PW * PH);
+  for (let py = 0; py < PH; py++) for (let px = 0; px < PW; px++) types[py * PW + px] = typeAt(px, py);
+  const T_ = (px, py) => (px < 0 || py < 0 || px >= PW || py >= PH) ? G : types[py * PW + px];
+  const set = (px, py, col) => { if (px < 0 || py < 0 || px >= PW || py >= PH) return; const i = (py * PW + px) * 4; a[i] = col[0]; a[i + 1] = col[1]; a[i + 2] = col[2]; a[i + 3] = 255; };
+  for (let py = 0; py < PH; py++) for (let px = 0; px < PW; px++) {
+    const t = types[py * PW + px], h = hash(px, py, 3); let col;
+    if (t === G) {
+      const v = vnoise(px, py, 56, 1) * .65 + vnoise(px, py, 14, 2) * .35;
+      col = GRASS[clamp(Math.floor(v * 4.2 + dith(px, py) - 1.1), 0, 3)];
+    } else if (t === P) {
+      const v = vnoise(px, py, 11, 4);
+      col = PATH[clamp(Math.floor(v * 3 + dith(px, py) - .5), 0, 2)];
+      if (h < .07) col = hex('#e6c795'); else if (h > .95) col = hex('#9f7344');
+      // ขอบทางเข้มลงเล็กน้อย
+      if (T_(px, py - 2) === G || T_(px, py + 2) === G || T_(px - 2, py) === G || T_(px + 2, py) === G) col = hex(h < .5 ? '#a9794a' : '#b4844f');
+    } else if (t === ST) {
+      const by = Math.floor(py / 6), off = (by % 2) * 4, ix = (px + off) % 8, iy = py % 6, bh = hash(Math.floor((px + off) / 8), by, 9);
+      col = hex(bh < .33 ? '#a99d8c' : bh < .66 ? '#b6aa98' : '#9c907f');
+      if (ix === 0 || iy === 0) col = hex('#cdc1ab');
+      if (ix === 6 || iy === 4) col = hex('#8e8373');
+      if (ix === 7 || iy === 5) col = hex(h < .12 ? '#6b8f45' : '#766b5e');
+    } else if (t === DK) {
+      const pid = Math.floor(py / 5), ix = (px + pid * 11) % 26, iy = py % 5;
+      col = hex(hash(pid, Math.floor((px + pid * 11) / 26), 5) < .5 ? '#a8713c' : '#b67d45');
+      if (iy === 0) col = hex('#c9925a');
+      if (iy === 4 || ix === 0) col = hex('#6e4524');
+      if (ix === 2 && iy === 2) col = hex('#5a3a20');
+    } else if (t === SO) {
+      const iy = py % 8, wet = vnoise(px, py, 20, 7) > .55;
+      col = hex(iy < 2 ? (wet ? '#4a2e1a' : '#5b3a22') : iy < 6 ? (wet ? '#634024' : '#7a4f2e') : (wet ? '#56371f' : '#6a4428'));
+      if (iy >= 2 && iy < 6 && h < .1) col = hex('#8f6039');
+      if ((px >> 4) === 10 && px % 16 === 0 || (px >> 4) === 16 && px % 16 === 15 || (py >> 4) === 15 && py % 16 === 0 || (py >> 4) === 20 && py % 16 === 15) col = hex('#45291a');
+    } else if (t === WA) {
+      const e = pondE(px, py), d = dith(px, py) * .12;
+      col = hex(e + d < .42 ? '#2b659d' : e + d < .72 ? '#3778b6' : e + d < .9 ? '#4790cb' : '#62a8dc');
+    } else {
+      const e = pondE(px, py);
+      col = hex(e < 1.06 ? '#c5a46a' : (vnoise(px, py, 6, 8) + dith(px, py) * .3 > .75 ? '#d6b97c' : '#e2c890'));
+      if (h < .04) col = hex('#f0dcab');
+    }
+    set(px, py, col);
+  }
+  // ใบหญ้า กอหญ้า และดอกไม้ป่า
+  for (let py = 1; py < PH - 1; py++) for (let px = 0; px < PW; px++) {
+    if (types[py * PW + px] !== G) continue;
+    const h = hash(px, py, 13);
+    if (h < .03) { set(px, py, GRASS[4]); set(px, py + 1, GRASS[0]); }
+  }
+  const R = rng(42);
+  for (let i = 0; i < 520; i++) { // กอหญ้า
+    const px = Math.floor(R() * PW), py = Math.floor(R() * PH);
+    if (T_(px, py) !== G || T_(px - 3, py) !== G || T_(px + 3, py) !== G) continue;
+    const dk = GRASS[0], lt = GRASS[3];
+    set(px, py, dk); set(px, py - 1, lt); set(px, py - 2, lt);
+    set(px - 1, py, dk); set(px - 2, py - 1, lt);
+    set(px + 1, py, dk); set(px + 2, py - 1, lt);
+  }
+  const FL = ['#fff6e0', '#ffc9de', '#ffe37a', '#c9b6ff', '#ff9db0', '#9fd4ff'].map(hex);
+  for (let i = 0; i < 260; i++) { // ดอกไม้
+    const px = 2 + Math.floor(R() * (PW - 4)), py = 2 + Math.floor(R() * (PH - 4));
+    let ok = true; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (T_(px + dx, py + dy) !== G) ok = false;
+    if (!ok) continue;
+    const pc = FL[Math.floor(R() * FL.length)], cc = hex(R() < .5 ? '#ffcf3d' : '#e8743f');
+    set(px, py + 2, GRASS[0]); set(px, py + 1, GRASS[1]);
+    set(px - 1, py, pc); set(px + 1, py, pc); set(px, py - 1, pc); set(px, py + 1, pc); set(px, py, cc);
+    if (R() < .4) { set(px + 3, py + 1, pc); set(px + 3, py + 2, GRASS[0]); }
+  }
+  for (let i = 0; i < 70; i++) { // กรวดบนทาง
+    const px = Math.floor(R() * PW), py = Math.floor(R() * PH);
+    if (T_(px, py) !== P || T_(px + 1, py + 1) !== P) continue;
+    set(px, py, hex('#d9cbb6')); set(px + 1, py, hex('#9c8a78')); set(px, py + 1, hex('#9c8a78')); set(px + 1, py + 1, hex('#6e5f52'));
+  }
+  x.putImageData(img, 0, 0);
+  // ใบบัว
+  for (const [lx, ly, fl] of [[548, 338, 1], [612, 300, 0], [570, 362, 0], [620, 352, 1]]) {
+    ell(x, lx, ly, 6, 4, '#3f8233'); ell(x, lx, ly - 1, 5, 3, '#5aa845'); r(x, '#3f8233', lx, ly - 3, 1, 4); r(x, '#4790cb', lx + 1, ly - 4, 2, 3);
+    if (fl) { r(x, '#ffd3e6', lx - 2, ly - 3, 3, 2); r(x, '#ff9cc4', lx - 1, ly - 4, 1, 1); r(x, '#ffe37a', lx - 1, ly - 3, 1, 1); }
+  }
+  return c;
+}
+
+// ---------- reusable art ----------
+function tree(seed, kind = 0) {
+  return mk(46, 56, (x) => {
+    const R = rng(seed);
+    r(x, '#5a371e', 19, 34, 9, 18); r(x, '#7d4f2a', 20, 34, 5, 18); r(x, '#9c6636', 21, 36, 1, 12);
+    r(x, '#5a371e', 15, 49, 17, 4); r(x, '#7d4f2a', 16, 49, 5, 2); r(x, '#7d4f2a', 27, 50, 3, 1);
+    const blobs = kind === 1
+      ? [[23, 18, 13], [14, 24, 9], [32, 24, 9], [23, 30, 10]]
+      : [[23, 23, 15], [12, 27, 10], [34, 27, 10], [23, 12, 12], [14, 17, 9], [32, 17, 9]];
+    const pal = kind === 2 ? ['#2f6b3a', '#3f8a46', '#56a653', '#7cc76a'] : ['#3a7430', '#4f913b', '#68ad47', '#8ccc5e'];
+    for (const [bx, by, rd] of blobs) disc(x, bx, by, rd, pal[0]);
+    for (const [bx, by, rd] of blobs) disc(x, bx - 1, by - 2, rd - 2, pal[1]);
+    for (const [bx, by, rd] of blobs) disc(x, bx - 2, by - 4, Math.max(1, rd - 6), pal[2]);
+    for (const [bx, by, rd] of blobs) disc(x, bx - 3, by - 6, Math.max(1, rd - 10), pal[3]);
+    const inside = (px, py) => blobs.some(([bx, by, rd]) => (px - bx) ** 2 + (py - by) ** 2 < (rd - 1) ** 2);
+    for (let i = 0; i < 130; i++) { // ลายใบไม้
+      const px = Math.floor(R() * 46), py = Math.floor(R() * 44);
+      if (!inside(px, py)) continue;
+      r(x, py > 26 ? pal[0] : pal[1], px, py, 2, 1); r(x, pal[py > 20 ? 1 : 3], px, py - 1, 1, 1);
+    }
+    if (kind === 1) for (let i = 0; i < 9; i++) { // ผลส้ม
+      const px = 8 + Math.floor(R() * 30), py = 10 + Math.floor(R() * 26); if (!inside(px, py)) continue;
+      r(x, '#e8862a', px, py, 3, 3); r(x, '#ffc06a', px, py, 1, 1); r(x, '#b85f1a', px + 2, py + 2, 1, 1);
+    }
+  });
+}
+function bush(seed, berry) {
+  return mk(22, 14, (x) => {
+    disc(x, 7, 8, 6, '#3a7430'); disc(x, 15, 8, 6, '#3a7430'); disc(x, 11, 6, 6, '#3a7430');
+    disc(x, 7, 6, 4, '#4f913b'); disc(x, 15, 6, 4, '#4f913b'); disc(x, 11, 4, 4, '#68ad47');
+    r(x, '#8ccc5e', 9, 2, 3, 1); r(x, '#8ccc5e', 5, 4, 2, 1);
+    if (berry) { const R = rng(seed); for (let i = 0; i < 6; i++) { const px = 3 + Math.floor(R() * 16), py = 3 + Math.floor(R() * 8); r(x, berry, px, py, 2, 2); r(x, '#fff', px, py, 1, 1); } }
+  });
+}
+function win(x, X, Y, w, h, box) {
+  r(x, '#5a371e', X - 1, Y - 1, w + 2, h + 2);
+  r(x, '#8fc6e0', X, Y, w, h); r(x, '#5d93b5', X, Y + h - 3, w, 3);
+  r(x, '#e4f4ff', X + 1, Y + 1, 2, 1); r(x, '#e4f4ff', X + 1, Y + 2, 1, 1); r(x, '#c8e6f5', X + w - 3, Y + 3, 1, 2);
+  r(x, '#7d4f2a', X + (w >> 1), Y, 1, h); r(x, '#7d4f2a', X, Y + (h >> 1), w, 1);
+  if (box) {
+    r(x, '#7d4f2a', X - 2, Y + h + 1, w + 4, 3); r(x, '#5a371e', X - 2, Y + h + 3, w + 4, 1);
+    for (let i = 0; i < w + 2; i += 3) { r(x, '#4f913b', X - 1 + i, Y + h, 2, 1); r(x, box, X - 1 + i + (i % 2), Y + h - 1, 1, 1); }
+  }
+}
+function door(x, X, Y, w, h, c) {
+  r(x, '#4a2e1b', X - 1, Y - 1, w + 2, h + 1);
+  r(x, c[1], X, Y, w, h); for (let i = 2; i < w; i += 3) r(x, c[0], X + i, Y, 1, h);
+  r(x, c[2], X, Y, w, 1); r(x, '#f2c14e', X + w - 3, Y + (h >> 1), 1, 2);
+  r(x, '#8e8373', X - 2, Y + h, w + 4, 2); r(x, '#b6aa98', X - 2, Y + h, w + 4, 1);
+}
+// อาคาร: หลังคากระเบื้องแบบเกล็ด ผนังไม้ฝา ฐานหิน
+function building(o, extra) {
+  const SW = o.w + 8;
+  return mk(SW, o.h, (x) => {
+    const wx = 4, wy = o.roofH - 2, ww = o.w, wh = o.h - o.roofH + 2;
+    r(x, o.wall[1], wx, wy, ww, wh);
+    for (let yy = wy + 3; yy < o.h; yy += 4) r(x, o.wall[0], wx, yy, ww, 1);
+    for (let yy = wy, k = 0; yy < o.h; yy += 4, k++) for (let xx = wx + (k % 2 ? 7 : 15); xx < wx + ww; xx += 17) r(x, o.wall[0], xx, yy, 1, 3);
+    for (let yy = wy; yy < o.h; yy += 4) r(x, o.wall[2], wx, yy, ww, 1);
+    r(x, o.wall[0], wx + ww - 3, wy, 3, wh);
+    // ฐานหิน
+    r(x, '#8e8373', wx - 1, o.h - 5, ww + 2, 5);
+    for (let xx = wx - 1, k = 0; xx < wx + ww; xx += 7, k++) { r(x, '#b6aa98', xx + 1, o.h - 5, 5, 2); r(x, '#6f6458', xx, o.h - 5, 1, 5); }
+    // หลังคา
+    const rh = o.roofH;
+    r(x, o.roof[0], 0, 0, SW, rh);
+    for (let yy = 2, k = 0; yy < rh - 2; yy += 4, k++) {
+      r(x, k < 2 ? o.roof[2] : o.roof[1], 1, yy, SW - 2, 3);
+      for (let xx = (k % 2) * 3 + 1; xx < SW - 1; xx += 6) { r(x, o.roof[0], xx, yy + 1, 1, 2); r(x, o.roof[3] || o.roof[2], xx + 1, yy, 2, 1); }
+    }
+    r(x, o.roof[0], 0, 0, SW, 2); r(x, o.roof[3] || o.roof[2], 3, 0, SW - 6, 1);
+    r(x, o.roof[0], 0, rh - 3, SW, 3); r(x, o.roof[1], 1, rh - 3, SW - 2, 1);
+    r(x, 'rgba(30,15,5,.35)', wx, rh, ww, 3);
+    if (extra) extra(x, wx, wy, ww, wh);
+  });
+}
+
+// ---------- characters ----------
+// ตัวละคร chibi 20×26: หัวใหญ่ ตาเงา แก้มชมพู ทรงผม/หมวก/เสื้อผ้าแยกตามคน
+function charSprite(o, step) {
+  return mk(20, 27, (x) => {
+    const S = o.skin || ['#e8b48a', '#f8d2ae', '#fff0dc'];
+    // ขา + รองเท้า
+    const lo = step === 1 ? -1 : step === 2 ? 1 : 0;
+    r(x, o.pants[1], 6, 19, 8, 3); r(x, o.pants[0], 12, 19, 2, 3);
+    r(x, o.pants[1], 6, 22, 3, 2 + Math.max(0, -lo)); r(x, o.pants[1], 11, 22, 3, 2 + Math.max(0, lo));
+    r(x, o.shoes, 6, 24 + Math.max(0, -lo), 3, 2); r(x, o.shoes, 11, 24 + Math.max(0, lo), 3, 2);
+    if (o.skirt) { r(x, o.skirt[1], 5, 19, 10, 4); r(x, o.skirt[0], 5, 22, 10, 1); r(x, o.skirt[2], 6, 19, 3, 1); }
+    // ลำตัว
+    r(x, o.shirt[1], 5, 14, 10, 6); r(x, o.shirt[0], 12, 14, 3, 6); r(x, o.shirt[2], 6, 14, 5, 1);
+    if (o.apron) { r(x, '#f6efe2', 7, 15, 6, 6); r(x, '#d8cdb9', 11, 15, 2, 6); r(x, '#e05a4a', 8, 17, 3, 1); }
+    if (o.vest) { r(x, o.vest, 5, 14, 2, 6); r(x, o.vest, 13, 14, 2, 6); }
+    if (o.strap) { r(x, o.strap, 7, 14, 1, 6); }
+    // แขน
+    const ao = step ? 1 : 0;
+    r(x, o.shirt[1], 3, 15, 2, 4 - ao); r(x, S[1], 3, 19 - ao, 2, 2);
+    r(x, o.shirt[0], 15, 15, 2, 3 + ao); r(x, S[0], 15, 18 + ao, 2, 2);
+    // หัว
+    r(x, S[1], 5, 3, 10, 1); r(x, S[1], 4, 4, 12, 8); r(x, S[1], 5, 12, 10, 1); r(x, S[0], 7, 13, 6, 1);
+    r(x, S[0], 14, 6, 2, 6); r(x, S[0], 6, 12, 8, 1); r(x, S[2], 5, 5, 2, 1);
+    // ตา
+    const ec = o.eye || '#3a2418';
+    r(x, ec, 6, 8, 2, 3); r(x, ec, 12, 8, 2, 3);
+    r(x, '#ffffff', 6, 8, 1, 1); r(x, '#ffffff', 12, 8, 1, 1);
+    r(x, o.iris || '#7a4a2a', 7, 10, 1, 1); r(x, o.iris || '#7a4a2a', 13, 10, 1, 1);
+    r(x, '#f2948f', 4, 11, 2, 1); r(x, '#f2948f', 14, 11, 2, 1);
+    r(x, '#a8453a', 9, 11, 2, 1);
+    if (o.mustache) { r(x, o.hair[0], 7, 11, 6, 1); r(x, o.hair[0], 6, 12, 2, 1); r(x, o.hair[0], 12, 12, 2, 1); r(x, '#a8453a', 9, 12, 2, 1); }
+    o.top(x);
+  });
+}
+const HAIR = {
+  short(h) { return (x) => { r(x, h[1], 4, 1, 12, 4); r(x, h[1], 3, 3, 14, 3); r(x, h[1], 3, 6, 2, 5); r(x, h[0], 15, 6, 2, 5); r(x, h[1], 5, 6, 3, 1); r(x, h[1], 9, 6, 5, 1); r(x, h[0], 13, 3, 3, 3); r(x, h[2], 6, 2, 4, 1); r(x, h[2], 5, 3, 2, 1); }; },
+};
+const CHARS = {
+  viewer: { name: 'Viewer', me: true, shirt: ['#2d6fa8', '#3d8bd0', '#7fbcef'], pants: ['#3a3a52', '#4d4d6b'], shoes: '#5a371e', hair: ['#4a2a16', '#6b3d1f', '#9a5e33'], iris: '#2d6fa8',
+    top(x) { HAIR.short(this.hair)(x);
+      // หมวกแก๊ปสีแดง
+      r(x, '#a8302a', 4, 0, 12, 4); r(x, '#d9473c', 5, 0, 9, 3); r(x, '#ff8a73', 6, 0, 4, 1); r(x, '#f6e7c8', 9, 1, 2, 2);
+      r(x, '#a8302a', 2, 4, 12, 2); r(x, '#7d221d', 2, 5, 12, 1); } },
+  kaew: { name: 'ป้าแก้ว', shirt: ['#a8552f', '#d07a3a', '#f2a865'], pants: ['#4a3a5a', '#5f4b73'], shoes: '#3a2418', hair: ['#3f3a3f', '#5f5a62', '#9a94a0'], apron: true, eye: '#2a1b14', iris: '#5a3a20',
+    top(x) { const h = this.hair; HAIR.short(h)(x);
+      disc(x, 10, -1, 3, h[1]); r(x, h[2], 9, -3, 2, 1); r(x, '#e05a4a', 7, 1, 6, 1); // มวยผม + ผ้าคาด
+      r(x, h[1], 3, 6, 2, 7); } },
+  mint: { name: 'น้องมิ้นท์', shirt: ['#d8628f', '#f28ab0', '#ffc2d8'], pants: ['#d8628f', '#f28ab0'], skirt: ['#b84a76', '#e8749f', '#ffb3cf'], shoes: '#7a3a5a', hair: ['#2f9a86', '#47c2a8', '#9df0d8'], iris: '#2f9a86',
+    top(x) { const h = this.hair; HAIR.short(h)(x);
+      // ผมแกละสองข้าง + กิ๊บ
+      r(x, h[1], 0, 5, 3, 7); r(x, h[0], 0, 10, 3, 3); r(x, h[2], 1, 5, 1, 3); r(x, h[1], 17, 5, 3, 7); r(x, h[0], 17, 10, 3, 3);
+      r(x, '#ffd34d', 2, 4, 2, 2); r(x, '#ffd34d', 16, 4, 2, 2); r(x, '#ff6f9e', 11, 2, 3, 2); r(x, '#ffc2d8', 11, 2, 1, 1); } },
+  somchai: { name: 'ลุงสมชาย', shirt: ['#4f7a3a', '#6b9b4a', '#9cc874'], pants: ['#4a3a28', '#6b5236'], shoes: '#2a1b14', hair: ['#6b6460', '#8f8782', '#c2bab3'], mustache: true, strap: '#5a371e', iris: '#3a2418',
+    top(x) { HAIR.short(this.hair)(x);
+      // หมวกปีกกว้างสานจากไม้ไผ่
+      r(x, '#a8783a', 1, 4, 18, 2); r(x, '#7d5426', 1, 5, 18, 1); r(x, '#c9984f', 5, 0, 10, 4); r(x, '#e8c27a', 6, 0, 5, 1);
+      for (let i = 2; i < 18; i += 3) r(x, '#d9ae62', i, 4, 1, 1); r(x, '#8a3a2a', 5, 3, 10, 1); } },
+};
+for (const k in CHARS) { const o = CHARS[k]; o.f = [0, 1, 2].map(s => charSprite(o, s)); }
+
+// ---------- props ----------
+const SP = {};
+function buildSprites() {
+  SP.trees = [tree(3), tree(9, 1), tree(17, 2), tree(25), tree(31, 2), tree(44)];
+  SP.bush = bush(1); SP.bushB = bush(5, '#d9473c'); SP.bushF = bush(8, '#ffe37a');
+
+  // ร้านอาหาร (ส้ม) ผนังครีม
+  SP.food = building({ w: 96, h: 80, roofH: 34, roof: ['#8a3e18', '#c4642a', '#e08a3e', '#f5b06a'], wall: ['#cdb07c', '#efd9aa', '#fbeccb'] }, (x, wx, wy) => {
+    win(x, wx + 10, 52, 16, 13, '#ff6f6f'); win(x, wx + 70, 52, 16, 13, '#ffd34d');
+    door(x, wx + 40, 54, 16, 22, ['#6e4524', '#8f5a2e', '#b67d45']);
+    r(x, '#efe2c0', wx + 44, 60, 8, 5); r(x, '#c4642a', wx + 45, 61, 6, 1); r(x, '#c4642a', wx + 45, 63, 4, 1); // ป้ายเมนูบนประตู
+  });
+  SP.awning = mk(104, 14, (x) => { // กันสาดลายทาง
+    for (let i = 0; i < 104; i += 8) { r(x, '#c8423a', i, 0, 4, 11); r(x, '#f6e7c8', i + 4, 0, 4, 11); r(x, '#9e2f29', i, 9, 4, 2); r(x, '#d8c8a4', i + 4, 9, 4, 2); }
+    for (let i = 0; i < 104; i += 8) { r(x, '#c8423a', i + 1, 11, 2, 2); r(x, '#f6e7c8', i + 5, 11, 2, 2); }
+    r(x, '#ff7a6a', 0, 0, 104, 1);
+  });
+  SP.table = mk(26, 16, (x) => {
+    r(x, '#5a371e', 12, 8, 3, 7); r(x, '#5a371e', 8, 14, 11, 2);
+    ell(x, 13, 6, 12, 5, '#7d4f2a'); ell(x, 13, 5, 12, 4, '#b67d45'); r(x, '#d9a565', 6, 3, 8, 1);
+    // ชามก๋วยเตี๋ยว + ชามแกง
+    ell(x, 8, 4, 4, 2, '#f6efe2'); r(x, '#d9473c', 4, 4, 9, 1); r(x, '#e8b04a', 6, 3, 5, 1); r(x, '#6bb04a', 7, 3, 1, 1);
+    ell(x, 18, 5, 4, 2, '#f6efe2'); r(x, '#2e7bb5', 14, 5, 9, 1); r(x, '#c4642a', 16, 4, 5, 1); r(x, '#fff3cf', 17, 4, 1, 1);
+    r(x, '#e8d8b0', 11, 1, 1, 4); r(x, '#e8d8b0', 13, 1, 1, 4); // ตะเกียบ
+  });
+  SP.stool = mk(8, 6, (x) => { ell(x, 4, 2, 4, 2, '#8f5a2e'); r(x, '#b67d45', 2, 1, 4, 1); r(x, '#5a371e', 1, 3, 1, 3); r(x, '#5a371e', 6, 3, 1, 3); });
+  SP.post = mk(4, 44, (x) => { r(x, '#5a371e', 0, 0, 4, 44); r(x, '#8f5a2e', 1, 0, 2, 44); r(x, '#7d4f2a', 0, 0, 4, 2); });
+  SP.lantern = mk(6, 8, (x) => { r(x, '#3a2418', 2, 0, 2, 1); r(x, '#c8423a', 0, 1, 6, 6); r(x, '#ff7a5a', 1, 1, 2, 6); r(x, '#8e2a24', 0, 3, 6, 1); r(x, '#f2c14e', 2, 7, 2, 1); });
+  SP.chalk = mk(14, 18, (x) => { r(x, '#5a371e', 1, 0, 2, 18); r(x, '#5a371e', 11, 0, 2, 18); r(x, '#8f5a2e', 0, 1, 14, 12); r(x, '#2f3b33', 1, 2, 12, 10);
+    r(x, '#f6efe2', 3, 4, 5, 1); r(x, '#f6efe2', 3, 7, 7, 1); r(x, '#ffd34d', 3, 9, 4, 1); r(x, '#ff9db0', 9, 4, 2, 1); });
+  SP.pot = mk(10, 14, (x) => { r(x, '#a8552f', 1, 8, 8, 6); r(x, '#c9703f', 1, 8, 3, 6); r(x, '#7d3a1f', 0, 7, 10, 2); disc(x, 5, 4, 4, '#3f8233'); disc(x, 4, 3, 2, '#68ad47'); r(x, '#ff6f9e', 6, 1, 2, 2); });
+
+  // ร้านตกปลา (ฟ้า) ผนังไม้ซีด
+  SP.fish = building({ w: 96, h: 64, roofH: 28, roof: ['#1d4670', '#2e6fa6', '#4f94cf', '#86bfe8'], wall: ['#a49a82', '#c9bea0', '#e2d8bc'] }, (x, wx) => {
+    win(x, wx + 8, 36, 14, 11); door(x, wx + 40, 37, 16, 23, ['#3e5b6e', '#557a91', '#7fa3b8']);
+    // ห่วงชูชีพบนผนัง
+    disc(x, wx + 75, 42, 6, '#f6efe2'); r(x, '#d9473c', wx + 69, 41, 3, 3); r(x, '#d9473c', wx + 78, 41, 3, 3); r(x, '#d9473c', wx + 74, 36, 3, 3); r(x, '#d9473c', wx + 74, 45, 3, 3); disc(x, wx + 75, 42, 2, '#c9bea0');
+    // ราวปลาตาก
+    r(x, '#5a371e', wx + 2, 30, 34, 1);
+    for (let i = 0; i < 4; i++) { const fx = wx + 4 + i * 8, cl = i % 2 ? ['#d07a3a', '#f2a865'] : ['#7f97a8', '#c9d8e2'];
+      r(x, '#3a2418', fx + 2, 31, 1, 2); r(x, cl[0], fx + 1, 33, 3, 6); r(x, cl[1], fx + 1, 33, 1, 5); r(x, cl[0], fx, 39, 5, 2); r(x, '#2a1b14', fx + 2, 34, 1, 1); }
+    // แหตาข่าย
+    for (let yy = 50; yy < 58; yy += 2) for (let xx = wx + 62; xx < wx + 90; xx += 2) r(x, (xx + yy) % 4 ? '#8a7a5a' : '#c9bea0', xx, yy, 1, 1);
+  });
+  SP.rods = mk(16, 30, (x) => { for (let i = 0; i < 3; i++) { for (let k = 0; k < 28; k++) r(x, i === 1 ? '#c9984f' : '#8f5a2e', 2 + i * 5 + Math.floor(k / 9), 28 - k, 1, 1); r(x, '#9aa5ad', 2 + i * 5, 20, 3, 3); r(x, '#5f6b74', 3 + i * 5, 21, 1, 1); } });
+  SP.bucket = mk(12, 12, (x) => { r(x, '#6c7782', 1, 3, 10, 9); r(x, '#9aa5ad', 2, 3, 3, 9); r(x, '#4f5a63', 1, 6, 10, 1); ell(x, 6, 3, 5, 2, '#3778b6'); r(x, '#8cc8ec', 3, 2, 3, 1); r(x, '#4f5a63', 0, 0, 1, 3); r(x, '#4f5a63', 11, 0, 1, 3); r(x, '#4f5a63', 1, 0, 10, 1); });
+  SP.barrel = mk(14, 16, (x) => { r(x, '#7d4f2a', 1, 0, 12, 16); r(x, '#a8703f', 2, 0, 4, 16); r(x, '#5a371e', 0, 3, 14, 2); r(x, '#5a371e', 0, 11, 14, 2); r(x, '#9aa5ad', 0, 3, 14, 1); r(x, '#9aa5ad', 0, 11, 14, 1); ell(x, 7, 1, 6, 1, '#b67d45'); });
+  SP.crate = mk(14, 12, (x) => { r(x, '#a8703f', 0, 0, 14, 12); r(x, '#7d4f2a', 0, 0, 14, 2); r(x, '#7d4f2a', 0, 10, 14, 2); r(x, '#7d4f2a', 0, 0, 2, 12); r(x, '#7d4f2a', 12, 0, 2, 12); for (let i = 0; i < 10; i++) r(x, '#7d4f2a', 2 + i, 2 + i * .8 | 0, 1, 1); r(x, '#d9a565', 2, 2, 10, 1); });
+  SP.dock = mk(80, 18, (x) => {
+    for (let i = 0; i < 80; i += 6) { r(x, i % 12 ? '#a8713c' : '#b67d45', i, 0, 5, 12); r(x, '#c9925a', i, 0, 5, 1); r(x, '#6e4524', i + 5, 0, 1, 12); }
+    r(x, '#6e4524', 0, 11, 80, 1);
+    for (const px of [2, 38, 74]) { r(x, '#5a371e', px, 10, 4, 8); r(x, '#7d4f2a', px + 1, 10, 1, 8); }
+  });
+  SP.reeds = mk(14, 18, (x) => { for (const [px, hh] of [[2, 14], [6, 17], [10, 12]]) { r(x, '#4f913b', px, 18 - hh, 1, hh); r(x, '#6e4524', px - 1, 18 - hh, 3, 4); r(x, '#8f5a2e', px - 1, 18 - hh, 1, 3); } r(x, '#68ad47', 0, 12, 3, 1); r(x, '#68ad47', 11, 14, 3, 1); });
+  SP.rock = mk(12, 8, (x) => { ell(x, 6, 4, 6, 4, '#8e8373'); ell(x, 5, 3, 4, 2, '#b6aa98'); r(x, '#d8cdb9', 3, 2, 2, 1); r(x, '#6b8f45', 8, 6, 3, 1); });
+
+  // ร้านยานพาหนะ (น้ำเงินเหล็ก)
+  SP.vehicle = building({ w: 96, h: 80, roofH: 34, roof: ['#22466e', '#3466a0', '#5a8fca', '#93bde8'], wall: ['#b8b09c', '#ddd4bd', '#f1ead8'] }, (x, wx) => {
+    // ประตูม้วนเปิดครึ่ง
+    r(x, '#4a2e1b', wx + 8, 47, 50, 29); r(x, '#2a2420', wx + 9, 60, 48, 16);
+    for (let yy = 48; yy < 60; yy += 3) { r(x, '#9aa5ad', wx + 9, yy, 48, 2); r(x, '#c9d3dc', wx + 9, yy, 48, 1); }
+    r(x, '#6b5236', wx + 12, 66, 10, 2); r(x, '#9aa5ad', wx + 40, 64, 3, 12); disc(x, wx + 30, 70, 4, '#3a3a3a'); disc(x, wx + 30, 70, 2, '#9aa5ad'); // ของในร้าน
+    win(x, wx + 70, 52, 16, 13, '#7fbcef');
+    // ป้ายประแจ
+    r(x, '#5a371e', wx + 66, 40, 22, 7); r(x, '#f1ead8', wx + 67, 41, 20, 5); r(x, '#5f6b74', wx + 70, 43, 10, 1); r(x, '#5f6b74', wx + 79, 42, 2, 3); r(x, '#5f6b74', wx + 69, 42, 2, 3);
+  });
+  SP.bike = mk(30, 18, (x) => {
+    const wheel = (cx) => { disc(x, cx, 12, 5, '#2a2420'); disc(x, cx, 12, 4, '#9aa5ad'); disc(x, cx, 12, 3, 'rgba(0,0,0,0)'); x.clearRect(cx - 3, 9, 7, 7); disc(x, cx, 12, 3, '#2a2420'); x.fillStyle = '#c9d3dc'; x.fillRect(cx, 9, 1, 7); x.fillRect(cx - 3, 12, 7, 1); x.clearRect(cx - 2, 10, 2, 2); x.clearRect(cx + 1, 10, 2, 2); x.clearRect(cx - 2, 13, 2, 2); x.clearRect(cx + 1, 13, 2, 2); };
+    wheel(6); wheel(23);
+    for (let i = 0; i < 12; i++) r(x, '#d9473c', 7 + i, 7 + Math.floor(i * .3), 1, 2);
+    for (let i = 0; i < 5; i++) r(x, '#d9473c', 13 - i, 7 + i, 1, 1);
+    r(x, '#d9473c', 8, 7, 2, 6); r(x, '#d9473c', 20, 4, 2, 9); r(x, '#2a2420', 6, 4, 6, 2); r(x, '#5f6b74', 18, 2, 6, 2); r(x, '#e8a33d', 25, 6, 2, 2);
+    r(x, '#a8703f', 0, 6, 6, 3); r(x, '#7d4f2a', 0, 8, 6, 1); // ตะกร้าท้าย
+  });
+  SP.saddle = mk(22, 18, (x) => { // อานม้าบนขาตั้ง + เชือกจูง
+    r(x, '#7d4f2a', 2, 9, 2, 9); r(x, '#7d4f2a', 18, 9, 2, 9); r(x, '#a8703f', 0, 7, 22, 3);
+    r(x, '#6b3825', 3, 2, 16, 7); r(x, '#9a5636', 4, 2, 7, 3); r(x, '#45231a', 3, 7, 16, 2); r(x, '#6b3825', 2, 1, 4, 3); r(x, '#f2c14e', 10, 6, 2, 2);
+    r(x, '#c9984f', 8, 9, 1, 6); r(x, '#9aa5ad', 7, 15, 3, 2);
+  });
+  SP.tires = mk(16, 14, (x) => { for (let i = 0; i < 3; i++) { ell(x, 8, 11 - i * 4, 8, 3, '#2a2420'); ell(x, 8, 10 - i * 4, 7, 2, '#4a4440'); ell(x, 8, 10 - i * 4, 3, 1, '#1a1410'); } });
+  SP.helmet = mk(12, 8, (x) => { ell(x, 6, 5, 6, 5, '#e8a33d'); r(x, 'rgba(0,0,0,0)', 0, 6, 12, 2); x.clearRect(0, 6, 13, 3); r(x, '#ffd27a', 3, 1, 3, 1); r(x, '#2a2420', 0, 5, 12, 1); });
+
+  // ร้านเฟอร์นิเจอร์ (ม่วง) หน้าร้านกระจกเห็นของข้างใน
+  SP.furn = building({ w: 96, h: 64, roofH: 28, roof: ['#47285f', '#6c4492', '#9068b8', '#bfa0dc'], wall: ['#c7b3cf', '#e6d8ea', '#f6eef8'] }, (x, wx) => {
+    const X = wx + 6, Y = 33, Wd = 54, Hd = 24;
+    r(x, '#4a2e1b', X - 2, Y - 2, Wd + 4, Hd + 4); r(x, '#e9c58f', X, Y, Wd, Hd); r(x, '#d9ae72', X, Y + 15, Wd, Hd - 15);
+    for (let i = 0; i < Wd; i += 6) r(x, '#dcb87e', X + i, Y, 3, 15); // วอลเปเปอร์ลายทาง
+    // ชั้นวางหนังสือ
+    r(x, '#7d4f2a', X + 3, Y + 2, 14, 13); for (let i = 0; i < 3; i++) { r(x, '#5a371e', X + 3, Y + 6 + i * 4, 14, 1); }
+    ['#d9473c', '#2e7bb5', '#e8a33d', '#4f913b', '#9068b8'].forEach((c, i) => { r(x, c, X + 4 + i * 2, Y + 3, 2, 3); r(x, c, X + 5 + i * 2, Y + 7, 1, 3); });
+    disc(x, X + 13, Y + 12, 2, '#4f913b');
+    // อาร์มแชร์สีแดง
+    r(x, '#8e2a24', X + 22, Y + 9, 16, 13); r(x, '#c8423a', X + 23, Y + 10, 14, 6); r(x, '#e05a4a', X + 24, Y + 10, 5, 2); r(x, '#a8302a', X + 21, Y + 13, 4, 8); r(x, '#a8302a', X + 35, Y + 13, 4, 8); r(x, '#d9473c', X + 25, Y + 16, 10, 4);
+    // โคมไฟตั้งพื้น
+    r(x, '#5a371e', X + 45, Y + 8, 1, 14); r(x, '#5a371e', X + 43, Y + 21, 5, 1); r(x, '#f2c14e', X + 41, Y + 3, 9, 6); r(x, '#ffe7a0', X + 42, Y + 3, 4, 2); r(x, '#c9932c', X + 41, Y + 8, 9, 1);
+    // พรม
+    r(x, '#6c4492', X + 18, Y + 21, 26, 3); r(x, '#bfa0dc', X + 20, Y + 22, 22, 1);
+    // กระจกสะท้อนแสง
+    r(x, 'rgba(255,255,255,.45)', X + 2, Y + 1, 1, 6); r(x, 'rgba(255,255,255,.45)', X + 3, Y + 1, 1, 3); r(x, 'rgba(255,255,255,.3)', X + 30, Y + 1, 1, 4);
+    r(x, '#5a371e', X + Wd / 2 | 0, Y, 1, Hd);
+    door(x, wx + 70, 37, 16, 23, ['#47285f', '#6c4492', '#9068b8']);
+  });
+  SP.chair = mk(12, 16, (x) => { r(x, '#7d4f2a', 1, 0, 10, 8); r(x, '#a8703f', 2, 1, 8, 6); r(x, '#5a371e', 1, 3, 10, 1); r(x, '#9068b8', 0, 8, 12, 4); r(x, '#bfa0dc', 1, 8, 8, 1); r(x, '#5a371e', 1, 12, 2, 4); r(x, '#5a371e', 9, 12, 2, 4); });
+  SP.rug = mk(18, 10, (x) => { r(x, '#c8423a', 2, 0, 14, 10); r(x, '#f2c14e', 3, 1, 12, 1); r(x, '#f2c14e', 3, 8, 12, 1); for (let i = 3; i < 15; i += 3) r(x, '#2e7bb5', i, 4, 2, 2); ell(x, 2, 5, 2, 5, '#9e2f29'); r(x, '#e05a4a', 1, 2, 1, 6); });
+
+  // ตู้เกมอาร์เคด
+  SP.kiosk = {};
+  const KC = { POK: ['#ff5fa8', '#7a1f4e'], C4: ['#46e0ff', '#14506a'], BAC: ['#ffd23f', '#6a4a10'], '21': ['#6dff8f', '#1a5a2c'] };
+  for (const k in KC) {
+    SP.kiosk[k] = mk(28, 46, (x) => {
+      r(x, '#2f1d44', 1, 10, 26, 36); r(x, '#4a2f6a', 2, 11, 6, 35); r(x, '#22142f', 22, 11, 5, 35);
+      r(x, '#1a1024', 0, 0, 28, 11); r(x, KC[k][1], 1, 1, 26, 9); // ป้ายด้านบน
+      r(x, '#120a1a', 5, 14, 18, 13); // จอ
+      r(x, '#5d3d85', 2, 30, 24, 6); r(x, '#7a55a8', 2, 30, 24, 1); // แผงปุ่ม
+      r(x, '#d9473c', 6, 32, 3, 2); r(x, '#ffd23f', 11, 32, 3, 2); r(x, '#46e0ff', 16, 32, 3, 2); r(x, '#1a1024', 20, 31, 2, 4); r(x, '#e05a4a', 20, 30, 2, 2);
+      r(x, '#1a1024', 9, 39, 10, 3); r(x, '#f2c14e', 13, 40, 2, 1); // ช่องหยอดเหรียญ
+      r(x, KC[k][0], 1, 44, 26, 1);
+    });
+  }
+  SP.kc = KC;
+  SP.lamp = mk(8, 40, (x) => { r(x, '#2f2a2a', 3, 8, 2, 30); r(x, '#2f2a2a', 1, 37, 6, 3); r(x, '#4a4440', 0, 2, 8, 2); r(x, '#ffe7a0', 1, 4, 6, 5); r(x, '#fff8d8', 2, 4, 2, 2); r(x, '#4a4440', 0, 8, 8, 1); r(x, '#4a4440', 3, 0, 2, 2); });
+  SP.bench = mk(30, 12, (x) => { r(x, '#5a371e', 2, 6, 2, 6); r(x, '#5a371e', 26, 6, 2, 6); r(x, '#a8703f', 0, 0, 30, 3); r(x, '#c98b4a', 0, 0, 30, 1); r(x, '#8f5a2e', 0, 5, 30, 3); r(x, '#b67d45', 0, 5, 30, 1); });
+
+  // ฟาร์ม
+  SP.fenceH = mk(16, 12, (x) => { r(x, '#7a6a55', 0, 0, 4, 12); r(x, '#a8977c', 1, 0, 2, 11); r(x, '#5a4a3a', 0, 0, 4, 1); r(x, '#8f7e65', 0, 3, 16, 2); r(x, '#b4a387', 0, 3, 16, 1); r(x, '#8f7e65', 0, 7, 16, 2); r(x, '#b4a387', 0, 7, 16, 1); r(x, '#6b8f45', 1, 11, 3, 1); });
+  SP.fenceP = mk(4, 12, (x) => { r(x, '#7a6a55', 0, 0, 4, 12); r(x, '#a8977c', 1, 0, 2, 11); r(x, '#5a4a3a', 0, 0, 4, 1); });
+  SP.fenceV = mk(4, 16, (x) => { r(x, '#8f7e65', 1, 0, 2, 16); r(x, '#b4a387', 1, 0, 1, 16); });
+  SP.carrotCrop = mk(10, 9, (x) => { r(x, '#e8862a', 3, 6, 4, 3); r(x, '#ffb45a', 3, 6, 2, 1); for (const [px, hh] of [[2, 4], [4, 6], [6, 5], [8, 3]]) { r(x, '#3f8a2e', px, 7 - hh, 1, hh); r(x, '#7cc75a', px - 1, 7 - hh, 1, 1); } }, false);
+  SP.wheatCrop = mk(10, 14, (x) => { for (const px of [2, 5, 8]) { r(x, '#b8963a', px, 4, 1, 10); for (let k = 0; k < 4; k++) { r(x, '#e8c25a', px - 1, k * 2, 1, 2); r(x, '#f6dc8a', px + 1, k * 2 + 1, 1, 2); } r(x, '#f6dc8a', px, 0, 1, 1); } r(x, '#8fa83a', 1, 12, 9, 2); }, false);
+  SP.cabbage = mk(10, 8, (x) => { ell(x, 5, 4, 5, 4, '#4f913b'); ell(x, 5, 4, 3, 3, '#8ccc5e'); r(x, '#c4e89a', 4, 2, 2, 2); r(x, '#3a7430', 1, 6, 8, 1); });
+  SP.sprout = mk(6, 5, (x) => { r(x, '#3f8a2e', 2, 2, 1, 3); r(x, '#7cc75a', 0, 1, 2, 1); r(x, '#7cc75a', 3, 0, 2, 2); }, false);
+  SP.scarecrow = mk(24, 34, (x) => {
+    r(x, '#7d4f2a', 11, 12, 2, 22); r(x, '#7d4f2a', 1, 15, 22, 2);
+    r(x, '#4f7a9a', 6, 14, 12, 10); r(x, '#6b9bc0', 7, 14, 4, 10); r(x, '#d9473c', 9, 18, 3, 3); // เสื้อปะ
+    r(x, '#e8c25a', 0, 14, 3, 4); r(x, '#e8c25a', 21, 14, 3, 4); r(x, '#e8c25a', 9, 24, 6, 3);
+    disc(x, 12, 8, 5, '#e8d8b0'); r(x, '#2a1b14', 10, 7, 1, 2); r(x, '#2a1b14', 14, 7, 1, 2); r(x, '#a8453a', 10, 11, 5, 1);
+    r(x, '#a8783a', 3, 3, 18, 2); r(x, '#c9984f', 7, 0, 10, 4); r(x, '#e8c27a', 8, 0, 4, 1);
+  });
+  // พาเลทไม้ใส่ผลผลิต
+  const pallet = (x) => { r(x, '#8f5a2e', 0, 10, 22, 6); for (let i = 0; i < 22; i += 5) { r(x, '#b67d45', i, 10, 4, 2); r(x, '#5a371e', i + 4, 10, 1, 6); } r(x, '#5a371e', 0, 15, 22, 1); };
+  SP.palCarrot = mk(22, 16, (x) => { pallet(x);
+    for (let i = 0; i < 6; i++) { const px = 2 + i * 3, py = 5 + (i % 2) * 2; r(x, '#e8862a', px, py, 3, 5); r(x, '#ffb45a', px, py, 1, 4); r(x, '#b85f1a', px + 2, py + 3, 1, 2); r(x, '#4f913b', px, py - 2, 1, 2); r(x, '#7cc75a', px + 1, py - 3, 1, 3); } });
+  SP.palMelon = mk(22, 16, (x) => { pallet(x);
+    for (const [cx, cy] of [[6, 6], [16, 6], [11, 3]]) { ell(x, cx, cy, 5, 4, '#2f6b2a'); for (let k = -4; k <= 4; k += 2) r(x, '#6fb64a', cx + k, cy - 3 + Math.abs(k) / 3, 1, 6 - Math.abs(k)); r(x, '#a8e07a', cx - 2, cy - 2, 2, 1); } });
+  SP.palPump = mk(22, 16, (x) => { pallet(x);
+    for (const [cx, cy] of [[6, 6], [16, 6], [11, 3]]) { ell(x, cx, cy, 5, 4, '#d0661e'); r(x, '#ef8a32', cx - 3, cy - 3, 2, 7); r(x, '#ef8a32', cx + 1, cy - 3, 2, 7); r(x, '#a8481a', cx - 1, cy - 3, 1, 7); r(x, '#ffb45a', cx - 3, cy - 2, 1, 2); r(x, '#5a6a2a', cx, cy - 5, 2, 2); } });
+  SP.can = mk(14, 10, (x) => { r(x, '#5a8fca', 2, 2, 8, 8); r(x, '#93bde8', 3, 2, 2, 8); r(x, '#3466a0', 2, 7, 8, 1); r(x, '#5a8fca', 10, 4, 3, 1); r(x, '#5a8fca', 12, 2, 2, 2); r(x, '#3466a0', 4, 0, 4, 1); r(x, '#3466a0', 3, 0, 1, 2); r(x, '#3466a0', 8, 0, 1, 2); });
+
+  // กองไฟ
+  SP.ring = mk(26, 12, (x) => {
+    ell(x, 13, 6, 12, 5, '#3a2a20'); ell(x, 13, 6, 8, 3, '#1f1612');
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, sx = 13 + Math.cos(a) * 11 | 0, sy = 6 + Math.sin(a) * 5 | 0; r(x, '#8e8373', sx - 2, sy - 1, 4, 3); r(x, '#b6aa98', sx - 2, sy - 1, 2, 1); }
+    r(x, '#5a371e', 6, 5, 14, 3); r(x, '#7d4f2a', 6, 5, 14, 1); r(x, '#5a371e', 10, 3, 6, 6); r(x, '#a8703f', 11, 3, 1, 1);
+    r(x, '#ff7b1c', 9, 7, 8, 1); r(x, '#ffc23a', 11, 7, 3, 1);
+  });
+  SP.log = mk(22, 8, (x) => { r(x, '#6e4524', 3, 0, 17, 8); r(x, '#8f5a2e', 3, 1, 17, 2); r(x, '#5a371e', 3, 6, 17, 1); ell(x, 3, 4, 3, 4, '#c9984f'); ell(x, 3, 4, 1, 2, '#a8703f'); r(x, '#6b8f45', 10, 0, 3, 1); });
+  SP.signpost = mk(20, 22, (x) => { r(x, '#5a371e', 9, 4, 3, 18); r(x, '#a8703f', 0, 2, 18, 6); r(x, '#c98b4a', 0, 2, 18, 1); r(x, '#7d4f2a', 18, 3, 2, 4); r(x, '#5a371e', 3, 4, 10, 1); r(x, '#5a371e', 3, 6, 7, 1); });
+  SP.cat = [0, 1].map(f => mk(14, 9, (x) => { ell(x, 7, 6, 6, 3, '#e8a33d'); r(x, '#c9781f', 4, 5, 2, 3); r(x, '#c9781f', 9, 5, 2, 3); disc(x, 3, 4, 3, '#e8a33d'); r(x, '#e8a33d', 0, 0, 2, 3); r(x, '#e8a33d', 4, 0, 2, 3); r(x, '#ff9db0', 1, 1, 1, 1); r(x, '#2a1b14', 1, 4, 2, 1); r(x, '#2a1b14', 4, 4, 2, 1); r(x, '#e8a33d', 12, 4 + f, 2, 2); r(x, '#fff3cf', 2, 6, 3, 1); }));
+  SP.chick = [0, 1].map(f => mk(10, 10, (x) => { ell(x, 5, 5, 4, 3, '#f6efe2'); disc(x, 3, 3, 2, '#f6efe2'); r(x, '#d8cdb9', 6, 6, 3, 2); r(x, '#d9473c', 2, 0, 2, 1); r(x, '#d9473c', 0, 4, 1, 1); r(x, '#f2a03a', 0, 3, 1, 1); r(x, '#2a1b14', 2, 2, 1, 1); r(x, '#f2a03a', 3 + f, 8, 1, 2); r(x, '#f2a03a', 6 - f, 8, 1, 2); r(x, '#fff', 7, 2, 2, 3); }));
+}
+
+// ---------- scene layout ----------
+// entity: {spr, x, y (top-left in world px), base (sort y)}
+const ents = [], lights = [], windows = [], signs = [];
+function add(spr, x, y, base) { ents.push({ spr, x, y, base: base ?? (y + spr.height - 2) }); }
+function addB(spr, x, y, label, signY) { add(spr, x, y); signs.push({ text: label, x: x + spr.width / 2, y: y + (signY || 30) }); }
+function shadowOf(cx, cy, rx, ry) { shadows.push([cx, cy, rx, ry]); }
+const shadows = [];
+function layout() {
+  const tr = SP.trees;
+  // ต้นไม้ขอบบนและฝั่งขวา
+  [[-10, -22, 0], [26, -28, 3], [126, -26, 1], [234, -34, 5], [276, -30, 0], [350, -30, 2], [394, -34, 3], [440, -28, 1],
+   [478, -16, 4], [520, -26, 0], [566, -12, 2], [604, -24, 5], [494, 28, 3], [548, 40, 1], [600, 54, 0], [470, 80, 5], [522, 96, 2], [584, 112, 4], [610, 168, 1], [-20, 70, 4],
+   [-18, 200, 2], [338, 200, 4], [-24, 320, 1], [96, 326, 3], [470, 194, 0], [520, 186, 3]].forEach(([x, y, k]) => { add(tr[k], x, y); shadowOf(x + 24, y + 52, 15, 4); });
+  [[300, 60, 'bushB'], [342, 70, 'bush'], [144, 16, 'bushF'], [146, 110, 'bush'], [292, 112, 'bushF'], [8, 182 - 30, 'bushB'], [342, 140, 'bush'], [450, 226, 'bushF'], [130, 236, 'bush'], [286, 334, 'bushB'], [400, 330, 'bush'], [210, 352, 'bushF']].forEach(([x, y, k]) => { add(SP[k], x, y); shadowOf(x + 11, y + 13, 10, 3); });
+
+  // ร้านอาหาร
+  addB(SP.food, 27, 47, 'ร้านอาหาร', 26); shadowOf(80, 128, 52, 4);
+  add(SP.awning, 27, 82, 128);
+  for (const [tx, ty] of [[38, 140], [94, 140]]) { add(SP.table, tx, ty); shadowOf(tx + 14, ty + 15, 10, 3); add(SP.stool, tx - 6, ty + 10); add(SP.stool, tx + 23, ty + 10); }
+  add(SP.chalk, 128, 112); add(SP.pot, 16, 116); add(SP.pot, 132, 158);
+  add(SP.post, 19, 132); add(SP.post, 137, 132);
+  // ราวโคมเต็งลั้ง
+  const ls = []; for (let i = 0; i <= 14; i++) { const t = i / 14; ls.push([21 + t * 118, 135 + Math.sin(t * Math.PI) * 9]); }
+  SP.lanternLine = ls;
+  for (let i = 1; i < 14; i += 2) lights.push({ x: ls[i][0], y: ls[i][1] + 6, r: 16, c: [255, 120, 70], k: 'lantern' });
+  windows.push([37, 99, 16, 13], [97, 99, 16, 13]);
+
+  // ลานตู้เกม
+  const kx = [166, 196, 226, 256], kk = ['POK', 'C4', 'BAC', '21'];
+  kk.forEach((k, i) => { add(SP.kiosk[k], kx[i], 50); shadowOf(kx[i] + 15, 97, 14, 3); lights.push({ x: kx[i] + 15, y: 56, r: 22, c: hex(SP.kc[k][0]), k: 'neon', id: i }); });
+  add(SP.lamp, 160, 116); add(SP.lamp, 286, 116); lights.push({ x: 164, y: 122, r: 26, c: [255, 210, 130], k: 'lamp' }, { x: 290, y: 122, r: 26, c: [255, 210, 130], k: 'lamp' });
+  add(SP.bench, 176, 132); add(SP.bench, 244, 132); add(SP.pot, 228, 136);
+
+  // ร้านยานพาหนะ
+  addB(SP.vehicle, 363, 47, 'ร้านยานพาหนะ', 26); shadowOf(416, 128, 52, 4);
+  add(SP.bike, 360, 138); shadowOf(376, 156, 14, 3); add(SP.saddle, 400, 140); add(SP.tires, 440, 142); add(SP.crate, 462, 146); add(SP.helmet, 463, 140, 158);
+  windows.push([437, 99, 16, 13]);
+
+  // ร้านเฟอร์นิเจอร์
+  addB(SP.furn, 11, 223, 'ร้านเฟอร์นิเจอร์', 21); shadowOf(64, 288, 52, 4);
+  add(SP.chair, 18, 292); add(SP.rug, 36, 298, 300); add(SP.pot, 94, 290);
+  windows.push([21, 257, 54, 24]); lights.push({ x: 68, y: 266, r: 20, c: [255, 210, 130], k: 'win' });
+
+  // ฟาร์ม: รั้ว แปลง พาเลท หุ่นไล่กา
+  for (let x = 152; x < 280; x += 16) { if (x !== 216) add(SP.fenceH, x, 226); }
+  add(SP.fenceP, 278, 226);
+  for (let x = 152; x < 280; x += 16) add(SP.fenceH, x, 336);
+  add(SP.fenceP, 278, 336);
+  for (let y = 238; y < 336; y += 16) { add(SP.fenceV, 153, y, y + 14); add(SP.fenceV, 279, y, y + 14); }
+  for (let y = 0; y < 6; y++) for (let x = 0; x < 7; x++) {
+    const px = 160 + x * 16, py = 240 + y * 16;
+    if (x === 3 && y >= 1 && y <= 3) continue;
+    const s = y < 2 ? SP.carrotCrop : y < 4 ? (x < 3 ? SP.wheatCrop : SP.cabbage) : (x % 2 ? SP.sprout : SP.cabbage);
+    add(s, px + 3, py + 12 - s.height + 2, py + 12);
+  }
+  add(SP.scarecrow, 207, 254); shadowOf(219, 288, 8, 2);
+  add(SP.can, 258, 320);
+  add(SP.palCarrot, 166, 208, 226); add(SP.palMelon, 194, 208, 226); add(SP.palPump, 240, 208, 226);
+  add(SP.signpost, 128, 296);
+
+  // กองไฟ
+  add(SP.ring, 299, 254, 264);
+  add(SP.log, 276, 266); add(SP.log, 326, 266); add(SP.log, 302, 238);
+  add(SP.cat[0], 288, 280); SP.catEnt = ents[ents.length - 1];
+  lights.push({ x: 312, y: 256, r: 46, c: [255, 140, 50], k: 'fire' });
+
+  // ร้านตกปลา + ท่าน้ำ
+  addB(SP.fish, 363, 223, 'ร้านตกปลา', 21); shadowOf(416, 288, 52, 4);
+  add(SP.rods, 346, 258); add(SP.bucket, 420, 290); add(SP.bucket, 434, 293); add(SP.barrel, 450, 284); add(SP.crate, 468, 290);
+  add(SP.dock, 486, 292, 300); add(SP.reeds, 500, 270); add(SP.reeds, 552, 236); add(SP.reeds, 506, 352); add(SP.rock, 524, 254); add(SP.rock, 490, 330);
+  windows.push([375, 259, 14, 11]);
+}
+
+// ---------- dynamic actors ----------
+const actors = {
+  viewer: { c: CHARS.viewer, x: 328, y: 198, tx: null, ty: null, step: 0, t: 0, moving: false },
+  kaew: { c: CHARS.kaew, x: 72, y: 166 },
+  mint: { c: CHARS.mint, x: 214, y: 124 },
+  somchai: { c: CHARS.somchai, x: 548, y: 300 },
+};
+const chicks = [{ x: 120, y: 250, vx: 8, vy: 0, t: 0 }, { x: 132, y: 274, vx: -6, vy: 3, t: 2 }];
+const butterflies = [{ x: 120, y: 190, p: 0, c: '#ffe37a' }, { x: 420, y: 210, p: 2, c: '#ffc9de' }, { x: 250, y: 360, p: 4, c: '#9fd4ff' }];
+const clouds = [{ x: 60, y: 60, s: 1 }, { x: 420, y: 230, s: 1.3 }];
+
+// ---------- pixel text (thresholded so it reads as pixel type) ----------
+const TXT = new Map();
+function pixText(t, size, fill, stroke, weight = 500) {
+  const key = t + size + fill + stroke + weight; if (TXT.has(key)) return TXT.get(key);
+  const f = `${weight} ${size}px Mitr, "Noto Sans Thai", sans-serif`;
+  let c = cv(4, 4), x = c.getContext('2d'); x.font = f;
+  const w = Math.ceil(x.measureText(t).width) + 6, h = Math.ceil(size * 1.9) + 4;
+  c = cv(w, h); x = c.getContext('2d'); x.font = f; x.textBaseline = 'middle'; x.lineJoin = 'round';
+  if (stroke) { x.strokeStyle = stroke; x.lineWidth = Math.max(2, size / 5); x.strokeText(t, 3, h / 2 + 1); }
+  x.fillStyle = fill; x.fillText(t, 3, h / 2 + 1);
+  TXT.set(key, c); return c;
+}
+const PF = { // ฟอนต์พิกเซล 3×5 สำหรับป้ายนีออน
+  P: ['111', '101', '111', '100', '100'], O: ['111', '101', '101', '101', '111'], K: ['101', '101', '110', '101', '101'], C: ['111', '100', '100', '100', '111'],
+  4: ['101', '101', '111', '001', '001'], B: ['110', '101', '110', '101', '110'], A: ['010', '101', '111', '101', '101'], 2: ['111', '001', '111', '100', '111'], 1: ['010', '110', '010', '010', '111'],
+};
+function pixWord(g, s, X, Y, col) { let cx = X; for (const ch of s) { const m = PF[ch]; for (let yy = 0; yy < 5; yy++) for (let xx = 0; xx < 3; xx++) if (m[yy][xx] === '1') r(g, col, cx + xx, Y + yy, 1, 1); cx += 4; } }
+
+// ---------- rendering ----------
+const view = document.getElementById('view'), vctx = view.getContext('2d');
+const buf = cv(PW, PH), g = buf.getContext('2d');
+let ground, shoreline = [], sparkles = [];
+const state = { mode: 'eve', cam: false, grid: false };
+const MODES = {
+  day: { tint: null, glow: .25, lit: false, clock: '10:20' },
+  eve: { tint: '#ffd9a8', glow: .7, lit: false, clock: '17:40', sun: 'rgba(255,170,90,.10)' },
+  night: { tint: '#56508e', glow: 1.25, lit: true, clock: '20:15' },
+};
+
+function prepWater() {
+  const R = rng(77);
+  for (let i = 0; i < 4000 && sparkles.length < 46; i++) { const px = 480 + Math.floor(R() * 160), py = 240 + Math.floor(R() * 144); const e = pondE(px, py); if (e < .9 && e > .05 && !(px > 484 && px < 568 && py > 290 && py < 312)) sparkles.push([px, py, R() * 6.28, 2 + Math.floor(R() * 3)]); }
+  for (let py = 230; py < PH; py++) for (let px = 470; px < PW; px++) { const e = pondE(px, py); if (e < 1 && pondE(px, py - 1) >= 1 || e < 1 && pondE(px - 1, py) >= 1) shoreline.push([px, py]); }
+}
+
+function drawShadows() {
+  g.fillStyle = 'rgba(38,40,16,.28)';
+  for (const [cx, cy, rx, ry] of shadows) ell(g, cx | 0, cy | 0, rx, ry, 'rgba(38,40,16,.28)');
+}
+
+function drawChar(a, t) {
+  const f = a.moving ? a.c.f[1 + (Math.floor(a.t * 8) % 2)] : a.c.f[0];
+  const bob = a.moving ? 0 : (Math.sin(t * 2.4 + a.x) > .6 ? 1 : 0);
+  ell(g, Math.round(a.x), Math.round(a.y), 7, 2, 'rgba(38,40,16,.32)');
+  g.drawImage(f, Math.round(a.x - 11), Math.round(a.y - 27 + bob));
+}
+
+function drawFire(t) {
+  const cx = 312, by = 262, R = rng(Math.floor(t * 12));
+  for (let i = -6; i <= 6; i++) {
+    const hgt = Math.max(1, Math.round((11 - Math.abs(i) * 1.5) * (0.7 + R() * .5) + Math.sin(t * 9 + i) * 1.5));
+    for (let k = 0; k < hgt; k++) {
+      const q = k / hgt, col = q < .25 && Math.abs(i) < 3 ? '#fff3a0' : q < .5 ? '#ffc23a' : q < .8 ? '#ff7b1c' : '#d9381e';
+      r(g, col, cx + i, by - k, 1, 1);
+    }
+  }
+  for (let i = 0; i < 5; i++) { const ph = (t * .9 + i * .37) % 1; r(g, ph < .5 ? '#ffd27a' : '#ff7b1c', cx + Math.round(Math.sin(i * 7 + t * 2) * 6), by - 12 - Math.round(ph * 26), 1, 1); }
+  // ควัน (เฉพาะกลางวัน)
+  if (state.mode === 'day') for (let i = 0; i < 3; i++) { const ph = (t * .25 + i / 3) % 1; ell(g, cx + Math.round(Math.sin(t + i) * 4 + ph * 8), by - 30 - Math.round(ph * 30), 3 + Math.round(ph * 3), 2 + Math.round(ph * 2), `rgba(230,225,215,${.35 * (1 - ph)})`); }
+}
+
+function drawDynamicWater(t) {
+  for (const [px, py, ph, len] of sparkles) { const v = Math.sin(t * 1.6 + ph); if (v > .55) { r(g, v > .85 ? '#e4f4ff' : '#9fd0f0', px, py, len, 1); } }
+  for (let i = 0; i < shoreline.length; i += 1) { const [px, py] = shoreline[i]; if (Math.sin(px * .25 + py * .2 - t * 2.2) > .4) r(g, '#d6eefc', px, py, 1, 1); }
+  // ทุ่นตกปลาของลุงสมชาย
+  const bx = 572, byy = 330 + (Math.sin(t * 3) > .7 ? 1 : 0);
+  g.fillStyle = 'rgba(240,240,240,.7)'; for (let i = 0; i < 9; i++) g.fillRect(560 + i * 1.3 | 0, 290 + i * 4.4 | 0, 1, 1);
+  r(g, '#f6efe2', bx, byy, 3, 2); r(g, '#d9473c', bx, byy - 1, 3, 1); r(g, '#9fd0f0', bx - 3, byy + 2, 9, 1);
+  if (Math.sin(t * 3) > .7) { r(g, '#bfe4f8', bx - 5, byy + 3, 2, 1); r(g, '#bfe4f8', bx + 6, byy + 3, 2, 1); }
+}
+
+function drawLanternLine(t) {
+  const ls = SP.lanternLine; g.fillStyle = '#3a2418';
+  for (let i = 0; i < ls.length - 1; i++) { const [x0, y0] = ls[i], [x1, y1] = ls[i + 1]; for (let k = 0; k < 8; k++) { const q = k / 8; g.fillRect(Math.round(x0 + (x1 - x0) * q), Math.round(y0 + (y1 - y0) * q), 1, 1); } }
+  for (let i = 1; i < 14; i += 2) { const sw = Math.round(Math.sin(t * 1.5 + i) * .8); g.drawImage(SP.lantern, Math.round(ls[i][0] - 4 + sw), Math.round(ls[i][1])); }
+}
+
+function drawKioskScreens(t) {
+  const kx = [166, 196, 226, 256], kk = ['POK', 'C4', 'BAC', '21'];
+  kk.forEach((k, i) => {
+    const X = kx[i] + 1, Y = 51, col = SP.kc[k][0];
+    const flick = Math.sin(t * 13 + i * 5) > .985; // บางครั้งไฟนีออนกะพริบ
+    const w = k.length * 4 - 1, lx = X + 14 - (w >> 1);
+    if (!flick) {
+      pixWord(g, k, lx - 1, Y + 2, SP.kc[k][1]); pixWord(g, k, lx + 1, Y + 2, SP.kc[k][1]); pixWord(g, k, lx, Y + 1, SP.kc[k][1]); pixWord(g, k, lx, Y + 3, SP.kc[k][1]);
+      g.globalAlpha = .55; pixWord(g, k, lx - 1, Y + 2, col); pixWord(g, k, lx + 1, Y + 2, col); g.globalAlpha = 1;
+      pixWord(g, k, lx, Y + 2, '#ffffff');
+      r(g, col, X + 1, Y + 1, 1, 7); r(g, col, X + 24, Y + 1, 1, 7);
+    }
+    // จอเกม
+    const sx = X + 5, sy = Y + 14;
+    if (k === 'POK') { r(g, '#1d5a3a', sx, sy, 18, 13); r(g, '#f6efe2', sx + 3, sy + 3, 5, 7); r(g, '#f6efe2', sx + 10, sy + 3, 5, 7); r(g, '#d9473c', sx + 4, sy + 4, 1, 1); r(g, '#2a1b14', sx + 12, sy + 6, 1, 1); if ((t * 2 | 0) % 2) r(g, '#ffd23f', sx + 8, sy + 1, 2, 1); }
+    if (k === 'C4') { r(g, '#2457a8', sx, sy, 18, 13); for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < 4; xx++) r(g, (xx + yy + (t * 2 | 0)) % 3 === 0 ? '#ff5050' : (xx * yy) % 2 ? '#ffd23f' : '#13306a', sx + 2 + xx * 4, sy + 2 + yy * 4, 2, 2); }
+    if (k === 'BAC') { r(g, '#4a1a2a', sx, sy, 18, 13); r(g, '#ffd23f', sx + 2, sy + 2, 14, 1); r(g, '#f6efe2', sx + 3, sy + 5, 4, 6); r(g, '#f6efe2', sx + 11, sy + 5, 4, 6); r(g, '#ffd23f', sx + 8, sy + 7 + ((t * 3 | 0) % 2), 2, 2); }
+    if (k === '21') { r(g, '#14402a', sx, sy, 18, 13); r(g, '#f6efe2', sx + 4, sy + 3, 5, 7); r(g, '#f6efe2', sx + 7, sy + 4, 5, 7); r(g, '#d9473c', sx + 9, sy + 6, 1, 2); pixWord(g, '21', sx + 12, sy + 7, (t * 2 | 0) % 2 ? '#6dff8f' : '#2a8a4a'); }
+    r(g, 'rgba(255,255,255,.18)', sx, sy, 18, 1);
+  });
+}
+
+function drawSteam(t) {
+  for (const [sx, sy] of [[45, 140], [56, 141], [101, 140], [112, 141]]) for (let i = 0; i < 3; i++) {
+    const ph = (t * .7 + i / 3 + sx * .01) % 1; const a = (1 - ph) * .55;
+    g.fillStyle = `rgba(255,255,255,${a})`; g.fillRect(sx + Math.round(Math.sin(ph * 6 + sx) * 1.5), sy - Math.round(ph * 12), 1, 2);
+  }
+}
+
+function glow(x, y, rad, c, k) {
+  for (let i = 3; i >= 1; i--) { const rr = Math.round(rad * i / 3); g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${.05 * k * (4 - i)})`; for (let dy = -rr; dy <= rr; dy++) { const w = Math.floor(Math.sqrt(rr * rr - dy * dy)); g.fillRect(Math.round(x - w), Math.round(y + dy * .75), w * 2 + 1, 1); } }
+}
+
+function frame(t) {
+  const M = MODES[state.mode];
+  g.drawImage(ground, 0, 0);
+  drawDynamicWater(t);
+  drawShadows();
+  // actors update
+  const v = actors.viewer;
+  for (const c of chicks) { c.t += 1 / 60; if (Math.sin(c.t * .7) > .3) { c.x += c.vx / 60; c.y += c.vy / 60; } if (c.x < 112 || c.x > 146) c.vx *= -1; if (c.y < 246 || c.y > 284) c.vy *= -1; }
+  const list = ents.map(e => ({ base: e.base, d: () => g.drawImage(e === SP.catEnt ? SP.cat[(t * .6 | 0) % 2] : e.spr, e.x - 1, e.y - 1) }));
+  for (const k in actors) { const a = actors[k]; list.push({ base: a.y, d: () => drawChar(a, t) }); }
+  for (const c of chicks) list.push({ base: c.y, d: () => { ell(g, Math.round(c.x + 5), Math.round(c.y), 4, 1, 'rgba(38,40,16,.3)'); const f = SP.chick[(c.t * 4 | 0) % 2]; if (c.vx > 0) { g.save(); g.translate(Math.round(c.x) + 11, 0); g.scale(-1, 1); g.drawImage(f, 0, Math.round(c.y - 10)); g.restore(); } else g.drawImage(f, Math.round(c.x), Math.round(c.y - 10)); } });
+  list.push({ base: 150, d: () => drawLanternLine(t) });
+  list.push({ base: 99, d: () => drawKioskScreens(t) });
+  list.push({ base: 265, d: () => drawFire(t) });
+  list.push({ base: 160, d: () => drawSteam(t) });
+  list.sort((a, b) => a.base - b.base);
+  for (const it of list) it.d();
+  // ผีเสื้อ
+  for (const b of butterflies) { const bx = b.x + Math.sin(t * .5 + b.p) * 30, by = b.y + Math.sin(t * 1.3 + b.p) * 10; const up = (t * 10 + b.p | 0) % 2; r(g, '#3a2418', bx | 0, by | 0, 1, 2); r(g, b.c, (bx | 0) - 2, (by | 0) - up, 2, 2 - up); r(g, b.c, (bx | 0) + 1, (by | 0) - up, 2, 2 - up); }
+  // เงาเมฆ (กลางวัน/เย็น)
+  if (state.mode !== 'night') for (const c of clouds) { const cx = ((c.x + t * 6 * c.s) % (PW + 200)) - 100; for (const [ox, oy, rx, ry] of [[0, 0, 40, 14], [30, -6, 30, 12], [-26, 4, 24, 10]]) ell(g, Math.round(cx + ox), Math.round(c.y + oy), rx, ry, 'rgba(20,30,70,.07)'); }
+  // แสงรวม
+  if (M.tint) { g.globalCompositeOperation = 'multiply'; g.fillStyle = M.tint; g.fillRect(0, 0, PW, PH); g.globalCompositeOperation = 'source-over'; }
+  if (M.sun) { g.fillStyle = M.sun; for (let i = 0; i < 6; i++) g.fillRect(0, 0, PW - i * 90, PH - i * 50); }
+  if (M.lit) { for (const [x, y, w, h] of windows) { g.fillStyle = 'rgba(255,200,110,.75)'; g.fillRect(x, y, w, h); g.fillStyle = 'rgba(255,240,180,.6)'; g.fillRect(x + 1, y + 1, Math.max(1, w >> 2), Math.max(1, h >> 2)); } }
+  g.globalCompositeOperation = 'lighter';
+  for (const L of lights) {
+    let k = M.glow; if (L.k === 'fire') k *= 1.1 + Math.sin(t * 11) * .12 + Math.sin(t * 7.3) * .1;
+    if (L.k === 'neon') { k = Math.max(k, .5) * (Math.sin(t * 13 + L.id * 5) > .985 ? 0 : 1); }
+    if ((L.k === 'lamp' || L.k === 'win' || L.k === 'lantern') && state.mode === 'day') continue;
+    glow(L.x, L.y, L.r, L.c, k);
+  }
+  g.globalCompositeOperation = 'source-over';
+  present(t);
+}
+
+// ---------- present to screen + labels ----------
+let cam = { x: 0, y: 0, w: PW, h: PH };
+function present(t) {
+  const dw = view.width, dh = view.height;
+  const v = actors.viewer;
+  if (state.cam) { const cw = 22 * T, ch = cw * dh / dw; cam = { w: cw, h: ch, x: clamp(v.x - cw / 2, 0, PW - cw), y: clamp(v.y - 14 - ch / 2, 0, PH - ch) }; }
+  else cam = { x: 0, y: 0, w: PW, h: PW * dh / dw };
+  const s = dw / cam.w;
+  vctx.imageSmoothingEnabled = false;
+  vctx.fillStyle = '#558f3a'; vctx.fillRect(0, 0, dw, dh);
+  vctx.drawImage(buf, cam.x, cam.y, cam.w, Math.min(cam.h, PH - cam.y), 0, 0, dw, Math.min(cam.h, PH - cam.y) * s);
+  const X = wx => Math.round((wx - cam.x) * s), Y = wy => Math.round((wy - cam.y) * s);
+  if (state.grid) {
+    vctx.fillStyle = 'rgba(255,255,255,.14)';
+    for (let gx = Math.ceil(cam.x / T) * T; gx < cam.x + cam.w; gx += T) vctx.fillRect(X(gx), 0, 1, dh);
+    for (let gy = Math.ceil(cam.y / T) * T; gy < cam.y + cam.h; gy += T) vctx.fillRect(0, Y(gy), dw, 1);
+  }
+  // ป้ายร้าน (กระดานไม้) และป้ายชื่อ (กล่องกระดาษ)
+  const ts = Math.max(s / 2, 1.05 * (window.devicePixelRatio || 1)), u = Math.max(1, Math.round(ts * 2));
+  for (const sg of signs) {
+    const c = pixText(sg.text, Math.round(11 * ts), '#fff3cf', '#4a2e1b', 500);
+    const w = c.width, h = c.height, cx = X(sg.x), cy = Y(sg.y);
+    const bx = Math.round(cx - w / 2 - 3 * u), by = Math.round(cy - h / 2 - u), bw = Math.round(w + 6 * u), bh = Math.round(h + 2 * u);
+    vctx.fillStyle = OUT; vctx.fillRect(bx - u, by, bw + 2 * u, bh); vctx.fillRect(bx, by - u, bw, bh + 2 * u);
+    vctx.fillStyle = '#8f5a2e'; vctx.fillRect(bx, by, bw, bh);
+    vctx.fillStyle = '#b67d45'; vctx.fillRect(bx, by, bw, u);
+    vctx.fillStyle = '#6e4524'; vctx.fillRect(bx, by + bh - u, bw, u);
+    vctx.fillStyle = '#c9984f'; vctx.fillRect(bx + u, by + u, u, u); vctx.fillRect(bx + bw - 2 * u, by + u, u, u);
+    vctx.drawImage(c, Math.round(cx - w / 2), Math.round(cy - h / 2), Math.round(w), Math.round(h));
+  }
+  for (const k in actors) {
+    const a = actors[k], me = a.c.me;
+    const c = pixText(a.c.name, Math.round(10 * ts), me ? '#2a1b14' : '#4a3322', null, me ? 600 : 500);
+    const w = c.width, h = c.height, cx = X(a.x), cy = Y(a.y - 34) - Math.round(h / 2);
+    const bx = Math.round(cx - w / 2 - 2 * u), by = Math.round(cy - h / 2), bw = Math.round(w + 4 * u), bh = Math.round(h);
+    vctx.fillStyle = OUT; vctx.fillRect(bx - u, by, bw + 2 * u, bh); vctx.fillRect(bx, by - u, bw, bh + 2 * u);
+    vctx.fillStyle = me ? '#ffd34d' : '#fff3d6'; vctx.fillRect(bx, by, bw, bh);
+    vctx.fillStyle = me ? '#e8a33d' : '#e2c896'; vctx.fillRect(bx, by + bh - u, bw, u);
+    vctx.fillStyle = OUT; vctx.fillRect(Math.round(cx - u), by + bh + u - 1, 2 * u, u); vctx.fillStyle = me ? '#e8a33d' : '#e2c896'; vctx.fillRect(Math.round(cx - u), by + bh - 1, 2 * u, u);
+    if (me) { vctx.fillStyle = '#d9473c'; vctx.fillRect(bx + u, by + u, u, u); }
+    vctx.drawImage(c, Math.round(cx - w / 2), Math.round(cy - h / 2), Math.round(w), Math.round(h));
+  }
+  // ตัวชี้ปลายทางเมื่อแตะเดิน
+  if (v.tx != null) { const px = X(v.tx), py = Y(v.ty), p = Math.round(s); vctx.fillStyle = '#fff3cf'; vctx.fillRect(px - 3 * p, py, 2 * p, p); vctx.fillRect(px + p, py, 2 * p, p); vctx.fillRect(px, py - 2 * p, p, 2 * p); }
+}
+
+// ---------- minimap ----------
+const mm = document.getElementById('minimap'), mctx = mm.getContext('2d');
+let mmBase;
+function buildMinimap() {
+  mmBase = cv(80, 48); const x = mmBase.getContext('2d');
+  const C = { [G]: '#7bb04f', [P]: '#d6b07a', [WA]: '#4790cb', [SA]: '#e2c890', [SO]: '#7a4f2e', [ST]: '#b6aa98', [DK]: '#b67d45' };
+  for (let ty = 0; ty < 48; ty++) for (let tx = 0; tx < 80; tx++) { x.fillStyle = C[typeAt(tx * 8 + 4, ty * 8 + 4)]; x.fillRect(tx, ty, 1, 1); }
+  x.fillStyle = '#3f7a32'; for (const e of ents) if (SP.trees.includes(e.spr)) x.fillRect(Math.floor((e.x + 23) / 8) - 1, Math.floor((e.y + 30) / 8) - 1, 3, 3);
+  for (const [bx, by, c] of [[32, 48, '#c4642a'], [368, 48, '#3466a0'], [16, 224, '#6c4492'], [368, 224, '#2e6fa6']]) { x.fillStyle = c; x.fillRect(bx / 8, by / 8, 12, 8); x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(bx / 8, by / 8 + 7, 12, 1); }
+  x.fillStyle = '#6a3fb5'; for (const kx of [166, 196, 226, 256]) x.fillRect(Math.floor(kx / 8), 7, 3, 5);
+}
+function drawMinimap(t) {
+  mctx.imageSmoothingEnabled = false; mctx.drawImage(mmBase, 0, 0);
+  const pt = (a, c) => { mctx.fillStyle = c; mctx.fillRect(Math.floor(a.x / 8) - 1, Math.floor(a.y / 8) - 1, 2, 2); };
+  pt(actors.kaew, '#fff3cf'); pt(actors.mint, '#fff3cf'); pt(actors.somchai, '#fff3cf');
+  if ((t * 3 | 0) % 2) { const v = actors.viewer; mctx.fillStyle = OUT; mctx.fillRect(Math.floor(v.x / 8) - 2, Math.floor(v.y / 8) - 2, 4, 4); mctx.fillStyle = '#d9473c'; mctx.fillRect(Math.floor(v.x / 8) - 1, Math.floor(v.y / 8) - 1, 2, 2); }
+  if (state.cam) { mctx.strokeStyle = '#2a1b14'; mctx.lineWidth = 1; mctx.strokeRect(Math.floor(cam.x / 8) + .5, Math.floor(cam.y / 8) + .5, Math.floor(cam.w / 8), Math.floor(cam.h / 8)); }
+}
+
+// ---------- icons ----------
+const ICONS = {
+  coin(x) { disc(x, 6, 6, 6, '#b8801f'); disc(x, 6, 6, 5, '#f2c14e'); disc(x, 5, 5, 3, '#ffe08a'); r(x, '#c99428', 5, 3, 2, 7); r(x, '#c99428', 4, 4, 4, 1); r(x, '#c99428', 4, 8, 4, 1); r(x, '#fff6c8', 3, 3, 1, 1); },
+  sun(x) { disc(x, 6, 6, 3, '#ffb43a'); disc(x, 5, 5, 2, '#ffe08a'); for (const [a, b] of [[6, 0], [6, 11], [0, 6], [11, 6], [2, 2], [10, 2], [2, 10], [10, 10]]) r(x, '#ff9a2a', a, b, 1, 1); r(x, '#ff9a2a', 6, 1, 1, 1); r(x, '#ff9a2a', 1, 6, 1, 1); r(x, '#ff9a2a', 10, 6, 1, 1); r(x, '#ff9a2a', 6, 10, 1, 1); },
+  moon(x) { disc(x, 6, 6, 5, '#f6e7a8'); disc(x, 8, 4, 4, 'rgba(0,0,0,0)'); x.globalCompositeOperation = 'destination-out'; disc(x, 9, 4, 4, '#000'); x.globalCompositeOperation = 'source-over'; r(x, '#fff8d8', 3, 4, 1, 2); r(x, '#ffe37a', 10, 9, 1, 1); },
+  scroll(x) { r(x, '#e2c896', 2, 1, 9, 10); r(x, '#f6e7c8', 3, 1, 7, 10); r(x, '#b8963a', 1, 0, 11, 2); r(x, '#b8963a', 1, 10, 11, 2); r(x, '#8a6a44', 4, 4, 5, 1); r(x, '#8a6a44', 4, 6, 4, 1); r(x, '#d9473c', 4, 8, 3, 1); },
+  pickaxe(x) { r(x, '#8d99a6', 1, 2, 11, 2); r(x, '#c9d3dc', 2, 2, 8, 1); r(x, '#6c7782', 0, 3, 2, 3); r(x, '#6c7782', 11, 3, 2, 3); r(x, '#6c7782', 2, 4, 9, 1); r(x, '#9c6636', 6, 4, 2, 9); r(x, '#bd8447', 6, 4, 1, 9); r(x, '#5e3a20', 6, 11, 2, 1); },
+  water(x) { const ws = [1, 1, 3, 3, 5, 5, 7, 7, 7, 7, 5, 3]; ws.forEach((w, i) => r(x, '#3d86c2', 6 - (w >> 1), i, w, 1)); ws.forEach((w, i) => { if (w > 2) r(x, '#2a5f99', 6 + (w >> 1) - 1, i, 1, 1); }); r(x, '#bfe4f8', 4, 5, 1, 3); r(x, '#8cc8ec', 5, 4, 1, 1); r(x, '#2a5f99', 4, 11, 5, 1); },
+  carrot(x) { for (let i = 0; i < 8; i++) { const sz = i < 2 ? 1 : i < 5 ? 2 : 3; r(x, '#e8862a', 2 + i, 11 - i, sz, sz); } r(x, '#ffb45a', 5, 7, 1, 1); r(x, '#ffb45a', 7, 5, 1, 1); r(x, '#b85f1a', 8, 7, 1, 1); r(x, '#b85f1a', 6, 9, 1, 1); r(x, '#4f913b', 10, 0, 1, 4); r(x, '#7cc75a', 11, 1, 2, 1); r(x, '#7cc75a', 8, 1, 2, 1); r(x, '#4f913b', 11, 3, 2, 1); },
+  rod(x) { for (let i = 0; i < 12; i++) r(x, i < 4 ? '#5e3a20' : '#9c6636', 1 + i, 12 - i, 1, 1); disc(x, 3, 9, 1, '#9aa5ad'); r(x, '#e4f4ff', 12, 1, 1, 7); r(x, '#9aa5ad', 11, 8, 1, 2); r(x, '#9aa5ad', 12, 10, 1, 1); r(x, '#d9473c', 12, 5, 1, 1); },
+  wheat(x) { for (const px of [3, 6, 9]) { r(x, '#b8963a', px, 5, 1, 8); for (let k = 0; k < 3; k++) { r(x, '#e8c25a', px - 1, 1 + k * 2, 1, 2); r(x, '#f6dc8a', px + 1, 2 + k * 2, 1, 2); } r(x, '#f6dc8a', px, 0, 1, 2); } r(x, '#d9473c', 2, 9, 9, 1); },
+  shovel(x) { r(x, '#5e3a20', 4, 0, 5, 1); r(x, '#9c6636', 6, 1, 1, 6); r(x, '#bd8447', 5, 1, 1, 6); r(x, '#8d99a6', 3, 7, 7, 3); r(x, '#c9d3dc', 3, 7, 2, 3); r(x, '#8d99a6', 4, 10, 5, 1); r(x, '#6c7782', 5, 11, 3, 1); r(x, '#6c7782', 9, 7, 1, 3); },
+};
+function icon(name) { return mk(13, 13, ICONS[name]); }
+function paintIcon(el, name) { const s = icon(name); el.width = s.width; el.height = s.height; const x = el.getContext('2d'); x.clearRect(0, 0, s.width, s.height); x.drawImage(s, 0, 0); }
+document.querySelectorAll('canvas.ico').forEach(el => paintIcon(el, el.dataset.ico));
+
+const HOT = [['pickaxe', 'อีเต้อ', null], ['water', 'บัวรดน้ำ', null], ['carrot', 'แครอท', 5], ['rod', 'คันเบ็ด', 10], ['wheat', 'ข้าวสาลี', 5], ['shovel', 'พลั่ว', 0]];
+const hb = document.getElementById('hotbar'), hname = document.getElementById('hname');
+let sel = 0;
+HOT.forEach(([ic, nm, n], i) => {
+  const b = document.createElement('button'); b.className = 'slot' + (n === 0 ? ' empty' : ''); b.setAttribute('aria-label', nm + (n != null ? ' ' + n + ' ชิ้น' : ''));
+  b.innerHTML = `<span class="k">${i + 1}</span>${n != null ? `<span class="n">${n}</span>` : ''}`;
+  const c = document.createElement('canvas'); paintIcon(c, ic); b.prepend(c);
+  b.addEventListener('click', () => pick(i)); hb.appendChild(b);
+});
+function pick(i) { sel = i; [...hb.children].forEach((b, k) => b.setAttribute('aria-pressed', k === i ? 'true' : 'false')); const [, nm, n] = HOT[i]; hname.textContent = nm + (n === 0 ? ' (หมด)' : ''); }
+pick(0);
+
+// ---------- input ----------
+const keys = new Set();
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { keys.add(k); actors.viewer.tx = null; if (k.startsWith('arrow')) e.preventDefault(); }
+  if (k >= '1' && k <= '6') pick(+k - 1);
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => keys.clear());
+view.addEventListener('pointerdown', e => {
+  const rc = view.getBoundingClientRect(), dpr = view.width / rc.width;
+  const s = view.width / cam.w;
+  actors.viewer.tx = clamp(cam.x + (e.clientX - rc.left) * dpr / s, 10, PW - 10);
+  actors.viewer.ty = clamp(cam.y + (e.clientY - rc.top) * dpr / s, 30, PH - 6);
+});
+function stepViewer(dt) {
+  const v = actors.viewer; let dx = 0, dy = 0;
+  if (keys.has('arrowleft') || keys.has('a')) dx--; if (keys.has('arrowright') || keys.has('d')) dx++;
+  if (keys.has('arrowup') || keys.has('w')) dy--; if (keys.has('arrowdown') || keys.has('s')) dy++;
+  if (!dx && !dy && v.tx != null) { const ex = v.tx - v.x, ey = v.ty - v.y, d = Math.hypot(ex, ey); if (d < 2) v.tx = null; else { dx = ex / d; dy = ey / d; } }
+  const m = Math.hypot(dx, dy);
+  v.moving = m > 0;
+  if (m) { v.x = clamp(v.x + dx / m * 60 * dt, 10, PW - 10); v.y = clamp(v.y + dy / m * 60 * dt, 30, PH - 6); v.t += dt; }
+  document.getElementById('mpos').textContent = `${Math.floor(v.x / T)},${Math.floor(v.y / T)}`;
+}
+
+// ---------- controls ----------
+const modeBtns = { day: 'tDay', eve: 'tEve', night: 'tNight' };
+function setMode(m) {
+  state.mode = m; for (const k in modeBtns) document.getElementById(modeBtns[k]).setAttribute('aria-pressed', k === m ? 'true' : 'false');
+  document.getElementById('clock').textContent = MODES[m].clock;
+  paintIcon(document.getElementById('timeIco'), m === 'night' ? 'moon' : 'sun');
+}
+for (const k in modeBtns) document.getElementById(modeBtns[k]).addEventListener('click', () => setMode(k));
+const tog = (id, key) => { const b = document.getElementById(id); b.addEventListener('click', () => { state[key] = !state[key]; b.setAttribute('aria-pressed', String(state[key])); }); };
+tog('tCam', 'cam'); tog('tGrid', 'grid');
+
+function resize() {
+  const rc = view.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  view.width = Math.max(1, Math.round(rc.width * dpr)); view.height = Math.max(1, Math.round(rc.height * dpr));
+}
+new ResizeObserver(resize).observe(view);
+
+// ---------- boot ----------
+buildSprites(); layout(); ground = renderGround(); prepWater(); buildMinimap(); resize();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => TXT.clear());
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let last = performance.now(), t0 = last;
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  const t = reduce ? 1.3 : (now - t0) / 1000;
+  stepViewer(dt); frame(t); drawMinimap(t);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
