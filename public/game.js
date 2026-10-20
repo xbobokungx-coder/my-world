@@ -1929,6 +1929,18 @@ const SKIN = '#f5cfa0', GOLD = '#e8c04a';
 // ตะเกียงที่ตัวละครถือไว้ตอนเปิดไฟ: ถือข้างตัว (หันซ้าย/ขึ้น = มือซ้าย นอกนั้นมือขวา) แสงกะพริบเบาๆ
 // ---------- อุปกรณ์ในมือ: วาดเป็นพิกเซลอาร์ตขนาดพอดีมือ (มือหน้า/หลัง = ขวา x+8, ด้านข้าง = กลางลำตัว) มีท่าแกว่งตอนใช้งาน ----------
 const WATER_EMOJIS = new Set(Object.values(CANS).map(c => c.emoji.replace(/️/g, '')));
+function heldHand(p) { // ตำแหน่งมือที่ถืออุปกรณ์ [x, y, ทิศออกด้านนอก/ข้างหน้า ±1]
+  const dir = p.dir || 0, sn = p.moving && !p.sit ? Math.sin((p.anim || 0) * 14) : 0, f = sn > .35 ? 1 : sn < -.35 ? 2 : 0;
+  const lampSide = dir === 2 || dir === 1 ? -1 : 1, hs = p.lamp ? -lampSide : lampSide;
+  if (dir < 2) return [p.x + hs * 8, p.y + 3 + (f === (hs > 0 ? 2 : 1) ? 2 : 0), hs];
+  const fx = dir === 3 ? 1 : -1; return [p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)), p.y + 3, fx];
+}
+const rodAngle = p => { const k = p.useAt ? (performance.now() - p.useAt) / 260 : 2; return ((p.dir || 0) >= 2 ? 0.8 : 0.15) - 0.72 * Math.sin(k < 1 ? k * Math.PI * 2 : 0); };
+const isRodHeld = p => !!p.held && p.held.replace(/\uFE0F/g, '') === '🎣' && !p.sit;
+function rodTip(p) { // ปลายคันเบ็ด (ตรงกับที่ drawHeldTool วาด: จุดปลาย 12,-19 หมุนตามมุมคัน)
+  const [hx, hy, fx] = heldHand(p), a = rodAngle(p);
+  return [hx + fx * (12 * Math.cos(a) + 19 * Math.sin(a)), hy + 12 * Math.sin(a) - 19 * Math.cos(a)];
+}
 function drawHeldTool(p, now) {
   const e = p.held.replace(/️/g, ''), OUT = PixelArt.OUT, dir = p.dir || 0;
   const sn = p.moving && !p.sit ? Math.sin((p.anim || 0) * 14) : 0, f = sn > .35 ? 1 : sn < -.35 ? 2 : 0;
@@ -1947,11 +1959,11 @@ function drawHeldTool(p, now) {
     else if (isAxe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, STEEL); R(1, -13, 6, 1, STH); R(6, -13, 2, 6, STH); }
     else if (isCan) { ctx.translate(3, 2); ctx.rotate(0.05 + 0.85 * sw); R(-5, -9, 10, 10, OUT); R(-4, -8, 8, 8, '#3f8fd6'); R(-4, -8, 8, 2, '#7fc0f5'); R(-4, -1, 8, 1, '#2a6aa8'); R(4, -7, 4, 3, OUT); R(4, -6, 3, 1, '#3f8fd6'); R(6, -9, 3, 4, OUT); R(7, -8, 1, 2, '#7fc0f5'); R(-8, -8, 4, 7, OUT); R(-7, -7, 1, 5, '#2a6aa8'); R(-7, -7, 3, 1, '#2a6aa8'); if (sw > 0.4) { R(9, -4 + Math.round(sw * 6), 1, 3, '#8fd0ff'); R(8, -1 + Math.round(sw * 6), 1, 2, '#8fd0ff'); } }
     else { // เบ็ด: ปลายคันงอ + สายเอ็น แกว่งตอนเหวี่ยง
-      ctx.rotate((dir >= 2 ? 0.8 : 0.15) - 0.9 * Math.sin(k < 1 ? k * Math.PI * 2 : 0) * 0.8); // ด้านข้างชี้คันเบ็ดไปข้างหน้า ไม่พาดหน้า
+      ctx.rotate(rodAngle(p)); // ด้านข้างชี้คันเบ็ดไปข้างหน้า ไม่พาดหน้า
       ctx.lineCap = 'round'; ctx.strokeStyle = OUT; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, -9); ctx.lineTo(12, -19); ctx.stroke();
       ctx.strokeStyle = WOOD; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, -9); ctx.lineTo(12, -19); ctx.stroke();
       R(-2, -3, 4, 4, OUT); R(-1, -2, 2, 2, '#9aa0a6');
-      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(12, -19); ctx.lineTo(12, -8); ctx.stroke(); R(11, -8, 2, 2, '#e04b4b');
+      if (!p.fs) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(12, -19); ctx.lineTo(12, -8); ctx.stroke(); R(11, -8, 2, 2, '#e04b4b'); } // ตอนตกปลาใช้สายเอ็นจริง (drawFishing) แทน
     }
     ctx.restore();
   } else { // เมล็ด / อาหาร / ยา: ไอคอนเล็กในมือ (เด้งตอนใช้)
@@ -1971,7 +1983,8 @@ function drawHeldLamp(p, now) {
 }
 // เบ็ดตกปลา: เหวี่ยงทุ่นเป็นวงโค้ง สายเอ็นห้อยโค้งตามแรงตึง/ลมพัด ทุ่นลอยตามคลื่น มีระลอกน้ำ และกระตุกแรงตอนปลากินเบ็ด
 function drawFishing(p, t) {
-  const sx = p.x + (p.dir === 2 ? -8 : p.dir === 3 ? 8 : 0), sy = p.y - 8;       // ปลายคันเบ็ด
+  let sx = p.x + (p.dir === 2 ? -8 : p.dir === 3 ? 8 : 0), sy = p.y - 8;       // ปลายคันเบ็ด (ไม่ได้ถือเบ็ดอยู่: ใช้ตำแหน่งเดิม)
+  if (isRodHeld(p)) [sx, sy] = rodTip(p);                                        // ถือเบ็ดอยู่: สายออกจากปลายคันจริง ไม่ออกจากหน้าตัวละคร
   const k = Math.min(1, (t - (p.castAt || 0)) / 480), e = 1 - (1 - k) * (1 - k); // ease-out
   const bite = p.fs === 2, ph = (p.id || 0) * 1.7;
   const bob = bite ? Math.sin(t / 45) * 3.5 + 3 : Math.sin(t / 420 + ph) * 1.6;
