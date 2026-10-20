@@ -3,7 +3,7 @@
 const { REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-  GAME_TITLES, sellQuote, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, bankInterest, CRAFT, STARTER, STARTER_FINAL, BOOK, WEEKLY, bookInfo } = Shared;
+  GAME_TITLES, COOK, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, bankInterest, CRAFT, STARTER, STARTER_FINAL, BOOK, WEEKLY, bookInfo } = Shared;
 const MAP = makeMap();
 const $ = id => document.getElementById(id);
 const canvas = $('c'), ctx = canvas.getContext('2d'), mainCtx = ctx;
@@ -35,6 +35,7 @@ let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, 
 const furn = new Map();               // เฟอร์นิเจอร์ในบ้านทุกหลัง: "x,y" -> { x, y, f }
 let plotOwners = [];                  // ชื่อเจ้าของที่ดินแต่ละแปลง (null = ว่าง)
 let townLog = [], chestSt = { coin: 0, dead: {} }, townTab = 'log';
+let projSt = [];
 let questSt = { list: [], total: 0, title: '', pts: { bal: 0, earned: 0 } }, fameSt = {};
 let bankSt = { bal: 0, cap: BANK.cap, rate: BANK.rate, next: 0 }, villageSt = { n: 0, goal: 0, done: false, left: 0 };
 let villageEnd = 0; // เวลาที่บัฟ Happy Village หมด (ms ของนาฬิกาเครื่องนี้)
@@ -174,6 +175,7 @@ function handle(m) {
     case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break;
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
     case 'chest': chestSt = m.c; if (townShown()) renderTown(); break;
+    case 'proj': projSt = m.p; if (townShown()) renderTown(); break;
     case 'quests': {
       questSt = { list: m.list, total: m.total, title: m.title, pts: m.pts, dole: m.dole, starter: m.starter, streak: m.streak, book: m.book, wk: m.wk };
       updateGuide(); updateQuestBadge(); if (bagShown() && (bagTab === 'quest' || bagTab === 'book')) renderBag();
@@ -324,6 +326,19 @@ function renderFameTab(el) {
   }
   el.innerHTML = h;
 }
+function projectSection(coin) { // โครงการพัฒนาเมือง: ลงขันเงินก้อนใหญ่ร่วมกัน ทีละโครงการตามลำดับ
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  let h = '<div class="sec">🏗️ โครงการพัฒนาเมือง (ลงขันร่วมกันทั้งเมือง)</div>';
+  PROJECTS.forEach((P, i) => {
+    const st = projSt.find(x => x.id === P.id) || { coin: 0, open: i === 0, top: [] }, done = st.coin >= P.goal, pct = Math.min(100, Math.floor(st.coin / P.goal * 100));
+    h += `<div class="qrow${done ? ' done' : ''}"><b>${P.emoji} ${P.name}</b> ${done ? '✅ สร้างเสร็จแล้ว' : st.open ? '' : '🔒 ต้องสร้างโครงการก่อนหน้าให้เสร็จก่อน'}`
+      + `<div style="background:#e9d9b0;border-radius:6px;height:8px;margin:5px 0"><div style="background:#e8a33d;height:8px;border-radius:6px;width:${pct}%"></div></div>`
+      + `<small>🪙 ${st.coin}/${P.goal} (${pct}%)</small>`
+      + (st.top.length ? `<br><small>ผู้ร่วมสร้าง: ${st.top.map(([nm, v], k) => `${['🥇', '🥈', '🥉', '', ''][k]} ${esc(nm)} ${v}`).join(' • ')}</small>` : '')
+      + (!done && st.open ? `<div class="center" style="margin-top:4px">` + PROJ_DONATE.map(a => `<button class="btn small" data-proj="${P.id}" data-amt="${a}" ${coin < a ? 'disabled' : ''}>+${a}</button>`).join(' ') + '</div>' : '') + '</div>';
+  });
+  return h;
+}
 function renderTown() {
   $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM', chest: '🏦 เงินกองกลาง' })[townTab] || '📰 ข่าวเมือง';
   document.querySelectorAll('[data-ttab]').forEach(t => t.classList.toggle('on', t.dataset.ttab === townTab));
@@ -339,11 +354,13 @@ function renderTown() {
   el.innerHTML = `<div class="row"><span>🏦 เงินกองกลาง</span><b>🪙 ${chestSt.coin}</b></div>`
     + `<p style="font-size:12px;opacity:.7;margin:4px 0 8px">ทุกคนลงขันได้ เงินนี้จะจ่ายค่ายาและอาหารให้สัตว์ที่ป่วย/หิวจัดนานเกิน 1 นาทีโดยอัตโนมัติ และใช้ชุบชีวิตสัตว์ที่ตายได้ในราคาครึ่งหนึ่งของการซื้อใหม่ (ถอนออกเป็นเหรียญไม่ได้)</p>`
     + `<div class="sec">🪙 ลงขัน (ต้องยืนใกล้ตู้เซฟ)</div><div class="center">` + TOWN.donate.map(a => `<button class="btn small" data-donate="${a}" ${coin < a ? 'disabled' : ''}>+${a}</button>`).join(' ') + '</div>'
+    + projectSection(coin)
     + doleSection()
     + `<div class="sec">✨ ชุบชีวิตสัตว์</div>` + (dead.length ? dead.map(t => { const cost = reviveCost(t); return `<div class="row"><span>${ANIMALS[t].emoji} ${ANIMALS[t].name} ที่ตายไป ×${chestSt.dead[t]}</span><span><button class="btn small" data-revive="${t}" ${chestSt.coin < cost ? 'disabled' : ''}>ชุบ 🪙${cost}</button></span></div>`; }).join('') : '<p style="opacity:.7;margin:4px 0">ตอนนี้ไม่มีสัตว์ที่ต้องชุบ 🎉</p>');
   el.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'claim' }));
   el.querySelectorAll('[data-donate]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'donate', amt: +b.dataset.donate }));
   el.querySelectorAll('[data-revive]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'revive', type: b.dataset.revive }));
+  el.querySelectorAll('[data-proj]').forEach(b => b.onclick = () => send({ t: 'proj', id: b.dataset.proj, amt: +b.dataset.amt }));
 }
 document.querySelectorAll('[data-ttab]').forEach(t => t.onclick = () => { townTab = t.dataset.ttab; if (townTab === 'log') send({ t: 'quest', a: 'fame' }); renderTown(); });
 $('townBtn').onclick = () => (townShown() ? closeTown() : openTown('log'));
@@ -688,6 +705,16 @@ function renderShop() {
       + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all">ทั้งหมด 🪙${sellQuote(i.sell, m, inv[k]).total}</button>` : '') + `</span></div>`;
   }
   if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายเยอะราคาจะตก ทิ้งไว้ราคาจะค่อยๆ กลับมา และมีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
+  if (shopKind === 'food') {
+    h += '<div class="sec">👨‍🍳 ห้องครัว (ทำอาหารจากวัตถุดิบหลายสาย ขายได้แพงกว่าของดิบ)</div>';
+    const have = c => Object.keys(inv).reduce((s, k) => s + (inv[k] > 0 && cookCat(c, k) ? inv[k] : 0), 0);
+    for (const r of COOK) {
+      const parts = r.in.map(n => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, nm = n.c ? COOK_CATS[n.c].name : itemInfo(n.k).name, got = n.c ? have(n.c) : (inv[n.k] || 0); return `${emo}${nm} ×${n.n}` + (got >= n.n ? '' : ` <small style="color:#c0392b">(มี ${got})</small>`); }).join(' + ');
+      const ok = r.in.every(n => (n.c ? have(n.c) : (inv[n.k] || 0)) >= n.n);
+      h += `<div class="row"><span>${r.emoji} ${r.name}<br><small>ใช้ ${parts} • ขายได้ราว 🪙${r.sell} • กินอิ่ม +${r.food}</small></span><span><button class="btn small" data-cook="${r.id}" ${ok ? '' : 'disabled'}>ทำ</button></span></div>`;
+    }
+    h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ ('+'ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';
+  }
   if (shopKind === 'food') h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">🍖 ความอิ่มลดลงเรื่อยๆ ขณะออนไลน์ ถึง 0 จะใช้เครื่องมือไม่ได้ • ผลผลิตของตัวเองก็กินได้ (อิ่มน้อยกว่า) ในกระเป๋า 🎒</p>';
   if (shopKind === 'furn') h += `<p style="font-size:12px;opacity:.65;margin:8px 0 0">🏠 ซื้อที่ดินได้ที่ป้าย "ที่ดินว่าง" แถวบนสุดของแมพ (🪙${HOUSING.price}) แล้วกดปุ่ม 🏠 เพื่อวางของ • เก้าอี้/โซฟานั่งได้ • โคมไฟสว่างตอนกลางคืน</p>`;
   if (shopKind === 'wood') {
@@ -702,6 +729,7 @@ function renderShop() {
   const body = $('shopBody'); body.innerHTML = h;
   body.querySelectorAll('[data-ftab]').forEach(b => b.onclick = () => { farmTab = b.dataset.ftab; renderShop(); });
   body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft }));
+  body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook }));
   body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: +b.dataset.n }));
   body.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => send({ t: 'sell', item: b.dataset.sell, n: b.dataset.n === 'all' ? 'all' : 1 }));
   body.querySelectorAll('[data-eat]').forEach(b => b.onclick = () => send({ t: 'eat', item: b.dataset.eat }));
