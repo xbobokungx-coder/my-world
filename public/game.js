@@ -1160,11 +1160,11 @@ function renderCasino() {
   if (t.state === 'idle') {
     h += `<div class="sec">เลือกวิธีเล่น</div>`
       + `<button class="btn" data-arc="solo" style="width:100%">🎰 เล่นคนเดียวกับเจ้ามือ (ใช้เหรียญจริง)</button>`
-      + `<button class="btn" data-arc="create" style="width:100%;margin-top:8px">👥 เปิดโต๊ะหลายคน (รอเพื่อน แล้วกดเริ่ม • สูงสุด 3)</button>`
+      + `<button class="btn" data-arc="create" style="width:100%;margin-top:8px">👥 เปิดโต๊ะหลายคน (รอเพื่อน แล้วกดเริ่ม • เล่นได้หลายคน)</button>`
       + `<button class="btn" data-arc="practice" style="width:100%;margin-top:8px;background:#8a6fd1;border-bottom-color:#5d47a1">🧪 ซ้อมเล่นคนเดียว (ไม่ใช้เหรียญ)</button>`
       + `<p style="font-size:12px;opacity:.7">${rules}<br>เดิมพันต่อรอบ ${bets.join(' / ')} เหรียญ • เปิดโต๊ะหลายคน: คนแรก (เจ้าของโต๊ะ) กดเริ่มได้เมื่อมี ≥2 คน • ผลเป็นการสุ่ม เล่นเพื่อความสนุก ไม่ควรเล่นนานติดต่อกัน 🙏</p>`;
   } else if (t.state === 'waiting') {
-    h += `<div class="banner" style="background:#e9e0ff">⏳ รอผู้เล่น ${t.players.length}/${t.max}</div><div class="opps">${t.players.map(p => `<div class="opp">${p.id === t.hostId ? '👑 ' : ''}${esc(p.name)}</div>`).join('')}</div>`;
+    h += `<div class="banner" style="background:#e9e0ff">⏳ รอผู้เล่น • ตอนนี้ ${t.players.length} คน</div><div class="opps">${t.players.map(p => `<div class="opp">${p.id === t.hostId ? '👑 ' : ''}${esc(p.name)}</div>`).join('')}</div>`;
     if (isHost) h += (t.players.length >= 2 ? `<button class="btn" data-arc="startnow" style="width:100%;margin-top:8px">▶️ เริ่มเลย (${t.players.length} คน)</button>` : '<p class="center" style="font-size:13px">ให้เพื่อนเดินมาที่ตู้นี้แล้วกด "เข้าร่วม" (ต้องมีอย่างน้อย 2 คนถึงเริ่มได้)</p>')
       + `<button class="btn" data-arc="cancel" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ยกเลิกโต๊ะ</button>`;
     else if (mine) h += `<button class="btn" data-arc="leave" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ลุกจากโต๊ะ</button>`;
@@ -1208,10 +1208,10 @@ function renderUno() {
     + `<button class="btn" data-arc="create" style="width:100%">⚔️ สร้างห้อง UNO (รอเพื่อนมาเข้าร่วม แล้วกดเริ่ม)${arcBet ? ' • เดิมพัน ' + arcBet : ''}</button>`
     + `<div class="sec">🤖 ซ้อมกับบอท <small>(เล่น 1 ต่อ 1)</small></div><div class="chips">${BOTBET.bets.map(b => `<button class="chip${b === arcBotBet ? ' sel' : ''}" data-botbet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ซ้อมฟรี'}</button>`).join('')}</div>`
     + `<button class="btn" data-arc="bot" style="width:100%;margin-top:8px;background:#8a6fd1;border-bottom-color:#5d47a1">🤖 เล่นกับบอท${arcBotBet ? ' (เดิมพัน ' + arcBotBet + ')' : ' (ซ้อม ไม่เดิมพัน)'}</button>`
-    + `<p style="font-size:12px;opacity:.7">สร้างห้องแล้วรอเพื่อนเดินมาที่ตู้กด "เข้าร่วม" • คนแรก (เจ้าของห้อง) กดเริ่มได้เมื่อมีอย่างน้อย 2 คน (รองรับสูงสุด 4) • คนแรกที่ไพ่หมดมือชนะ ได้เหรียญเดิมพันของทุกคน • ตาละ 30 วิ ออกกลางคัน = เสียเดิมพัน</p>`;
+    + `<p style="font-size:12px;opacity:.7">สร้างห้องแล้วรอเพื่อนเดินมาที่ตู้กด "เข้าร่วม" • คนแรก (เจ้าของห้อง) กดเริ่มได้เมื่อมีอย่างน้อย 2 คน (เล่นได้หลายคน) • คนแรกที่ไพ่หมดมือชนะ ได้เหรียญเดิมพันของทุกคน • ตาละ 30 วิ ออกกลางคัน = เสียเดิมพัน</p>`;
   if (t.state === 'idle') h += lobby();
   else if (t.state === 'waiting') {
-    h += `<div class="banner" style="background:#e9e0ff">⏳ รอผู้เล่น ${t.players.length}/${t.max} • เดิมพัน ${t.bet ? '🪙 ' + t.bet : 'ไม่มี'} ต่อคน</div>`
+    h += `<div class="banner" style="background:#e9e0ff">⏳ รอผู้เล่น • ตอนนี้ ${t.players.length} คน • เดิมพัน ${t.bet ? '🪙 ' + t.bet : 'ไม่มี'} ต่อคน</div>`
       + `<div class="opps">${t.players.map(p => `<div class="opp">${p.id === t.hostId ? '👑 ' : ''}${esc(p.name)}</div>`).join('')}</div>`;
     if (isHost) h += (t.players.length >= 2 ? `<button class="btn" data-arc="startnow" style="width:100%;margin-top:8px">▶️ เริ่มเลย (${t.players.length} คน)</button>` : '<p class="center" style="font-size:13px">ให้เพื่อนเดินมาที่ตู้นี้แล้วกด "เข้าร่วม" (ต้องมีอย่างน้อย 2 คน) เหรียญเดิมพันถูกกันไว้ ยกเลิกแล้วได้คืน</p>')
       + `<button class="btn" data-arc="cancel" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ยกเลิกห้อง</button>`;

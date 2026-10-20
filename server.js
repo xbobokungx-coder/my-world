@@ -1852,7 +1852,7 @@ class World {
       case 'create': case 'bot': {
         if (t.state !== 'idle' && t.state !== 'over') return this.toast(p, 'โต๊ะนี้ไม่ว่าง');
         if (this.inGame(p)) return this.toast(p, 'คุณกำลังอยู่ในเกมอื่น');
-        const bot = m.a === 'bot', max = bot ? 2 : 4; // (5-i) ไม่เลือกจำนวนคนแล้ว: คนเล่นได้สูงสุด 4 (host กดเริ่มเองเมื่อ ≥2), บอท = เล่น 1 ต่อ 1
+        const bot = m.a === 'bot', max = bot ? 2 : 12; // ไม่จำกัดจำนวนคน (host กดเริ่มเองเมื่อ ≥2); 12 เป็นเพดานกันสำรับ 108 ใบหมดตอนแจก 7 ใบ/คน; บอท = เล่น 1 ต่อ 1
         const bet = bot ? this.botBetOf(p, m.bet) : (S.BETS.includes(m.bet | 0) ? m.bet | 0 : 0);
         if (bet < 0) return;
         if (coin < bet) return this.toast(p, 'เหรียญไม่พอสำหรับเดิมพันนี้');
@@ -2055,7 +2055,7 @@ class World {
         this.resetCasino(t); t.players = [mkp()]; t.watchers.add(p.id);
         if (m.a === 'practice') { t.practice = true; t.max = 1; this.casinoBeginSession(t); }       // ซ้อม ไม่ใช้เหรียญ
         else if (m.a === 'solo') { t.max = 1; this.casinoBeginSession(t); }                          // เล่นคนเดียวกับเจ้ามือ ใช้เหรียญจริง เริ่มทันที
-        else { t.max = 3; t.state = 'waiting'; t.waitUntil = now + 180000; this.pushTable(t, p.id); } // (5-i) โต๊ะหลายคน: รอเพื่อน host กดเริ่มเอง (สูงสุด 3)
+        else { t.max = 12; t.state = 'waiting'; t.waitUntil = now + 180000; this.pushTable(t, p.id); } // โต๊ะหลายคน: รอเพื่อน host กดเริ่มเอง (ไม่จำกัดจำนวนจริง เพดาน 12 กันกรณีสุดโต่ง)
         break;
       }
       case 'join': {
