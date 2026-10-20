@@ -1334,9 +1334,9 @@ class World {
       this.treeHp.delete(key); this.map[ty][tx] = T.GRASS; this.dirty = true;
       this.broadcast({ t: 'tree', x: tx, y: ty, on: false });
       const wl = this.lv(p, 'wood'), hard = Math.random() < S.WOOD.hardwood.chance + 0.01 * (wl - 1) + (this.happyOn() ? S.VILLAGE.hardBonus : 0), extra = Math.random() < 0.04 * (wl - 1) ? 1 : 0;
-      this.add(p, 'log', 1 + extra); if (hard) this.add(p, 'hardwood', 1);
-      this.addXp(p, 'wood', S.WOOD.log.xp * (1 + extra) + (hard ? S.WOOD.hardwood.xp : 0));
-      this.toast(p, `🌳 ต้นไม้ล้ม! ได้ 🪵 ไม้ท่อน x${1 + extra}${hard ? ' และ 🟫 ไม้เนื้อแข็ง!' : ''}`); this.sfx(p, 'fell'); this.event(p, 'chop'); if (hard) this.event(p, 'hardwood');
+      this.add(p, 'log', 2 + extra); if (hard) this.add(p, 'hardwood', 1); // (4C) ต้นละ 2 ไม้ท่อน ดันรายได้ช่างไม้
+      this.addXp(p, 'wood', S.WOOD.log.xp * (2 + extra) + (hard ? S.WOOD.hardwood.xp : 0));
+      this.toast(p, `🌳 ต้นไม้ล้ม! ได้ 🪵 ไม้ท่อน x${2 + extra}${hard ? ' และ 🟫 ไม้เนื้อแข็ง!' : ''}`); this.sfx(p, 'fell'); this.event(p, 'chop'); if (hard) this.event(p, 'hardwood');
     } else if (tool === 'medicine') {
       const a = this.animals.filter(a => a.sick && (Math.hypot(a.x - tcx, a.y - tcy) < 52 || Math.hypot(a.x - p.x, a.y - p.y) < 52))
         .sort((a, b) => Math.hypot(a.x - tcx, a.y - tcy) - Math.hypot(b.x - tcx, b.y - tcy))[0];
@@ -2174,7 +2174,7 @@ class World {
       }
       // ต้นไม้งอกใหม่ในที่โล่งสีเขียวที่ห่างจากสิ่งปลูกสร้าง
       this.treeTimer += dt;
-      if (this.treeTimer >= 20) {
+      if (this.treeTimer >= 13) { // (4C) ต้นไม้งอกเร็วขึ้น (20→13s) เพิ่มเพดานผลผลิตช่างไม้
         this.treeTimer = 0;
         if (this.treeList().length < this.treeCap) {
           for (let i = 0; i < 40; i++) {

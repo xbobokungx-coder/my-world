@@ -69,15 +69,15 @@
     tomato:     { name: 'มะเขือเทศ',   emoji: '🍅', seed: 25, sell: 50,  time: 120000, lv: 3, xp: 12 },
     eggplant:   { name: 'มะเขือม่วง',  emoji: '🍆', seed: 35, sell: 67,  time: 140000, lv: 4, xp: 16 },
     strawberry: { name: 'สตรอว์เบอร์รี', emoji: '🍓', seed: 45, sell: 84,  time: 160000, lv: 5, xp: 20 },
-    pumpkin:    { name: 'ฟักทอง',      emoji: '🎃', seed: 60, sell: 113, time: 200000, lv: 6, xp: 26 },
+    pumpkin:    { name: 'ฟักทอง',      emoji: '🎃', seed: 60, sell: 102, time: 200000, lv: 6, xp: 26 },
     potato:     { name: 'มันฝรั่ง',     emoji: '🥔', seed: 18,  sell: 35,  time: 90000,  lv: 2, xp: 10 },
     chili:      { name: 'พริก',        emoji: '🌶️', seed: 28,  sell: 55,  time: 130000, lv: 3, xp: 14 },
     broccoli:   { name: 'บรอกโคลี',     emoji: '🥦', seed: 38,  sell: 72,  time: 150000, lv: 4, xp: 18 },
     cherry:     { name: 'เชอร์รี',      emoji: '🍒', seed: 55,  sell: 99, time: 180000, lv: 5, xp: 22 },
-    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 70,  sell: 131, time: 230000, lv: 6, xp: 28 },
-    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 85,  sell: 162, time: 270000, lv: 7, xp: 34 },
-    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 110, sell: 215, time: 320000, lv: 9, xp: 42 },
-    melon:      { name: 'แตงโม',       emoji: '🍉', seed: 90, sell: 170, time: 260000, lv: 8, xp: 38 },
+    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 70,  sell: 116, time: 230000, lv: 6, xp: 28 },
+    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 85,  sell: 143, time: 270000, lv: 7, xp: 34 },
+    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 110, sell: 188, time: 320000, lv: 9, xp: 42 },
+    melon:      { name: 'แตงโม',       emoji: '🍉', seed: 90, sell: 150, time: 260000, lv: 8, xp: 38 },
   };
   // ปลา: lv = เลเวลชาวประมงที่เริ่มตกได้, w = น้ำหนักความน่าจะเป็น (หายาก = ราคาแพง: ราคาแปรผันตามความหายาก)
   const FISH = [
@@ -106,7 +106,7 @@
   // ช่างไม้: ตัดต้นไม้ด้วยขวาน (ขวานแรงกว่าตัดเร็วกว่า) ได้ไม้ท่อน หายากได้ไม้เนื้อแข็งราคาแพง
   const AXES = { 1: { name: 'ขวานหิน', price: 50, power: 1 }, 2: { name: 'ขวานเหล็ก', price: 220, lv: 3, power: 2 }, 3: { name: 'ขวานเหล็กกล้า', price: 700, lv: 6, power: 3 } };
   const TREE_HP = 4;                       // ต้องฟันกี่แต้มถึงล้ม (ขวานหิน = 4 ครั้ง, เหล็ก 2, เหล็กกล้า 2)
-  const WOOD = { log: { sell: 10, xp: 5 }, hardwood: { sell: 35, xp: 14, chance: 0.12 } };
+  const WOOD = { log: { sell: 16, xp: 5 }, hardwood: { sell: 66, xp: 14, chance: 0.16 } };
   // สัตว์ป่วย: ป่วยได้พร้อมกันไม่เกิน max ตัว (รวมทุกชนิด) รักษาด้วยยาตัวเดียวกัน ป่วยแล้วถ้าไม่รักษาจะตายเร็วกว่าหิวปกติ
   const SICK = { max: 1, graceMs: 150000, checkMs: DAY_MS, chance: 0.3 }; // สัตว์ป่วยทีละ 1 ตัวเท่านั้น สุ่มวันละครั้ง (1 วันในเกม = 12 นาทีที่มีคนออนไลน์) โอกาส 30% วันไหนไม่ป่วยก็ข้ามไปวันถัดไปเลย
   const SELLBACK = 0.7;                    // ขายของที่ซื้อมา (เสื้อผ้า คันเบ็ด ขวาน ตะเกียง) คืนร้านได้ 70% ของราคาซื้อ (หัก 30%)
@@ -446,7 +446,7 @@
     wm = /^dish_(\w+)$/.exec(k);
     if (wm) { const d = COOK.find(x => x.id === k); return d ? { name: d.name, emoji: d.emoji, sell: d.sell, cat: 'food' } : null; }
     if (k === 'log') return { name: 'ไม้ท่อน', emoji: '🪵', sell: WOOD.log.sell, cat: 'wood' };
-    if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 30, cat: 'wood' };
+    if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 58, cat: 'wood' };
     if (k === 'hardwood') return { name: 'ไม้เนื้อแข็ง', emoji: '🟫', sell: WOOD.hardwood.sell, cat: 'wood' };
     if (k === 'lamp') return { name: 'ตะเกียง (สว่างรอบตัว 5 ช่อง)', emoji: '🏮', buy: 150, once: true, cat: 'gear' };
     if (k === 'medicine') return { name: 'ยารักษาสัตว์', emoji: '💊', buy: 30, cat: 'feed' };
@@ -456,14 +456,14 @@
     if (cm && CANS[cm[1]] && CANS[cm[1]].price) { const c = CANS[cm[1]]; return { name: `${c.name} (น้ำ ${c.cap} ครั้ง • ดินเปียก ${c.wet / 1000} วิ)`, emoji: c.emoji, buy: c.price, lv: c.lv, skill: 'farm', once: true, cat: 'gear', can: +cm[1] }; }
     let am = /^axe_(\d)$/.exec(k);
     if (am && AXES[am[1]]) return { name: AXES[am[1]].name, emoji: '🪓', buy: AXES[am[1]].price, lv: AXES[am[1]].lv, skill: 'wood', once: true, cat: 'gear', axe: +am[1] };
-    if (k === 'egg')  return { name: 'ไข่ไก่', emoji: '🥚', sell: 14, cat: 'animal' };
-    if (k === 'duck_egg') return { name: 'ไข่เป็ด', emoji: '🥚', sell: 22, cat: 'animal' };
-    if (k === 'wool') return { name: 'ขนแกะ', emoji: '🧶', sell: 62, cat: 'animal' };
-    if (k === 'milk') return { name: 'นมวัว', emoji: '🥛', sell: 40, cat: 'animal' };
+    if (k === 'egg')  return { name: 'ไข่ไก่', emoji: '🥚', sell: 20, cat: 'animal' };
+    if (k === 'duck_egg') return { name: 'ไข่เป็ด', emoji: '🥚', sell: 30, cat: 'animal' };
+    if (k === 'wool') return { name: 'ขนแกะ', emoji: '🧶', sell: 85, cat: 'animal' };
+    if (k === 'milk') return { name: 'นมวัว', emoji: '🥛', sell: 55, cat: 'animal' };
     if (k === 'feed') return { name: 'อาหารไก่', emoji: '🌾', buy: 5, cat: 'feed' };
     if (k === 'hay')  return { name: 'หญ้าแห้ง (อาหารวัว)', emoji: '🌿', buy: 12, cat: 'feed' };
     if (k === 'slop') return { name: 'อาหารหมู', emoji: '🥣', buy: 15, cat: 'feed' };
-    if (k === 'truffle') return { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', sell: 80, cat: 'animal' };
+    if (k === 'truffle') return { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', sell: 110, cat: 'animal' };
     if (k === 'bait') return { name: 'เหยื่อตกปลา (ไส้เดือน)', emoji: '🪱', buy: BAIT_PRICE, cat: 'tool', bait: 1 };
     const bm = /^bait_(\d)$/.exec(k);
     if (bm && BAITS[bm[1]]) { const b = BAITS[bm[1]]; return { name: `เหยื่อ${b.name} (ปลาแพงขึ้น)`, emoji: b.emoji, buy: b.price, lv: b.lv, skill: 'fish', cat: 'tool', bait: +bm[1] }; }
