@@ -4,7 +4,7 @@
 ไฟล์นี้บอกวิธีทำงานให้เหมือนกันทุกเครื่อง (VPS และเครื่องที่บ้าน)
 
 - Repo: `git@github.com:xbobokungx-coder/my-world.git` (branch `main`)
-- เกมจริงที่คนเล่น: `http://165.101.64.106:3000` (VPS ชื่อเครื่อง `my-world`)
+- เกมจริงที่คนเล่น: **`https://165-101-64-106.sslip.io`** (ต้องใช้ HTTPS ไม่งั้นเปิดไมค์ไม่ได้) VPS ชื่อเครื่อง `my-world`
 - ภาษาในเกม คอมเมนต์ และเอกสาร: **ไทย**
 
 ## กฎเหล็ก (ทำทุกครั้ง)
@@ -103,7 +103,9 @@ mkdir -p /root/my-world/backup && cp -a /root/my-world/data /root/my-world/backu
 ## ข้อมูลเซิร์ฟเวอร์ (VPS)
 
 - ระบบ: Ubuntu (RAM ~1GB, มี swap 1GB) ระวังกินหน่วยความจำ อย่าติดตั้งของหนักโดยไม่จำเป็น
-- พอร์ต: `22` (SSH), `3000` (เกม) ยังไม่มีโดเมน/HTTPS
+- พอร์ต: `22` (SSH), `80`/`443` (Caddy), `3000` (เกม ใช้ภายในเป็นหลัก)
+- HTTPS: Caddy (`/etc/caddy/Caddyfile`) ขอใบรับรอง Let's Encrypt ให้ชื่อ `165-101-64-106.sslip.io` (sslip.io ชี้ไป IP ของ VPS ฟรี) แล้ว reverse proxy ไป `localhost:3000` รวม WebSocket ต่ออายุใบรับรองอัตโนมัติ ดูสถานะ `systemctl status caddy`
 - service: `/etc/systemd/system/my-world.service` (รัน `/usr/bin/node server.js` ใน `/root/my-world`)
 - Node.js LTS ติดตั้งจาก NodeSource
-- ยังไม่มีโดเมน ถ้าจะเพิ่มในอนาคตให้ใช้ Caddy เป็น reverse proxy มาที่ `localhost:3000` (ต้องรองรับ WebSocket)
+- ถ้ามีโดเมนจริง: ชี้ A record มาที่ IP VPS แล้วเปลี่ยนชื่อในบรรทัดแรกของ `/etc/caddy/Caddyfile` จากนั้น `systemctl reload caddy`
+- ไมค์/กล้องในเบราว์เซอร์ใช้ได้เฉพาะ HTTPS หรือ `localhost` ตอนทดสอบที่บ้านผ่าน `localhost` ใช้ได้ปกติ
