@@ -30,6 +30,7 @@ const PET_DEFS = [{ kind: 'cat', v: 0, max: 15, speed: 36 }, { kind: 'dog', v: 0
 const HEX = /^#[0-9a-f]{6}$/i;
 const DEFAULT_HAT = '#e8c66a';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const PARTY = new Set(['pok', 'react', 'rps']); // เกมห้องหลายคน (ผู้เล่นหลายคน/บอท) — ดู partyHandle
 const TOOLS = new Set(['hoe', 'water', 'rod', 'axe', 'medicine', ...Object.values(ANIMALS).map(a => a.feedItem), ...Object.keys(CROPS).map(c => 'seed_' + c)]);
 // ของที่ตลาดรับซื้อทั้งหมด (ราคาขึ้นลงตามอุปสงค์-อุปทาน)
 const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...S.COOK.map(c => c.id)];
@@ -93,7 +94,7 @@ class World {
     this.tables = {};
     S.CABINETS.forEach((c, i) => {
       if (!c.game) return;
-      this.tables['cab' + i] = c.game === 'uno' ? this.newUnoTable('cab' + i, c, i) : (c.game === 'bacc' || c.game === 'bj') ? this.newCasinoTable('cab' + i, c, i) : this.newTable('cab' + i, c, i);
+      this.tables['cab' + i] = c.game === 'uno' ? this.newUnoTable('cab' + i, c, i) : PARTY.has(c.game) ? this.newPartyTable('cab' + i, c, i) : (c.game === 'bacc' || c.game === 'bj') ? this.newCasinoTable('cab' + i, c, i) : this.newTable('cab' + i, c, i);
     });
     this.treeHp = new Map(); this.treeTimer = 0; this.sickTimer = 0;
     this.trades = new Map(); this.nextTrade = 1;
@@ -1409,13 +1410,13 @@ class World {
       g: t.game === 'xo' || !t.g ? null : this.duelPub(t, vid) };
   }
   arcsPub() {
-    return Object.values(this.tables).map(t => (t.game === 'uno' || t.game === 'bacc' || t.game === 'bj')
+    return Object.values(this.tables).map(t => (t.game === 'uno' || PARTY.has(t.game) || t.game === 'bacc' || t.game === 'bj')
       ? [t.id, t.idx, t.state, t.bet, t.players[0] ? t.players[0].name : '', t.players.length + '/' + t.max, t.bot ? 1 : 0, t.game]
       : [t.id, t.idx, t.state, t.bet, t.host ? t.host.name : '', t.guest ? t.guest.name : '', t.bot ? 1 : 0, t.game]);
   }
-  pubFor(t, id) { return t.game === 'uno' ? this.unoPub(t, id) : (t.game === 'bacc' || t.game === 'bj') ? this.casinoPub(t, id) : this.tablePub(t, id); }
+  pubFor(t, id) { return t.game === 'uno' ? this.unoPub(t, id) : PARTY.has(t.game) ? this.partyPub(t, id) : (t.game === 'bacc' || t.game === 'bj') ? this.casinoPub(t, id) : this.tablePub(t, id); }
   pushTable(t, openFor) {
-    const ids = (t.game === 'uno' || t.game === 'bacc' || t.game === 'bj')
+    const ids = (t.game === 'uno' || PARTY.has(t.game) || t.game === 'bacc' || t.game === 'bj')
       ? new Set([...t.players.filter(q => !q.bot).map(q => q.id), ...t.watchers])
       : new Set([t.host && t.host.id, t.guest && t.guest.id, ...t.watchers].filter(Boolean));
     for (const id of ids) {
@@ -1428,7 +1429,7 @@ class World {
   }
   inGame(p) {
     return Object.values(this.tables).some(t => (t.state === 'waiting' || t.state === 'playing') &&
-      (t.game === 'uno' ? t.players.some(q => q.id === p.id && !q.out)
+      (t.game === 'uno' || PARTY.has(t.game) ? t.players.some(q => q.id === p.id && !q.out)
         : (t.game === 'bacc' || t.game === 'bj') ? t.players.some(q => q.id === p.id && !q.leaving)
         : (t.host && t.host.id === p.id) || (t.guest && t.guest.id === p.id)));
   }
@@ -1528,6 +1529,7 @@ class World {
     const t = typeof m.id === 'string' && Object.hasOwn(this.tables, m.id) ? this.tables[m.id] : null;
     if (!t) return;
     if (t.game === 'uno') return this.unoHandle(p, m, t);
+    if (PARTY.has(t.game)) return this.partyHandle(p, m, t);
     if (t.game === 'bacc' || t.game === 'bj') return this.casinoHandle(p, m, t);
     const coin = p.rec.inv.coin || 0, now = Date.now();
     switch (m.a) {
@@ -1573,13 +1575,14 @@ class World {
   arcLeaveTable(p, t) { // ออกจากโต๊ะนี้: ยกเลิกห้องที่รอ (คืนเหรียญ) หรือแพ้ถ้ากำลังเล่นอยู่
     t.watchers.delete(p.id);
     if (t.game === 'uno') { this.unoLeave(p, t); return; }
+    if (PARTY.has(t.game)) { this.partyLeave(p, t); return; }
     if (t.game === 'bacc' || t.game === 'bj') { this.casinoDisconnect(p, t); return; }
     if (t.state === 'waiting' && t.host.id === p.id) this.cancelWait(t, `${p.name} ออกจากเกม ยกเลิกห้อง`);
     else if (t.state === 'playing' && (t.xId === p.id || t.oId === p.id)) this.finish(t, p.id === t.xId ? 'O' : 'X', null, `${p.name} ออกจากเกม`);
   }
   arcLeave(p) { for (const t of Object.values(this.tables)) this.arcLeaveTable(p, t); } // ผู้เล่นหลุด/ออกจากเกม
   arcSeated(p, t) { // นั่งอยู่ที่โต๊ะนี้ (ผู้เล่นจริง ไม่ใช่แค่ดู)
-    if (t.game === 'uno' || t.game === 'bacc' || t.game === 'bj') return t.players.some(q => q.id === p.id);
+    if (t.game === 'uno' || PARTY.has(t.game) || t.game === 'bacc' || t.game === 'bj') return t.players.some(q => q.id === p.id);
     return !!((t.host && t.host.id === p.id) || (t.guest && t.guest.id === p.id) || t.xId === p.id || t.oId === p.id);
   }
   arcRangeCheck(p) { // เดินห่างจากตู้เกินระยะ = ออกจากโต๊ะทันที (คนที่นั่งเล่นอยู่นับเหมือนออกจากเกม แค่ดูอยู่ก็ปิดหน้าต่างให้)
@@ -1596,6 +1599,7 @@ class World {
   arcTick(now) {
     for (const t of Object.values(this.tables)) {
       if (t.game === 'uno') { this.unoTick(t, now); continue; }
+      if (PARTY.has(t.game)) { this.partyTick(t, now); continue; }
       if (t.game === 'bacc' || t.game === 'bj') { this.casinoTick(t, now); continue; }
       if (t.state === 'waiting' && now > t.waitUntil) this.cancelWait(t, 'หมดเวลารอคู่แข่ง คืนเหรียญให้แล้ว');
       else if (t.state === 'playing' && t.game !== 'xo') this.duelTick(t, now);
@@ -1609,124 +1613,41 @@ class World {
     for (const t of Object.values(this.tables)) {
       if ((t.game === 'bacc' || t.game === 'bj') && t.phase === 'bet' && !t.practice) { for (const q of t.players) if (q.bet) this.payKey(q, q.bet.amt); continue; }
       if (!t.bet) continue;
-      if (t.game !== 'uno' && t.bot) { if (t.state === 'playing') this.payKey(t.host, t.bet); continue; }
-      if (t.game === 'uno') { if (t.state === 'waiting' || t.state === 'playing') for (const q of t.players) if (!q.bot) this.payKey(q, t.bet); continue; }
+      if (t.game !== 'uno' && !PARTY.has(t.game) && t.bot) { if (t.state === 'playing') this.payKey(t.host, t.bet); continue; }
+      if (t.game === 'uno' || PARTY.has(t.game)) { if (t.state === 'waiting' || t.state === 'playing') for (const q of t.players) if (!q.bot) this.payKey(q, t.bet); continue; }
       if (t.state === 'waiting') this.payKey(t.host, t.bet);
       else if (t.state === 'playing') { this.payKey(t.host, t.bet); this.payKey(t.guest, t.bet); }
     }
   }
 
-  // ===================== เกม 2 คนอื่นๆ: เป่ายิ้งฉุบ / ใครกดเร็วกว่า / ไพ่ป๊อก / Connect 4 =====================
+  // ===================== เกม 2 ฝ่าย: Connect 4 (XO ใช้ห้อง duel เดียวกัน) =====================
   // ใช้ห้อง/เดิมพัน/escrow/ค่าบริการ/ยอมแพ้/หลุดเกมร่วมกับ XO (ผู้เล่น X = เจ้าของห้องหรือสุ่ม, O = อีกฝ่าย) เก็บสถานะเฉพาะเกมไว้ใน t.g
   sideOf(t, id) { return id === t.xId ? 'X' : id === t.oId ? 'O' : null; }
   other(s) { return s === 'X' ? 'O' : 'X'; }
   sideName(t, s) { const id = s === 'X' ? t.xId : t.oId; return t.host && t.host.id === id ? t.host.name : t.guest ? t.guest.name : ''; }
   duelInit(t) {
     const now = Date.now();
-    if (t.game === 'react') { t.g = { score: { X: 0, O: 0 }, round: 0, phase: 'wait', goAt: 0, goTs: 0, botAt: 0, next: 0, msg: '' }; this.reactStart(t); }
-    else if (t.game === 'rps') { t.g = { score: { X: 0, O: 0 }, round: 1, picks: { X: '', O: '' }, phase: 'pick', reveal: null, final: null, next: 0, msg: 'เลือกหิน กรรไกร หรือกระดาษ', deadline: now + 10000 }; if (t.bot) t.g.picks.O = 'RPS'[Math.floor(Math.random() * 3)]; t.deadline = t.g.deadline; }
-    else if (t.game === 'pok') this.pokDeal(t);
-    else if (t.game === 'c4') { t.g = { board: Array(42).fill(''), turn: 'X', line: null, last: -1 }; t.deadline = now + 30000; }
+    if (t.game === 'c4') { t.g = { board: Array(42).fill(''), turn: 'X', line: null, last: -1 }; t.deadline = now + 30000; }
   }
   duelPub(t, vid) {
     const g = t.g, side = this.sideOf(t, vid);
-    if (t.game === 'react') return { score: g.score, round: g.round, phase: g.phase, msg: g.msg };
-    if (t.game === 'rps') return { score: g.score, round: g.round, phase: g.phase, msg: g.msg, mine: side ? g.picks[side] : '', picked: { X: !!g.picks.X, O: !!g.picks.O }, reveal: g.reveal };
-    if (t.game === 'pok') {
-      const over = t.state === 'over';
-      return { phase: g.phase, msg: g.msg, mine: side ? g.hands[side] : null, oppN: side ? g.hands[this.other(side)].length : 0, decided: { X: !!g.dec.X, O: !!g.dec.O }, reveal: over ? { X: g.hands.X, O: g.hands.O, pts: { X: this.pokPts(g.hands.X), O: this.pokPts(g.hands.O) } } : null };
-    }
     if (t.game === 'c4') return { board: g.board, turn: g.turn, line: g.line, last: g.last };
     return null;
   }
   duelMove(t, p, m) {
     if (t.state !== 'playing' || !t.g) return;
     const side = this.sideOf(t, p.id), g = t.g; if (!side) return;
-    if (t.game === 'react') {
-      if (g.phase === 'wait') this.reactEnd(t, this.other(side), `${p.name} กดก่อนสัญญาณ!`);
-      else if (g.phase === 'go') this.reactEnd(t, side, `${p.name} กดเร็วกว่า!`, Date.now() - g.goTs);
-    } else if (t.game === 'rps') {
-      if (g.phase !== 'pick' || g.picks[side] || !'RPS'.includes(String(m.c)) || String(m.c).length !== 1) return;
-      g.picks[side] = m.c; if (g.picks.X && g.picks.O) this.rpsReveal(t); else this.pushTable(t);
-    } else if (t.game === 'pok') {
-      if (g.phase !== 'decide' || g.dec[side] || !['draw', 'stay'].includes(m.c)) return;
-      g.dec[side] = m.c; if (g.dec.X && g.dec.O) this.pokResolve(t); else this.pushTable(t);
-    } else if (t.game === 'c4') {
+    if (t.game === 'c4') {
       if (g.turn !== side || !Number.isInteger(m.col) || m.col < 0 || m.col > 6) return;
       this.c4Drop(t, side, m.col);
     }
   }
   duelTick(t, now) {
     const g = t.g; if (!g) return;
-    if (t.game === 'react') {
-      if (g.phase === 'wait' && now >= g.goAt) { g.phase = 'go'; g.goTs = now; g.msg = 'กดเลย!'; g.botAt = t.bot ? now + 450 + Math.random() * 450 : 0; this.pushTable(t); }
-      else if (g.phase === 'go') {
-        if (t.bot && g.botAt && now >= g.botAt) this.reactEnd(t, 'O', 'บอท 🤖 กดเร็วกว่า!', now - g.goTs);
-        else if (now - g.goTs > 4000) { g.msg = 'ไม่มีใครกด รอบนี้ไม่นับ'; this.reactStart(t); }
-      } else if (g.phase === 'result' && now >= g.next) {
-        if (g.score.X >= 2 || g.score.O >= 2) this.finish(t, g.score.X >= 2 ? 'X' : 'O', null, `ชนะ ${g.score.X}-${g.score.O}`);
-        else this.reactStart(t);
-      }
-    } else if (t.game === 'rps') {
-      if (g.phase === 'pick' && now > g.deadline) { for (const s of ['X', 'O']) if (!g.picks[s]) g.picks[s] = 'RPS'[Math.floor(Math.random() * 3)]; this.rpsReveal(t); }
-      else if (g.phase === 'reveal' && now >= g.next) { if (g.final) this.finish(t, g.final, null, `ชนะ ${g.score.X}-${g.score.O}`); else this.rpsNext(t); }
-    } else if (t.game === 'pok') {
-      if (g.phase === 'decide' && now > t.deadline) { for (const s of ['X', 'O']) if (!g.dec[s]) g.dec[s] = 'stay'; this.pokResolve(t); }
-    } else if (t.game === 'c4') {
+    if (t.game === 'c4') {
       if (t.botAt && now >= t.botAt) { t.botAt = 0; this.c4Bot(t); }
       else if (now > t.deadline) { const loser = g.turn, pl = this.players.get(loser === 'X' ? t.xId : t.oId); this.finish(t, this.other(loser), null, `${pl ? pl.name : loser} หมดเวลา`); }
     }
-  }
-  // ---- ใครกดเร็วกว่า: ชนะ 2 ใน 3 รอบ กดก่อนสัญญาณ GO = แพ้รอบนั้น ----
-  reactStart(t) {
-    const g = t.g, now = Date.now();
-    Object.assign(g, { round: g.round + 1, phase: 'wait', goAt: now + 2000 + Math.random() * 4000, goTs: 0, botAt: 0, msg: 'รอสัญญาณ... อย่าเพิ่งกด!' });
-    t.deadline = 0; this.pushTable(t);
-  }
-  reactEnd(t, side, msg, ms) {
-    const g = t.g; g.score[side]++; g.phase = 'result'; g.next = Date.now() + 2200;
-    g.msg = `${msg}${ms ? ` (${ms} มิลลิวินาที)` : ''} • คะแนน ${g.score.X}-${g.score.O}`;
-    this.pushTable(t);
-  }
-  // ---- เป่ายิ้งฉุบ: ชนะ 2 ใน 3 รอบ เสมอเล่นรอบเดิมซ้ำ ----
-  rpsReveal(t) {
-    const g = t.g, a = g.picks.X, b = g.picks.O, beats = { R: 'S', S: 'P', P: 'R' };
-    g.reveal = { X: a, O: b }; g.phase = 'reveal'; g.next = Date.now() + 2300; t.deadline = 0;
-    const nm = s => this.sideName(t, s);
-    if (a === b) g.msg = 'เสมอ! เล่นรอบนี้ใหม่';
-    else { const w = beats[a] === b ? 'X' : 'O'; g.score[w]++; g.msg = `${nm(w)} ชนะรอบนี้! คะแนน ${g.score.X}-${g.score.O}`; if (g.score[w] >= 2) g.final = w; }
-    this.pushTable(t);
-  }
-  rpsNext(t) {
-    const g = t.g, now = Date.now(), tie = g.reveal && g.reveal.X === g.reveal.O;
-    if (!tie) g.round++;
-    Object.assign(g, { picks: { X: '', O: '' }, reveal: null, phase: 'pick', msg: 'เลือกหิน กรรไกร หรือกระดาษ', deadline: now + 10000 });
-    if (t.bot) g.picks.O = 'RPS'[Math.floor(Math.random() * 3)];
-    t.deadline = g.deadline; this.pushTable(t);
-  }
-  // ---- ไพ่ป๊อก 2 คน: แจกคนละ 2 ใบ ป๊อก 8/9 เปิดทันที ไม่ป๊อกเลือก "จั่วเพิ่ม" หรือ "อยู่" แล้วเทียบแต้ม ----
-  pokVal(c) { const r = c.slice(1); return r === 'A' ? 1 : ['10', 'J', 'Q', 'K'].includes(r) ? 0 : +r; }
-  pokPts(h) { return h.reduce((s, c) => s + this.pokVal(c), 0) % 10; }
-  pokDeal(t) {
-    const deck = [];
-    for (const s of 'SHDC') for (const r of ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']) deck.push(s + r);
-    this.unoShuffle(deck);
-    t.g = { deck, hands: { X: [deck.pop(), deck.pop()], O: [deck.pop(), deck.pop()] }, dec: { X: '', O: '' }, phase: 'decide', msg: '' };
-    t.deadline = Date.now() + 12000;
-    const px = this.pokPts(t.g.hands.X), po = this.pokPts(t.g.hands.O);
-    if (px >= 8 || po >= 8) return this.pokResolve(t); // มีป๊อก เปิดไพ่ทันที
-    if (t.bot) t.g.dec.O = po <= 4 ? 'draw' : 'stay';
-  }
-  pokResolve(t) {
-    const g = t.g, pok = s => g.hands[s].length === 2 && this.pokPts(g.hands[s]) >= 8;
-    if (!(pok('X') || pok('O'))) for (const s of ['X', 'O']) if (g.dec[s] === 'draw') g.hands[s].push(g.deck.pop());
-    const px = this.pokPts(g.hands.X), po = this.pokPts(g.hands.O);
-    const desc = `${this.sideName(t, 'X')} ${px} แต้ม${pok('X') ? ' (ป๊อก!)' : ''} • ${this.sideName(t, 'O')} ${po} แต้ม${pok('O') ? ' (ป๊อก!)' : ''}`;
-    g.phase = 'reveal';
-    let w;
-    if (pok('X') !== pok('O')) w = pok('X') ? 'X' : 'O';
-    else w = px === po ? 'draw' : px > po ? 'X' : 'O';
-    t.state === 'playing' && this.finish(t, w, null, desc);
   }
   // ---- Connect 4: 7 คอลัมน์ x 6 แถว เรียง 4 ตัวติดกันชนะ ----
   c4Win(b, side) {
@@ -1755,6 +1676,228 @@ class World {
     if (pick === undefined) pick = cols.find(c => test(c, 'X'));
     if (pick === undefined) pick = [...cols].sort((a, b) => Math.abs(a - 3) - Math.abs(b - 3) + (Math.random() - 0.5))[0];
     this.c4Drop(t, 'O', pick);
+  }
+
+  // ===================== เกมหลายคน (ห้องแบบ UNO): ไพ่ป๊อก / ใครกดเร็วกว่า / เป่ายิ้งฉุบ =====================
+  // 2–8 คน (เจ้าของห้องกดเริ่มเมื่อ ≥2) • เล่นคนเดียวกับบอทได้ • เติมบอทเข้าห้องได้ (เฉพาะห้องไม่เดิมพัน) • ผู้ชนะหาร pot (หักค่าบริการ) เสมอ = หารเท่ากัน
+  // XO / Connect 4 ยังเป็นเกม 2 ฝ่าย (กระดานเล่นได้แค่ 2 คน) ใช้ห้อง duel เดิม
+  partyBlank() { return { state: 'idle', bet: 0, max: 8, players: [], bot: false, deadline: 0, winner: '', winners: [], msg: '', waitUntil: 0, resetAt: 0, botAt: 0, g: null }; }
+  newPartyTable(id, c, idx) { return Object.assign({ id, idx, game: c.game, cx: c.x, cy: c.y, watchers: new Set() }, this.partyBlank()); }
+  resetParty(t) { Object.assign(t, this.partyBlank()); }
+  partyPub(t, vid) {
+    const g = t.g, me = t.players.find(q => q.id === vid);
+    const o = { id: t.id, game: t.game, state: t.state, bet: t.bet, max: t.max, bot: t.bot, hostId: t.players[0] ? t.players[0].id : 0,
+      players: t.players.map(q => ({ id: q.id, name: q.name, bot: q.bot, out: q.out, score: q.score || 0, done: !!(q.dec || q.pick) })),
+      deadline: t.deadline, winner: t.winner, winners: t.winners, msg: t.msg, g: null };
+    if (g) {
+      if (t.game === 'pok') o.g = { phase: g.phase, msg: g.msg, mine: me ? me.hand : null, reveal: g.reveal ? t.players.map(q => ({ id: q.id, hand: q.hand, pts: this.pokPts(q.hand), pok: this.pokIs(q), deng: this.pokDeng(q.hand) })) : null };
+      else if (t.game === 'react') o.g = { phase: g.phase, msg: g.msg, round: g.round, target: g.target, fs: me ? !!me.fs : false };
+      else o.g = { phase: g.phase, msg: g.msg, round: g.round, target: g.target, mine: me ? me.pick : '', reveal: g.reveal };
+    }
+    return o;
+  }
+  partyHandle(p, m, t) {
+    const coin = p.rec.inv.coin || 0, now = Date.now(), mine = t.players.find(q => q.id === p.id);
+    const blank = { hand: [], dec: '', pick: '', score: 0, out: false, fs: false };
+    const mkp = () => Object.assign({ id: p.id, name: p.name, key: p.key, bot: false }, blank, { hand: [] });
+    const botP = i => Object.assign({ id: -i, name: `บอท ${i} 🤖`, key: '', bot: true }, blank, { hand: [] });
+    switch (m.a) {
+      case 'close': t.watchers.delete(p.id); break;
+      case 'create': case 'bot': {
+        if (t.state !== 'idle' && t.state !== 'over') return this.toast(p, 'โต๊ะนี้ไม่ว่าง');
+        if (this.inGame(p)) return this.toast(p, 'คุณกำลังอยู่ในเกมอื่น');
+        const bot = m.a === 'bot', bet = bot ? this.botBetOf(p, m.bet) : (S.BETS.includes(m.bet | 0) ? m.bet | 0 : 0);
+        if (bet < 0) return;
+        if (coin < bet) return this.toast(p, 'เหรียญไม่พอสำหรับเดิมพันนี้');
+        this.resetParty(t);
+        if (bet) this.add(p, 'coin', -bet, 'arcade'); // กันเหรียญเดิมพันไว้ (escrow) จนจบเกม
+        t.bet = bet; t.bot = bot; t.players = [mkp()]; t.watchers.add(p.id);
+        if (bot) { for (let i = 1; i <= (t.game === 'pok' ? 3 : 2); i++) t.players.push(botP(i)); this.partyStart(t); } // เล่นคนเดียว: ป๊อกเจอบอท 3 ตัว ที่เหลือ 2 ตัว
+        else { t.state = 'waiting'; t.waitUntil = now + 180000; this.pushTable(t, p.id); }
+        break;
+      }
+      case 'join': {
+        if (t.state !== 'waiting' || mine || t.players.length >= t.max) return;
+        if (this.inGame(p)) return this.toast(p, 'คุณกำลังอยู่ในเกมอื่น');
+        if (coin < t.bet) return this.toast(p, 'เหรียญไม่พอสำหรับเดิมพันนี้');
+        if (t.bet) this.add(p, 'coin', -t.bet, 'arcade');
+        t.players.push(mkp()); t.watchers.add(p.id);
+        if (t.players.length >= t.max) this.partyStart(t); else this.pushTable(t);
+        break;
+      }
+      case 'addbot': { // เติมบอทเข้าห้องรอ (เฉพาะห้องที่ไม่เดิมพัน — กันเอาเหรียญเดิมพันไปเล่นกับบอท)
+        if (t.state !== 'waiting' || !mine || t.players[0] !== mine || t.bet || t.players.length >= t.max) return;
+        const n = t.players.filter(q => q.bot).length + 1; t.players.push(botP(n)); this.pushTable(t);
+        break;
+      }
+      case 'leave': {
+        if (t.state !== 'waiting' || !mine || t.players[0] === mine) return;
+        if (t.bet) this.payKey(mine, t.bet);
+        t.players = t.players.filter(q => q !== mine); this.pushTable(t);
+        break;
+      }
+      case 'cancel': if (t.state === 'waiting' && t.players[0] && t.players[0].id === p.id) this.partyRefundAll(t); break;
+      case 'startnow': {
+        if (t.state !== 'waiting' || !t.players[0] || t.players[0].id !== p.id || t.players.length < 2) return;
+        this.partyStart(t);
+        break;
+      }
+      case 'move': if (t.state === 'playing' && mine && !mine.out) this.partyMove(t, mine, m); break;
+      case 'resign': if (t.state === 'playing' && mine && !mine.out) this.partyOut(t, mine, 'ยอมแพ้'); break;
+    }
+  }
+  partyStart(t) {
+    for (const q of t.players) Object.assign(q, { hand: [], dec: '', pick: '', score: 0, out: false, fs: false });
+    Object.assign(t, { state: 'playing', winner: '', winners: [], msg: '', botAt: 0, deadline: 0 });
+    if (t.game === 'pok') this.pokStart(t);
+    else if (t.game === 'react') { t.g = { phase: 'wait', round: 0, target: 2, goAt: 0, goTs: 0, next: 0, msg: '', botAt: {} }; this.reactStart(t); }
+    else { t.g = { phase: 'pick', round: 0, rounds: 0, target: 2, reveal: null, next: 0, msg: '' }; this.rpsRound(t); }
+  }
+  partyMove(t, q, m) {
+    if (t.game === 'pok') {
+      const g = t.g; if (g.phase !== 'decide' || q.dec || !['draw', 'stay'].includes(m.c)) return;
+      q.dec = m.c;
+      if (t.players.filter(x => !x.out).every(x => x.dec)) this.pokResolve(t); else this.pushTable(t);
+    } else if (t.game === 'react') this.reactPress(t, q);
+    else {
+      const g = t.g; if (g.phase !== 'pick' || q.pick || typeof m.c !== 'string' || m.c.length !== 1 || !'RPS'.includes(m.c)) return;
+      q.pick = m.c;
+      if (t.players.filter(x => !x.out).every(x => x.pick)) this.rpsReveal(t); else this.pushTable(t);
+    }
+  }
+  // ผู้เล่นออก/ยอมแพ้ระหว่างเล่น: เดิมพันเขายังอยู่ใน pot, เขาไม่มีสิทธิ์ชนะ; เหลือคนเดียว (หรือเหลือแต่บอท) = จบเกม
+  partyOut(t, q, why) {
+    q.out = true; if (!q.dec) q.dec = 'stay'; if (!q.pick) q.pick = 'x';
+    const el = t.players.filter(x => !x.out);
+    if (el.length <= 1 || el.every(x => x.bot)) return this.partyFinish(t, el.length === 1 ? el : [], `${q.name} ${why}`);
+    const g = t.g;
+    if (t.game === 'pok' && g.phase === 'decide' && el.every(x => x.dec)) this.pokResolve(t);
+    else if (t.game === 'rps' && g.phase === 'pick' && el.every(x => x.pick)) this.rpsReveal(t);
+    else this.pushTable(t);
+  }
+  partyFinish(t, ws, desc) {
+    if (t.state !== 'playing') return;
+    const humans = t.players.filter(q => !q.bot), hw = ws.filter(q => !q.bot);
+    const seats = t.bot ? t.players.length : humans.length, gross = t.bet * seats; let rake = Math.floor(gross * S.RAKE), pot = gross - rake; // เล่นกับบอท: บอทวางเดิมพันเท่าคน (เหรียญฝั่งบอทมาจากบ้าน)
+    if (t.bot && t.bet && humans[0]) { const hk = humans[0].key; if (hw.length) { const rem = this.botRemain(hk); if (pot - t.bet > rem) { pot = t.bet + rem; rake = gross - pot; } this.botNetAdd(hk, pot - t.bet); } else this.botNetAdd(hk, -t.bet); }
+    const share = hw.length ? Math.floor(pot / ws.length) : 0;
+    for (const q of hw) this.payKey(q, share);
+    const names = ws.map(q => q.name).join(', ');
+    Object.assign(t, { state: 'over', winners: ws.map(q => q.id), winner: names, resetAt: Date.now() + 20000, deadline: 0, botAt: 0 });
+    t.msg = (ws.length > 1 ? `เสมอ! ${names} ร่วมชนะ` : ws.length ? `${names} ชนะ!` : 'ไม่มีผู้ชนะ') + (desc ? ` — ${desc}` : '') + (share ? ` ได้ 🪙 ${share}${rake ? ` (หักค่าบริการ ${rake})` : ''}` : '');
+    for (const q of humans) { const o = this.players.get(q.id); if (o && o.key === q.key) this.sfxTo(o, ws.includes(q) ? 'win' : 'lose'); }
+    if (!t.players.some(q => q.bot)) for (const q of humans) if (!q.out) this.arcAward(q.key, S.ARCPTS.play, ws.length === 1 && ws[0] === q); // แต้มตู้เกม: เฉพาะโต๊ะที่เล่นกับคนจริงล้วน (ไม่นับคนที่ออกกลางคัน)
+    this.pushTable(t);
+  }
+  partyRefundAll(t, msg) {
+    if (t.bet) for (const q of t.players) if (!q.bot) this.payKey(q, t.bet);
+    const ids = t.players.filter(q => !q.bot).map(q => q.id);
+    this.resetParty(t); t.msg = msg || '';
+    this.pushTable(t);
+    for (const id of ids) { const h = this.players.get(id); if (h) this.toast(h, msg || 'ยกเลิกห้องแล้ว คืนเหรียญให้แล้ว'); }
+  }
+  partyLeave(p, t) {
+    const mine = t.players.find(q => q.id === p.id);
+    if (!mine) return;
+    if (t.state === 'waiting') {
+      if (t.players[0] === mine) this.partyRefundAll(t, `${p.name} ออกจากเกม ยกเลิกห้อง`);
+      else { if (t.bet) this.payKey(mine, t.bet); t.players = t.players.filter(q => q !== mine); this.pushTable(t); }
+    } else if (t.state === 'playing' && !mine.out) this.partyOut(t, mine, 'ออกจากเกม');
+  }
+  partyTick(t, now) {
+    if (t.state === 'waiting' && now > t.waitUntil) return this.partyRefundAll(t, 'หมดเวลารอผู้เล่น คืนเหรียญให้แล้ว');
+    if (t.state === 'over' && now > t.resetAt) { this.resetParty(t); this.pushTable(t); return; }
+    if (t.state !== 'playing' || !t.g) return;
+    const g = t.g, el = t.players.filter(q => !q.out);
+    if (t.game === 'pok') {
+      if (g.phase === 'decide' && now > t.deadline) { for (const q of el) if (!q.dec) q.dec = 'stay'; this.pokResolve(t); }
+    } else if (t.game === 'react') {
+      if (g.phase === 'wait' && now >= g.goAt) {
+        g.phase = 'go'; g.goTs = now; g.msg = 'กดเลย!'; g.botAt = {};
+        for (const q of el) if (q.bot) g.botAt[q.id] = now + 450 + Math.random() * 500;
+        this.pushTable(t);
+      } else if (g.phase === 'go') {
+        let first = null;
+        for (const q of el) if (q.bot && !q.fs && g.botAt[q.id] && now >= g.botAt[q.id] && (!first || g.botAt[q.id] < g.botAt[first.id])) first = q;
+        if (first) this.reactWin(t, first, Math.round(g.botAt[first.id] - g.goTs));
+        else if (now - g.goTs > 4000) { g.msg = 'ไม่มีใครกด รอบนี้ไม่นับ'; this.reactStart(t); }
+      } else if (g.phase === 'result' && now >= g.next) {
+        const top = Math.max(...el.map(q => q.score));
+        if (top >= g.target || g.round >= 12) this.partyFinish(t, el.filter(q => q.score === top), t.players.map(q => `${q.name} ${q.score}`).join(' • '));
+        else this.reactStart(t);
+      }
+    } else {
+      if (g.phase === 'pick' && now > t.deadline) this.rpsReveal(t);
+      else if (g.phase === 'reveal' && now >= g.next) {
+        const top = Math.max(...el.map(q => q.score));
+        if (top >= g.target || g.rounds >= 10) this.partyFinish(t, el.filter(q => q.score === top), t.players.map(q => `${q.name} ${q.score}`).join(' • '));
+        else this.rpsRound(t);
+      }
+    }
+  }
+  // ---- ไพ่ป๊อก: แจกคนละ 2 ใบ ใครมีป๊อก 8/9 เปิดไพ่ทันที ไม่งั้นเลือก "จั่วเพิ่ม" หรือ "อยู่" แล้วเทียบแต้ม • แต้มเท่ากันตัดสินด้วยเด้ง (สองใบดอก/เลขเดียวกัน ×2, สามใบดอกเดียวกัน ×3) • ยังเท่ากัน = หาร pot ----
+  pokVal(c) { const r = c.slice(1); return r === 'A' ? 1 : ['10', 'J', 'Q', 'K'].includes(r) ? 0 : +r; }
+  pokPts(h) { return h.reduce((s, c) => s + this.pokVal(c), 0) % 10; }
+  pokIs(q) { return q.hand.length === 2 && this.pokPts(q.hand) >= 8; }
+  pokDeng(h) { const s = h.map(c => c[0]), r = h.map(c => c.slice(1)); if (h.length === 2) return s[0] === s[1] || r[0] === r[1] ? 2 : 1; return h.length === 3 && s[0] === s[1] && s[1] === s[2] ? 3 : 1; }
+  pokStart(t) {
+    const deck = [];
+    for (const s of 'SHDC') for (const r of ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']) deck.push(s + r);
+    this.unoShuffle(deck);
+    t.g = { deck, phase: 'decide', reveal: false, msg: 'เลือกจั่วเพิ่มหรืออยู่' };
+    for (const q of t.players) { q.hand = [deck.pop(), deck.pop()]; q.dec = ''; if (q.bot) { const pts = this.pokPts(q.hand); q.dec = pts <= 4 || (pts === 5 && Math.random() < 0.5) ? 'draw' : 'stay'; } }
+    t.deadline = Date.now() + 15000;
+    if (t.players.some(q => this.pokIs(q))) return this.pokResolve(t); // มีป๊อก เปิดไพ่ทันที
+    this.pushTable(t);
+  }
+  pokResolve(t) {
+    const g = t.g; if (!g || g.reveal) return;
+    if (!t.players.some(q => this.pokIs(q))) for (const q of t.players) if (q.dec === 'draw' && !q.out) q.hand.push(g.deck.pop());
+    g.reveal = true; g.phase = 'reveal';
+    const el = t.players.filter(q => !q.out), key = q => [this.pokIs(q) ? 1 : 0, this.pokPts(q.hand), this.pokDeng(q.hand)];
+    const cmp = (a, b) => { const x = key(a), y = key(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i]; return 0; };
+    const best = el.reduce((b, q) => (!b || cmp(q, b) > 0 ? q : b), null);
+    this.partyFinish(t, best ? el.filter(q => cmp(q, best) === 0) : [], t.players.map(q => `${q.name} ${this.pokPts(q.hand)} แต้ม${this.pokIs(q) ? ' (ป๊อก!)' : ''}${q.out ? ' (ออก)' : ''}`).join(' • '));
+  }
+  // ---- ใครกดเร็วกว่า: ใครกดก่อนสัญญาณ GO = ออกจากรอบนั้น, คนแรกที่กดหลังสัญญาณชนะรอบ, ใครชนะครบ 2 รอบก่อนเป็นผู้ชนะ ----
+  reactStart(t) {
+    const g = t.g, now = Date.now();
+    Object.assign(g, { round: g.round + 1, phase: 'wait', goAt: now + 2000 + Math.random() * 4000, goTs: 0, botAt: {}, msg: 'รอสัญญาณ... อย่าเพิ่งกด!' });
+    for (const q of t.players) q.fs = false;
+    t.deadline = 0; this.pushTable(t);
+  }
+  reactPress(t, q) {
+    const g = t.g, now = Date.now(); if (q.fs) return;
+    if (g.phase === 'wait') {
+      q.fs = true; g.msg = `${q.name} กดก่อนสัญญาณ! ออกจากรอบนี้`;
+      if (!t.players.some(x => !x.out && !x.fs)) { g.msg = 'ทุกคนกดก่อนสัญญาณ รอบนี้ไม่นับ'; return this.reactStart(t); }
+      this.pushTable(t);
+    } else if (g.phase === 'go') this.reactWin(t, q, now - g.goTs);
+  }
+  reactWin(t, q, ms) {
+    const g = t.g; q.score++; g.phase = 'result'; g.next = Date.now() + 2200;
+    g.msg = `${q.name} กดเร็วที่สุด! (${ms} มิลลิวินาที) • ` + t.players.map(x => `${x.name} ${x.score}`).join(' • ');
+    this.pushTable(t);
+  }
+  // ---- เป่ายิ้งฉุบ: ทุกคนเลือกพร้อมกัน เหลือ 2 แบบพอดี = ฝ่ายชนะได้ 1 แต้ม (เสมอ/ครบ 3 แบบ = เล่นรอบนั้นใหม่) ครบ 2 แต้มก่อนชนะ ----
+  rpsRound(t) {
+    const g = t.g, now = Date.now(); g.round++; g.phase = 'pick'; g.reveal = null; g.msg = 'เลือกหิน กรรไกร หรือกระดาษ';
+    for (const q of t.players) q.pick = q.bot && !q.out ? 'RPS'[Math.floor(Math.random() * 3)] : (q.out ? 'x' : '');
+    t.deadline = now + 10000; this.pushTable(t);
+  }
+  rpsReveal(t) {
+    const g = t.g, now = Date.now(), alive = t.players.filter(q => !q.out), beats = { R: 'S', S: 'P', P: 'R' };
+    for (const q of alive) if (!q.pick) q.pick = 'RPS'[Math.floor(Math.random() * 3)];
+    g.reveal = {}; for (const q of alive) g.reveal[q.id] = q.pick;
+    const set = [...new Set(alive.map(q => q.pick))];
+    g.phase = 'reveal'; g.next = now + 2300; g.rounds++; t.deadline = 0;
+    if (set.length !== 2) g.msg = 'เสมอ! เล่นรอบนี้ใหม่';
+    else {
+      const win = beats[set[0]] === set[1] ? set[0] : set[1], ws = alive.filter(q => q.pick === win);
+      for (const q of ws) q.score++;
+      g.msg = `${ws.map(q => q.name).join(', ')} ชนะรอบนี้! • ` + t.players.map(x => `${x.name} ${x.score}`).join(' • ');
+    }
+    this.pushTable(t);
   }
 
   // ===================== UNO (2-4 คน, เดิมพันด้วยเหรียญ, มีบอท) =====================

@@ -1020,7 +1020,7 @@ $('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk();
 // ---------- แชทเสียง (WebRTC, ต่อตรงระหว่างผู้เล่น / signaling ผ่าน WebSocket เดิม) ----------
 const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 const peers = new Map(), levels = new Map();
-window.__mw = { peers, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
+window.__mw = { peers, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
 
 function getPeer(id) {
@@ -1191,11 +1191,73 @@ function onArc(m) {
   if (m.close) { if (arcTable && arcTable.id === m.close) { arcTable = null; closeArcade(); } return; } // เดินห่างตู้เกินระยะ: เซิร์ฟเวอร์พาออกจากโต๊ะแล้ว
   const t = m.table, was = arcLast[t.id]; arcLast[t.id] = t.state;
   if (t.game === 'react' && t.g) { const ph = arcLast[t.id + ':ph']; arcLast[t.id + ':ph'] = t.g.phase; if (t.g.phase === 'go' && ph !== 'go' && arcOpenNow()) playSfx('go'); }
-  const uno = t.game === 'uno', casino = t.game === 'bacc' || t.game === 'bj';
-  const amPlayer = (uno || casino) ? t.players.some(p => p.id === myId && !p.out) : (t.xId === myId || t.oId === myId);
+  const uno = t.game === 'uno', casino = t.game === 'bacc' || t.game === 'bj', party = PARTY_GAMES.has(t.game);
+  const amPlayer = (uno || casino || party) ? t.players.some(p => p.id === myId && !p.out) : (t.xId === myId || t.oId === myId);
   if (m.open) { arcTable = t; unoWild = -1; openArcade(); return; }
-  if (t.state === 'playing' && was !== 'playing' && amPlayer) { arcTable = t; unoWild = -1; openArcade(); toast(uno ? '🃏 เกม UNO เริ่มแล้ว!' : casino ? '🎰 โต๊ะเริ่มแล้ว วางเดิมพันได้เลย!' : '🎮 เกม XO เริ่มแล้ว!'); return; }
+  if (t.state === 'playing' && was !== 'playing' && amPlayer) { arcTable = t; unoWild = -1; openArcade(); toast(uno ? '🃏 เกม UNO เริ่มแล้ว!' : casino ? '🎰 โต๊ะเริ่มแล้ว วางเดิมพันได้เลย!' : party ? '🎮 เกมเริ่มแล้ว!' : '🎮 เกม XO เริ่มแล้ว!'); return; }
   if (arcTable && arcTable.id === t.id) { if (uno && t.cur !== myId) unoWild = -1; arcTable = t; if (arcOpenNow()) renderArcade(); }
+}
+// ----- เกมหลายคน: ไพ่ป๊อก / ใครกดเร็วกว่า / เป่ายิ้งฉุบ (ห้องแบบ UNO: 2–8 คน เริ่มเมื่อ ≥2 • เล่นคนเดียวกับบอท • เติมบอทได้) -----
+const PARTY_GAMES = new Set(['pok', 'react', 'rps']);
+const PARTY_RULES = {
+  pok: 'แจกไพ่คนละ 2 ใบ ใครมีป๊อก 8/9 เปิดไพ่ทันที ไม่งั้นเลือกจั่วเพิ่มหรืออยู่ แล้วเทียบแต้ม (A = 1, 10/J/Q/K = 0) • แต้มเท่ากันตัดสินด้วยเด้ง (สองใบดอก/เลขเดียวกัน ×2, สามใบดอกเดียวกัน ×3) ยังเท่ากันหาร pot',
+  react: 'ทุกคนจ้องสัญญาณ ใครกดก่อนสัญญาณเขียวออกจากรอบนั้น คนแรกที่กดหลังสัญญาณชนะรอบ ใครชนะครบ 2 รอบก่อนเป็นผู้ชนะ',
+  rps: 'ทุกคนเลือกพร้อมกันภายใน 10 วินาที ถ้าเหลือ 2 แบบ ฝ่ายชนะได้ 1 แต้ม (เสมอ/ครบ 3 แบบ เล่นรอบนั้นใหม่) ครบ 2 แต้มก่อนเป็นผู้ชนะ',
+};
+const RPS_ICON = { R: '✊', P: '✋', S: '✌️' };
+const pokPtsC = h => (h || []).reduce((s, c) => s + (c.slice(1) === 'A' ? 1 : ['10', 'J', 'Q', 'K'].includes(c.slice(1)) ? 0 : +c.slice(1)), 0) % 10;
+function renderParty() {
+  const t = arcTable, coin = inv.coin || 0, g = t.g || {}, name = GAME_TITLES[t.game] || '';
+  if (arcBet > coin) arcBet = [...BETS].reverse().find(b => b <= coin) || 0;
+  if (arcBotBet > coin) arcBotBet = [...BOTBET.bets].reverse().find(b => b <= coin) || 0;
+  const mine = t.players.find(p => p.id === myId), isHost = t.hostId === myId, playing = t.state === 'playing', alive = !!(mine && !mine.out);
+  const nBots = t.game === 'pok' ? 3 : 2;
+  let h = `<div class="center" style="font-size:13px;opacity:.75">🪙 เหรียญของคุณ ${coin}</div>`;
+  const lobby = () => `<div class="sec">เลือกเดิมพัน (ต่อคน)</div><div class="chips">${BETS.map(b => `<button class="chip${b === arcBet ? ' sel' : ''}" data-bet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ไม่เดิมพัน'}</button>`).join('')}</div>`
+    + `<button class="btn" data-arc="create" style="width:100%">⚔️ สร้างห้อง ${esc(name)} (รอเพื่อนมาเข้าร่วม แล้วกดเริ่ม)${arcBet ? ' • เดิมพัน ' + arcBet : ''}</button>`
+    + `<div class="sec">🤖 เล่นคนเดียวกับบอท <small>(บอท ${nBots} ตัว • ซ้อมฟรี ไม่เดิมพัน)</small></div><div class="chips">${BOTBET.bets.map(b => `<button class="chip${b === arcBotBet ? ' sel' : ''}" data-botbet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ซ้อมฟรี'}</button>`).join('')}</div>`
+    + `<button class="btn" data-arc="bot" style="width:100%;margin-top:8px;background:#8a6fd1;border-bottom-color:#5d47a1">🤖 เล่นกับบอท${arcBotBet ? ' (เดิมพัน ' + arcBotBet + ')' : ' (ซ้อม ไม่เดิมพัน)'}</button>`
+    + `<p style="font-size:12px;opacity:.7">${esc(PARTY_RULES[t.game] || '')} • เล่นได้ 2–8 คน เจ้าของห้องกดเริ่มเมื่อมีอย่างน้อย 2 คน (เติมบอทได้ถ้าไม่เดิมพัน) • ผู้ชนะได้เหรียญเดิมพันทั้งโต๊ะ (หักค่าบริการ 5%) เสมอหารเท่ากัน • ออกกลางคันถือว่าแพ้</p>`;
+  if (t.state === 'idle') h += lobby();
+  else if (t.state === 'waiting') {
+    h += `<div class="banner" style="background:#e9e0ff">⏳ รอผู้เล่น • ตอนนี้ ${t.players.length}/${t.max} คน • เดิมพัน ${t.bet ? '🪙 ' + t.bet : 'ไม่มี'} ต่อคน</div>`
+      + `<div class="opps">${t.players.map(p => `<div class="opp">${p.id === t.hostId ? '👑 ' : ''}${esc(p.name)}</div>`).join('')}</div>`;
+    if (isHost) h += (t.players.length >= 2 ? `<button class="btn" data-arc="startnow" style="width:100%;margin-top:8px">▶️ เริ่มเลย (${t.players.length} คน)</button>` : '<p class="center" style="font-size:13px">ให้เพื่อนเดินมาที่ตู้นี้แล้วกด "เข้าร่วม" หรือเติมบอทเพื่อเริ่มเล่น</p>')
+      + (!t.bet && t.players.length < t.max ? `<button class="btn" data-arc="addbot" style="width:100%;margin-top:8px;background:#8a6fd1;border-bottom-color:#5d47a1">🤖 เติมบอท</button>` : '')
+      + `<button class="btn" data-arc="cancel" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ยกเลิกห้อง</button>`;
+    else if (mine) h += `<button class="btn" data-arc="leave" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ออกจากห้อง (ได้เหรียญคืน)</button>`;
+    else h += `<button class="btn" data-arc="join" style="width:100%;margin-top:8px" ${coin < t.bet || t.players.length >= t.max ? 'disabled' : ''}>🎮 เข้าร่วม</button>${coin < t.bet ? '<p class="center" style="color:#c0392b">เหรียญไม่พอ</p>' : ''}`;
+  } else {
+    const showScore = t.game !== 'pok', win = id => (t.winners || []).includes(id);
+    h += `<div class="opps">${t.players.map(p => `<div class="opp${p.out ? ' out' : ''}${t.state === 'over' && win(p.id) ? ' cur' : ''}">${p.id === myId ? '⭐ ' : ''}${esc(p.name)}${showScore ? `<br>⭐ ${p.score}` : ''}${playing && !p.out && t.game !== 'react' ? `<br>${p.done ? '✅' : '🤔'}` : ''}${p.out ? '<br>(ออก)' : ''}</div>`).join('')}</div>`;
+    if (t.bet && !t.bot) h += `<div class="center" style="font-size:12px;opacity:.75">เดิมพัน 🪙 ${t.bet} ต่อคน • รางวัลรวม 🪙 ${t.bet * t.players.length}</div>`;
+    if (t.game === 'pok') {
+      if (g.reveal) h += g.reveal.map(r => { const p = t.players.find(x => x.id === r.id) || {}; return `<div class="sec center">${win(r.id) ? '👑 ' : ''}${esc(p.name || '')} • ${r.pts} แต้ม${r.pok ? ' • ป๊อก!' : ''}${r.deng > 1 ? ` • เด้ง ×${r.deng}` : ''}${p.out ? ' (ออก)' : ''}</div><div class="center">${r.hand.map(c => pokCard(c)).join('')}</div>`; }).join('');
+      else if (g.mine) {
+        h += `<div class="sec center">ไพ่ของคุณ • ${pokPtsC(g.mine)} แต้ม</div><div class="center">${g.mine.map(c => pokCard(c)).join('')}</div>`;
+        const decided = mine && mine.done;
+        h += playing && alive ? (decided ? `<div class="center" style="margin-top:8px;font-weight:700">⏳ รอคนอื่นตัดสินใจ...</div>`
+          : `<div class="center" style="margin-top:10px;display:flex;gap:8px;justify-content:center"><button class="btn" data-pok="draw">🎴 จั่วเพิ่ม</button><button class="btn" data-pok="stay" style="background:#8a6fd1;border-bottom-color:#5d47a1">✋ อยู่</button></div>`) : '';
+      } else h += `<div class="center" style="margin:12px">${t.players.map(() => pokCard('', true)).join('')}</div>`;
+    } else if (t.game === 'react') {
+      const ph = g.phase || 'wait', cls = ph === 'go' ? 'go' : ph === 'result' ? 'res' : 'wait';
+      h += `<div class="center" style="font-size:13px">รอบที่ ${g.round || 1} • ใครชนะครบ ${g.target || 2} รอบก่อนเป็นผู้ชนะ</div><button class="pad ${cls}" data-press="1" ${playing && alive && !g.fs ? '' : 'disabled'}>${g.fs && ph === 'wait' ? '🚫 กดก่อนสัญญาณ ออกจากรอบนี้' : ph === 'go' ? '⚡ กด!!' : ph === 'result' ? '🏁' : '🔴 รอสัญญาณ... อย่าเพิ่งกด!'}</button><div class="ulog">${esc(g.msg || '')}</div>`;
+    } else {
+      h += `<div class="ulog">${esc(g.msg || '')}</div>`;
+      if (g.reveal) h += `<div class="utable" style="font-size:40px;flex-wrap:wrap">${t.players.filter(p => g.reveal[p.id]).map(p => `<span style="text-align:center">${RPS_ICON[g.reveal[p.id]] || ''}<br><small style="font-size:12px">${esc(p.name)}</small></span>`).join('')}</div>`;
+      else if (playing && alive) h += g.mine ? `<div class="center" style="font-size:44px;margin:10px">${RPS_ICON[g.mine] || ''}<br><span style="font-size:14px">เลือกแล้ว ⏳ รอคนอื่น</span></div>`
+        : `<div class="colorpick">${['R', 'S', 'P'].map(c => `<button data-rps="${c}" style="background:#fff;font-size:34px;border-color:#8a6fd1">${RPS_ICON[c]}</button>`).join('')}</div><div class="center" style="font-size:12px">หิน ✊ • กรรไกร ✌️ • กระดาษ ✋ • รอบที่ ${g.round || 1}</div>`;
+    }
+    if (playing) {
+      h += `<div class="center" style="font-weight:700;margin-top:6px">${alive ? '' : mine ? 'คุณออกจากเกมแล้ว' : '👀 กำลังดูเกม'} <span id="arcTimer"></span></div>`;
+      if (alive) h += `<div class="center" style="margin-top:8px"><button class="btn small" data-arc="resign" style="background:#9aa0a6;border-bottom-color:#6f757b">🏳️ ยอมแพ้</button></div>`;
+    } else {
+      const won = mine && (t.winners || []).includes(myId);
+      h += `<div class="banner">${mine ? (won ? ((t.winners || []).length > 1 ? '🤝 ' : '🎉 ') : '😢 ') : '🏁 '}${esc(t.msg)}</div>` + lobby();
+    }
+  }
+  $('arcBody').innerHTML = h;
+  updateArcTimer();
 }
 // ----- UNO -----
 let arcMax = 3, unoWild = -1;
@@ -1309,6 +1371,7 @@ function renderArcade() {
   const t = arcTable; if (!t) return;
   $('arcTitle').textContent = '🎮 ตู้เกม ' + (GAME_TITLES[t.game] || '');
   if (t.game === 'uno') return renderUno();
+  if (PARTY_GAMES.has(t.game)) return renderParty();
   if (t.game === 'bacc' || t.game === 'bj') return renderCasino();
   const coin = inv.coin || 0;
   if (arcBet > coin) arcBet = [...BETS].reverse().find(b => b <= coin) || 0;
@@ -1347,14 +1410,11 @@ function renderArcade() {
 }
 const DUEL_RULES = {
   xo: 'เรียง 3 ตัวติดกันให้ได้ก่อน ตาละ 30 วินาที',
-  rps: 'ชนะ 2 ใน 3 รอบ เลือกภายใน 10 วินาที เสมอเล่นรอบเดิมซ้ำ',
-  react: 'ชนะ 2 ใน 3 รอบ กดทันทีที่เห็นสัญญาณสีเขียว ใครกดก่อนสัญญาณแพ้รอบนั้น',
-  pok: 'แจกไพ่คนละ 2 ใบ ป๊อก 8/9 ชนะทันที ไม่งั้นเลือกจั่วเพิ่มหรืออยู่ แล้วเทียบแต้ม (ไพ่ A = 1, 10/J/Q/K = 0)',
   c4: 'หยอดเหรียญลงคอลัมน์ เรียง 4 ตัวติดกันให้ได้ก่อน ตาละ 30 วินาที',
 };
 const SUIT = { S: '♠', H: '♥', D: '♦', C: '♣' };
 const pokCard = (c, back) => back ? '<span class="pcard back">🂠</span>' : `<span class="pcard ${c[0] === 'H' || c[0] === 'D' ? 'red' : ''}">${c.slice(1)}<small>${SUIT[c[0]]}</small></span>`;
-function duelBody(t, mySide, player, myTurn) { // ส่วนกลางหน้าเกมของเป่ายิ้งฉุบ / ใครกดเร็วกว่า / ไพ่ป๊อก / Connect 4
+function duelBody(t, mySide, player, myTurn) { // ส่วนกลางหน้าเกมของ Connect 4 (XO ใช้ boardHTML)
   const g = t.g || {}, playing = t.state === 'playing';
   if (t.game === 'c4') {
     const win = new Set(g.line || []);
@@ -1364,36 +1424,6 @@ function duelBody(t, mySide, player, myTurn) { // ส่วนกลางหน
       cells += `<button class="c4c ${v ? 'p' + v : ''}${win.has(r * 7 + c) ? ' win' : ''}${r * 7 + c === g.last ? ' last' : ''}" data-col="${c}" ${myTurn && !full ? '' : 'disabled'}></button>`;
     }
     return `<div class="c4">${cells}</div>`;
-  }
-  if (t.game === 'rps') {
-    const ICON = { R: '✊', P: '✋', S: '✌️' };
-    let h = `<div class="ulog">${esc(g.msg || '')}</div>`;
-    if (g.phase === 'reveal' && g.reveal) h += `<div class="utable" style="font-size:54px"><span>${ICON[g.reveal.X]}</span><span style="font-size:22px">VS</span><span style="transform:scaleX(-1)">${ICON[g.reveal.O]}</span></div>`;
-    else if (playing && player) h += g.mine ? `<div class="center" style="font-size:44px;margin:10px">${ICON[g.mine]}<br><span style="font-size:14px">เลือกแล้ว ⏳ รอคู่แข่ง</span></div>`
-      : `<div class="colorpick">${['R', 'S', 'P'].map(c => `<button data-rps="${c}" style="background:#fff;font-size:34px;border-color:#8a6fd1">${ICON[c]}</button>`).join('')}</div><div class="center" style="font-size:12px">หิน ✊ • กรรไกร ✌️ • กระดาษ ✋</div>`;
-    else if (!playing && g.reveal) h += `<div class="utable" style="font-size:40px"><span>${ICON[g.reveal.X]}</span><span style="font-size:18px">VS</span><span style="transform:scaleX(-1)">${ICON[g.reveal.O]}</span></div>`;
-    return h;
-  }
-  if (t.game === 'react') {
-    const ph = g.phase || 'wait', cls = ph === 'go' ? 'go' : ph === 'result' ? 'res' : 'wait';
-    return `<div class="center" style="font-size:13px">รอบที่ ${g.round || 1} • ชนะ 2 ใน 3 รอบ</div><button class="pad ${cls}" data-press="1" ${player && playing ? '' : 'disabled'}>${ph === 'go' ? '⚡ กด!!' : ph === 'result' ? '🏁' : '🔴 รอสัญญาณ... อย่าเพิ่งกด!'}</button><div class="ulog">${esc(g.msg || '')}</div>`;
-  }
-  if (t.game === 'pok') {
-    let h = '';
-    if (g.reveal) {
-      h += `<div class="sec center">ไพ่ของ ${esc(t.xName)} (${g.reveal.pts.X} แต้ม)</div><div class="center">${g.reveal.X.map(c => pokCard(c)).join('')}</div>`
-        + `<div class="sec center">ไพ่ของ ${esc(t.oName)} (${g.reveal.pts.O} แต้ม)</div><div class="center">${g.reveal.O.map(c => pokCard(c)).join('')}</div>`;
-    } else {
-      h += `<div class="sec center">ไพ่ของคู่แข่ง</div><div class="center">${Array.from({ length: g.oppN || 2 }, () => pokCard('', true)).join('')}</div>`;
-      if (g.mine) {
-        const pts = g.mine.reduce((s, c) => s + (c[1] === 'A' ? 1 : ['10', 'J', 'Q', 'K'].includes(c.slice(1)) ? 0 : +c.slice(1)), 0) % 10;
-        h += `<div class="sec center">ไพ่ของคุณ • ${pts} แต้ม</div><div class="center">${g.mine.map(c => pokCard(c)).join('')}</div>`;
-        const decided = g.decided && g.decided[mySide];
-        h += playing ? (decided ? `<div class="center" style="margin-top:8px;font-weight:700">⏳ รอคู่แข่งตัดสินใจ...</div>`
-          : `<div class="center" style="margin-top:10px;display:flex;gap:8px;justify-content:center"><button class="btn" data-pok="draw">🎴 จั่วเพิ่ม</button><button class="btn" data-pok="stay" style="background:#8a6fd1;border-bottom-color:#5d47a1">✋ อยู่</button></div>`) : '';
-      }
-    }
-    return h;
   }
   return '';
 }
@@ -2218,8 +2248,8 @@ function step(now) {
   CABINETS.forEach((c, i) => {
     if (!c.game || c.x < x0 - 1 || c.x > x1 + 1 || c.y < y0 - 1 || c.y > y1 + 1) return;
     const s = arcStatus[i]; if (!s) return;
-    const uno = ['uno', 'bacc', 'bj'].includes(s[7]);
-    const txt = s[2] === 'waiting' ? `⏳ ${s[4]}${uno ? ' ' + s[5] : ''}${s[3] ? ' 🪙' + s[3] : ''}` : s[2] === 'playing' ? (uno ? `${s[7] === 'uno' ? '🃏 กำลังเล่น' : '🎰 เล่นอยู่'} ${s[5]}` : `⚔️ ${s[4]} vs ${s[5]}`) : s[2] === 'over' ? '🏁 จบเกม' : '🎮 ว่าง';
+    const uno = ['uno', 'bacc', 'bj', 'pok', 'react', 'rps'].includes(s[7]);
+    const txt = s[2] === 'waiting' ? `⏳ ${s[4]}${uno ? ' ' + s[5] : ''}${s[3] ? ' 🪙' + s[3] : ''}` : s[2] === 'playing' ? (uno ? `${s[7] === 'uno' ? '🃏 กำลังเล่น' : PARTY_GAMES.has(s[7]) ? '🎮 กำลังเล่น' : '🎰 เล่นอยู่'} ${s[5]}` : `⚔️ ${s[4]} vs ${s[5]}`) : s[2] === 'over' ? '🏁 จบเกม' : '🎮 ว่าง';
     const w = ctx.measureText(txt).width + 10, cx = c.x * TS + 16, cy = c.y * TS - 16;
     ctx.fillStyle = s[2] === 'idle' ? 'rgba(0,0,0,.45)' : 'rgba(138,111,209,.92)'; ctx.fillRect(cx - w / 2, cy - 7, w, 14);
     ctx.fillStyle = '#fff'; ctx.fillText(txt, cx, cy);
