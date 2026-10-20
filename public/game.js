@@ -932,16 +932,35 @@ function onTileClick(tx, ty) {
 
 const mouse = { active: false, tx: 0, ty: 0 };
 const tileAt = e => [Math.floor((camX + e.clientX * (canvas.width / innerWidth) / zoom) / TS), Math.floor((camY + e.clientY * (canvas.height / innerHeight) / zoom) / TS)];
-canvas.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse' || !me) return; mouse.active = true; [mouse.tx, mouse.ty] = tileAt(e); });
+const ptrs = new Map(); let pinch = null; // นิ้วที่แตะบน canvas (สำหรับ pinch-zoom + แยกแตะ/ลาก บนมือถือ)
+const pinchDist = () => { const v = [...ptrs.values()]; return Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y); };
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse') { if (!me) return; mouse.active = true; [mouse.tx, mouse.ty] = tileAt(e); return; }
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  p.x = e.clientX; p.y = e.clientY;
+  if (pinch && ptrs.size >= 2 && pinch.d0 > 0) setZoom(pinch.z0 * pinchDist() / pinch.d0); // บีบ/ถ่างสองนิ้ว = ซูม
+});
 canvas.addEventListener('pointerleave', () => { mouse.active = false; });
 canvas.addEventListener('pointerdown', e => {
-  if (!me || (e.pointerType === 'mouse' && e.button !== 0)) return;
-  hidePicker();
-  const [tx, ty] = tileAt(e);
-  if (e.pointerType === 'mouse') { mouse.active = true; mouse.tx = tx; mouse.ty = ty; }
-  flash = { tx, ty, t: performance.now() }; // กะพริบช่องที่แตะ ให้เห็นเหมือนกันทั้ง PC และมือถือ
-  onTileClick(tx, ty);
+  if (!me) return;
+  if (e.pointerType === 'mouse') { // เมาส์: แตะช่องทำงานทันทีเหมือนเดิม
+    if (e.button !== 0) return;
+    hidePicker(); const [tx, ty] = tileAt(e); mouse.active = true; mouse.tx = tx; mouse.ty = ty;
+    flash = { tx, ty, t: performance.now() }; onTileClick(tx, ty); return;
+  }
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() }); // มือถือ: แตะทำงานตอนปล่อยนิ้ว (แยกจาก pinch)
+  if (ptrs.size === 2) pinch = { d0: pinchDist(), z0: userZoom };
 });
+const endPtr = e => {
+  if (e.pointerType === 'mouse') return;
+  const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId);
+  const wasPinch = !!pinch; if (ptrs.size < 2) pinch = null;
+  if (!p || wasPinch) return; // นิ้วที่เป็นส่วนหนึ่งของ pinch ไม่นับเป็นแตะ
+  const moved = Math.hypot(e.clientX - p.sx, e.clientY - p.sy), dur = performance.now() - p.t;
+  if (ptrs.size === 0 && moved < 18 && dur < 400) { hidePicker(); const [tx, ty] = tileAt(e); flash = { tx, ty, t: performance.now() }; onTileClick(tx, ty); } // แตะสั้นๆ นิ้วเดียว = ทำงานช่องนั้น
+};
+canvas.addEventListener('pointerup', endPtr);
+canvas.addEventListener('pointercancel', endPtr);
 $('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk(); act(); });
 
 // จอยสติ๊กมือถือ
@@ -1581,14 +1600,20 @@ $('cinema').addEventListener('pointerdown', e => { if (e.target === $('cinema') 
 setInterval(() => { if (cinemaShown() && !cinWatching && document.activeElement !== $('cinUrl')) renderCinema(); }, 5000);
 
 // ---------- render setup ----------
-let zoom = 1, vw = 0, vh = 0, camX = 0, camY = 0;
+let zoom = 1, baseZoom = 1, vw = 0, vh = 0, camX = 0, camY = 0;
+const ZOOM_MIN = 0.5, ZOOM_MAX = 2.6;
+let userZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, +ls.get('mw_zoom') || 1)); // ผู้เล่นปรับซูมเองได้ (คูณบนสเกล auto-fit) จำไว้ในเครื่อง
 function resize() {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
-  zoom = Math.max(isTouch ? 1.35 : 1.2, Math.min(innerWidth / 720, innerHeight / 450)) * dpr;
+  baseZoom = Math.max(isTouch ? 1.35 : 1.2, Math.min(innerWidth / 720, innerHeight / 450)) * dpr; // auto-fit ตามขนาดจอ/ความละเอียด
+  zoom = baseZoom * userZoom;
   vw = canvas.width / zoom; vh = canvas.height / zoom;
 }
+function setZoom(z) { userZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)); ls.set('mw_zoom', userZoom.toFixed(3)); resize(); }
 addEventListener('resize', resize); resize();
+if ($('zoomInBtn')) $('zoomInBtn').onclick = () => setZoom(userZoom * 1.15);
+if ($('zoomOutBtn')) $('zoomOutBtn').onclick = () => setZoom(userZoom / 1.15);
 
 const hash = (x, y, s = 0) => { let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const trees = [];
