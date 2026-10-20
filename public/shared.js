@@ -149,6 +149,20 @@
   const canRepair = (tool, tier, cur, fixes) => (fixes || 0) < REPAIR.maxFixes && cur < durMax(tool, tier, (fixes || 0) + 1);
   // เทรดของระหว่างผู้เล่น: เทรดเหรียญไม่ได้ เทรดได้เฉพาะของที่ไม่ผูกกับตัว มูลค่ารวมฝั่งละไม่เกิน maxValue ต่อรอบ
   const TRADE = { maxValue: 1000, range: 8 };
+  // กระดานใบสั่งซื้อ (ลานกองไฟ): ผู้เล่น/NPC ตั้ง "ต้องการซื้อ X ชิ้น จ่ายเหรียญรวม Y" เหรียญถูกกันไว้ (escrow) คนอื่นเอาของมาส่งรับเหรียญ หัก fee เป็น sink
+  // ช่วยให้เกิดการพึ่งพากัน (จ่ายเป็นเหรียญได้จริง ต่างจากการเทรดที่แลกของอย่างเดียว) — มี cap หลายชั้นกันบัญชีสำรองฟอกเงิน
+  const ORDER = {
+    minLevel: 6,          // ซ่อนกระดานจนเลเวลรวมทุกอาชีพ ≥ นี้ (ผู้เล่นใหม่ยังไม่รก)
+    fee: 0.05,            // ค่าธรรมเนียม 5% หักจากเหรียญที่ผู้ส่งของได้รับ (หายจากระบบ = sink)
+    maxOpen: 3,           // ใบสั่งที่ยังเปิดค้างได้พร้อมกันต่อคน
+    maxQty: 50,           // จำนวนของต่อใบ
+    priceLo: 0.6, priceHi: 1.5, // ราคาต่อชิ้นต้องอยู่ 60–150% ของราคาฐาน (กันตั้งราคาเพี้ยนเพื่อโอนเงิน)
+    expireHours: 24,      // ใบหมดอายุกี่ชั่วโมง (คืนเหรียญที่เหลือให้ผู้ตั้ง)
+    earnCapPerDay: 3000,  // เพดานเหรียญที่ "รับจากการส่งของ" ได้ต่อวันต่อคน (กันบัญชีสำรองฟอกเงิน)
+    npcDaily: 1,          // NPC โพสต์ใบสั่งซื้อกี่ใบต่อวัน (สอนวิธีใช้ + faucet เล็กน้อย ไม่หัก fee)
+    npcQty: [8, 20],      // ช่วงจำนวนของในใบสั่งของ NPC
+  };
+  const orderBand = base => [Math.max(1, Math.ceil(base * ORDER.priceLo)), Math.max(1, Math.ceil(base * ORDER.priceHi))]; // [ราคาต่อชิ้นต่ำสุด, สูงสุด]
   // โรงหนังกลางแปลง: ฉายวิดีโอเดียวกันให้ทุกคนที่เข้าไปดู (ได้ยินเสียงเฉพาะคนที่ดู) ตั๋วชิ้นละ TICKET เหรียญต่อการฉาย 1 รอบ
   const TICKET = 15;
   const MOVIES = [
@@ -571,11 +585,14 @@
     return [Math.floor(x / TS) + DIRS[dir][0], Math.floor(y / TS) + DIRS[dir][1]];
   }
   function inFarm(tx, ty) { return tx >= FARM.x0 && tx <= FARM.x1 && ty >= FARM.y0 && ty <= FARM.y1; }
+  // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
+  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
 
   const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, bankInterest, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_PER_DAY, TITLES, titleFor, POINTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm };
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
+    ORDER, orderBand, SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

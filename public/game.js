@@ -3,7 +3,7 @@
 const { REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-  GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, bankInterest, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo } = Shared;
+  GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, bankInterest, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
 const MAP = makeMap();
 const $ = id => document.getElementById(id);
 const canvas = $('c'), ctx = canvas.getContext('2d'), mainCtx = ctx;
@@ -35,6 +35,8 @@ let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, 
 const furn = new Map();               // เฟอร์นิเจอร์ในบ้านทุกหลัง: "x,y" -> { x, y, f }
 let plotOwners = [];                  // ชื่อเจ้าของที่ดินแต่ละแปลง (null = ว่าง)
 let townLog = [], chestSt = { coin: 0, dead: {} }, townTab = 'log';
+let orderSt = { lock: 0, level: 0, fee: 0.05, earnLeft: 0, list: [] }; // กระดานใบสั่งซื้อ
+let orderForm = { item: 'crop_carrot', qty: 10, perUnit: 0 };          // ฟอร์มตั้งใบสั่งซื้อฝั่งผู้เล่น
 let projSt = [];
 let questSt = { list: [], total: 0, title: '', pts: { bal: 0, earned: 0 } }, fameSt = {};
 let bankSt = { bal: 0, cap: BANK.cap, rate: BANK.rate, next: 0 }, villageSt = { n: 0, goal: 0, done: false, left: 0 };
@@ -187,7 +189,8 @@ function handle(m) {
     case 'village': villageSt = m; villageEnd = m.left ? Date.now() + m.left : 0; updateHappyChip(); if (townShown()) renderTown(); break;
     case 'fame': fameSt = m.f; if (townShown()) renderTown(); break;
     case 'title': { const p = players.get(m.id); if (p) p.title = m.title; break; }
-    case 'town': openTown(m.w === 'chest' ? 'chest' : m.w === 'atm' ? 'bank' : 'log'); break;
+    case 'order': orderSt = m; if (townShown()) renderTown(); break;
+    case 'town': openTown(m.w === 'chest' ? 'chest' : m.w === 'atm' ? 'bank' : m.w === 'board' ? 'order' : 'log'); break;
     case 'plot': plotOwners[m.i] = m.owner; if (plotsShown()) renderPlots(); if (build.on && myPlot() < 0) { build.on = false; renderBuild(); } break;
   }
 }
@@ -339,12 +342,50 @@ function projectSection(coin) { // โครงการพัฒนาเมื
   });
   return h;
 }
+function renderOrderTab(el) { // กระดานใบสั่งซื้อ: ตั้งใบ (กันเหรียญไว้จ่าย) + ส่งของให้ใบคนอื่นเพื่อรับเหรียญ
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  if (orderSt.lock) {
+    el.innerHTML = `<div class="tabs-note">📋 กระดานใบสั่งซื้อ: ตั้ง "ต้องการซื้อของ" แล้วจ่ายเป็นเหรียญให้คนที่เอาของมาส่งได้จริง — ช่องทางค้าขายพึ่งพากันในเมือง</div>`
+      + `<p style="opacity:.85;text-align:center;margin:18px 0">🔒 ปลดล็อกเมื่อเลเวลรวมทุกอาชีพถึง <b>${orderSt.lock}</b><br>ตอนนี้คุณ Lv รวม <b>${orderSt.level}</b> — เล่นอีกนิดแล้วกลับมานะ</p>`;
+    return;
+  }
+  const coin = inv.coin || 0;
+  const curItem = SELLABLE.includes(orderForm.item) ? orderForm.item : SELLABLE[0];
+  const info = itemInfo(curItem), band = orderBand(info.sell);
+  if (!(orderForm.perUnit >= band[0] && orderForm.perUnit <= band[1])) orderForm.perUnit = Math.min(band[1], Math.max(band[0], info.sell));
+  let h = `<div class="tabs-note">ตั้ง "ต้องการซื้อ X ชิ้น" แล้วกันเหรียญไว้ล่วงหน้า • คนที่เอาของมาส่งได้เหรียญทันที (หัก ${Math.round(orderSt.fee * 100)}% ค่าธรรมเนียม) • วันนี้คุณรับจากการส่งของได้อีก 🪙${orderSt.earnLeft}</div>`;
+  h += `<div class="sec">📝 ตั้งใบสั่งซื้อใหม่ (ค้างได้สูงสุด ${orderSt.maxOpen} ใบ)</div>`;
+  h += `<div class="row"><span>สินค้าที่อยากได้</span><select id="ordItem">` + SELLABLE.map(k => { const i = itemInfo(k); return `<option value="${k}" ${k === curItem ? 'selected' : ''}>${i.emoji} ${esc(i.name)}</option>`; }).join('') + `</select></div>`;
+  h += `<div class="row"><span>จำนวน (1–${orderSt.maxQty})</span><input id="ordQty" type="number" min="1" max="${orderSt.maxQty}" value="${orderForm.qty}" style="width:84px"></div>`;
+  h += `<div class="row"><span>ราคาต่อชิ้น 🪙<br><small>ตั้งได้ ${band[0]}–${band[1]} (ราคาฐาน ${info.sell})</small></span><input id="ordPrice" type="number" min="${band[0]}" max="${band[1]}" value="${orderForm.perUnit}" style="width:84px"></div>`;
+  h += `<div class="center" style="margin:6px 0"><button class="btn small" id="ordPost">📋 ตั้งใบสั่งซื้อ (กันเหรียญไว้จ่าย)</button></div>`;
+  h += `<p style="font-size:12px;opacity:.65;margin:0 0 6px">เหรียญในมือ 🪙${coin} • เหรียญที่กันไว้จะคืนให้ถ้ายกเลิกหรือใบหมดอายุใน ${ORDER.expireHours} ชม.</p>`;
+  h += `<div class="sec">🧾 ใบสั่งซื้อที่เปิดอยู่ (${orderSt.list.length})</div>`;
+  if (!orderSt.list.length) h += '<p style="opacity:.7">ยังไม่มีใบสั่งซื้อ ลองตั้งใบแรกดูสิ 🙂</p>';
+  for (const o of orderSt.list) {
+    const stock = inv[o.item] || 0, remain = o.qty - o.filled;
+    h += `<div class="qrow"><div>${o.npc ? '🧑‍🌾' : '🧑'} <b>${esc(o.byName)}</b>${o.mine ? ' (คุณ)' : ''}${o.npc ? ' · NPC' : ''} อยากได้ ${o.emoji || ''} <b>${esc(o.name || o.item)}</b></div>`
+      + `<div class="bar"><i style="width:${Math.round(o.filled / o.qty * 100)}%"></i></div>`
+      + `<small>ส่งแล้ว ${o.filled}/${o.qty} • ชิ้นละ 🪙${o.perUnit}${o.npc ? '' : ` (ผู้ส่งได้ 🪙${o.net})`} • คุณมี ${stock}</small>`;
+    if (o.mine) h += `<div class="center" style="margin-top:4px"><button class="btn small" data-oc="${o.id}">ยกเลิก (คืนเหรียญ)</button></div>`;
+    else h += `<div class="center" style="margin-top:4px"><button class="btn small" data-of="${o.id}" data-n="1" ${stock < 1 || remain < 1 ? 'disabled' : ''}>ส่ง 1</button> <button class="btn small" data-of="${o.id}" data-n="all" ${stock < 1 || remain < 1 ? 'disabled' : ''}>ส่งเท่าที่มี</button></div>`;
+    h += `</div>`;
+  }
+  el.innerHTML = h;
+  $('ordItem').onchange = e => { orderForm.item = e.target.value; orderForm.perUnit = 0; renderOrderTab(el); };
+  $('ordQty').oninput = e => { orderForm.qty = Math.max(1, Math.min(orderSt.maxQty, +e.target.value || 1)); };
+  $('ordPrice').oninput = e => { orderForm.perUnit = +e.target.value || band[0]; };
+  $('ordPost').onclick = () => { const qty = Math.max(1, Math.min(orderSt.maxQty, +$('ordQty').value || 1)), perUnit = +$('ordPrice').value || 0; orderForm.qty = qty; orderForm.perUnit = perUnit; send({ t: 'order', a: 'post', item: curItem, qty, perUnit }); };
+  el.querySelectorAll('[data-of]').forEach(b => b.onclick = () => send({ t: 'order', a: 'fill', id: +b.dataset.of, n: b.dataset.n === 'all' ? 'all' : +b.dataset.n }));
+  el.querySelectorAll('[data-oc]').forEach(b => b.onclick = () => send({ t: 'order', a: 'cancel', id: +b.dataset.oc }));
+}
 function renderTown() {
-  $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM', chest: '🏦 เงินกองกลาง' })[townTab] || '📰 ข่าวเมือง';
+  $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM', chest: '🏦 เงินกองกลาง', order: '📋 กระดานใบสั่งซื้อ' })[townTab] || '📰 ข่าวเมือง';
   document.querySelectorAll('[data-ttab]').forEach(t => t.classList.toggle('on', t.dataset.ttab === townTab));
   const el = $('townBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   if (townTab === 'bank') return renderBankTab(el);
   if (townTab === 'fame') return renderFameTab(el);
+  if (townTab === 'order') return renderOrderTab(el);
   if (townTab === 'log') {
     el.innerHTML = villageCard() + weeklyCard() + '<div class="sec">🏆 อันดับวันนี้</div>' + fameHTML() + '<div class="sec">📰 ข่าวล่าสุด (' + TOWN.logMax + ' ข่าว)</div>' + (townLog.length ? townLog.slice().reverse().map(([t, s]) => { const d = new Date(t); return `<div class="logrow"><time>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</time><span>${esc(s)}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีข่าว</p>');
     el.querySelectorAll('[data-wkclaim]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'weekly' }));
