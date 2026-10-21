@@ -2330,10 +2330,12 @@ const blush = (bx, by, r) => { ctx.fillStyle = 'rgba(255,120,145,.55)'; ctx.begi
 // สัตว์: สไปรต์พิกเซลจาก pixelui.js (หันขวา ซ้ายพลิกกลับ) ส่วนอีโมจิผลผลิต/หัวใจลอยเหนือหัววาดแบบพิกเซลเช่นกัน
 const ANIMAL_SHADOW = { chicken: [7, 3, 7], duck: [7, 3, 7], sheep: [13, 4, 10], cow: [15, 5, 11], pig: [12, 4, 9] };
 function drawAnimalPx(type, c, now, top, prodE) {
-  const x = c.x, y = c.y, moving = Math.hypot(c.tx - c.x, c.ty - c.y) > 2, sh = ANIMAL_SHADOW[type];
+  const x = c.x, y = c.y, mx = c.tx - c.x, my = c.ty - c.y, moving = Math.hypot(mx, my) > 2, sh = ANIMAL_SHADOW[type];
+  if (moving) c.face = Math.abs(my) > Math.abs(mx) * 1.3 ? (my > 0 ? 'f' : 'b') : 's'; else if (!c.face) c.face = 's'; // เดินขึ้น/ลง = โชว์ด้านหลัง/หน้า เดินซ้ายขวา = ด้านข้าง
+  const eat = !moving && !c.sick && !c.prod && ((c.happyAt && now - c.happyAt < 1800) || ((now / 1000 + (c.id || 0) * 2.7) % 11) < 3); // เพิ่งได้กิน/ว่างๆ เป็นช่วงๆ = ก้มกินหญ้า (จิกพื้น)
   ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + sh[2], sh[0], sh[1], 0, 0, 7); ctx.fill();
   const ph = Math.sin(c.anim * (type === 'cow' ? 6 : 8));
-  PixelUI.animal(ctx, type, c, { f: c.dx || 1, step: moving && ph > 0 ? 1 : 0, blink: blinkOf(c, now), prod: !!c.prod, hop: type === 'chicken' && moving ? Math.round(Math.abs(ph) * 2) : 0 });
+  PixelUI.animal(ctx, type, c, { f: c.dx || 1, v: eat ? 's' : c.face, eat, step: eat ? Math.floor(now / (type === 'chicken' ? 220 : 420) + (c.id || 0)) % 2 : moving && ph > 0 ? 1 : 0, blink: blinkOf(c, now), prod: !!c.prod, hop: type === 'chicken' && moving ? Math.round(Math.abs(ph) * 2) : 0 });
   if (c.prod) PixelUI.world(ctx, prodE, x, y - top - 3 + Math.sin(now / 250) * 2, 14);
   else if (c.fed) PixelUI.world(ctx, '💗', x, y - top - 3, 14);
 }
