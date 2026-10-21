@@ -2044,14 +2044,27 @@ function buildBase() {
   // ตู้เกม (เรียงเป็นรูปตัว U) + พื้นลานตู้เกมมีลวดลาย
   for (const cab of CABINETS) {
     const px = cab.x * TS, py = cab.y * TS;
-    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(px + 2, py + 28, 28, 5);
-    g.fillStyle = cab.game ? '#2b2f55' : '#4a4a55'; g.fillRect(px + 3, py - 8, 26, 38);
-    g.fillStyle = cab.game ? '#6a3fb5' : '#6b6b75'; g.fillRect(px + 3, py - 8, 26, 6);
-    g.fillStyle = cab.game ? '#0c1a2e' : '#2d2d33'; g.fillRect(px + 7, py - 1, 18, 14);
-    gh.fillStyle = cab.game ? '#7fd8ff' : '#777'; gh.font = 'bold 11px sans-serif'; gh.fillText(cab.game ? cab.label : '?', px + 16, py + 6);
-    g.fillStyle = cab.game ? '#e74c3c' : '#666'; g.beginPath(); g.arc(px + 10, py + 21, 2.6, 0, 7); g.fill();
-    g.fillStyle = cab.game ? '#f1c40f' : '#666'; g.beginPath(); g.arc(px + 22, py + 21, 2.6, 0, 7); g.fill();
-    g.fillStyle = '#111'; g.fillRect(px + 12, py + 25, 8, 3);
+    // ตู้อาร์เคด: ป้ายหัวตู้ จอมีแสงสะท้อน แผงปุ่มควบคุม (จอย + ปุ่ม 3 สี) และช่องลำโพงหน้าตาเหมือนเดิม • สีตามธีมเกม (ม่วง)
+    const game = !!cab.game, acc = game ? '#6a3fb5' : '#6b6b75', body = game ? '#2b2f55' : '#4a4a55';
+    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(px + 2, py + 28, 28, 4);            // เงา
+    g.fillStyle = body; g.fillRect(px + 3, py - 6, 26, 34);                          // ตัวตู้
+    g.fillStyle = game ? '#8a6fd1' : '#8a8a95'; g.fillRect(px + 3, py - 6, 3, 34); g.fillRect(px + 26, py - 6, 3, 34); // เสาข้าง
+    g.fillStyle = acc; g.fillRect(px + 2, py - 11, 28, 6); g.fillRect(px + 2, py - 11, 28, 1); // ป้ายหัวตู้ (marquee)
+    g.fillStyle = game ? '#f4f0ff' : '#c9c9d2'; g.fillRect(px + 4, py - 10, 24, 1);  // ขอบสว่างบนป้าย
+    g.fillStyle = '#2d2d33'; g.fillRect(px + 7, py - 2, 18, 14);                     // กรอบจอ
+    g.fillStyle = game ? '#0c1a2e' : '#1d2230'; g.fillRect(px + 8, py - 1, 16, 12);  // จอ
+    g.fillStyle = 'rgba(170,225,255,.3)'; g.fillRect(px + 10, py + 1, 3, 9); g.fillRect(px + 16, py + 1, 2, 9); // แสงสะท้อนบนจอ
+    g.fillStyle = game ? '#c9b7f0' : '#b8b8c2'; g.fillRect(px + 4, py + 13, 24, 4);  // แผงควบคุม
+    g.fillStyle = '#2d2d33'; g.fillRect(px + 7, py + 11, 2, 3);                      // ก้านจอย
+    g.fillStyle = game ? '#e74c3c' : '#666'; g.beginPath(); g.arc(px + 8, py + 10.5, 2.2, 0, 7); g.fill(); // หัวจอย
+    g.fillStyle = game ? '#f1c40f' : '#666'; g.beginPath(); g.arc(px + 14, py + 15, 1.4, 0, 7); g.fill();
+    g.fillStyle = game ? '#2ecc71' : '#666'; g.beginPath(); g.arc(px + 18, py + 15, 1.4, 0, 7); g.fill();
+    g.fillStyle = game ? '#3498db' : '#666'; g.beginPath(); g.arc(px + 22, py + 15, 1.4, 0, 7); g.fill();
+    g.fillStyle = acc; g.fillRect(px + 3, py + 18, 26, 3);                           // แถบล่างตัวตู้
+    g.fillStyle = '#3a3a48'; g.fillRect(px + 9, py + 21, 14, 7);                    // ช่องลำโพง
+    g.fillStyle = game ? '#ff6b8a' : '#666'; g.fillRect(px + 11, py + 23, 2, 1); g.fillRect(px + 19, py + 23, 2, 1); // ตาสองดวง
+    g.fillStyle = '#111'; g.fillRect(px + 12, py + 25, 8, 1);                        // ปาก
+    gh.fillStyle = game ? '#ffffff' : '#ddd'; gh.font = 'bold 8px sans-serif'; gh.fillText(game ? cab.label : '?', px + 16, py - 5); // ชื่อบนป้ายหัวตู้
   }
   // กระดานข่าวเมือง + ตู้เซฟกองกลาง (ขอบเหนือลานกองไฟ)
   // ตกแต่งคอกสัตว์ให้ดูสดใส (ภาพพื้นล้วนๆ ไม่ขวางทาง): บ่อเป็ด รังฟาง รางน้ำ กองฟาง แอ่งโคลนหมู ดอกไม้
