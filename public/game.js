@@ -2335,7 +2335,7 @@ function drawAnimalPx(type, c, now, top, prodE) {
   const eat = !moving && !c.sick && !c.prod && ((c.happyAt && now - c.happyAt < 1800) || ((now / 1000 + (c.id || 0) * 2.7) % 11) < 3); // เพิ่งได้กิน/ว่างๆ เป็นช่วงๆ = ก้มกินหญ้า (จิกพื้น)
   ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + sh[2], sh[0], sh[1], 0, 0, 7); ctx.fill();
   const ph = Math.sin(c.anim * (type === 'cow' ? 6 : 8));
-  PixelUI.animal(ctx, type, c, { f: c.dx || 1, v: eat ? 's' : c.face, eat, step: eat ? Math.floor(now / (type === 'chicken' ? 220 : 420) + (c.id || 0)) % 2 : moving && ph > 0 ? 1 : 0, blink: blinkOf(c, now), prod: !!c.prod, hop: type === 'chicken' && moving ? Math.round(Math.abs(ph) * 2) : 0 });
+  PixelUI.animal(ctx, type, c, { f: c.dx || 1, v: eat ? 's' : c.face, eat, step: eat ? (((now / (type === 'chicken' ? 900 : 1500) + (c.id || 0) * 0.37) % 1) > 0.8 ? 1 : 0) : moving && ph > 0 ? 1 : 0, blink: blinkOf(c, now), prod: !!c.prod, hop: type === 'chicken' && moving ? Math.round(Math.abs(ph) * 2) : 0 });
   if (c.prod) PixelUI.world(ctx, prodE, x, y - top - 3 + Math.sin(now / 250) * 2, 14);
   else if (c.fed) PixelUI.world(ctx, '💗', x, y - top - 3, 14);
 }
