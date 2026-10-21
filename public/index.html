@@ -58,7 +58,7 @@
   #chatHist .empty { opacity:.6; }
   #chatLog div { background:rgba(0,0,0,.45); color:#fff; padding:2px 8px; border-radius:8px; margin-top:3px; font-size:13px; width:fit-content; max-width:100%; word-break:break-word; }
   #chatIn { pointer-events:auto; margin-top:4px; width:100%; padding:6px 10px; border-radius:10px; border:3px solid var(--edge); font:inherit; font-size:14px; user-select:text; }
-  #toast { position:fixed; top:56px; left:50%; transform:translateX(-50%); z-index:6; padding:6px 16px; font-weight:700; pointer-events:none; opacity:0; transition:opacity .25s; }
+  #toast { position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:50; max-width:min(92vw,460px); box-sizing:border-box; padding:8px 16px; font-weight:700; line-height:1.4; text-align:center; box-shadow:0 4px 0 rgba(0,0,0,.25); pointer-events:none; opacity:0; transition:opacity .25s; }
   #toast.show { opacity:1; }
   #fgauge { position:fixed; left:50%; bottom:96px; transform:translateX(-50%); width:min(320px,80vw); z-index:6; padding:6px 10px 8px; text-align:center; font-weight:700; font-size:13px; pointer-events:none; background:#fff3cf; border:3px solid #3d2a1a; }
   #fgauge .bar { position:relative; height:20px; margin-top:4px; background:#4a6a85; border:2px solid #3d2a1a; overflow:hidden; }
@@ -200,7 +200,7 @@
   body.touch .slot .k { display:none; }
   body.touch #chat { top:calc(100px + var(--sat)); bottom:auto; left:calc(8px + var(--sal)); }
   body.touch #chatIn { font-size:16px; padding:8px 12px; }
-  body.touch #toast { top:calc(60px + var(--sat)); max-width:90vw; text-align:center; }
+  body.touch #toast { top:calc(8px + var(--sat)); max-width:90vw; }
   body.touch #joy { left:calc(14px + var(--sal)); bottom:calc(78px + var(--sab)); width:132px; height:132px; }
   body.touch #knob { left:calc(50% - 28px); top:calc(50% - 28px); }
   body.touch #abtn { right:calc(14px + var(--sar)); bottom:calc(88px + var(--sab)); }
