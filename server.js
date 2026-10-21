@@ -1307,7 +1307,7 @@ class World {
     // ชนิดนี้นับเป็น "ชนิดที่ขายวันนี้" ได้เมื่อขายจริงจัง (≥ minQty ชิ้น หรือ ≥ minCoin เหรียญ) กันการขายอย่างละ 1 ชิ้นเพื่อเอาโบนัส
     const counted = items0.includes(item) || q >= S.VARIETY.minQty || quote.total >= S.VARIETY.minCoin;
     if (!counted) { nUsed = items0.length; mEff = this.effMultN(p, item, nUsed); quote = S.sellQuote(info.sell, mEff, q); }
-    const cat = S.sellCat(item), pay = S.sellQuote(info.sell, mEff, q, S.CATFAT.step, S.BATCH_FLOOR).total; // จ่ายต่อชิ้นตามชนิด ลดลงภายในชุดแต่ไม่ต่ำกว่า 80% ของราคาตอนเริ่ม (quote ด้านบนและความอิ่มตัวของหมวดยังลดตามจำนวนชิ้นเต็ม ตลาดจำว่าขายไปเท่าไร)
+    const cat = S.sellCat(item), pay = S.sellQuote(info.sell, mEff, q, S.CATFAT.step).total; // จ่ายต่อชิ้นตามชนิด ลดลงชิ้นละ ~2% จนพื้น 20% ของราคาฐาน (quote ด้านบนใช้อัปเดตตลาดชนิดนี้ ความอิ่มตัวหมวดอัปเดตด้านล่าง ลดต่อชิ้นเท่ากัน ขายรวดหรือทยอยจึงเท่ากัน)
     this.add(p, item, -q);
     this.add(p, 'coin', pay, 'sell');
     { const ct = p.rec.cat = p.rec.cat || {}; ct[cat] = Math.max(S.CATFAT.min, this.catOf(p, cat) * Math.pow(S.CATFAT.step, q)); }

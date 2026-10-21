@@ -125,7 +125,7 @@
   const BAIT_PRICE = 2;       // เหยื่อตกปลา: ใช้ 1 ชิ้นต่อการเหวี่ยง 1 ครั้ง
   const RAKE = 0.05;          // ค่าบริการตู้เกม (หักจากรางวัลของผู้ชนะที่มีเดิมพัน)
   // ตลาดมีลิมิต: ขายต่อเนื่องยิ่งขายเยอะ ราคาต่อชิ้นยิ่งถูกลงเรื่อยๆ (ชิ้นละ -4% ทบต่อกัน ต่ำสุด 20% ของราคาปกติ) และฟื้นตัวช้า
-  const MARKET = { step: 0.96, min: 0.2, max: 1.4, recover: 0.06 };
+  const MARKET = { step: 0.99, min: 0.2, max: 1.4, recover: 0.06 }; // step = ตัวคูณราคาต่อชิ้นของ "ชนิด" (รวมกับ CATFAT.step ของหมวด = ~0.98 ต่อชิ้น: ขายชุดเดียวต่อเนื่อง ~80 ชิ้นราคาเหลือพื้น) • min = พื้นราคาต่อชิ้น = 20% ของราคาฐาน
   // ตลาดแยกต่อคน: ราคาที่ผู้เล่นเห็น = ตลาดกลาง × ตลาดส่วนตัว × โบนัสความหลากหลาย ขายชนิดเดิมซ้ำๆ ตลาดส่วนตัวของคนนั้นตกหนัก (share = สัดส่วนที่ตกเป็นของส่วนตัว) และฟื้นช้า (recover ต่อ 1 นาทีที่ออนไลน์)
   const PMARKET = { share: 0.75, min: 0.25, recover: 0.03 };
   // โบนัสความหลากหลาย: ขายหลายชนิดในวันเดียว (วันจริง) ได้ตัวคูณเพิ่มต่อชนิดที่ต่างกัน
@@ -186,15 +186,15 @@
     : Math.max(1, Math.round(value / ENERGY.coinsPerEnergy) - (kind === 'harvest' ? ENERGY.cost.dig + ENERGY.cost.plant + ENERGY.cost.water : 0)); // เก็บเกี่ยว = ส่วนที่เหลือของรอบ หลังหักขุด/ปลูก/รดน้ำ
   // ความอิ่มตัวของตลาดต่อ "หมวด" (ต่อผู้เล่น): เดิมแต่ละชนิดอิ่มตัวแยกกัน คนขายเยอะจึงสลับชนิดหนีได้ (ข้อมูลจริง: ขายทีละ ~4 ชิ้น หลายสิบชนิด ได้ราคา ~100% ของราคาฐาน)
   // ตอนนี้ขายของหมวดเดียวกันต่อเนื่อง ต่อให้สลับชนิด ราคาทั้งหมวดค่อยๆ ลดชิ้นละ (1 - step) และฟื้นช้าๆ ตามเวลา (recover ของช่องว่างต่อนาที ตอนออนไลน์) • ไม่มีเพดาน/ลิมิตรายวัน: ขายน้อยหรือพักก็ไม่โดน ขายหลายหมวดก็ไม่โดน
-  // ดุลยภาพ: ขาย n ชิ้น/นาทีในหมวดเดียว ราคาเฉลี่ย ~ recover/(recover + (1-step)·n) เช่น 1/นาที 80% • 4/นาที 50% • 10/นาที ~30% (พื้น min)
+  // ดุลยภาพ: ขาย n ชิ้น/นาทีในหมวดเดียว ราคาของหมวดเฉลี่ย ~ recover/(recover + (1-step)·n) เช่น 1/นาที 80% • 4/นาที 50% • 10/นาที ~30% (พื้น min)
   const CATFAT = { step: 0.99, min: 0.3, recover: 0.04 };
   const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle'].includes(k) ? 'animal' : ['log', 'hardwood', 'plank'].includes(k) ? 'wood' : 'other';
-  // ขายเป็นชุดใหญ่ (ถือของได้ไม่จำกัดจำนวน): คิดราคาทีละชิ้นตามชนิด ราคาต่อชิ้นลดลงเรื่อยๆ แต่ไม่ต่ำกว่า BATCH_FLOOR (80%) ของราคาตอนเริ่มขายชุดนั้น
-  // พื้นนี้ใช้เฉพาะ "เงินที่ได้จากการขายครั้งนั้น" ส่วนตลาดที่อิ่มตัว (ชนิด/ส่วนตัว/หมวด) ยังลดตามจำนวนชิ้นเต็มๆ ขายรวดหรือแบ่งขายก็ผลต่อราคาครั้งหน้าเท่ากัน
-  const BATCH_FLOOR = 0.8;
-  function sellQuote(base, m, q, extra = 1, floor = 0) { // ราคารวมเมื่อขาย q ชิ้นต่อเนื่อง และตัวคูณใหม่ (extra = ตัวคูณลดต่อชิ้นเพิ่ม เช่น CATFAT.step ของหมวด • floor = พื้นเป็นสัดส่วนของตัวคูณตอนเริ่ม เช่น BATCH_FLOOR)
-    let total = 0; const m0 = m;
-    for (let i = 0; i < q; i++) { total += Math.max(1, Math.round(base * m)); m = Math.max(MARKET.min, m * MARKET.step * extra, m0 * floor); }
+  // ขายเป็นชุดใหญ่ (ถือของได้ไม่จำกัดจำนวน): คิดราคาทีละชิ้นตามชนิด ราคาต่อชิ้นลดลงเรื่อยๆ ~2% ต่อชิ้น จนถึงพื้น 20% ของราคาฐาน (MARKET.min) แล้วคงที่
+  // ตัวอย่างขาย 100 ชิ้นเมื่อราคาตั้งต้น 100%: ชิ้นที่ 1 = 100% … ชิ้นที่ 80 ≈ 20% และชิ้นที่ 81-100 = 20% (กด "ขายทั้งหมด" คำนวณทั้งชุดให้เลย)
+  // การลดต่อชิ้นเท่ากับที่ตลาดจำไว้ (ชนิด/ส่วนตัว/หมวด รวม ~0.98 ต่อชิ้น) ขายรวดหรือทยอยขายทีละชิ้นจึงได้เงินรวมใกล้เคียงกัน
+  function sellQuote(base, m, q, extra = 1) { // ราคารวมเมื่อขาย q ชิ้นต่อเนื่อง และตัวคูณใหม่ (extra = ตัวคูณลดต่อชิ้นเพิ่ม เช่น CATFAT.step ของหมวด) • ราคาต่อชิ้นไม่ต่ำกว่า MARKET.min ของราคาฐาน
+    let total = 0;
+    for (let i = 0; i < q; i++) { total += Math.max(1, Math.round(base * Math.max(MARKET.min, m))); m = Math.max(MARKET.min, m * MARKET.step * extra); }
     return { total, m };
   }
   // สัตว์ที่เลี้ยงได้ (ใช้ร่วมกันทั้งโลก): cap = จำนวนสูงสุด, feedItem = อาหารที่กิน
@@ -694,7 +694,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellCat, BATCH_FLOOR, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellCat, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     ORDER, orderBand, SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);
