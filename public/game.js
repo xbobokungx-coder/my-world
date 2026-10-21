@@ -654,7 +654,8 @@ function setHunger(v) {
   el.textContent = (hunger <= 0 ? '😵 ' : hunger <= 20 ? '🍗 ' : '🍖 ') + hunger;
   el.style.color = hunger <= 5 ? '#c0392b' : hunger <= 20 ? '#c47a00' : '';
   el.classList.toggle('blink', hunger <= 5);
-  el.title = 'ความอิ่ม (0 = หิวจนไม่มีแรง) กดเพื่อเปิดกระเป๋าไปกินอาหาร';
+  el.title = 'ความอิ่ม (0 = หิวจนไม่มีแรง) กดเพื่อดูอาหารในตัวและกิน';
+  if (bagShown() && bagTab === 'eat') renderBag();
   if (bagShown()) renderBag();
 }
 function updateOnline() { $('online').textContent = '👥 ' + players.size + (mute.all ? ' 🔇' : ''); }
@@ -773,7 +774,7 @@ $('bagBody').addEventListener('click', e => {
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
   const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); }
 });
-$('hungerChip').onclick = () => openBag('items');
+$('hungerChip').onclick = () => openBag('eat');
 // ตะเกียง: ปุ่ม 🏮 (หรือกด L) เปิด/ปิดแสงรอบตัว 3 ช่อง เห็นเฉพาะตอนกลางคืน (เพื่อนเห็นแสงของคุณด้วย)
 function updateLampBtn() {
   const b = $('lampBtn'); if (!b) return;
@@ -808,6 +809,12 @@ function renderBag() {
         const L = lvl(k), xp = skills[k] || 0, base = xpFor(L), need = L >= MAX_LV ? 0 : xpFor(L + 1) - base;
         return `<div class="skill"><b>${SKILLS[k].emoji} ${SKILLS[k].name}</b> — เลเวล ${L}${L >= MAX_LV ? ' (สูงสุด)' : ''} <small style="display:inline">XP ${xp}</small><div class="bar"><i style="width:${need ? Math.min(100, Math.round((xp - base) / need * 100)) : 100}%"></i></div></div>`;
       }).join('');
+  } else if (bagTab === 'eat') { // กดไอคอนความหิว: แสดงอาหารที่มีในตัวให้กินได้ ถ้าไม่มีก็แสดงเมนูว่าง ๆ
+    const ks = Object.keys(inv).filter(k => { const i = itemInfo(k); return i && i.food && inv[k] > 0; });
+    let h = `<div class="sec">🍖 ความอิ่ม — ${hunger}/100</div><div class="hbar"><i style="width:${hunger}%;${hunger <= 20 ? 'background:#e74c3c' : ''}"></i></div>`;
+    if (!ks.length) h += `<div class="sec">🍽️ เมนูอาหาร</div><p style="opacity:.75">ไม่มีอาหารในตัวเลย ไปซื้ออาหารที่ร้านอาหาร หรือเก็บผลผลิตของตัวเองมากิน</p>`;
+    else h += `<div class="sec">🍽️ อาหารในตัว (กดกินได้เลย)</div><div class="grid">` + ks.map(k => { const i = itemInfo(k); return `<div class="card"><b>${i.emoji}</b>${i.name}<br>×${inv[k]}<br><button class="btn small" data-eat="${k}" style="margin-top:4px;padding:3px 8px;font-size:12px" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน +${i.food}</button></div>`; }).join('') + '</div>';
+    el.innerHTML = h;
   } else if (bagTab === 'items') {
     let h = `<div class="row"><span>🪙 เหรียญ</span><b>${inv.coin || 0}</b></div>`;
     let any = false;
