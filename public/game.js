@@ -603,7 +603,7 @@ $('askNo').onclick = () => { $('ask').classList.add('hidden'); askYes = null; };
 // ปุ่มย่อ/ขยายแถบเมนูด้านบน (ย่อแล้วเหลือแค่เหรียญ ความอิ่ม และปุ่มขยาย) จำค่าไว้ในเครื่อง
 // เมนูหลัก: ปุ่มที่ใช้ไม่บ่อยซ่อนในเมนู (ปุ่มเดิมทุกตัวยังอยู่ ตัวจัดการกดเดิมทำงานเหมือนเดิม)
 const menuShown = () => !$('hudMenu').classList.contains('hidden');
-function setMenu(on) { $('hudMenu').classList.toggle('hidden', !on); $('menuBtn').setAttribute('aria-expanded', on ? 'true' : 'false'); }
+function setMenu(on) { $('hudMenu').classList.toggle('hidden', !on); document.body.classList.toggle('menu-open', on); $('menuBtn').setAttribute('aria-expanded', on ? 'true' : 'false'); }
 $('menuBtn').onclick = () => setMenu(!menuShown());
 $('hudMenu').addEventListener('click', e => { const b = e.target.closest('.btn'); if (b && !['zoomInBtn', 'zoomOutBtn', 'spkBtn'].includes(b.id)) setMenu(false); }); // เลือกแล้วปิดเมนู ยกเว้นปุ่มที่กดซ้ำได้
 addEventListener('pointerdown', e => { if (menuShown() && !e.target.closest('#hudMenu') && !e.target.closest('#menuBtn')) setMenu(false); });
@@ -693,7 +693,9 @@ function showPicker() {
     }
     el.classList.remove('hidden'); return;
   }
-  const keysList = s === 'seed' ? Object.keys(CROPS).map(c => 'seed_' + c) : s === 'rod' ? BAIT_KEYS : FEEDS;
+  let keysList = s === 'seed' ? Object.keys(CROPS).map(c => 'seed_' + c) : s === 'rod' ? BAIT_KEYS : FEEDS;
+  const isLocked = k => { const i = itemInfo(k); return !!(i.lv && lvl(i.skill) < i.lv && !(inv[k] || 0)); };
+  if (isTouch) keysList = keysList.filter(k => !isLocked(k)).concat(keysList.filter(isLocked)); // มือถือ: ของที่ใช้ได้ขึ้นก่อน ของที่ยังล็อกไปท้ายแผง (ลำดับเดิมในแต่ละกลุ่ม)
   el.innerHTML = '';
   keysList.forEach(k => {
     const info = itemInfo(k), have = inv[k] || 0, locked = info.lv && lvl(info.skill) < info.lv && !have;

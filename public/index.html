@@ -307,6 +307,21 @@
   .skill { border-bottom:2px dotted var(--wood-l); }
   #toast { background:var(--paper); }
   .banner, .chip, .vs span { border-radius:0; }
+
+  /* ===== มือถือ/จอสัมผัสเท่านั้น (คอมไม่เปลี่ยน): แผงเลือกของเป็นตารางเล็ก, เมนูกระชับ, ไม่ถูกจอยสติ๊กทับ ===== */
+  body.touch #picker { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:5px; width:min(94vw,360px); max-width:none; max-height:min(46vh,330px); overflow-y:auto; overscroll-behavior:contain; justify-content:stretch; }
+  body.touch #picker > div { grid-column:1 / -1; }
+  body.touch #picker .opt { min-width:0; padding:3px 1px; font-size:10.5px; line-height:1.15; overflow:hidden; text-overflow:ellipsis; }
+  body.touch #picker .opt b { font-size:19px; line-height:1.1; }
+  body.touch #picker .opt .pxe { width:24px; height:24px; }
+  body.touch #picker .opt:disabled { opacity:.4; }
+  body.touch #hudTop { z-index:8; }
+  body.touch #hudMenu { padding:6px 8px 8px; max-height:calc(100dvh - 120px); width:min(94vw,340px); }
+  body.touch #hudMenu .mtitle { margin:5px 2px 3px; font-size:11px; }
+  body.touch #hudMenu .mgrid { gap:4px; }
+  body.touch #hudMenu .btn { min-height:50px; font-size:20px; padding:4px 1px; }
+  body.touch #hudMenu .btn::after { font-size:10px; }
+  body.touch.menu-open #mini, body.touch.menu-open #guide { display:none; }
 </style>
 </head>
 <body>
