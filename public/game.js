@@ -204,11 +204,14 @@ function handle(m) {
 
 // ---------- ผู้ดูแล: สร้าง/ลบห้อง (โลกแยกกัน) + ลิงก์ ----------
 let adminSt = { rooms: [], current: '', err: '' }, adminTab = 'manage';
+const bugImgs = {}; // ภาพรายงานบั๊กที่โหลดแล้ว (id → data URL)
 const adminShown = () => !$('admin').classList.contains('hidden');
-function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); renderAdmin(); }
+function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); send({ t: 'admin', a: 'bugs' }); renderAdmin(); }
 function closeAdmin() { $('admin').classList.add('hidden'); }
 function onAdmin(m) {
-  adminSt = { rooms: m.rooms || [], current: m.current || '', err: m.err || '', users: m.users || (adminSt && adminSt.users) || [], bans: m.bans || (adminSt && adminSt.bans) || [] };
+  adminSt = { rooms: m.rooms || [], current: m.current || '', err: m.err || '', users: m.users || (adminSt && adminSt.users) || [], bans: m.bans || (adminSt && adminSt.bans) || [], bugs: m.bugs || (adminSt && adminSt.bugs) || [] };
+  if (m.bugimg) bugImgs[m.bugimg.id] = m.bugimg.uri;
+  if (m.bugdeleted) toast('ลบรายงานแล้ว');
   if (m.created) { const url = roomLink(m.created); try { navigator.clipboard.writeText(url).catch(() => {}); } catch (e) { /* ไม่ได้ก็ไม่เป็นไร */ } toast('สร้างห้อง ' + m.created + ' แล้ว คัดลอกลิงก์ให้แล้ว 🔗'); }
   if (m.kicked) { toast('เตะ ' + m.kicked + ' ออกแล้ว'); setTimeout(() => send({ t: 'admin', a: 'users' }), 700); }
   if (m.banned) toast('🚫 แบน ' + m.banned + ' แล้ว (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)');
@@ -220,9 +223,20 @@ function renderAdmin() {
   const el = $('adminBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const ago = t => { if (!t) return '-'; const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 90 ? 'เมื่อสักครู่' : s < 5400 ? Math.round(s / 60) + ' นาทีก่อน' : s < 129600 ? Math.round(s / 3600) + ' ชม.ก่อน' : Math.round(s / 86400) + ' วันก่อน'; };
   const banN = (adminSt.bans || []).length;
+  const bugN = (adminSt.bugs || []).length;
   let h = adminSt.err ? `<div class="banner" style="background:#fde0dc">${esc(adminSt.err)}</div>` : '';
-  h += `<div class="chips" style="margin-bottom:10px"><button class="chip${adminTab === 'manage' ? ' sel' : ''}" data-atab="manage">🏠 ห้อง & ผู้เล่น</button><button class="chip${adminTab === 'blacklist' ? ' sel' : ''}" data-atab="blacklist">🚫 Blacklist${banN ? ' (' + banN + ')' : ''}</button></div>`;
-  if (adminTab === 'blacklist') {
+  h += `<div class="chips" style="margin-bottom:10px"><button class="chip${adminTab === 'manage' ? ' sel' : ''}" data-atab="manage">🏠 ห้อง & ผู้เล่น</button><button class="chip${adminTab === 'blacklist' ? ' sel' : ''}" data-atab="blacklist">🚫 Blacklist${banN ? ' (' + banN + ')' : ''}</button><button class="chip${adminTab === 'bugs' ? ' sel' : ''}" data-atab="bugs">🐞 บั๊ก${bugN ? ' (' + bugN + ')' : ''}</button></div>`;
+  if (adminTab === 'bugs') {
+    h += `<div class="sec">🐞 รายงานบั๊กจากผู้เล่น (${bugN}) <button class="btn small" id="bugRefresh">🔄 รีเฟรช</button></div>`;
+    h += bugN ? adminSt.bugs.map(b => {
+      const c = b.ctx || {}, dev = String(c.ua || '').replace(/^Mozilla\/5\.0 /, '').slice(0, 70);
+      return `<div class="arow bugrow"><div style="width:100%"><b>${esc(b.name || 'ไม่ระบุชื่อ')}</b> <small>ห้อง ${esc(b.room || '?')} • ${ago(b.time)}${c.x !== undefined && c.x !== '' ? ' • ตำแหน่ง ' + esc(c.x) + ',' + esc(c.y) : ''}</small>`
+        + `<div style="white-space:pre-wrap;word-break:break-word;margin:4px 0">${esc(b.text)}</div>`
+        + `<small style="opacity:.65;display:block">${esc(dev)}${c.vw ? ' • จอ ' + esc(c.vw) + '×' + esc(c.vh) : ''}${c.err ? '<br>⚠️ error: ' + esc(c.err) : ''}</small>`
+        + (bugImgs[b.id] ? `<img src="${bugImgs[b.id]}" alt="ภาพแนบ" style="max-width:100%;max-height:260px;display:block;margin:6px 0;border:2px solid var(--edge);border-radius:8px">` : '')
+        + `<div style="margin-top:6px">${b.img && !bugImgs[b.id] ? `<button class="btn small" data-bugimg="${esc(b.id)}">🖼 ดูภาพ</button> ` : ''}<button class="btn small muted" data-bugdel="${esc(b.id)}">🗑️ ลบ</button></div></div></div>`;
+    }).join('') : '<p style="opacity:.7">ยังไม่มีรายงานบั๊ก 🎉</p>';
+  } else if (adminTab === 'blacklist') {
     h += `<div class="arow"><input type="text" id="banName" maxlength="12" placeholder="พิมพ์ชื่อที่จะแบน (ห้อง ${esc(adminSt.current)})"><button class="btn small" id="banAdd">🚫 แบน</button></div>`;
     h += `<p style="font-size:12px;opacity:.7;margin:4px 0 8px">ชื่อที่ถูกแบนจะเข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น (เตะออกทันทีถ้ากำลังออนไลน์) • แบนแยกตามห้อง</p>`;
     h += `<div class="sec">🚫 รายชื่อที่ถูกแบน ทั้งหมด (${banN})</div>`;
@@ -239,6 +253,9 @@ function renderAdmin() {
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; renderAdmin(); });
+  el.querySelectorAll('[data-bugimg]').forEach(b => b.onclick = () => { b.disabled = true; send({ t: 'admin', a: 'bugimg', id: b.dataset.bugimg }); });
+  el.querySelectorAll('[data-bugdel]').forEach(b => b.onclick = () => ask('ลบรายงานบั๊กนี้?\n(ลบแล้วกู้คืนไม่ได้ ควรลบเมื่อแก้เสร็จแล้ว)', () => send({ t: 'admin', a: 'bugdel', id: b.dataset.bugdel })));
+  const bR = $('bugRefresh'); if (bR) bR.onclick = () => send({ t: 'admin', a: 'bugs' });
   el.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => ask('เตะ ' + b.dataset.kick + ' ออกจากห้อง?\n(เขาเข้ามาใหม่ได้ทันที)', () => send({ t: 'admin', a: 'kick', room: b.dataset.kroom, name: b.dataset.kick })));
   el.querySelectorAll('[data-ban]').forEach(b => b.onclick = () => ask('แบน ' + b.dataset.ban + '?\n(เข้าเกมด้วยชื่อนี้ไม่ได้อีก จนกว่าจะใช้ชื่ออื่น • เตะออกทันทีถ้าออนไลน์)', () => send({ t: 'admin', a: 'ban', room: b.dataset.broom, name: b.dataset.ban })));
   el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'unban', room: b.dataset.uroom, name: b.dataset.unban }));

@@ -2515,6 +2515,15 @@ const bugImgExt = b => (b.length > 12 && b[0] === 0x89 && b[1] === 0x50 && b[2] 
   : (b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') ? 'webp'
   : (b.length > 6 && /^GIF8[79]a/.test(b.toString('latin1', 0, 6))) ? 'gif' : ''; // ดูไบต์จริง ไม่เชื่อนามสกุล/ชนิดที่ client บอก
 const bugClip = (v, n) => String(v === undefined || v === null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').slice(0, n);
+const BUG_ID_RE = /^[a-z0-9]{6,24}$/;
+function bugList() { // รายงานล่าสุด 50 รายการ (ไม่รวมตัวภาพ) สำหรับหน้าผู้ดูแล
+  let names = []; try { names = fs.readdirSync(BUG_DIR).filter(f => f.endsWith('.json')); } catch (e) { return []; }
+  const out = [];
+  for (const f of names) { try { const r = JSON.parse(fs.readFileSync(path.join(BUG_DIR, f), 'utf8')); if (BUG_ID_RE.test(r.id)) out.push({ id: r.id, time: r.time, name: r.name, room: r.room, text: r.text, ctx: r.ctx || {}, img: !!r.img }); } catch (e) { /* ไฟล์เสียข้ามไป */ } }
+  return out.sort((a, b) => b.time - a.time).slice(0, 50);
+}
+function bugRead(id) { try { return BUG_ID_RE.test(id) ? JSON.parse(fs.readFileSync(path.join(BUG_DIR, id + '.json'), 'utf8')) : null; } catch (e) { return null; } }
+const bugMime = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
 function handleBug(req, res) {
   const out = (code, o) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };
   const ip = ipOf(req), now = Date.now();
@@ -2550,6 +2559,7 @@ function handleBug(req, res) {
       const done = er => {
         if (er) { console.error('บันทึกแจ้งบั๊กไม่ได้', er.message); return out(500, { err: 'บันทึกไม่ได้ ลองใหม่อีกครั้ง' }); }
         mine.push(now); bugAll.push(now);
+        for (const w of worlds.values()) for (const q of w.players.values()) if (q.admin) send(q, { t: 'msg', text: '🐞 มีรายงานบั๊กใหม่จาก ' + (rec.name || 'ผู้เล่น') + ' (เมนู 🛠️ → 🐞 บั๊ก)' });
         console.log('แจ้งบั๊ก:', rec.name || '?', '←', ip, '#' + id, rec.img ? '(มีภาพ)' : '', text.slice(0, 60).replace(/\s+/g, ' '));
         out(200, { ok: true, id });
       };
@@ -2610,6 +2620,17 @@ function banList() { // รายชื่อที่ถูกแบนทุ�
 function adminHandle(p, world, m) {
   const reply = o => send(p, Object.assign({ t: 'admin', rooms: roomsPub(), current: world.room }, o));
   if (m.a === 'rooms') return reply({});
+  if (m.a === 'bugs') return reply({ bugs: bugList() });
+  if (m.a === 'bugimg') { // ส่งภาพของรายงานนั้นให้แอดมินดู (data URL ไม่เกิน 1MB)
+    const r = bugRead(String(m.id || '')); if (!r || !r.img) return reply({ err: 'ไม่พบภาพ', bugs: bugList() });
+    let b; try { b = fs.readFileSync(path.join(BUG_DIR, path.basename(r.img))); } catch (e) { return reply({ err: 'อ่านภาพไม่ได้', bugs: bugList() }); }
+    return reply({ bugimg: { id: r.id, uri: 'data:' + (bugMime[path.extname(r.img).slice(1)] || 'application/octet-stream') + ';base64,' + b.toString('base64') } });
+  }
+  if (m.a === 'bugdel') {
+    const r = bugRead(String(m.id || ''));
+    if (r) { for (const f of [r.id + '.json', r.img]) if (f) try { fs.unlinkSync(path.join(BUG_DIR, path.basename(f))); } catch (e) { /* ไม่มีแล้ว */ } console.log('ลบรายงานบั๊ก #' + r.id, '(โดย ' + p.name + ')'); }
+    return reply({ bugs: bugList(), bugdeleted: !!r });
+  }
   if (m.a === 'ban' || m.a === 'unban') { // แบน/ปลดแบนชื่อตัวละคร: ถูกแบนแล้วเข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น (เตะออกทันทีถ้าออนไลน์)
     const w = worlds.get(String(m.room || '')) || getWorld(String(m.room || ''));
     if (!w) return reply({ err: 'ไม่พบห้องนี้', users: userList(), bans: banList() });
