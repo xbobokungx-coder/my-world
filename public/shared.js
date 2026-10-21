@@ -361,9 +361,8 @@
     hunger: { name: 'อิ่มทน',   emoji: '🍖', desc: 'ความหิวลดช้าลงครึ่งหนึ่ง',      cost: 8,  ms: 15 * 60000 },
   };
   const FAME = { harvest: ['🌾', 'นักเก็บเกี่ยว'], water: ['💧', 'ผู้ขยันรดน้ำ'], feed: ['🥣', 'พ่อบ้านใส่ใจสัตว์'], fish: ['🎣', 'เซียนตกปลา'], chop: ['🪓', 'นักโค่นไม้'], collect: ['🥚', 'ผู้เก็บผลผลิต'], craft: ['🔨', 'ช่างฝีมือ'] };
-  // ตู้ ATM: ฝาก/ถอนเหรียญได้ มีเพดานเงินฝาก ดอกเบี้ย rate ต่อ 1 วันในเกม (12 นาที) นับเฉพาะตอนผู้ฝากออนไลน์ (ไม่รวยเองตอนออฟไลน์)
-  const BANK = { cap: 100000, rate: 0.01, tiers: [[1000, 0.01], [10000, 0.004], [100000, 0.0015]], amts: [100, 1000, 10000], idleMs: 180000 }; // ฝากได้สูงสุด cap เพื่อเก็บกินดอก ดอกเบี้ยแบบขั้นบันได: ส่วนแรกอัตราสูง ส่วนที่เกินได้อัตราต่ำลง (กันเงินเฟ้อ) ต่อ 1 วันในเกม
-  const bankInterest = bal => { let sum = 0, lo = 0; for (const [hi, rt] of BANK.tiers) { if (bal > lo) sum += (Math.min(bal, hi) - lo) * rt; lo = hi; } return bal > 0 ? Math.max(1, Math.floor(sum)) : 0; };
+  // ตู้ ATM: ที่เก็บเหรียญอย่างเดียว (ไม่มีดอกเบี้ย: คนมีเงินต้องไม่ได้เงินเพิ่มจากการฝากเฉยๆ เราอยากให้ออกมาเล่น) มีเพดานเงินฝาก
+  const BANK = { cap: 100000, amts: [100, 1000, 10000] };
   // Happy Village: ทั้งเมืองช่วยกันทำงานสะสมครบเป้าของวัน (เป้า = base + per × จำนวนคนออนไลน์สูงสุดของวัน) → ทุกคนได้บัฟร่วม ms มิลลิวินาที
   const VILLAGE = { maxShare: 0.5, base: 30, per: 20, ms: 20 * 60000, fishMul: 0.75, hardBonus: 0.1 };
   // เดิมพันกับบอท: เงินเดิมพันฝั่งบอทมาจากบ้าน (สร้างเหรียญใหม่) จึงจำกัดวงเงินต่อครั้ง และกำไรสุทธิจากบอทต่อวันไม่เกิน dailyWinCap (ขาดทุนไม่จำกัด)
@@ -673,7 +672,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, bankInterest, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

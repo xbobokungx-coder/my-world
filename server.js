@@ -512,13 +512,13 @@ class World {
 
   // ----- ธนาคาร (ATM) + Happy Village (บัฟร่วมของทั้งเมือง) -----
   bankOf(p) {
-    const b = p.rec.bank = p.rec.bank || { bal: 0, acc: 0 };
+    const b = p.rec.bank = p.rec.bank || { bal: 0 };
     if (!Number.isFinite(b.bal) || b.bal < 0) b.bal = 0;
     b.bal = Math.floor(b.bal);
-    if (!Number.isFinite(b.acc) || b.acc < 0) b.acc = 0;
+    delete b.acc; // ตัวนับเวลาดอกเบี้ยเดิม (ยกเลิกแล้ว)
     return b;
   }
-  bankPush(p) { const b = this.bankOf(p); send(p, { t: 'bank', bal: b.bal, cap: S.BANK.cap, rate: S.BANK.rate, next: Math.max(0, Math.round(S.DAY_MS - b.acc)) }); }
+  bankPush(p) { const b = this.bankOf(p); send(p, { t: 'bank', bal: b.bal, cap: S.BANK.cap }); }
   nearAtm(p) { return Math.hypot(p.x - (S.ATM.x + 0.5) * TS, p.y - (S.ATM.y + 0.5) * TS) < 4.5 * TS; }
   bankHandle(p, m) {
     if (!this.nearAtm(p)) return this.toast(p, 'ต้องอยู่ใกล้ตู้ ATM ที่ลานกองไฟ');
@@ -534,20 +534,6 @@ class World {
       b.bal -= n; this.add(p, 'coin', n, 'bank'); this.toast(p, `ถอน 🪙 ${n} แล้ว (ยอดฝาก ${b.bal})`);
     } else return;
     this.sfxTo(p, 'coin'); this.dirty = true; this.bankPush(p);
-  }
-  bankTick(dt) { // ดอกเบี้ย: นับเฉพาะตอนผู้ฝากออนไลน์และมีกิจกรรม (เดิน/ใช้เครื่องมือภายใน BANK.idleMs) ครบ 1 วันในเกมได้ rate ของยอดฝาก (ขั้นต่ำ 1) และไม่เกินเพดาน
-    for (const p of this.players.values()) {
-      const b = this.bankOf(p);
-      if (b.bal <= 0) { b.acc = 0; continue; }
-      if (Date.now() - (p.activeAt || 0) > S.BANK.idleMs) continue; // ทิ้งตัวละครไว้เฉยๆ (AFK) ไม่นับเวลาดอกเบี้ย
-      b.acc += dt * 1000;
-      if (b.acc < S.DAY_MS) continue;
-      const days = Math.min(5, Math.floor(b.acc / S.DAY_MS)); b.acc = 0;
-      let gain = 0; // เพดานจำกัดเฉพาะยอดที่ฝากเข้าไป ดอกเบี้ยเข้าบัญชีต่อได้ (ส่วนที่เกิน 100,000 ไม่ได้ดอกเพิ่ม)
-      for (let i = 0; i < days; i++) { const g = S.bankInterest(b.bal); b.bal += g; gain += g; }
-      this.dirty = true; this.bankPush(p);
-      if (gain > 0) this.toast(p, `🏦 ดอกเบี้ยเงินฝาก +🪙 ${gain}`);
-    }
   }
   loadVillage(d) {
     const v = d || {};
@@ -2386,7 +2372,6 @@ class World {
       if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) { if (p.sit) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul)); } } // นั่งพักอยู่ = ความหิวไม่ลด
       this.sitTick = (this.sitTick || 0) + dt * 1000;
       if (this.sitTick >= S.PLAYER_HUNGER.sitMs) { this.sitTick = 0; for (const p of this.players.values()) if (p.sit && p.rec.hunger < 100) this.setHunger(p, p.rec.hunger + S.PLAYER_HUNGER.sitGain, true); } // นั่งพักค่อยๆ อิ่มขึ้นทีละนิด
-      this.bankTick(dt);
       for (const a of this.animals) {
         const A = ANIMALS[a.type];
         a.hunger = Math.max(0, a.hunger - dt * HFAST * 100 / (A.starveMin * 60));

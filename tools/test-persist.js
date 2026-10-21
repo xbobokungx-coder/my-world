@@ -15,6 +15,11 @@ assert.strictEqual(crossable(w.map), true, 'สร้างสะพานคร
 assert.strictEqual(S.blockedAt(w.map, 38 * S.TS, 38 * S.TS), true, 'น้ำนอกสะพานต้องยังเดินไม่ได้');
 assert.strictEqual(S.blockedAt(w.map, cx, 33 * S.TS + 16), false, 'ปลายสะพานฝั่งเหนือต้องต่อกับฝั่งที่เดินได้');
 w.dirty = true; w.save(true);
+// ไม่มีดอกเบี้ย: ยอดฝากต้องไม่เพิ่มเองไม่ว่าจะออนไลน์นานแค่ไหน
+p.rec.bank = { bal: 5000 }; p.activeAt = Date.now();
+for (let i = 0; i < 20; i++) w.tick(60, Date.now());
+assert.strictEqual(w.bankOf(p).bal, 5000, 'ยอดฝากเปลี่ยนเอง (ไม่ควรมีดอกเบี้ย)');
+assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่มีแล้ว');
 const w2 = new World('main');
 assert.strictEqual(w2.projects.bridge.coin, 5000, 'bridge coin lost after reload');
 assert.strictEqual(w2.projects.lighthouse.coin, 500, 'lighthouse coin lost after reload');
