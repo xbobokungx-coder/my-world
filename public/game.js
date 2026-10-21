@@ -766,6 +766,8 @@ function closeBag() { $('bag').classList.add('hidden'); }
 const bagShown = () => !$('bag').classList.contains('hidden');
 $('bagBtn').onclick = () => (bagShown() && bagTab === 'items' ? closeBag() : openBag('items'));
 $('statBtn').onclick = () => (bagShown() && bagTab === 'status' ? closeBag() : openBag('status'));
+$('lookBtn').onclick = () => (bagShown() && bagTab === 'look' ? closeBag() : openBag('look'));
+$('bookBtn').onclick = () => (bagShown() && bagTab === 'book' ? closeBag() : openBag('book'));
 setInterval(() => { if (bagShown() && bagTab === 'status') renderBag(); }, 1000);
 $('bagClose').onclick = closeBag;
 $('bag').addEventListener('pointerdown', e => { if (e.target === $('bag')) closeBag(); });
