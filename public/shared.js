@@ -494,6 +494,9 @@
     { id: 'furn_toolbox',  in: { plank: 8, hardwood: 2 },    lv: 4, xp: 46 },
     { id: 'furn_bed',      in: { log: 30, hardwood: 3 },     lv: 5, xp: 60 },
     { id: 'furn_hut',      in: { plank: 24, hardwood: 6 },   lv: 6, xp: 110 },
+    { id: 'storage_1',     in: { plank: 12, log: 10 },       lv: 2, xp: 40 },   // ตู้เก็บของ (ถาวร ได้ 1 ชิ้นต่อระดับ ใช้ที่ตู้ ATM)
+    { id: 'storage_2',     in: { plank: 30, hardwood: 5 },   lv: 4, xp: 80 },
+    { id: 'storage_3',     in: { plank: 50, hardwood: 12 },  lv: 6, xp: 140 },
   ];
   const seatAt = (tx, ty) => SEATS.find(s => s.x === tx && s.y === ty) || null;
   const cinemaAt = (tx, ty) => tx >= 15 && tx <= 18 && ty >= 33 && ty <= 34;
@@ -525,6 +528,8 @@
     if (wm) { const ml = MEALS.find(x => x.id === wm[1]); return ml ? { name: ml.name, emoji: ml.emoji, buy: ml.price, cat: 'food' } : null; }
     wm = /^dish_(\w+)$/.exec(k);
     if (wm) { const d = COOK.find(x => x.id === k); return d ? { name: d.name, emoji: d.emoji, sell: d.sell, cat: 'food' } : null; }
+    const sm = /^storage_(\d)$/.exec(k);
+    if (sm && STORAGE[sm[1]]) return { name: STORAGE[sm[1]].name, emoji: STORAGE[sm[1]].emoji, once: true, cat: 'gear', storage: +sm[1] };
     if (k === 'log') return { name: 'ไม้ท่อน', emoji: '🪵', sell: WOOD.log.sell, cat: 'wood' };
     if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 58, cat: 'wood' };
     if (k === 'hardwood') return { name: 'ไม้เนื้อแข็ง', emoji: '🟫', sell: WOOD.hardwood.sell, cat: 'wood' };
@@ -688,6 +693,11 @@
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
   // ลิมิตการถือของขายต่อ "ชนิด" (กันตุนของแล้วเทขายทีเดียว): เพดานตามมูลค่า HOLD.value ÷ ราคาฐาน (ของแพงถือได้น้อยกว่า) จำกัดระหว่าง min–max
   // ข้อมูลจริง: ค่ากลางที่ถือ 5 ชิ้น/ชนิด คนถือเยอะสุด วาฬ 34 ตัว (~4,000 เหรียญ) มะม่วง 30 (~5,600) ไข่ 104 • ตัวอย่างเพดาน: แครอท/ไข่/ไม้ 100 • มะเขือเทศ 40 • ปลาวาฬ 17 • มะม่วง/ฮัมป์แบ็ก 11
+  // ตู้เก็บของส่วนตัว (ประดิษฐ์ที่ร้านช่างไม้ ฝาก/ถอนที่ตู้ ATM): เก็บของขายเกินเพดานการถือได้ ความจุคิดเป็น "มูลค่าราคาฐานรวม" (กันตุนแล้วเทขาย) ระดับสูงสุดที่มีเท่านั้นที่นับ
+  // ถอนออกมาได้ไม่เกินเพดานการถือของชนิดนั้น (ขายรวดไม่ได้อยู่ดี) ตลาดอิ่มตัวต่อหมวดยังทำงานตามปกติ
+  const STORAGE = { 1: { name: 'ตู้เก็บของไม้', emoji: '📦', cap: 5000 }, 2: { name: 'ตู้เก็บของไม้เนื้อแข็ง', emoji: '🗄️', cap: 15000 }, 3: { name: 'ตู้เซฟไม้เนื้อแข็ง', emoji: '🔐', cap: 40000 } };
+  const stashTier = inv => (inv.storage_3 ? 3 : inv.storage_2 ? 2 : inv.storage_1 ? 1 : 0);
+  const stashValue = items => Object.entries(items || {}).reduce((a, [k, n]) => a + (itemInfo(k) && itemInfo(k).sell ? itemInfo(k).sell * n : 0), 0);
   const HOLD = { value: 2000, min: 10, max: 100 };
   const holdCap = k => { const i = itemInfo(k); return i && i.sell && SELLABLE.includes(k) ? Math.max(HOLD.min, Math.min(HOLD.max, Math.round(HOLD.value / i.sell))) : 0; }; // 0 = ไม่จำกัด (ไม่ใช่ของขาย เช่น เหยื่อ อาหารสัตว์)
 
@@ -696,6 +706,6 @@
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellCat, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
-    ORDER, orderBand, SELLABLE, HOLD, holdCap };
+    ORDER, orderBand, SELLABLE, HOLD, holdCap, STORAGE, stashTier, stashValue };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

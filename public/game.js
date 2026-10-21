@@ -3,7 +3,7 @@
 const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-  GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CATFAT, sellCat, holdCap, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
+  GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CATFAT, sellCat, holdCap, STORAGE, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
 const MAP = makeMap();
 const $ = id => document.getElementById(id);
 const canvas = $('c'), ctx = canvas.getContext('2d'), mainCtx = ctx;
@@ -40,7 +40,7 @@ let arcSt = { pts: 0, total: 0, wk: 0 };                               // แต
 let lbSt = { total: [], wk: [], me: null }, hubTab = 'rank';           // Leaderboard + ศูนย์รวมแต้ม/รางวัล
 let projSt = [];
 let questSt = { list: [], total: 0, title: '', pts: { bal: 0, earned: 0 } }, fameSt = {};
-let enSt = { v: 100, ex: false, rate: 0, resume: 10, rareUntil: 0, at: Date.now() }, catSt = { c: {}, recover: 0.04 }, bankSt = { bal: 0, cap: BANK.cap }, villageSt = { n: 0, goal: 0, done: false, left: 0 };
+let enSt = { v: 100, ex: false, rate: 0, resume: 10, rareUntil: 0, at: Date.now() }, catSt = { c: {}, recover: 0.04 }, stashSt = { tier: 0, cap: 0, value: 0, items: {} }, bankSt = { bal: 0, cap: BANK.cap }, villageSt = { n: 0, goal: 0, done: false, left: 0 };
 let villageEnd = 0; // เวลาที่บัฟ Happy Village หมด (ms ของนาฬิกาเครื่องนี้)
 const happyOn = () => villageEnd > Date.now();
 const buffExp = {}; // บัฟที่ยังมีผลอยู่: id -> เวลาหมด (ms ของนาฬิกาเครื่องนี้)
@@ -183,6 +183,7 @@ function handle(m) {
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
     case 'chest': chestSt = m.c; if (townShown()) renderTown(); break;
     case 'en': enSt = Object.assign(m, { at: Date.now(), spentAt: m.spent ? Date.now() : (enSt.spentAt || 0), lastSpent: m.spent || enSt.lastSpent || 0 }); renderEnergy(); break;
+    case 'stash': stashSt = m; if (townShown() && townTab === 'bank') renderTown(); break;
     case 'cat': catSt = Object.assign(m, { at: Date.now() }); renderSat(); break;
     case 'proj': projSt = m.p; checkProjects(); if (townShown()) renderTown(); break;
     case 'quests': {
@@ -317,6 +318,18 @@ function renderEnergy() {
 }
 $('enChip').onclick = () => toast($('enChip').title); $('cdChip').onclick = () => toast($('cdChip').title);
 setInterval(renderEnergy, 1000);
+function stashHTML() { // ตู้เก็บของ: ฝากของขายเกินเพดานการถือไว้ (ความจุตามมูลค่า) ถอนได้ไม่เกินเพดานการถือ
+  const t = stashSt.tier, esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  if (!t) return '<div class="sec">📦 ตู้เก็บของ</div><p style="font-size:12px;opacity:.75">ยังไม่มีตู้เก็บของ ประดิษฐ์ได้ที่ร้านช่างไม้: ' + [1, 2, 3].map(n => `${STORAGE[n].emoji} ${STORAGE[n].name} (จุ 🪙${STORAGE[n].cap})`).join(' • ') + '</p>';
+  const rows = (items, mode) => Object.keys(items).filter(k => items[k] > 0 && holdCap(k)).sort((a, b) => (itemInfo(b).sell * items[b]) - (itemInfo(a).sell * items[a])).map(k => {
+    const i = itemInfo(k), n = items[k], cap = holdCap(k);
+    return `<div class="row"><span>${i.emoji} ${esc(i.name)} ×${n}${mode === 'wd' ? ` <small>(ในมือ ${inv[k] || 0}/${cap})</small>` : `/${cap}`}</span><span><button class="btn small" data-stash="${mode}:${k}:10">${mode === 'dep' ? 'ฝาก' : 'ถอน'} 10</button> <button class="btn small" data-stash="${mode}:${k}:all">ทั้งหมด</button></span></div>`;
+  }).join('');
+  const sv = stashSt.value, cap = stashSt.cap, inHand = {}; for (const k of Object.keys(inv)) if (k !== 'coin' && holdCap(k) && inv[k] > 0) inHand[k] = inv[k];
+  return `<div class="sec">${STORAGE[t].emoji} ${STORAGE[t].name}</div><div class="row"><span>ความจุ (ตามมูลค่าของ)</span><b>🪙 ${sv} / ${cap}</b></div><div class="bar"><i style="width:${Math.min(100, Math.round(sv / cap * 100))}%"></i></div>`
+    + `<div class="sec">⬇️ ฝากเข้าตู้</div>${rows(inHand, 'dep') || '<p style="opacity:.65;font-size:12px">ไม่มีของในมือให้ฝาก</p>'}`
+    + `<div class="sec">⬆️ ของในตู้</div>${rows(stashSt.items, 'wd') || '<p style="opacity:.65;font-size:12px">ตู้ยังว่าง</p>'}`;
+}
 function renderBankTab(el) {
   const coin = inv.coin || 0, room = Math.max(0, bankSt.cap - bankSt.bal);
   let h = `<div class="row"><span>💳 ยอดเงินฝาก</span><b>🪙 ${bankSt.bal} / ${bankSt.cap}</b></div><div class="bar"><i style="width:${Math.round(bankSt.bal / bankSt.cap * 100)}%"></i></div>`
@@ -324,7 +337,9 @@ function renderBankTab(el) {
     + `<div class="sec">⬇️ ฝาก (เหรียญในมือ 🪙 ${coin})</div><div class="center">` + BANK.amts.map(a => `<button class="btn small" data-bank="dep:${a}" ${coin < a || room < 1 ? 'disabled' : ''}>+${a}</button>`).join(' ') + ` <button class="btn small" data-bank="dep:all" ${coin < 1 || room < 1 ? 'disabled' : ''}>ทั้งหมด</button></div>`
     + `<div class="sec">⬆️ ถอน</div><div class="center">` + BANK.amts.map(a => `<button class="btn small" data-bank="wd:${a}" ${bankSt.bal < a ? 'disabled' : ''}>-${a}</button>`).join(' ') + ` <button class="btn small" data-bank="wd:all" ${bankSt.bal < 1 ? 'disabled' : ''}>ทั้งหมด</button></div>`
     + '<p style="font-size:12px;opacity:.65;margin-top:10px">💡 ต้องยืนใกล้ตู้ ATM ที่ลานกองไฟถึงจะฝาก/ถอนได้</p>';
+  h += stashHTML();
   el.innerHTML = h;
+  el.querySelectorAll('[data-stash]').forEach(b => b.onclick = () => { const [a, item, n] = b.dataset.stash.split(':'); send({ t: 'stash', a, item, n: n === 'all' ? 'all' : +n }); });
   el.querySelectorAll('[data-bank]').forEach(b => b.onclick = () => { const [a, amt] = b.dataset.bank.split(':'); send({ t: 'bank', a, amt: amt === 'all' ? 'all' : +amt }); });
 }
 function doleSection() {
@@ -528,7 +543,7 @@ function renderOrderTab(el) { // กระดานใบสั่งซื้�
   el.querySelectorAll('[data-oc]').forEach(b => b.onclick = () => send({ t: 'order', a: 'cancel', id: +b.dataset.oc }));
 }
 function renderTown() {
-  $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM', chest: '🏦 เงินกองกลาง', order: '📋 กระดานใบสั่งซื้อ' })[townTab] || '📰 ข่าวเมือง';
+  $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM & ตู้เก็บของ', chest: '🏦 เงินกองกลาง', order: '📋 กระดานใบสั่งซื้อ' })[townTab] || '📰 ข่าวเมือง';
   document.querySelectorAll('[data-ttab]').forEach(t => t.classList.toggle('on', t.dataset.ttab === townTab));
   const el = $('townBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   if (townTab === 'bank') return renderBankTab(el);
@@ -946,7 +961,7 @@ function renderShop() {
     for (const r of CRAFT) {
       const i = itemInfo(r.id), locked = lvl('wood') < r.lv, ok = Object.entries(r.in).every(([k, n]) => (inv[k] || 0) >= n);
       const need = Object.entries(r.in).map(([k, n]) => { const x = itemInfo(k), have = inv[k] || 0; return x.emoji + n + (have >= n ? '' : ' <small style="color:#c0392b">(มี ' + have + ')</small>'); }).join(' + ');
-      h += `<div class="row${locked ? ' lock' : ''}"><span>${i.emoji} ${i.name}${locked ? ` <small>🔒 Lv${r.lv}</small>` : ''}<br><small>ใช้ ${need} • +${r.xp} XP${i.furn ? ' • วางในบ้านได้' : ''}</small></span><span><button class="btn small" data-craft="${r.id}" ${locked || !ok ? 'disabled' : ''}>🔨 ทำ</button></span></div>`;
+      h += `<div class="row${locked ? ' lock' : ''}"><span>${i.emoji} ${i.name}${locked ? ` <small>🔒 Lv${r.lv}</small>` : ''}<br><small>ใช้ ${need} • +${r.xp} XP${i.furn ? ' • วางในบ้านได้' : ''}${i.storage ? ` • เก็บของได้ 🪙${STORAGE[i.storage].cap} (ใช้ที่ตู้ ATM ทำได้ชิ้นเดียวต่อระดับ)` : ''}</small></span><span><button class="btn small" data-craft="${r.id}" ${locked || !ok ? 'disabled' : ''}>🔨 ทำ</button></span></div>`;
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ตัดต้นไม้ด้วยขวานได้ไม้ท่อน 🪵 และไม้เนื้อแข็ง 🟫 • ไม้กระดานขายได้แพงกว่าไม้ท่อน • ลังไม้ ถังไม้ ป้ายชี้ทาง ตู้ไปรษณีย์ ตู้เครื่องมือ และกระท่อม ทำได้เฉพาะช่างไม้ (ตะเกียง 🏮 ย้ายไปขายที่ร้านเฟอร์นิเจอร์แล้ว)</p>';
   }

@@ -104,6 +104,31 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   w.trimNpc(S.ORDER.npcMaxOpen); assert.strictEqual(w.orders.length, S.ORDER.npcMaxOpen, 'ตัดใบ NPC ที่ล้น');
   console.log('  ใบสั่งซื้อ NPC: 60 ใบหมุนเวียน ' + new Set(seen).size + ' ชนิด หมวดซ้ำติดกัน ' + sameCat + ' ครั้ง เปิดค้างไม่เกิน ' + S.ORDER.npcMaxOpen);
 }
+// ตู้เก็บของ: ประดิษฐ์ ฝาก/ถอน ความจุตามมูลค่า ถอนไม่เกินเพดานการถือ
+{
+  const msgs = []; const oldToast = w.toast; w.toast = (pp, t2) => msgs.push(t2); w.nearShopKind = () => 'wood'; p.rec.skills = Object.assign({}, p.rec.skills, { wood: 1e6 });
+  for (const k of ['storage_1', 'storage_2', 'storage_3']) assert.ok(S.CRAFT.find(r => r.id === k) && S.itemInfo(k).name, k + ' ต้องมีสูตรและข้อมูลไอเทม');
+  assert.strictEqual(S.holdCap('storage_1'), 0, 'ตู้ไม่ใช่ของขาย ไม่จำกัดการถือ');
+  p.rec.inv.plank = 100; p.rec.inv.log = 100; p.rec.inv.hardwood = 30; p.rec.inv.storage_1 = 0; delete p.rec.inv.storage_1;
+  w.craft(p, 'storage_1'); assert.strictEqual(p.rec.inv.storage_1, 1, 'ประดิษฐ์ตู้ระดับ 1 สำเร็จ'); assert.strictEqual(p.rec.inv.plank, 88, 'ใช้วัตถุดิบตามสูตร');
+  w.craft(p, 'storage_1'); assert.strictEqual(p.rec.inv.storage_1, 1, 'ทำระดับเดิมซ้ำไม่ได้'); assert.strictEqual(p.rec.inv.plank, 88, 'ไม่เสียวัตถุดิบตอนถูกปฏิเสธ');
+  assert.strictEqual(S.stashTier(p.rec.inv), 1, 'ระดับตู้ที่มี');
+  // ฝาก/ถอนต้องอยู่ใกล้ ATM
+  p.x = 3 * 32; p.y = 3 * 32; p.rec.inv.egg = 300; w.stashHandle(p, { a: 'dep', item: 'egg', n: 'all' }); assert.strictEqual(p.rec.inv.egg, 300, 'ไกลตู้ ATM ฝากไม่ได้');
+  p.x = (S.ATM.x + 0.5) * 32; p.y = (S.ATM.y + 0.5) * 32;
+  const eggSell = S.itemInfo('egg').sell, capVal = S.STORAGE[1].cap, maxEggs = Math.floor(capVal / eggSell);
+  w.stashHandle(p, { a: 'dep', item: 'egg', n: 'all' });
+  assert.strictEqual(w.stashOf(p).egg, Math.min(300, maxEggs), 'ฝากได้ไม่เกินความจุตามมูลค่า'); assert.ok(S.stashValue(w.stashOf(p)) <= capVal, 'มูลค่าในตู้ไม่เกินความจุ'); assert.strictEqual(p.rec.inv.egg + w.stashOf(p).egg, 300, 'ของไม่หาย');
+  w.stashHandle(p, { a: 'dep', item: 'bait', n: 5 }); assert.ok(!w.stashOf(p).bait, 'ของที่ไม่ใช่ของขายฝากไม่ได้');
+  p.rec.inv.egg = 0; w.stashHandle(p, { a: 'wd', item: 'egg', n: 'all' }); assert.strictEqual(p.rec.inv.egg, Math.min(S.holdCap('egg'), maxEggs), 'ถอนได้ไม่เกินเพดานการถือ');
+  w.stashHandle(p, { a: 'wd', item: 'egg', n: 'all' }); assert.strictEqual(p.rec.inv.egg, S.holdCap('egg'), 'ถือเต็มแล้วถอนเพิ่มไม่ได้');
+  assert.ok(w.stashPub(p).t === 'stash' && w.stashPub(p).tier === 1 && w.stashPub(p).cap === capVal, 'ข้อมูลส่ง client');
+  // ระดับสูงกว่าเปลี่ยนความจุ และทำระดับต่ำกว่าไม่ได้แล้ว
+  w.craft(p, 'storage_2'); assert.strictEqual(S.stashTier(p.rec.inv), 2); w.craft(p, 'storage_1'); assert.strictEqual(p.rec.inv.storage_1, 1, 'มีระดับสูงกว่าแล้วต้องไม่ทำระดับต่ำซ้ำ (ไม่ถูกเพิ่ม)');
+  assert.strictEqual(w.stashPub(p).cap, S.STORAGE[2].cap, 'ความจุตามระดับสูงสุด');
+  console.log('  ตู้เก็บของ: ฝากไข่ ' + Math.min(300, maxEggs) + ' ฟอง (ความจุ 🪙' + capVal + ') • ถอนได้ไม่เกินเพดานถือ ' + S.holdCap('egg'));
+  w.toast = oldToast; p.rec.inv.egg = 0; p.rec.stash = {};
+}
 const w2 = new World('main');
 assert.strictEqual(w2.projects.bridge.coin, 5000, 'bridge coin lost after reload');
 assert.strictEqual(w2.projects.lighthouse.coin, 500, 'lighthouse coin lost after reload');

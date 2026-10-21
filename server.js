@@ -561,8 +561,29 @@ class World {
       if (e.ex && e.v >= S.ENERGY.resume) { e.ex = false; this.toast(p, '⚡ พักพอแล้ว กลับไปทำงานได้'); this.enPush(p); } else if (push) this.enPush(p);
     }
   }
+  // ----- ตู้เก็บของ: ฝาก/ถอนของขายที่ตู้ ATM (ต้องประดิษฐ์ตู้ก่อน) -----
+  stashOf(p) { const o = p.rec.stash = p.rec.stash && typeof p.rec.stash === 'object' ? p.rec.stash : {}; for (const k of Object.keys(o)) if (!(o[k] > 0) || !S.holdCap(k)) delete o[k]; return o; }
+  stashPub(p) { const tier = S.stashTier(p.rec.inv), st = this.stashOf(p); return { t: 'stash', tier, cap: tier ? S.STORAGE[tier].cap : 0, value: S.stashValue(st), items: st }; }
+  stashPush(p) { send(p, this.stashPub(p)); }
+  stashHandle(p, m) {
+    if (!this.nearAtm(p)) return this.toast(p, 'ต้องอยู่ใกล้ตู้ ATM ที่ลานกองไฟ');
+    const tier = S.stashTier(p.rec.inv); if (!tier) return this.toast(p, '📦 ยังไม่มีตู้เก็บของ ประดิษฐ์ได้ที่ร้านช่างไม้ (ไม้กระดาน + ไม้ท่อน)');
+    const item = String(m.item || ''), info = S.itemInfo(item), st = this.stashOf(p), inv = p.rec.inv;
+    if (!info || !info.sell || !S.holdCap(item)) return;
+    const want = m.n === 'all' ? Infinity : Math.floor(m.n) || 0; if (!(want > 0)) return;
+    if (m.a === 'dep') {
+      const room = Math.floor((S.STORAGE[tier].cap - S.stashValue(st)) / info.sell), n = Math.min(want, inv[item] || 0, room);
+      if (n <= 0) return this.toast(p, room <= 0 ? `📦 ตู้เต็มแล้ว (ความจุ 🪙${S.STORAGE[tier].cap} ตามมูลค่าของ) ประดิษฐ์ตู้ระดับสูงกว่าหรือเอาไปขาย` : 'ไม่มีของให้ฝาก');
+      this.add(p, item, -n); st[item] = (st[item] || 0) + n; this.toast(p, `📦 ฝาก ${info.emoji} ${info.name} ×${n} เข้าตู้แล้ว`);
+    } else if (m.a === 'wd') {
+      const n = Math.min(want, st[item] || 0, S.holdCap(item) - (inv[item] || 0));
+      if (n <= 0) return this.toast(p, (st[item] || 0) ? `🎒 ถือ ${info.emoji} ${info.name} ครบ ${S.holdCap(item)} ชิ้นแล้ว ขายหรือใช้ก่อนค่อยถอน` : 'ไม่มีของในตู้');
+      st[item] -= n; if (st[item] <= 0) delete st[item]; this.add(p, item, n); this.toast(p, `🎒 ถอน ${info.emoji} ${info.name} ×${n} ออกจากตู้แล้ว`);
+    } else return;
+    this.sfxTo(p, 'click'); this.dirty = true; this.stashPush(p);
+  }
   holdFull(p, item, n) { const c = S.holdCap(item); return c > 0 && (p.rec.inv[item] || 0) + (n || 1) > c; } // ถือชนิดนี้ครบเพดานแล้ว (ถ้าเพิ่ม n ชิ้นจะเกิน)
-  holdToast(p, item) { const i = S.itemInfo(item); this.toast(p, `🎒 ถือ ${i.emoji} ${i.name} ครบ ${S.holdCap(item)} ชิ้นแล้ว ไปขาย/ใช้ก่อนค่อยเก็บเพิ่ม`); }
+  holdToast(p, item) { const i = S.itemInfo(item); this.toast(p, `🎒 ถือ ${i.emoji} ${i.name} ครบ ${S.holdCap(item)} ชิ้นแล้ว ไปขาย/ใช้ก่อน หรือฝากตู้เก็บของที่ตู้ ATM (ประดิษฐ์ที่ร้านช่างไม้)`); }
   catJoin(p) { // ความอิ่มตัวของตลาดหมวดฟื้นตามเวลาจริงที่ผ่านไปแม้ออฟไลน์ (เหมือนพลังงาน) catAt = ครั้งล่าสุดที่คิดการฟื้น
     const ct = p.rec.cat, now = Date.now(), min = Math.max(0, (now - (p.rec.catAt || now)) / 60000), f = Math.pow(1 - S.CATFAT.recover, min);
     if (ct) for (const k of Object.keys(ct)) { ct[k] = 1 - (1 - ct[k]) * f; if (ct[k] > 0.995) delete ct[k]; }
@@ -831,10 +852,11 @@ class World {
     const r = typeof id === 'string' ? S.CRAFT.find(x => x.id === id) : null; if (!r) return;
     if (this.nearShopKind(p) !== 'wood') return this.toast(p, 'ต้องยืนใกล้เคาน์เตอร์ร้านช่างไม้ถึงจะประดิษฐ์ได้');
     if (this.lv(p, 'wood') < r.lv) return this.toast(p, `ต้องเป็นช่างไม้เลเวล ${r.lv} ก่อน`);
+    if (/^storage_/.test(r.id) && S.stashTier(p.rec.inv) >= +r.id.slice(8)) return this.toast(p, '📦 มีตู้เก็บของระดับนี้หรือสูงกว่าแล้ว');
     if (this.holdFull(p, r.id, 1)) return this.holdToast(p, r.id);
     for (const [k, n] of Object.entries(r.in)) if ((p.rec.inv[k] || 0) < n) return this.toast(p, 'วัตถุดิบไม่พอ');
     for (const [k, n] of Object.entries(r.in)) this.add(p, k, -n);
-    this.add(p, r.id, 1); this.addXp(p, 'wood', r.xp);
+    this.add(p, r.id, 1); this.addXp(p, 'wood', r.xp); if (/^storage_/.test(r.id)) this.stashPush(p);
     const info = S.itemInfo(r.id); this.toast(p, `🔨 ประดิษฐ์ ${info.emoji} ${info.name} สำเร็จ! (+${r.xp} XP)`); this.sfx(p, 'collect');
     if (info.furn) this.bookAdd(p, 'furn', info.furn);
     this.event(p, 'craft');
@@ -946,7 +968,7 @@ class World {
     });
     send(p, { t: 'arcs', a: this.arcsPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
-    send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
+    send(p, { t: 'proj', p: this.projPub() }); this.stashPush(p); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     this.orderPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
@@ -1043,6 +1065,7 @@ class World {
       case 'craft': this.craft(p, m.id); break;
       case 'quest': this.questHandle(p, m); break;
       case 'bank': this.bankHandle(p, m); break;
+      case 'stash': this.stashHandle(p, m); break;
       case 'cin': this.cinemaHandle(p, m); break;
       case 'lamp': { // เปิด/ปิดตะเกียงที่ถืออยู่ (ต้องมีตะเกียงในกระเป๋า)
         p.rec.lamp = p.lamp = !!m.on && !!p.rec.inv.lamp;
