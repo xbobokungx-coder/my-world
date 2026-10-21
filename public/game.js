@@ -2329,13 +2329,14 @@ const blinkOf = (c, now) => ((now / 1000 + (c.id || 0) * 1.3) % 4) < 0.14;
 const blush = (bx, by, r) => { ctx.fillStyle = 'rgba(255,120,145,.55)'; ctx.beginPath(); ctx.arc(bx, by, r, 0, 7); ctx.fill(); };
 // สัตว์: สไปรต์พิกเซลจาก pixelui.js (หันขวา ซ้ายพลิกกลับ) ส่วนอีโมจิผลผลิต/หัวใจลอยเหนือหัววาดแบบพิกเซลเช่นกัน
 const ANIMAL_SHADOW = { chicken: [7, 3, 7], duck: [7, 3, 7], sheep: [13, 4, 10], cow: [15, 5, 11], pig: [12, 4, 9] };
+const ANIMAL_STEP = { chicken: 5, duck: 4.5, pig: 4, sheep: 3.5, cow: 3 }; // เฟรมเดินต่อวินาที (ตัวใหญ่ก้าวช้ากว่า)
 function drawAnimalPx(type, c, now, top, prodE) {
-  const x = c.x, y = c.y, mx = c.tx - c.x, my = c.ty - c.y, moving = Math.hypot(mx, my) > 2, sh = ANIMAL_SHADOW[type];
-  if (moving) c.face = Math.abs(my) > Math.abs(mx) * 1.3 ? (my > 0 ? 'f' : 'b') : 's'; else if (!c.face) c.face = 's'; // เดินขึ้น/ลง = โชว์ด้านหลัง/หน้า เดินซ้ายขวา = ด้านข้าง
-  const eat = !moving && !c.sick && !c.prod && ((c.happyAt && now - c.happyAt < 1800) || ((now / 1000 + (c.id || 0) * 2.7) % 11) < 3); // เพิ่งได้กิน/ว่างๆ เป็นช่วงๆ = ก้มกินหญ้า (จิกพื้น)
+  const x = c.x, y = c.y, moving = !!c.moving, sh = ANIMAL_SHADOW[type];
+  const eat = !moving && (c.still || 0) > 0.8 && !c.sick && !c.prod && ((c.happyAt && now - c.happyAt < 1800) || ((now / 1000 + (c.id || 0) * 2.7) % 11) < 3); // หยุดนิ่งสักพักแล้วค่อยก้มกิน ไม่ก้มทันทีที่หยุด
   ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + sh[2], sh[0], sh[1], 0, 0, 7); ctx.fill();
-  const ph = Math.sin(c.anim * (type === 'cow' ? 6 : 8));
-  PixelUI.animal(ctx, type, c, { f: c.dx || 1, v: eat ? 's' : c.face, eat, step: eat ? (((now / (type === 'chicken' ? 900 : 1500) + (c.id || 0) * 0.37) % 1) > 0.8 ? 1 : 0) : moving && ph > 0 ? 1 : 0, blink: blinkOf(c, now), prod: !!c.prod, hop: type === 'chicken' && moving ? Math.round(Math.abs(ph) * 2) : 0 });
+  const step = eat ? (((now / (type === 'chicken' ? 900 : 1500) + (c.id || 0) * 0.37) % 1) > 0.8 ? 1 : 0) : moving ? Math.floor(c.anim * (ANIMAL_STEP[type] || 4)) % 2 : 0;
+  const hop = moving && (type === 'chicken' || type === 'duck') ? step : 0; // ไก่/เป็ดเด้งตัว 1 px ตามจังหวะก้าว
+  PixelUI.animal(ctx, type, c, { f: c.lr || c.dx || 1, v: eat ? 's' : c.face || 's', eat, step, blink: blinkOf(c, now), prod: !!c.prod, hop });
   if (c.prod) PixelUI.world(ctx, prodE, x, y - top - 3 + Math.sin(now / 250) * 2, 14);
   else if (c.fed) PixelUI.world(ctx, '💗', x, y - top - 3, 14);
 }
@@ -2542,7 +2543,16 @@ function step(now) {
   }
   for (const n of npcs.values()) { const dx = n.tx - n.x, dy = n.ty - n.y; n.moving = Math.hypot(dx, dy) > 1; n.x += dx * Math.min(1, dt * 12); n.y += dy * Math.min(1, dt * 12); if (n.moving) n.anim += dt; }
   for (const q of pets.values()) { const dx = q.tx - q.x, dy = q.ty - q.y; q.moving = q.srvMoving || Math.hypot(dx, dy) > 1.5; q.x += dx * Math.min(1, dt * 8); q.y += dy * Math.min(1, dt * 8); if (q.moving) q.anim += dt; }
-  for (const c of animals.values()) { c.x += (c.tx - c.x) * Math.min(1, dt * 8); c.y += (c.ty - c.y) * Math.min(1, dt * 8); c.anim += dt; }
+  for (const c of animals.values()) { // ขยับให้ลื่น: วัดความเร็วจริงแบบเฉลี่ย แล้วตัดสินเดิน/หยุด/ทิศหันแบบมีช่วงกันสั่น (ไม่สลับท่าไปมาทุกเฟรม)
+    const ox = c.x, oy = c.y; c.x += (c.tx - c.x) * Math.min(1, dt * 6); c.y += (c.ty - c.y) * Math.min(1, dt * 6);
+    if (dt > 0) { const k = Math.min(1, dt * 5); c.vx = (c.vx || 0) + ((c.x - ox) / dt - (c.vx || 0)) * k; c.vy = (c.vy || 0) + ((c.y - oy) / dt - (c.vy || 0)) * k; }
+    const sp = Math.hypot(c.vx || 0, c.vy || 0); c.moving = c.moving ? sp > 3 : sp > 7;
+    if (c.moving) { c.anim += dt; c.still = 0; if (Math.abs(c.vx) > 4) c.lr = c.vx > 0 ? 1 : -1; } else c.still = (c.still || 0) + dt;
+    const ax = Math.abs(c.vx || 0), ay = Math.abs(c.vy || 0);
+    const cand = !c.moving ? c.face : ay > ax * 1.4 ? (c.vy > 0 ? 'f' : 'b') : ax > ay * 0.8 ? 's' : c.face;
+    if (!c.face) c.face = 's';
+    if (cand && cand !== c.face) { c.faceT = (c.faceT || 0) + dt; if (c.faceT > 0.3) { c.face = cand; c.faceT = 0; } } else c.faceT = 0; // ทิศใหม่ต้องค้างอย่างน้อย 0.3 วิ ถึงเปลี่ยนท่า
+  }
   swing = Math.max(0, swing - dt);
   { const he = heldEmoji(); if (he !== lastHeld) { lastHeld = he; me.held = he; send({ t: 'held', e: he }); } } // อุปกรณ์ในมือเปลี่ยน → บอกเซิร์ฟเวอร์
   updateSpeaking(now);

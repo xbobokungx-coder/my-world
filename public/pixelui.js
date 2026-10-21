@@ -104,7 +104,7 @@ const PixelUI = (() => {
   const PG = { b: '#f7b3c2', d: '#e891a3', k: '#d7788e', s: '#ee7f98', hi: '#ffd6df', n: '#9b3a52', hoof: '#8a3a50' };
   const CW = { w: '#ffffff', g: '#e6e6ea', k: '#3a3a3a', pk: '#f2b6b6', hn: '#d9c9a0', hoof: '#4a4a4a' };
   const SH = { wl: '#fbfbf6', wd: '#ececdf', ws: '#d4d4c4', f: '#3d3d45', leg: '#4a4a52' };
-  const MD = { body: '#b9ac96', wing: '#8f8068', chest: '#8a5a3a', head: '#2f9a4e', headHi: '#4cc06a', ring: '#ffffff', bill: '#f2c230', leg: '#f39c12', tail: '#2a2a2a' };
+  const MD = { body: '#f7f4ec', wing: '#e2dccd', chest: '#efe9dc', head: '#fbf9f4', headHi: '#ffffff', ring: '#fbf9f4', bill: '#f39c12', leg: '#f39c12', tail: '#e2dccd' }; // เป็ดขาว ปากส้ม
   const A = {
     chicken: { w: 14, h: 12, cx: 6, ground: 7, fn(x, o) {
       const v = o.v || 's', W0 = '#ffffff', W1 = '#e8e8e8', W2 = '#d2d2d6', RD = '#e74c3c', OR = '#f2a33a';
@@ -135,17 +135,17 @@ const PixelUI = (() => {
     duck: { w: 16, h: 12, cx: 7, ground: 7, fn(x, o) {
       const v = o.v || 's', M = MD;
       if (v === 'f') {
-        ell(x, 7, 8, 4, 3, M.body); ell(x, 7, 8, 2, 2, M.chest); r(x, '#d9cdb6', 5, 10, 5, 1);
+        ell(x, 7, 8, 4, 3, M.body); ell(x, 7, 8, 2, 2, M.chest); r(x, M.wing, 5, 10, 5, 1);
         r(x, M.leg, 5, 11, 2, 1); r(x, M.leg, 9, 11, 2, 1);
         disc(x, 7, 3, 3, M.head); r(x, M.headHi, 5, 1, 2, 1); r(x, M.ring, 5, 6, 5, 1); r(x, M.bill, 6, 4, 3, 2);
         if (o.blink) { r(x, EYE, 5, 3, 1, 1); r(x, EYE, 9, 3, 1, 1); } else { r(x, EYE, 5, 2, 1, 2); r(x, EYE, 9, 2, 1, 2); }
       } else if (v === 'b') {
-        ell(x, 7, 7, 4, 4, M.body); r(x, M.wing, 4, 5, 2, 4); r(x, M.wing, 10, 5, 2, 4); r(x, M.tail, 6, 9, 3, 2); r(x, '#6a5d4a', 6, 8, 3, 1);
+        ell(x, 7, 7, 4, 4, M.body); r(x, M.wing, 4, 5, 2, 4); r(x, M.wing, 10, 5, 2, 4); r(x, M.tail, 6, 9, 3, 2); r(x, M.wing, 6, 8, 3, 1);
         disc(x, 7, 2, 2, M.head); r(x, M.ring, 6, 4, 3, 1);
         r(x, M.leg, 5, 11, 2, 1); r(x, M.leg, 9, 11, 2, 1);
       } else {
         const d = o.eat && o.f ? 1 : 0;
-        ell(x, 7, 7, 5, 3, M.body); ell(x, 8, 8, 3, 2, M.chest); ell(x, 5, 6, 3, 2, M.wing); r(x, M.tail, 0, 4, 2, 2); r(x, '#d9cdb6', 4, 9, 6, 1);
+        ell(x, 7, 7, 5, 3, M.body); ell(x, 8, 8, 3, 2, M.chest); ell(x, 5, 6, 3, 2, M.wing); r(x, M.tail, 0, 4, 2, 2); r(x, M.wing, 4, 9, 6, 1);
         if (o.eat) { disc(x, 13, 7 + d, 2, M.head); r(x, M.ring, 11, 6 + d, 1, 2); r(x, M.bill, 14, 8 + d, 2, 1); r(x, EYE, 13, 6 + d, 1, 1); r(x, '#e8c86a', 15, 11, 1, 1); }
         else { disc(x, 12, 3, 2, M.head); r(x, M.headHi, 11, 1, 2, 1); r(x, M.chest, 11, 5, 3, 2); r(x, M.ring, 11, 5, 2, 1); r(x, M.bill, 14, 3, 2, 2);
           if (o.blink) r(x, EYE, 11, 3, 2, 1); else r(x, EYE, 12, 2, 1, 2); }
