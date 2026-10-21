@@ -548,6 +548,7 @@ class World {
   enPub(p, spent) { const e = this.enOf(p); return { t: 'en', spent: spent || 0, v: Math.round(e.v * 10) / 10, ex: e.ex, rate: (p.sit ? S.ENERGY.sitMul : 1) / S.ENERGY.regenMs, resume: S.ENERGY.resume, rareUntil: p.rec.rareAt || 0 }; }
   enPush(p, spent) { send(p, this.enPub(p, spent)); }
   tire(p, kind, value) { // งานหนักที่สำเร็จแล้ว หักพลังงานตามมูลค่างาน (S.energyCost) เกินที่มี = ติดลบ ต้องพักจนถึง resume
+    if (!S.ENERGY.on) return this.telAdd(p, kind, 0); // ระบบพลังงานปิดอยู่: ไม่หักพลังงาน แต่ยังนับการกระทำ
     const e = this.enOf(p), cost = S.energyCost(kind, value); e.v = Math.max(-S.ENERGY.max, e.v - cost); e.at = Date.now();
     if (e.v <= 0 && !e.ex) {
       e.ex = true; const sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000);
@@ -567,9 +568,10 @@ class World {
     logEv(this.room, 'snap', { mk, chest: this.chest.coin, dead: this.chest.dead, an, online: this.players.size });
     for (const p of this.players.values()) this.telFlush(p);
   }
-  exhausted(p) { return this.enOf(p).ex; }
+  exhausted(p) { return S.ENERGY.on && this.enOf(p).ex; }
   heavyAction(tool, k) { return ['hoe', 'water', 'axe', 'rod'].includes(tool) || (typeof tool === 'string' && tool.startsWith('seed_')) || (tool === 'hand' && !!(this.farm[k] && this.farm[k].c)); } // เครื่องมือ/การกระทำที่ถูกหยุดเมื่อเหนื่อย (นั่ง/เก็บไข่/ร้านค้า/ให้อาหารสัตว์ไม่ถูกหยุด)
   energyTick(dt) { // ฟื้นพลังงานทุกคนที่ออนไลน์ + ส่งค่าให้ client ทุก ~1 วินาทีเฉพาะคนที่ยังไม่เต็ม
+    if (!S.ENERGY.on) return;
     this.enAcc = (this.enAcc || 0) + dt; const push = this.enAcc >= 1; if (push) this.enAcc = 0;
     for (const p of this.players.values()) {
       const e = this.enOf(p); if (e.v >= S.ENERGY.max && !e.ex) continue;
@@ -1266,7 +1268,7 @@ class World {
     const gain = Math.min(info.food, 100 - Math.round(p.rec.hunger));
     this.add(p, item, -1);
     this.setHunger(p, p.rec.hunger + info.food, true);
-    { const e = this.enOf(p); e.v = Math.min(S.ENERGY.max, e.v + info.food * S.ENERGY.eatMul); if (e.ex && e.v >= S.ENERGY.resume) e.ex = false; this.enPush(p); }
+    if (S.ENERGY.on) { const e = this.enOf(p); e.v = Math.min(S.ENERGY.max, e.v + info.food * S.ENERGY.eatMul); if (e.ex && e.v >= S.ENERGY.resume) e.ex = false; this.enPush(p); }
     this.toast(p, `กิน ${info.emoji} ${info.name} (อิ่มขึ้น +${gain})`);
     this.sfx(p, 'eat'); if (item.startsWith('meal_')) this.bookAdd(p, 'meal', item.slice(5));
     this.event(p, 'eat');

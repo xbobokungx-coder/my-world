@@ -182,7 +182,7 @@
   //   ผักหนึ่งรอบ (ขุด+ปลูก+รดน้ำ+เก็บ) รวม = ราคาขาย/coinsPerEnergy (ขั้นต่ำ 4) • ปลา = ราคาปลาที่ได้ • ตัดไม้ = มูลค่าไม้ที่ได้
   // เกินพลังงานที่มี = ติด "หนี้พลังงาน" (ค่าติดลบ ต่ำสุด -max) ต้องพักจนถึง resume: งานแพงๆ จึงพักนานตามมูลค่า ไม่มีช่องโหว่ทำงานแพงตอนเหลือพลังงานนิดเดียว
   // regenMs = กี่ มิลลิวินาทีต่อ 1 หน่วย • rareCdMs = ตกปลาหายาก (ราคา ≥ 100) ได้อีกครั้งหลังพักกี่มิลลิวินาที
-  const ENERGY = { max: 100, regenMs: 4000, sitMul: 3, resume: 10, eatMul: 0.4, rareCdMs: 6 * 60 * 1000, coinsPerEnergy: 6, cost: { dig: 1, water: 1, plant: 1 } };
+  const ENERGY = { on: false, /* ปิดระบบพลังงานชั่วคราว รอวางแผนใหม่ (ตั้งเป็น true เพื่อเปิดกลับ) */ max: 100, regenMs: 4000, sitMul: 3, resume: 10, eatMul: 0.4, rareCdMs: 6 * 60 * 1000, coinsPerEnergy: 6, cost: { dig: 1, water: 1, plant: 1 } };
   const energyCost = (kind, value) => ENERGY.cost[kind] !== undefined ? ENERGY.cost[kind]
     : Math.max(1, Math.round(value / ENERGY.coinsPerEnergy) - (kind === 'harvest' ? ENERGY.cost.dig + ENERGY.cost.plant + ENERGY.cost.water : 0)); // เก็บเกี่ยว = ส่วนที่เหลือของรอบ หลังหักขุด/ปลูก/รดน้ำ
   // ความอิ่มตัวของตลาดต่อ "หมวด" (ต่อผู้เล่น): เดิมแต่ละชนิดอิ่มตัวแยกกัน คนขายเยอะจึงสลับชนิดหนีได้ (ข้อมูลจริง: ขายทีละ ~4 ชิ้น หลายสิบชนิด ได้ราคา ~100% ของราคาฐาน)

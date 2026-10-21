@@ -307,7 +307,8 @@ $('satChip').onclick = () => toast($('satChip').title);
 setInterval(renderSat, 20000);
 // พลังงาน ⚡ + คูลดาวน์ปลาหายาก: ป้ายแถบบน บอกสถานะและเวลาที่เหลือ (ค่าจริงมาจาก server ทุก ~1 วินาที ระหว่างนั้นคำนวณต่อเองตามอัตราฟื้น)
 function renderEnergy() {
-  const el = $('enChip'), cd = $('cdChip'), now = Date.now(), v = Math.min(Shared.ENERGY.max, enSt.v + (enSt.v < Shared.ENERGY.max ? (now - enSt.at) * enSt.rate : 0));
+  const el = $('enChip'), cd = $('cdChip'), now = Date.now(); el.classList.toggle('hidden', !Shared.ENERGY.on); // ระบบพลังงานปิดอยู่: ซ่อนป้าย ⚡
+  const v = Math.min(Shared.ENERGY.max, enSt.v + (enSt.v < Shared.ENERGY.max ? (now - enSt.at) * enSt.rate : 0));
   const sec = Math.max(1, Math.ceil((enSt.resume - v) / (enSt.rate || 1e-9) / 1000));
   el.classList.toggle('over', enSt.ex); el.classList.toggle('warn', !enSt.ex && v < 30);
   const spent = now - (enSt.spentAt || 0) < 3000 && enSt.lastSpent ? ` (-${enSt.lastSpent})` : ''; // เพิ่งใช้พลังงานไปเท่าไร โชว์ 3 วินาที ให้เห็นว่างานแพงกินพลังงานมากกว่า
