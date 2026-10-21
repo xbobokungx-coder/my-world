@@ -416,6 +416,16 @@
 <div id="joy" class="hidden"><div id="knob"></div></div>
 <button id="abtn" class="hidden">A</button>
 
+<script>
+// ถ้าสคริปต์เกมพัง ให้เห็นข้อความบนจอ แทนที่จะเป็นจอว่างเงียบๆ (ส่งข้อความนี้ให้ผู้ดูแล)
+addEventListener('error', e => {
+  if (document.getElementById('errBar')) return;
+  const d = document.createElement('div'); d.id = 'errBar';
+  d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7a1010;color:#fff;font:12px/1.4 sans-serif;padding:6px 10px;white-space:pre-wrap';
+  d.textContent = '⚠️ เกมมีข้อผิดพลาด: ' + (e.message || 'unknown') + ' (' + String(e.filename || '').split('/').pop() + ':' + (e.lineno || '?') + ') — รีเฟรช หรือแจ้งผู้ดูแล';
+  (document.body || document.documentElement).appendChild(d);
+});
+</script>
 <script src="shared.js"></script>
 <script src="pixelart.js"></script>
 <script src="pixelchar.js"></script>

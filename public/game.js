@@ -1,6 +1,6 @@
 (() => {
 'use strict';
-const { REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
+const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
   GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, bankInterest, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
@@ -12,18 +12,17 @@ const HATS = ['#e8c66a'].concat(PALETTE);
 const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 
 // ---------- เครื่องมือบน hotbar ----------
-const SLOTS = [
-  { id: 'hoe', e: '⛏️', n: 'จอบ' },
-  { id: 'water', e: '🫗', n: 'บัวรดน้ำ' },
+const SLOTS = [ // ช่อง 1 = เครื่องมือ (จอบ/บัวรดน้ำ/เบ็ด/ขวาน/มือเปล่า เลือกจากเมนู) • 2 = เมล็ด • 3 = อาหารสัตว์/ยา
+  { id: 'tool', n: 'เครื่องมือ', pick: true },
   { id: 'seed', n: 'เมล็ดพันธุ์', pick: true },
-  { id: 'rod', e: '🎣', n: 'เบ็ดตกปลา', pick: true },
   { id: 'feed', n: 'อาหารสัตว์/ยา', pick: true },
-  { id: 'axe', e: '🪓', n: 'ขวาน' },
 ];
+const TOOL_LIST = ['hand', 'hoe', 'water', 'rod', 'axe'], TOOL_SHORT = { hand: 'มือเปล่า', hoe: 'จอบ', water: 'บัวรดน้ำ', rod: 'เบ็ด', axe: 'ขวาน' };
 const FEEDS = ['feed', 'hay', 'slop', 'medicine'], BAIT_KEYS = ['bait', 'bait_2', 'bait_3'];
 let selBait = ls.get('mw_bait') || 'bait';
 let slot = 0, selSeed = 'carrot', selFeed = 'feed';
-const toolId = () => { const s = SLOTS[slot].id; return s === 'seed' ? 'seed_' + selSeed : s === 'feed' ? selFeed : s; };
+let selTool = TOOL_LIST.includes(ls.get('mw_tool')) ? ls.get('mw_tool') : 'hoe';
+const toolId = () => { const s = SLOTS[slot].id; return s === 'tool' ? selTool : s === 'seed' ? 'seed_' + selSeed : selFeed; };
 
 // ---------- state ----------
 let ws, joined = false, myId = 0, me = null, roomName = '', isAdmin = false;
@@ -91,7 +90,7 @@ const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 // ---------- messages ----------
 function mkPlayer(o) {
-  return { id: o.id, title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
+  return { id: o.id, held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
 }
 function applyTrees(list) { // ซิงก์ต้นไม้ที่ตัดได้ให้ตรงกับเซิร์ฟเวอร์ (ต้นไม้ขอบแมพไม่เปลี่ยน)
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (isChoppable(MAP, x, y)) MAP[y][x] = T.GRASS;
@@ -101,7 +100,7 @@ function handle(m) {
   switch (m.t) {
     case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
     case 'w':
-      joined = true; myId = m.id; inv = m.inv; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
+      lastHeld = null; joined = true; myId = m.id; inv = m.inv; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
       dur = m.dur || {}; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
       if (m.trees) applyTrees(m.trees);
       furn.clear(); plotOwners = (m.house && m.house.plots) || [];
@@ -121,7 +120,11 @@ function handle(m) {
       players.forEach((p, id) => { if (id < myId) callPeer(id); }); // ผู้เล่นใหม่เป็นฝ่ายโทรหาคนที่อยู่ก่อน
       break;
     case 'chatlog': chatHist.length = 0; for (const e of m.list || []) chatHist.push(e); break;
+    case 'ach': achSt = { cnt: m.cnt || {}, got: m.got || {}, sel: m.sel || '' }; if (achShown()) renderAch(); break;
     case 'deaf': { const p = players.get(m.id); if (p) p.deaf = !!m.on; break; }
+    case 'use': { const p = players.get(m.id); if (p) p.useAt = performance.now(); break; }
+    case 'held': { const p = players.get(m.id); if (p) p.held = m.e || ''; break; }
+    case 'status': { const p = players.get(m.id); if (p) { p.status = m.s || ''; if (peopleShown()) renderPeople(true); } break; }
     case 'voice': { const p = players.get(m.id); if (p) { p.voice = m.on; if (!m.on) p.speaking = false; } break; }
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
     case 'tree': if (MAP[m.y]) { if (m.on) { if (MAP[m.y][m.x] === T.GRASS) MAP[m.y][m.x] = T.TREE; } else if (isChoppable(MAP, m.x, m.y)) MAP[m.y][m.x] = T.GRASS; } break;
@@ -140,12 +143,12 @@ function handle(m) {
       for (const [id, x, y, d] of (m.n || [])) { const n = npcs.get(id); if (n) { n.tx = x; n.ty = y; n.dir = d; } }
       for (const [id, x, y, d, mv] of (m.pt || [])) { const q = pets.get(id); if (q) { q.tx = x; q.ty = y; q.dir = d; q.srvMoving = !!mv; if (d === 2) q.dx = -1; else if (d === 3) q.dx = 1; } }
       const alive = new Set();
-      for (const [id, type, x, y, prod, fed, dx, hg, sick] of m.c) {
+      for (const [id, type, x, y, prod, fed, dx, hg, sick, lock, fn] of m.c) {
         alive.add(id);
         let a = animals.get(id);
         if (!a) { a = { x, y, anim: Math.random() * 6, id }; animals.set(id, a); }
         const oldH = a.h;
-        a.type = type; a.tx = x; a.ty = y; a.prod = prod; a.fed = fed; a.dx = dx; a.h = hg === undefined ? 100 : hg; a.sick = !!sick; if (oldH !== undefined && a.h > oldH + 15) a.happyAt = performance.now(); // เพิ่งได้กิน = ดีใจ
+        a.type = type; a.tx = x; a.ty = y; a.prod = prod; a.fed = fed; a.dx = dx; a.h = hg === undefined ? 100 : hg; a.sick = !!sick; a.lock = !!lock; a.fn = fn || ''; if (oldH !== undefined && a.h > oldH + 15) a.happyAt = performance.now(); // เพิ่งได้กิน = ดีใจ
       }
       for (const id of animals.keys()) if (!alive.has(id)) animals.delete(id);
       break;
@@ -182,7 +185,7 @@ function handle(m) {
     case 'proj': projSt = m.p; if (townShown()) renderTown(); break;
     case 'quests': {
       questSt = { list: m.list, total: m.total, title: m.title, pts: m.pts, dole: m.dole, starter: m.starter, streak: m.streak, book: m.book, wk: m.wk };
-      updateGuide(); updateQuestBadge(); if (bagShown() && (bagTab === 'quest' || bagTab === 'book')) renderBag();
+      updateGuide(); updateQuestBadge(); if (questShown()) renderQuestPanel(); if (bagShown() && bagTab === 'book') renderBag();
       for (const id of Object.keys(BUFFS)) buffExp[id] = m.buffs[id] ? Date.now() + m.buffs[id] : 0;
       if (me) me.title = m.title;
       if (townShown()) renderTown(); break;
@@ -190,7 +193,7 @@ function handle(m) {
     case 'bank': bankSt = m; if (townShown()) renderTown(); break;
     case 'village': villageSt = m; villageEnd = m.left ? Date.now() + m.left : 0; updateHappyChip(); if (townShown()) renderTown(); break;
     case 'fame': fameSt = m.f; if (townShown()) renderTown(); break;
-    case 'title': { const p = players.get(m.id); if (p) p.title = m.title; break; }
+    case 'title': { const p = players.get(m.id); if (p) p.title = m.title; if (achShown()) renderAch(); break; }
     case 'order': orderSt = m; if (townShown()) renderTown(); break;
     case 'arcpts': arcSt = m.arc; if (hubShown()) renderHub(); break;
     case 'lb': lbSt = m; if (hubShown()) renderHub(); break;
@@ -288,14 +291,14 @@ function updateQuestBadge() { // เลขบนไอคอนเควส = �
   const left = questSt.list.filter(x => !x[2]).length, b = $('questBadge');
   b.textContent = left; b.classList.toggle('hidden', !left);
 }
-$('questBtn').onclick = () => (bagShown() && bagTab === 'quest' ? closeBag() : openBag('quest'));
+$('questBtn').onclick = () => (questShown() ? closeQuest() : openQuest());
 function updateGuide() {
   const el = $('guide'); if (!el) return;
   const st = questSt.starter, next = st && !st.final && STARTER.find(s => !st.done.includes(s.id));
   if (!me || !next) { el.classList.add('hidden'); return; }
   el.classList.remove('hidden'); el.textContent = '👉 ' + next.hint + ' (' + st.done.length + '/' + STARTER.length + ')';
 }
-$('guide').onclick = () => openBag('quest');
+$('guide').onclick = () => openQuest('start');
 function guideHTML() { // คู่มือเริ่มต้น + เข้าเกมติดต่อกัน (ส่วนบนสุดของแท็บเควส)
   let h = '';
   const st = questSt.starter, sk = questSt.streak;
@@ -320,23 +323,99 @@ function renderBookTab(el) {
   }
   el.innerHTML = h;
 }
-function renderQuestTab(el) {
+// ---------- 🏅 ฉายา & ความสำเร็จ (Achievement) ----------
+let achSt = { cnt: {}, got: {}, sel: '' }, achTab = 'title';
+const achShown = () => !$('ach').classList.contains('hidden');
+function openAch(tab) { achTab = tab || achTab; $('ach').classList.remove('hidden'); send({ t: 'quest', a: 'ach' }); renderAch(); }
+function closeAch() { $('ach').classList.add('hidden'); }
+$('achBtn').onclick = () => (achShown() ? closeAch() : openAch());
+$('achClose').onclick = closeAch;
+$('ach').addEventListener('pointerdown', e => { if (e.target === $('ach')) closeAch(); });
+function renderAch() {
+  const el = $('achBody'), got = achSt.got || {}, cnt = achSt.cnt || {}, n = ACH.filter(a => got[a.id]).length, cur = (me && players.get(myId) && players.get(myId).title) || '';
+  $('achTabs').innerHTML = [['title', '🏅 ฉายา'], ['ach', `🏆 ความสำเร็จ ${n}/${ACH.length}`]].map(([c, t]) => `<button class="tab${achTab === c ? ' on' : ''}" data-atab="${c}">${t}</button>`).join('');
+  $('achTabs').querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { achTab = b.dataset.atab; renderAch(); });
+  const val = a => Math.min(a.goal, cnt[a.stat] || 0);
+  let h = '';
+  if (achTab === 'title') {
+    h += `<div class="banner" style="background:#fff3cf">ฉายาที่ใช้อยู่: <b>${cur ? esc(cur) : 'ยังไม่มี'}</b> <small>(แสดงเหนือหัวตัวละคร)</small></div>`
+      + `<div class="row"><span>🤖 ฉายาอัตโนมัติ (ตามจำนวนเควสสะสม)</span><span>${achSt.sel ? '<button class="btn small" data-title="">ใช้อันนี้</button>' : '<small>กำลังใช้</small>'}</span></div>`
+      + '<div class="sec">📋 ฉายาจากเควส <small>(ทำเควสสะสม ' + questSt.total + ' ข้อ)</small></div>'
+      + TITLES.map(([c, nm]) => `<div class="row${questSt.total >= c ? '' : ' lock'}"><span>${questSt.total >= c ? '✅' : '🔒'} <b>${esc(nm)}</b><br><small>ทำเควสสำเร็จสะสม ${c} ข้อ${questSt.total >= c ? '' : ` (อีก ${c - questSt.total})`}</small></span><span></span></div>`).join('')
+      + '<div class="sec">🏆 ฉายาจากความสำเร็จ <small>(ปลดล็อกแล้วกด "ใช้" เพื่อเปลี่ยนฉายา)</small></div>'
+      + ACH.filter(a => a.title).map(a => { const ok = !!got[a.id], on = achSt.sel === a.id;
+        return `<div class="row${ok ? '' : ' lock'}"><span>${ok ? a.e : '🔒'} <b>${esc(a.title)}</b><br><small>${esc(a.desc)}${ok ? '' : ` • ${val(a)}/${a.goal}`}</small></span><span>${ok ? (on ? '<small>กำลังใช้</small>' : `<button class="btn small" data-title="${a.id}">ใช้</button>`) : ''}</span></div>`; }).join('');
+  } else {
+    h += `<div class="tabs-note">ทำกิจกรรมในเกมไปเรื่อยๆ ความสำเร็จจะปลดล็อกเอง ได้เหรียญรางวัล และบางข้อได้ฉายาใหม่</div>`;
+    const list = ACH.slice().sort((a, b) => (!!got[b.id] - !!got[a.id]) || (val(b) / b.goal - val(a) / a.goal));
+    h += list.map(a => { const ok = !!got[a.id], pct = Math.round(val(a) / a.goal * 100);
+      return `<div class="qrow${ok ? ' done' : ''}" style="${ok ? 'border-color:#e8a33d;background:#fff4d6' : ''}"><div>${a.e} <b>${esc(a.name)}</b> ${ok ? '✅' : ''}${a.title ? ` <small>🏅 ฉายา "${esc(a.title)}"</small>` : ''}</div><small>${esc(a.desc)}</small>`
+        + `${ok ? '' : `<div class="bar"><i style="width:${pct}%"></i></div><small>${val(a).toLocaleString()}/${a.goal.toLocaleString()}</small>`} <small>🎁 +🪙${a.coin}</small></div>`; }).join('');
+  }
+  el.innerHTML = h;
+  el.querySelectorAll('[data-title]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'title', id: b.dataset.title }));
+}
+// ---------- เมนูเควส (แยกจากกระเป๋า): เริ่มต้น / เควสวันนี้ / แต้มความดี ----------
+let questTab = 'daily';
+const questShown = () => !$('quest').classList.contains('hidden');
+function openQuest(tab) {
+  const st = questSt.starter;
+  questTab = tab || (st && !st.final ? 'start' : 'daily'); // มือใหม่ที่ยังทำคู่มือไม่ครบ เปิดมาเจอหน้าเริ่มต้นก่อน
+  $('quest').classList.remove('hidden'); renderQuestPanel();
+}
+function closeQuest() { $('quest').classList.add('hidden'); }
+$('questClose').onclick = closeQuest;
+$('quest').addEventListener('pointerdown', e => { if (e.target === $('quest')) closeQuest(); });
+function renderQuestPanel() {
+  const st = questSt.starter, showStart = !!(st && !st.final);
+  const tabs = (showStart ? [['start', '🌱 เริ่มต้น']] : []).concat([['daily', '📋 เควสวันนี้'], ['pts', '💛 แต้ม/บัฟ']]);
+  if (!tabs.some(t => t[0] === questTab)) questTab = 'daily';
+  $('questTabs').innerHTML = tabs.map(([c, n]) => `<button class="tab${questTab === c ? ' on' : ''}" data-qtab="${c}">${n}</button>`).join('');
+  $('questTabs').querySelectorAll('[data-qtab]').forEach(b => b.onclick = () => { questTab = b.dataset.qtab; renderQuestPanel(); });
+  const el = $('questBody');
+  if (questTab === 'start') {
+    const next = STARTER.find(s => !st.done.includes(s.id));
+    const steps = STARTER.map(s => {
+      const d = st.done.includes(s.id), cur = next === s;
+      return `<details class="vcard"${cur ? ' open' : ''} style="margin:6px 0;${d ? 'opacity:.55' : ''}"><summary style="cursor:pointer;font-weight:700">${d ? '✅' : cur ? '👉' : '⬜'} ${s.text} <small>+🪙${s.coin}</small></summary>`
+        + `<ol style="margin:6px 0 2px;padding-left:20px;font-size:13px">${(s.how || []).map(x => `<li>${x}</li>`).join('')}</ol></details>`;
+    }).join('');
+    el.innerHTML = '<div class="tabs-note">ยินดีต้อนรับสู่ My World 🌱 ทำตามทีละข้อ ได้เหรียญทุกข้อ (ทำข้อไหนก่อนก็ได้) ลูกศรสีเหลืองในเกมจะชี้ทางให้ • กดที่ข้อเพื่อดูวิธีกดทีละขั้น</div>'
+      + `<details class="vcard" ${st.done.length ? '' : 'open'}><summary style="cursor:pointer;font-weight:700">🖱️ วิธีควบคุมเบื้องต้น</summary><ul style="margin:6px 0 2px;padding-left:20px;font-size:13px">`
+      + '<li><b>เดิน:</b> คลิก/แตะที่พื้น หรือกด WASD / ลูกศร (มือถือใช้จอยสติ๊กมุมซ้ายล่าง)</li>'
+      + '<li><b>เลือกเครื่องมือ:</b> กดเลข 1–3 หรือแตะช่องแถบด้านล่างจอ • ช่อง 1 = เครื่องมือ (จอบ บัวรดน้ำ เบ็ด ขวาน มือเปล่า เลือกจากเมนู หรือกด Q สลับ) • ช่อง 2 = เมล็ด • ช่อง 3 = อาหารสัตว์/ยา</li>'
+      + '<li><b>ใช้งาน:</b> คลิก/แตะที่ต้นพืช สัตว์ น้ำ หรือร้านค้า ตัวละครจะเดินไปทำให้เอง (หรือกด Space / ปุ่ม A ใช้กับช่องที่หันหน้าไป)</li>'
+      + '<li><b>ร้านค้า:</b> คลิก/แตะที่เคาน์เตอร์ร้านใต้หลังคา แล้วเลือกซื้อ/ขายในหน้าต่างที่เปิดขึ้น</li>'
+      + '<li><b>เมนูด้านบน:</b> 🎒 กระเป๋า • 📋 เควส • 🏅 ฉายา/ความสำเร็จ • 💬 แชท • 💭 สถานะ</li></ul></details>'
+      + (next ? `<div class="banner" style="background:#fff3cf">👉 ข้อต่อไป: <b>${next.hint}</b></div>` : '')
+      + (questSt.streak && questSt.streak.n ? `<div class="vcard on"><b>🔥 เข้าเกมติดต่อกัน ${questSt.streak.n} วัน</b> <small>ได้เหรียญทุกวัน • ครบ 7 วันได้ของตกแต่งหายาก</small></div>` : '')
+      + `<div class="sec">🌱 คู่มือเริ่มต้น ${st.done.length}/${STARTER.length}</div>` + steps
+      + `<small>ครบทุกข้อรับ 🪙${STARTER_FINAL.coin} + เก้าอี้ + ต้นไม้ประดับ</small>`;
+  } else if (questTab === 'pts') {
+    renderPtsTab(el);
+  } else renderDailyTab(el);
+}
+function renderDailyTab(el) {
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const next = TITLES.find(t => t[0] > questSt.total);
-  let h = `<div class="row"><span>🏅 ${questSt.title ? esc(questSt.title) : 'ยังไม่มีฉายา'}</span><small>เควสสำเร็จสะสม ${questSt.total}</small></div>`
+  let h = '<div class="tabs-note">เควสวันนี้ทำเสร็จได้ XP + เหรียญ และเปลี่ยนใหม่ทุกวัน • ทำไปเรื่อยๆ ตามปกติ ความคืบหน้านับให้เอง</div>'
+    + `<div class="row"><span>🏅 ${questSt.title ? esc(questSt.title) : 'ยังไม่มีฉายา'}</span><small>เควสสำเร็จสะสม ${questSt.total}</small></div>`
     + (next ? `<div class="tabs-note">อีก ${next[0] - questSt.total} เควสจะได้ฉายา "${next[1]}" (แสดงเหนือหัวตัวละคร)</div>` : '<div class="tabs-note">ได้ฉายาสูงสุดแล้ว 👑</div>')
-    + '<div class="sec">📋 เควสวันนี้ (เปลี่ยนใหม่ทุกวัน)</div>';
+    + `<div class="sec">📋 เควสวันนี้ (${questSt.list.filter(x => x[2]).length}/${questSt.list.length}) <small>ครบทุกข้อรับโบนัส 🪙${QUEST_ALL.coin}</small></div>`;
   for (const [id, n, done] of questSt.list) {
     const d = QUESTS[id]; if (!d) continue;
-    h += `<div class="qrow${done ? ' done' : ''}"><div>${SKILLS[d.skill].emoji} ${done ? '✅ ' : ''}${d.text} <b>${Math.min(n, d.goal)}/${d.goal}</b></div><div class="bar"><i style="width:${Math.round(Math.min(n, d.goal) / d.goal * 100)}%"></i></div><small>🎁 +${d.xp} XP  +🪙${d.coin}</small></div>`;
+    h += `<div class="qrow${done ? ' done' : ''}"><div>${d.emoji || SKILLS[d.skill].emoji} ${done ? '✅ ' : ''}${d.text} <b>${Math.min(n, d.goal)}/${d.goal}</b></div><div class="bar"><i style="width:${Math.round(Math.min(n, d.goal) / d.goal * 100)}%"></i></div><small>🎁 +${d.xp} XP  +🪙${d.coin}</small></div>`;
   }
   if (!questSt.list.length) h += '<p style="opacity:.7">กำลังโหลด...</p>';
-  h += `<div class="sec">💛 แต้มความดี: <b>${questSt.pts.bal}</b> <small>(วันนี้ได้ ${questSt.pts.earned}/${POINTS.dailyCap})</small></div><div class="tabs-note">ได้จากการช่วยงานที่จำเป็นจริง: ให้อาหารสัตว์ที่หิว รักษาสัตว์ป่วย รดน้ำพืชที่แห้ง ลงขันตู้เซฟ</div>`;
+  el.innerHTML = h;
+}
+function renderPtsTab(el) {
+  let h = `<div class="sec">💛 แต้มความดี: <b>${questSt.pts.bal}</b> <small>(วันนี้ได้ ${questSt.pts.earned}/${POINTS.dailyCap})</small></div><div class="tabs-note">ได้จากการช่วยงานที่จำเป็นจริง: ให้อาหารสัตว์ที่หิว รักษาสัตว์ป่วย รดน้ำพืชที่แห้ง ลงขันตู้เซฟ • แลกบัฟชั่วคราวได้ด้านล่าง</div>`;
   for (const [id, B] of Object.entries(BUFFS)) {
     const left = Math.max(0, (buffExp[id] || 0) - Date.now()), on = left > 0;
     h += `<div class="row"><span>${B.emoji} ${B.name}<br><small>${B.desc} • ${Math.round(B.ms / 60000)} นาที</small></span><span>${on ? `<small>เหลือ ${Math.ceil(left / 60000)} นาที</small>` : `<button class="btn small" data-buff="${id}" ${questSt.pts.bal < B.cost ? 'disabled' : ''}>แลก 💛${B.cost}</button>`}</span></div>`;
   }
-  el.innerHTML = guideHTML() + h;
+  el.innerHTML = h;
   el.querySelectorAll('[data-buff]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'buff', id: b.dataset.buff }));
 }
 function renderFameTab(el) {
@@ -534,12 +613,17 @@ function addChat(name, text, sys) {
 }
 function slotInfo(i) {
   const s = SLOTS[i];
+  if (s.id === 'tool') return toolInfo(selTool);
   if (s.id === 'seed') return { e: CROPS[selSeed].emoji, n: 'เมล็ด' + CROPS[selSeed].name, cnt: inv['seed_' + selSeed] || 0 };
   if (s.id === 'feed') { const f = itemInfo(selFeed); return { e: f.emoji, n: f.name, cnt: inv[selFeed] || 0 }; }
-  if (s.id === 'water') { const c = CANS[canTier(inv)]; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${c.cap} • แตะสระเพื่อตักน้ำ)`, cnt: wtr }; }
-  if (s.id === 'rod') { const b = itemInfo(selBait); return { e: s.e, n: RODS[rodLevel()].name + ' (' + b.name.split(' ')[0] + ' ' + (inv[selBait] || 0) + ')', cnt: inv[selBait] || 0 }; }
-  if (s.id === 'axe') { const ax = axeLevel(); return { e: s.e, n: ax ? AXES[ax].name : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', cnt: ax ? null : 0 }; }
   return { e: s.e, n: s.n, cnt: null };
+}
+function toolInfo(t) { // ข้อมูลเครื่องมือในช่อง 1: e = ไอคอน, n = ชื่อเต็ม, sub = บรรทัดย่อในเมนู, cnt = ตัวเลขมุมช่อง (null = ไม่แสดง)
+  if (t === 'hand') return { e: '✋', n: 'มือเปล่า (เก็บผลผลิต เปิดร้าน นั่ง)', sub: 'เก็บ/เปิดร้าน', cnt: null };
+  if (t === 'hoe') return { e: '⛏️', n: 'จอบ', sub: 'ขุดดิน', cnt: null };
+  if (t === 'water') { const c = CANS[canTier(inv)]; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${c.cap} • แตะสระเพื่อตักน้ำ)`, sub: `น้ำ ${wtr}/${c.cap}`, cnt: wtr }; }
+  if (t === 'rod') { const b = itemInfo(selBait); return { e: '🎣', n: RODS[rodLevel()].name + ' (' + b.name.split(' ')[0] + ' ' + (inv[selBait] || 0) + ')', sub: `เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
+  const ax = axeLevel(); return { e: '🪓', n: ax ? AXES[ax].name : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', sub: ax ? AXES[ax].name : 'ยังไม่มี', cnt: ax ? null : 0 };
 }
 function renderHud() {
   $('coins').textContent = '🪙 ' + (inv.coin || 0);
@@ -553,13 +637,33 @@ function renderHud() {
     hb.appendChild(d);
   });
 }
+let lastHeld = null;
+function heldEmoji() { const s = SLOTS[slot]; if (!s || (s.id === 'tool' && (selTool === 'hand' || (selTool === 'axe' && !axeLevel())))) return ''; return slotInfo(slot).e || ''; } // ช่องที่เลือกอยู่ → อีโมจิที่ถือ (ขวานที่ยังไม่มีไม่ถือ)
 function pickSlot(i) {
   if (i === slot && SLOTS[i].pick) { $('picker').classList.contains('hidden') ? showPicker() : hidePicker(); return; }
   slot = i; hidePicker(); renderHud(); toast(`${slotInfo(i).e} ${slotInfo(i).n}`); playSfx('click');
+  if (SLOTS[i].id === 'tool') showPicker(); // กดช่อง 1 = เมนูเลือกเครื่องมือเด้งขึ้นเลย
 }
 function hidePicker() { $('picker').classList.add('hidden'); }
 function showPicker() {
   const s = SLOTS[slot].id, el = $('picker');
+  if (s === 'tool') { // เมนูเครื่องมือ: จอบ/บัวรดน้ำ/เบ็ด/ขวาน/มือเปล่า + แถวเหยื่อตกปลา (เลือกเหยื่อ = ถือเบ็ดให้เลย)
+    el.innerHTML = '';
+    for (const t of TOOL_LIST) {
+      const inf = toolInfo(t), locked = t === 'axe' && !axeLevel(), b = document.createElement('button');
+      b.className = 'opt' + (selTool === t ? ' sel' : ''); b.disabled = locked; b.innerHTML = `<b>${inf.e}</b>${TOOL_SHORT[t]}<br>${locked ? '🔒 ยังไม่มี' : inf.sub}`;
+      b.onclick = e => { e.stopPropagation(); selTool = t; ls.set('mw_tool', t); hidePicker(); renderHud(); toast(`${inf.e} ${TOOL_SHORT[t]}`); playSfx('click'); };
+      el.appendChild(b);
+    }
+    const hd = document.createElement('div'); hd.textContent = '🎣 เหยื่อตกปลา'; hd.style.cssText = 'width:100%;flex-basis:100%;font-weight:700;font-size:12px;margin-top:4px'; el.appendChild(hd);
+    for (const k of BAIT_KEYS) {
+      const info = itemInfo(k), have = inv[k] || 0, locked = info.lv && lvl(info.skill) < info.lv && !have, b = document.createElement('button');
+      b.className = 'opt' + (selBait === k ? ' sel' : ''); b.disabled = !!locked; b.innerHTML = `<b>${info.emoji}</b>${info.name.split(' ')[0]}<br>${locked ? '🔒 Lv' + info.lv : '×' + have}`;
+      b.onclick = e => { e.stopPropagation(); selBait = k; ls.set('mw_bait', k); selTool = 'rod'; ls.set('mw_tool', 'rod'); hidePicker(); renderHud(); };
+      el.appendChild(b);
+    }
+    el.classList.remove('hidden'); return;
+  }
   const keysList = s === 'seed' ? Object.keys(CROPS).map(c => 'seed_' + c) : s === 'rod' ? BAIT_KEYS : FEEDS;
   el.innerHTML = '';
   keysList.forEach(k => {
@@ -591,7 +695,7 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
 } else $('fsBtn').remove();
 
 // ---------- กระเป๋า / อาชีพ / ตัวละคร ----------
-const modalOpen = () => ['bag', 'shop', 'people', 'arcade', 'trade', 'cinema', 'town', 'admin', 'plots', 'ask'].some(id => !$(id).classList.contains('hidden'));
+const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'arcade', 'trade', 'cinema', 'town', 'admin', 'plots', 'ask'].some(id => !$(id).classList.contains('hidden'));
 function openBag(tab) { if (tab) bagTab = tab; $('bag').classList.remove('hidden'); renderBag(); }
 function closeBag() { $('bag').classList.add('hidden'); }
 const bagShown = () => !$('bag').classList.contains('hidden');
@@ -618,7 +722,6 @@ const CATS = [['furn', '🛋️ เฟอร์นิเจอร์ (วาง�
 function renderBag() {
   document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('on', t.dataset.tab === bagTab));
   const el = $('bagBody');
-  if (bagTab === 'quest') return renderQuestTab(el);
   if (bagTab === 'book') return renderBookTab(el);
   if (bagTab === 'status') {
     const keysOwned = Object.keys(inv).filter(k => k !== 'coin');
@@ -701,13 +804,14 @@ function renderBag() {
 }
 
 // ---------- ร้านค้า ----------
-function openShop(kind) { shopKind = kind; farmTab = 'gear'; if (kind === 'cloth') { tryWear = Object.assign({}, me.wear); clothTab = 'shirt'; } $('shop').classList.remove('hidden'); renderShop(); }
+function openShop(kind) { shopKind = kind; farmTab = SHOP_TABS[kind] ? SHOP_TABS[kind][0][0] : 'gear'; if (kind === 'cloth') { tryWear = Object.assign({}, me.wear); clothTab = 'shirt'; } $('shop').classList.remove('hidden'); renderShop(); }
 function closeShop() { shopKind = null; $('shop').classList.add('hidden'); }
 $('shopClose').onclick = closeShop;
 $('shop').addEventListener('pointerdown', e => { if (e.target === $('shop')) closeShop(); });
 const animalCount = type => { let n = 0; animals.forEach(a => { if (a.type === type) n++; }); return n; };
 let farmTab = 'gear';
-const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '🌱 เมล็ดพันธุ์']], fish: [['gear', '🎣 อุปกรณ์ตกปลา'], ['sell', '🐟 ขายปลา']] };
+const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '🌱 เมล็ดพันธุ์']], fish: [['gear', '🎣 อุปกรณ์ตกปลา'], ['sell', '🐟 ขายปลา']],
+  food: [['buy', '🍜 ซื้ออาหาร'], ['cook', '👨‍🍳 ทำอาหาร']], animal: [['feed', '🌾 อาหาร / ยา'], ['pets', '🐾 สัตว์เลี้ยง']] };
 const seedProfit = k => { const c = CROPS[k.slice(5)]; return (c.sell - c.seed) / (c.time / 60000); };
 function renderShop() {
   const sh = SHOPS[shopKind]; if (!sh) return;
@@ -720,10 +824,10 @@ function renderShop() {
       + '<p style="font-size:12px;opacity:.65">เมื่อเปิดขายแล้วจะใช้เดินทางได้เร็วขึ้น</p>';
     return;
   }
-  const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'seed', tabs = SHOP_TABS[shopKind], sellTab = shopKind === 'fish' && farmTab === 'sell';
+  const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'seed', tabs = SHOP_TABS[shopKind], sellTab = shopKind === 'fish' && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'pets';
   let h = tabs ? `<div class="tabs">${tabs.map(([c, n]) => `<button class="tab${farmTab === c ? ' on' : ''}" data-ftab="${c}">${n}</button>`).join('')}</div>` : '';
-  h += sellTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากกำไรต่อนาทีดีที่สุด → แย่ที่สุด)</div>' : '<div class="sec">ซื้อ</div>';
-  let keys = sellTab ? [] : isFarm ? sh.buy.filter(k => k.startsWith('seed_') === seedTab) : sh.buy;
+  h += sellTab || cookTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากกำไรต่อนาทีดีที่สุด → แย่ที่สุด)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : 'ซื้อ') + '</div>';
+  let keys = sellTab || cookTab ? [] : isFarm ? sh.buy.filter(k => k.startsWith('seed_') === seedTab) : shopKind === 'animal' ? sh.buy.filter(k => !!itemInfo(k).animal === petTab) : sh.buy;
   if (seedTab) keys = keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a));
   for (const k of keys) {
     const i = itemInfo(k), locked = i.lv && lvl(i.skill) < i.lv, coin = inv.coin || 0;
@@ -753,7 +857,7 @@ function renderShop() {
         + (fx || cur <= 0 ? ` <button class="btn small${better || worn ? '' : ' muted'}" data-rebuy="${t}" ${(inv.coin || 0) < price ? 'disabled' : ''}>🛒 ซื้อใหม่ 🪙${price}</button>` : '') + `</span></div>`;
     }
   }
-  const showSell = sh.sell.length && (!tabs || seedTab || sellTab);
+  const showSell = sh.sell.length && (!tabs || seedTab || sellTab || cookTab || petTab);
   const sellKeys = showSell ? Object.keys(inv).filter(k => shopSells(shopKind, k) && itemInfo(k) && itemInfo(k).sell) : [];
   if (showSell) h += '<div class="sec">ขาย (เลือกได้ว่าจะขายอะไร)</div>';
   if (showSell && !sellKeys.length) h += '<p style="opacity:.7;margin:6px 0">ยังไม่มีของที่ร้านนี้รับซื้อ</p>';
@@ -765,7 +869,7 @@ function renderShop() {
       + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all">ทั้งหมด 🪙${sellQuote(i.sell, m, inv[k]).total}</button>` : '') + `</span></div>`;
   }
   if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายชนิดเดิมซ้ำๆ ราคาของคุณจะตกเร็วและฟื้นช้า (ตกเหลือต่ำสุด ~20–25% ของราคาปกติ) • ขายหลายชนิดต่อวัน (ชนิดละ ≥3 ชิ้น หรือ ≥40 เหรียญ) ได้โบนัสราคา +5% ต่อชนิด สูงสุด +40% • มีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
-  if (shopKind === 'food') {
+  if (cookTab) {
     h += `<div class="sec">👨‍🍳 ห้องครัวเชฟ — เชฟเลเวล ${lvl('cook')} (ทำอาหารข้ามสาย ได้ XP เชฟ ยิ่งเลเวลสูงปลดสูตรแพงขึ้น)</div>`;
     const have = c => Object.keys(inv).reduce((s, k) => s + (inv[k] > 0 && cookCat(c, k) ? inv[k] : 0), 0);
     for (const r of COOK) {
@@ -775,7 +879,7 @@ function renderShop() {
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน หรือใช้กระดานใบสั่งซื้อ 📋 • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ (ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';
   }
-  if (shopKind === 'food') h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">🍖 ความอิ่มลดลงเรื่อยๆ ขณะออนไลน์ ถึง 0 จะใช้เครื่องมือไม่ได้ • ผลผลิตของตัวเองก็กินได้ (อิ่มน้อยกว่า) ในกระเป๋า 🎒</p>';
+  if (shopKind === 'food' && !cookTab) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">🍖 ความอิ่มลดลงเรื่อยๆ ขณะออนไลน์ ถึง 0 จะใช้เครื่องมือไม่ได้ • ผลผลิตของตัวเองก็กินได้ (อิ่มน้อยกว่า) ในกระเป๋า 🎒</p>';
   if (shopKind === 'furn') h += `<p style="font-size:12px;opacity:.65;margin:8px 0 0">🏠 ซื้อที่ดินได้ที่ป้าย "ที่ดินว่าง" แถวบนสุดของแมพ (🪙${HOUSING.price}) แล้วกดปุ่ม 🏠 เพื่อวางของ • เก้าอี้/โซฟานั่งได้ • โคมไฟสว่างตอนกลางคืน</p>`;
   if (shopKind === 'wood') {
     h += '<div class="sec">🔨 โรงงานช่างไม้ (ประดิษฐ์ของจากไม้ที่หามาได้)</div>';
@@ -826,7 +930,9 @@ function renderCloth() {
 }
 
 // ---------- input ----------
+let lastKeyEvt = 0; // เวลาที่ได้รับ keydown ล่าสุด (รวมตัวซ้ำตอนกดค้าง) ใช้ตรวจปุ่มค้าง
 addEventListener('keydown', e => {
+  lastKeyEvt = performance.now();
   if (!joined) return;
   if (chatFocus) {
     if (e.key === 'Enter') { const v = $('chatIn').value.trim(); if (v) send({ t: 'chat', text: v }); closeChat(); }
@@ -836,7 +942,8 @@ addEventListener('keydown', e => {
   // ใช้ e.code (ตำแหน่งปุ่มจริงบนคีย์บอร์ด) ไม่ใช่ e.key เพื่อให้ WASD และปุ่มลัดทำงานได้แม้เปลี่ยนเป็นแป้นพิมพ์ภาษาไทย
   const c = e.code;
   if (c === 'Enter' || c === 'NumpadEnter') { e.preventDefault(); openChat(); return; }
-  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeHub(); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (TOOL_LIST[n] === 'axe' && !axeLevel()); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
   if (c === 'KeyB' || c === 'KeyI') { $('bagBtn').onclick(); return; }
   if (c === 'KeyC') { $('statBtn').onclick(); return; }
@@ -850,8 +957,16 @@ addEventListener('keydown', e => {
   keys[c] = true;
   mouse.active = false;
 });
-addEventListener('keyup', e => { keys[e.code] = false; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+// กันปุ่มเดินค้าง (ตัวละครเดินเองและยกเลิกการคลิกเดิน): ถ้าไม่ได้รับ keyup (เช่น เปิดเมนูคลิกขวา/สลับหน้าต่าง/IME ภาษาไทย) ปุ่มจะค้างจนรีเฟรช
+const keyName = {};
+const clearKeys = () => { for (const k in keys) keys[k] = false; };
+addEventListener('keyup', e => { keys[e.code] = false; for (const k in keyName) if (keyName[k] === e.key.toLowerCase()) keys[k] = false; delete keyName[e.code]; });
+addEventListener('keydown', e => { keyName[e.code] = String(e.key).toLowerCase(); }, true);
+addEventListener('blur', clearKeys);
+addEventListener('focusout', e => { if (!e.relatedTarget) clearKeys(); });
+addEventListener('contextmenu', clearKeys);
+document.addEventListener('visibilitychange', clearKeys);
+const KEY_STALE_MS = 1800; // กดค้างจริงเบราว์เซอร์ส่ง keydown ซ้ำเรื่อยๆ ถ้าเงียบเกินนี้ถือว่าปล่อยปุ่มแล้ว
 function openChat() { $('chatIn').classList.remove('hidden'); $('chatIn').focus(); chatFocus = true; renderChatHist(); $('chatHist').classList.remove('hidden'); $('chatLog').style.display = 'none'; for (const k in keys) keys[k] = false; }
 function closeChat() { $('chatHist').classList.add('hidden'); $('chatLog').style.display = ''; $('chatIn').value = ''; $('chatIn').classList.add('hidden'); $('chatIn').blur(); chatFocus = false; }
 
@@ -873,7 +988,7 @@ function act(tx, ty) {
     if (dx || dy) me.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
     o.tx = tx; o.ty = ty;
   }
-  lastAct = now; swing = 0.25;
+  lastAct = now; swing = 0.25; me.useAt = performance.now();
   send(o);
 }
 
@@ -915,9 +1030,12 @@ function interactive(tx, ty) { // ช่องนี้มีอะไรให�
   return false;
 }
 function stopWalk() { walk = null; }
+const hubSign = BUILDINGS.find(b => b.kind === 'sign');
+const hubSignAt = (tx, ty) => !!hubSign && tx >= hubSign.x0 && tx <= hubSign.x1 && ty >= hubSign.y0 - 1 && ty <= hubSign.y1;
 function onTileClick(tx, ty) {
   if (!me || chatFocus || modalOpen() || tx < 0 || ty < 0 || tx >= W || ty >= H) return;
   if (houseClick(tx, ty)) { stopWalk(); return; }
+  if (hubSignAt(tx, ty)) { stopWalk(); openHub(); return; } // กดป้าย Arcade Hub = เปิดแต้ม/อันดับ
   const [px, py] = myTile();
   if (interactive(tx, ty)) {
     if (inReach(tx, ty) && ((toolId() !== 'rod' && !(toolId() === 'water' && MAP[ty][tx] === T.WATER)) || nearWater(px, py))) { stopWalk(); act(tx, ty); return; }
@@ -986,7 +1104,7 @@ $('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk();
 // ---------- แชทเสียง (WebRTC, ต่อตรงระหว่างผู้เล่น / signaling ผ่าน WebSocket เดิม) ----------
 const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 const peers = new Map(), levels = new Map();
-window.__mw = { peers, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * DAY_MS - (Date.now() % DAY_MS); } }; // สำหรับดีบัก
+window.__mw = { peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
 
 function getPeer(id) {
@@ -1070,7 +1188,7 @@ function updateSpeaking(now) {
     p.speaking = p.voice && Math.sqrt(s / l.buf.length) > 4 && (!pe || pe.vol === undefined || pe.vol > 0.05);
   });
 }
-function setMicUi() { const b = $('micBtn'); b.classList.toggle('on', micOn); b.textContent = micOn ? '🎙️' : '🔇'; }
+function setMicUi() { const b = $('micBtn'); b.classList.toggle('on', micOn); b.textContent = micOn ? '🎙️' : '🎤'; b.title = micOn ? 'ไมค์: เปิดอยู่ (กดเพื่อปิด)' : 'ไมค์: ปิดอยู่ (กดเพื่อเปิด)'; } // ไมค์ = 🎙️ เปิด / 🎤 ปิด • ลำโพง = 🔊 เปิด / 🔇 ปิด (ไอคอน 🔇 ข้างชื่อผู้เล่นหมายถึงปิดลำโพง)
 $('micBtn').onclick = async () => {
   if (!micOn) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('เปิดไมค์ไม่ได้: ต้องเข้าผ่านลิงก์ https'); return; }
@@ -1157,11 +1275,73 @@ function onArc(m) {
   if (m.close) { if (arcTable && arcTable.id === m.close) { arcTable = null; closeArcade(); } return; } // เดินห่างตู้เกินระยะ: เซิร์ฟเวอร์พาออกจากโต๊ะแล้ว
   const t = m.table, was = arcLast[t.id]; arcLast[t.id] = t.state;
   if (t.game === 'react' && t.g) { const ph = arcLast[t.id + ':ph']; arcLast[t.id + ':ph'] = t.g.phase; if (t.g.phase === 'go' && ph !== 'go' && arcOpenNow()) playSfx('go'); }
-  const uno = t.game === 'uno', casino = t.game === 'bacc' || t.game === 'bj';
-  const amPlayer = (uno || casino) ? t.players.some(p => p.id === myId && !p.out) : (t.xId === myId || t.oId === myId);
+  const uno = t.game === 'uno', casino = t.game === 'bacc' || t.game === 'bj', party = PARTY_GAMES.has(t.game);
+  const amPlayer = (uno || casino || party) ? t.players.some(p => p.id === myId && !p.out) : (t.xId === myId || t.oId === myId);
   if (m.open) { arcTable = t; unoWild = -1; openArcade(); return; }
-  if (t.state === 'playing' && was !== 'playing' && amPlayer) { arcTable = t; unoWild = -1; openArcade(); toast(uno ? '🃏 เกม UNO เริ่มแล้ว!' : casino ? '🎰 โต๊ะเริ่มแล้ว วางเดิมพันได้เลย!' : '🎮 เกม XO เริ่มแล้ว!'); return; }
+  if (t.state === 'playing' && was !== 'playing' && amPlayer) { arcTable = t; unoWild = -1; openArcade(); toast(uno ? '🃏 เกม UNO เริ่มแล้ว!' : casino ? '🎰 โต๊ะเริ่มแล้ว วางเดิมพันได้เลย!' : party ? '🎮 เกมเริ่มแล้ว!' : '🎮 เกม XO เริ่มแล้ว!'); return; }
   if (arcTable && arcTable.id === t.id) { if (uno && t.cur !== myId) unoWild = -1; arcTable = t; if (arcOpenNow()) renderArcade(); }
+}
+// ----- เกมหลายคน: ไพ่ป๊อก / ใครกดเร็วกว่า / เป่ายิ้งฉุบ (ห้องแบบ UNO: 2–8 คน เริ่มเมื่อ ≥2 • เล่นคนเดียวกับบอท • เติมบอทได้) -----
+const PARTY_GAMES = new Set(['pok', 'react', 'rps']);
+const PARTY_RULES = {
+  pok: 'แจกไพ่คนละ 2 ใบ ใครมีป๊อก 8/9 เปิดไพ่ทันที ไม่งั้นเลือกจั่วเพิ่มหรืออยู่ แล้วเทียบแต้ม (A = 1, 10/J/Q/K = 0) • แต้มเท่ากันตัดสินด้วยเด้ง (สองใบดอก/เลขเดียวกัน ×2, สามใบดอกเดียวกัน ×3) ยังเท่ากันหาร pot',
+  react: 'ทุกคนจ้องสัญญาณ ใครกดก่อนสัญญาณเขียวออกจากรอบนั้น คนแรกที่กดหลังสัญญาณชนะรอบ ใครชนะครบ 2 รอบก่อนเป็นผู้ชนะ',
+  rps: 'ทุกคนเลือกพร้อมกันภายใน 10 วินาที ถ้าเหลือ 2 แบบ ฝ่ายชนะได้ 1 แต้ม (เสมอ/ครบ 3 แบบ เล่นรอบนั้นใหม่) ครบ 2 แต้มก่อนเป็นผู้ชนะ',
+};
+const RPS_ICON = { R: '✊', P: '✋', S: '✌️' };
+const pokPtsC = h => (h || []).reduce((s, c) => s + (c.slice(1) === 'A' ? 1 : ['10', 'J', 'Q', 'K'].includes(c.slice(1)) ? 0 : +c.slice(1)), 0) % 10;
+function renderParty() {
+  const t = arcTable, coin = inv.coin || 0, g = t.g || {}, name = GAME_TITLES[t.game] || '';
+  if (arcBet > coin) arcBet = [...BETS].reverse().find(b => b <= coin) || 0;
+  if (arcBotBet > coin) arcBotBet = [...BOTBET.bets].reverse().find(b => b <= coin) || 0;
+  const mine = t.players.find(p => p.id === myId), isHost = t.hostId === myId, playing = t.state === 'playing', alive = !!(mine && !mine.out);
+  const nBots = t.game === 'pok' ? 3 : 2;
+  let h = `<div class="center" style="font-size:13px;opacity:.75">🪙 เหรียญของคุณ ${coin}</div>`;
+  const lobby = () => `<div class="sec">เลือกเดิมพัน (ต่อคน)</div><div class="chips">${BETS.map(b => `<button class="chip${b === arcBet ? ' sel' : ''}" data-bet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ไม่เดิมพัน'}</button>`).join('')}</div>`
+    + `<button class="btn" data-arc="create" style="width:100%">⚔️ สร้างห้อง ${esc(name)} (รอเพื่อนมาเข้าร่วม แล้วกดเริ่ม)${arcBet ? ' • เดิมพัน ' + arcBet : ''}</button>`
+    + `<div class="sec">🤖 เล่นคนเดียวกับบอท <small>(บอท ${nBots} ตัว • ซ้อมฟรี ไม่เดิมพัน)</small></div><div class="chips">${BOTBET.bets.map(b => `<button class="chip${b === arcBotBet ? ' sel' : ''}" data-botbet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ซ้อมฟรี'}</button>`).join('')}</div>`
+    + `<button class="btn" data-arc="bot" style="width:100%;margin-top:8px;background:#8a6fd1;border-bottom-color:#5d47a1">🤖 เล่นกับบอท${arcBotBet ? ' (เดิมพัน ' + arcBotBet + ')' : ' (ซ้อม ไม่เดิมพัน)'}</button>`
+    + `<p style="font-size:12px;opacity:.7">${esc(PARTY_RULES[t.game] || '')} • เล่นได้ 2–8 คน เจ้าของห้องกดเริ่มเมื่อมีอย่างน้อย 2 คน (เติมบอทได้ถ้าไม่เดิมพัน) • ผู้ชนะได้เหรียญเดิมพันทั้งโต๊ะ (หักค่าบริการ 5%) เสมอหารเท่ากัน • ออกกลางคันถือว่าแพ้</p>`;
+  if (t.state === 'idle') h += lobby();
+  else if (t.state === 'waiting') {
+    h += `<div class="banner" style="background:#e9e0ff">⏳ รอผู้เล่น • ตอนนี้ ${t.players.length}/${t.max} คน • เดิมพัน ${t.bet ? '🪙 ' + t.bet : 'ไม่มี'} ต่อคน</div>`
+      + `<div class="opps">${t.players.map(p => `<div class="opp">${p.id === t.hostId ? '👑 ' : ''}${esc(p.name)}</div>`).join('')}</div>`;
+    if (isHost) h += (t.players.length >= 2 ? `<button class="btn" data-arc="startnow" style="width:100%;margin-top:8px">▶️ เริ่มเลย (${t.players.length} คน)</button>` : '<p class="center" style="font-size:13px">ให้เพื่อนเดินมาที่ตู้นี้แล้วกด "เข้าร่วม" หรือเติมบอทเพื่อเริ่มเล่น</p>')
+      + (!t.bet && t.players.length < t.max ? `<button class="btn" data-arc="addbot" style="width:100%;margin-top:8px;background:#8a6fd1;border-bottom-color:#5d47a1">🤖 เติมบอท</button>` : '')
+      + `<button class="btn" data-arc="cancel" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ยกเลิกห้อง</button>`;
+    else if (mine) h += `<button class="btn" data-arc="leave" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ออกจากห้อง (ได้เหรียญคืน)</button>`;
+    else h += `<button class="btn" data-arc="join" style="width:100%;margin-top:8px" ${coin < t.bet || t.players.length >= t.max ? 'disabled' : ''}>🎮 เข้าร่วม</button>${coin < t.bet ? '<p class="center" style="color:#c0392b">เหรียญไม่พอ</p>' : ''}`;
+  } else {
+    const showScore = t.game !== 'pok', win = id => (t.winners || []).includes(id);
+    h += `<div class="opps">${t.players.map(p => `<div class="opp${p.out ? ' out' : ''}${t.state === 'over' && win(p.id) ? ' cur' : ''}">${p.id === myId ? '⭐ ' : ''}${esc(p.name)}${showScore ? `<br>⭐ ${p.score}` : ''}${playing && !p.out && t.game !== 'react' ? `<br>${p.done ? '✅' : '🤔'}` : ''}${p.out ? '<br>(ออก)' : ''}</div>`).join('')}</div>`;
+    if (t.bet && !t.bot) h += `<div class="center" style="font-size:12px;opacity:.75">เดิมพัน 🪙 ${t.bet} ต่อคน • รางวัลรวม 🪙 ${t.bet * t.players.length}</div>`;
+    if (t.game === 'pok') {
+      if (g.reveal) h += g.reveal.map(r => { const p = t.players.find(x => x.id === r.id) || {}; return `<div class="sec center">${win(r.id) ? '👑 ' : ''}${esc(p.name || '')} • ${r.pts} แต้ม${r.pok ? ' • ป๊อก!' : ''}${r.deng > 1 ? ` • เด้ง ×${r.deng}` : ''}${p.out ? ' (ออก)' : ''}</div><div class="center">${r.hand.map(c => pokCard(c)).join('')}</div>`; }).join('');
+      else if (g.mine) {
+        h += `<div class="sec center">ไพ่ของคุณ • ${pokPtsC(g.mine)} แต้ม</div><div class="center">${g.mine.map(c => pokCard(c)).join('')}</div>`;
+        const decided = mine && mine.done;
+        h += playing && alive ? (decided ? `<div class="center" style="margin-top:8px;font-weight:700">⏳ รอคนอื่นตัดสินใจ...</div>`
+          : `<div class="center" style="margin-top:10px;display:flex;gap:8px;justify-content:center"><button class="btn" data-pok="draw">🎴 จั่วเพิ่ม</button><button class="btn" data-pok="stay" style="background:#8a6fd1;border-bottom-color:#5d47a1">✋ อยู่</button></div>`) : '';
+      } else h += `<div class="center" style="margin:12px">${t.players.map(() => pokCard('', true)).join('')}</div>`;
+    } else if (t.game === 'react') {
+      const ph = g.phase || 'wait', cls = ph === 'go' ? 'go' : ph === 'result' ? 'res' : 'wait';
+      h += `<div class="center" style="font-size:13px">รอบที่ ${g.round || 1} • ใครชนะครบ ${g.target || 2} รอบก่อนเป็นผู้ชนะ</div><button class="pad ${cls}" data-press="1" ${playing && alive && !g.fs ? '' : 'disabled'}>${g.fs && ph === 'wait' ? '🚫 กดก่อนสัญญาณ ออกจากรอบนี้' : ph === 'go' ? '⚡ กด!!' : ph === 'result' ? '🏁' : '🔴 รอสัญญาณ... อย่าเพิ่งกด!'}</button><div class="ulog">${esc(g.msg || '')}</div>`;
+    } else {
+      h += `<div class="ulog">${esc(g.msg || '')}</div>`;
+      if (g.reveal) h += `<div class="utable" style="font-size:40px;flex-wrap:wrap">${t.players.filter(p => g.reveal[p.id]).map(p => `<span style="text-align:center">${RPS_ICON[g.reveal[p.id]] || ''}<br><small style="font-size:12px">${esc(p.name)}</small></span>`).join('')}</div>`;
+      else if (playing && alive) h += g.mine ? `<div class="center" style="font-size:44px;margin:10px">${RPS_ICON[g.mine] || ''}<br><span style="font-size:14px">เลือกแล้ว ⏳ รอคนอื่น</span></div>`
+        : `<div class="colorpick">${['R', 'S', 'P'].map(c => `<button data-rps="${c}" style="background:#fff;font-size:34px;border-color:#8a6fd1">${RPS_ICON[c]}</button>`).join('')}</div><div class="center" style="font-size:12px">หิน ✊ • กรรไกร ✌️ • กระดาษ ✋ • รอบที่ ${g.round || 1}</div>`;
+    }
+    if (playing) {
+      h += `<div class="center" style="font-weight:700;margin-top:6px">${alive ? '' : mine ? 'คุณออกจากเกมแล้ว' : '👀 กำลังดูเกม'} <span id="arcTimer"></span></div>`;
+      if (alive) h += `<div class="center" style="margin-top:8px"><button class="btn small" data-arc="resign" style="background:#9aa0a6;border-bottom-color:#6f757b">🏳️ ยอมแพ้</button></div>`;
+    } else {
+      const won = mine && (t.winners || []).includes(myId);
+      h += `<div class="banner">${mine ? (won ? ((t.winners || []).length > 1 ? '🤝 ' : '🎉 ') : '😢 ') : '🏁 '}${esc(t.msg)}</div>` + lobby();
+    }
+  }
+  $('arcBody').innerHTML = h;
+  updateArcTimer();
 }
 // ----- UNO -----
 let arcMax = 3, unoWild = -1;
@@ -1275,6 +1455,7 @@ function renderArcade() {
   const t = arcTable; if (!t) return;
   $('arcTitle').textContent = '🎮 ตู้เกม ' + (GAME_TITLES[t.game] || '');
   if (t.game === 'uno') return renderUno();
+  if (PARTY_GAMES.has(t.game)) return renderParty();
   if (t.game === 'bacc' || t.game === 'bj') return renderCasino();
   const coin = inv.coin || 0;
   if (arcBet > coin) arcBet = [...BETS].reverse().find(b => b <= coin) || 0;
@@ -1313,14 +1494,11 @@ function renderArcade() {
 }
 const DUEL_RULES = {
   xo: 'เรียง 3 ตัวติดกันให้ได้ก่อน ตาละ 30 วินาที',
-  rps: 'ชนะ 2 ใน 3 รอบ เลือกภายใน 10 วินาที เสมอเล่นรอบเดิมซ้ำ',
-  react: 'ชนะ 2 ใน 3 รอบ กดทันทีที่เห็นสัญญาณสีเขียว ใครกดก่อนสัญญาณแพ้รอบนั้น',
-  pok: 'แจกไพ่คนละ 2 ใบ ป๊อก 8/9 ชนะทันที ไม่งั้นเลือกจั่วเพิ่มหรืออยู่ แล้วเทียบแต้ม (ไพ่ A = 1, 10/J/Q/K = 0)',
   c4: 'หยอดเหรียญลงคอลัมน์ เรียง 4 ตัวติดกันให้ได้ก่อน ตาละ 30 วินาที',
 };
 const SUIT = { S: '♠', H: '♥', D: '♦', C: '♣' };
 const pokCard = (c, back) => back ? '<span class="pcard back">🂠</span>' : `<span class="pcard ${c[0] === 'H' || c[0] === 'D' ? 'red' : ''}">${c.slice(1)}<small>${SUIT[c[0]]}</small></span>`;
-function duelBody(t, mySide, player, myTurn) { // ส่วนกลางหน้าเกมของเป่ายิ้งฉุบ / ใครกดเร็วกว่า / ไพ่ป๊อก / Connect 4
+function duelBody(t, mySide, player, myTurn) { // ส่วนกลางหน้าเกมของ Connect 4 (XO ใช้ boardHTML)
   const g = t.g || {}, playing = t.state === 'playing';
   if (t.game === 'c4') {
     const win = new Set(g.line || []);
@@ -1330,36 +1508,6 @@ function duelBody(t, mySide, player, myTurn) { // ส่วนกลางหน
       cells += `<button class="c4c ${v ? 'p' + v : ''}${win.has(r * 7 + c) ? ' win' : ''}${r * 7 + c === g.last ? ' last' : ''}" data-col="${c}" ${myTurn && !full ? '' : 'disabled'}></button>`;
     }
     return `<div class="c4">${cells}</div>`;
-  }
-  if (t.game === 'rps') {
-    const ICON = { R: '✊', P: '✋', S: '✌️' };
-    let h = `<div class="ulog">${esc(g.msg || '')}</div>`;
-    if (g.phase === 'reveal' && g.reveal) h += `<div class="utable" style="font-size:54px"><span>${ICON[g.reveal.X]}</span><span style="font-size:22px">VS</span><span style="transform:scaleX(-1)">${ICON[g.reveal.O]}</span></div>`;
-    else if (playing && player) h += g.mine ? `<div class="center" style="font-size:44px;margin:10px">${ICON[g.mine]}<br><span style="font-size:14px">เลือกแล้ว ⏳ รอคู่แข่ง</span></div>`
-      : `<div class="colorpick">${['R', 'S', 'P'].map(c => `<button data-rps="${c}" style="background:#fff;font-size:34px;border-color:#8a6fd1">${ICON[c]}</button>`).join('')}</div><div class="center" style="font-size:12px">หิน ✊ • กรรไกร ✌️ • กระดาษ ✋</div>`;
-    else if (!playing && g.reveal) h += `<div class="utable" style="font-size:40px"><span>${ICON[g.reveal.X]}</span><span style="font-size:18px">VS</span><span style="transform:scaleX(-1)">${ICON[g.reveal.O]}</span></div>`;
-    return h;
-  }
-  if (t.game === 'react') {
-    const ph = g.phase || 'wait', cls = ph === 'go' ? 'go' : ph === 'result' ? 'res' : 'wait';
-    return `<div class="center" style="font-size:13px">รอบที่ ${g.round || 1} • ชนะ 2 ใน 3 รอบ</div><button class="pad ${cls}" data-press="1" ${player && playing ? '' : 'disabled'}>${ph === 'go' ? '⚡ กด!!' : ph === 'result' ? '🏁' : '🔴 รอสัญญาณ... อย่าเพิ่งกด!'}</button><div class="ulog">${esc(g.msg || '')}</div>`;
-  }
-  if (t.game === 'pok') {
-    let h = '';
-    if (g.reveal) {
-      h += `<div class="sec center">ไพ่ของ ${esc(t.xName)} (${g.reveal.pts.X} แต้ม)</div><div class="center">${g.reveal.X.map(c => pokCard(c)).join('')}</div>`
-        + `<div class="sec center">ไพ่ของ ${esc(t.oName)} (${g.reveal.pts.O} แต้ม)</div><div class="center">${g.reveal.O.map(c => pokCard(c)).join('')}</div>`;
-    } else {
-      h += `<div class="sec center">ไพ่ของคู่แข่ง</div><div class="center">${Array.from({ length: g.oppN || 2 }, () => pokCard('', true)).join('')}</div>`;
-      if (g.mine) {
-        const pts = g.mine.reduce((s, c) => s + (c[1] === 'A' ? 1 : ['10', 'J', 'Q', 'K'].includes(c.slice(1)) ? 0 : +c.slice(1)), 0) % 10;
-        h += `<div class="sec center">ไพ่ของคุณ • ${pts} แต้ม</div><div class="center">${g.mine.map(c => pokCard(c)).join('')}</div>`;
-        const decided = g.decided && g.decided[mySide];
-        h += playing ? (decided ? `<div class="center" style="margin-top:8px;font-weight:700">⏳ รอคู่แข่งตัดสินใจ...</div>`
-          : `<div class="center" style="margin-top:10px;display:flex;gap:8px;justify-content:center"><button class="btn" data-pok="draw">🎴 จั่วเพิ่ม</button><button class="btn" data-pok="stay" style="background:#8a6fd1;border-bottom-color:#5d47a1">✋ อยู่</button></div>`) : '';
-      }
-    }
-    return h;
   }
   return '';
 }
@@ -1408,19 +1556,20 @@ function closePeople() { $('people').classList.add('hidden'); }
 // ปิดเสียงทุกคนอยู่ (และไม่ได้เปิดเสียงใครเป็นข้อยกเว้น) = ไม่ได้ยินใครเลย → บอกเซิร์ฟเวอร์ให้ติดป้ายที่ตัวละคร เพื่อนจะได้รู้
 const isDeaf = () => mute.all && !Object.values(mute.names).includes(false);
 function syncDeaf() { if (!me) return; const d = isDeaf(); if (d !== !!me.deaf) { me.deaf = d; send({ t: 'deaf', on: d }); } }
-function applyMute() { saveMute(); syncDeaf(); lastLevel = 0; updateSpeaking(performance.now() + 1000); updateOnline(); renderPeople(true); }
+function setSpkUi() { const b = $('spkBtn'); if (!b) return; b.classList.toggle('off', !!mute.all); b.textContent = mute.all ? '🔇' : '🔊'; b.title = mute.all ? 'ลำโพง: ปิดอยู่ (กดเพื่อเปิดเสียงเพื่อน)' : 'ลำโพง: เปิดอยู่ (กดเพื่อปิดเสียงเพื่อนทั้งหมด)'; }
+function applyMute() { saveMute(); syncDeaf(); setSpkUi(); lastLevel = 0; updateSpeaking(performance.now() + 1000); updateOnline(); renderPeople(true); }
 function renderPeople(force) {
   if (!peopleShown() || !me) return;
   const list = [...players.values()].sort((a, b) => (a === me ? -1 : b === me ? 1 : a.name.localeCompare(b.name)));
-  const sig = JSON.stringify([mute, list.map(p => [p.id, p.name, p.color, p.voice, p.deaf])]);
+  const sig = JSON.stringify([mute, list.map(p => [p.id, p.name, p.color, p.voice, p.deaf, p.status])]);
   if (force || sig !== peopleSig) {
     peopleSig = sig;
     const others = list.filter(p => p !== me), talking = others.filter(p => p.voice).length, off = others.filter(isMuted).length;
     let h = `<div class="row"><span><b>🔊 เสียงเพื่อน</b><br><small>เปิดไมค์ ${talking} คน • ปิดเสียงไว้ ${off}/${others.length} คน</small></span>`
-      + `<button class="btn small${mute.all ? ' muted' : ''}" data-all="1">${mute.all ? '🔇 เปิดเสียงทั้งหมด' : '🔊 ปิดเสียงทั้งหมด'}</button></div>`;
+      + `<small style="opacity:.7">ปิด/เปิดทั้งหมดที่ปุ่ม ${mute.all ? '🔇' : '🔊'} ข้างไมค์</small></div>`;
     for (const p of list) {
       const m = p !== me && isMuted(p);
-      h += `<div class="row prow" data-id="${p.id}"><span><span class="dot" style="background:${esc(p.color)}"></span> <b>${esc(p.name)}</b>${p === me ? ' (คุณ)' : ''} ${p.voice ? '🎙️' : ''}${p.deaf ? ' 🔇' : ''}<span class="spk"></span></span>`
+      h += `<div class="row prow" data-id="${p.id}"><span><span class="dot" style="background:${esc(p.color)}"></span> <b>${esc(p.name)}</b>${p === me ? ' (คุณ)' : ''} ${p.voice ? '🎙️' : ''}${p.deaf ? ' 🔇' : ''}<span class="spk"></span>${p.status ? `<br><small style="opacity:.8">💭 ${esc(p.status)}</small>` : ''}</span>`
         + (p === me ? '' : `<span><button class="btn small" data-trade="${p.id}" title="ชวนเทรดของ (ต้องอยู่ใกล้กัน ${TRADE.range} ช่อง)">🤝 เทรด</button> <button class="btn small${m ? ' muted' : ''}" data-mute="${p.id}">${m ? '🔇 เปิดเสียง' : '🔊 ปิดเสียง'}</button></span>`) + '</div>';
     }
     $('peopleBody').innerHTML = h;
@@ -1437,13 +1586,27 @@ $('peopleBody').addEventListener('click', e => {
     if (Math.hypot(q.x - me.x, q.y - me.y) > TRADE.range * TS) { toast(`ต้องเดินเข้าไปใกล้ ${q.name} ก่อน (ไม่เกิน ${TRADE.range} ช่อง)`); return; }
     closePeople(); send({ t: 'trade', a: 'req', to: q.id }); return;
   }
-  if (b.dataset.all) { mute.all = !mute.all; mute.names = {}; applyMute(); toast(mute.all ? '🔇 ปิดเสียงทั้งหมดแล้ว (เพื่อนจะเห็นไอคอน 🔇 ที่ตัวคุณ)' : '🔊 เปิดเสียงแล้ว'); return; }
   const p = players.get(+b.dataset.mute); if (!p) return;
   const key = p.name.toLowerCase(), now = isMuted(p);
   mute.names[key] = !now;
   if (mute.names[key] === mute.all) delete mute.names[key];
   applyMute();
 });
+$('spkBtn').onclick = () => { mute.all = !mute.all; mute.names = {}; applyMute(); toast(mute.all ? '🔇 ปิดเสียงเพื่อนทั้งหมดแล้ว (เพื่อนจะเห็นไอคอน 🔇 ที่ตัวคุณ)' : '🔊 เปิดเสียงเพื่อนแล้ว'); };
+setSpkUi();
+// ---------- สถานะของฉัน ----------
+const STATUS_PRESETS = ['🟢 ว่าง คุยได้', '🌾 กำลังทำฟาร์ม', '🎣 กำลังตกปลา', '🪓 กำลังตัดไม้', '🍜 พักกินข้าว', '🎮 อยู่ที่ตู้เกม', '💤 ไม่อยู่หน้าจอ', '🙏 มือใหม่ ช่วยหน่อย'];
+const statusShown = () => !$('status').classList.contains('hidden');
+function openStatus() { $('statusChips').innerHTML = STATUS_PRESETS.map((t, i) => `<button class="chip" data-sp="${i}">${esc(t)}</button>`).join(''); $('statusIn').value = (me && me.status) || ''; $('status').classList.remove('hidden'); setTimeout(() => $('statusIn').focus(), 50); }
+function closeStatus() { $('status').classList.add('hidden'); $('statusIn').blur(); }
+function saveStatus(text) { send({ t: 'status', text }); closeStatus(); toast(text ? '💭 ตั้งสถานะแล้ว' : 'ล้างสถานะแล้ว'); }
+$('myStatusBtn').onclick = () => (statusShown() ? closeStatus() : openStatus());
+$('statusClose').onclick = closeStatus;
+$('statusSave').onclick = () => saveStatus($('statusIn').value);
+$('statusClear').onclick = () => saveStatus('');
+$('statusChips').addEventListener('click', e => { const b = e.target.closest('[data-sp]'); if (b) saveStatus(STATUS_PRESETS[+b.dataset.sp]); });
+$('statusIn').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') saveStatus($('statusIn').value); else if (e.key === 'Escape') closeStatus(); });
+$('status').addEventListener('pointerdown', e => { if (e.target === $('status')) closeStatus(); });
 $('online').onclick = () => (peopleShown() ? closePeople() : openPeople());
 $('peopleClose').onclick = closePeople;
 $('people').addEventListener('pointerdown', e => { if (e.target === $('people')) closePeople(); });
@@ -1457,13 +1620,7 @@ function renderHub() {
   let h = `<div class="banner" style="background:#fff3cf">🎮 แต้มตู้เกมของคุณ: <b>${arcSt.pts}</b> • สะสมตลอดกาล ${arcSt.total} • สัปดาห์นี้ ${arcSt.wk}</div>`;
   h += `<div class="chips" style="margin:8px 0"><button class="chip${hubTab === 'rank' ? ' sel' : ''}" data-htab="rank">🏆 อันดับ</button><button class="chip${hubTab === 'shop' ? ' sel' : ''}" data-htab="shop">🎁 ร้านรางวัล</button></div>`;
   if (hubTab === 'shop') {
-    const sh = lbSt.shop || { titles: [], owned: [], cur: '' };
-    h += '<p style="font-size:12px;opacity:.7;margin:4px 0 8px">แลก “ฉายาพิเศษ” (ป้ายชื่อเหนือหัว) ด้วยแต้มตู้เกม — ปลดล็อกครั้งเดียว สลับใส่ได้ฟรี • เป็นของโชว์ ไม่มีผลต่อการเล่น</p>';
-    h += `<div class="qrow"><span>— ไม่ใช้ฉายาพิเศษ (ใช้ฉายาจากเควส)</span><span>${sh.cur === '' ? '<b>ใช้อยู่ ✅</b>' : '<button class="btn small" data-arcbuy="none">ถอด</button>'}</span></div>`;
-    h += (sh.titles || []).map(t => {
-      const owned = (sh.owned || []).includes(t.id), on = sh.cur === t.title;
-      return `<div class="qrow"><span><b>${esc(t.title)}</b></span><span>${on ? '<b>ใช้อยู่ ✅</b>' : owned ? `<button class="btn small" data-arcbuy="${t.id}">สวม</button>` : `<button class="btn small" data-arcbuy="${t.id}" ${arcSt.pts < t.cost ? 'disabled' : ''}>🎁 ${t.cost} แต้ม</button>`}</span></div>`;
-    }).join('');
+    h += '<p style="opacity:.75;text-align:center;margin:18px 0">🎁 ร้านแลกของรางวัล (ของโชว์เฉพาะแต้ม) กำลังมา เร็วๆ นี้!</p>';
   } else {
     const list = (arr, unit) => (arr && arr.length) ? arr.map((x, i) => `<div class="qrow"><span>${medal[i] || ('#' + (i + 1))} <b>${esc(x.name)}</b>${x.name === (me && me.name) ? ' <small>(คุณ)</small>' : ''}</span><span><b>${x[unit]}</b> แต้ม</span></div>`).join('') : '<p style="opacity:.7">ยังไม่มีใครเล่น</p>';
     h += '<div class="sec">🏆 สะสมตลอดกาล (Top 10)</div>' + list(lbSt.total, 'total');
@@ -1472,9 +1629,7 @@ function renderHub() {
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-htab]').forEach(b => b.onclick = () => { hubTab = b.dataset.htab; renderHub(); });
-  el.querySelectorAll('[data-arcbuy]').forEach(b => b.onclick = () => send({ t: 'arcbuy', id: b.dataset.arcbuy }));
 }
-$('hubBtn').onclick = () => (hubShown() ? closeHub() : openHub());
 $('hubClose').onclick = closeHub;
 $('archub').addEventListener('pointerdown', e => { if (e.target === $('archub')) closeHub(); });
 setInterval(() => renderPeople(false), 250);
@@ -1676,7 +1831,7 @@ function buildBase() {
       g.fillStyle = '#6b4423'; g.fillRect(bx + 10, by + 6, 8, 26); g.fillRect(bx + bw - 18, by + 6, 8, 26);
       g.fillStyle = b.roof; g.fillRect(bx, by - 2, bw, 22); g.fillStyle = '#fff'; g.fillRect(bx + 3, by + 1, bw - 6, 16);
       g.fillStyle = b.roof; g.fillRect(bx + 5, by + 3, bw - 10, 12);
-      gh.font = `bold 14px ${FONT}`; gh.fillStyle = '#fff'; gh.fillText(`${b.sign} ${b.name} ${b.sign}`, bx + bw / 2, by + 9.5);
+      gh.font = `bold ${b.name.length > 6 ? 12 : 14}px ${FONT}`; gh.fillStyle = '#fff'; gh.fillText(`${b.sign} ${b.name} ${b.sign}`, bx + bw / 2, by + 9.5);
       continue;
     }
     if (b.kind === 'cinema') { // จอหนังกลางแปลง: เสา 2 ต้น + จอขาวใหญ่
@@ -1795,6 +1950,59 @@ function drawBuilding(b) {
 const SKIN = '#f5cfa0', GOLD = '#e8c04a';
 // วาดตัวละคร (รองรับเสื้อ/กางเกง/หมวกหลายแบบ) cx = canvas context อื่น (ใช้กับตัวอย่างในตู้เสื้อผ้า)
 // ตะเกียงที่ตัวละครถือไว้ตอนเปิดไฟ: ถือข้างตัว (หันซ้าย/ขึ้น = มือซ้าย นอกนั้นมือขวา) แสงกะพริบเบาๆ
+// ---------- อุปกรณ์ในมือ: วาดเป็นพิกเซลอาร์ตขนาดพอดีมือ (มือหน้า/หลัง = ขวา x+8, ด้านข้าง = กลางลำตัว) มีท่าแกว่งตอนใช้งาน ----------
+const WATER_EMOJIS = new Set(Object.values(CANS).map(c => c.emoji.replace(/️/g, '')));
+function heldHand(p) { // ตำแหน่งมือที่ถืออุปกรณ์ [x, y, ทิศออกด้านนอก/ข้างหน้า ±1]
+  const dir = p.dir || 0, sn = p.moving && !p.sit ? Math.sin((p.anim || 0) * 14) : 0, f = sn > .35 ? 1 : sn < -.35 ? 2 : 0;
+  const lampSide = dir === 2 || dir === 1 ? -1 : 1, hs = p.lamp ? -lampSide : lampSide;
+  if (dir < 2) return [p.x + hs * 8, p.y + 3 + (f === (hs > 0 ? 2 : 1) ? 2 : 0), hs];
+  const fx = dir === 3 ? 1 : -1; return [p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)), p.y + 3, fx];
+}
+const rodAngle = p => { const k = p.useAt ? (performance.now() - p.useAt) / 260 : 2; return ((p.dir || 0) >= 2 ? 0.8 : 0.15) - 0.72 * Math.sin(k < 1 ? k * Math.PI * 2 : 0); };
+const isRodHeld = p => !!p.held && p.held.replace(/\uFE0F/g, '') === '🎣' && !p.sit;
+function rodTip(p) { // ปลายคันเบ็ด (ตรงกับที่ drawHeldTool วาด: จุดปลาย 12,-19 หมุนตามมุมคัน)
+  const [hx, hy, fx] = heldHand(p), a = rodAngle(p);
+  return [hx + fx * (12 * Math.cos(a) + 19 * Math.sin(a)), hy + 12 * Math.sin(a) - 19 * Math.cos(a)];
+}
+function drawHeldTool(p, now) {
+  const e = p.held.replace(/️/g, ''), OUT = PixelArt.OUT, dir = p.dir || 0;
+  const sn = p.moving && !p.sit ? Math.sin((p.anim || 0) * 14) : 0, f = sn > .35 ? 1 : sn < -.35 ? 2 : 0;
+  const lampSide = dir === 2 || dir === 1 ? -1 : 1, hs = p.lamp ? -lampSide : lampSide;
+  let hx, fx, hy = p.y + 3;
+  if (dir < 2) { fx = hs; hx = p.x + hs * 8; if (f === (hs > 0 ? 2 : 1)) hy += 2; }                      // หน้า/หลัง: มือซ้าย/ขวา (แขนที่ก้าวลงต่ำกว่า)
+  else { fx = dir === 3 ? 1 : -1; hx = p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)); }          // ข้าง: แขนอยู่กลางลำตัว
+  const k = p.useAt ? (performance.now() - p.useAt) / 260 : 2, sw = k < 1 ? Math.sin(k * Math.PI) : 0; // ท่าใช้งาน 0→1→0
+  const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+  const WOOD = '#9c6a35', WD = '#6b4423', STEEL = '#b9c2cc', STH = '#e8eef3';
+  const a0 = dir >= 2 ? 0.95 : 0.3, a1 = dir >= 2 ? 1.5 : 1.25; // มุมจอบ/ขวาน: ด้านข้างถือเอียงไปข้างหน้ามากกว่า (ไม่พาดหน้า)
+  const isHoe = e === '⛏', isAxe = e === '🪓', isRod = e === '🎣', isCan = WATER_EMOJIS.has(e);
+  if (isHoe || isAxe || isRod || isCan) {
+    ctx.save(); ctx.translate(hx, hy); ctx.scale(fx, 1);
+    if (isHoe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(-6, -14, 13, 5, OUT); R(-5, -13, 11, 3, STEEL); R(-5, -13, 11, 1, STH); R(-5, -11, 2, 2, STEEL); R(4, -11, 2, 2, STEEL); }
+    else if (isAxe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, STEEL); R(1, -13, 6, 1, STH); R(6, -13, 2, 6, STH); }
+    else if (isCan) { // บัวรดน้ำตามระดับที่ซื้อ: 1 สังกะสี (เทาเงิน) • 2 ทองแดง • 3 ทองคำ (ประกาย) ใหญ่ขึ้นตามความจุ
+      const T = +Object.keys(CANS).find(k => CANS[k].emoji.replace(/\uFE0F/g, '') === e) || 1, bw = 7 + T, bh = 7 + T, x0 = -(bw >> 1), y0 = -bh - 1, sx = x0 + bw;
+      const pal = { 1: { b: '#9fb4c8', l: '#dbe6f0', d: '#6d839a' }, 2: { b: '#c8763a', l: '#f2a868', d: '#8c4a20' }, 3: { b: '#f0c030', l: '#fff2a0', d: '#b08a10' } }[T];
+      ctx.translate(3, 2); ctx.rotate(0.05 + 0.85 * sw);
+      R(x0 - 1, y0 - 1, bw + 2, bh + 2, OUT); R(x0, y0, bw, bh, pal.b); R(x0, y0, bw, 2, pal.l); R(x0, y0 + bh - 1, bw, 1, pal.d); R(x0, y0, 1, bh, pal.l);
+      if (T >= 2) R(x0, y0 + 3, bw, 1, pal.d);                                                // แถบหมุดย้ำ
+      R(sx, -7, 4, 3, OUT); R(sx, -6, 3, 1, pal.b); R(sx + 2, -9, 3, 4, OUT); R(sx + 3, -8, 1, 2, pal.l); // ปากเทน้ำ
+      R(x0 - 4, -8, 4, 7, OUT); R(x0 - 3, -7, 1, 5, pal.d); R(x0 - 3, -7, 3, 1, pal.d);       // หูหิ้ว
+      if (T === 3 && Math.floor(now / 280) % 2) { R(x0 + 2, y0 + 1, 1, 1, '#ffffff'); R(x0 + bw - 3, y0 + 3, 1, 1, '#ffffff'); }
+      if (sw > 0.4) { R(sx + 4, -4 + Math.round(sw * 6), 1, 3, '#8fd0ff'); R(sx + 3, -1 + Math.round(sw * 6), 1, 2, '#8fd0ff'); }
+    }
+    else { // เบ็ด: ปลายคันงอ + สายเอ็น แกว่งตอนเหวี่ยง
+      ctx.rotate(rodAngle(p)); // ด้านข้างชี้คันเบ็ดไปข้างหน้า ไม่พาดหน้า
+      ctx.lineCap = 'round'; ctx.strokeStyle = OUT; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, -9); ctx.lineTo(12, -19); ctx.stroke();
+      ctx.strokeStyle = WOOD; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, -9); ctx.lineTo(12, -19); ctx.stroke();
+      R(-2, -3, 4, 4, OUT); R(-1, -2, 2, 2, '#9aa0a6');
+      if (!p.fs) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(12, -19); ctx.lineTo(12, -8); ctx.stroke(); R(11, -8, 2, 2, '#e04b4b'); } // ตอนตกปลาใช้สายเอ็นจริง (drawFishing) แทน
+    }
+    ctx.restore();
+  } else { // เมล็ด / อาหาร / ยา: ไอคอนเล็กในมือ (เด้งตอนใช้)
+    PixelUI.world(ctx, p.held, Math.round(hx + fx * 3), Math.round(hy - 3 - sw * 3), 10);
+  }
+}
 function drawHeldLamp(p, now) {
   const side = p.dir === 2 || p.dir === 1 ? -1 : 1, hx = Math.round(p.x + side * 11), hy = Math.round(p.y + 1 + (p.moving ? Math.round(Math.sin(p.anim * 8)) : 0));
   const fl = 0.85 + Math.sin(now / 130 + (p.id || 0)) * 0.1;
@@ -1808,7 +2016,8 @@ function drawHeldLamp(p, now) {
 }
 // เบ็ดตกปลา: เหวี่ยงทุ่นเป็นวงโค้ง สายเอ็นห้อยโค้งตามแรงตึง/ลมพัด ทุ่นลอยตามคลื่น มีระลอกน้ำ และกระตุกแรงตอนปลากินเบ็ด
 function drawFishing(p, t) {
-  const sx = p.x + (p.dir === 2 ? -8 : p.dir === 3 ? 8 : 0), sy = p.y - 8;       // ปลายคันเบ็ด
+  let sx = p.x + (p.dir === 2 ? -8 : p.dir === 3 ? 8 : 0), sy = p.y - 8;       // ปลายคันเบ็ด (ไม่ได้ถือเบ็ดอยู่: ใช้ตำแหน่งเดิม)
+  if (isRodHeld(p)) [sx, sy] = rodTip(p);                                        // ถือเบ็ดอยู่: สายออกจากปลายคันจริง ไม่ออกจากหน้าตัวละคร
   const k = Math.min(1, (t - (p.castAt || 0)) / 480), e = 1 - (1 - k) * (1 - k); // ease-out
   const bite = p.fs === 2, ph = (p.id || 0) * 1.7;
   const bob = bite ? Math.sin(t / 45) * 3.5 + 3 : Math.sin(t / 420 + ph) * 1.6;
@@ -1849,6 +2058,7 @@ function drawPlayer(p, now, cx) {
   ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
   PixelChar.draw(ctx, p, now); // ตัวละครพิกเซล chibi (pixelchar.js)
   if (p.lamp) drawHeldLamp(p, now);
+  if (p.held && !p.sit) drawHeldTool(p, now); // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง)
   if (!p.name) return; // ตัวอย่างในตู้เสื้อผ้า ไม่ต้องวาดชื่อ
   // ป้ายชื่อ: กล่องกระดาษขอบเข้ม (สูงกว่าหัวตัวละครใหม่ ~9 px)
   const OUT = PixelArt.OUT, sp = !!p.speaking;
@@ -1859,6 +2069,7 @@ function drawPlayer(p, now, cx) {
   ctx.fillStyle = sp ? '#4ab36e' : '#e2c896'; ctx.fillRect(nx, ny + 12, w, 2);
   ctx.fillStyle = '#3d2a1a'; ctx.fillText(p.name, x, y - 29);
   if (p.deaf) { const dt = '🔇'; ctx.font = `bold 10px ${FONT}`; const dw = Math.ceil(ctx.measureText(dt).width) + 8, dx = nx - dw - 3; ctx.fillStyle = OUT; ctx.fillRect(dx - 1, ny, dw + 2, 14); ctx.fillStyle = '#e07a66'; ctx.fillRect(dx, ny, dw, 14); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(dt, dx + 4, y - 28.5); ctx.textAlign = 'center'; ctx.font = `bold 11px ${FONT}`; }
+  if (p.status) { ctx.font = `bold 10px ${FONT}`; const st = p.status, sw = Math.ceil(Math.min(150, ctx.measureText(st).width)) + 10; ctx.textAlign = 'center'; ctx.fillStyle = OUT; ctx.fillRect(Math.round(x - sw / 2) - 1, y + 15, sw + 2, 14); ctx.fillStyle = '#fff3d6'; ctx.fillRect(Math.round(x - sw / 2), y + 16, sw, 12); ctx.fillStyle = '#3d2a1a'; ctx.textBaseline = 'alphabetic'; ctx.fillText(st, x, y + 26, 140); }
   if (p.title) { ctx.font = `bold 9px ${FONT}`; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = OUT; ctx.strokeText(p.title, x, y - 43); ctx.fillStyle = '#ffd966'; ctx.fillText(p.title, x, y - 43); }
   if (p.voice) {
     ctx.font = '11px sans-serif'; ctx.fillText('🎙️', x + w / 2 + 8, y - 29);
@@ -1894,6 +2105,10 @@ function animalFx(c, now, top) { // หัวใจลอยตอนเพิ�
   if (c.happyAt && now - c.happyAt < 1800) { const k = (now - c.happyAt) / 1800; ctx.globalAlpha = 1 - k; for (let i = 0; i < 3; i++) PixelUI.world(ctx, '💗', c.x + (i - 1) * 9, c.y - top - k * 26 - i * 4 - 3, 11); ctx.globalAlpha = 1; }
   else if (!c.sick && h >= 80 && !c.prod && ph < 1.3) { const k = ph / 1.3; ctx.globalAlpha = 1 - k; PixelUI.world(ctx, '💕', c.x + Math.sin(t * 3) * 3, c.y - top - k * 14 - 3, 10); ctx.globalAlpha = 1; }
   if (c.prod) { const a = t * 2 + (c.id || 0); PixelUI.world(ctx, '✨', c.x + Math.cos(a) * 13, c.y - top * 0.5 + Math.sin(a) * 5, 11); }
+  if (c.prod && c.lock && me && c.fn !== me.name) { // ผลผลิตของคนอื่น ยังเก็บไม่ได้ (เหมือนผัก): 🔒 + ชื่อเจ้าของ
+    PixelUI.world(ctx, '🔒', c.x + 12, c.y - top - 6, 11);
+    ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = '#3d2a1a'; ctx.strokeText(c.fn, c.x, c.y + 18); ctx.fillStyle = '#ffe9a8'; ctx.fillText(c.fn, c.x, c.y + 18);
+  }
 }
 function drawChicken(c, now) { drawAnimalPx('chicken', c, now, 14, '🥚'); }
 function drawCow(c, now) { drawAnimalPx('cow', c, now, 20, '🥛'); }
@@ -1932,12 +2147,13 @@ function drawCrop(tile, px, py, now) {
     if (tile.o && me && tile.o !== me.name) PixelUI.world(ctx, tile.l ? '🔒' : '✨', px + 25, py + 8, 12); // ผักของคนอื่น: 🔒 ยังเก็บไม่ได้ / ✨ เจ้าของไม่มาเก็บเกิน 1 วัน คนอื่นเก็บได้แล้ว
   }
 }
-function daylight(h) { // ความมืด 0..0.9 (กลางคืนมืดมาก มองเห็นเฉพาะรอบกองไฟ/ตะเกียง)
-  const MAXD = 0.9;
-  if (h >= 7 && h < 17.5) return 0;
-  if (h >= 17.5 && h < 21) return (h - 17.5) / 3.5 * MAXD;
-  if (h >= 21 || h < 4.5) return MAXD;
-  return MAXD * (1 - (h - 4.5) / 2.5);
+function daylight(h) { // ความมืด 0..0.75 (กลางคืนยังพอเห็นทาง สว่างที่กองไฟ/ตะเกียงชัดกว่า) สว่างนาน มืดสั้น
+  const MAXD = 0.75;
+  if (h >= 6.5 && h < 19) return 0;
+  if (h >= 19 && h < 21) return (h - 19) / 2 * MAXD;
+  if (h >= 21 || h < 4) return MAXD;
+  if (h < 5.5) return MAXD * (1 - (h - 4) / 1.5); // 04:00–05:30 ค่อยๆ สว่าง
+  return 0;
 }
 // ชั้นความมืด: เติมสีทึบแล้ว "เจาะ" วงสว่างที่กองไฟกลางลานและรอบตัวคนที่ถือตะเกียง (รัศมี 3 ช่อง)
 const lightCv = document.createElement('canvas'), lctx = lightCv.getContext('2d');
@@ -2036,6 +2252,7 @@ function step(now) {
   const wall = Date.now() + timeOffset;
 
   // เดิน: คีย์บอร์ด/จอยสติ๊ก (ยกเลิกการเดินจากคลิก) หรือเดินตามเส้นทางที่คลิกไว้
+  if (performance.now() - lastKeyEvt > KEY_STALE_MS) clearKeys(); // ปุ่มค้าง: ไม่มี keydown เข้ามานานผิดปกติ → เคลียร์ทั้งหมด
   let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x;
   let iy = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0) + joy.y;
   if (chatFocus || modalOpen()) { ix = iy = 0; walk = null; }
@@ -2073,6 +2290,7 @@ function step(now) {
   for (const q of pets.values()) { const dx = q.tx - q.x, dy = q.ty - q.y; q.moving = q.srvMoving || Math.hypot(dx, dy) > 1.5; q.x += dx * Math.min(1, dt * 8); q.y += dy * Math.min(1, dt * 8); if (q.moving) q.anim += dt; }
   for (const c of animals.values()) { c.x += (c.tx - c.x) * Math.min(1, dt * 8); c.y += (c.ty - c.y) * Math.min(1, dt * 8); c.anim += dt; }
   swing = Math.max(0, swing - dt);
+  { const he = heldEmoji(); if (he !== lastHeld) { lastHeld = he; me.held = he; send({ t: 'held', e: he }); } } // อุปกรณ์ในมือเปลี่ยน → บอกเซิร์ฟเวอร์
   updateSpeaking(now);
 
   // กล้อง
@@ -2115,23 +2333,8 @@ function step(now) {
     ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(walk.dest[0] * TS + 16, walk.dest[1] * TS + 16, 6 + Math.sin(now / 150) * 2, 0, 7); ctx.stroke();
   }
-  // ช่องที่ชี้/หันหน้าไป
-  let tx, ty, col = 'rgba(255,255,255,.8)';
-  if (mouse.active && !isTouch) {
-    tx = mouse.tx; ty = mouse.ty;
-    if (tx >= 0 && ty >= 0 && tx < W && ty < H) {
-      if (interactive(tx, ty)) col = inReach(tx, ty) ? 'rgba(255,255,255,.9)' : 'rgba(255,215,90,.95)';
-      else col = solidTile(tx, ty) ? 'rgba(255,255,255,.3)' : 'rgba(140,200,255,.9)';
-    }
-  } else[tx, ty] = facing(me.x, me.y, me.dir);
-  ctx.strokeStyle = col; ctx.lineWidth = 2;
-  ctx.strokeRect(tx * TS + 2, ty * TS + 2, TS - 4, TS - 4);
-  if (mouse.active) { ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(tx * TS + 2, ty * TS + 2, TS - 4, TS - 4); }
-  if (flash && now - flash.t < 450) { // แตะ/คลิกที่ช่องไหน ช่องนั้นจะกะพริบ (เหมือนกันทั้ง PC และมือถือ)
-    const a = 1 - (now - flash.t) / 450;
-    ctx.fillStyle = `rgba(255,255,255,${0.35 * a})`; ctx.fillRect(flash.tx * TS, flash.ty * TS, TS, TS);
-    ctx.strokeStyle = `rgba(255,255,255,${a})`; ctx.lineWidth = 3; ctx.strokeRect(flash.tx * TS + 1, flash.ty * TS + 1, TS - 2, TS - 2);
-  }
+  // ไม่วาดกรอบสี่เหลี่ยมบนพื้นแล้ว (ช่องที่ชี้/ช่องที่คลิก) — ใช้เคอร์เซอร์เมาส์เปลี่ยนเป็นรูปมือเมื่อชี้ของที่กดได้แทน
+  { let cur = ''; if (mouse.active && !isTouch && mouse.tx >= 0 && mouse.ty >= 0 && mouse.tx < W && mouse.ty < H && (interactive(mouse.tx, mouse.ty) || hubSignAt(mouse.tx, mouse.ty))) cur = 'pointer'; if (canvas.style.cursor !== cur) canvas.style.cursor = cur; }
 
   drawButterflies(now);
   // วาดตามลำดับ y
@@ -2170,13 +2373,22 @@ function step(now) {
     ctx.fillStyle = '#fff'; ctx.fillText(txt, cx, cy);
     for (const id of cin.viewers) { const p = players.get(id); if (p) { ctx.font = '14px sans-serif'; ctx.fillText('🍿', p.x + 14, p.y - 34); } }
   }
+  // ป้าย Arcade Hub: ให้รู้ว่ากดได้ — กรอบเรืองแสงกะพริบ + ป้ายเล็ก "แตะ" ลอยเหนือป้าย + เมาส์ชี้เปลี่ยนเป็นรูปมือ
+  if (hubSign) {
+    const bx = hubSign.x0 * TS, by = hubSign.y0 * TS, bw = (hubSign.x1 - hubSign.x0 + 1) * TS, hov = mouse.active && hubSignAt(mouse.tx, mouse.ty), pl = 0.5 + 0.5 * Math.sin(now / 320);
+    ctx.lineWidth = hov ? 3 : 2; ctx.strokeStyle = hov ? '#ffffff' : `rgba(255,226,102,${0.35 + 0.55 * pl})`; ctx.strokeRect(bx - 2, by - 4, bw + 4, 26);
+    const lt = hov ? '👆 กดเลย!' : '👆 แตะดูแต้ม & อันดับ', ly = by - 14 - (hov ? 0 : pl * 2);
+    ctx.font = `bold 10px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const lw = ctx.measureText(lt).width + 12;
+    ctx.fillStyle = '#3d2a1a'; ctx.fillRect(bx + bw / 2 - lw / 2 - 1, ly - 8, lw + 2, 17); ctx.fillStyle = hov ? '#ffe266' : '#fff3d6'; ctx.fillRect(bx + bw / 2 - lw / 2, ly - 7, lw, 15);
+    ctx.fillStyle = '#3d2a1a'; ctx.fillText(lt, bx + bw / 2, ly);
+  }
   // ป้ายสถานะเหนือตู้เกม (ว่าง / รอคู่ / กำลังเล่น)
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `bold 10px ${FONT}`;
   CABINETS.forEach((c, i) => {
     if (!c.game || c.x < x0 - 1 || c.x > x1 + 1 || c.y < y0 - 1 || c.y > y1 + 1) return;
     const s = arcStatus[i]; if (!s) return;
-    const uno = ['uno', 'bacc', 'bj'].includes(s[7]);
-    const txt = s[2] === 'waiting' ? `⏳ ${s[4]}${uno ? ' ' + s[5] : ''}${s[3] ? ' 🪙' + s[3] : ''}` : s[2] === 'playing' ? (uno ? `${s[7] === 'uno' ? '🃏 กำลังเล่น' : '🎰 เล่นอยู่'} ${s[5]}` : `⚔️ ${s[4]} vs ${s[5]}`) : s[2] === 'over' ? '🏁 จบเกม' : '🎮 ว่าง';
+    const uno = ['uno', 'bacc', 'bj', 'pok', 'react', 'rps'].includes(s[7]);
+    const txt = s[2] === 'waiting' ? `⏳ ${s[4]}${uno ? ' ' + s[5] : ''}${s[3] ? ' 🪙' + s[3] : ''}` : s[2] === 'playing' ? (uno ? `${s[7] === 'uno' ? '🃏 กำลังเล่น' : PARTY_GAMES.has(s[7]) ? '🎮 กำลังเล่น' : '🎰 เล่นอยู่'} ${s[5]}` : `⚔️ ${s[4]} vs ${s[5]}`) : s[2] === 'over' ? '🏁 จบเกม' : '🎮 ว่าง';
     const w = ctx.measureText(txt).width + 10, cx = c.x * TS + 16, cy = c.y * TS - 16;
     ctx.fillStyle = s[2] === 'idle' ? 'rgba(0,0,0,.45)' : 'rgba(138,111,209,.92)'; ctx.fillRect(cx - w / 2, cy - 7, w, 14);
     ctx.fillStyle = '#fff'; ctx.fillText(txt, cx, cy);
@@ -2189,10 +2401,9 @@ function step(now) {
     const pos = gaugePos({ gt0: fg.t0, per: fg.per }, performance.now()), inZ = Math.abs(pos - fg.c) <= fg.half;
     $('fgmk').style.left = pos * 100 + '%'; $('fgauge').classList.toggle('hit', inZ);
   }
-  if (swing > 0) { const d = DIRS[me.dir]; PixelUI.world(ctx, slotInfo(slot).e, me.x + d[0] * 16, me.y + d[1] * 14 - 2 + (0.25 - swing) * 10, 18); }
 
   // กลางวัน/กลางคืน
-  const hour = ((wall % DAY_MS) / DAY_MS * 24 + 6) % 24;
+  const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
   const dark = daylight(hour);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawNight(dark, now);
