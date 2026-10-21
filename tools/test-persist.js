@@ -54,30 +54,26 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   console.log('  พลังงาน: แครอท 1 รอบ', S.energyCost('harvest', S.CROPS.carrot.sell) + fixed, '• มะม่วง', S.energyCost('harvest', S.CROPS.mango.sell) + fixed, '• ปลาคาร์พ', S.energyCost('fish', 12), '• ปลาวาฬ', S.energyCost('fish', 120), '• ตัดไม้', per, '(' + R + ' เหรียญ/พลังงาน)');
   e.v = E.max; e.ex = false;
 }
-// โควตาขายราคาเต็มต่อวัน
+// ความอิ่มตัวของตลาดต่อหมวด: ขายซ้ำๆ ในหมวดเดียวกัน (สลับชนิดก็ตก) ราคาตก ไม่มีลิมิต พักแล้วฟื้น
 {
-  const Q = S.QUOTA, near = (a, b, e = 1) => Math.abs(a - b) <= e;
-  assert.strictEqual(S.quotaPay(0, 1000).pay, 1000, 'ในโควตาต้องได้เต็ม');
-  assert.strictEqual(S.quotaPay(0, Q.full).pay, Q.full, 'ถึงโควตาพอดีได้เต็ม');
-  assert.ok(near(S.quotaPay(Q.full - 500, 1500).pay, 500 + 1000 * Q.over), 'ข้ามโควตากลางการขาย: ส่วนเกินได้ over');
-  assert.ok(near(S.quotaPay(Q.full, 1000).pay, 1000 * Q.over), 'เกินโควตาแล้วได้ 30%');
-  assert.ok(near(S.quotaPay(Q.full * 2, 1000).pay, 1000 * Q.over * Q.decay), 'ขายเกินต่อเนื่อง ลดลงอีกขั้น');
-  assert.ok(near(S.quotaPay(Q.full * 50, 1000).pay, 1000 * Q.floor), 'ลดถึงพื้นแล้วคงที่');
-  assert.ok(S.quotaPay(Q.full * 50, 1).pay >= 1, 'ขายชิ้นเล็กอย่างน้อยได้ 1 เหรียญ');
-  // ขายแบ่งหลายครั้งต้องได้เท่ากับขายครั้งเดียว (กันแกล้งแบ่งขายเลี่ยงลดราคา)
-  let g = 0, parts = 0; for (let i = 0; i < 40; i++) { parts += S.quotaPay(g, 500).pay; g += 500; }
-  assert.ok(near(parts, S.quotaPay(0, 20000).pay, 40), 'แบ่งขายต้องไม่ได้มากกว่าขายรวด');
-  // ผ่านระบบจริง: ขายผ่าน World.sell
-  w.event = () => {}; // ปิดรางวัลเควส/คู่มือที่ผูกกับการขาย จะได้วัดเฉพาะเหรียญจากการขาย
-  w.nearShopKind = () => 'farm'; w.market.crop_melon = w.market.crop_melon || { m: 1 };
-  p.rec.inv.crop_melon = 400; p.rec.sold = null; const c0 = p.rec.inv.coin;
-  w.sell(p, 'crop_melon', 'all');
-  const got = p.rec.inv.coin - c0, gross = p.rec.sold.gross;
-  assert.ok(gross > Q.full, 'ต้องขายพอให้เกินโควตาในเทสต์');
-  assert.strictEqual(got, S.quotaPay(0, gross).pay, 'เหรียญที่ได้จริงต้องตรงกับสูตรโควตา');
-  assert.ok(got < gross, 'เกินโควตาต้องได้น้อยกว่าราคาตลาด');
-  const q = w.quotaPub(p); assert.ok(q.rate < 1 && q.gross === gross && q.resetAt > Date.now(), 'ข้อมูลที่ส่งให้ป้ายสถานะต้องถูกต้อง');
-  console.log('  โควตา: ขายตลาด', gross, 'ได้จริง', got, '(' + Math.round(got / gross * 100) + '%) อัตราถัดไป', Math.round(q.rate * 100) + '%');
+  const C = S.CATFAT;
+  assert.deepStrictEqual(['fish_carp', 'crop_melon', 'egg', 'milk', 'log', 'dish_grill'].map(S.sellCat), ['fish', 'crop', 'animal', 'animal', 'wood', 'dish'], 'จัดหมวดสินค้า');
+  assert.strictEqual(S.sellQuote(10, 1, 1, C.step).total, S.sellQuote(10, 1, 1).total, 'ชิ้นแรกราคาเท่าเดิม');
+  assert.ok(S.sellQuote(100, 1, 30, C.step).total < S.sellQuote(100, 1, 30).total, 'ขายรวดหลายชิ้นในหมวด ต่อชิ้นถูกลงกว่าเดิม');
+  w.event = () => {}; w.nearShopKind = () => 'fish'; p.rec.cat = null; p.rec.sold = null; p.rec.mk = {};
+  const kinds = S.FISH.filter(f => f.id !== 'boot').slice(0, 12).map(f => 'fish_' + f.id); let paid = 0, itemOnly = 0, units = 0;
+  for (const k of kinds) w.market[k] = w.market[k] || { m: 1, t: 1 };
+  for (let round = 0; round < 5; round++) for (const k of kinds) { // สลับชนิดทีละ 1 ชิ้น หนีความอิ่มตัวรายชนิด
+    p.rec.inv[k] = 1; const mE = w.effMult(p, k) / w.catOf(p, 'fish'), c0 = p.rec.inv.coin; w.sell(p, k, 1);
+    paid += p.rec.inv.coin - c0; itemOnly += Math.max(1, Math.round(S.itemInfo(k).sell * mE)); units++;
+  }
+  const cm = w.catOf(p, 'fish'); assert.ok(Math.abs(cm - Math.pow(C.step, units)) < 1e-9 || cm === C.min, 'ความอิ่มตัวหมวดตาม step ต่อชิ้น');
+  assert.ok(paid < itemOnly * 0.85, `สลับชนิดขายซ้ำ ต้องได้น้อยกว่าราคารายชนิดอย่างชัดเจน (ได้ ${paid} จาก ${itemOnly})`);
+  assert.strictEqual(w.catOf(p, 'crop'), 1, 'หมวดอื่นไม่ถูกกระทบ');
+  const cat = w.catPub(p); assert.ok(cat.t === 'cat' && cat.c.fish < 0.995 && cat.recover === C.recover, 'ข้อมูลที่ส่งให้ป้ายถูกต้อง');
+  const before = w.catOf(p, 'fish'); for (let i = 0; i < 30; i++) w.marketTick(Date.now()); // พักขาย ~30 นาที (ตลาดเดินนาทีละครั้ง)
+  assert.ok(w.catOf(p, 'fish') > before + 0.2 && w.catOf(p, 'fish') <= 1, 'พักขายแล้วราคาหมวดฟื้นกลับ');
+  console.log('  ตลาดหมวดปลา: ขายสลับ 12 ชนิด ' + units + ' ชิ้น ได้ ' + paid + ' จากราคารายชนิด ' + itemOnly + ' (' + Math.round(paid / itemOnly * 100) + '%) • ความอิ่มตัวหลังขาย ' + Math.round(cm * 100) + '% → พัก 30 นาที ' + Math.round(w.catOf(p, 'fish') * 100) + '%');
 }
 const w2 = new World('main');
 assert.strictEqual(w2.projects.bridge.coin, 5000, 'bridge coin lost after reload');

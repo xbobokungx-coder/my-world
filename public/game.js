@@ -3,7 +3,7 @@
 const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-  GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, QUOTA, quotaPay, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
+  GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CATFAT, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
 const MAP = makeMap();
 const $ = id => document.getElementById(id);
 const canvas = $('c'), ctx = canvas.getContext('2d'), mainCtx = ctx;
@@ -40,7 +40,7 @@ let arcSt = { pts: 0, total: 0, wk: 0 };                               // แต
 let lbSt = { total: [], wk: [], me: null }, hubTab = 'rank';           // Leaderboard + ศูนย์รวมแต้ม/รางวัล
 let projSt = [];
 let questSt = { list: [], total: 0, title: '', pts: { bal: 0, earned: 0 } }, fameSt = {};
-let enSt = { v: 100, ex: false, rate: 0, resume: 10, rareUntil: 0, at: Date.now() }, quotaSt = { full: QUOTA.full, gross: 0, rate: 1, resetAt: 0 }, bankSt = { bal: 0, cap: BANK.cap }, villageSt = { n: 0, goal: 0, done: false, left: 0 };
+let enSt = { v: 100, ex: false, rate: 0, resume: 10, rareUntil: 0, at: Date.now() }, catSt = { c: {}, recover: 0.04 }, bankSt = { bal: 0, cap: BANK.cap }, villageSt = { n: 0, goal: 0, done: false, left: 0 };
 let villageEnd = 0; // เวลาที่บัฟ Happy Village หมด (ms ของนาฬิกาเครื่องนี้)
 const happyOn = () => villageEnd > Date.now();
 const buffExp = {}; // บัฟที่ยังมีผลอยู่: id -> เวลาหมด (ms ของนาฬิกาเครื่องนี้)
@@ -183,7 +183,7 @@ function handle(m) {
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
     case 'chest': chestSt = m.c; if (townShown()) renderTown(); break;
     case 'en': enSt = Object.assign(m, { at: Date.now(), spentAt: m.spent ? Date.now() : (enSt.spentAt || 0), lastSpent: m.spent || enSt.lastSpent || 0 }); renderEnergy(); break;
-    case 'quota': quotaSt = m; renderQuota(); if (!$('bag').classList.contains('hidden')) renderBag(); break;
+    case 'cat': catSt = Object.assign(m, { at: Date.now() }); renderSat(); break;
     case 'proj': projSt = m.p; checkProjects(); if (townShown()) renderTown(); break;
     case 'quests': {
       questSt = { list: m.list, total: m.total, title: m.title, pts: m.pts, dole: m.dole, starter: m.starter, streak: m.streak, book: m.book, wk: m.wk };
@@ -290,19 +290,20 @@ function villageCard() {
   const v = villageSt, on = happyOn(), pct = v.goal ? Math.min(100, Math.round(v.n / v.goal * 100)) : 0;
   return `<div class="vcard${on ? ' on' : ''}"><b>🎉 Happy Village</b> — ${on ? `ติดบัฟอยู่ เหลือ ${Math.ceil((villageEnd - Date.now()) / 60000)} นาที: ตกปลาไวขึ้น 25% และหาไม้เนื้อแข็งง่ายขึ้น` : v.done ? 'วันนี้ทำครบเป้าแล้ว 🎊 (พรุ่งนี้เริ่มใหม่)' : 'ช่วยกันทำงานให้ครบเป้าของวัน ทั้งเมืองจะได้บัฟร่วม'}<div class="bar"><i style="width:${v.done ? 100 : pct}%"></i></div><small>งานของทุกคนวันนี้ ${v.n}/${v.goal} (เก็บเกี่ยว รดน้ำ ให้อาหารสัตว์ ตกปลา โค่นไม้ เก็บผลผลิต รักษาสัตว์ ลงขัน) • เป้าเพิ่มตามจำนวนคนที่ออนไลน์</small></div>`;
 }
-// โควตา "ขายได้ราคาเต็ม" ต่อวัน: ป้ายที่แถบบนบอกสถานะเมื่อใกล้เต็ม/เกินแล้ว และเวลาที่เหลือจนรีเซ็ต (เที่ยงคืน)
-const curGross = () => (quotaSt.resetAt && Date.now() >= quotaSt.resetAt ? 0 : quotaSt.gross || 0); // ข้ามเที่ยงคืนตอนออนไลน์อยู่: ถือว่ารีเซ็ตแล้วจนกว่าจะได้ข้อมูลใหม่
-const payFor = total => quotaPay(curGross(), total).pay;
+// ความอิ่มตัวของตลาดต่อหมวด: ป้ายแถบบนบอกหมวดที่ราคาตกเพราะขายซ้ำๆ และเวลาที่ราคาจะกลับมา (ไม่มีลิมิต ขายต่อได้ แค่ได้ราคาต่ำลง)
+const CAT_TH = { fish: 'ปลา', crop: 'ผัก/ผลไม้', animal: 'ผลผลิตสัตว์', wood: 'ไม้', dish: 'อาหาร' };
 function fmtLeft(ms) { if (ms < 60000) return `${Math.max(1, Math.ceil(ms / 1000))} วินาที`; const m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)} ชม. ${m % 60} นาที` : `${m} นาที`; }
-function renderQuota() {
-  const el = $('quotaChip'), g = curGross(), rate = Shared.quotaRate(g), left = quotaSt.resetAt ? quotaSt.resetAt - Date.now() : 0;
-  if (g < QUOTA.full * 0.8) { el.classList.add('hidden'); return; }
-  el.classList.remove('hidden'); el.classList.toggle('over', g >= QUOTA.full); el.classList.toggle('warn', g < QUOTA.full);
-  el.textContent = g >= QUOTA.full ? `⏳ ขายได้ ${Math.round(rate * 100)}% • ${fmtLeft(left)}` : `🏷️ โควตาราคาเต็ม ${g}/${QUOTA.full}`;
-  el.title = `โควตาขายราคาเต็มวันนี้ ${g}/${QUOTA.full} เหรียญ ขายเกินแล้วได้ ${Math.round(Shared.quotaRate(Math.max(g, QUOTA.full)) * 100)}% และลดลงอีกถ้าขายต่อ • รีเซ็ตใน ${fmtLeft(left)} ไปทำกิจกรรมอื่นก่อน (ตกปลา ทำอาหาร เควส ลงขันเมือง)`;
+function renderSat() {
+  const el = $('satChip'), now = Date.now(), min = (now - (catSt.at || now)) / 60000;
+  const rows = Object.entries(catSt.c || {}).map(([k, c0]) => [k, 1 - (1 - c0) * Math.pow(1 - (catSt.recover || 0.04), min)]).filter(([, c]) => c < 0.9).sort((a, b) => a[1] - b[1]); // ฟื้นต่อเนื่องระหว่างรอข้อมูลจาก server
+  if (!rows.length) { el.classList.add('hidden'); return; }
+  const [k, c] = rows[0], back = Math.ceil(Math.log(0.1 / (1 - c)) / Math.log(1 - (catSt.recover || 0.04))); // นาทีที่ราคากลับถึง ~90%
+  el.classList.remove('hidden'); el.classList.toggle('over', c < 0.55); el.classList.toggle('warn', c >= 0.55);
+  el.textContent = `📉 ตลาด${CAT_TH[k] || 'หมวดนี้'} ${Math.round(c * 100)}%`;
+  el.title = rows.map(([kk, cc]) => `${CAT_TH[kk] || kk} ได้ราคา ${Math.round(cc * 100)}%`).join(' • ') + ` — ขายของหมวดเดียวกันซ้ำๆ ราคาทั้งหมวดตกลง (สลับชนิดก็ตก) พักขาย ~${Math.max(1, back)} นาทีราคากลับมา หรือขายหมวดอื่น/ทำอย่างอื่นก่อน`;
 }
-$('quotaChip').onclick = () => toast($('quotaChip').title);
-setInterval(renderQuota, 30000); // นับถอยหลังเวลารีเซ็ต + ซ่อนป้ายเองเมื่อข้ามเที่ยงคืน
+$('satChip').onclick = () => toast($('satChip').title);
+setInterval(renderSat, 20000);
 // พลังงาน ⚡ + คูลดาวน์ปลาหายาก: ป้ายแถบบน บอกสถานะและเวลาที่เหลือ (ค่าจริงมาจาก server ทุก ~1 วินาที ระหว่างนั้นคำนวณต่อเองตามอัตราฟื้น)
 function renderEnergy() {
   const el = $('enChip'), cd = $('cdChip'), now = Date.now(), v = Math.min(Shared.ENERGY.max, enSt.v + (enSt.v < Shared.ENERGY.max ? (now - enSt.at) * enSt.rate : 0));
@@ -784,7 +785,7 @@ function renderBag() {
   if (bagTab === 'book') return renderBookTab(el);
   if (bagTab === 'status') {
     const keysOwned = Object.keys(inv).filter(k => k !== 'coin');
-    const worth = payFor(keysOwned.reduce((s, k) => { const i = itemInfo(k); return s + (i && i.sell ? sellQuote(i.sell, mult(k), inv[k]).total : 0); }, 0)); // มูลค่าที่ขายได้จริงหลังคิดโควตา
+    const worth = keysOwned.reduce((s, k) => { const i = itemInfo(k); return s + (i && i.sell ? sellQuote(i.sell, mult(k), inv[k], CATFAT.step).total : 0); }, 0);
     const pieces = keysOwned.reduce((s, k) => s + inv[k], 0);
     const [tx, ty] = myTile();
     const cards = [
@@ -925,7 +926,7 @@ function renderShop() {
     const trend = (m > 1.03 ? `<span style="color:#1e8f4e">▲ ${Math.round((m - 1) * 100)}%</span>` : m < 0.97 ? `<span style="color:#c0392b">▼ ${Math.round((1 - m) * 100)}%</span>` : '') + (m < 0.5 ? ' <span style="color:#c0392b">⚠️ ตลาดอิ่มตัว รอราคากลับก่อนค่อยขาย</span>' : '');
     h += `<div class="row"><span>${i.emoji} ${i.name} ×${inv[k]}<br><small>ราคาตลาด 🪙${unit} (ปกติ ${i.sell}) ${trend}</small></span><span>`
       + `<button class="btn small" data-sell="${k}" data-n="1">ขาย 1</button> `
-      + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all">ทั้งหมด 🪙${payFor(sellQuote(i.sell, m, inv[k]).total)}</button>` : '') + `</span></div>`;
+      + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all">ทั้งหมด 🪙${sellQuote(i.sell, m, inv[k], CATFAT.step).total}</button>` : '') + `</span></div>`;
   }
   if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายชนิดเดิมซ้ำๆ ราคาของคุณจะตกเร็วและฟื้นช้า (ตกเหลือต่ำสุด ~20–25% ของราคาปกติ) • ขายหลายชนิดต่อวัน (ชนิดละ ≥3 ชิ้น หรือ ≥40 เหรียญ) ได้โบนัสราคา +5% ต่อชนิด สูงสุด +40% • มีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
   if (cookTab) {

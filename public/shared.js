@@ -182,23 +182,14 @@
   const ENERGY = { max: 100, regenMs: 4000, sitMul: 3, resume: 10, eatMul: 0.4, rareCdMs: 6 * 60 * 1000, coinsPerEnergy: 6, cost: { dig: 1, water: 1, plant: 1 } };
   const energyCost = (kind, value) => ENERGY.cost[kind] !== undefined ? ENERGY.cost[kind]
     : Math.max(1, Math.round(value / ENERGY.coinsPerEnergy) - (kind === 'harvest' ? ENERGY.cost.dig + ENERGY.cost.plant + ENERGY.cost.water : 0)); // เก็บเกี่ยว = ส่วนที่เหลือของรอบ หลังหักขุด/ปลูก/รดน้ำ
-  // โควตา "ขายได้ราคาเต็ม" ต่อวัน (วันจริง รีเซ็ตเที่ยงคืน): ยอดขายรวมวันนี้ (หลังคิดราคาตลาดแล้ว) ถึง full ได้เต็ม
-  // เกินแล้วได้ over (30%) และลดลงอีกเมื่อขายเกินต่อเนื่อง: ทุก full เหรียญที่เกินคูณ decay จนถึง floor — หน่วงทุกคนเท่ากัน ไม่ดูว่ารวยหรือจน
-  const QUOTA = { full: 2500, over: 0.3, decay: 0.7, floor: 0.1 };
-  const quotaRate = gross => gross < QUOTA.full ? 1 : Math.max(QUOTA.floor, QUOTA.over * Math.pow(QUOTA.decay, Math.floor((gross - QUOTA.full) / QUOTA.full)));
-  function quotaPay(gross, total) { // gross = ยอดที่นับเข้าโควตาแล้ววันนี้ total = ราคาตลาดของที่กำลังขาย → { pay: เหรียญที่ได้จริง, rate: อัตราของเหรียญสุดท้าย }
-    let pay = 0, rem = total, g = gross;
-    while (rem > 0) {
-      const r = quotaRate(g);
-      if (r <= QUOTA.floor) { pay += rem * r; break; }
-      const end = g < QUOTA.full ? QUOTA.full : QUOTA.full * (Math.floor((g - QUOTA.full) / QUOTA.full) + 2), take = Math.min(rem, end - g);
-      pay += take * r; rem -= take; g += take;
-    }
-    return { pay: total > 0 ? Math.max(1, Math.round(pay)) : 0, rate: quotaRate(gross + total) };
-  }
-  function sellQuote(base, m, q) { // ราคารวมเมื่อขาย q ชิ้นต่อเนื่อง และตัวคูณใหม่
+  // ความอิ่มตัวของตลาดต่อ "หมวด" (ต่อผู้เล่น): เดิมแต่ละชนิดอิ่มตัวแยกกัน คนขายเยอะจึงสลับชนิดหนีได้ (ข้อมูลจริง: ขายทีละ ~4 ชิ้น หลายสิบชนิด ได้ราคา ~100% ของราคาฐาน)
+  // ตอนนี้ขายของหมวดเดียวกันต่อเนื่อง ต่อให้สลับชนิด ราคาทั้งหมวดค่อยๆ ลดชิ้นละ (1 - step) และฟื้นช้าๆ ตามเวลา (recover ของช่องว่างต่อนาที ตอนออนไลน์) • ไม่มีเพดาน/ลิมิตรายวัน: ขายน้อยหรือพักก็ไม่โดน ขายหลายหมวดก็ไม่โดน
+  // ดุลยภาพ: ขาย n ชิ้น/นาทีในหมวดเดียว ราคาเฉลี่ย ~ recover/(recover + (1-step)·n) เช่น 1/นาที 80% • 4/นาที 50% • 10/นาที ~30% (พื้น min)
+  const CATFAT = { step: 0.99, min: 0.3, recover: 0.04 };
+  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle'].includes(k) ? 'animal' : ['log', 'hardwood', 'plank'].includes(k) ? 'wood' : 'other';
+  function sellQuote(base, m, q, extra = 1) { // ราคารวมเมื่อขาย q ชิ้นต่อเนื่อง และตัวคูณใหม่ (extra = ตัวคูณลดต่อชิ้นเพิ่ม เช่น CATFAT.step ของหมวด)
     let total = 0;
-    for (let i = 0; i < q; i++) { total += Math.max(1, Math.round(base * m)); m = Math.max(MARKET.min, m * MARKET.step); }
+    for (let i = 0; i < q; i++) { total += Math.max(1, Math.round(base * m)); m = Math.max(MARKET.min, m * MARKET.step * extra); }
     return { total, m };
   }
   // สัตว์ที่เลี้ยงได้ (ใช้ร่วมกันทั้งโลก): cap = จำนวนสูงสุด, feedItem = อาหารที่กิน
@@ -698,7 +689,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, QUOTA, quotaRate, quotaPay, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellCat, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     ORDER, orderBand, SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);
