@@ -143,11 +143,11 @@
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:6px; }
   .card { border:2px solid var(--edge); border-radius:10px; background:#fffdf5; padding:6px 4px; text-align:center; font-size:12px; }
   .card b { display:block; font-size:24px; font-weight:400; }
-  .grid.mini { grid-template-columns:repeat(auto-fill,minmax(80px,1fr)); justify-content:start; gap:5px; }
-  .card.mini { padding:4px 3px; font-size:11px; line-height:1.15; cursor:pointer; }
-  .card.mini b { font-size:24px; }
-  .card.mini .nm { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:10px; min-height:2.3em; }
-  .card.mini .cnt { display:block; font-weight:700; font-size:11px; }
+  .grid.mini { grid-template-columns:repeat(auto-fill,64px); justify-content:start; gap:4px; }
+  .card.mini { width:64px; height:64px; box-sizing:border-box; padding:3px 2px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:10px; line-height:1.1; cursor:pointer; }
+  .card.mini b { font-size:20px; line-height:1.1; }
+  .card.mini .nm { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; max-width:100%; }
+  .card.mini .cnt { display:block; font-weight:700; font-size:10px; }
   .bar { height:10px; background:#e8dcc0; border-radius:6px; overflow:hidden; margin:4px 0; }
   .bar i { display:block; height:100%; background:#6cc04a; }
   .skill { padding:8px 0; border-bottom:1px dashed var(--edge); font-size:14px; }
