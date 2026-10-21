@@ -822,7 +822,7 @@ function renderBag() {
     for (const [cat, title] of CATS) {
       const ks = Object.keys(inv).filter(k => { const i = itemInfo(k); return i && i.cat === cat; });
       if (!ks.length) continue; any = true;
-      h += `<div class="sec">${title}</div><div class="grid mini">` + ks.map(k => { const i = itemInfo(k); return `<div class="card mini" data-info="${k}" title="${i.name} ×${inv[k]}"><b>${i.emoji}</b>×${inv[k]}</div>`; }).join('') + '</div>';
+      h += `<div class="sec">${title}</div><div class="grid mini">` + ks.map(k => { const i = itemInfo(k); return `<div class="card mini" data-info="${k}" title="${i.name} ×${inv[k]}"><b>${i.emoji}</b>${inv[k]}</div>`; }).join('') + '</div>';
     }
     // ของกินได้ที่อยู่ในหมวดอื่น (ผลผลิตดิบ) ก็มีปุ่มกินในการ์ดของมันเอง
     h += `<div class="sec">🎣 อุปกรณ์ (ความทนทาน)</div><div class="grid">` + Object.keys(DURABILITY).filter(t => t !== 'axe' || axeLevel() > 0).map(t => {
