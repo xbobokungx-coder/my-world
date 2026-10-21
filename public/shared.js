@@ -162,7 +162,9 @@
     priceLo: 0.6, priceHi: 1.5, // ราคาต่อชิ้นต้องอยู่ 60–150% ของราคาฐาน (กันตั้งราคาเพี้ยนเพื่อโอนเงิน)
     expireHours: 24,      // ใบหมดอายุกี่ชั่วโมง (คืนเหรียญที่เหลือให้ผู้ตั้ง)
     earnCapPerDay: 3000,  // เพดานเหรียญที่ "รับจากการส่งของ" ได้ต่อวันต่อคน (กันบัญชีสำรองฟอกเงิน)
-    npcDaily: 1,          // NPC โพสต์ใบสั่งซื้อกี่ใบต่อวัน (สอนวิธีใช้ + faucet เล็กน้อย ไม่หัก fee)
+    npcDaily: 1,          // NPC โพสต์ใบสั่งซื้อกี่ใบต่อ "วันเกม" (12 นาที) • ใบเก่าสุดถูกแทนที่เมื่อเกิน npcMaxOpen ทำให้เมนูหมุนเวียน
+    npcMaxOpen: 6,        // ใบของ NPC ที่เปิดค้างพร้อมกันได้สูงสุด (เดิมไม่จำกัด ล้นกระดานจนใบของผู้เล่นมองไม่เห็น: เจอ 59 ใบ)
+    npcPremium: 1.15,     // NPC จ่าย 115% ของราคาที่ร้านรับซื้อตอนนั้น (ราคาฐาน × ตัวคูณตลาดกลาง) • ลำดับสินค้าสลับด้วยสำรับ ไม่ซ้ำกับใบที่เปิดอยู่และไม่ซ้ำหมวดติดกัน
     npcQty: [8, 20],      // ช่วงจำนวนของในใบสั่งของ NPC
   };
   const orderBand = base => [Math.max(1, Math.ceil(base * ORDER.priceLo)), Math.max(1, Math.ceil(base * ORDER.priceHi))]; // [ราคาต่อชิ้นต่ำสุด, สูงสุด]
@@ -684,12 +686,16 @@
   function inFarm(tx, ty) { return tx >= FARM.x0 && tx <= FARM.x1 && ty >= FARM.y0 && ty <= FARM.y1; }
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
+  // ลิมิตการถือของขายต่อ "ชนิด" (กันตุนของแล้วเทขายทีเดียว): เพดานตามมูลค่า HOLD.value ÷ ราคาฐาน (ของแพงถือได้น้อยกว่า) จำกัดระหว่าง min–max
+  // ข้อมูลจริง: ค่ากลางที่ถือ 5 ชิ้น/ชนิด คนถือเยอะสุด วาฬ 34 ตัว (~4,000 เหรียญ) มะม่วง 30 (~5,600) ไข่ 104 • ตัวอย่างเพดาน: แครอท/ไข่/ไม้ 100 • มะเขือเทศ 40 • ปลาวาฬ 17 • มะม่วง/ฮัมป์แบ็ก 11
+  const HOLD = { value: 2000, min: 10, max: 100 };
+  const holdCap = k => { const i = itemInfo(k); return i && i.sell && SELLABLE.includes(k) ? Math.max(HOLD.min, Math.min(HOLD.max, Math.round(HOLD.value / i.sell))) : 0; }; // 0 = ไม่จำกัด (ไม่ใช่ของขาย เช่น เหยื่อ อาหารสัตว์)
 
   const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellCat, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
-    ORDER, orderBand, SELLABLE };
+    ORDER, orderBand, SELLABLE, HOLD, holdCap };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

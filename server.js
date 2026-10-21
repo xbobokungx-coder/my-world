@@ -176,7 +176,7 @@ class World {
   // ----- เมือง: กระดานข่าว (log โลก 50 รายการล่าสุด) + ตู้เซฟกองกลาง (ทุกคนลงขันเหรียญ → จ่ายยา/อาหารสัตว์อัตโนมัติ และชุบสัตว์ที่ตาย) -----
   loadTown(d) {
     this.log = (Array.isArray(d.log) ? d.log : []).filter(e => Array.isArray(e) && Number.isFinite(e[0]) && typeof e[1] === 'string').slice(-S.TOWN.logMax).map(e => [e[0], e[1].slice(0, 120)]);
-    this.loadVillage(d.village); this.loadWeek(d.week); this.loadProjects(d.projects); this.loadOrders(d.orders);
+    this.loadVillage(d.village); this.loadWeek(d.week); this.loadProjects(d.projects); this.loadOrders(d.orders); this.trimNpc(S.ORDER.npcMaxOpen);
     this.banned = new Set(Array.isArray(d.banned) ? d.banned.filter(x => typeof x === 'string').map(x => x.toLowerCase().slice(0, 24)) : []); // ชื่อ (key) ที่ผู้ดูแลแบน: เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น
     const st = d.stats || {}; this.stats = { day: typeof st.day === 'string' ? st.day : '', ev: {} };
     for (const ev of Object.keys(S.FAME)) { const m = Object.create(null), o = st.ev && st.ev[ev]; if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) if (Number.isFinite(v)) m[k] = v; this.stats.ev[ev] = m; }
@@ -248,18 +248,37 @@ class World {
   }
   ordersPub(p) {
     const level = S.playLevel(p.rec.skills), ec = this.ordEarnOf(p);
-    const list = this.orders.map(o => { const info = S.itemInfo(o.item) || {}; return { id: o.id, byName: o.byName, npc: o.npc, mine: o.by === p.key, item: o.item, name: info.name, emoji: info.emoji, qty: o.qty, filled: o.filled, perUnit: o.perUnit, net: o.npc ? o.perUnit : Math.round(o.perUnit * (1 - S.ORDER.fee)), exp: o.exp }; });
+    const list = this.orders.map(o => { const info = S.itemInfo(o.item) || {}; return { id: o.id, byName: o.byName, npc: o.npc, mine: o.by === p.key, item: o.item, name: info.name, emoji: info.emoji, qty: o.qty, filled: o.filled, perUnit: o.perUnit, net: o.npc ? o.perUnit : Math.round(o.perUnit * (1 - S.ORDER.fee)), exp: o.exp }; }).sort((a, b) => (b.mine - a.mine) || ((a.npc ? 1 : 0) - (b.npc ? 1 : 0)) || (b.id - a.id)); // ใบของเรา → ใบของผู้เล่นอื่น (ใหม่ก่อน) → ใบ NPC
     return { t: 'order', lock: level < S.ORDER.minLevel ? S.ORDER.minLevel : 0, level, fee: S.ORDER.fee, maxQty: S.ORDER.maxQty, maxOpen: S.ORDER.maxOpen, earnLeft: Math.max(0, S.ORDER.earnCapPerDay - ec.n), list };
   }
   orderPush(p) { send(p, this.ordersPub(p)); }
   orderPushAll() { this.dirty = true; for (const p of this.players.values()) send(p, this.ordersPub(p)); }
-  npcPostOrders() { // วันใหม่: NPC ตั้งใบสั่งซื้อ (จ่ายจากระบบ ไม่หัก fee ให้ราคาดีจูงใจผู้เล่นใหม่) สอนวิธีใช้กระดาน
+  npcPick() { // สำรับสลับสินค้า: ไม่ซ้ำกับใบ NPC ที่เปิดอยู่ ไม่เอาของที่ตลาดตกหนัก และพยายามไม่ซ้ำหมวดกับใบก่อนหน้า
+    const open = new Set(this.orders.filter(o => o.npc).map(o => o.item));
+    for (const sameCatOk of [false, true]) for (let round = 0; round < 2; round++) {
+      if (!this.npcDeck || !this.npcDeck.length) { this.npcDeck = S.SELLABLE.slice(); for (let i = this.npcDeck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [this.npcDeck[i], this.npcDeck[j]] = [this.npcDeck[j], this.npcDeck[i]]; } }
+      const skipped = [];
+      while (this.npcDeck.length) {
+        const it = this.npcDeck.pop(), info = S.itemInfo(it), g = this.market[it];
+        if (!info || !info.sell || open.has(it) || (g && g.m < 0.6) || (!sameCatOk && S.sellCat(it) === this.npcLastCat)) { skipped.push(it); continue; }
+        this.npcDeck.unshift(...skipped); this.npcLastCat = S.sellCat(it); return it;
+      }
+      this.npcDeck = skipped.length ? skipped : null; // สำรับหมด: สับใหม่ในรอบถัดไป
+    }
+    return null;
+  }
+  trimNpc(keep) { // เหลือใบ NPC ไม่เกิน keep ใบ: เอาใบเก่าสุดที่ยังไม่มีใครส่งของออกก่อน (ใบที่มีคนส่งแล้วเก็บไว้ท้ายสุด)
+    const npc = this.orders.filter(o => o.npc); if (npc.length <= keep) return;
+    const drop = npc.sort((a, b) => ((a.filled > 0) - (b.filled > 0)) || (a.exp - b.exp)).slice(0, npc.length - keep);
+    this.orders = this.orders.filter(o => !drop.includes(o));
+  }
+  npcPostOrders() { // วันเกมใหม่: NPC ตั้งใบสั่งซื้อ จ่าย 115% ของราคาร้านตอนนั้น (จากระบบ ไม่หัก fee) สินค้าสลับด้วยสำรับ ใบเก่าสุดถูกแทนที่เพื่อไม่ให้ล้นกระดาน
     const names = ['ป้าแก้ว', 'ลุงสมชาย', 'น้องมิ้นท์'];
+    this.trimNpc(S.ORDER.npcMaxOpen - S.ORDER.npcDaily);
     for (let i = 0; i < S.ORDER.npcDaily && this.orders.length < 60; i++) {
-      const item = S.SELLABLE[Math.floor(Math.random() * S.SELLABLE.length)], info = S.itemInfo(item);
-      if (!info || !info.sell) continue;
-      const qty = Math.floor(rand(S.ORDER.npcQty[0], S.ORDER.npcQty[1] + 1)), band = S.orderBand(info.sell);
-      const perUnit = Math.min(band[1], Math.max(band[0], Math.round(info.sell * 1.3)));
+      const item = this.npcPick(); if (!item) continue;
+      const info = S.itemInfo(item), qty = Math.floor(rand(S.ORDER.npcQty[0], S.ORDER.npcQty[1] + 1)), gm = this.market[item] ? this.market[item].m : 1;
+      const perUnit = Math.max(1, Math.round(info.sell * gm * S.ORDER.npcPremium));
       this.orders.push({ id: this.orderSeq++, by: '', byName: names[Math.floor(Math.random() * names.length)], npc: true, item, qty, filled: 0, perUnit, esc: 0, exp: Date.now() + S.ORDER.expireHours * 3600000 });
       this.addLog(`📋 ${this.orders[this.orders.length - 1].byName} ตั้งใบสั่งซื้อ ${info.emoji}${info.name} ×${qty} (ชิ้นละ 🪙${perUnit})`);
     }
@@ -542,6 +561,13 @@ class World {
       if (e.ex && e.v >= S.ENERGY.resume) { e.ex = false; this.toast(p, '⚡ พักพอแล้ว กลับไปทำงานได้'); this.enPush(p); } else if (push) this.enPush(p);
     }
   }
+  holdFull(p, item, n) { const c = S.holdCap(item); return c > 0 && (p.rec.inv[item] || 0) + (n || 1) > c; } // ถือชนิดนี้ครบเพดานแล้ว (ถ้าเพิ่ม n ชิ้นจะเกิน)
+  holdToast(p, item) { const i = S.itemInfo(item); this.toast(p, `🎒 ถือ ${i.emoji} ${i.name} ครบ ${S.holdCap(item)} ชิ้นแล้ว ไปขาย/ใช้ก่อนค่อยเก็บเพิ่ม`); }
+  catJoin(p) { // ความอิ่มตัวของตลาดหมวดฟื้นตามเวลาจริงที่ผ่านไปแม้ออฟไลน์ (เหมือนพลังงาน) catAt = ครั้งล่าสุดที่คิดการฟื้น
+    const ct = p.rec.cat, now = Date.now(), min = Math.max(0, (now - (p.rec.catAt || now)) / 60000), f = Math.pow(1 - S.CATFAT.recover, min);
+    if (ct) for (const k of Object.keys(ct)) { ct[k] = 1 - (1 - ct[k]) * f; if (ct[k] > 0.995) delete ct[k]; }
+    p.rec.catAt = now;
+  }
   catOf(p, cat) { const o = p.rec.cat; return o && Number.isFinite(o[cat]) ? o[cat] : 1; }
   catPub(p) { const o = p.rec.cat || {}, c = {}; for (const k of Object.keys(o)) if (o[k] < 0.995) c[k] = Math.round(o[k] * 1000) / 1000; return { t: 'cat', c, recover: S.CATFAT.recover }; }
   catPush(p) { send(p, this.catPub(p)); }
@@ -784,6 +810,7 @@ class World {
     if (this.lv(p, 'cook') < r.lv) return this.toast(p, `สูตรนี้ปลดล็อกที่เชฟเลเวล ${r.lv} (ตอนนี้ ${this.lv(p, 'cook')}) — ทำเมนูง่ายขึ้นก่อนเพื่อเก็บเลเวล`);
     const now = Date.now();
     if (now < (p.cookReady || 0)) return this.toast(p, `เตายังร้อนอยู่ รออีก ${Math.ceil((p.cookReady - now) / 1000)} วินาที`);
+    if (this.holdFull(p, r.id, 1)) return this.holdToast(p, r.id);
     const inv = p.rec.inv, use = {};
     for (const need of r.in) {
       if (need.k) { if ((inv[need.k] || 0) < need.n) return this.toast(p, 'วัตถุดิบไม่พอ'); use[need.k] = (use[need.k] || 0) + need.n; continue; }
@@ -804,6 +831,7 @@ class World {
     const r = typeof id === 'string' ? S.CRAFT.find(x => x.id === id) : null; if (!r) return;
     if (this.nearShopKind(p) !== 'wood') return this.toast(p, 'ต้องยืนใกล้เคาน์เตอร์ร้านช่างไม้ถึงจะประดิษฐ์ได้');
     if (this.lv(p, 'wood') < r.lv) return this.toast(p, `ต้องเป็นช่างไม้เลเวล ${r.lv} ก่อน`);
+    if (this.holdFull(p, r.id, 1)) return this.holdToast(p, r.id);
     for (const [k, n] of Object.entries(r.in)) if ((p.rec.inv[k] || 0) < n) return this.toast(p, 'วัตถุดิบไม่พอ');
     for (const [k, n] of Object.entries(r.in)) this.add(p, k, -n);
     this.add(p, r.id, 1); this.addXp(p, 'wood', r.xp);
@@ -837,7 +865,7 @@ class World {
     for (const k of SELLABLE) { const o = this.market[k]; o.m = Math.min(S.MARKET.max, Math.max(S.MARKET.min, o.m + (o.t - o.m) * S.MARKET.recover)); }
     for (const p of this.players.values()) { const mk = p.rec.mk; if (!mk) continue; // ตลาดส่วนตัวค่อยๆ ฟื้นเฉพาะตอนออนไลน์
       for (const k of Object.keys(mk)) { mk[k] += (1 - mk[k]) * S.PMARKET.recover; if (mk[k] > 0.995 || !SELLABLE.includes(k)) delete mk[k]; } }
-    for (const p of this.players.values()) { const ct = p.rec.cat; if (!ct) continue; for (const k of Object.keys(ct)) { ct[k] += (1 - ct[k]) * S.CATFAT.recover; if (ct[k] > 0.995) delete ct[k]; } this.catPush(p); } // ความอิ่มตัวต่อหมวดฟื้นเฉพาะตอนออนไลน์
+    for (const p of this.players.values()) { const ct = p.rec.cat; if (!ct) continue; for (const k of Object.keys(ct)) { ct[k] += (1 - ct[k]) * S.CATFAT.recover; if (ct[k] > 0.995) delete ct[k]; } p.rec.catAt = Date.now(); this.catPush(p); } // ความอิ่มตัวต่อหมวดฟื้นเฉพาะตอนออนไลน์
     this.dirty = true;
     this.mktSend();
   }
@@ -918,7 +946,7 @@ class World {
     });
     send(p, { t: 'arcs', a: this.arcsPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
-    send(p, { t: 'proj', p: this.projPub() }); this.catPush(p); this.enJoin(p); this.enPush(p);
+    send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     this.orderPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
@@ -931,6 +959,7 @@ class World {
     this.tradeCancel(p, 'ผู้เล่นออกจากเกม');
     if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
     logEv(this.room, 'leave', { p: p.key, sec: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000) });
+    p.rec.catAt = Date.now();
     this.players.delete(p.id); this.addLog(`🚪 ${p.name} ออกไปแล้ว`);
     p.rec.x = p.x; p.rec.y = p.y;
     this.broadcast({ t: 'p-', id: p.id });
@@ -1318,6 +1347,7 @@ class World {
         const pool = FISH.filter(f => f.lv <= fl && !(rareCd && f.sell >= 100)).map(f => ({ f, w: f.w * (f.sell >= 100 ? 1 + 0.12 * (fl - 1) + 0.35 * (rod - 1) : 1) / (f.id === 'boot' ? 1 + rod : 1) * S.baitWeight(f, p.fish.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) })).filter(x => x.w > 0);
         let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
         for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
+        if (this.holdFull(p, 'fish_' + f.id, 1)) { this.toast(p, `🎒 ถือ ${f.emoji} ${f.name} ครบ ${S.holdCap('fish_' + f.id)} ตัวแล้ว ปล่อยกลับน้ำไป (ไปขายก่อนค่อยเก็บเพิ่ม)`); p.fish = null; return; }
         this.add(p, 'fish_' + f.id, 1);
         this.addXp(p, 'fish', f.xp); this.tire(p, 'fish', f.sell);
         if (f.sell >= 100) { p.rec.rareAt = Date.now() + S.ENERGY.rareCdMs; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.ENERGY.rareCdMs / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
@@ -1361,6 +1391,7 @@ class World {
     }
     if (prod) {
       const A = ANIMALS[prod.type], info = S.itemInfo(A.product);
+      if (this.holdFull(p, A.product, 2)) return this.holdToast(p, A.product); // เผื่อได้ผลผลิตงาม ×2 ผลผลิตยังอยู่กับสัตว์
       prod.prod = false;
       const mine = prod.feeder && prod.feeder === p.key; // คนที่ให้อาหาร (เลี้ยง) ตัวนี้มาเก็บผลผลิตเอง
       this.add(p, A.product, 1);
@@ -1378,6 +1409,7 @@ class World {
     if (tile && tile.c && S.cropStage(tile) === 3) {
       if (this.cropLocked(tile, p)) return this.toast(p, `🌱 ต้นนี้เป็นของ ${tile.on || 'ผู้เล่นอื่น'} — ถ้าเขาไม่มาเก็บภายใน ${Math.max(1, Math.ceil((S.DAY_MS - (tile.rm || 0)) / 60000))} นาที (1 วันในเกม) คนอื่นถึงจะมาเก็บได้`);
       const c = CROPS[tile.c];
+      if (this.holdFull(p, 'crop_' + tile.c, 1)) return this.holdToast(p, 'crop_' + tile.c); // ถือเต็ม: ผลผลิตยังอยู่ในแปลง
       this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp); this.tire(p, 'harvest', c.sell);
       this.toast(p, `เก็บ ${c.emoji} ${c.name}`); if (c.sell >= 100) this.addLog(`${c.emoji} ${p.name} เก็บเกี่ยว${c.name}สำเร็จ`);
       this.sfx(p, 'harvest'); this.event(p, 'harvest', tile.c); this.bookAdd(p, 'crop', tile.c);
@@ -1443,6 +1475,7 @@ class World {
     } else if (tool === 'axe') {
       const axe = inv.axe_3 ? 3 : inv.axe_2 ? 2 : inv.axe_1 ? 1 : 0;
       if (!axe) return this.toast(p, 'ต้องมีขวานก่อน ซื้อได้ที่ร้านช่างไม้ 🪓');
+      if (this.holdFull(p, 'log', 3) || this.holdFull(p, 'hardwood', 1)) return this.holdToast(p, this.holdFull(p, 'log', 3) ? 'log' : 'hardwood');
       if (!S.isChoppable(this.map, tx, ty)) return this.toast(p, 'ใช้ขวานฟันต้นไม้ 🌳 (ต้นไม้ขอบแมพตัดไม่ได้)');
       const key = tx + ',' + ty; let h = this.treeHp.get(key);
       if (!h || now - h.t > 20000) h = { hp: S.TREE_HP, t: now };

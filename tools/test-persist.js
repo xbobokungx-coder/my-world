@@ -75,6 +75,35 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   assert.ok(w.catOf(p, 'fish') > before + 0.2 && w.catOf(p, 'fish') <= 1, 'พักขายแล้วราคาหมวดฟื้นกลับ');
   console.log('  ตลาดหมวดปลา: ขายสลับ 12 ชนิด ' + units + ' ชิ้น ได้ ' + paid + ' จากราคารายชนิด ' + itemOnly + ' (' + Math.round(paid / itemOnly * 100) + '%) • ความอิ่มตัวหลังขาย ' + Math.round(cm * 100) + '% → พัก 30 นาที ' + Math.round(w.catOf(p, 'fish') * 100) + '%');
 }
+// ลิมิตการถือ / ตลาดหมวดฟื้นตอนออฟไลน์ / ใบสั่งซื้อ NPC
+{
+  const H = S.HOLD;
+  assert.deepStrictEqual(['crop_carrot', 'egg', 'log', 'crop_tomato', 'fish_whale', 'crop_mango', 'fish_humpback', 'dish_feast', 'bait', 'coin', 'seed_carrot'].map(S.holdCap), [100, 100, 100, 40, 17, 11, 11, 10, 0, 0, 0], 'เพดานการถือตามมูลค่า (ไม่ใช่ของขาย = ไม่จำกัด)');
+  for (const k of S.SELLABLE) { const c = S.holdCap(k); assert.ok(c >= H.min && c <= H.max, k + ' เพดานต้องอยู่ในช่วง'); }
+  p.rec.inv.fish_whale = S.holdCap('fish_whale') - 1; assert.ok(!w.holdFull(p, 'fish_whale', 1) && w.holdFull(p, 'fish_whale', 2), 'ถือเกือบเต็ม: เพิ่ม 1 ได้ เพิ่ม 2 เกิน');
+  p.rec.inv.fish_whale = S.holdCap('fish_whale'); assert.ok(w.holdFull(p, 'fish_whale', 1), 'ถือเต็มแล้วเพิ่มไม่ได้'); delete p.rec.inv.fish_whale;
+  // ตลาดหมวดฟื้นตามเวลาจริงตอนออฟไลน์
+  p.rec.cat = { fish: 0.5 }; p.rec.catAt = Date.now() - 60 * 60000; w.catJoin(p);
+  assert.ok(Math.abs(p.rec.cat.fish - (1 - 0.5 * Math.pow(1 - S.CATFAT.recover, 60))) < 1e-3, 'ออฟไลน์ 60 นาที ตลาดหมวดฟื้นตามเวลาจริง');
+  p.rec.cat = null;
+  // ใบสั่งซื้อ NPC: ไม่ล้นกระดาน ราคา 115% ของราคาร้านตอนนั้น สินค้าสลับ ไม่ซ้ำใบที่เปิดอยู่
+  w.orders = []; for (const k of S.SELLABLE) w.market[k] = w.market[k] || { m: 1, t: 1 }; let sameCat = 0, last = null; const seen = [];
+  for (let i = 0; i < 60; i++) {
+    const before = new Set(w.orders.map(o => o.id)); w.npcPostOrders(); const o = w.orders.find(x => !before.has(x.id)); assert.ok(o, 'ต้องมีใบใหม่ทุกวัน');
+    const info = S.itemInfo(o.item), m = w.market[o.item].m; assert.strictEqual(o.perUnit, Math.max(1, Math.round(info.sell * m * S.ORDER.npcPremium)), 'NPC จ่าย 115% ของราคาร้าน');
+    const cat = S.sellCat(o.item); if (cat === last) sameCat++; last = cat; seen.push(o.item);
+    const open = w.orders.filter(x => x.npc); assert.ok(open.length <= S.ORDER.npcMaxOpen, 'ใบ NPC ต้องไม่เกิน ' + S.ORDER.npcMaxOpen); assert.strictEqual(new Set(open.map(x => x.item)).size, open.length, 'ไม่มีสินค้าซ้ำในใบที่เปิดอยู่');
+  }
+  assert.ok(new Set(seen).size >= 25, 'เมนูต้องหมุนเวียนหลากหลาย (ได้ ' + new Set(seen).size + ' ชนิดจาก 60 ใบ)'); assert.ok(sameCat <= 6, 'หมวดซ้ำติดกันต้องน้อย (' + sameCat + ')');
+  // ใบของผู้เล่นต้องขึ้นก่อนใบ NPC
+  w.orders.push({ id: 99999, by: 'someone', byName: 'เพื่อน', npc: false, item: 'crop_carrot', qty: 5, filled: 0, perUnit: 20, esc: 100, exp: Date.now() + 1e7 });
+  w.orders.push({ id: 100000, by: p.key, byName: 'tester', npc: false, item: 'crop_corn', qty: 5, filled: 0, perUnit: 30, esc: 150, exp: Date.now() + 1e7 });
+  const list = w.ordersPub(p).list; assert.ok(list[0].mine && !list[1].npc && list.slice(2).every(x => x.npc), 'ลำดับ: ใบของเรา → ใบผู้เล่นอื่น → NPC');
+  // โหลดข้อมูลเดิมที่ล้น (59 ใบ NPC) ต้องถูกตัดเหลือ npcMaxOpen
+  w.orders = []; for (let i = 0; i < 59; i++) w.orders.push({ id: 200 + i, by: '', byName: 'x', npc: true, item: S.SELLABLE[i % S.SELLABLE.length], qty: 10, filled: 0, perUnit: 10, esc: 0, exp: Date.now() + i * 1000 });
+  w.trimNpc(S.ORDER.npcMaxOpen); assert.strictEqual(w.orders.length, S.ORDER.npcMaxOpen, 'ตัดใบ NPC ที่ล้น');
+  console.log('  ใบสั่งซื้อ NPC: 60 ใบหมุนเวียน ' + new Set(seen).size + ' ชนิด หมวดซ้ำติดกัน ' + sameCat + ' ครั้ง เปิดค้างไม่เกิน ' + S.ORDER.npcMaxOpen);
+}
 const w2 = new World('main');
 assert.strictEqual(w2.projects.bridge.coin, 5000, 'bridge coin lost after reload');
 assert.strictEqual(w2.projects.lighthouse.coin, 500, 'lighthouse coin lost after reload');
