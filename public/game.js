@@ -890,8 +890,10 @@ $('shopClose').onclick = closeShop;
 $('shop').addEventListener('pointerdown', e => { if (e.target === $('shop')) closeShop(); });
 const animalCount = type => { let n = 0; animals.forEach(a => { if (a.type === type) n++; }); return n; };
 let farmTab = 'gear';
-const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '🌱 เมล็ดพันธุ์']], fish: [['gear', '🎣 อุปกรณ์ตกปลา'], ['sell', '🐟 ขายปลา']],
-  food: [['buy', '🍜 ซื้ออาหาร'], ['cook', '👨‍🍳 ทำอาหาร']], animal: [['feed', '🌾 อาหาร / ยา'], ['pets', '🐾 สัตว์เลี้ยง']] };
+// ทุกร้านที่รับซื้อมีแท็บ 💰 ขาย ไว้ท้ายสุด (แท็บซื้อของร้านที่ไม่มีแท็บเดิม)
+const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '🌱 เมล็ดพันธุ์'], ['sell', '💰 ขายผลผลิต']], fish: [['gear', '🎣 อุปกรณ์ตกปลา'], ['sell', '🐟 ขายปลา']],
+  food: [['buy', '🍜 ซื้ออาหาร'], ['cook', '👨‍🍳 ทำอาหาร'], ['sell', '💰 ขาย']], animal: [['feed', '🌾 อาหาร / ยา'], ['pets', '🐾 สัตว์เลี้ยง'], ['sell', '💰 ขาย']],
+  wood: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']], furn: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']] };
 const seedProfit = k => { const c = CROPS[k.slice(5)]; return (c.sell - c.seed) / (c.time / 60000); };
 function renderShop() {
   const sh = SHOPS[shopKind]; if (!sh) return;
@@ -904,7 +906,7 @@ function renderShop() {
       + '<p style="font-size:12px;opacity:.65">เมื่อเปิดขายแล้วจะใช้เดินทางได้เร็วขึ้น</p>';
     return;
   }
-  const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'seed', tabs = SHOP_TABS[shopKind], sellTab = shopKind === 'fish' && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'pets';
+  const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'seed', tabs = SHOP_TABS[shopKind], sellTab = !!tabs && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'pets';
   let h = tabs ? `<div class="tabs">${tabs.map(([c, n]) => `<button class="tab${farmTab === c ? ' on' : ''}" data-ftab="${c}">${n}</button>`).join('')}</div>` : '';
   h += sellTab || cookTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากกำไรต่อนาทีดีที่สุด → แย่ที่สุด)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : 'ซื้อ') + '</div>';
   let keys = sellTab || cookTab ? [] : isFarm ? sh.buy.filter(k => k.startsWith('seed_') === seedTab) : shopKind === 'animal' ? sh.buy.filter(k => !!itemInfo(k).animal === petTab) : sh.buy;
