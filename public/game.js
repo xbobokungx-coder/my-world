@@ -2023,11 +2023,12 @@ function buildBase() {
   for (const b of BUILDINGS) {
     const bx = b.x0 * TS, by = b.y0 * TS, bw = (b.x1 - b.x0 + 1) * TS, bh = (b.y1 - b.y0 + 1) * TS;
     if (b.kind === 'sign') { // ป้ายใหญ่ของลานตู้เกม (ไม่ใช่อาคาร)
-      g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(bx + 4, by + 24, bw - 8, 8);
-      g.fillStyle = '#6b4423'; g.fillRect(bx + 10, by + 6, 8, 26); g.fillRect(bx + bw - 18, by + 6, 8, 26);
-      g.fillStyle = b.roof; g.fillRect(bx, by - 2, bw, 22); g.fillStyle = '#fff'; g.fillRect(bx + 3, by + 1, bw - 6, 16);
-      g.fillStyle = b.roof; g.fillRect(bx + 5, by + 3, bw - 10, 12);
-      gh.font = `bold ${b.name.length > 6 ? 12 : 14}px ${FONT}`; gh.fillStyle = '#fff'; gh.fillText(`${b.sign} ${b.name} ${b.sign}`, bx + bw / 2, by + 9.5);
+      const sw = bw * 0.5, sx = bx + (bw - sw) / 2; // ป้ายเล็กลงครึ่งความกว้าง เขียนแค่ Arcade (พื้นที่กดยังเท่าเดิม)
+      g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(sx + 2, by + 20, sw - 4, 5);
+      g.fillStyle = '#6b4423'; g.fillRect(sx + 4, by + 6, 4, 16); g.fillRect(sx + sw - 8, by + 6, 4, 16);
+      g.fillStyle = b.roof; g.fillRect(sx, by + 1, sw, 16); g.fillStyle = '#fff'; g.fillRect(sx + 2, by + 3, sw - 4, 12);
+      g.fillStyle = b.roof; g.fillRect(sx + 3, by + 4, sw - 6, 10);
+      gh.font = `bold 9px ${FONT}`; gh.fillStyle = '#fff'; gh.fillText('Arcade', bx + bw / 2, by + 9.5);
       continue;
     }
     if (b.kind === 'cinema') { // จอหนังกลางแปลง: เสา 2 ต้น + จอขาวใหญ่
@@ -2659,7 +2660,7 @@ function step(now) {
   if (hubSign) {
     const bx = hubSign.x0 * TS, by = hubSign.y0 * TS, bw = (hubSign.x1 - hubSign.x0 + 1) * TS, hov = mouse.active && hubSignAt(mouse.tx, mouse.ty), pl = 0.5 + 0.5 * Math.sin(now / 320);
     ctx.lineWidth = hov ? 3 : 2; ctx.strokeStyle = hov ? '#ffffff' : `rgba(255,226,102,${0.35 + 0.55 * pl})`; ctx.strokeRect(bx - 2, by - 4, bw + 4, 26);
-    const lt = hov ? '👆 กดเลย!' : '👆 แตะดูแต้ม & อันดับ', ly = by - 14 - (hov ? 0 : pl * 2);
+    const lt = hov ? '👆 กดเลย!' : '👆 คะแนน', ly = by - 14 - (hov ? 0 : pl * 2);
     ctx.font = `bold 10px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const lw = ctx.measureText(lt).width + 12;
     ctx.fillStyle = '#3d2a1a'; ctx.fillRect(bx + bw / 2 - lw / 2 - 1, ly - 8, lw + 2, 17); ctx.fillStyle = hov ? '#ffe266' : '#fff3d6'; ctx.fillRect(bx + bw / 2 - lw / 2, ly - 7, lw, 15);
     ctx.fillStyle = '#3d2a1a'; ctx.fillText(lt, bx + bw / 2, ly);
