@@ -825,7 +825,7 @@ function renderBag() {
     let h = `<div class="row"><span>🪙 เหรียญ</span><b>${inv.coin || 0}</b></div>`;
     h += `<div class="tabs">` + BAG_SUBS.map(([id, t]) => `<button class="tab${id === sub[0] ? ' on' : ''}" data-sub="${id}">${t}</button>`).join('') + '</div>';
     const ks = Object.keys(inv).filter(k => { const i = itemInfo(k); return i && sub[2].includes(i.cat) && inv[k] > 0; });
-    h += ks.length ? `<div class="grid mini">` + ks.map(k => { const i = itemInfo(k); return `<div class="card mini" data-info="${k}" title="${i.name} ×${inv[k]}"><b>${i.emoji}</b>${inv[k]}</div>`; }).join('') + '</div>' : '<p style="opacity:.7">หมวดนี้ยังไม่มีของ</p>';
+    h += ks.length ? `<div class="grid mini">` + ks.map(k => { const i = itemInfo(k); return `<div class="card mini" data-info="${k}" title="${i.name} ×${inv[k]}"><b>${i.emoji}</b><span class="nm">${i.name}</span><span class="cnt">${inv[k]}</span></div>`; }).join('') + '</div>' : '<p style="opacity:.7">หมวดนี้ยังไม่มีของ</p>';
     if (sub[0] === 'other') { // อุปกรณ์ความทนทาน (ซ่อมได้) อยู่ในหมวดอื่นๆ
       h += `<div class="sec">🎣 อุปกรณ์ (ความทนทาน)</div><div class="grid">` + Object.keys(DURABILITY).filter(t => t !== 'axe' || axeLevel() > 0).map(t => {
         const D = DURABILITY[t], tier = t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : 1, fx = dur[t] ? dur[t][2] || 0 : 0, mx = durMax(t, tier, fx), cur = dur[t] ? dur[t][0] : mx, pct = Math.round(cur / mx * 100);
@@ -2400,9 +2400,11 @@ function makeMiniBase() {
   for (const b of BUILDINGS) { g.fillStyle = b.roof; g.fillRect(b.x0, b.y0, b.x1 - b.x0 + 1, 1); }
   return c;
 }
-function layoutHud() { // วางแผนที่/แชทใต้แถบปุ่มด้านบน ไม่ให้ทับกันเมื่อปุ่มขึ้นบรรทัดใหม่
+function layoutHud() { // แผนที่อยู่มุมบนขวาสุด แถบปุ่มด้านบนเว้นที่ให้ ไม่ทับกัน • คู่มือ/แชทอยู่ใต้แถบปุ่ม
+  const mw = $('mini').classList.contains('hidden') ? 0 : $('mini').offsetWidth;
+  $('hudTop').style.right = `calc(${mw ? mw + 24 : 8}px + var(--sar, 0px))`;
   const top = Math.round($('hudTop').getBoundingClientRect().bottom + 6);
-  $('mini').style.top = top + 'px'; $('guide').style.top = top + 'px';
+  $('guide').style.top = top + 'px';
   if (isTouch) $('chat').style.top = top + 'px';
 }
 function sizeMini() {
