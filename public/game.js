@@ -91,7 +91,7 @@ const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 // ---------- messages ----------
 function mkPlayer(o) {
-  return { id: o.id, held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', pm: o.pm || 'follow', pax: o.pax || o.x, pay: o.pay || o.y, psick: !!o.psick, x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
+  return { id: o.id, held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', pm: o.pm || 'follow', pax: o.pax || o.x, pay: o.pay || o.y, psick: !!o.psick, pname: o.pname || '', x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
 }
 function applyTrees(list) { // ซิงก์ต้นไม้ที่ตัดได้ให้ตรงกับเซิร์ฟเวอร์ (ต้นไม้ขอบแมพไม่เปลี่ยน)
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (isChoppable(MAP, x, y)) MAP[y][x] = T.GRASS;
@@ -128,8 +128,8 @@ function handle(m) {
     case 'status': { const p = players.get(m.id); if (p) { p.status = m.s || ''; if (peopleShown()) renderPeople(true); } break; }
     case 'voice': { const p = players.get(m.id); if (p) { p.voice = m.on; if (!m.on) p.speaking = false; } break; }
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
-    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.cp = null; if (p === me) refreshOpen(); } break; }
-    case 'pst': petSt = m.pst || {}; refreshOpen(); updatePetBtn(); break;
+    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.cp = null; if (p === me) refreshOpen(); } break; }
+    case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
     case 'tree': if (MAP[m.y]) { if (m.on) { if (MAP[m.y][m.x] === T.GRASS) MAP[m.y][m.x] = T.TREE; } else if (isChoppable(MAP, m.x, m.y)) MAP[m.y][m.x] = T.GRASS; } break;
     case 'hun': setHunger(m.v); break;
     case 'rtc': onRtc(m.from, m.d); break;
@@ -900,16 +900,17 @@ const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '�
 // เมนูปลาใหม่ขายได้เฉพาะแท็บ 💰 ขาย ของร้านอาหาร (ไม่ขายใต้เมนูทำอาหารเดิม)
 const FISH_DISH_SELL_TAB = new Set(['dish_fishsoup', 'dish_sashimi', 'dish_fishburger', 'dish_fishpie']);
 const seedProfit = k => { const c = CROPS[k.slice(5)]; return (c.sell - c.seed) / (c.time / 60000); };
-let petSt = {}; // สถานะสัตว์เลี้ยงของเรา: { dog: { h: ความอิ่ม, sick } }
+let petNames = {}, petSt = {}; // สถานะสัตว์เลี้ยงของเรา: { dog: { h: ความอิ่ม, sick } }
 function petPanelHtml() { // เมนูสัตว์เลี้ยง: พาออกมา/เดินตาม/ปล่อยเล่น/เก็บ + ให้อาหาร + รักษา (ใช้ทั้งในร้านและเมนู 🐾)
   const own = Object.keys(COMPANIONS).filter(c => inv['pet_' + c] > 0), cur = me.pet || '', mode = me.pm || 'follow';
   let h = '<div class="sec">🐾 สัตว์เลี้ยงของคุณ</div>';
   if (!own.length) return h + '<p style="opacity:.7;margin:6px 0">ยังไม่มีสัตว์เลี้ยง ซื้อได้ที่ร้านสัตว์เลี้ยง (36,11) 🐶🐱🐦</p>';
   for (const c of own) {
     const C = COMPANIONS[c], st = petSt[c] || { h: 100, sick: false }, out = cur === c, hp = Math.round(st.h);
-    h += `<div class="row"><span>${C.emoji} ${C.name}${st.sick ? ' 🤒 <small style="color:#c0392b">ป่วย</small>' : ''}<br><small>${out ? (mode === 'play' ? '🎾 กำลังวิ่งเล่น' : '🚶 เดินตามคุณ') : '🏠 อยู่บ้าน'} • อิ่ม ${hp}/100${out ? '' : ' (ไม่หิวตอนอยู่บ้าน)'}</small><div class="hbar" style="width:120px;height:7px"><i style="width:${hp}%;${hp <= 25 ? 'background:#e74c3c' : ''}"></i></div></span><span>`
+    h += `<div class="row"><span>${C.emoji} ${petNames[c] ? esc(petNames[c]) + ' <small>(' + C.name + ')</small>' : C.name}${st.sick ? ' 🤒 <small style="color:#c0392b">ป่วย</small>' : ''}<br><small>${out ? (mode === 'play' ? '🎾 กำลังวิ่งเล่น' : '🚶 เดินตามคุณ') : '🏠 อยู่บ้าน'} • อิ่ม ${hp}/100${out ? '' : ' (ไม่หิวตอนอยู่บ้าน)'}</small><div class="hbar" style="width:120px;height:7px"><i style="width:${hp}%;${hp <= 25 ? 'background:#e74c3c' : ''}"></i></div></span><span>`
       + (out ? `<button class="btn small${mode === 'follow' ? ' muted' : ''}" data-petmode="follow" data-pet="${c}">🚶 เดินตาม</button> <button class="btn small${mode === 'play' ? ' muted' : ''}" data-petmode="play" data-pet="${c}">🎾 ปล่อยเล่น</button> <button class="btn small muted" data-petmode="store" data-pet="">🏠 เก็บ</button>`
-        : `<button class="btn small" data-petmode="follow" data-pet="${c}">🐾 พาออกมา</button>`) + '</span></div>';
+        : `<button class="btn small" data-petmode="follow" data-pet="${c}">🐾 พาออกมา</button>`)
+      + ` <button class="btn small muted" data-petname="${c}">✏️ ตั้งชื่อ</button></span></div>`;
   }
   const ci = cur ? petSt[cur] || { h: 100, sick: false } : null;
   h += '<div class="sec">🦴 ดูแลสัตว์เลี้ยง</div>'
@@ -919,6 +920,7 @@ function petPanelHtml() { // เมนูสัตว์เลี้ยง: พ�
   return h;
 }
 function bindPet(body) {
+  body.querySelectorAll('[data-petname]').forEach(b => b.onclick = () => { const c = b.dataset.petname, n = prompt(`ตั้งชื่อ${COMPANIONS[c].emoji} ${COMPANIONS[c].name} (ไม่เกิน 12 ตัวอักษร เว้นว่าง = ล้างชื่อ)`, petNames[c] || ''); if (n !== null) send({ t: 'petname', pet: c, name: n }); });
   body.querySelectorAll('[data-petmode]').forEach(b => b.onclick = () => send({ t: 'pet', pet: b.dataset.pet, mode: b.dataset.petmode }));
   body.querySelectorAll('[data-petcare]').forEach(b => b.onclick = () => send({ t: 'petcare', a: b.dataset.petcare }));
 }
@@ -2444,6 +2446,7 @@ function drawCompanion(q, now) { // สัตว์เลี้ยงคู่�
   } else {
     drawPet(q, now);
   }
+  if (q.name) { ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; const ny = q.y - (q.kind === 'dog' ? 14 : q.kind === 'bird' ? 20 : 12), nw = Math.ceil(ctx.measureText(q.name).width) + 6; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(Math.round(q.x - nw / 2), ny - 10, nw, 11); ctx.fillStyle = '#fff3d6'; ctx.fillText(q.name, q.x, ny - 1); }
   if (q.sick) PixelUI.world(ctx, '🤒', q.x, q.y - (q.kind === 'dog' ? 16 : q.kind === 'bird' ? 24 : 14) + Math.sin(now / 200), 13);
   else if (q.sayAt && now - q.sayAt < 1800) { const t = (now - q.sayAt) / 1800; PixelUI.world(ctx, '💕', q.x + 6, q.y - (q.kind === 'dog' ? 14 : q.kind === 'bird' ? 22 : 12) - t * 12, 11); }
 }
@@ -2629,7 +2632,7 @@ function step(now) {
     if (!p.pet || !COMPANIONS[p.pet]) { p.cp = null; continue; }
     const C = COMPANIONS[p.pet], bird = C.kind === 'bird', play = p.pm === 'play';
     const cp = p.cp || (p.cp = { id: p.id, kind: C.kind, v: C.v, x: p.x - 18, y: p.y + 6, dx: 1, anim: Math.random() * 6, moving: false, chase: false, wait: 0, gx: p.x, gy: p.y, nextSay: now + 8000 + Math.random() * 15000 });
-    cp.sick = p.psick;
+    cp.sick = p.psick; cp.name = p.pname;
     const ax = play ? p.pax : p.x, ay = play ? p.pay : p.y, od = Math.hypot(p.x - cp.x, p.y - cp.y);
     const base = (bird ? 120 : C.kind === 'dog' ? 100 : 85) * (cp.sick ? 0.5 : 1);
     const free = (x, y) => bird || !blockedAt(MAP, x, y);

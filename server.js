@@ -958,16 +958,16 @@ class World {
     send(p, {
       t: 'w', admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), house: this.housePub(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
-      players: [...this.players.values()].map(q => ({ id: q.id, held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, pm: q.pm, pax: q.pax, pay: q.pay, psick: !!(q.pet && this.petSt(q, q.pet).sick), x: q.x, y: q.y, dir: q.dir, voice: !!q.voice })),
+      players: [...this.players.values()].map(q => ({ id: q.id, held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, pm: q.pm, pax: q.pax, pay: q.pay, psick: !!(q.pet && this.petSt(q, q.pet).sick), pname: q.pet ? this.petName(q, q.pet) : '', x: q.x, y: q.y, dir: q.dir, voice: !!q.voice })),
     });
-    send(p, { t: 'pst', pst: rec.pst || {} });
+    send(p, { t: 'pst', pst: rec.pst || {}, names: rec.pnames || {} });
     send(p, { t: 'arcs', a: this.arcsPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
     send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     this.orderPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
-    this.broadcast({ t: 'p+', id: p.id, held: p.held || '', title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, pet: p.pet, pm: p.pm, pax: p.pax, pay: p.pay, psick: !!(p.pet && this.petSt(p, p.pet).sick), x: p.x, y: p.y }, p);
+    this.broadcast({ t: 'p+', id: p.id, held: p.held || '', title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, pet: p.pet, pm: p.pm, pax: p.pax, pay: p.pay, psick: !!(p.pet && this.petSt(p, p.pet).sick), pname: p.pet ? this.petName(p, p.pet) : '', x: p.x, y: p.y }, p);
     this.dirty = true;
     return { p };
   }
@@ -1051,6 +1051,7 @@ class World {
       case 'eat': this.eat(p, m.item); break;
       case 'sellback': this.sellback(p, m.item); break;
       case 'pet': { const id = m.pet || ''; if (!id || p.rec.inv['pet_' + id] > 0) this.setPet(p, id, m.mode); break; }
+      case 'petname': this.petRename(p, m.pet, m.name); break;
       case 'petcare': this.petCare(p, m.a); break; // เลือกสัตว์เลี้ยงที่จะพาไป หรือเก็บเข้าบ้าน
       case 'repair': this.repair(p, m.tool); break;
       case 'rebuy': this.rebuy(p, m.tool); break;
@@ -1087,8 +1088,16 @@ class World {
   }
 
   petSt(p, id) { const o = p.rec.pst || (p.rec.pst = {}); return o[id] || (o[id] = { h: 100, sick: false }); } // สถานะสัตว์เลี้ยงแต่ละตัว: h = ความอิ่ม 0-100, sick = ป่วย (เฉพาะตัวที่พาออกมาถึงจะหิว/ป่วย)
-  petPubOf(p) { const id = p.pet || ''; return { t: 'pet', id: p.id, pet: id, mode: p.pm || 'follow', ax: Math.round(p.pax || 0), ay: Math.round(p.pay || 0), sick: !!(id && this.petSt(p, id).sick) }; }
-  petPush(p) { const o = this.petPubOf(p); this.broadcast(o, p); send(p, o); send(p, { t: 'pst', pst: p.rec.pst || {} }); }
+  petPubOf(p) { const id = p.pet || ''; return { t: 'pet', id: p.id, pet: id, mode: p.pm || 'follow', ax: Math.round(p.pax || 0), ay: Math.round(p.pay || 0), sick: !!(id && this.petSt(p, id).sick), name: id ? this.petName(p, id) : '' }; }
+  petName(p, id) { const n = p.rec.pnames && p.rec.pnames[id]; return typeof n === 'string' ? n : ''; } // ชื่อที่เจ้าของตั้งให้สัตว์แต่ละตัว (ไม่เกิน 12 ตัวอักษร)
+  petRename(p, id, name) {
+    if (typeof id !== 'string' || !S.COMPANIONS[id] || !(p.rec.inv['pet_' + id] > 0)) return;
+    name = Array.from(String(name || '').replace(/[\u0000-\u001f<>&"]/g, '').replace(/\s+/g, ' ').trim()).slice(0, 12).join('');
+    (p.rec.pnames || (p.rec.pnames = {}))[id] = name; this.dirty = true;
+    this.toast(p, name ? `ตั้งชื่อ${S.COMPANIONS[id].emoji}เป็น "${name}" แล้ว` : `ล้างชื่อ${S.COMPANIONS[id].emoji}แล้ว`);
+    this.petPush(p);
+  }
+  petPush(p) { const o = this.petPubOf(p); this.broadcast(o, p); send(p, o); send(p, { t: 'pst', pst: p.rec.pst || {}, names: p.rec.pnames || {} }); }
   setPet(p, id, mode) { // id = ชนิดสัตว์เลี้ยงที่พาออกมา ('' = เก็บเข้าบ้าน) ต้องเป็นตัวที่ซื้อไว้แล้ว • mode: follow = เดินตาม, play = ปล่อยวิ่งเล่นรอบจุดที่ยืนอยู่
     id = typeof id === 'string' && S.COMPANIONS[id] && p.rec.inv['pet_' + id] > 0 ? id : '';
     p.rec.pet = p.pet = id; p.rec.pmode = p.pm = mode === 'play' ? 'play' : 'follow';
@@ -1115,7 +1124,7 @@ class World {
     const st = this.petSt(p, id), C = S.COMPANIONS[id], was = st.sick;
     st.h = Math.max(0, st.h - S.PETCARE.hungerTick);
     if (!st.sick && st.h < S.PETCARE.sickBelow && Math.random() < S.PETCARE.sickChance) { st.sick = true; this.toast(p, `🤒 ${C.emoji} ${C.name}ป่วยแล้ว! รักษาด้วยยา 💊 ในเมนู 🐾`); }
-    if (st.sick !== was) this.petPush(p); else send(p, { t: 'pst', pst: p.rec.pst });
+    if (st.sick !== was) this.petPush(p); else send(p, { t: 'pst', pst: p.rec.pst, names: p.rec.pnames || {} });
   }
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); }
   treeList() { const out = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) out.push([x, y]); return out; }
