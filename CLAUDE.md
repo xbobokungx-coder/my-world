@@ -70,7 +70,11 @@ PORT=3001 DATA_DIR=./data-dev npm start   # เปิดที่ http://localho
 
 ## สำรองข้อมูล
 
-ข้อมูลผู้เล่นอยู่ที่ `/root/my-world/data/` (ไม่ขึ้น git) ก่อนแก้โครงสร้างข้อมูลหรืออัปเดตใหญ่:
+ข้อมูลผู้เล่นอยู่ที่ `/root/my-world/data/` (ไม่ขึ้น git)
+
+**สำรองอัตโนมัติ:** `/etc/cron.d/my-world-backup` รัน `tools/backup.sh` ทุกชั่วโมง (นาทีที่ 5) เก็บที่ `backup/auto/hourly/` 48 ชุด และ `backup/auto/daily/` 14 วัน (ตรวจว่าไฟล์ JSON อ่านได้ก่อนเก็บ) log อยู่ที่ `/var/log/my-world-backup.log` กู้คืน: `systemctl stop my-world` → `tar xzf backup/auto/hourly/<ไฟล์>.tar.gz -C /root/my-world` → `systemctl start my-world` (ถ้าย้ายเครื่อง ต้องสร้างไฟล์ cron ใหม่)
+
+ก่อนแก้โครงสร้างข้อมูลหรืออัปเดตใหญ่ สำรองด้วยมืออีกชุด:
 
 ```bash
 mkdir -p /root/my-world/backup && cp -a /root/my-world/data /root/my-world/backup/data-$(date +%Y%m%d-%H%M)

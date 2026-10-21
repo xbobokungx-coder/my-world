@@ -367,6 +367,7 @@ class World {
     this.projPush();
   }
   chestPush() { this.dirty = true; this.broadcast({ t: 'chest', c: this.chest }); }
+  toChest(fee) { const n = Math.floor(fee * S.TOWN.feeShare); if (n > 0) { this.chest.coin += n; this.chestPush(); } } // แบ่งค่าเตา/ค่าบริการตู้เกมเข้ากองกลาง (ไว้ดูแล/ชุบชีวิตสัตว์)
   nearChest(p) { return Math.hypot(p.x - (S.CHEST.x + 0.5) * TS, p.y - (S.CHEST.y + 0.5) * TS) < 4.5 * TS; }
   chestHandle(p, m) {
     if (!this.nearChest(p)) return this.toast(p, 'ต้องอยู่ใกล้ตู้เซฟกองกลางที่ลานกองไฟ');
@@ -816,10 +817,10 @@ class World {
       for (const k of own) { const take = Math.min(left, inv[k] - (use[k] || 0)); if (take > 0) { use[k] = (use[k] || 0) + take; left -= take; } if (!left) break; }
       if (left) return this.toast(p, 'วัตถุดิบไม่พอ');
     }
-    const fee = Math.round(r.sell * S.COOK_FEE); // ค่าเช่าเตา: เหรียญที่หายไปจากระบบ (กันครัวเป็นช่องสร้างเงินล้วนๆ)
+    const fee = Math.round(r.sell * S.COOK_FEE); // ค่าเช่าเตา: ครึ่งหนึ่งหายไปจากระบบ อีกครึ่งเข้ากองกลาง (TOWN.feeShare) กันครัวเป็นช่องสร้างเงินล้วนๆ
     if ((inv.coin || 0) < fee) return this.toast(p, `ค่าเช่าเตา 🪙 ${fee} เหรียญไม่พอ`);
     for (const [k, n] of Object.entries(use)) this.add(p, k, -n);
-    this.add(p, 'coin', -fee, 'cookfee'); this.add(p, r.id, 1);
+    this.add(p, 'coin', -fee, 'cookfee'); this.toChest(fee); this.add(p, r.id, 1);
     this.addXp(p, 'cook', r.xp); p.cookReady = now + r.time;
     this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name} สำเร็จ! (+${r.xp} XP เชฟ • ค่าเตา -🪙${fee} • ขายได้ราว 🪙${r.sell})`); this.sfx(p, 'collect');
     this.event(p, 'cook');
@@ -1604,7 +1605,7 @@ class World {
         if (W === t.host) { if (got - bet > rem) { got = bet + rem; rake = pot - got; capped = true; } this.botNetAdd(t.host.key, got - bet); }
         else this.botNetAdd(t.host.key, -bet);
       }
-      this.payKey(W, got);
+      this.payKey(W, got); if (!t.bot) this.toChest(rake);
       t.msg = (msg ? `${msg} — ${W.name} ชนะ!` : `${W.name} ชนะ!`) + (bet && (!t.bot || W === t.host) ? ` ได้ 🪙 ${got}${rake ? ` (หักค่าบริการ ${rake})` : ''}${capped ? ' • ครบโควตากำไรจากบอทวันนี้' : ''}` : bet ? ` (เสียเดิมพัน 🪙 ${bet})` : '');
     }
     t.paid = true;
@@ -1893,6 +1894,7 @@ class World {
     if (t.bot && t.bet && humans[0]) { const hk = humans[0].key; if (hw.length) { const rem = this.botRemain(hk); if (pot - t.bet > rem) { pot = t.bet + rem; rake = gross - pot; } this.botNetAdd(hk, pot - t.bet); } else this.botNetAdd(hk, -t.bet); }
     const share = hw.length ? Math.floor(pot / ws.length) : 0;
     for (const q of hw) this.payKey(q, share);
+    if (!t.bot) this.toChest(rake);
     const names = ws.map(q => q.name).join(', ');
     Object.assign(t, { state: 'over', winners: ws.map(q => q.id), winner: names, resetAt: Date.now() + 20000, deadline: 0, botAt: 0 });
     t.msg = (ws.length > 1 ? `เสมอ! ${names} ร่วมชนะ` : ws.length ? `${names} ชนะ!` : 'ไม่มีผู้ชนะ') + (desc ? ` — ${desc}` : '') + (share ? ` ได้ 🪙 ${share}${rake ? ` (หักค่าบริการ ${rake})` : ''}` : '');
@@ -2073,6 +2075,7 @@ class World {
     if (t.bot && t.bet && humans[0]) { const hk = humans[0].key; if (w === humans[0]) { const rem = this.botRemain(hk); if (pot - t.bet > rem) { pot = t.bet + rem; rake = gross - pot; } this.botNetAdd(hk, pot - t.bet); } else this.botNetAdd(hk, -t.bet); }
     Object.assign(t, { state: 'over', winner: w.name, resetAt: Date.now() + 20000, deadline: 0, botAt: 0 });
     if (!w.bot) this.payKey(w, pot);
+    if (!t.bot) this.toChest(rake);
     t.msg = `${w.name} ชนะ!` + (pot ? ` ได้ 🪙 ${pot}${rake ? ` (หักค่าบริการ ${rake})` : ''}` : '');
     for (const q of humans) { const o = this.players.get(q.id); if (o && o.key === q.key) this.sfxTo(o, q === w ? 'win' : 'lose'); }
     if (!t.bot) for (const q of humans) this.arcAward(q.key, S.ARCPTS.play, q === w); // แต้มตู้เกม: เฉพาะเล่นกับคนจริง
@@ -2451,6 +2454,18 @@ class World {
           this.broadcast({ t: 'sfx', k: 'die', id: 0, x: Math.round(a.x), y: Math.round(a.y) });
         }
         if (!a.dead) this.careTick(a, A);
+      }
+      // ฝูงขั้นต่ำ: ชนิดที่เหลือน้อยกว่าจำนวนเริ่มต้น เกิดใหม่ฟรีทีละตัว (ผู้เล่นใหม่ต้องมีสัตว์ให้ทำคู่มือเสมอ แม้เงินกองกลางหมด)
+      this.respawnTimer = (this.respawnTimer || 0) + dt * 1000 * HFAST;
+      if (this.respawnTimer >= S.TOWN.respawnMs) {
+        this.respawnTimer = 0;
+        const type = Object.keys(ANIMALS).find(t => this.animals.filter(a => a.type === t && !a.dead).length < ANIMALS[t].init);
+        if (type) {
+          const A = ANIMALS[type];
+          if (this.chest.dead[type] > 0) this.chest.dead[type]--;
+          this.spawnAnimal(type); this.chestPush(); this.addLog(`🐣 ${A.emoji} ${A.name}ตัวใหม่มาอยู่ที่ทุ่ง`);
+          this.broadcast({ t: 'msg', text: `🐣 ${A.emoji} ${A.name}ตัวใหม่มาอยู่ที่ทุ่งแล้ว ช่วยกันให้อาหารด้วยนะ` });
+        }
       }
       // สุ่มสัตว์ป่วย: เช็กทุก 1 นาที ป่วยพร้อมกันได้ไม่เกิน 3 ตัวรวมทุกชนิด
       this.sickTimer += dt * 1000 * HFAST;
