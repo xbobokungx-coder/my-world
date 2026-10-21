@@ -71,7 +71,7 @@ class World {
         for (const [x, y] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2) this.map[y][x] = T.TREE;
       }
       mk = d.market || {}; this.mktDay = Number.isInteger(d.mktDay) ? d.mktDay : -1;
-      houseSaved = d.house || {}; townSaved = { log: d.log, chest: d.chest, stats: d.stats, village: d.village, week: d.week, orders: d.orders, banned: d.banned };
+      houseSaved = d.house || {}; townSaved = { log: d.log, chest: d.chest, projects: d.projects, stats: d.stats, village: d.village, week: d.week, orders: d.orders, banned: d.banned };
     } catch (e) {
       // ไม่มีไฟล์ = โลกใหม่ แต่ถ้ามีไฟล์แต่อ่านไม่ได้ ให้สำรองไว้ก่อน ไม่งั้นการบันทึกครั้งต่อไปจะเขียนทับข้อมูลเดิมทิ้ง
       if (e.code !== 'ENOENT') { try { fs.copyFileSync(this.file, this.file + '.broken-' + Date.now()); console.error('อ่านไฟล์บันทึกไม่ได้ สำรองไว้แล้ว:', e.message); } catch (e2) { /* ไม่มีอะไรให้สำรอง */ } }
