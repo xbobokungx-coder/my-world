@@ -182,7 +182,7 @@ function handle(m) {
     case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break;
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
     case 'chest': chestSt = m.c; if (townShown()) renderTown(); break;
-    case 'proj': projSt = m.p; if (townShown()) renderTown(); break;
+    case 'proj': projSt = m.p; checkBridge(); if (townShown()) renderTown(); break;
     case 'quests': {
       questSt = { list: m.list, total: m.total, title: m.title, pts: m.pts, dole: m.dole, starter: m.starter, streak: m.streak, book: m.book, wk: m.wk };
       updateGuide(); updateQuestBadge(); if (questShown()) renderQuestPanel(); if (bagShown() && bagTab === 'book') renderBag();
@@ -1959,9 +1959,31 @@ function buildBase() {
     g.fillStyle = '#7a4a24'; g.fillRect(cx + 3, cy + 8, 26, 21); g.fillStyle = '#a8703a'; g.fillRect(cx + 3, cy + 8, 26, 9);
     g.fillStyle = '#c98b4a'; g.fillRect(cx + 3, cy + 8, 26, 3); g.fillStyle = '#f1c40f'; g.fillRect(cx + 3, cy + 16, 26, 2); g.fillRect(cx + 13, cy + 14, 6, 7);
     g.fillStyle = '#5a3a1c'; g.fillRect(cx + 15, cy + 17, 2, 3); PixelUI.world(gh, '🪙', cx + 16, cy + 2, 14); }
+  // สะพานไม้ข้ามสระ (วาดเมื่อโครงการสะพานครบเป้า): พื้นไม้กระดานขวาง + ราวและเสาริมสองข้าง + เงาบนน้ำ
+  for (let ty = Shared.BRIDGE.y0; ty <= Shared.BRIDGE.y1; ty++) for (let tx = Shared.BRIDGE.x0; tx <= Shared.BRIDGE.x1; tx++) {
+    if (MAP[ty][tx] !== T.BRIDGE) continue;
+    const bx = tx * TS, by = ty * TS, L = tx === Shared.BRIDGE.x0, R = tx === Shared.BRIDGE.x1;
+    if (L) { g.fillStyle = 'rgba(10,40,80,.28)'; g.fillRect(bx - 5, by + 3, 5, TS); }
+    if (R) { g.fillStyle = 'rgba(10,40,80,.28)'; g.fillRect(bx + TS, by + 3, 5, TS); }
+    for (let i = 0; i < 4; i++) { // กระดานแผ่นละ 8px สลับเฉดสี มีร่องเข้ม
+      g.fillStyle = (i + ty) % 2 ? '#b57f46' : '#a8703a'; g.fillRect(bx, by + i * 8, TS, 8);
+      g.fillStyle = '#c99357'; g.fillRect(bx, by + i * 8, TS, 2); g.fillStyle = '#6e4624'; g.fillRect(bx, by + i * 8 + 7, TS, 1);
+    }
+    if (L) { g.fillStyle = '#5a3a1c'; g.fillRect(bx, by, 4, TS); g.fillStyle = '#8b5a2b'; g.fillRect(bx, by, 2, TS); }
+    if (R) { g.fillStyle = '#5a3a1c'; g.fillRect(bx + TS - 4, by, 4, TS); g.fillStyle = '#8b5a2b'; g.fillRect(bx + TS - 4, by, 2, TS); }
+    if (ty === Shared.BRIDGE.y0 || ty === Shared.BRIDGE.y1 || (ty - Shared.BRIDGE.y0) % 3 === 0) { // เสาราวทุก 3 ช่อง และหัว-ท้ายสะพาน
+      for (const px of [L ? bx - 1 : null, R ? bx + TS - 5 : null]) if (px !== null) { g.fillStyle = '#3f2814'; g.fillRect(px, by + 2, 6, 7); g.fillStyle = '#a8703a'; g.fillRect(px, by + 1, 6, 3); }
+    }
+  }
   return oc;
 }
-const base = buildBase();
+let base = buildBase();
+let bridgeBuilt = false;
+function checkBridge() { // สะพานครบเป้าแล้ว: แปลงช่องน้ำเป็นสะพาน แล้ววาดพื้นและแผนที่ย่อใหม่ (ทำครั้งเดียวต่อการโหลดหน้า)
+  const b = projSt.find(x => x.id === 'bridge');
+  if (bridgeBuilt || !b || !Shared.bridgeDone(b.coin)) return;
+  bridgeBuilt = true; Shared.applyBridge(MAP); base = buildBase(); miniBase = makeMiniBase();
+}
 
 // ---------- drawing helpers ----------
 function darken(hex, a) { const n = parseInt(hex.slice(1), 16); const f = c => Math.max(0, Math.round(c * (1 - a))); return `rgb(${f(n >> 16)},${f(n >> 8 & 255)},${f(n & 255)})`; }
@@ -2252,14 +2274,15 @@ function drawNight(dark, now) {
 }
 
 // ---------- Mini map (ย่อ/ขยาย/ซ่อนได้ ทั้ง PC และมือถือ) ----------
-const miniBase = (() => {
+let miniBase = makeMiniBase();
+function makeMiniBase() {
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
-  const col = { [T.GRASS]: '#7bc65a', [T.WATER]: '#4aa3df', [T.TREE]: '#3f9a3a', [T.BUILD]: '#c9a86a', [T.PATH]: '#dcbf82', [T.FENCE]: '#8b5a2b', [T.SAND]: '#efdfa4', [T.SHOP]: '#a0692f', [T.FLOOR]: '#c99a5b', [T.FURN]: '#c99a5b' };
+  const col = { [T.GRASS]: '#7bc65a', [T.WATER]: '#4aa3df', [T.TREE]: '#3f9a3a', [T.BUILD]: '#c9a86a', [T.PATH]: '#dcbf82', [T.FENCE]: '#8b5a2b', [T.SAND]: '#efdfa4', [T.SHOP]: '#a0692f', [T.FLOOR]: '#c99a5b', [T.FURN]: '#c99a5b', [T.BRIDGE]: '#a8703a' };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { g.fillStyle = (MAP[y][x] === T.GRASS && inFarm(x, y)) ? '#8bbf5a' : col[MAP[y][x]]; g.fillRect(x, y, 1, 1); }
   for (const b of BUILDINGS) { g.fillStyle = b.roof; g.fillRect(b.x0, b.y0, b.x1 - b.x0 + 1, 1); }
   return c;
-})();
+}
 function layoutHud() { // วางแผนที่/แชทใต้แถบปุ่มด้านบน ไม่ให้ทับกันเมื่อปุ่มขึ้นบรรทัดใหม่
   const top = Math.round($('hudTop').getBoundingClientRect().bottom + 6);
   $('mini').style.top = top + 'px'; $('guide').style.top = top + 'px';

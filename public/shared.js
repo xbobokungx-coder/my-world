@@ -1,7 +1,7 @@
 // โค้ดที่ใช้ร่วมกันระหว่างเซิร์ฟเวอร์และเบราว์เซอร์ (แมพ, ข้อมูลพืช/ปลา/สัตว์/ร้าน, เลเวล, การชน)
 (function (root) {
   const TS = 32, W = 64, H = 46;
-  const T = { GRASS: 0, WATER: 1, TREE: 2, BUILD: 3, PATH: 4, FENCE: 5, SAND: 6, SHOP: 7, FLOOR: 8, FURN: 9 };
+  const T = { GRASS: 0, WATER: 1, TREE: 2, BUILD: 3, PATH: 4, FENCE: 5, SAND: 6, SHOP: 7, FLOOR: 8, FURN: 9, BRIDGE: 10 };
   // บ้าน: ที่ดิน 6 แปลงเรียงแถวบนสุดของแมพ (ซื้อได้คนละแปลง) พื้นไม้ เจ้าของวาง/เก็บเฟอร์นิเจอร์ได้ คนอื่นเดินเข้าชมได้
   const HOUSING = { price: 400, refund: 0.7, y0: 2, y1: 5, w: 6, plots: [2, 9, 16, 23, 30, 37] };
   const plotAt = (tx, ty) => {
@@ -627,6 +627,12 @@
     return m;
   }
 
+  // สะพานไม้ข้ามสระ (โครงการพัฒนาเมือง 'bridge'): กว้าง 2 ช่อง พาดจากฝั่งเหนือ (y=33) ลงฝั่งใต้ (y=43) ที่กลางสระ
+  // ครบเป้าเมื่อไรก็แปลงช่องน้ำเป็นช่องสะพาน (เดินได้) ทั้ง server และ client เรียกฟังก์ชันเดียวกัน ที่ฝั่งเดิมยังเดินรอบสระได้
+  const BRIDGE = { x0: 43, x1: 44, y0: 34, y1: 42 };
+  const bridgeDone = coin => coin >= PROJECTS.find(P => P.id === 'bridge').goal;
+  function applyBridge(m) { for (let y = BRIDGE.y0; y <= BRIDGE.y1; y++) for (let x = BRIDGE.x0; x <= BRIDGE.x1; x++) if (m[y][x] === T.WATER) m[y][x] = T.BRIDGE; }
+
   // ต้นไม้: ตัดได้ทุกต้นที่ไม่ใช่แนวต้นไม้ขอบแมพ • ต้นไม้ใหม่จะงอกเฉพาะที่สนามหญ้าเขียวที่ห่างจากสิ่งปลูกสร้าง/ถนน/รั้ว/น้ำ อย่างน้อย 3 ช่อง
   const NO_TREE = [FARM, YARD, PASTURE, PIGPEN, PLAZA, { x0: 13, y0: 30, x1: 20, y1: 38 }, { x0: 2, y0: 1, x1: 42, y1: 6 }].map(z => ({ x0: z.x0 - 2, y0: z.y0 - 2, x1: z.x1 + 2, y1: z.y1 + 2 }));
   const isChoppable = (m, x, y) => !!(m[y] && m[y][x] === T.TREE && x >= 1 && y >= 1 && x <= W - 2 && y <= H - 2);
@@ -658,7 +664,7 @@
 
   const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, bankInterest, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk,
+    AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, bridgeDone, applyBridge,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     ORDER, orderBand, SELLABLE };
