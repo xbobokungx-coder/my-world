@@ -886,10 +886,12 @@ class World {
   sfx(p, k) { this.broadcast({ t: 'sfx', k, id: p.id, x: Math.round(p.x), y: Math.round(p.y) }); }
   sfxTo(p, k) { send(p, { t: 'sfx', k, id: p.id, x: Math.round(p.x), y: Math.round(p.y), self: 1 }); }
 
-  zone(type) { const z = type === 'cow' || type === 'sheep' ? S.PASTURE : type === 'pig' ? S.PIGPEN : S.YARD; return { x0: (z.x0 + 0.4) * TS, x1: (z.x1 + 0.6) * TS, y0: (z.y0 + 0.5) * TS, y1: (z.y1 + 0.5) * TS }; }
+  zone(type) { const z = S.PENS[type] || S.PENS.chicken; return { x0: (z.x0 + 0.4) * TS, x1: (z.x1 + 0.6) * TS, y0: (z.y0 + 0.5) * TS, y1: (z.y1 + 0.5) * TS }; }
+  hiveBox(i) { const [hx, hy] = S.BEE.hives[i]; return { x0: (hx - 0.6) * TS, x1: (hx + 1.6) * TS, y0: (hy - 0.6) * TS, y1: (hy + 1.6) * TS }; } // ผึ้งบินวนอยู่รอบรังของตัวเอง (ไม่ไกลเกิน 1 ช่อง)
   spawnAnimal(type) {
-    const z = this.zone(type), x = rand(z.x0, z.x1), y = rand(z.y0, z.y1);
-    this.animals.push({ id: this.nextAid++, type, x, y, tx: x, ty: y, wait: rand(0, 3), prod: false, fed: false, feeder: '', layAt: 0, dx: 1, hunger: 90, zero: 0 });
+    const hive = type === 'bee' ? this.animals.filter(a => a.type === 'bee').length % S.BEE.hives.length : 0; // ผึ้งแต่ละตัวผูกกับรังหนึ่งลัง กระจายตามลำดับ
+    const z = type === 'bee' ? this.hiveBox(hive) : this.zone(type), x = rand(z.x0, z.x1), y = rand(z.y0, z.y1);
+    this.animals.push({ id: this.nextAid++, type, hive, x, y, tx: x, ty: y, wait: rand(0, 3), prod: false, fed: false, feeder: '', layAt: 0, dx: 1, hunger: 90, zero: 0 });
     this.dirty = true;
   }
   count(type) { return this.animals.filter(a => a.type === type).length; }
@@ -2571,10 +2573,10 @@ class World {
       if (a.prod && a.feeder && (a.pm || 0) < S.DAY_MS) a.pm = (a.pm || 0) + dt * 1000; // ผลผลิตเป็นของคนเลี้ยง: นับเวลาที่ยังไม่มีใครมาเก็บ ครบ 1 วันคนอื่นเก็บได้ (เหมือนผัก)
       a.wait -= dt;
       if (a.wait <= 0) {
-        const z = this.zone(a.type);
-        a.tx = rand(z.x0, z.x1); a.ty = rand(z.y0, z.y1); a.wait = rand(2, 7);
+        const bee = a.type === 'bee', z = bee ? this.hiveBox(a.hive) : this.zone(a.type);
+        a.tx = rand(z.x0, z.x1); a.ty = rand(z.y0, z.y1); a.wait = bee ? rand(0.8, 2.5) : rand(2, 7);
       }
-      const d = Math.hypot(a.tx - a.x, a.ty - a.y), sp = (({ cow: 14, sheep: 15, pig: 16, duck: 18 })[a.type] || 22) * dt;
+      const d = Math.hypot(a.tx - a.x, a.ty - a.y), sp = (({ cow: 14, sheep: 15, pig: 16, duck: 18, bee: 30 })[a.type] || 22) * dt;
       if (d > 2) { a.x += (a.tx - a.x) / d * sp; a.y += (a.ty - a.y) / d * sp; a.dx = a.tx > a.x ? 1 : -1; }
     }
     for (const p of this.players.values()) {

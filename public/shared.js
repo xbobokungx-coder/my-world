@@ -40,9 +40,17 @@
     lantern:  { name: 'โคมไฟ (สว่างตอนกลางคืน)', emoji: '🏮', price: 350, light: true },
   };
   const FARM = { x0: 6, y0: 8, x1: 21, y1: 17 };       // แปลงผัก (ช่องที่ขุดได้)
-  const YARD = { x0: 47, y0: 9, x1: 53, y1: 13 };      // คอกไก่
-  const PASTURE = { x0: 47, y0: 17, x1: 54, y1: 22 };  // ทุ่งวัว (ย่อให้เล็กลง 8×6 ช่อง พอสำหรับวัว+แกะรวม 8 ตัว)
-  const PIGPEN = { x0: 57, y0: 9, x1: 61, y1: 13 };    // คอกหมู
+  // คอก 6 เล้า แยกชนิดละเล้า (x0..x1, y0..y1 = ช่องภายในที่สัตว์เดิน) มีรั้วล้อมรอบ 1 ช่อง • gate = ช่องประตู • sign = ตำแหน่งป้ายประจำคอก
+  const PENS = {
+    chicken: { x0: 47, y0: 9,  x1: 49, y1: 13, gate: [[46, 11], [46, 12]], sign: [48, 7] },
+    duck:    { x0: 51, y0: 9,  x1: 53, y1: 13, gate: [[54, 11], [54, 12]], sign: [52, 7] },
+    pig:     { x0: 57, y0: 9,  x1: 61, y1: 13, gate: [[56, 11], [56, 12]], sign: [59, 7] },
+    cow:     { x0: 47, y0: 17, x1: 50, y1: 22, gate: [[46, 21], [46, 22]], sign: [48, 15] },
+    sheep:   { x0: 52, y0: 17, x1: 54, y1: 22, gate: [[55, 21], [55, 22]], sign: [53, 15] },
+    bee:     { x0: 45, y0: 2,  x1: 59, y1: 4,  gate: [[55, 5], [55, 6]], sign: [61, 3] },
+  };
+  // เล้าผึ้ง: ต้นไม้ถาวร 3 ต้น (ตัดไม่ได้) และรังผึ้ง (ลัง) 2 ลังต่อต้น วางข้างต้น • ผึ้งบินวนรอบรัง
+  const BEE = { trees: [[47, 3], [52, 3], [57, 3]], hives: [[46, 3], [48, 3], [51, 3], [53, 3], [56, 3], [58, 3]] };
   const SPAWN = { x: 31 * TS + 16, y: 22 * TS + 16 };
   const START_SPAWN = { x: 14 * TS, y: 19 * TS + 16 }; // ผู้เล่นที่เข้าเกมครั้งแรกเกิดตรงประตูแปลงผัก (ใกล้ข้อแรกของคู่มือ) คนเก่าอยู่ตรงที่ออกไว้
   const DAY_MS = 12 * 60 * 1000;                       // หน่วย "วัน" ของเศรษฐกิจ (ดอกเบี้ย ผักสุกค้าง สัตว์ป่วย ตลาด) = 12 นาที
@@ -188,7 +196,7 @@
   // ความอิ่มตัวของตลาดต่อ "หมวด" (ต่อผู้เล่น): เดิมแต่ละชนิดอิ่มตัวแยกกัน คนขายเยอะจึงสลับชนิดหนีได้ (ข้อมูลจริง: ขายทีละ ~4 ชิ้น หลายสิบชนิด ได้ราคา ~100% ของราคาฐาน)
   // ตอนนี้ขายของหมวดเดียวกันต่อเนื่อง ต่อให้สลับชนิด ราคาทั้งหมวดก็ลดลงด้วย (การลดต่อชิ้นแบ่งครึ่ง: ครึ่งหนึ่งเข้าตลาดของชนิดนั้น อีกครึ่งเข้าตลาดของหมวด) และฟื้นช้าๆ ตามเวลา (recover ของช่องว่างต่อนาที แม้ออฟไลน์) • ไม่มีเพดาน/ลิมิตรายวัน
   const CATFAT = { min: 0.3, recover: 0.04 };
-  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle'].includes(k) ? 'animal' : ['log', 'hardwood', 'plank'].includes(k) ? 'wood' : 'other';
+  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'].includes(k) ? 'animal' : ['log', 'hardwood', 'plank'].includes(k) ? 'wood' : 'other';
   // ขายเป็นชุดใหญ่ (ถือของได้ไม่จำกัดจำนวน): คิดราคาทีละชิ้นตามชนิด ราคาต่อชิ้นลดลงเชิงเส้นชิ้นละ 1% ของราคาฐาน (MARKET.drop) จนถึงพื้น 20% แล้วคงที่
   // ตัวอย่างขาย 100 ชิ้นเมื่อราคาตั้งต้น 100%: ชิ้นที่ 1 = 100%, 2 = 99% … 80 = 21%, ชิ้นที่ 81-100 = 20% รวม 5,240 จากราคาฐาน 100/ชิ้น (กด "ขายทั้งหมด" คำนวณทั้งชุดให้เลย)
   // ตลาดจำการขายด้วยการลดเท่ากันทุกชิ้น (server แบ่งเข้าตลาดชนิด/ส่วนตัว/หมวด) ขายรวดหรือทยอยขายติดกันทีละชิ้นจึงได้เงินเท่ากัน ต่างกันเฉพาะ "รอให้ตลาดฟื้น" ที่ได้ราคาดีขึ้น
@@ -200,11 +208,13 @@
   // สัตว์ที่เลี้ยงได้ (ใช้ร่วมกันทั้งโลก): cap = จำนวนสูงสุด, feedItem = อาหารที่กิน
   const ANIMALS = {
     // starveMin = กี่นาที (ที่มีผู้เล่นออนไลน์) ที่สัตว์หิวจากอิ่มเต็มจนหมด, หลังหมดแล้วเหลือเวลาอีก graceMs ก่อนจะตาย
-    chicken: { name: 'ไก่', emoji: '🐔', product: 'egg',  feedItem: 'feed', price: 120, lv: 1, cap: 8, init: 4, time: [25000, 45000], xp: 4, starveMin: 25 },
-    cow:     { name: 'วัว', emoji: '🐄', product: 'milk', feedItem: 'hay',  price: 600, lv: 3, cap: 4, init: 1, time: [45000, 75000], xp: 8, starveMin: 35 },
-    duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 5, init: 0, time: [30000, 50000], xp: 5, starveMin: 25 },
-    sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 850, lv: 4, cap: 4, init: 0, time: [50000, 80000], xp: 10, starveMin: 35 },
-    pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1100, lv: 5, cap: 4, init: 0, time: [60000, 90000], xp: 12, starveMin: 35 },
+    // cap = จำนวนสูงสุดต่อเล้า (ทุกชนิด 6 ตัว) • แต่ละชนิดอยู่คนละเล้า (PENS)
+    chicken: { name: 'ไก่', emoji: '🐔', product: 'egg',  feedItem: 'feed', price: 120, lv: 1, cap: 6, init: 4, time: [25000, 45000], xp: 4, starveMin: 25 },
+    cow:     { name: 'วัว', emoji: '🐄', product: 'milk', feedItem: 'hay',  price: 600, lv: 3, cap: 6, init: 1, time: [45000, 75000], xp: 8, starveMin: 35 },
+    duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 6, init: 0, time: [30000, 50000], xp: 5, starveMin: 25 },
+    sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 850, lv: 4, cap: 6, init: 0, time: [50000, 80000], xp: 10, starveMin: 35 },
+    pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1100, lv: 5, cap: 6, init: 0, time: [60000, 90000], xp: 12, starveMin: 35 },
+    bee:     { name: 'ผึ้ง', emoji: '🐝', product: 'honey', feedItem: 'nectar', price: 360, lv: 2, cap: 6, init: 0, time: [40000, 60000], xp: 6, starveMin: 30 },
   };
   // สัตว์เลี้ยงคู่ใจ (ซื้อที่ร้านสัตว์เลี้ยง): เดินตามเจ้าของ ทุกคนเห็น ไม่ต้องให้อาหาร • ซื้อได้หลายตัว แต่พาไปได้ทีละตัว (เลือกในร้าน)
   const COMPANIONS = {
@@ -446,7 +456,7 @@
       how: ['เดินไปลานกองไฟกลางหมู่บ้าน', 'คลิก/แตะที่ม้านั่งหรือกองฟาง นั่งแล้วความหิวไม่ลดและค่อยๆ อิ่มขึ้น'] },
   ];
   // จุดหมายของลูกศรนำทางแต่ละข้อ (ช่อง x,y) • null = ไม่มีลูกศร
-  const STARTER_GO = { dig: [14, 13], plant: [14, 13], water: [14, 13], harvest: [14, 13], sell: [26, 12], fish: [18, 19], buyfeed: [41, 16], feed: [50, 11], collect: [50, 11], sellprod: [41, 16], quest: null, sit: [29, 26] };
+  const STARTER_GO = { dig: [14, 13], plant: [14, 13], water: [14, 13], harvest: [14, 13], sell: [26, 12], fish: [18, 19], buyfeed: [41, 16], feed: [48, 11], collect: [48, 11], sellprod: [41, 16], quest: null, sit: [29, 26] };
   // ความสำเร็จ (Achievement): stat = ตัวนับสะสมของผู้เล่น (นับจากเหตุการณ์ในเกม) • ได้เหรียญรางวัล และบางข้อปลดล็อกฉายาให้เลือกใช้ (title) • tier ใช้จัดกลุ่ม/ความเท่
   const ACH = [
     { id: 'harvest1',   e: '🌾', name: 'ต้นแรกของฉัน',     desc: 'เก็บเกี่ยวผลผลิตครั้งแรก',            stat: 'harvest', goal: 1,   coin: 10 },
@@ -524,7 +534,7 @@
   const SHOPS = {
     farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: Object.keys(CROPS).map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
     fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3'],                  sell: ['fish_'] },
-    animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle'] },
+    animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3'], sell: ['log', 'hardwood', 'plank'] },
     // ร้านยานพาหนะ: เตรียมไว้ก่อน ยังไม่เปิดขาย (soon = รายการที่จะมาในอนาคต)
@@ -563,6 +573,8 @@
     if (k === 'feed') return { name: 'อาหารไก่', emoji: '🌾', buy: 5, cat: 'feed' };
     if (k === 'hay')  return { name: 'หญ้าแห้ง (อาหารวัว)', emoji: '🌿', buy: 12, cat: 'feed' };
     if (k === 'slop') return { name: 'อาหารหมู', emoji: '🥣', buy: 15, cat: 'feed' };
+    if (k === 'nectar') return { name: 'น้ำหวานดอกไม้ (อาหารผึ้ง)', emoji: '🌼', buy: 10, cat: 'feed' };
+    if (k === 'honey') return { name: 'น้ำผึ้ง', emoji: '🍯', sell: 80, cat: 'animal' };
     if (k === 'truffle') return { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', sell: 110, cat: 'animal' };
     if (k === 'bait') return { name: 'เหยื่อตกปลา (ไส้เดือน)', emoji: '🪱', buy: BAIT_PRICE, cat: 'tool', bait: 1 };
     const bm = /^bait_(\d)$/.exec(k);
@@ -638,9 +650,9 @@
     for (const x0 of HOUSING.plots) for (let y = HOUSING.y0; y <= HOUSING.y1; y++) for (let x = x0; x < x0 + HOUSING.w; x++) set(x, y, T.FLOOR); // พื้นไม้ของที่ดิน
     // รั้ว + ประตู
     fence(FARM.x0 - 1, FARM.y0 - 1, FARM.x1 + 1, FARM.y1 + 1); set(13, 18, T.PATH); set(14, 18, T.PATH); set(22, 12, T.PATH); set(22, 13, T.PATH); // ประตูสวน: กลางล่าง + กลางขวา
-    fence(YARD.x0 - 1, YARD.y0 - 1, YARD.x1 + 1, YARD.y1 + 1); set(46, 11, T.PATH); set(46, 12, T.PATH);
-    fence(PASTURE.x0 - 1, PASTURE.y0 - 1, PASTURE.x1 + 1, PASTURE.y1 + 1); set(46, 21, T.PATH); set(46, 22, T.PATH);
-    fence(PIGPEN.x0 - 1, PIGPEN.y0 - 1, PIGPEN.x1 + 1, PIGPEN.y1 + 1); set(56, 11, T.PATH); set(56, 12, T.PATH);
+    for (const P of Object.values(PENS)) { fence(P.x0 - 1, P.y0 - 1, P.x1 + 1, P.y1 + 1); for (const [x, y] of P.gate) set(x, y, T.PATH); }
+    for (const [x, y] of BEE.trees) set(x, y, T.TREE);
+    for (const [x, y] of BEE.hives) set(x, y, T.BUILD); // รังผึ้ง (ลัง) เดินผ่านไม่ได้
     // อาคารและเคาน์เตอร์
     for (const b of BUILDINGS) {
       for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) set(x, y, T.BUILD);
@@ -682,8 +694,9 @@
   const applyProject = (m, id) => { if (STRUCTS[id]) STRUCTS[id](m); };
 
   // ต้นไม้: ตัดได้ทุกต้นที่ไม่ใช่แนวต้นไม้ขอบแมพ • ต้นไม้ใหม่จะงอกเฉพาะที่สนามหญ้าเขียวที่ห่างจากสิ่งปลูกสร้าง/ถนน/รั้ว/น้ำ อย่างน้อย 3 ช่อง
-  const NO_TREE = [FARM, YARD, PASTURE, PIGPEN, PLAZA, { x0: 13, y0: 30, x1: 20, y1: 38 }, { x0: 2, y0: 1, x1: 42, y1: 6 }].map(z => ({ x0: z.x0 - 2, y0: z.y0 - 2, x1: z.x1 + 2, y1: z.y1 + 2 }));
-  const isChoppable = (m, x, y) => !!(m[y] && m[y][x] === T.TREE && x >= 1 && y >= 1 && x <= W - 2 && y <= H - 2);
+  const NO_TREE = [FARM, ...Object.values(PENS), PLAZA, { x0: 13, y0: 30, x1: 20, y1: 38 }, { x0: 2, y0: 1, x1: 42, y1: 6 }].map(z => ({ x0: z.x0 - 2, y0: z.y0 - 2, x1: z.x1 + 2, y1: z.y1 + 2 }));
+  const PERM_TREE = new Set(BEE.trees.map(([x, y]) => x + ',' + y)); // ต้นไม้ถาวรของเล้าผึ้ง ตัดไม่ได้
+  const isChoppable = (m, x, y) => !!(m[y] && m[y][x] === T.TREE && x >= 1 && y >= 1 && x <= W - 2 && y <= H - 2 && !PERM_TREE.has(x + ',' + y));
   function treeSpotOk(m, x, y) {
     if (x < 2 || y < 2 || x > W - 3 || y > H - 3 || m[y][x] !== T.GRASS) return false;
     if (NO_TREE.some(z => x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1)) return false;
@@ -710,7 +723,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, YARD, PASTURE, PIGPEN, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

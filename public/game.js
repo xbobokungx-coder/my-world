@@ -851,7 +851,7 @@ function renderBag() {
     const hints = {
       farm: () => { const c = nextCrop(); return (c ? `ถัดไป: ปลดล็อก ${c.emoji} ${c.name} ที่ Lv${c.lv}` : 'ปลดล็อกเมล็ดครบแล้ว') + ' • พืชโตเร็วขึ้น 4% ต่อเลเวล'; },
       fish: () => { const f = nextFish(); return (f ? `ถัดไป: ตกได้ ${f.emoji} ${f.name} ที่ Lv${f.lv}` : 'ตกปลาได้ครบทุกชนิดแล้ว') + ' • คันเบ็ดดีขึ้นซื้อที่ร้านตกปลา (Lv3, Lv6)'; },
-      animal: () => `ซื้อวัวได้ที่ Lv${ANIMALS.cow.lv} • ซื้อหมูได้ที่ Lv${ANIMALS.pig.lv} • ผลผลิตออกเร็วขึ้น 5% ต่อเลเวล • สัตว์ป่วยรักษาด้วยยา 💊`,
+      animal: () => `ซื้อวัวได้ที่ Lv${ANIMALS.cow.lv} • ซื้อหมูได้ที่ Lv${ANIMALS.pig.lv} • ซื้อผึ้งได้ที่ Lv${ANIMALS.bee.lv} (น้ำผึ้งจากรัง 🍯) • แต่ละชนิดมีเล้าของตัวเอง เล้าละ ${ANIMALS.cow.cap} ตัว • ผลผลิตออกเร็วขึ้น 5% ต่อเลเวล • สัตว์ป่วยรักษาด้วยยา 💊`,
       wood: () => `ขวานเหล็กซื้อได้ที่ Lv${AXES[2].lv} • ขวานเหล็กกล้า Lv${AXES[3].lv} • เลเวลสูงขึ้นได้ไม้เพิ่มและเจอไม้เนื้อแข็งบ่อยขึ้น • (งานช่างไม้อื่นๆ จะมาเร็วๆ นี้)`,
     };
     el.innerHTML = Object.keys(SKILLS).map(k => {
@@ -2126,11 +2126,11 @@ function buildBase() {
     const trough = (px, py) => { g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(px + 1, py + 24, 30, 4); g.fillStyle = '#8b5a2b'; g.fillRect(px + 1, py + 13, 30, 12); g.fillStyle = '#59b6ec'; g.fillRect(px + 4, py + 15, 24, 6); g.fillStyle = 'rgba(255,255,255,.5)'; g.fillRect(px + 7, py + 16, 8, 1.5); };
     const pond = (cx, cy, rx, ry) => { g.fillStyle = '#c9a869'; g.beginPath(); g.ellipse(cx, cy, rx + 3, ry + 3, 0, 0, 7); g.fill(); g.fillStyle = '#4aa3df'; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = '#7cc4f0'; g.beginPath(); g.ellipse(cx - rx * 0.25, cy - ry * 0.25, rx * 0.5, ry * 0.3, 0, 0, 7); g.fill(); g.fillStyle = '#3f9a3a'; g.beginPath(); g.ellipse(cx + rx * 0.45, cy + ry * 0.2, 5, 3, 0, 0, 7); g.fill(); g.fillStyle = '#ff8fc7'; g.fillRect(cx + rx * 0.45 - 1, cy + ry * 0.2 - 2, 2.5, 2.5); };
     const nest = (px, py) => { g.fillStyle = '#e0bd5a'; g.beginPath(); g.ellipse(px + 16, py + 20, 14, 8, 0, 0, 7); g.fill(); g.fillStyle = '#c9a143'; g.beginPath(); g.ellipse(px + 16, py + 22, 10, 4, 0, 0, 7); g.fill(); g.fillStyle = '#fff'; for (const ex of [-5, 1, 6]) { g.beginPath(); g.ellipse(px + 16 + ex, py + 19, 2.2, 3, 0, 0, 7); g.fill(); } };
-    const YA = Shared.YARD, PA = Shared.PASTURE, PG = Shared.PIGPEN;
-    pond((YA.x1 - 1) * TS, (YA.y1 - 0.4) * TS, TS * 1.25, TS * 0.8); nest(YA.x0 * TS, YA.y0 * TS); bale(YA.x1 * TS, YA.y0 * TS);
-    trough(PA.x0 * TS + 4, PA.y1 * TS); trough((PA.x0 + 1) * TS + 8, PA.y1 * TS); bale(PA.x1 * TS, PA.y0 * TS); bale((PA.x1 - 1) * TS + 18, (PA.y0 + 1) * TS - 8);
+    const CH = Shared.PENS.chicken, DK = Shared.PENS.duck, PA = Shared.PENS.cow, SH = Shared.PENS.sheep, PG = Shared.PENS.pig;
+    pond((DK.x1 - 1) * TS, (DK.y1 - 0.4) * TS, TS * 1.25, TS * 0.8); nest(CH.x0 * TS, CH.y0 * TS); bale(CH.x1 * TS, CH.y0 * TS);
+    trough(PA.x0 * TS + 4, PA.y1 * TS); trough((PA.x0 + 1) * TS + 8, PA.y1 * TS); bale(SH.x1 * TS, SH.y0 * TS); bale((SH.x0 + 1) * TS + 2, (SH.y0 + 1) * TS - 8);
     g.fillStyle = '#654225'; g.beginPath(); g.ellipse((PG.x1 - 1) * TS, (PG.y1 - 0.5) * TS, TS * 1.15, TS * 0.7, 0, 0, 7); g.fill(); g.fillStyle = '#7a5230'; g.beginPath(); g.ellipse((PG.x1 - 1) * TS - 4, (PG.y1 - 0.5) * TS - 3, TS * 0.8, TS * 0.4, 0, 0, 7); g.fill(); trough(PG.x0 * TS, PG.y0 * TS);
-    for (const z of [YA, PA, PG]) for (let yy = z.y0; yy <= z.y1; yy++) for (let xx = z.x0; xx <= z.x1; xx++) if (hash(xx, yy, 21) < 0.2) { const fx = xx * TS + 4 + hash(xx, yy, 22) * 22, fy = yy * TS + 6 + hash(xx, yy, 23) * 20; g.fillStyle = ['#ffffff', '#ffd6e8', '#fff3a0', '#d6c2ff'][Math.floor(hash(xx, yy, 24) * 4)]; g.fillRect(fx - 2, fy, 2, 2); g.fillRect(fx + 2, fy, 2, 2); g.fillRect(fx, fy - 2, 2, 2); g.fillRect(fx, fy + 2, 2, 2); g.fillStyle = '#f1c40f'; g.fillRect(fx, fy, 2, 2); } }
+    for (const z of [CH, DK, PA, SH, PG]) for (let yy = z.y0; yy <= z.y1; yy++) for (let xx = z.x0; xx <= z.x1; xx++) if (hash(xx, yy, 21) < 0.2) { const fx = xx * TS + 4 + hash(xx, yy, 22) * 22, fy = yy * TS + 6 + hash(xx, yy, 23) * 20; g.fillStyle = ['#ffffff', '#ffd6e8', '#fff3a0', '#d6c2ff'][Math.floor(hash(xx, yy, 24) * 4)]; g.fillRect(fx - 2, fy, 2, 2); g.fillRect(fx + 2, fy, 2, 2); g.fillRect(fx, fy - 2, 2, 2); g.fillRect(fx, fy + 2, 2, 2); g.fillStyle = '#f1c40f'; g.fillRect(fx, fy, 2, 2); } }
   { const bx = BOARD.x * TS, by = BOARD.y * TS;
     g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(bx + 2, by + 27, 28, 5);
     g.fillStyle = '#6b4423'; g.fillRect(bx + 5, by + 10, 4, 21); g.fillRect(bx + 23, by + 10, 4, 21);
@@ -2411,7 +2411,7 @@ function drawAnimalPx(type, c, now, top, prodE) {
 }
 function drawDuck(c, now) { drawAnimalPx('duck', c, now, 14, '🥚'); }
 function drawSheep(c, now) { drawAnimalPx('sheep', c, now, 22, '🧶'); }
-const ANIMAL_DRAW = { duck: drawDuck, sheep: drawSheep }, ANIMAL_TOP = { chicken: 14, duck: 14, pig: 18, cow: 20, sheep: 20 };
+const ANIMAL_DRAW = { duck: drawDuck, sheep: drawSheep, bee: drawBee }, ANIMAL_TOP = { chicken: 14, duck: 14, pig: 18, cow: 20, sheep: 20, bee: 9 };
 function animalFx(c, now, top) { // หัวใจลอยตอนเพิ่งได้กินอาหาร / ความสุขเล็กๆ ตอนอิ่มดี / ประกายตอนมีผลผลิตพร้อมเก็บ
   const h = c.h === undefined ? 100 : c.h, t = now / 1000, ph = (t + (c.id || 0) * 3.7) % 9;
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -2426,6 +2426,34 @@ function animalFx(c, now, top) { // หัวใจลอยตอนเพิ�
 function drawChicken(c, now) { drawAnimalPx('chicken', c, now, 14, '🥚'); }
 function drawCow(c, now) { drawAnimalPx('cow', c, now, 20, '🥛'); }
 function drawPig(c, now) { drawAnimalPx('pig', c, now, 18, '🍄'); }
+function drawBee(c, now) { // ผึ้ง: บินวนรอบรังเล็กๆ ปีกกระพือเร็ว ลอยเหนือพื้นนิดหน่อย • มีน้ำผึ้งพร้อมเก็บให้เห็นเป็น 🍯 เหนือหัว
+  const hov = 9 + Math.sin(now / 180 + (c.id || 0)) * 1.5;
+  ctx.fillStyle = 'rgba(38,40,16,.22)'; ctx.beginPath(); ctx.ellipse(c.x, c.y + 6, 4, 1.4, 0, 0, 7); ctx.fill();
+  PixelUI.animal(ctx, 'bee', c, { f: c.lr || c.dx || 1, step: Math.floor(now / 90) % 2, hop: hov });
+  if (c.prod) PixelUI.world(ctx, '🍯', c.x, c.y - hov - 14 + Math.sin(now / 250) * 2, 12);
+}
+// รังผึ้ง (ลัง) ตั้งข้างต้นไม้ถาวร • ขึ้นไอคอนน้ำผึ้งเมื่อมีผึ้งที่รังนี้ผลิตน้ำผึ้งเสร็จแล้ว
+function drawHive(hx, hy, now) {
+  const x = hx * TS + 5, y = hy * TS + 2;
+  let ready = false; animals.forEach(a => { if (a.type === 'bee' && a.prod && Math.hypot(a.x - (hx + 0.5) * TS, a.y - (hy + 0.5) * TS) < 1.8 * TS) ready = true; });
+  ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(x + 1, y + 24, 20, 4);
+  ctx.fillStyle = '#c98b3c'; ctx.fillRect(x + 1, y + 9, 20, 16);   // ตัวลัง
+  ctx.fillStyle = '#e0a552'; ctx.fillRect(x + 1, y + 9, 20, 3);    // ขอบบน
+  ctx.fillStyle = '#9a6328'; ctx.fillRect(x + 1, y + 15, 20, 1); ctx.fillRect(x + 1, y + 20, 20, 1); // ร่องไม้
+  ctx.fillStyle = '#7a4a1e'; ctx.fillRect(x - 1, y + 6, 24, 4);    // ฝาลัง
+  ctx.fillStyle = '#2a1b0e'; ctx.fillRect(x + 8, y + 16, 6, 3);    // ช่องทางเข้าของผึ้ง
+  if (ready) PixelUI.world(ctx, '🍯', x + 11, y + 2 + Math.sin(now / 250) * 2, 12);
+}
+// ป้ายเล็กประจำคอก: อีโมจิ ชื่อ และจำนวนตัวปัจจุบัน/ความจุ
+function drawPenSign(key) {
+  const P = Shared.PENS[key], A = ANIMALS[key], cx = (P.sign[0] + 0.5) * TS, cy = (P.sign[1] + 0.5) * TS;
+  ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(cx - 27, cy + 2, 56, 3);
+  ctx.fillStyle = '#6b4423'; ctx.fillRect(cx - 1.5, cy - 1, 3, 11);                       // เสาป้าย
+  ctx.fillStyle = '#8b5a2b'; ctx.fillRect(cx - 28, cy - 12, 56, 14);                      // กรอบป้าย
+  ctx.fillStyle = '#e8c48a'; ctx.fillRect(cx - 26, cy - 10, 52, 10);                      // แผ่นไม้
+  ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#3d2a1a';
+  ctx.fillText(`${A.emoji} ${A.name} ${animalCount(key)}/${A.cap}`, cx, cy - 6);
+}
 function drawPet(q, now) { // แมว (นั่งเมื่อหยุด) และหมา 2 สี (ยืนกระดิกหางเมื่อหยุด)
   const type = q.kind === 'dog' ? 'dog' + (q.v || 0) : 'cat', cat = q.kind !== 'dog', idle = !q.moving;
   ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(q.x, q.y + (cat ? 6 : 7), cat ? 4 : 6, cat ? 1.6 : 2, 0, 0, 7); ctx.fill();
@@ -2790,6 +2818,8 @@ function step(now) {
     const d = FURN[o.f]; if (d.flat || o.x < x0 - 1 || o.x > x1 + 1 || o.y < y0 - 1 || o.y > y1 + 1) continue;
     list.push({ y: o.y * TS + (d.seat ? 12 : 28), f: () => drawFurn(o) });
   }
+  for (const [hx, hy] of Shared.BEE.hives) list.push({ y: (hy + 1) * TS - 2, f: () => drawHive(hx, hy, now) });
+  for (const key of Object.keys(Shared.PENS)) list.push({ y: (Shared.PENS[key].sign[1] + 1) * TS, f: () => drawPenSign(key) });
   for (const c of animals.values()) list.push({ y: c.y + 8, f: () => { (c.type === 'cow' ? drawCow : c.type === 'pig' ? drawPig : ANIMAL_DRAW[c.type] || drawChicken)(c, now); animalFx(c, now, ANIMAL_TOP[c.type] || 14); hungerMark(c, now); } });
   for (const q of pets.values()) list.push({ y: q.y + 8, f: () => drawPet(q, now) });
   for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });

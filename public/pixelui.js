@@ -210,6 +210,12 @@ const PixelUI = (() => {
         }
       }
     } },
+    bee: { w: 9, h: 7, cx: 4, ground: 6, fn(x, o) { // ผึ้ง: ตัวเหลืองลายดำ ปีกสองข้างกระพือสลับเฟรม
+      const Y = '#ffd23a', K = '#2a2118', WG = '#dff3ff';
+      r(x, WG, 2, o.step ? 0 : 1, 2, 2); r(x, WG, 5, o.step ? 0 : 1, 2, 2);
+      ell(x, 4, 4, 3, 2, Y); r(x, K, 3, 2, 1, 4); r(x, K, 5, 2, 1, 4);
+      r(x, K, 0, 4, 1, 1); r(x, K, 7, 3, 1, 1);
+    } },
     cow: { w: 31, h: 20, cx: 12, ground: 11, fn(x, o) {
       const v = o.v || 's', C = CW;
       if (v === 'f') {
