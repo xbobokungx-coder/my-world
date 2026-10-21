@@ -2076,7 +2076,7 @@ function buildBase() {
     g.fillStyle = '#3a3a48'; g.fillRect(px + 9, py + 21, 14, 7);                    // ช่องลำโพง
     g.fillStyle = game ? '#ff6b8a' : '#666'; g.fillRect(px + 11, py + 23, 2, 1); g.fillRect(px + 19, py + 23, 2, 1); // ตาสองดวง
     g.fillStyle = '#111'; g.fillRect(px + 12, py + 25, 8, 1);                        // ปาก
-    gh.fillStyle = game ? '#ffffff' : '#ddd'; gh.font = 'bold 8px sans-serif'; gh.fillText(game ? cab.label : '?', px + 16, py - 5); // ชื่อบนป้ายหัวตู้
+    if (game) { gh.fillStyle = '#ffffff'; gh.font = 'bold 6px sans-serif'; gh.fillText('ARCADE', px + 16, py - 5); } // ป้ายหัวตู้เล็กๆ เขียนแค่ ARCADE
   }
   // กระดานข่าวเมือง + ตู้เซฟกองกลาง (ขอบเหนือลานกองไฟ)
   // ตกแต่งคอกสัตว์ให้ดูสดใส (ภาพพื้นล้วนๆ ไม่ขวางทาง): บ่อเป็ด รังฟาง รางน้ำ กองฟาง แอ่งโคลนหมู ดอกไม้
