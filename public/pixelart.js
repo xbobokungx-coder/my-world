@@ -40,7 +40,7 @@ const PixelArt = (() => {
 
   // ---------- ground ----------
   const G = 0, P = 1, SA = 2, WA = 3, FL = 4;
-  const gtype = t => (t === T.WATER ? WA : t === T.SAND ? SA : t === T.FLOOR || t === T.FURN ? FL : t === T.PATH || t === T.BUILD || t === T.SHOP ? P : G);
+  const gtype = t => (t === T.WATER || t === T.BRIDGE ? WA : t === T.LANDMARK ? P : t === T.SAND ? SA : t === T.FLOOR || t === T.FURN ? FL : t === T.PATH || t === T.BUILD || t === T.SHOP ? P : G);
   const BLEND = [true, true, true, true, false];
   const GRASS = ['#558f3a', '#64a344', '#73b44d', '#84c458', '#9ad46a'].map(rgb);
   const PATH = ['#c08f59', '#c99c66', '#d2a873'].map(rgb);

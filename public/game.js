@@ -182,7 +182,7 @@ function handle(m) {
     case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break;
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
     case 'chest': chestSt = m.c; if (townShown()) renderTown(); break;
-    case 'proj': projSt = m.p; checkBridge(); if (townShown()) renderTown(); break;
+    case 'proj': projSt = m.p; checkProjects(); if (townShown()) renderTown(); break;
     case 'quests': {
       questSt = { list: m.list, total: m.total, title: m.title, pts: m.pts, dole: m.dole, starter: m.starter, streak: m.streak, book: m.book, wk: m.wk };
       updateGuide(); updateQuestBadge(); if (questShown()) renderQuestPanel(); if (bagShown() && bagTab === 'book') renderBag();
@@ -1027,7 +1027,7 @@ function act(tx, ty) {
 const solidTile = (tx, ty) => {
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return true;
   const t = MAP[ty][tx];
-  return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN;
+  return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN || t === T.LANDMARK;
 };
 function findPath(sx, sy, goal) { // BFS แบบ 4 ทิศ คืนรายการช่องที่ต้องเดิน (ไม่รวมช่องเริ่ม)
   const prev = new Map(), q = [[sx, sy]], key = (x, y) => y * W + x;
@@ -1887,6 +1887,80 @@ const FONT = '"Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif';
 // พื้นโลกวาดเป็นพิกเซลที่ครึ่งความละเอียด (16 px ต่อช่อง ดู pixelart.js) แล้วขยาย 2 เท่าตอนวาด
 // ของตกแต่งเดิมวาดที่พิกัดเกมผ่าน g.scale(0.5) จึงกลายเป็นพิกเซลไปด้วย ส่วนตัวหนังสือ/อีโมจิไปอยู่ชั้น baseHi (ความละเอียดเต็ม) จะได้คมชัด
 let baseHi;
+// ---------- สิ่งก่อสร้างจากโครงการพัฒนาเมือง ----------
+function drawStructures(g, gh) {
+  const B = Shared.BRIDGE, wat = (x, y) => !!MAP[y] && MAP[y][x] === T.WATER;
+  // ทางไม้ (สะพาน + ทางต่อเกาะ): พื้นไม้กระดาน ราวไม้ตรงด้านที่ติดน้ำ เสาเป็นช่วงๆ เงาบนน้ำ
+  const isDeck = (x, y) => !!MAP[y] && MAP[y][x] === T.BRIDGE;
+  for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) {
+    if (!isDeck(tx, ty)) continue;
+    const bx = tx * TS, by = ty * TS, N = wat(tx, ty - 1), S2 = wat(tx, ty + 1), Wd = wat(tx - 1, ty), E = wat(tx + 1, ty);
+    g.fillStyle = 'rgba(10,40,80,.28)';
+    if (Wd) g.fillRect(bx - 5, by + 3, 5, TS); if (E) g.fillRect(bx + TS, by + 3, 5, TS); if (N) g.fillRect(bx, by - 2, TS, 4); if (S2) g.fillRect(bx, by + TS, TS, 5);
+    const vertical = !Wd && !E; // ไม่มีน้ำซ้าย/ขวา = ทางเดินแนวซ้าย-ขวา (ทางต่อเกาะ) วางกระดานแนวตั้ง
+    for (let i = 0; i < 4; i++) {
+      const c1 = (i + tx + ty) % 2 ? '#b57f46' : '#a8703a';
+      if (vertical) { g.fillStyle = c1; g.fillRect(bx + i * 8, by, 8, TS); g.fillStyle = '#c99357'; g.fillRect(bx + i * 8, by, 2, TS); g.fillStyle = '#6e4624'; g.fillRect(bx + i * 8 + 7, by, 1, TS); }
+      else { g.fillStyle = c1; g.fillRect(bx, by + i * 8, TS, 8); g.fillStyle = '#c99357'; g.fillRect(bx, by + i * 8, TS, 2); g.fillStyle = '#6e4624'; g.fillRect(bx, by + i * 8 + 7, TS, 1); }
+    }
+    const rail = (x, y, w, h) => { g.fillStyle = '#5a3a1c'; g.fillRect(x, y, w, h); g.fillStyle = '#8b5a2b'; g.fillRect(x, y, Math.min(w, 2), Math.min(h, 2)); if (w > h) g.fillRect(x, y, w, 2); else g.fillRect(x, y, 2, h); };
+    const post = (x, y) => { g.fillStyle = '#3f2814'; g.fillRect(x, y, 6, 7); g.fillStyle = '#a8703a'; g.fillRect(x, y - 1, 6, 3); };
+    if (Wd) { rail(bx, by, 4, TS); if (ty % 3 === 0 || !(isDeck(tx, ty - 1) && wat(tx - 1, ty - 1)) || !(isDeck(tx, ty + 1) && wat(tx - 1, ty + 1))) post(bx - 1, by + 2); }
+    if (E) { rail(bx + TS - 4, by, 4, TS); if (ty % 3 === 0 || !(isDeck(tx, ty - 1) && wat(tx + 1, ty - 1)) || !(isDeck(tx, ty + 1) && wat(tx + 1, ty + 1))) post(bx + TS - 5, by + 2); }
+    if (N) { rail(bx, by, TS, 4); if (tx % 3 === 0) post(bx + 2, by - 1); }
+    if (S2) { rail(bx, by + TS - 4, TS, 4); if (tx % 3 === 0) post(bx + 2, by + TS - 5); }
+  }
+  // ประภาคาร: หอคอยลายแดง-ขาวเรียวขึ้น ระเบียงดำ ห้องตะเกียงสีเหลืองและหลังคาแดง (อยู่ในพื้นที่ตัน 2x4 ช่อง)
+  if (builtProj.has('lighthouse')) {
+    const L = Shared.LIGHTHOUSE, bx = L.x0 * TS, by = L.y0 * TS, w = (L.x1 - L.x0 + 1) * TS, h = (L.y1 - L.y0 + 1) * TS, cx = bx + w / 2;
+    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(bx + 2, by + h - 8, w - 4, 9);
+    g.fillStyle = '#7d828c'; g.fillRect(bx + 4, by + h - 22, w - 8, 18); g.fillStyle = '#a3a8b2'; g.fillRect(bx + 4, by + h - 22, w - 8, 4);
+    const top = by + 30, bottom = by + h - 22;
+    for (let y = top; y < bottom; y += 4) {
+      const t = (y - top) / (bottom - top), half = 13 + t * 9, stripe = Math.floor((y - top) / 18) % 2;
+      g.fillStyle = stripe ? '#c0392b' : '#eee8da'; g.fillRect(cx - half, y, half * 2, 4);
+      g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(cx + half - 5, y, 5, 4); g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(cx - half, y, 3, 4);
+    }
+    g.fillStyle = '#3a3f4a'; g.fillRect(cx - 19, by + 24, 38, 6); g.fillRect(cx - 17, by + 30, 3, 5); g.fillRect(cx + 14, by + 30, 3, 5);
+    g.fillStyle = '#ffe08a'; g.fillRect(cx - 11, by + 10, 22, 14); g.fillStyle = '#fff6cf'; g.fillRect(cx - 8, by + 12, 8, 9);
+    g.fillStyle = '#3a3f4a'; g.fillRect(cx - 12, by + 9, 24, 2); g.fillRect(cx - 12, by + 23, 24, 2); g.fillRect(cx - 1, by + 10, 2, 14);
+    for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#a82f23' : '#c0392b'; g.fillRect(cx - 14 + i * 2, by + 9 - i * 2, 28 - i * 4, 2); }
+    g.fillStyle = '#f1c40f'; g.fillRect(cx - 1, by - 5, 2, 4);
+  }
+  // เกาะตกปลาลับ: ต้นมะพร้าวบนเกาะทราย + ลังเหยื่อ (ตัวเกาะเป็นช่องทราย พื้นวาดจาก ground)
+  if (builtProj.has('island')) {
+    const I = Shared.ISLAND, px = (I.x0 + 1) * TS + 16, py = (I.y0 + 1) * TS + 22;
+    g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(px - 10, py + 2, 24, 5);
+    g.fillStyle = '#7a4a24'; g.fillRect(px - 2, py - 34, 5, 38); g.fillRect(px - 4, py - 30, 4, 4); g.fillRect(px + 1, py - 18, 4, 4); g.fillStyle = '#a8703a'; g.fillRect(px - 2, py - 34, 2, 38);
+    for (const [dx, dy, ww] of [[-22, -34, 22], [0, -38, 22], [-14, -42, 18], [-24, -28, 16], [8, -32, 16]]) { g.fillStyle = '#2f7d32'; g.fillRect(px + dx, py + dy, ww, 5); g.fillStyle = '#58b04a'; g.fillRect(px + dx + 2, py + dy, ww - 6, 2); }
+    g.fillStyle = '#5a3a1c'; g.fillRect(px - 5, py - 30, 4, 4); g.fillRect(px, py - 30, 4, 4);
+    g.fillStyle = '#8b5a2b'; g.fillRect(px + 12, py - 8, 14, 12); g.fillStyle = '#c98b4a'; g.fillRect(px + 12, py - 8, 14, 3); g.fillStyle = '#5a3a1c'; g.fillRect(px + 12, py - 1, 14, 1);
+    PixelUI.world(gh, '🎣', px + 19, py - 14, 11);
+  }
+  // ลานเทศกาลกลางเมือง: เวที (ม่านแดง ป้าย) เต็นท์ลายสองหลัง และธงราวขึงหน้าเวที (พื้นลานเป็นช่องทางเดินจาก ground)
+  if (builtProj.has('festival')) {
+    const F = Shared.FESTIVAL, sg = F.stage, sx = sg.x0 * TS, sy = sg.y0 * TS, sw = (sg.x1 - sg.x0 + 1) * TS, sh = (sg.y1 - sg.y0 + 1) * TS;
+    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(sx + 2, sy + sh - 4, sw - 4, 7);
+    g.fillStyle = '#6b4423'; g.fillRect(sx, sy + 26, sw, sh - 26); g.fillStyle = '#a8703a'; g.fillRect(sx, sy + 26, sw, 6); g.fillStyle = '#c99357'; g.fillRect(sx, sy + 26, sw, 2);
+    g.fillStyle = '#2b2f55'; g.fillRect(sx + 6, sy - 14, sw - 12, 40); g.fillStyle = '#3c4380'; g.fillRect(sx + 6, sy - 14, sw - 12, 6);
+    g.fillStyle = '#c0392b'; g.fillRect(sx + 2, sy - 18, 16, 46); g.fillRect(sx + sw - 18, sy - 18, 16, 46); g.fillStyle = '#e25c4d'; g.fillRect(sx + 2, sy - 18, 5, 46); g.fillRect(sx + sw - 18, sy - 18, 5, 46);
+    g.fillStyle = '#f1c40f'; g.fillRect(sx, sy - 20, sw, 4);
+    gh.textAlign = 'center'; gh.font = `bold 13px ${FONT}`; gh.fillStyle = '#ffe08a'; gh.fillText('เทศกาล', sx + sw / 2, sy + 2); PixelUI.world(gh, '🎪', sx + sw / 2, sy - 10, 13);
+    for (const t of F.tents) {
+      const tx0 = t.x0 * TS, ty0 = t.y0 * TS, tw = (t.x1 - t.x0 + 1) * TS, th = (t.y1 - t.y0 + 1) * TS, mid = tx0 + tw / 2;
+      g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(tx0 + 2, ty0 + th - 5, tw - 4, 7);
+      g.fillStyle = '#efe6cf'; g.fillRect(tx0 + 4, ty0 + 26, tw - 8, th - 30);
+      for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#c0392b' : '#efe6cf'; g.fillRect(tx0 + 4 + i * ((tw - 8) / 4), ty0 + 26, (tw - 8) / 4, th - 30); }
+      for (let r = 0; r < 7; r++) { g.fillStyle = r % 2 ? '#c0392b' : '#e25c4d'; const half = 6 + r * 4.3; g.fillRect(mid - half, ty0 + 2 + r * 4, half * 2, 4); }
+      g.fillStyle = '#3a2418'; g.fillRect(mid - 7, ty0 + th - 22, 14, 18);
+      g.fillStyle = '#f1c40f'; g.fillRect(mid - 1, ty0 - 4, 2, 7); g.fillRect(mid + 1, ty0 - 4, 7, 4);
+    }
+    const y0 = F.plaza.y0 * TS + 5, xa = F.plaza.x0 * TS + 6, xb = (F.plaza.x1 + 1) * TS - 6;
+    g.fillStyle = '#5a3a1c'; g.fillRect(xa - 2, y0 - 2, 3, 22); g.fillRect(xb - 1, y0 - 2, 3, 22); // เสาธงราวสองข้าง
+    const cols = ['#e74c3c', '#f1c40f', '#3498db', '#2ecc71', '#9b59b6'];
+    for (let x = xa, i = 0; x < xb - 8; x += 12, i++) { const sag = Math.round(Math.sin((x - xa) / (xb - xa) * Math.PI) * 7); g.fillStyle = '#3a2418'; g.fillRect(x, y0 + sag, 12, 1); g.fillStyle = cols[i % cols.length]; g.fillRect(x + 1, y0 + sag + 1, 9, 3); g.fillRect(x + 2, y0 + sag + 4, 7, 2); g.fillRect(x + 4, y0 + sag + 6, 3, 2); }
+  }
+}
 function buildBase() {
   const U = PixelArt.U, oc = document.createElement('canvas'); oc.width = W * U; oc.height = H * U;
   const g = oc.getContext('2d');
@@ -1959,30 +2033,16 @@ function buildBase() {
     g.fillStyle = '#7a4a24'; g.fillRect(cx + 3, cy + 8, 26, 21); g.fillStyle = '#a8703a'; g.fillRect(cx + 3, cy + 8, 26, 9);
     g.fillStyle = '#c98b4a'; g.fillRect(cx + 3, cy + 8, 26, 3); g.fillStyle = '#f1c40f'; g.fillRect(cx + 3, cy + 16, 26, 2); g.fillRect(cx + 13, cy + 14, 6, 7);
     g.fillStyle = '#5a3a1c'; g.fillRect(cx + 15, cy + 17, 2, 3); PixelUI.world(gh, '🪙', cx + 16, cy + 2, 14); }
-  // สะพานไม้ข้ามสระ (วาดเมื่อโครงการสะพานครบเป้า): พื้นไม้กระดานขวาง + ราวและเสาริมสองข้าง + เงาบนน้ำ
-  for (let ty = Shared.BRIDGE.y0; ty <= Shared.BRIDGE.y1; ty++) for (let tx = Shared.BRIDGE.x0; tx <= Shared.BRIDGE.x1; tx++) {
-    if (MAP[ty][tx] !== T.BRIDGE) continue;
-    const bx = tx * TS, by = ty * TS, L = tx === Shared.BRIDGE.x0, R = tx === Shared.BRIDGE.x1;
-    if (L) { g.fillStyle = 'rgba(10,40,80,.28)'; g.fillRect(bx - 5, by + 3, 5, TS); }
-    if (R) { g.fillStyle = 'rgba(10,40,80,.28)'; g.fillRect(bx + TS, by + 3, 5, TS); }
-    for (let i = 0; i < 4; i++) { // กระดานแผ่นละ 8px สลับเฉดสี มีร่องเข้ม
-      g.fillStyle = (i + ty) % 2 ? '#b57f46' : '#a8703a'; g.fillRect(bx, by + i * 8, TS, 8);
-      g.fillStyle = '#c99357'; g.fillRect(bx, by + i * 8, TS, 2); g.fillStyle = '#6e4624'; g.fillRect(bx, by + i * 8 + 7, TS, 1);
-    }
-    if (L) { g.fillStyle = '#5a3a1c'; g.fillRect(bx, by, 4, TS); g.fillStyle = '#8b5a2b'; g.fillRect(bx, by, 2, TS); }
-    if (R) { g.fillStyle = '#5a3a1c'; g.fillRect(bx + TS - 4, by, 4, TS); g.fillStyle = '#8b5a2b'; g.fillRect(bx + TS - 4, by, 2, TS); }
-    if (ty === Shared.BRIDGE.y0 || ty === Shared.BRIDGE.y1 || (ty - Shared.BRIDGE.y0) % 3 === 0) { // เสาราวทุก 3 ช่อง และหัว-ท้ายสะพาน
-      for (const px of [L ? bx - 1 : null, R ? bx + TS - 5 : null]) if (px !== null) { g.fillStyle = '#3f2814'; g.fillRect(px, by + 2, 6, 7); g.fillStyle = '#a8703a'; g.fillRect(px, by + 1, 6, 3); }
-    }
-  }
+  // สิ่งก่อสร้างจากโครงการพัฒนาเมือง (วาดเมื่อครบเป้า) • ฟังก์ชันใน drawStructures ด้านล่าง
+  drawStructures(g, gh);
   return oc;
 }
+const builtProj = new Set(); // โครงการที่ครบเป้าและแปลงลง MAP ของหน้านี้แล้ว
 let base = buildBase();
-let bridgeBuilt = false;
-function checkBridge() { // สะพานครบเป้าแล้ว: แปลงช่องน้ำเป็นสะพาน แล้ววาดพื้นและแผนที่ย่อใหม่ (ทำครั้งเดียวต่อการโหลดหน้า)
-  const b = projSt.find(x => x.id === 'bridge');
-  if (bridgeBuilt || !b || !Shared.bridgeDone(b.coin)) return;
-  bridgeBuilt = true; Shared.applyBridge(MAP); base = buildBase(); miniBase = makeMiniBase();
+function checkProjects() { // โครงการไหนครบเป้า: แปลงช่องบน MAP แล้ววาดพื้นและแผนที่ย่อใหม่ครั้งเดียว (ไม่ว่าจะครบทีละโครงการหรือพร้อมกันตอนเข้าเกม)
+  let changed = false;
+  for (const st of projSt) if (!builtProj.has(st.id) && Shared.projectDone(st.id, st.coin)) { builtProj.add(st.id); Shared.applyProject(MAP, st.id); changed = true; }
+  if (changed) { base = buildBase(); miniBase = makeMiniBase(); }
 }
 
 // ---------- drawing helpers ----------
@@ -2278,7 +2338,7 @@ let miniBase = makeMiniBase();
 function makeMiniBase() {
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
-  const col = { [T.GRASS]: '#7bc65a', [T.WATER]: '#4aa3df', [T.TREE]: '#3f9a3a', [T.BUILD]: '#c9a86a', [T.PATH]: '#dcbf82', [T.FENCE]: '#8b5a2b', [T.SAND]: '#efdfa4', [T.SHOP]: '#a0692f', [T.FLOOR]: '#c99a5b', [T.FURN]: '#c99a5b', [T.BRIDGE]: '#a8703a' };
+  const col = { [T.GRASS]: '#7bc65a', [T.WATER]: '#4aa3df', [T.TREE]: '#3f9a3a', [T.BUILD]: '#c9a86a', [T.PATH]: '#dcbf82', [T.FENCE]: '#8b5a2b', [T.SAND]: '#efdfa4', [T.SHOP]: '#a0692f', [T.FLOOR]: '#c99a5b', [T.FURN]: '#c99a5b', [T.BRIDGE]: '#a8703a', [T.LANDMARK]: '#b0453a' };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { g.fillStyle = (MAP[y][x] === T.GRASS && inFarm(x, y)) ? '#8bbf5a' : col[MAP[y][x]]; g.fillRect(x, y, 1, 1); }
   for (const b of BUILDINGS) { g.fillStyle = b.roof; g.fillRect(b.x0, b.y0, b.x1 - b.x0 + 1, 1); }
   return c;

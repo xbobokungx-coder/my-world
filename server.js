@@ -76,7 +76,7 @@ class World {
       // ไม่มีไฟล์ = โลกใหม่ แต่ถ้ามีไฟล์แต่อ่านไม่ได้ ให้สำรองไว้ก่อน ไม่งั้นการบันทึกครั้งต่อไปจะเขียนทับข้อมูลเดิมทิ้ง
       if (e.code !== 'ENOENT') { try { fs.copyFileSync(this.file, this.file + '.broken-' + Date.now()); console.error('อ่านไฟล์บันทึกไม่ได้ สำรองไว้แล้ว:', e.message); } catch (e2) { /* ไม่มีอะไรให้สำรอง */ } }
     }
-    this.loadHouse(houseSaved); this.loadTown(townSaved); if (S.bridgeDone(this.projects.bridge.coin)) S.applyBridge(this.map); this.initNpcs(); this.initPets();
+    this.loadHouse(houseSaved); this.loadTown(townSaved); for (const P of S.PROJECTS) if (S.projectDone(P.id, this.projects[P.id].coin)) S.applyProject(this.map, P.id); this.initNpcs(); this.initPets();
     if (this.mktDay === -1) this.mktDay = Math.floor(Date.now() / S.DAY_MS);
     this.market = {};
     for (const k of SELLABLE) { const o = mk[k] || {}; this.market[k] = { m: S.MARKET.min <= o.m && o.m <= S.MARKET.max ? o.m : 1, t: S.MARKET.min <= o.t && o.t <= S.MARKET.max ? o.t : 1 }; }
@@ -340,7 +340,7 @@ class World {
     this.addPts(p, Math.floor(give / 10)); this.sfxTo(p, 'coin');
     this.toast(p, `${P.emoji} ร่วมสร้าง${P.name} 🪙 ${give} (${o.coin}/${P.goal})`);
     if (o.coin >= P.goal) {
-      if (P.id === 'bridge') S.applyBridge(this.map); // สะพานสร้างเสร็จ: ช่องน้ำกลางสระกลายเป็นทางเดิน (client สร้างภาพเองเมื่อได้รับ proj)
+      S.applyProject(this.map, P.id); // สร้างเสร็จ: แปลงแมพทันที (client วาดภาพเองเมื่อได้รับ proj)
       const top = Object.entries(o.donors).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([nm, v], k) => `${['🥇', '🥈', '🥉'][k]} ${nm} (${v})`).join(' ');
       const news = `🎉 ${P.emoji} ${P.name} สร้างเสร็จแล้ว! ขอบคุณผู้ร่วมสร้าง ${top}`; this.broadcast({ t: 'msg', text: news }); this.addLog(news);
     }
