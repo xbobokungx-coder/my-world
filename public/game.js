@@ -2519,17 +2519,27 @@ function step(now) {
     ctx.fillStyle = v > 0.85 ? '#e4f4ff' : '#9fd0f0';
     ctx.fillRect(x * TS + 2 + Math.floor(hash(x, y, i + 3) * 11) * 2, y * TS + 4 + Math.floor(hash(x, y, i + 6) * 12) * 2, 4 + (i ? 2 : 0), 2);
   }
-  // ปลาเล็กๆ ในบ่อเล็กข้างสวนผัก (ช่องน้ำตรงกับ shared.js: x 17–20 แถว 19 และ x 16–21 แถว 20): ว่ายไป-กลับคนละจังหวะ หันหัวตามทิศที่ว่าย
-  for (let i = 0; i < 3; i++) {
-    const sp = 0.0009 + i * 0.00017, ph = i * 2.3 + 0.7, sw = Math.sin(now * sp + ph);
+  // สระใหญ่ด้านล่าง (ตรงกับ shared.js: วงรีศูนย์กลาง (43,38) รัศมี 12×5 ช่อง): ปลาเล็กๆ ว่ายไป-กลับคนละจังหวะ หันหัวตามทิศที่ว่าย
+  const POND = { cx: 43, cy: 38, rx: 12, ry: 5 };
+  for (let i = 0; i < 4; i++) {
+    const sp = 0.0008 + i * 0.00015, ph = i * 2.3 + 0.7, sw = Math.sin(now * sp + ph), sv = Math.sin(now * sp * 0.7 + ph * 1.3);
     const ahead = Math.cos(now * sp + ph) > 0 ? 1 : -1, wag = Math.sin(now / 90 + i) > 0 ? 1 : 0; // หางกระดิกสลับไปมา
-    const fx = (17.2 + (sw + 1) / 2 * 3.6) * TS, fy = (19.5 + (i % 2) * 0.6 + Math.sin(now / 500 + i) * 0.1) * TS;
+    // ระยะ 0.7·rx และ 0.6·ry ทำให้ทุกจุดอยู่ในสระแน่นอน (0.7² + 0.6² < 1)
+    const fx = (POND.cx + 0.7 * POND.rx * sw + 0.5) * TS, fy = (POND.cy + 0.6 * POND.ry * sv + 0.5) * TS;
     if (fx < camX - TS || fx > camX + vw + TS || fy < camY - TS || fy > camY + vh + TS) continue;
     ctx.save(); ctx.translate(fx, fy); ctx.scale(ahead, 1);
     ctx.fillStyle = '#1d3e5c'; ctx.fillRect(-7, -3 + wag, 3, 6); ctx.fillRect(-4, -4, 9, 8); // ขอบเข้ม 1 px
-    ctx.fillStyle = ['#ff9a3c', '#f4f4f4', '#ffd23f'][i]; ctx.fillRect(-6, -2 + wag, 1, 4); ctx.fillRect(-3, -3, 7, 6);
+    ctx.fillStyle = ['#ff9a3c', '#f4f4f4', '#ffd23f', '#ff7a45'][i]; ctx.fillRect(-6, -2 + wag, 1, 4); ctx.fillRect(-3, -3, 7, 6);
     ctx.fillStyle = '#1d3e5c'; ctx.fillRect(2, -2, 1, 1); // ตา
     ctx.restore();
+  }
+  // ใบบัวเล็กๆ กระจายทั่วสระ (วางตายตัวตามพิกัดช่อง ไม่ขยับ) อยู่เหนือปลา
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (MAP[y][x] !== T.WATER || hash(x, y, 9) > 0.09) continue;
+    const px = (x + 0.5) * TS, py = (y + 0.5) * TS;
+    ctx.fillStyle = '#2d6e2a'; ctx.beginPath(); ctx.ellipse(px, py, 6, 4.5, 0, 0.3, Math.PI * 2 - 0.3); ctx.fill(); // ใบ (เว้าด้านหนึ่งเป็นแฉก)
+    ctx.fillStyle = '#4fa048'; ctx.fillRect(Math.round(px - 4), Math.round(py - 2), 6, 3);
+    ctx.fillStyle = '#4fa048'; ctx.fillRect(Math.round(px - 2), Math.round(py - 3), 4, 2);
   }
   // ช่องฟาร์ม
   for (const k in farm) {
