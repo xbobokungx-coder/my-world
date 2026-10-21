@@ -1307,16 +1307,17 @@ class World {
     // ชนิดนี้นับเป็น "ชนิดที่ขายวันนี้" ได้เมื่อขายจริงจัง (≥ minQty ชิ้น หรือ ≥ minCoin เหรียญ) กันการขายอย่างละ 1 ชิ้นเพื่อเอาโบนัส
     const counted = items0.includes(item) || q >= S.VARIETY.minQty || quote.total >= S.VARIETY.minCoin;
     if (!counted) { nUsed = items0.length; mEff = this.effMultN(p, item, nUsed); quote = S.sellQuote(info.sell, mEff, q); }
-    const cat = S.sellCat(item), pay = S.sellQuote(info.sell, mEff, q, S.CATFAT.step).total; // จ่ายต่อชิ้นตามชนิด ลดลงชิ้นละ ~2% จนพื้น 20% ของราคาฐาน (quote ด้านบนใช้อัปเดตตลาดชนิดนี้ ความอิ่มตัวหมวดอัปเดตด้านล่าง ลดต่อชิ้นเท่ากัน ขายรวดหรือทยอยจึงเท่ากัน)
+    const cat = S.sellCat(item), pay = quote.total; // จ่ายต่อชิ้นตามชนิด ลดชิ้นละ 1% ของราคาฐานจนพื้น 20%
     this.add(p, item, -q);
     this.add(p, 'coin', pay, 'sell');
-    { const ct = p.rec.cat = p.rec.cat || {}; ct[cat] = Math.max(S.CATFAT.min, this.catOf(p, cat) * Math.pow(S.CATFAT.step, q)); }
+    const r = mEff > 0 ? Math.min(1, quote.m / mEff) : 1; // สัดส่วนที่ราคารวมลดลงจากการขายชุดนี้ ตลาดจำไว้เท่ากันไม่ว่าขายรวดหรือทยอย (แบ่งครึ่ง: ชนิด/ส่วนตัว กับ หมวด)
+    { const ct = p.rec.cat = p.rec.cat || {}; ct[cat] = Math.max(S.CATFAT.min, this.catOf(p, cat) * Math.pow(r, 0.5)); }
     let bonusTxt = '';
     if (g) {
-      const bonus = S.varietyBonus(nUsed), r = mEff > 0 ? quote.m / mEff : 1;
-      g.m = Math.min(S.MARKET.max, Math.max(S.MARKET.min, g.m * Math.pow(r, 1 - S.PMARKET.share)));
+      const bonus = S.varietyBonus(nUsed), ri = Math.sqrt(r);
+      g.m = Math.min(S.MARKET.max, Math.max(S.MARKET.min, g.m * Math.pow(ri, 1 - S.PMARKET.share)));
       const mk = p.rec.mk = p.rec.mk || {};
-      mk[item] = Math.min(1, Math.max(S.PMARKET.min, this.pmOf(p, item) * Math.pow(r, S.PMARKET.share)));
+      mk[item] = Math.min(1, Math.max(S.PMARKET.min, this.pmOf(p, item) * Math.pow(ri, S.PMARKET.share)));
       const day = this.today(), so = p.rec.sold = p.rec.sold && p.rec.sold.day === day ? p.rec.sold : { day, items: [] };
       if (counted && !so.items.includes(item)) so.items.push(item);
       if (bonus > 0) bonusTxt = ` (โบนัสขายหลายชนิด +${Math.round(bonus * 100)}%)`;

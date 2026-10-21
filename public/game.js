@@ -3,7 +3,7 @@
 const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-  GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, CATFAT, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
+  GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
 const MAP = makeMap();
 const $ = id => document.getElementById(id);
 const canvas = $('c'), ctx = canvas.getContext('2d'), mainCtx = ctx;
@@ -318,7 +318,7 @@ function renderEnergy() {
 $('enChip').onclick = () => toast($('enChip').title); $('cdChip').onclick = () => toast($('cdChip').title);
 setInterval(renderEnergy, 1000);
 function allTotal(i, m, n) { // ขายทั้งหมด: ยอดรวมทั้งชุด (ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20%) พร้อมเปอร์เซ็นต์เฉลี่ยเทียบราคาชิ้นแรก
-  const t = sellQuote(i.sell, m, n, CATFAT.step).total, first = Math.max(1, Math.round(i.sell * Math.max(Shared.MARKET.min, m)));
+  const t = sellQuote(i.sell, m, n).total, first = Math.max(1, Math.round(i.sell * Math.max(Shared.MARKET.min, m)));
   return `${t} <small>(เฉลี่ย ${Math.round(t / (first * n) * 100)}%)</small>`;
 }
 function renderBankTab(el) {
@@ -789,7 +789,7 @@ function renderBag() {
   if (bagTab === 'book') return renderBookTab(el);
   if (bagTab === 'status') {
     const keysOwned = Object.keys(inv).filter(k => k !== 'coin');
-    const worth = keysOwned.reduce((s, k) => { const i = itemInfo(k); return s + (i && i.sell ? sellQuote(i.sell, mult(k), inv[k], CATFAT.step).total : 0); }, 0);
+    const worth = keysOwned.reduce((s, k) => { const i = itemInfo(k); return s + (i && i.sell ? sellQuote(i.sell, mult(k), inv[k]).total : 0); }, 0);
     const pieces = keysOwned.reduce((s, k) => s + inv[k], 0);
     const [tx, ty] = myTile();
     const cards = [

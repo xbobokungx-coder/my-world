@@ -58,8 +58,7 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
 {
   const C = S.CATFAT;
   assert.deepStrictEqual(['fish_carp', 'crop_melon', 'egg', 'milk', 'log', 'dish_grill'].map(S.sellCat), ['fish', 'crop', 'animal', 'animal', 'wood', 'dish'], 'จัดหมวดสินค้า');
-  assert.strictEqual(S.sellQuote(10, 1, 1, C.step).total, S.sellQuote(10, 1, 1).total, 'ชิ้นแรกราคาเท่าเดิม');
-  assert.ok(S.sellQuote(100, 1, 30, C.step).total < S.sellQuote(100, 1, 30).total, 'ขายรวดหลายชิ้นในหมวด ต่อชิ้นถูกลงกว่าเดิม');
+  assert.strictEqual(S.sellQuote(100, 1, 1).total, 100, 'ชิ้นแรกได้เต็ม'); assert.strictEqual(S.sellQuote(100, 1, 30).total, Array.from({ length: 30 }, (_, i) => Math.round(100 * (1 - 0.01 * i))).reduce((x, y) => x + y, 0), 'ขาย 30 ชิ้นลดชิ้นละ 1%');
   w.event = () => {}; w.nearShopKind = () => 'fish'; p.rec.cat = null; p.rec.sold = null; p.rec.mk = {};
   const kinds = S.FISH.filter(f => f.id !== 'boot').slice(0, 12).map(f => 'fish_' + f.id); let paid = 0, itemOnly = 0, units = 0;
   for (const k of kinds) w.market[k] = w.market[k] || { m: 1, t: 1 };
@@ -67,12 +66,12 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
     p.rec.inv[k] = 1; const mE = w.effMult(p, k) / w.catOf(p, 'fish'), c0 = p.rec.inv.coin; w.sell(p, k, 1);
     paid += p.rec.inv.coin - c0; itemOnly += Math.max(1, Math.round(S.itemInfo(k).sell * mE)); units++;
   }
-  const cm = w.catOf(p, 'fish'); assert.ok(Math.abs(cm - Math.pow(C.step, units)) < 1e-9 || cm === C.min, 'ความอิ่มตัวหมวดตาม step ต่อชิ้น');
+  const cm = w.catOf(p, 'fish'); assert.ok(cm < 0.8 && cm >= C.min, 'ขายหมวดเดียว ' + units + ' ชิ้น ความอิ่มตัวหมวดต้องลดลง (' + cm.toFixed(2) + ')');
   assert.ok(paid < itemOnly * 0.85, `สลับชนิดขายซ้ำ ต้องได้น้อยกว่าราคารายชนิดอย่างชัดเจน (ได้ ${paid} จาก ${itemOnly})`);
   assert.strictEqual(w.catOf(p, 'crop'), 1, 'หมวดอื่นไม่ถูกกระทบ');
   const cat = w.catPub(p); assert.ok(cat.t === 'cat' && cat.c.fish < 0.995 && cat.recover === C.recover, 'ข้อมูลที่ส่งให้ป้ายถูกต้อง');
   const before = w.catOf(p, 'fish'); for (let i = 0; i < 30; i++) w.marketTick(Date.now()); // พักขาย ~30 นาที (ตลาดเดินนาทีละครั้ง)
-  assert.ok(w.catOf(p, 'fish') > before + 0.2 && w.catOf(p, 'fish') <= 1, 'พักขายแล้วราคาหมวดฟื้นกลับ');
+  assert.ok(Math.abs(w.catOf(p, 'fish') - (1 - (1 - before) * Math.pow(1 - C.recover, 30))) < 0.01 && w.catOf(p, 'fish') > before, 'พักขายแล้วราคาหมวดฟื้นกลับตามอัตรา');
   console.log('  ตลาดหมวดปลา: ขายสลับ 12 ชนิด ' + units + ' ชิ้น ได้ ' + paid + ' จากราคารายชนิด ' + itemOnly + ' (' + Math.round(paid / itemOnly * 100) + '%) • ความอิ่มตัวหลังขาย ' + Math.round(cm * 100) + '% → พัก 30 นาที ' + Math.round(w.catOf(p, 'fish') * 100) + '%');
 }
 // ตลาดหมวดฟื้นตอนออฟไลน์ / ใบสั่งซื้อ NPC
@@ -99,26 +98,25 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   w.trimNpc(S.ORDER.npcMaxOpen); assert.strictEqual(w.orders.length, S.ORDER.npcMaxOpen, 'ตัดใบ NPC ที่ล้น');
   console.log('  ใบสั่งซื้อ NPC: 60 ใบหมุนเวียน ' + new Set(seen).size + ' ชนิด หมวดซ้ำติดกัน ' + sameCat + ' ครั้ง เปิดค้างไม่เกิน ' + S.ORDER.npcMaxOpen);
 }
-// ถือได้ไม่จำกัด + ขายเป็นชุดใหญ่: ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20% ของราคาฐาน (ชิ้นที่ ~80 เป็นต้นไป) ขายรวดหรือทยอยได้เงินใกล้เคียงกัน
+// ถือได้ไม่จำกัด + ขายเป็นชุดใหญ่: ราคาต่อชิ้นลดเชิงเส้นชิ้นละ 1% ของราคาฐาน ถึงพื้น 20% ที่ชิ้น ~81 ขายรวดหรือทยอยติดกันได้เงินเท่ากัน
 {
-  const C = S.CATFAT, Mn = S.MARKET.min, step = S.MARKET.step * C.step; assert.strictEqual(Mn, 0.2); assert.ok(Math.abs(step - 0.98) < 0.001, 'ลดชิ้นละ ~2%');
-  const unit = (base, m0, i) => Math.max(1, Math.round(base * Math.max(Mn, m0 * Math.pow(step, i)))); // ราคาชิ้นที่ i (เริ่ม 0)
+  const C = S.CATFAT, Mn = S.MARKET.min, D = S.MARKET.drop; assert.strictEqual(Mn, 0.2); assert.strictEqual(D, 0.01);
+  const unit = (base, m0, i) => Math.max(1, Math.round(base * Math.max(Mn, m0 - D * i))); // ราคาชิ้นที่ i (เริ่ม 0)
   let sum = 0; for (let i = 0; i < 100; i++) sum += unit(100, 1, i);
-  assert.ok(Math.abs(S.sellQuote(100, 1, 100, C.step).total - sum) <= 2, 'ยอดรวมชุด 100 ชิ้นตรงสูตรทีละชิ้น');
-  const t80 = S.sellQuote(100, 1, 80, C.step).total, t100 = S.sellQuote(100, 1, 100, C.step).total;
-  assert.strictEqual(t100 - t80, 20 * 20, 'ชิ้นที่ 81-100 ราคาชิ้นละ 20% ของราคาฐาน (20 ชิ้น × 20 = 400)');
-  assert.strictEqual(unit(100, 1, 0), 100, 'ชิ้นแรกได้เต็ม'); assert.ok(unit(100, 1, 40) < unit(100, 1, 10) && unit(100, 1, 79) <= 21 && unit(100, 1, 79) >= 20, 'ลดลงเรื่อยๆ จนถึงพื้นราว ชิ้นที่ 80');
-  assert.strictEqual(S.sellQuote(100, 0.05, 3, C.step).total, 3 * 20, 'ตลาดตกหนักก็ไม่ต่ำกว่า 20% ของราคาฐาน');
-  // ผ่านระบบจริง: ถือไม่จำกัด ขาย 3,000 ชิ้นทีเดียว / ขายรวด 100 ชิ้น เทียบกับทยอยขายทีละชิ้น
+  assert.strictEqual(S.sellQuote(100, 1, 100).total, sum); assert.strictEqual(sum, 5240, '100 ชิ้น ราคาฐาน 100 รวม 5,240');
+  assert.deepStrictEqual([0, 1, 9, 19, 39, 59, 79, 80, 99].map(i => unit(100, 1, i)), [100, 99, 91, 81, 61, 41, 21, 20, 20], 'ชิ้นที่ N ได้ (101-N)% ถึงพื้น 20%');
+  assert.strictEqual(S.sellQuote(100, 1, 100).total - S.sellQuote(100, 1, 80).total, 20 * 20, 'ชิ้นที่ 81-100 ราคาชิ้นละ 20% (20 ชิ้น × 20 = 400)');
+  assert.strictEqual(S.sellQuote(100, 0.05, 3).total, 3 * 20, 'ตลาดตกหนักก็ไม่ต่ำกว่า 20% ของราคาฐาน');
+  // ผ่านระบบจริง: ขายรวด 100 ชิ้น เทียบทยอยขายติดกันทีละชิ้น ต้องได้เงินเท่ากัน (ขายทีละชิ้นไม่ได้เปรียบ) ถือไม่จำกัด
   w.event = () => {}; w.nearShopKind = () => 'animal'; const base = S.itemInfo('egg').sell, reset = () => { w.market.egg = { m: 1, t: 1 }; p.rec.cat = null; p.rec.mk = {}; p.rec.sold = null; };
-  reset(); p.rec.inv.egg = 100; let c0 = p.rec.inv.coin; w.sell(p, 'egg', 'all'); const batch = p.rec.inv.coin - c0, catAfterBatch = w.catOf(p, 'animal');
+  reset(); p.rec.inv.egg = 100; let c0 = p.rec.inv.coin; w.sell(p, 'egg', 'all'); const batch = p.rec.inv.coin - c0, catB = w.catOf(p, 'animal'), pmB = w.pmOf(p, 'egg'), gB = w.market.egg.m;
   reset(); p.rec.inv.egg = 100; c0 = p.rec.inv.coin; for (let i = 0; i < 100; i++) w.sell(p, 'egg', 1); const singles = p.rec.inv.coin - c0;
-  assert.ok(Math.abs(batch - singles) / batch < 0.12, `ขายรวด 100 ชิ้น (${batch}) กับทยอยทีละชิ้น (${singles}) ต้องได้เงินใกล้เคียงกัน`);
-  assert.ok(batch < 100 * base * 0.6 && batch > 100 * base * 0.2, 'ชุด 100 ชิ้นได้เฉลี่ยระหว่าง 20% ถึง 60% ของราคาฐาน');
-  reset(); p.rec.inv.egg = 3000; c0 = p.rec.inv.coin; const m0 = w.effMult(p, 'egg'); w.sell(p, 'egg', 'all'); const got = p.rec.inv.coin - c0;
-  assert.strictEqual(p.rec.inv.egg || 0, 0, 'ถือ 3,000 ชิ้น ขายหมดในครั้งเดียว ไม่มีเพดาน'); assert.ok(got >= 3000 * Math.round(base * Mn) && got < 3000 * base * m0 * 0.3, 'ชุดใหญ่ส่วนใหญ่ได้ราคาพื้น 20%');
-  assert.ok(Math.abs(w.catOf(p, 'animal') - Math.max(C.min, Math.pow(C.step, 3000))) < 1e-9, 'ความอิ่มตัวหมวดลดตามจำนวนชิ้นจริง');
-  console.log('  ขายไข่ 100 ชิ้น: ชุดเดียว ' + batch + ' • ทยอยทีละชิ้น ' + singles + ' (ราคาฐานรวม ' + 100 * base + ') • 3,000 ชิ้น ได้ ' + got + ' • ตลาดหมวดหลังขายชุด 100 = ' + Math.round(catAfterBatch * 100) + '%');
+  assert.ok(Math.abs(batch - singles) / batch < 0.03, `ขายรวด 100 ชิ้น (${batch}) กับทยอยติดกันทีละชิ้น (${singles}) ต้องได้เงินเท่ากัน`);
+  assert.ok(Math.abs(w.catOf(p, 'animal') - catB) < 0.02 && Math.abs(w.pmOf(p, 'egg') - pmB) < 0.02 && Math.abs(w.market.egg.m - gB) < 0.02, 'ตลาดหลังขายรวด กับ หลังทยอยขาย ต้องอยู่ที่เดียวกัน');
+  assert.ok(batch > 100 * base * 0.4 && batch < 100 * base * 0.6, 'ชุด 100 ชิ้นได้เฉลี่ย ~52% ของราคาฐาน (ได้ ' + batch + ' จาก ' + 100 * base + ')');
+  reset(); p.rec.inv.egg = 3000; c0 = p.rec.inv.coin; w.sell(p, 'egg', 'all'); const got = p.rec.inv.coin - c0;
+  assert.strictEqual(p.rec.inv.egg || 0, 0, 'ถือ 3,000 ชิ้น ขายหมดในครั้งเดียว ไม่มีเพดาน'); assert.ok(got >= 3000 * Math.round(base * Mn), 'ชิ้นท้ายๆ ได้พื้น 20%');
+  console.log('  ขายไข่ 100 ชิ้น: ชุดเดียว ' + batch + ' • ทยอยติดกันทีละชิ้น ' + singles + ' (ราคาฐานรวม ' + 100 * base + ') • 3,000 ชิ้น ได้ ' + got + ' • ตลาดหมวดหลังขายชุด 100 = ' + Math.round(catB * 100) + '% ส่วนตัว ' + Math.round(pmB * 100) + '%');
   reset();
 }
 const w2 = new World('main');
