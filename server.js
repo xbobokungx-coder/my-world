@@ -1407,7 +1407,7 @@ class World {
       this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp); this.tire(p, 'harvest', c.sell);
       this.toast(p, `เก็บ ${c.emoji} ${c.name}`); if (c.sell >= 100) this.addLog(`${c.emoji} ${p.name} เก็บเกี่ยว${c.name}สำเร็จ`);
       this.sfx(p, 'harvest'); this.event(p, 'harvest', tile.c); this.bookAdd(p, 'crop', tile.c);
-      delete tile.c; delete tile.g; delete tile.m; delete tile.o; delete tile.on; delete tile.rm;
+      delete tile.c; delete tile.g; delete tile.m; delete tile.o; delete tile.on; delete tile.rm; tile.idle = 0;
       this.tileUpdate(k, tile);
       return;
     }
@@ -2524,6 +2524,10 @@ class World {
       const t = this.farm[k];
       if (t.c && t.wu > now && S.cropStage(t) < 3) t.g = Math.min(CROPS[t.c].time, (t.g || 0) + dt * (t.m || 1));
       else if (t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS) { t.rm = (t.rm || 0) + dt; this.dirty = true; } // สุกค้างอยู่ นับเวลาจนครบ 1 วันในเกม
+      else if (!t.c) { // แปลงว่างที่ไม่มีใครถาง/ปลูกเกินเวลาที่กำหนด หญ้าขึ้นกลับ
+        t.idle = (t.idle || 0) + dt;
+        if (t.idle >= S.FARM_REGROW_MS) { delete this.farm[k]; this.tileUpdate(k, null); this.dirty = true; continue; }
+      }
       if (JSON.stringify(this.pub(t, now)) !== t._p) this.tileUpdate(k, t);
     }
   }
