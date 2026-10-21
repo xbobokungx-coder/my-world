@@ -21,6 +21,8 @@
   .btn:disabled { opacity:.5; }
   .btn.mic { background:#9aa0a6; border-bottom-color:#6f757b; }
   .btn.mic.on { background:#2ecc71; border-bottom-color:#1e8f4e; }
+  .btn.lamp { background:#9aa0a6; border-bottom-color:#6f757b; }
+  .btn.lamp.on { background:#f4c430; border-bottom-color:#c99a10; }
   .btn.spk { background:#4aa3df; border-bottom-color:#2e7bb5; }
   .btn.spk.off { background:#9aa0a6; border-bottom-color:#6f757b; }
   #stage { cursor:crosshair; }
@@ -263,7 +265,7 @@
   #hudTop #satChip, #hudTop #enChip, #hudTop #cdChip { cursor:pointer; font-size:13px; } #hudTop .panel.warn { background:#a8661f; } #hudTop .panel.over { background:#8f2a22; }
   #hudTop > :not(.hidden):not(#hudMenu) { height:38px; box-sizing:border-box; margin:0; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; line-height:1; }
   #hudTop > .btn.small { font-size:15px; padding:0 12px; }
-  #hudTop > #bagBtn, #hudTop > #chatBtn, #hudTop > #micBtn { width:38px; padding:0; }
+  #hudTop > #bagBtn, #hudTop > #chatBtn, #hudTop > #micBtn, #hudTop > #lampBtn { width:38px; padding:0; }
   #hudMenu { position:absolute; top:calc(100% + 6px); left:0; width:min(92vw,340px); box-sizing:border-box; padding:8px 10px 10px; background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); z-index:6; max-height:calc(100vh - 90px); overflow:auto; }
   #hudMenu .mtitle { font-size:12px; font-weight:800; color:#5a4636; opacity:.8; margin:8px 2px 4px; }
   #hudMenu .mtitle:first-child { margin-top:2px; }
@@ -363,6 +365,7 @@
   <button class="btn small" id="bagBtn" title="กระเป๋า (B)" aria-label="กระเป๋า">🎒</button>
   <button class="btn small" id="chatBtn" title="แชท (Enter)" aria-label="แชท">💬</button>
   <button class="btn small mic" id="micBtn" title="ไมค์: ปิดอยู่ (กดเพื่อเปิด)" aria-label="เปิด/ปิดไมค์">🎤</button>
+  <button class="btn small lamp hidden" id="lampBtn" title="ตะเกียง (L)" aria-label="เปิด/ปิดตะเกียง" aria-pressed="false">🔦</button>
   <div id="hudMenu" class="hidden" role="menu" aria-label="เมนูหลัก">
     <div class="mtitle">🧍 ตัวละคร</div>
     <div class="mgrid">
@@ -378,7 +381,6 @@
       <button class="btn small" id="questBtn" data-lbl="เควส" title="เควส" aria-label="เควส" style="position:relative">📋<span id="questBadge" class="hidden" style="position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#e74c3c;color:#fff;font-size:11px;line-height:17px;font-weight:700;text-align:center;pointer-events:none"></span></button>
       <button class="btn small" id="townBtn" data-lbl="ข่าวเมือง" title="ข่าวเมือง" aria-label="ข่าวเมือง">📰</button>
       <button class="btn small hidden" id="petBtn" data-lbl="สัตว์เลี้ยง" title="สัตว์เลี้ยง" aria-label="สัตว์เลี้ยง">🐾</button>
-      <button class="btn small hidden" id="lampBtn" data-lbl="ตะเกียง" title="ตะเกียง (L)" aria-label="ตะเกียง">🏮</button>
     </div>
     <div class="mtitle">👥 เพื่อน</div>
     <div class="mgrid">

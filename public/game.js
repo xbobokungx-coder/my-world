@@ -784,11 +784,13 @@ $('bagBody').addEventListener('click', e => {
   const ib = e.target.closest('[data-info]'); if (ib) { const k = ib.dataset.info, i = itemInfo(k); if (i) toast(`${i.emoji} ${i.name} ×${inv[k] || 0}` + (i.sell ? ` • ราคาขาย 🪙${i.sell}` : '') + (i.food ? ` • กินได้ +${i.food} ความอิ่ม` : '')); }
 });
 $('hungerChip').onclick = () => openBag('eat');
-// ตะเกียง: ปุ่ม 🏮 (หรือกด L) เปิด/ปิดแสงรอบตัว 3 ช่อง เห็นเฉพาะตอนกลางคืน (เพื่อนเห็นแสงของคุณด้วย)
+// ตะเกียง/ไฟฉาย: ปุ่มบนแถบบน (หรือกด L) เปิด/ปิดแสงรอบตัว 5 ช่อง เห็นเฉพาะตอนกลางคืน (เพื่อนเห็นแสงของคุณด้วย)
 function updateLampBtn() {
   const b = $('lampBtn'); if (!b) return;
   b.classList.toggle('hidden', !(inv.lamp > 0));
-  const on = !!(me && me.lamp); b.style.opacity = on ? 1 : .55; b.title = on ? 'ตะเกียง: เปิดอยู่ (L)' : 'ตะเกียง: ปิดอยู่ (L)'; b.textContent = on ? '🏮' : '🔦';
+  const on = !!(me && me.lamp);
+  b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  b.title = on ? 'ตะเกียง: เปิดอยู่ (กดหรือ L เพื่อปิด)' : 'ตะเกียง: ปิดอยู่ (กดหรือ L เพื่อเปิด)'; b.textContent = on ? '🏮' : '🔦';
 }
 $('petBtn').onclick = () => { if (me) { openPetMenu(); playSfx('click'); } };
 $('lampBtn').onclick = () => { if (me) { send({ t: 'lamp', on: !me.lamp }); playSfx('click'); } };
