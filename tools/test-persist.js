@@ -20,22 +20,38 @@ p.rec.bank = { bal: 5000 }; p.activeAt = Date.now();
 for (let i = 0; i < 20; i++) w.tick(60, Date.now());
 assert.strictEqual(w.bankOf(p).bal, 5000, 'ยอดฝากเปลี่ยนเอง (ไม่ควรมีดอกเบี้ย)');
 assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่มีแล้ว');
-// พลังงาน ⚡ + งานหนัก
+// พลังงาน ⚡ + งานหนัก: ต้นทุนสัมพันธ์กับรายได้ของงาน
 {
-  const E = S.ENERGY; p.rec.en = null; w.enJoin(p); p.sit = null;
+  const E = S.ENERGY, R = E.coinsPerEnergy; p.rec.en = null; w.enJoin(p); p.sit = null;
   assert.strictEqual(w.enOf(p).v, E.max, 'เริ่มเต็ม');
-  let n = 0; while (!w.exhausted(p) && n < 200) { w.tire(p, 'chop'); n++; }
-  assert.ok(w.exhausted(p) && w.enOf(p).v === 0 && n === Math.ceil(E.max / E.cost.chop), 'ตัดไม้ซ้ำต้องเหนื่อยตามต้นทุน');
+  // ต้นทุนพลังงาน ≈ มูลค่า ÷ coinsPerEnergy ทุกกลุ่มงาน (ผักรวมทั้งรอบ ขุด+ปลูก+รดน้ำ+เก็บ)
+  const fixed = E.cost.dig + E.cost.plant + E.cost.water;
+  for (const c of Object.values(S.CROPS)) if (c.sell >= 4 * R) assert.ok(Math.abs((S.energyCost('harvest', c.sell) + fixed) * R - c.sell) <= R / 2 + 1e-9, 'ผัก ' + c.name + ' พลังงานต้องสัมพันธ์กับราคา');
+  for (const f of S.FISH) if (f.sell >= R) assert.ok(Math.abs(S.energyCost('fish', f.sell) * R - f.sell) <= R / 2 + 1e-9, 'ปลา ' + f.name + ' พลังงานต้องสัมพันธ์กับราคา');
+  const val = [1, 12, 26, 55, 90, 140, 190].map(v => S.energyCost('fish', v)); assert.deepStrictEqual(val, [...val].sort((a, b) => a - b), 'ของแพงขึ้นต้องกินพลังงานไม่น้อยลง');
+  assert.ok(S.energyCost('harvest', S.CROPS.mango.sell) > 5 * S.energyCost('harvest', S.CROPS.carrot.sell), 'มะม่วงกินพลังงานมากกว่าแครอทมาก');
+  assert.strictEqual(S.energyCost('harvest', S.CROPS.carrot.sell) + fixed, 4, 'ผักถูกยังทำรอบละ 4 หน่วยขั้นต่ำ');
+  // ตัดไม้ซ้ำจนเหนื่อย
+  const chopVal = 2 * S.WOOD.log.sell, per = S.energyCost('chop', chopVal); let n = 0;
+  while (!w.exhausted(p) && n < 200) { w.tire(p, 'chop', chopVal); n++; }
+  assert.ok(w.exhausted(p) && n === Math.ceil(E.max / per), 'ตัดไม้ซ้ำต้องเหนื่อยตามต้นทุน');
   assert.ok(w.heavyAction('axe', '1,1') && w.heavyAction('hoe', '1,1') && w.heavyAction('seed_carrot', '1,1') && !w.heavyAction('feed', '1,1') && !w.heavyAction('hand', '1,1'), 'งานหนักถูกหยุด งานเบา/ร้าน/เลี้ยงสัตว์ไม่ถูกหยุด');
-  w.energyTick(E.resume * E.regenMs / 1000 - 1); assert.ok(w.exhausted(p), 'ยังไม่ถึง resume ต้องยังเหนื่อย');
-  w.energyTick(2); assert.ok(!w.exhausted(p), 'ฟื้นถึง resume แล้วต้องกลับมาทำงานได้');
-  w.enOf(p).v = 0; w.enOf(p).ex = true; p.sit = { x: 1, y: 1 }; w.energyTick(10); const sitV = w.enOf(p).v; p.sit = null; w.enOf(p).v = 0; w.energyTick(10);
-  assert.ok(Math.abs(sitV - w.enOf(p).v * E.sitMul) < 1e-6, 'นั่งพักฟื้นเร็วขึ้นตาม sitMul');
-  const e = w.enOf(p); e.v = 0; e.ex = true; e.at = Date.now() - 60000; w.enJoin(p);
-  assert.ok(Math.abs(e.v - 60000 / E.regenMs) < 0.2, 'ออฟไลน์ก็ฟื้น');
+  // หนี้พลังงาน: งานแพงตอนเหลือพลังงานนิดเดียว ต้องพักนานตามมูลค่า (ไม่ใช่ได้ส่วนลด)
+  const e = w.enOf(p); e.v = 1; e.ex = false; w.tire(p, 'harvest', S.CROPS.mango.sell);
+  const cost = S.energyCost('harvest', S.CROPS.mango.sell); assert.ok(Math.abs(e.v - (1 - cost)) < 1e-9 && e.v < 0 && w.exhausted(p), 'ติดหนี้พลังงาน');
+  const needSec = (E.resume - e.v) * E.regenMs / 1000;
+  w.energyTick(needSec - 5); assert.ok(w.exhausted(p), 'ยังไม่ครบเวลาพักตามมูลค่างาน ต้องยังเหนื่อย');
+  w.energyTick(10); assert.ok(!w.exhausted(p), 'พักครบแล้วกลับมาทำงานได้');
+  // นั่งพักเร็วขึ้น 3 เท่า
+  e.v = 0; e.ex = true; p.sit = { x: 1, y: 1 }; w.energyTick(10); const sitV = e.v; p.sit = null; e.v = 0; w.energyTick(10);
+  assert.ok(Math.abs(sitV - e.v * E.sitMul) < 1e-6, 'นั่งพักฟื้นเร็วขึ้นตาม sitMul');
+  // ออฟไลน์ก็ฟื้น
+  e.v = 0; e.ex = true; e.at = Date.now() - 60000; w.enJoin(p); assert.ok(Math.abs(e.v - 60000 / E.regenMs) < 0.2, 'ออฟไลน์ก็ฟื้น');
+  // กินอาหารฟื้นตาม eatMul
   e.v = 10; p.rec.hunger = 40; p.rec.inv.meal_bread = 1; w.eat(p, 'meal_bread'); const food = S.itemInfo('meal_bread').food;
-  assert.ok(Math.abs(w.enOf(p).v - (10 + food * E.eatMul)) < 1e-6, 'กินอาหารฟื้นพลังงานตาม eatMul');
-  const pub = w.enPub(p); assert.ok(pub.t === 'en' && pub.rate > 0 && Number.isFinite(pub.v), 'ข้อมูลส่ง client ถูกต้อง');
+  assert.ok(Math.abs(e.v - (10 + food * E.eatMul)) < 1e-6, 'กินอาหารฟื้นพลังงานตาม eatMul');
+  const pub = w.enPub(p, 7); assert.ok(pub.t === 'en' && pub.rate > 0 && pub.spent === 7 && Number.isFinite(pub.v), 'ข้อมูลส่ง client ถูกต้อง');
+  console.log('  พลังงาน: แครอท 1 รอบ', S.energyCost('harvest', S.CROPS.carrot.sell) + fixed, '• มะม่วง', S.energyCost('harvest', S.CROPS.mango.sell) + fixed, '• ปลาคาร์พ', S.energyCost('fish', 12), '• ปลาวาฬ', S.energyCost('fish', 120), '• ตัดไม้', per, '(' + R + ' เหรียญ/พลังงาน)');
   e.v = E.max; e.ex = false;
 }
 // โควตาขายราคาเต็มต่อวัน

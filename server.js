@@ -519,14 +519,17 @@ class World {
     return b;
   }
   // ----- พลังงาน ⚡ (Phase 2) -----
-  enOf(p) { const e = p.rec.en = p.rec.en && typeof p.rec.en === 'object' ? p.rec.en : {}; if (!Number.isFinite(e.v)) e.v = S.ENERGY.max; e.v = Math.max(0, Math.min(S.ENERGY.max, e.v)); if (!Number.isFinite(e.at)) e.at = Date.now(); e.ex = !!e.ex; return e; }
+  enOf(p) { const e = p.rec.en = p.rec.en && typeof p.rec.en === 'object' ? p.rec.en : {}; if (!Number.isFinite(e.v)) e.v = S.ENERGY.max; e.v = Math.max(-S.ENERGY.max, Math.min(S.ENERGY.max, e.v)); if (!Number.isFinite(e.at)) e.at = Date.now(); e.ex = !!e.ex; return e; }
   enJoin(p) { const e = this.enOf(p), now = Date.now(); e.v = Math.min(S.ENERGY.max, e.v + Math.max(0, now - e.at) / S.ENERGY.regenMs); e.at = now; if (e.ex && e.v >= S.ENERGY.resume) e.ex = false; } // ฟื้นระหว่างออฟไลน์ด้วย
-  enPub(p) { const e = this.enOf(p); return { t: 'en', v: Math.round(e.v * 10) / 10, ex: e.ex, rate: (p.sit ? S.ENERGY.sitMul : 1) / S.ENERGY.regenMs, resume: S.ENERGY.resume, rareUntil: p.rec.rareAt || 0 }; }
-  enPush(p) { send(p, this.enPub(p)); }
-  tire(p, kind) { // งานหนักที่สำเร็จแล้ว หักพลังงาน หมดเมื่อไรเข้าสถานะ "เหนื่อย" จนฟื้นถึง resume
-    const e = this.enOf(p); e.v = Math.max(0, e.v - (S.ENERGY.cost[kind] || 0)); e.at = Date.now();
-    if (e.v <= 0 && !e.ex) { e.ex = true; this.toast(p, '😮‍💨 เหนื่อยจนทำงานหนักไม่ไหวแล้ว! ไปพัก (นั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า) หรือทำอย่างอื่นก่อน เช่น ทำอาหาร เควส ลงขันเมือง'); logEv(this.room, 'tired', { p: p.key }); }
-    this.dirty = true; this.enPush(p);
+  enPub(p, spent) { const e = this.enOf(p); return { t: 'en', spent: spent || 0, v: Math.round(e.v * 10) / 10, ex: e.ex, rate: (p.sit ? S.ENERGY.sitMul : 1) / S.ENERGY.regenMs, resume: S.ENERGY.resume, rareUntil: p.rec.rareAt || 0 }; }
+  enPush(p, spent) { send(p, this.enPub(p, spent)); }
+  tire(p, kind, value) { // งานหนักที่สำเร็จแล้ว หักพลังงานตามมูลค่างาน (S.energyCost) เกินที่มี = ติดลบ ต้องพักจนถึง resume
+    const e = this.enOf(p), cost = S.energyCost(kind, value); e.v = Math.max(-S.ENERGY.max, e.v - cost); e.at = Date.now();
+    if (e.v <= 0 && !e.ex) {
+      e.ex = true; const sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000);
+      this.toast(p, `😮‍💨 เหนื่อยแล้ว! ต้องพักราว ${sec >= 60 ? Math.ceil(sec / 60) + ' นาที' : sec + ' วินาที'} (นั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า) ระหว่างนี้ทำอาหาร เควส หรือลงขันเมืองได้`); logEv(this.room, 'tired', { p: p.key });
+    }
+    this.dirty = true; this.enPush(p, cost);
   }
   exhausted(p) { return this.enOf(p).ex; }
   heavyAction(tool, k) { return ['hoe', 'water', 'axe', 'rod'].includes(tool) || (typeof tool === 'string' && tool.startsWith('seed_')) || (tool === 'hand' && !!(this.farm[k] && this.farm[k].c)); } // เครื่องมือ/การกระทำที่ถูกหยุดเมื่อเหนื่อย (นั่ง/เก็บไข่/ร้านค้า/ให้อาหารสัตว์ไม่ถูกหยุด)
@@ -1313,7 +1316,7 @@ class World {
         let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
         for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
         this.add(p, 'fish_' + f.id, 1);
-        this.addXp(p, 'fish', f.xp); this.tire(p, 'fish');
+        this.addXp(p, 'fish', f.xp); this.tire(p, 'fish', f.sell);
         if (f.sell >= 100) { p.rec.rareAt = Date.now() + S.ENERGY.rareCdMs; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.ENERGY.rareCdMs / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
         this.toast(p, `${perfect ? '🎯 เป๊ะ! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (f.sell >= 100) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
         this.event(p, 'fish', f.sell); this.bookAdd(p, 'fish', f.id);
@@ -1372,7 +1375,7 @@ class World {
     if (tile && tile.c && S.cropStage(tile) === 3) {
       if (this.cropLocked(tile, p)) return this.toast(p, `🌱 ต้นนี้เป็นของ ${tile.on || 'ผู้เล่นอื่น'} — ถ้าเขาไม่มาเก็บภายใน ${Math.max(1, Math.ceil((S.DAY_MS - (tile.rm || 0)) / 60000))} นาที (1 วันในเกม) คนอื่นถึงจะมาเก็บได้`);
       const c = CROPS[tile.c];
-      this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp); this.tire(p, 'harvest');
+      this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp); this.tire(p, 'harvest', c.sell);
       this.toast(p, `เก็บ ${c.emoji} ${c.name}`); if (c.sell >= 100) this.addLog(`${c.emoji} ${p.name} เก็บเกี่ยว${c.name}สำเร็จ`);
       this.sfx(p, 'harvest'); this.event(p, 'harvest', tile.c); this.bookAdd(p, 'crop', tile.c);
       delete tile.c; delete tile.g; delete tile.m; delete tile.o; delete tile.on; delete tile.rm;
@@ -1447,7 +1450,7 @@ class World {
       this.broadcast({ t: 'tree', x: tx, y: ty, on: false });
       const wl = this.lv(p, 'wood'), hard = Math.random() < S.WOOD.hardwood.chance + 0.01 * (wl - 1) + (this.happyOn() ? S.VILLAGE.hardBonus : 0), extra = Math.random() < 0.04 * (wl - 1) ? 1 : 0;
       this.add(p, 'log', 2 + extra); if (hard) this.add(p, 'hardwood', 1); // (4C) ต้นละ 2 ไม้ท่อน ดันรายได้ช่างไม้
-      this.addXp(p, 'wood', S.WOOD.log.xp * (2 + extra) + (hard ? S.WOOD.hardwood.xp : 0)); this.tire(p, 'chop');
+      this.addXp(p, 'wood', S.WOOD.log.xp * (2 + extra) + (hard ? S.WOOD.hardwood.xp : 0)); this.tire(p, 'chop', (2 + extra) * S.WOOD.log.sell + (hard ? S.WOOD.hardwood.sell : 0));
       this.toast(p, `🌳 ต้นไม้ล้ม! ได้ 🪵 ไม้ท่อน x${2 + extra}${hard ? ' และ 🟫 ไม้เนื้อแข็ง!' : ''}`); this.sfx(p, 'fell'); this.event(p, 'chop'); if (hard) this.event(p, 'hardwood');
     } else if (tool === 'medicine') {
       const a = this.animals.filter(a => a.sick && (Math.hypot(a.x - tcx, a.y - tcy) < 52 || Math.hypot(a.x - p.x, a.y - p.y) < 52))

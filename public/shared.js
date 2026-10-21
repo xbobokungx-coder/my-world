@@ -175,9 +175,13 @@
     { id: 'ed',     name: "Elephant's Dream", emoji: '🐘', yt: 'TLkA0RELQ1g', sec: 654 },
   ];
   // พลังงาน ⚡ และคูลดาวน์ปลาหายาก (Phase 2): งานหนักกินพลังงาน ฟื้นเองช้าๆ (แม้ออฟไลน์) นั่งพักที่ม้านั่งฟื้นไวกว่า กินอาหารฟื้นเพิ่มนิดหน่อย
-  // พลังงานหมด = "เหนื่อย" ทำงานหนักไม่ได้จนฟื้นถึง resume (คนรวยซื้ออาหารข้ามไม่ได้เพราะอาหารฟื้นพลังงานแค่ eatMul ของค่าอิ่ม)
-  // cost = พลังงานที่ใช้ต่อ 1 การกระทำที่สำเร็จ • regenMs = กี่ มิลลิวินาทีต่อ 1 หน่วย • rareCdMs = ตกปลาหายาก (ราคา ≥ 100) ได้อีกครั้งหลังพักกี่มิลลิวินาที
-  const ENERGY = { max: 100, regenMs: 4000, sitMul: 3, resume: 10, eatMul: 0.4, rareCdMs: 6 * 60 * 1000, cost: { dig: 1, water: 1, plant: 1, harvest: 1, chop: 6, fish: 4 } };
+  // **พลังงานที่เสียผูกกับรายได้ของงานนั้น**: ทุกงานแลกพลังงาน 1 หน่วย ต่อมูลค่าผลงาน coinsPerEnergy เหรียญ (ราคาฐานของของที่ได้) จึงทำเงินได้ไม่เกิน ~ (60000/regenMs × coinsPerEnergy) เหรียญฐาน/นาที ไม่ว่าทำงานอะไร
+  //   ผักหนึ่งรอบ (ขุด+ปลูก+รดน้ำ+เก็บ) รวม = ราคาขาย/coinsPerEnergy (ขั้นต่ำ 4) • ปลา = ราคาปลาที่ได้ • ตัดไม้ = มูลค่าไม้ที่ได้
+  // เกินพลังงานที่มี = ติด "หนี้พลังงาน" (ค่าติดลบ ต่ำสุด -max) ต้องพักจนถึง resume: งานแพงๆ จึงพักนานตามมูลค่า ไม่มีช่องโหว่ทำงานแพงตอนเหลือพลังงานนิดเดียว
+  // regenMs = กี่ มิลลิวินาทีต่อ 1 หน่วย • rareCdMs = ตกปลาหายาก (ราคา ≥ 100) ได้อีกครั้งหลังพักกี่มิลลิวินาที
+  const ENERGY = { max: 100, regenMs: 4000, sitMul: 3, resume: 10, eatMul: 0.4, rareCdMs: 6 * 60 * 1000, coinsPerEnergy: 6, cost: { dig: 1, water: 1, plant: 1 } };
+  const energyCost = (kind, value) => ENERGY.cost[kind] !== undefined ? ENERGY.cost[kind]
+    : Math.max(1, Math.round(value / ENERGY.coinsPerEnergy) - (kind === 'harvest' ? ENERGY.cost.dig + ENERGY.cost.plant + ENERGY.cost.water : 0)); // เก็บเกี่ยว = ส่วนที่เหลือของรอบ หลังหักขุด/ปลูก/รดน้ำ
   // โควตา "ขายได้ราคาเต็ม" ต่อวัน (วันจริง รีเซ็ตเที่ยงคืน): ยอดขายรวมวันนี้ (หลังคิดราคาตลาดแล้ว) ถึง full ได้เต็ม
   // เกินแล้วได้ over (30%) และลดลงอีกเมื่อขายเกินต่อเนื่อง: ทุก full เหรียญที่เกินคูณ decay จนถึง floor — หน่วงทุกคนเท่ากัน ไม่ดูว่ารวยหรือจน
   const QUOTA = { full: 2500, over: 0.3, decay: 0.7, floor: 0.1 };
@@ -694,7 +698,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, QUOTA, quotaRate, quotaPay, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, QUOTA, quotaRate, quotaPay, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     ORDER, orderBand, SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);
