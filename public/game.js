@@ -695,7 +695,7 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
 } else $('fsBtn').remove();
 
 // ---------- กระเป๋า / อาชีพ / ตัวละคร ----------
-const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'arcade', 'trade', 'cinema', 'town', 'admin', 'plots', 'ask'].some(id => !$(id).classList.contains('hidden'));
+const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'plots', 'ask'].some(id => !$(id).classList.contains('hidden'));
 function openBag(tab) { if (tab) bagTab = tab; $('bag').classList.remove('hidden'); renderBag(); }
 function closeBag() { $('bag').classList.add('hidden'); }
 const bagShown = () => !$('bag').classList.contains('hidden');
@@ -942,7 +942,7 @@ addEventListener('keydown', e => {
   // ใช้ e.code (ตำแหน่งปุ่มจริงบนคีย์บอร์ด) ไม่ใช่ e.key เพื่อให้ WASD และปุ่มลัดทำงานได้แม้เปลี่ยนเป็นแป้นพิมพ์ภาษาไทย
   const c = e.code;
   if (c === 'Enter' || c === 'NumpadEnter') { e.preventDefault(); openChat(); return; }
-  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeHub(); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (TOOL_LIST[n] === 'axe' && !axeLevel()); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
   if (c === 'KeyB' || c === 'KeyI') { $('bagBtn').onclick(); return; }
@@ -1602,6 +1602,51 @@ function closeStatus() { $('status').classList.add('hidden'); $('statusIn').blur
 function saveStatus(text) { send({ t: 'status', text }); closeStatus(); toast(text ? '💭 ตั้งสถานะแล้ว' : 'ล้างสถานะแล้ว'); }
 $('myStatusBtn').onclick = () => (statusShown() ? closeStatus() : openStatus());
 $('statusClose').onclick = closeStatus;
+// ---------- 🐞 แจ้งบั๊ก (ข้อความ + ภาพไม่เกิน 1MB ส่งผ่าน POST /api/bug) ----------
+const BUG_IMG_MAX = 1024 * 1024;
+let bugFile = null, bugPrevUrl = '', bugBusy = false;
+const bugShown = () => !$('bug').classList.contains('hidden');
+function bugSay(t, cls) { const el = $('bugMsg'); el.textContent = t || ''; el.className = cls || ''; }
+function bugClearImg() {
+  bugFile = null; $('bugFile').value = '';
+  if (bugPrevUrl) { URL.revokeObjectURL(bugPrevUrl); bugPrevUrl = ''; }
+  $('bugPrev').classList.add('hidden'); $('bugPrev').removeAttribute('src'); $('bugImgClear').classList.add('hidden');
+  $('bugFileInfo').textContent = 'PNG / JPG / WEBP / GIF ไม่เกิน 1MB';
+}
+function openBug() { bugSay(''); $('bug').classList.remove('hidden'); if (!isTouch) $('bugText').focus(); }
+function closeBug() { $('bug').classList.add('hidden'); $('bugText').blur(); }
+$('bugBtn').onclick = () => (bugShown() ? closeBug() : openBug());
+$('bugClose').onclick = closeBug;
+$('bug').addEventListener('pointerdown', e => { if (e.target === $('bug')) closeBug(); });
+$('bugText').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') closeBug(); }); // พิมพ์ได้โดยไม่ไปกดปุ่มลัดของเกม
+$('bugImgClear').onclick = () => { bugClearImg(); bugSay(''); };
+$('bugFile').onchange = () => {
+  const f = $('bugFile').files[0];
+  bugClearImg();
+  if (!f) return;
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) return bugSay('รองรับเฉพาะภาพ PNG, JPG, WEBP, GIF', 'err');
+  if (f.size > BUG_IMG_MAX) return bugSay(`ภาพใหญ่เกินไป (${(f.size / 1048576).toFixed(2)} MB) ต้องไม่เกิน 1 MB`, 'err');
+  bugFile = f; bugPrevUrl = URL.createObjectURL(f);
+  $('bugPrev').src = bugPrevUrl; $('bugPrev').classList.remove('hidden'); $('bugImgClear').classList.remove('hidden');
+  $('bugFileInfo').textContent = `${f.name.slice(0, 24)} (${f.size < 1024 ? f.size + ' B' : (f.size / 1024).toFixed(0) + ' KB'})`;
+  bugSay('');
+};
+$('bugSend').onclick = async () => {
+  if (bugBusy) return;
+  const text = $('bugText').value.trim();
+  if (text.length < 5) return bugSay('อธิบายปัญหาอย่างน้อย 5 ตัวอักษร', 'err');
+  bugBusy = true; $('bugSend').disabled = true; bugSay('กำลังส่ง…');
+  try {
+    let img = '';
+    if (bugFile) img = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new Error('อ่านไฟล์ภาพไม่ได้')); r.readAsDataURL(bugFile); });
+    const ctx = { x: me ? Math.round(me.x / TS) : '', y: me ? Math.round(me.y / TS) : '', vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio, zoom: typeof zoom === 'number' ? zoom.toFixed(2) : '', touch: isTouch ? 1 : 0, ua: navigator.userAgent, err: window.__lastErr || '', url: location.pathname };
+    const res = await fetch('/api/bug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, img, name: me ? me.name : '', room: roomName, ctx }) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.ok) throw new Error(j.err || 'ส่งไม่สำเร็จ ลองใหม่อีกครั้ง');
+    $('bugText').value = ''; bugClearImg(); closeBug(); toast('ส่งรายงานแล้ว ขอบคุณที่ช่วยแจ้งบั๊ก 🐞');
+  } catch (e) { bugSay(e.message || 'ส่งไม่สำเร็จ ลองใหม่อีกครั้ง', 'err'); }
+  bugBusy = false; $('bugSend').disabled = false;
+};
 $('statusSave').onclick = () => saveStatus($('statusIn').value);
 $('statusClear').onclick = () => saveStatus('');
 $('statusChips').addEventListener('click', e => { const b = e.target.closest('[data-sp]'); if (b) saveStatus(STATUS_PRESETS[+b.dataset.sp]); });

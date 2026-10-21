@@ -67,9 +67,16 @@
   #fgauge .mk { position:absolute; top:-2px; bottom:-2px; width:6px; margin-left:-3px; background:#fff; border:2px solid #3d2a1a; box-sizing:border-box; }
   #fgauge.hit .mk { background:#ffe06a; }
   body.touch #fgauge { bottom:calc(86px + var(--sab)); }
-  #shop,#bag,#people,#archub,#status,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
-  #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; overflow:auto; }
-  #shop h2,#bag h2,#people h2,#archub h2,#status h2,#quest h2,#ach h2,#arcade h2,#trade h2,#cinema h2,#town h2,#admin h2,#plots h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  #shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
+  #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; overflow:auto; }
+  #shop h2,#bag h2,#people h2,#archub h2,#status h2,#bug h2,#quest h2,#ach h2,#arcade h2,#trade h2,#cinema h2,#town h2,#admin h2,#plots h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  #bugText { width:100%; box-sizing:border-box; padding:8px 10px; border:2px solid var(--edge); border-radius:10px; font:inherit; font-size:15px; resize:vertical; min-height:96px; background:#fffdf6; }
+  #bug .bugfile { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:10px 0 6px; font-size:12px; opacity:.9; }
+  #bug .bugfile label { cursor:pointer; }
+  #bugPrev { display:block; max-width:100%; max-height:180px; margin:6px auto; border:2px solid var(--edge); border-radius:8px; image-rendering:auto; }
+  #bugMsg { min-height:18px; margin:6px 0; font-size:13px; font-weight:700; text-align:center; }
+  #bugMsg.err { color:#b3261e; } #bugMsg.ok { color:#1b7a2e; }
+  #bug .bugnote { font-size:11px; opacity:.6; margin:8px 0 0; text-align:center; }
   #arcade .panel { background:#f3eefc; border-color:#8a6fd1; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
   .chip { border:2px solid #8a6fd1; background:#fff; border-radius:999px; padding:6px 14px; font-weight:700; font-size:15px; }
@@ -326,6 +333,7 @@
   <button class="btn small" id="achBtn" title="ฉายา &amp; ความสำเร็จ" aria-label="ฉายาและความสำเร็จ">🏅</button>
   <button class="btn small" id="bagBtn" title="กระเป๋า (B)" aria-label="กระเป๋า">🎒</button>
   <button class="btn small" id="statBtn" title="สถานะ (C)" aria-label="สถานะ">📊</button>
+  <button class="btn small" id="bugBtn" title="แจ้งบั๊ก" aria-label="แจ้งบั๊ก">🐞</button>
   <button class="btn small" id="chatBtn" title="แชท (Enter)" aria-label="แชท">💬</button>
   <button class="btn small" id="myStatusBtn" title="ตั้งสถานะ" aria-label="ตั้งสถานะ">💭</button>
   <button class="btn small" id="zoomOutBtn" title="ซูมออก (เห็นกว้างขึ้น)" aria-label="ซูมออก">🔍−</button>
@@ -381,6 +389,20 @@
   <div class="tabs" id="achTabs"></div>
   <div id="achBody"></div>
 </div></div>
+<div id="bug" class="hidden"><div class="panel">
+  <h2><span>🐞 แจ้งบั๊ก</span> <button class="btn small" id="bugClose">ปิด</button></h2>
+  <textarea id="bugText" maxlength="1000" rows="5" enterkeyhint="enter" placeholder="เกิดอะไรขึ้น? ทำอะไรอยู่ตอนนั้น? (อย่างน้อย 5 ตัวอักษร)"></textarea>
+  <div class="bugfile">
+    <label class="btn small" for="bugFile">📎 แนบภาพ</label>
+    <input type="file" id="bugFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+    <span id="bugFileInfo">PNG / JPG / WEBP / GIF ไม่เกิน 1MB</span>
+    <button class="btn small muted hidden" id="bugImgClear">ลบภาพ</button>
+  </div>
+  <img id="bugPrev" class="hidden" alt="ตัวอย่างภาพที่แนบ">
+  <p id="bugMsg" role="status"></p>
+  <div class="center"><button class="btn small" id="bugSend">ส่งรายงาน</button></div>
+  <p class="bugnote">ระบบจะแนบชื่อ ห้อง ตำแหน่ง และชนิดอุปกรณ์ไปด้วยเพื่อช่วยหาสาเหตุ</p>
+</div></div>
 <div id="status" class="hidden"><div class="panel">
   <h2><span>💭 สถานะของฉัน</span> <button class="btn small" id="statusClose">ปิด</button></h2>
   <div class="chips" id="statusChips"></div>
@@ -419,6 +441,7 @@
 <script>
 // ถ้าสคริปต์เกมพัง ให้เห็นข้อความบนจอ แทนที่จะเป็นจอว่างเงียบๆ (ส่งข้อความนี้ให้ผู้ดูแล)
 addEventListener('error', e => {
+  window.__lastErr = (e.message || 'unknown') + ' @' + String(e.filename || '').split('/').pop() + ':' + (e.lineno || '?');
   if (document.getElementById('errBar')) return;
   const d = document.createElement('div'); d.id = 'errBar';
   d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#7a1010;color:#fff;font:12px/1.4 sans-serif;padding:6px 10px;white-space:pre-wrap';

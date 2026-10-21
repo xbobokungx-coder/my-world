@@ -2504,10 +2504,66 @@ function getWorld(room) {
   return w;
 }
 
+// ---------- แจ้งบั๊ก ----------
+// ผู้เล่นส่งรายงาน (ข้อความ + ภาพไม่เกิน 1MB) ผ่าน POST /api/bug — ไม่ใช้ WebSocket เพราะจำกัดข้อความไว้ 16KB
+// เก็บที่ data/bugs/<id>.json (+ <id>.png|jpg|webp|gif) อ่านด้วย `node tools/bugs.js` ไม่ได้เปิดให้ดาวน์โหลดจากเว็บ
+const BUG_DIR = path.join(DATA_DIR, 'bugs'), BUG_IMG_MAX = 1024 * 1024, BUG_BODY_MAX = Math.ceil(BUG_IMG_MAX * 4 / 3) + 16384;
+const BUG_PER_IP = 5, BUG_PER_IP_MS = 10 * 60 * 1000, BUG_GLOBAL = 100, BUG_GLOBAL_MS = 60 * 60 * 1000; // กันสแปม: ต่อ IP 5 ครั้ง/10 นาที ทั้งเซิร์ฟเวอร์ 100 ครั้ง/ชม.
+const bugHits = new Map(), bugAll = [];
+const bugImgExt = b => (b.length > 12 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) ? 'png'
+  : (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) ? 'jpg'
+  : (b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') ? 'webp'
+  : (b.length > 6 && /^GIF8[79]a/.test(b.toString('latin1', 0, 6))) ? 'gif' : ''; // ดูไบต์จริง ไม่เชื่อนามสกุล/ชนิดที่ client บอก
+const bugClip = (v, n) => String(v === undefined || v === null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').slice(0, n);
+function handleBug(req, res) {
+  const out = (code, o) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };
+  const ip = ipOf(req), now = Date.now();
+  while (bugAll.length && now - bugAll[0] > BUG_GLOBAL_MS) bugAll.shift();
+  const mine = (bugHits.get(ip) || []).filter(t => now - t < BUG_PER_IP_MS); bugHits.set(ip, mine);
+  if (mine.length >= BUG_PER_IP || bugAll.length >= BUG_GLOBAL) { req.resume(); return out(429, { err: 'แจ้งบ่อยเกินไป รอสักครู่แล้วลองใหม่' }); }
+  if (+req.headers['content-length'] > BUG_BODY_MAX) { req.resume(); return out(413, { err: 'ข้อมูลใหญ่เกินไป (ภาพต้องไม่เกิน 1MB)' }); }
+  const chunks = []; let size = 0, dead = false;
+  req.on('data', c => { if (dead) return; size += c.length; if (size > BUG_BODY_MAX) { dead = true; out(413, { err: 'ข้อมูลใหญ่เกินไป (ภาพต้องไม่เกิน 1MB)' }); req.resume(); } else chunks.push(c); });
+  req.on('error', () => {});
+  req.on('end', () => {
+    if (dead) return;
+    let m; try { m = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch (e) { return out(400, { err: 'ข้อมูลไม่ถูกต้อง' }); }
+    if (!m || typeof m !== 'object') return out(400, { err: 'ข้อมูลไม่ถูกต้อง' });
+    const text = bugClip(m.text, 1000).trim();
+    if (text.length < 5) return out(400, { err: 'อธิบายปัญหาอย่างน้อย 5 ตัวอักษร' });
+    let img = null, ext = '';
+    if (m.img) {
+      const mt = typeof m.img === 'string' && /^data:image\/(?:png|jpeg|webp|gif);base64,([A-Za-z0-9+/]+={0,2})$/.exec(m.img);
+      if (!mt) return out(400, { err: 'ไฟล์ภาพไม่ถูกต้อง (รองรับ PNG, JPG, WEBP, GIF)' });
+      img = Buffer.from(mt[1], 'base64');
+      if (img.length > BUG_IMG_MAX) return out(413, { err: 'ภาพใหญ่เกิน 1MB' });
+      ext = bugImgExt(img); if (!ext) return out(400, { err: 'ไฟล์ภาพไม่ถูกต้อง (รองรับ PNG, JPG, WEBP, GIF)' });
+    }
+    const c = m.ctx && typeof m.ctx === 'object' ? m.ctx : {}, ctx = {};
+    for (const k of ['x', 'y', 'vw', 'vh', 'dpr', 'zoom', 'touch']) if (c[k] !== undefined) ctx[k] = bugClip(c[k], 12);
+    for (const k of ['ua', 'err', 'url']) if (c[k] !== undefined) ctx[k] = bugClip(c[k], 300);
+    const room = ROOM_RE.test(String(m.room || '')) ? String(m.room) : '';
+    const id = now.toString(36) + crypto.randomBytes(3).toString('hex');
+    const rec = { id, time: now, name: normName(m.name), room, ip, text, ctx, img: img ? id + '.' + ext : null };
+    fs.mkdir(BUG_DIR, { recursive: true }, e => {
+      if (e) { console.error('สร้างโฟลเดอร์แจ้งบั๊กไม่ได้', e.message); return out(500, { err: 'บันทึกไม่ได้ ลองใหม่อีกครั้ง' }); }
+      const done = er => {
+        if (er) { console.error('บันทึกแจ้งบั๊กไม่ได้', er.message); return out(500, { err: 'บันทึกไม่ได้ ลองใหม่อีกครั้ง' }); }
+        mine.push(now); bugAll.push(now);
+        console.log('แจ้งบั๊ก:', rec.name || '?', '←', ip, '#' + id, rec.img ? '(มีภาพ)' : '', text.slice(0, 60).replace(/\s+/g, ' '));
+        out(200, { ok: true, id });
+      };
+      const writeJson = () => fs.writeFile(path.join(BUG_DIR, id + '.json'), JSON.stringify(rec, null, 1), done);
+      if (img) fs.writeFile(path.join(BUG_DIR, rec.img), img, er => er ? done(er) : writeJson()); else writeJson();
+    });
+  });
+}
+
 const server = http.createServer((req, res) => {
   let u;
   try { u = decodeURIComponent(req.url.split('?')[0]); } catch (e) { res.writeHead(400); return res.end(); }
   if (u === '/healthz') { res.writeHead(200); return res.end('ok'); }
+  if (u === '/api/bug') { if (req.method !== 'POST') { res.writeHead(405, { Allow: 'POST' }); return res.end(); } return handleBug(req, res); }
   if (u === '/') u = '/index.html';
   const f = path.join(PUB, u);
   if (!f.startsWith(PUB + path.sep)) { res.writeHead(403); return res.end(); }
