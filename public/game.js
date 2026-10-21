@@ -231,11 +231,9 @@ function renderAdmin() {
     const list = bugView === 'fixed' ? bugFixed : bugOpen;
     h += `<div class="chips" style="margin-bottom:8px"><button class="chip${bugView === 'open' ? ' sel' : ''}" data-bview="open">🔴 ยังไม่แก้ (${bugOpen.length})</button><button class="chip${bugView === 'fixed' ? ' sel' : ''}" data-bview="fixed">✅ แก้แล้ว (${bugFixed.length})</button> <button class="btn small" id="bugRefresh">🔄 รีเฟรช</button></div>`;
     h += list.length ? list.map(b => {
-      const c = b.ctx || {}, dev = String(c.ua || '').replace(/^Mozilla\/5\.0 /, '').slice(0, 70);
-      return `<div class="arow bugrow"><div style="width:100%"><b>${esc(b.name || 'ไม่ระบุชื่อ')}</b> <small>ห้อง ${esc(b.room || '?')} • แจ้ง ${ago(b.time)}${c.x !== undefined && c.x !== '' ? ' • ตำแหน่ง ' + esc(c.x) + ',' + esc(c.y) : ''}</small>`
+      return `<div class="arow bugrow"><div style="width:100%"><b>${esc(b.name || 'ไม่ระบุชื่อ')}</b> <small>ห้อง ${esc(b.room || '?')} • แจ้ง ${ago(b.time)}</small>`
         + (b.fixed ? `<br><small style="color:#1b7a2e">✅ แก้แล้ว ${ago(b.fixedAt)}${b.fixedBy ? ' โดย ' + esc(b.fixedBy) : ''}</small>` : '')
         + `<div style="white-space:pre-wrap;word-break:break-word;margin:4px 0">${esc(b.text)}</div>`
-        + `<small style="opacity:.65;display:block">${esc(dev)}${c.vw ? ' • จอ ' + esc(c.vw) + '×' + esc(c.vh) : ''}${c.err ? '<br>⚠️ error: ' + esc(c.err) : ''}</small>`
         + (bugImgs[b.id] ? `<img src="${bugImgs[b.id]}" alt="ภาพแนบ" style="max-width:100%;max-height:260px;display:block;margin:6px 0;border:2px solid var(--edge);border-radius:8px">` : '')
         + `<div style="margin-top:6px">${b.img && !bugImgs[b.id] ? `<button class="btn small" data-bugimg="${esc(b.id)}">🖼 ดูภาพ</button> ` : ''}`
         + (b.fixed ? `<button class="btn small muted" data-bugreopen="${esc(b.id)}">↩️ เปิดใหม่</button>` : `<button class="btn small" data-bugfix="${esc(b.id)}">✅ แก้แล้ว</button>`) + '</div></div></div>';
@@ -1662,8 +1660,7 @@ $('bugSend').onclick = async () => {
   try {
     let img = '';
     if (bugFile) img = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new Error('อ่านไฟล์ภาพไม่ได้')); r.readAsDataURL(bugFile); });
-    const ctx = { x: me ? Math.round(me.x / TS) : '', y: me ? Math.round(me.y / TS) : '', vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio, zoom: typeof zoom === 'number' ? zoom.toFixed(2) : '', touch: isTouch ? 1 : 0, ua: navigator.userAgent, err: window.__lastErr || '', url: location.pathname };
-    const res = await fetch('/api/bug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, img, name: me ? me.name : '', room: roomName, ctx }) });
+    const res = await fetch('/api/bug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, img, name: me ? me.name : '', room: roomName }) });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || !j.ok) throw new Error(j.err || 'ส่งไม่สำเร็จ ลองใหม่อีกครั้ง');
     $('bugText').value = ''; bugClearImg(); closeBug(); toast('ส่งรายงานแล้ว ขอบคุณที่ช่วยแจ้งบั๊ก 🐞');

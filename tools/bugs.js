@@ -19,7 +19,7 @@ if ((a === 'fix' || a === 'reopen') && b) {
   console.log('ลบแล้ว ' + b);
 } else if (a) {
   const r = all().find(x => x.id === a); if (!r) { console.error('ไม่พบ ' + a); process.exit(1); }
-  console.log(`#${r.id}  ${r.status === 'fixed' ? '✅ แก้แล้ว ' + when(r.fixedAt) + (r.fixedBy ? ' โดย ' + r.fixedBy : '') : '🔴 ยังไม่แก้'}\nแจ้งเมื่อ ${when(r.time)}\nผู้แจ้ง: ${r.name || '?'}  ห้อง: ${r.room || '?'}  IP: ${r.ip}\n\n${r.text}\n\nบริบท: ${JSON.stringify(r.ctx)}\nภาพ: ${r.img ? path.join(dir, r.img) : '-'}`);
+  console.log(`#${r.id}  ${r.status === 'fixed' ? '✅ แก้แล้ว ' + when(r.fixedAt) + (r.fixedBy ? ' โดย ' + r.fixedBy : '') : '🔴 ยังไม่แก้'}\nแจ้งเมื่อ ${when(r.time)}\nผู้แจ้ง: ${r.name || '?'}  ห้อง: ${r.room || '?'}\n\n${r.text}\n\nภาพ: ${r.img ? path.join(dir, r.img) : '-'}`);
 } else {
   const l = all(); if (!l.length) console.log('ยังไม่มีรายงานบั๊ก');
   const row = r => `#${r.id}  ${when(r.time)}  ${(r.name || '?').padEnd(12)} ${r.img ? '🖼 ' : '   '}${r.text.replace(/\s+/g, ' ').slice(0, 70)}`;

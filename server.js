@@ -2519,7 +2519,7 @@ const BUG_ID_RE = /^[a-z0-9]{6,24}$/;
 function bugList() { // รายงานสำหรับหน้าผู้ดูแล (ไม่รวมตัวภาพ)
   let names = []; try { names = fs.readdirSync(BUG_DIR).filter(f => f.endsWith('.json')); } catch (e) { return []; }
   const out = [];
-  for (const f of names) { try { const r = JSON.parse(fs.readFileSync(path.join(BUG_DIR, f), 'utf8')); if (BUG_ID_RE.test(r.id)) out.push({ id: r.id, time: r.time, name: r.name, room: r.room, text: r.text, ctx: r.ctx || {}, img: !!r.img, fixed: r.status === 'fixed', fixedAt: r.fixedAt || 0, fixedBy: r.fixedBy || '' }); } catch (e) { /* ไฟล์เสียข้ามไป */ } }
+  for (const f of names) { try { const r = JSON.parse(fs.readFileSync(path.join(BUG_DIR, f), 'utf8')); if (BUG_ID_RE.test(r.id)) out.push({ id: r.id, time: r.time, name: r.name, room: r.room, text: r.text, img: !!r.img, fixed: r.status === 'fixed', fixedAt: r.fixedAt || 0, fixedBy: r.fixedBy || '' }); } catch (e) { /* ไฟล์เสียข้ามไป */ } }
   const open = out.filter(b => !b.fixed).sort((a, b) => b.time - a.time), fixed = out.filter(b => b.fixed).sort((a, b) => b.fixedAt - a.fixedAt);
   return open.slice(0, 200).concat(fixed.slice(0, 100)); // ยังไม่แก้ไม่ตกหล่น ส่วนที่แก้แล้วโชว์ล่าสุด 100 (ไฟล์ยังเก็บครบทั้งหมด)
 }
@@ -2549,12 +2549,9 @@ function handleBug(req, res) {
       if (img.length > BUG_IMG_MAX) return out(413, { err: 'ภาพใหญ่เกิน 1MB' });
       ext = bugImgExt(img); if (!ext) return out(400, { err: 'ไฟล์ภาพไม่ถูกต้อง (รองรับ PNG, JPG, WEBP, GIF)' });
     }
-    const c = m.ctx && typeof m.ctx === 'object' ? m.ctx : {}, ctx = {};
-    for (const k of ['x', 'y', 'vw', 'vh', 'dpr', 'zoom', 'touch']) if (c[k] !== undefined) ctx[k] = bugClip(c[k], 12);
-    for (const k of ['ua', 'err', 'url']) if (c[k] !== undefined) ctx[k] = bugClip(c[k], 300);
     const room = ROOM_RE.test(String(m.room || '')) ? String(m.room) : '';
     const id = now.toString(36) + crypto.randomBytes(3).toString('hex');
-    const rec = { id, time: now, name: normName(m.name), room, ip, text, ctx, img: img ? id + '.' + ext : null };
+    const rec = { id, time: now, name: normName(m.name), room, text, img: img ? id + '.' + ext : null }; // เก็บเฉพาะข้อความ + ภาพ (+ ชื่อ/ห้อง/เวลา) ไม่เก็บ IP หรือข้อมูลอุปกรณ์
     fs.mkdir(BUG_DIR, { recursive: true }, e => {
       if (e) { console.error('สร้างโฟลเดอร์แจ้งบั๊กไม่ได้', e.message); return out(500, { err: 'บันทึกไม่ได้ ลองใหม่อีกครั้ง' }); }
       const done = er => {

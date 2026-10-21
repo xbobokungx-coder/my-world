@@ -85,10 +85,10 @@ const PixelUI = (() => {
     }
   }
   let queued = new Set(), timer = 0;
-  function flush() { timer = 0; const q = [...queued]; queued = new Set(); for (const n of q) if (n.isConnected) dom(n); }
+  function flush() { timer = 0; const q = [...queued]; queued = new Set(); for (const n of q) if (n && n.isConnected) dom(n); } // n อาจเป็น null เมื่อโหนดข้อความถูกถอดออกจากหน้าไปแล้ว (เช่น ปิดหน้าต่างแจ้งบั๊กทันทีหลังส่ง)
   function watch() {
     new MutationObserver(ms => {
-      for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 || n.nodeType === 3) queued.add(n.nodeType === 3 ? n.parentNode : n);
+      for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 || n.nodeType === 3) { const t = n.nodeType === 3 ? n.parentNode : n; if (t) queued.add(t); }
       for (const m of ms) if (m.type === 'characterData' && m.target.parentNode) queued.add(m.target.parentNode);
       if (!timer && queued.size) timer = requestAnimationFrame(flush);
     }).observe(document.body, { childList: true, subtree: true, characterData: true });
