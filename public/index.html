@@ -254,7 +254,16 @@
   #adminBody input[type=text] { flex:1; min-width:120px; padding:8px 10px; font:inherit; border:2px solid var(--edge); border-radius:8px; }
   #bag .tabs { flex-wrap:wrap; gap:4px; }
   #bag .tab { padding:6px 9px; font-size:13px; white-space:nowrap; flex:1 1 auto; }
-  #hudTop.folded > :not(#hudFold):not(#coins):not(#hungerChip) { display:none !important; }
+  /* เมนูหลัก: ไอคอนที่ใช้บ่อยอยู่แถบบน ที่เหลือซ่อนในเมนู แบ่งหมวดพร้อมชื่อสั้นๆ */
+  #hudMenu { position:absolute; top:calc(100% + 6px); left:0; width:min(92vw,340px); box-sizing:border-box; padding:8px 10px 10px; background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); z-index:6; max-height:calc(100vh - 90px); overflow:auto; }
+  #hudMenu .mtitle { font-size:12px; font-weight:800; color:#5a4636; opacity:.8; margin:8px 2px 4px; }
+  #hudMenu .mtitle:first-child { margin-top:2px; }
+  #hudMenu .mgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  #hudMenu .btn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:56px; padding:6px 2px; font-size:21px; line-height:1.1; }
+  #hudMenu .btn::after { content:attr(data-lbl); font-size:11px; font-weight:700; }
+  body.touch #hudMenu .btn { min-height:60px; font-size:23px; padding:6px 2px; }
+  #hudMenu .btn.hidden { display:none !important; }
+  #menuBadge { position:absolute; top:-6px; right:-6px; min-width:17px; height:17px; padding:0 4px; box-sizing:border-box; border-radius:9px; background:#e74c3c; color:#fff; font-size:11px; line-height:17px; text-align:center; }
   #ask { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:30; }
   #ask .panel { width:min(90vw,340px); padding:16px; text-align:center; }
   #askText { white-space:pre-line; margin-bottom:12px; font-size:15px; }
@@ -316,29 +325,46 @@
 </div>
 
 <div id="hudTop" class="hidden">
-  <button class="btn small" id="hudFold" title="ย่อ/ขยายแถบเมนู" aria-label="ย่อหรือขยายแถบเมนู">▴</button>
+  <button class="btn small" id="menuBtn" title="เมนู" aria-label="เมนูหลัก" aria-expanded="false" aria-controls="hudMenu" style="position:relative">☰ เมนู<span id="menuBadge" class="hidden"></span></button>
   <div class="panel" id="coins">🪙 0</div>
   <div class="panel" id="hungerChip">🍖 80</div>
   <div class="panel" id="clock">🕒 --:--</div>
   <div class="panel hidden" id="happyChip" title="Happy Village: บัฟร่วมของทั้งเมือง">🎉</div>
   <div class="panel" id="online">👥 1</div>
-  <button class="btn small" id="invite">🔗 ชวนเพื่อน</button>
-  <button class="btn small mic" id="micBtn" title="ไมค์: ปิดอยู่ (กดเพื่อเปิด)" aria-label="เปิด/ปิดไมค์">🎤</button>
-  <button class="btn small spk" id="spkBtn" title="ลำโพง: เปิดอยู่" aria-label="เปิดหรือปิดลำโพง">🔊</button>
-  <button class="btn small hidden" id="lampBtn" title="ตะเกียง (L)" aria-label="ตะเกียง">🏮</button>
-  <button class="btn small hidden" id="adminBtn" title="ผู้ดูแล: จัดการห้อง" aria-label="ผู้ดูแล">🛠️</button>
-  <button class="btn small" id="townBtn" title="ข่าวเมือง" aria-label="ข่าวเมือง">📰</button>
-  <button class="btn small" id="houseBtn" title="ตกแต่งบ้าน (H)" aria-label="ตกแต่งบ้าน">🏠</button>
-  <button class="btn small" id="questBtn" title="เควส" aria-label="เควส" style="position:relative">📋<span id="questBadge" class="hidden" style="position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#e74c3c;color:#fff;font-size:11px;line-height:17px;font-weight:700;text-align:center;pointer-events:none"></span></button>
-  <button class="btn small" id="achBtn" title="ฉายา &amp; ความสำเร็จ" aria-label="ฉายาและความสำเร็จ">🏅</button>
   <button class="btn small" id="bagBtn" title="กระเป๋า (B)" aria-label="กระเป๋า">🎒</button>
-  <button class="btn small" id="statBtn" title="สถานะ (C)" aria-label="สถานะ">📊</button>
-  <button class="btn small" id="bugBtn" title="แจ้งบั๊ก" aria-label="แจ้งบั๊ก">🐞</button>
   <button class="btn small" id="chatBtn" title="แชท (Enter)" aria-label="แชท">💬</button>
-  <button class="btn small" id="myStatusBtn" title="ตั้งสถานะ" aria-label="ตั้งสถานะ">💭</button>
-  <button class="btn small" id="zoomOutBtn" title="ซูมออก (เห็นกว้างขึ้น)" aria-label="ซูมออก">🔍−</button>
-  <button class="btn small" id="zoomInBtn" title="ซูมเข้า (ขยายใหญ่ขึ้น)" aria-label="ซูมเข้า">🔍+</button>
-  <button class="btn small" id="fsBtn" title="เต็มจอ" aria-label="เต็มจอ">⛶</button>
+  <button class="btn small mic" id="micBtn" title="ไมค์: ปิดอยู่ (กดเพื่อเปิด)" aria-label="เปิด/ปิดไมค์">🎤</button>
+  <div id="hudMenu" class="hidden" role="menu" aria-label="เมนูหลัก">
+    <div class="mtitle">🧍 ตัวละคร</div>
+    <div class="mgrid">
+      <button class="btn small" id="statBtn" data-lbl="ข้อมูลฉัน" title="สถานะ (C)" aria-label="ข้อมูลของฉัน">📊</button>
+      <button class="btn small" id="achBtn" data-lbl="ฉายา" title="ฉายา &amp; ความสำเร็จ" aria-label="ฉายาและความสำเร็จ">🏅</button>
+      <button class="btn small" id="myStatusBtn" data-lbl="สถานะ" title="ตั้งสถานะ" aria-label="ตั้งสถานะ">💭</button>
+      <button class="btn small" id="houseBtn" data-lbl="บ้าน" title="ตกแต่งบ้าน (H)" aria-label="ตกแต่งบ้าน">🏠</button>
+    </div>
+    <div class="mtitle">🏘️ เมือง</div>
+    <div class="mgrid">
+      <button class="btn small" id="questBtn" data-lbl="เควส" title="เควส" aria-label="เควส" style="position:relative">📋<span id="questBadge" class="hidden" style="position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#e74c3c;color:#fff;font-size:11px;line-height:17px;font-weight:700;text-align:center;pointer-events:none"></span></button>
+      <button class="btn small" id="townBtn" data-lbl="ข่าวเมือง" title="ข่าวเมือง" aria-label="ข่าวเมือง">📰</button>
+      <button class="btn small hidden" id="lampBtn" data-lbl="ตะเกียง" title="ตะเกียง (L)" aria-label="ตะเกียง">🏮</button>
+    </div>
+    <div class="mtitle">👥 เพื่อน</div>
+    <div class="mgrid">
+      <button class="btn small" id="invite" data-lbl="ชวนเพื่อน" title="คัดลอกลิงก์ชวนเพื่อน" aria-label="ชวนเพื่อน">🔗</button>
+      <button class="btn small spk" id="spkBtn" data-lbl="เสียง" title="ลำโพง: เปิดอยู่" aria-label="เปิดหรือปิดลำโพง">🔊</button>
+    </div>
+    <div class="mtitle">🖥️ หน้าจอ</div>
+    <div class="mgrid">
+      <button class="btn small" id="zoomOutBtn" data-lbl="ซูมออก" title="ซูมออก (เห็นกว้างขึ้น)" aria-label="ซูมออก">🔍−</button>
+      <button class="btn small" id="zoomInBtn" data-lbl="ซูมเข้า" title="ซูมเข้า (ขยายใหญ่ขึ้น)" aria-label="ซูมเข้า">🔍+</button>
+      <button class="btn small" id="fsBtn" data-lbl="เต็มจอ" title="เต็มจอ" aria-label="เต็มจอ">⛶</button>
+    </div>
+    <div class="mtitle">⚙️ อื่นๆ</div>
+    <div class="mgrid">
+      <button class="btn small" id="bugBtn" data-lbl="แจ้งบั๊ก" title="แจ้งบั๊ก" aria-label="แจ้งบั๊ก">🐞</button>
+      <button class="btn small hidden" id="adminBtn" data-lbl="ผู้ดูแล" title="ผู้ดูแล: จัดการห้อง" aria-label="ผู้ดูแล">🛠️</button>
+    </div>
+  </div>
 </div>
 <div id="mini" class="panel hidden">
   <div id="miniBar"><span id="miniTitle">🗺️ แผนที่</span><span><button class="mbtn" id="miniSize" title="ขยาย/ย่อ" aria-label="ขยายหรือย่อแผนที่">🔍</button><button class="mbtn" id="miniHide" title="ซ่อน/แสดง" aria-label="ซ่อนแผนที่">➖</button></span></div>

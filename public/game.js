@@ -601,9 +601,17 @@ function ask(text, yes) { $('askText').textContent = text; askYes = yes; $('ask'
 $('askYes').onclick = () => { $('ask').classList.add('hidden'); const f = askYes; askYes = null; if (f) f(); };
 $('askNo').onclick = () => { $('ask').classList.add('hidden'); askYes = null; };
 // ปุ่มย่อ/ขยายแถบเมนูด้านบน (ย่อแล้วเหลือแค่เหรียญ ความอิ่ม และปุ่มขยาย) จำค่าไว้ในเครื่อง
-function setHudFold(on) { $('hudTop').classList.toggle('folded', on); $('hudFold').textContent = on ? '☰' : '▴'; $('hudFold').title = on ? 'ขยายแถบเมนู' : 'ย่อแถบเมนู'; ls.set('mw_hudfold', on ? '1' : '0'); if (typeof layoutHud === 'function') layoutHud(); }
-$('hudFold').onclick = () => setHudFold(!$('hudTop').classList.contains('folded'));
-setHudFold(ls.get('mw_hudfold') === '1');
+// เมนูหลัก: ปุ่มที่ใช้ไม่บ่อยซ่อนในเมนู (ปุ่มเดิมทุกตัวยังอยู่ ตัวจัดการกดเดิมทำงานเหมือนเดิม)
+const menuShown = () => !$('hudMenu').classList.contains('hidden');
+function setMenu(on) { $('hudMenu').classList.toggle('hidden', !on); $('menuBtn').setAttribute('aria-expanded', on ? 'true' : 'false'); }
+$('menuBtn').onclick = () => setMenu(!menuShown());
+$('hudMenu').addEventListener('click', e => { const b = e.target.closest('.btn'); if (b && !['zoomInBtn', 'zoomOutBtn', 'spkBtn'].includes(b.id)) setMenu(false); }); // เลือกแล้วปิดเมนู ยกเว้นปุ่มที่กดซ้ำได้
+addEventListener('pointerdown', e => { if (menuShown() && !e.target.closest('#hudMenu') && !e.target.closest('#menuBtn')) setMenu(false); });
+{ // แสดงจุดแดงเควสที่ปุ่มเมนูด้วย (เควสอยู่ในเมนู จะได้ไม่พลาดเควสใหม่)
+  const qb = $('questBadge'), mb = $('menuBadge');
+  const sync = () => { mb.textContent = qb.textContent; mb.classList.toggle('hidden', qb.classList.contains('hidden') || !qb.textContent.trim()); };
+  new MutationObserver(sync).observe(qb, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] }); sync();
+}
 // ---------- HUD ----------
 let toastT;
 function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2400); }
@@ -963,7 +971,7 @@ addEventListener('keydown', e => {
   // ใช้ e.code (ตำแหน่งปุ่มจริงบนคีย์บอร์ด) ไม่ใช่ e.key เพื่อให้ WASD และปุ่มลัดทำงานได้แม้เปลี่ยนเป็นแป้นพิมพ์ภาษาไทย
   const c = e.code;
   if (c === 'Enter' || c === 'NumpadEnter') { e.preventDefault(); openChat(); return; }
-  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (TOOL_LIST[n] === 'axe' && !axeLevel()); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
   if (c === 'KeyB' || c === 'KeyI') { $('bagBtn').onclick(); return; }
