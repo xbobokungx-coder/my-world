@@ -518,6 +518,26 @@ class World {
     delete b.acc; // ตัวนับเวลาดอกเบี้ยเดิม (ยกเลิกแล้ว)
     return b;
   }
+  // ----- พลังงาน ⚡ (Phase 2) -----
+  enOf(p) { const e = p.rec.en = p.rec.en && typeof p.rec.en === 'object' ? p.rec.en : {}; if (!Number.isFinite(e.v)) e.v = S.ENERGY.max; e.v = Math.max(0, Math.min(S.ENERGY.max, e.v)); if (!Number.isFinite(e.at)) e.at = Date.now(); e.ex = !!e.ex; return e; }
+  enJoin(p) { const e = this.enOf(p), now = Date.now(); e.v = Math.min(S.ENERGY.max, e.v + Math.max(0, now - e.at) / S.ENERGY.regenMs); e.at = now; if (e.ex && e.v >= S.ENERGY.resume) e.ex = false; } // ฟื้นระหว่างออฟไลน์ด้วย
+  enPub(p) { const e = this.enOf(p); return { t: 'en', v: Math.round(e.v * 10) / 10, ex: e.ex, rate: (p.sit ? S.ENERGY.sitMul : 1) / S.ENERGY.regenMs, resume: S.ENERGY.resume, rareUntil: p.rec.rareAt || 0 }; }
+  enPush(p) { send(p, this.enPub(p)); }
+  tire(p, kind) { // งานหนักที่สำเร็จแล้ว หักพลังงาน หมดเมื่อไรเข้าสถานะ "เหนื่อย" จนฟื้นถึง resume
+    const e = this.enOf(p); e.v = Math.max(0, e.v - (S.ENERGY.cost[kind] || 0)); e.at = Date.now();
+    if (e.v <= 0 && !e.ex) { e.ex = true; this.toast(p, '😮‍💨 เหนื่อยจนทำงานหนักไม่ไหวแล้ว! ไปพัก (นั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า) หรือทำอย่างอื่นก่อน เช่น ทำอาหาร เควส ลงขันเมือง'); logEv(this.room, 'tired', { p: p.key }); }
+    this.dirty = true; this.enPush(p);
+  }
+  exhausted(p) { return this.enOf(p).ex; }
+  heavyAction(tool, k) { return ['hoe', 'water', 'axe', 'rod'].includes(tool) || (typeof tool === 'string' && tool.startsWith('seed_')) || (tool === 'hand' && !!(this.farm[k] && this.farm[k].c)); } // เครื่องมือ/การกระทำที่ถูกหยุดเมื่อเหนื่อย (นั่ง/เก็บไข่/ร้านค้า/ให้อาหารสัตว์ไม่ถูกหยุด)
+  energyTick(dt) { // ฟื้นพลังงานทุกคนที่ออนไลน์ + ส่งค่าให้ client ทุก ~1 วินาทีเฉพาะคนที่ยังไม่เต็ม
+    this.enAcc = (this.enAcc || 0) + dt; const push = this.enAcc >= 1; if (push) this.enAcc = 0;
+    for (const p of this.players.values()) {
+      const e = this.enOf(p); if (e.v >= S.ENERGY.max && !e.ex) continue;
+      e.v = Math.min(S.ENERGY.max, e.v + dt * 1000 / S.ENERGY.regenMs * (p.sit ? S.ENERGY.sitMul : 1)); e.at = Date.now(); this.dirty = true;
+      if (e.ex && e.v >= S.ENERGY.resume) { e.ex = false; this.toast(p, '⚡ พักพอแล้ว กลับไปทำงานได้'); this.enPush(p); } else if (push) this.enPush(p);
+    }
+  }
   quotaPub(p) { const so = p.rec.sold; const gross = so && so.day === this.today() ? so.gross || 0 : 0, d = new Date(); return { t: 'quota', full: S.QUOTA.full, gross, rate: S.quotaRate(gross), resetAt: new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime() }; }
   quotaPush(p) { send(p, this.quotaPub(p)); }
   bankPush(p) { const b = this.bankOf(p); send(p, { t: 'bank', bal: b.bal, cap: S.BANK.cap }); }
@@ -892,7 +912,7 @@ class World {
     });
     send(p, { t: 'arcs', a: this.arcsPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
-    send(p, { t: 'proj', p: this.projPub() }); this.quotaPush(p);
+    send(p, { t: 'proj', p: this.projPub() }); this.quotaPush(p); this.enJoin(p); this.enPush(p);
     this.orderPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
@@ -1198,6 +1218,7 @@ class World {
     const gain = Math.min(info.food, 100 - Math.round(p.rec.hunger));
     this.add(p, item, -1);
     this.setHunger(p, p.rec.hunger + info.food, true);
+    { const e = this.enOf(p); e.v = Math.min(S.ENERGY.max, e.v + info.food * S.ENERGY.eatMul); if (e.ex && e.v >= S.ENERGY.resume) e.ex = false; this.enPush(p); }
     this.toast(p, `กิน ${info.emoji} ${info.name} (อิ่มขึ้น +${gain})`);
     this.sfx(p, 'eat'); if (item.startsWith('meal_')) this.bookAdd(p, 'meal', item.slice(5));
     this.event(p, 'eat');
@@ -1287,11 +1308,13 @@ class World {
       if (p.fish.st === 'bite') {
         send(p, { t: 'fg', off: 1 });
         const fl = p.fish.fl, rod = p.fish.rod, G = S.FISH_GAUGE, perfect = S.gaugeCore(p.fish, now); // กดเป๊ะกลางโซน = อัตราปลาเต็ม / โดนแค่ขอบโซน = ปลาแพงเจอยากลง
-        const pool = FISH.filter(f => f.lv <= fl).map(f => ({ f, w: f.w * (f.sell >= 100 ? 1 + 0.12 * (fl - 1) + 0.35 * (rod - 1) : 1) / (f.id === 'boot' ? 1 + rod : 1) * S.baitWeight(f, p.fish.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) })).filter(x => x.w > 0);
+        const rareCd = (p.rec.rareAt || 0) > Date.now(); // ปลาหายากเพิ่งตกได้ พักรอบก่อน (ยังตกปลาธรรมดาได้)
+        const pool = FISH.filter(f => f.lv <= fl && !(rareCd && f.sell >= 100)).map(f => ({ f, w: f.w * (f.sell >= 100 ? 1 + 0.12 * (fl - 1) + 0.35 * (rod - 1) : 1) / (f.id === 'boot' ? 1 + rod : 1) * S.baitWeight(f, p.fish.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) })).filter(x => x.w > 0);
         let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
         for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
         this.add(p, 'fish_' + f.id, 1);
-        this.addXp(p, 'fish', f.xp);
+        this.addXp(p, 'fish', f.xp); this.tire(p, 'fish');
+        if (f.sell >= 100) { p.rec.rareAt = Date.now() + S.ENERGY.rareCdMs; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.ENERGY.rareCdMs / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
         this.toast(p, `${perfect ? '🎯 เป๊ะ! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (f.sell >= 100) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
         this.event(p, 'fish', f.sell); this.bookAdd(p, 'fish', f.id);
         this.sfx(p, f.sell >= 100 ? 'catch_big' : 'catch');
@@ -1313,6 +1336,7 @@ class World {
     const k = tx + ',' + ty;
     const tt = this.map[ty] && this.map[ty][tx];
     const tcx = (tx + 0.5) * TS, tcy = (ty + 0.5) * TS;
+    if (this.exhausted(p) && this.heavyAction(tool, k) && tt !== T.SHOP) { const e = this.enOf(p), sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000); return this.toast(p, `😮‍💨 เหนื่อยอยู่ พักอีกประมาณ ${sec} วินาทีถึงทำงานหนักได้ (นั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า)`); }
     if (p.rec.hunger <= 0 && tt !== T.SHOP) return this.toast(p, '😵 หิวจนไม่มีแรง! ไปกินอาหารก่อนนะ (ร้านอาหาร หรือกินผลผลิตจากกระเป๋า)');
     // 0) นั่งที่ม้านั่ง/กองฟาง/เก้าอี้ในลานกลางหมู่บ้าน
     const seat = S.seatAt(tx, ty) || this.furnSeat(tx, ty);
@@ -1348,7 +1372,7 @@ class World {
     if (tile && tile.c && S.cropStage(tile) === 3) {
       if (this.cropLocked(tile, p)) return this.toast(p, `🌱 ต้นนี้เป็นของ ${tile.on || 'ผู้เล่นอื่น'} — ถ้าเขาไม่มาเก็บภายใน ${Math.max(1, Math.ceil((S.DAY_MS - (tile.rm || 0)) / 60000))} นาที (1 วันในเกม) คนอื่นถึงจะมาเก็บได้`);
       const c = CROPS[tile.c];
-      this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp);
+      this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp); this.tire(p, 'harvest');
       this.toast(p, `เก็บ ${c.emoji} ${c.name}`); if (c.sell >= 100) this.addLog(`${c.emoji} ${p.name} เก็บเกี่ยว${c.name}สำเร็จ`);
       this.sfx(p, 'harvest'); this.event(p, 'harvest', tile.c); this.bookAdd(p, 'crop', tile.c);
       delete tile.c; delete tile.g; delete tile.m; delete tile.o; delete tile.on; delete tile.rm;
@@ -1373,7 +1397,7 @@ class World {
         if (tile.c) return this.toast(p, 'มีพืชอยู่ ขุดไม่ได้');
         delete this.farm[k]; this.tileUpdate(k, null); this.sfx(p, 'hoe'); this.durUse(p, 'hoe');
       } else if (tt === T.GRASS && S.inFarm(tx, ty)) {
-        this.farm[k] = {}; this.tileUpdate(k, this.farm[k]); this.addXp(p, 'farm', 1); this.sfx(p, 'hoe'); this.durUse(p, 'hoe'); this.event(p, 'dig');
+        this.farm[k] = {}; this.tileUpdate(k, this.farm[k]); this.addXp(p, 'farm', 1); this.tire(p, 'dig'); this.sfx(p, 'hoe'); this.durUse(p, 'hoe'); this.event(p, 'dig');
       } else this.toast(p, 'ขุดได้เฉพาะในแปลงผัก');
     } else if (tool === 'water') {
       if (tt === T.WATER) { // ตักน้ำจากสระใส่บัวรดน้ำ
@@ -1390,7 +1414,7 @@ class World {
       this.waterSet(p, wl - 1);
       this.tileUpdate(k, tile); this.sfx(p, 'water');
       if (wl - 1 === 0) this.toast(p, '💧 น้ำหมดแล้ว ไปตักน้ำที่สระก่อนนะ');
-      if (dry) this.addXp(p, 'farm', 1);
+      if (dry) { this.addXp(p, 'farm', 1); this.tire(p, 'water'); }
       if (dry && tile.c) { this.event(p, 'water'); this.addPts(p, 1); } // รดน้ำพืชที่แห้งจริงๆ เท่านั้นที่นับ
     } else if (tool.startsWith('seed_')) {
       if (!tile) return this.toast(p, 'ต้องขุดดินก่อน');
@@ -1398,7 +1422,7 @@ class World {
       if (!inv[tool]) return this.toast(p, 'เมล็ดหมด ไปซื้อที่ร้านเมล็ดพันธุ์');
       this.add(p, tool, -1);
       tile.c = tool.slice(5); tile.o = p.key; tile.on = p.name; tile.rm = 0; tile.g = 0; tile.m = 1 + 0.04 * (this.lv(p, 'farm') - 1);
-      this.tileUpdate(k, tile); this.addXp(p, 'farm', 2); this.sfx(p, 'plant'); this.event(p, 'plant');
+      this.tileUpdate(k, tile); this.addXp(p, 'farm', 2); this.tire(p, 'plant'); this.sfx(p, 'plant'); this.event(p, 'plant');
     } else if (tool === 'rod') {
       if (tt !== T.WATER) return this.toast(p, 'ต้องเลือกช่องที่เป็นน้ำ');
       if (!this.nearWater(p)) return this.toast(p, 'ต้องยืนห่างจากสระน้ำไม่เกิน 2 ช่องถึงจะตกปลาได้');
@@ -1423,7 +1447,7 @@ class World {
       this.broadcast({ t: 'tree', x: tx, y: ty, on: false });
       const wl = this.lv(p, 'wood'), hard = Math.random() < S.WOOD.hardwood.chance + 0.01 * (wl - 1) + (this.happyOn() ? S.VILLAGE.hardBonus : 0), extra = Math.random() < 0.04 * (wl - 1) ? 1 : 0;
       this.add(p, 'log', 2 + extra); if (hard) this.add(p, 'hardwood', 1); // (4C) ต้นละ 2 ไม้ท่อน ดันรายได้ช่างไม้
-      this.addXp(p, 'wood', S.WOOD.log.xp * (2 + extra) + (hard ? S.WOOD.hardwood.xp : 0));
+      this.addXp(p, 'wood', S.WOOD.log.xp * (2 + extra) + (hard ? S.WOOD.hardwood.xp : 0)); this.tire(p, 'chop');
       this.toast(p, `🌳 ต้นไม้ล้ม! ได้ 🪵 ไม้ท่อน x${2 + extra}${hard ? ' และ 🟫 ไม้เนื้อแข็ง!' : ''}`); this.sfx(p, 'fell'); this.event(p, 'chop'); if (hard) this.event(p, 'hardwood');
     } else if (tool === 'medicine') {
       const a = this.animals.filter(a => a.sick && (Math.hypot(a.x - tcx, a.y - tcy) < 52 || Math.hypot(a.x - p.x, a.y - p.y) < 52))
@@ -2376,6 +2400,7 @@ class World {
       if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) { if (p.sit) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul)); } } // นั่งพักอยู่ = ความหิวไม่ลด
       this.sitTick = (this.sitTick || 0) + dt * 1000;
       if (this.sitTick >= S.PLAYER_HUNGER.sitMs) { this.sitTick = 0; for (const p of this.players.values()) if (p.sit && p.rec.hunger < 100) this.setHunger(p, p.rec.hunger + S.PLAYER_HUNGER.sitGain, true); } // นั่งพักค่อยๆ อิ่มขึ้นทีละนิด
+      this.energyTick(dt);
       for (const a of this.animals) {
         const A = ANIMALS[a.type];
         a.hunger = Math.max(0, a.hunger - dt * HFAST * 100 / (A.starveMin * 60));

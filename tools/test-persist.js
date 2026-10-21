@@ -20,6 +20,24 @@ p.rec.bank = { bal: 5000 }; p.activeAt = Date.now();
 for (let i = 0; i < 20; i++) w.tick(60, Date.now());
 assert.strictEqual(w.bankOf(p).bal, 5000, 'ยอดฝากเปลี่ยนเอง (ไม่ควรมีดอกเบี้ย)');
 assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่มีแล้ว');
+// พลังงาน ⚡ + งานหนัก
+{
+  const E = S.ENERGY; p.rec.en = null; w.enJoin(p); p.sit = null;
+  assert.strictEqual(w.enOf(p).v, E.max, 'เริ่มเต็ม');
+  let n = 0; while (!w.exhausted(p) && n < 200) { w.tire(p, 'chop'); n++; }
+  assert.ok(w.exhausted(p) && w.enOf(p).v === 0 && n === Math.ceil(E.max / E.cost.chop), 'ตัดไม้ซ้ำต้องเหนื่อยตามต้นทุน');
+  assert.ok(w.heavyAction('axe', '1,1') && w.heavyAction('hoe', '1,1') && w.heavyAction('seed_carrot', '1,1') && !w.heavyAction('feed', '1,1') && !w.heavyAction('hand', '1,1'), 'งานหนักถูกหยุด งานเบา/ร้าน/เลี้ยงสัตว์ไม่ถูกหยุด');
+  w.energyTick(E.resume * E.regenMs / 1000 - 1); assert.ok(w.exhausted(p), 'ยังไม่ถึง resume ต้องยังเหนื่อย');
+  w.energyTick(2); assert.ok(!w.exhausted(p), 'ฟื้นถึง resume แล้วต้องกลับมาทำงานได้');
+  w.enOf(p).v = 0; w.enOf(p).ex = true; p.sit = { x: 1, y: 1 }; w.energyTick(10); const sitV = w.enOf(p).v; p.sit = null; w.enOf(p).v = 0; w.energyTick(10);
+  assert.ok(Math.abs(sitV - w.enOf(p).v * E.sitMul) < 1e-6, 'นั่งพักฟื้นเร็วขึ้นตาม sitMul');
+  const e = w.enOf(p); e.v = 0; e.ex = true; e.at = Date.now() - 60000; w.enJoin(p);
+  assert.ok(Math.abs(e.v - 60000 / E.regenMs) < 0.2, 'ออฟไลน์ก็ฟื้น');
+  e.v = 10; p.rec.hunger = 40; p.rec.inv.meal_bread = 1; w.eat(p, 'meal_bread'); const food = S.itemInfo('meal_bread').food;
+  assert.ok(Math.abs(w.enOf(p).v - (10 + food * E.eatMul)) < 1e-6, 'กินอาหารฟื้นพลังงานตาม eatMul');
+  const pub = w.enPub(p); assert.ok(pub.t === 'en' && pub.rate > 0 && Number.isFinite(pub.v), 'ข้อมูลส่ง client ถูกต้อง');
+  e.v = E.max; e.ex = false;
+}
 // โควตาขายราคาเต็มต่อวัน
 {
   const Q = S.QUOTA, near = (a, b, e = 1) => Math.abs(a - b) <= e;

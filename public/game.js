@@ -40,7 +40,7 @@ let arcSt = { pts: 0, total: 0, wk: 0 };                               // แต
 let lbSt = { total: [], wk: [], me: null }, hubTab = 'rank';           // Leaderboard + ศูนย์รวมแต้ม/รางวัล
 let projSt = [];
 let questSt = { list: [], total: 0, title: '', pts: { bal: 0, earned: 0 } }, fameSt = {};
-let quotaSt = { full: QUOTA.full, gross: 0, rate: 1, resetAt: 0 }, bankSt = { bal: 0, cap: BANK.cap }, villageSt = { n: 0, goal: 0, done: false, left: 0 };
+let enSt = { v: 100, ex: false, rate: 0, resume: 10, rareUntil: 0, at: Date.now() }, quotaSt = { full: QUOTA.full, gross: 0, rate: 1, resetAt: 0 }, bankSt = { bal: 0, cap: BANK.cap }, villageSt = { n: 0, goal: 0, done: false, left: 0 };
 let villageEnd = 0; // เวลาที่บัฟ Happy Village หมด (ms ของนาฬิกาเครื่องนี้)
 const happyOn = () => villageEnd > Date.now();
 const buffExp = {}; // บัฟที่ยังมีผลอยู่: id -> เวลาหมด (ms ของนาฬิกาเครื่องนี้)
@@ -182,6 +182,7 @@ function handle(m) {
     case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break;
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
     case 'chest': chestSt = m.c; if (townShown()) renderTown(); break;
+    case 'en': enSt = Object.assign(m, { at: Date.now() }); renderEnergy(); break;
     case 'quota': quotaSt = m; renderQuota(); if (!$('bag').classList.contains('hidden')) renderBag(); break;
     case 'proj': projSt = m.p; checkProjects(); if (townShown()) renderTown(); break;
     case 'quests': {
@@ -292,7 +293,7 @@ function villageCard() {
 // โควตา "ขายได้ราคาเต็ม" ต่อวัน: ป้ายที่แถบบนบอกสถานะเมื่อใกล้เต็ม/เกินแล้ว และเวลาที่เหลือจนรีเซ็ต (เที่ยงคืน)
 const curGross = () => (quotaSt.resetAt && Date.now() >= quotaSt.resetAt ? 0 : quotaSt.gross || 0); // ข้ามเที่ยงคืนตอนออนไลน์อยู่: ถือว่ารีเซ็ตแล้วจนกว่าจะได้ข้อมูลใหม่
 const payFor = total => quotaPay(curGross(), total).pay;
-function fmtLeft(ms) { const m = Math.max(1, Math.ceil(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)} ชม. ${m % 60} นาที` : `${m} นาที`; }
+function fmtLeft(ms) { if (ms < 60000) return `${Math.max(1, Math.ceil(ms / 1000))} วินาที`; const m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)} ชม. ${m % 60} นาที` : `${m} นาที`; }
 function renderQuota() {
   const el = $('quotaChip'), g = curGross(), rate = Shared.quotaRate(g), left = quotaSt.resetAt ? quotaSt.resetAt - Date.now() : 0;
   if (g < QUOTA.full * 0.8) { el.classList.add('hidden'); return; }
@@ -302,6 +303,18 @@ function renderQuota() {
 }
 $('quotaChip').onclick = () => toast($('quotaChip').title);
 setInterval(renderQuota, 30000); // นับถอยหลังเวลารีเซ็ต + ซ่อนป้ายเองเมื่อข้ามเที่ยงคืน
+// พลังงาน ⚡ + คูลดาวน์ปลาหายาก: ป้ายแถบบน บอกสถานะและเวลาที่เหลือ (ค่าจริงมาจาก server ทุก ~1 วินาที ระหว่างนั้นคำนวณต่อเองตามอัตราฟื้น)
+function renderEnergy() {
+  const el = $('enChip'), cd = $('cdChip'), now = Date.now(), v = Math.min(Shared.ENERGY.max, enSt.v + (enSt.v < Shared.ENERGY.max ? (now - enSt.at) * enSt.rate : 0));
+  const sec = Math.max(1, Math.ceil((enSt.resume - v) / (enSt.rate || 1e-9) / 1000));
+  el.classList.toggle('over', enSt.ex); el.classList.toggle('warn', !enSt.ex && v < 30);
+  el.textContent = enSt.ex ? `😮‍💨 เหนื่อย • พักอีก ${fmtLeft(sec * 1000)}` : `⚡ ${Math.floor(v)}`;
+  el.title = enSt.ex ? 'เหนื่อยจนทำงานหนักไม่ได้ (ปลูก/รดน้ำ/ขุด/เก็บเกี่ยว/ตัดไม้/ตกปลา) ไปทำอย่างอื่นก่อน เช่น ทำอาหาร เควส ลงขันเมือง หรือนั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า' : `พลังงาน ${Math.floor(v)}/${Shared.ENERGY.max} งานหนักกินพลังงาน ฟื้นเองช้าๆ นั่งพักฟื้นไว กินอาหารฟื้นเพิ่มเล็กน้อย`;
+  const left = (enSt.rareUntil || 0) - now; cd.classList.toggle('hidden', left <= 0);
+  if (left > 0) { cd.classList.add('warn'); cd.textContent = `🐟 ปลาหายากพัก ${fmtLeft(left)}`; cd.title = 'ตกปลาหายากไปแล้ว ต้องรอก่อนถึงจะตกปลาหายากได้อีก (ปลาธรรมดาตกได้ปกติ)'; }
+}
+$('enChip').onclick = () => toast($('enChip').title); $('cdChip').onclick = () => toast($('cdChip').title);
+setInterval(renderEnergy, 1000);
 function renderBankTab(el) {
   const coin = inv.coin || 0, room = Math.max(0, bankSt.cap - bankSt.bal);
   let h = `<div class="row"><span>💳 ยอดเงินฝาก</span><b>🪙 ${bankSt.bal} / ${bankSt.cap}</b></div><div class="bar"><i style="width:${Math.round(bankSt.bal / bankSt.cap * 100)}%"></i></div>`
