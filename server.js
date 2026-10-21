@@ -16,14 +16,16 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const HFAST = Math.max(1, +process.env.HUNGER_FAST || 1);
 const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs, RESULT_MS = +process.env.CASINO_RESULT_MS || 8000, EMPTY_MS = +process.env.CIN_EMPTY_MS || 20000; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
+const SNAP_MS = +process.env.SNAP_MS || 60 * 60 * 1000; // ระยะห่างของ event snap (ไว้ทดสอบ)
 const rand = (a, b) => a + Math.random() * (b - a);
 // บันทึกเหตุการณ์ไว้วิเคราะห์ (หนึ่งไฟล์ต่อวัน data/events/YYYY-MM-DD.jsonl) สรุปด้วย node tools/stats.js
 const EVENT_DIR = path.join(DATA_DIR, 'events');
 try { fs.mkdirSync(EVENT_DIR, { recursive: true }); } catch (e) { /* บันทึกไม่ได้ก็ไม่ทำให้เกมล้ม */ }
-const logEv = (room, e, o) => {
+const logEv = (room, e, o, sync) => { // sync = เขียนทันที (ใช้ตอนปิดเซิร์ฟเวอร์)
   try {
     const d = new Date(), day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    fs.appendFile(path.join(EVENT_DIR, day + '.jsonl'), JSON.stringify(Object.assign({ t: Date.now(), room, e }, o)) + '\n', () => {});
+    const ln = JSON.stringify(Object.assign({ t: Date.now(), room, e }, o)) + '\n';
+    if (sync) fs.appendFileSync(path.join(EVENT_DIR, day + '.jsonl'), ln); else fs.appendFile(path.join(EVENT_DIR, day + '.jsonl'), ln, () => {});
   } catch (err) { /* ข้าม */ }
 };
 const PET_DEFS = [{ kind: 'cat', v: 0, max: 15, speed: 36 }, { kind: 'dog', v: 0, max: 20, speed: 54 }, { kind: 'dog', v: 1, max: 20, speed: 50 }]; // max = รัศมีสูงสุดจากกองไฟ (ช่อง)
@@ -463,6 +465,7 @@ class World {
   famePub() { const o = {}; for (const ev of Object.keys(S.FAME)) o[ev] = Object.entries(this.stats.ev[ev] || {}).sort((a, b) => b[1] - a[1]).slice(0, 3); return o; }
   event(p, ev, arg) { // เหตุการณ์ที่นับทั้งเควสและสถิติประจำวัน
     this.statDay(); this.starterStep(p, ev);
+    if (ev === 'feed' || ev === 'collect' || ev === 'cook' || ev === 'craft') this.telAdd(p, ev, 0); // งานเบาที่ไม่ผ่าน tire()
     { const c = this.achOf(p.rec).cnt; c[ev] = (c[ev] || 0) + 1; if (ev === 'fish' && arg >= 55) c.fishbig = (c.fishbig || 0) + 1; } // ตัวนับสะสมสำหรับ Achievement
     if (S.FAME[ev]) { this.villageBump(p); }
     if (S.FAME[ev]) { const m = this.stats.ev[ev] || (this.stats.ev[ev] = Object.create(null)); m[p.name] = (m[p.name] || 0) + 1; this.dirty = true; }
@@ -550,7 +553,19 @@ class World {
       e.ex = true; const sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000);
       this.toast(p, `😮‍💨 เหนื่อยแล้ว! ต้องพักราว ${sec >= 60 ? Math.ceil(sec / 60) + ' นาที' : sec + ' วินาที'} (นั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า) ระหว่างนี้ทำอาหาร เควส หรือลงขันเมืองได้`); logEv(this.room, 'tired', { p: p.key });
     }
-    this.dirty = true; this.enPush(p, cost);
+    this.dirty = true; this.enPush(p, cost); this.telAdd(p, kind, cost);
+  }
+  // ----- telemetry: นับจำนวนการกระทำ + พลังงานที่ใช้ต่อคน รวมไว้ในหน่วยความจำ แล้วเขียนเป็น event 'act' ตอนออกจากเกม/ทุกชั่วโมง (ไม่เขียนทุกคลิก) -----
+  telAdd(p, kind, en) { const t = p.tel || (p.tel = { n: {}, en: {} }); t.n[kind] = (t.n[kind] || 0) + 1; if (en) t.en[kind] = (t.en[kind] || 0) + en; }
+  telFlush(p, sync) { const t = p.tel; if (!t || !Object.keys(t.n).length) return; p.tel = null; logEv(this.room, 'act', { p: p.key, n: t.n, en: t.en }, sync); }
+  telTick(now) { // ทุกชั่วโมง: ภาพรวมตลาดกลาง/กองกลาง/ฝูงสัตว์ + เทการกระทำของคนที่ออนไลน์ค้างอยู่
+    if (!this.snapAt) this.snapAt = now + Math.min(5 * 60 * 1000, SNAP_MS);
+    if (now < this.snapAt) return;
+    this.snapAt = now + SNAP_MS;
+    const mk = {}; for (const k of Object.keys(this.market)) mk[k] = Math.round(this.market[k].m * 100) / 100;
+    const an = {}; for (const a of this.animals) if (!a.dead) an[a.type] = (an[a.type] || 0) + 1;
+    logEv(this.room, 'snap', { mk, chest: this.chest.coin, dead: this.chest.dead, an, online: this.players.size });
+    for (const p of this.players.values()) this.telFlush(p);
   }
   exhausted(p) { return this.enOf(p).ex; }
   heavyAction(tool, k) { return ['hoe', 'water', 'axe', 'rod'].includes(tool) || (typeof tool === 'string' && tool.startsWith('seed_')) || (tool === 'hand' && !!(this.farm[k] && this.farm[k].c)); } // เครื่องมือ/การกระทำที่ถูกหยุดเมื่อเหนื่อย (นั่ง/เก็บไข่/ร้านค้า/ให้อาหารสัตว์ไม่ถูกหยุด)
@@ -735,10 +750,10 @@ class World {
   starterOf(p) { // ผู้เล่นเก่าที่เล่นมานานแล้ว (ระดับการเล่น ≥ 8) ข้ามคู่มือเริ่มต้น
     return p.rec.starter || (p.rec.starter = { done: {}, final: S.playLevel(p.rec.skills) >= 8 });
   }
-  starterStep(p, ev) {
+  starterStep(p, ev) { // event starter: sec = วินาทีนับจากเข้าเกมครั้งแรก (รวมเวลาออฟไลน์), ses = วินาทีนับจากเข้าเซสชันนี้
     const st = this.starterOf(p); if (st.final) return;
     let changed = false;
-    for (const s of S.STARTER) if (s.ev === ev && !st.done[s.id]) { st.done[s.id] = 1; changed = true; logEv(this.room, 'starter', { p: p.key, step: s.id, n: Object.keys(st.done).length, sec: p.rec.firstSeen ? Math.round((Date.now() - p.rec.firstSeen) / 1000) : null }); this.add(p, 'coin', s.coin, 'starter'); this.toast(p, `✅ คู่มือเริ่มต้น: ${s.hint} (+🪙${s.coin})`); }
+    for (const s of S.STARTER) if (s.ev === ev && !st.done[s.id]) { st.done[s.id] = 1; changed = true; logEv(this.room, 'starter', { p: p.key, step: s.id, n: Object.keys(st.done).length, sec: p.rec.firstSeen ? Math.round((Date.now() - p.rec.firstSeen) / 1000) : null, ses: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000), joins: p.rec.joins || 1 }); this.add(p, 'coin', s.coin, 'starter'); this.toast(p, `✅ คู่มือเริ่มต้น: ${s.hint} (+🪙${s.coin})`); }
     if (!changed) return;
     if (S.STARTER.every(s => st.done[s.id])) {
       st.final = true; this.add(p, 'coin', S.STARTER_FINAL.coin, 'starter'); for (const it of S.STARTER_FINAL.items) this.add(p, it, 1);
@@ -955,6 +970,7 @@ class World {
     this.arcLeave(p);
     this.tradeCancel(p, 'ผู้เล่นออกจากเกม');
     if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
+    this.telFlush(p);
     logEv(this.room, 'leave', { p: p.key, sec: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000) });
     p.rec.catAt = Date.now();
     this.players.delete(p.id); this.addLog(`🚪 ${p.name} ออกไปแล้ว`);
@@ -1325,7 +1341,7 @@ class World {
       this.dirty = true; send(p, { t: 'mkt', m: this.mktFor(p) }); // ผู้ขายเห็นราคาใหม่ทุกชนิด (โบนัสหลากหลายเปลี่ยนทั้งชุด)
       for (const q2 of this.players.values()) if (q2 !== p) send(q2, { t: 'mkt', m: { [item]: Math.round(this.effMult(q2, item) * 100) / 100 } });
     }
-    logEv(this.room, 'sell', { p: p.key, item, q, coin: pay, m: Math.round(mEff * 100) / 100 });
+    logEv(this.room, 'sell', { p: p.key, item, q, coin: pay, m: Math.round(mEff * 100) / 100, cat, base: info.sell * q });
     this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${pay}${bonusTxt}${this.catOf(p, cat) < 0.85 ? ` 📉 ตลาด${CAT_NAME[cat] || 'หมวดนี้'}อิ่มตัว (ราคา ${Math.round(this.catOf(p, cat) * 100)}%)` : ''}`); this.catPush(p); this.event(p, 'sell');
     if (S.SHOPS.animal.sell.includes(item)) this.event(p, 'sellproduct');
     this.sfxTo(p, 'coin');
@@ -2422,6 +2438,7 @@ class World {
   tick(dt, now) {
     this.arcTick(now);
     this.cinemaTick(now);
+    this.telTick(now);
     this.npcTick(dt, now); this.petTick(dt);
     for (const tr of this.trades.values()) { // เทรดค้าง/อยู่ห่างกันเกินไป = ยกเลิก
       const a = this.players.get(tr.a.id), b = this.players.get(tr.b.id);
@@ -2801,7 +2818,7 @@ setInterval(() => { const now = Date.now(); for (const w of worlds.values()) gua
 setInterval(() => { for (const w of worlds.values()) guard(() => w.save(false)); }, 30000);
 setInterval(() => { const now = Date.now(); for (const w of worlds.values()) guard(() => w.marketTick(now)); }, +process.env.MARKET_TICK_MS || 60000); // ตลาดปรับราคาทุก 1 นาที
 
-function shutdown() { for (const w of worlds.values()) { w.arcRefundAll(); w.dirty = true; w.save(true); } process.exit(0); }
+function shutdown() { for (const w of worlds.values()) { for (const p of w.players.values()) w.telFlush(p, true); w.arcRefundAll(); w.dirty = true; w.save(true); } process.exit(0); }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
