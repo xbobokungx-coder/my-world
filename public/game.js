@@ -2519,6 +2519,18 @@ function step(now) {
     ctx.fillStyle = v > 0.85 ? '#e4f4ff' : '#9fd0f0';
     ctx.fillRect(x * TS + 2 + Math.floor(hash(x, y, i + 3) * 11) * 2, y * TS + 4 + Math.floor(hash(x, y, i + 6) * 12) * 2, 4 + (i ? 2 : 0), 2);
   }
+  // ปลาเล็กๆ ในบ่อเล็กข้างสวนผัก (ช่องน้ำตรงกับ shared.js: x 17–20 แถว 19 และ x 16–21 แถว 20): ว่ายไป-กลับคนละจังหวะ หันหัวตามทิศที่ว่าย
+  for (let i = 0; i < 3; i++) {
+    const sp = 0.0009 + i * 0.00017, ph = i * 2.3 + 0.7, sw = Math.sin(now * sp + ph);
+    const ahead = Math.cos(now * sp + ph) > 0 ? 1 : -1, wag = Math.sin(now / 90 + i) > 0 ? 1 : 0; // หางกระดิกสลับไปมา
+    const fx = (17.2 + (sw + 1) / 2 * 3.6) * TS, fy = (19.5 + (i % 2) * 0.6 + Math.sin(now / 500 + i) * 0.1) * TS;
+    if (fx < camX - TS || fx > camX + vw + TS || fy < camY - TS || fy > camY + vh + TS) continue;
+    ctx.save(); ctx.translate(fx, fy); ctx.scale(ahead, 1);
+    ctx.fillStyle = '#1d3e5c'; ctx.fillRect(-7, -3 + wag, 3, 6); ctx.fillRect(-4, -4, 9, 8); // ขอบเข้ม 1 px
+    ctx.fillStyle = ['#ff9a3c', '#f4f4f4', '#ffd23f'][i]; ctx.fillRect(-6, -2 + wag, 1, 4); ctx.fillRect(-3, -3, 7, 6);
+    ctx.fillStyle = '#1d3e5c'; ctx.fillRect(2, -2, 1, 1); // ตา
+    ctx.restore();
+  }
   // ช่องฟาร์ม
   for (const k in farm) {
     const [fx, fy] = k.split(',').map(Number);
