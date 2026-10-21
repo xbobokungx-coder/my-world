@@ -44,7 +44,10 @@ const PixelArt = (() => {
   const BLEND = [true, true, true, true, false];
   const GRASS = ['#558f3a', '#64a344', '#73b44d', '#84c458', '#9ad46a'].map(rgb);
   const PATH = ['#c08f59', '#c99c66', '#d2a873'].map(rgb);
-  const WATERC = ['#2b659d', '#3778b6', '#4790cb', '#62a8dc'].map(rgb);
+  // น้ำใส โทนเทอร์ควอยส์: ลึกกลางสระเข้ม ริมฝั่งอ่อนลง (ไล่ตามระยะจากฝั่ง)
+  const WATERC = ['#1d7b9e', '#2a8fb3', '#44a9c6', '#6cc6d6'].map(rgb);
+  const SHALLOW = rgb('#a8e4e0'), SANDBED = rgb('#d9c48a'); // ริมฝั่งน้ำตื้นเห็นพื้นทรายใต้น้ำ
+  const mixc = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
 
   function ground(MAP) {
     const PW = W * U, PH = H * U, c = cv(PW, PH), x = c.getContext('2d'), img = x.createImageData(PW, PH), a = img.data;
@@ -84,7 +87,9 @@ const PixelArt = (() => {
         const fx = tx - ix, fy = ty - iy, dv = (k, l) => Math.min(4, depth[clamp(iy + l, 0, H - 1)][clamp(ix + k, 0, W - 1)]);
         const d = (dv(0, 0) * (1 - fx) + dv(1, 0) * fx) * (1 - fy) + (dv(0, 1) * (1 - fx) + dv(1, 1) * fx) * fy;
         col = WATERC[3 - clamp(Math.floor(d * .9 + dith(px, py) * .8 - .4), 0, 3)];
-        if (Tp(px, py - 1) !== WA || Tp(px - 1, py) !== WA) col = hx('#d6eefc'); // ฟองริมตลิ่ง
+        const sh = clamp((2.4 - d) / 1.4, 0, 1); // ใกล้ฝั่งน้ำใสขึ้น เห็นทรายข้างล่าง
+        col = mixc(mixc(col, SHALLOW, sh * .45), SANDBED, sh * sh * .18);
+        if (Tp(px, py - 1) !== WA || Tp(px - 1, py) !== WA) col = hx('#e4fbfb'); // ฟองริมตลิ่ง
       } else { // พื้นไม้ของที่ดิน
         const pid = Math.floor(py / 5), ix = (px + pid * 11) % 26, iy = py % 5;
         col = hx(hash(pid, Math.floor((px + pid * 11) / 26), 5) < .5 ? '#b67d45' : '#c08a50');
@@ -93,6 +98,14 @@ const PixelArt = (() => {
         if (ix === 2 && iy === 2) col = hx('#5a3a20');
       }
       set(px, py, col);
+    }
+    // รายละเอียดริมสระ: กรวดและกอต้นกกเล็กๆ บนทรายที่ติดน้ำ
+    for (let py = 2; py < PH - 3; py++) for (let px = 2; px < PW - 2; px++) {
+      if (types[py * PW + px] !== SA) continue;
+      if (!(Tp(px, py - 2) === WA || Tp(px, py + 2) === WA || Tp(px - 2, py) === WA || Tp(px + 2, py) === WA)) continue;
+      const r = hash(px, py, 21);
+      if (r < .012) { set(px, py, hx('#4f8a3a')); set(px, py - 1, hx('#6fa84f')); set(px, py - 2, hx('#8cc463')); set(px - 1, py - 1, hx('#4f8a3a')); }
+      else if (r < .03) { set(px, py, hx('#8f9aa1')); set(px + 1, py, hx('#8f9aa1')); set(px, py - 1, hx('#c4ccd0')); }
     }
     // ใบหญ้า กอหญ้า ดอกไม้ป่า กรวด
     for (let py = 1; py < PH - 1; py++) for (let px = 0; px < PW; px++) if (types[py * PW + px] === G && hash(px, py, 13) < .03) { set(px, py, GRASS[4]); set(px, py + 1, GRASS[0]); }

@@ -2516,7 +2516,7 @@ function step(now) {
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (MAP[y][x] === T.WATER) for (let i = 0; i < 2; i++) {
     const v = Math.sin(now / 520 + hash(x, y, i) * 40);
     if (v < 0.5) continue;
-    ctx.fillStyle = v > 0.85 ? '#e4f4ff' : '#9fd0f0';
+    ctx.fillStyle = v > 0.85 ? '#f2feff' : '#b6ecf2';
     ctx.fillRect(x * TS + 2 + Math.floor(hash(x, y, i + 3) * 11) * 2, y * TS + 4 + Math.floor(hash(x, y, i + 6) * 12) * 2, 4 + (i ? 2 : 0), 2);
   }
   // สระใหญ่ด้านล่าง (ตรงกับ shared.js: วงรีศูนย์กลาง (43,38) รัศมี 12×5 ช่อง): ปลา 6 ตัว ว่ายแยกกันคนละความเร็วและทิศ
@@ -2533,9 +2533,11 @@ function step(now) {
     const fx = (POND.cx + 0.7 * POND.rx * Math.sin(fa) + 0.5) * TS, fy = (POND.cy + 0.6 * POND.ry * Math.sin(fb) + 0.5) * TS;
     if (fx < camX - TS || fx > camX + vw + TS || fy < camY - TS || fy > camY + vh + TS) continue;
     ctx.save(); ctx.translate(fx, fy); ctx.scale(ahead, 1);
-    ctx.fillStyle = '#1d3e5c'; ctx.fillRect(-7, -3 + wag, 3, 6); ctx.fillRect(-4, -4, 9, 8); // ขอบเข้ม 1 px
+    ctx.globalAlpha = 0.6; // อยู่ใต้น้ำ สีจึงจางและอมฟ้าตามน้ำ
+    ctx.fillStyle = '#1d5a78'; ctx.fillRect(-7, -3 + wag, 3, 6); ctx.fillRect(-4, -4, 9, 8); // ขอบเข้ม 1 px
     ctx.fillStyle = ['#ff9a3c', '#f4f4f4', '#ffd23f', '#ff7a45', '#ffb347', '#f4f4f4'][i]; ctx.fillRect(-6, -2 + wag, 1, 4); ctx.fillRect(-3, -3, 7, 6);
-    ctx.fillStyle = '#1d3e5c'; ctx.fillRect(2, -2, 1, 1); // ตา
+    ctx.fillStyle = '#1d5a78'; ctx.fillRect(2, -2, 1, 1); // ตา
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
   ctx.restore();
