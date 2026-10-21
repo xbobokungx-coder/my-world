@@ -75,13 +75,8 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   assert.ok(w.catOf(p, 'fish') > before + 0.2 && w.catOf(p, 'fish') <= 1, 'พักขายแล้วราคาหมวดฟื้นกลับ');
   console.log('  ตลาดหมวดปลา: ขายสลับ 12 ชนิด ' + units + ' ชิ้น ได้ ' + paid + ' จากราคารายชนิด ' + itemOnly + ' (' + Math.round(paid / itemOnly * 100) + '%) • ความอิ่มตัวหลังขาย ' + Math.round(cm * 100) + '% → พัก 30 นาที ' + Math.round(w.catOf(p, 'fish') * 100) + '%');
 }
-// ลิมิตการถือ / ตลาดหมวดฟื้นตอนออฟไลน์ / ใบสั่งซื้อ NPC
+// ตลาดหมวดฟื้นตอนออฟไลน์ / ใบสั่งซื้อ NPC
 {
-  const H = S.HOLD;
-  assert.deepStrictEqual(['crop_carrot', 'egg', 'log', 'crop_tomato', 'fish_whale', 'crop_mango', 'fish_humpback', 'dish_feast', 'bait', 'coin', 'seed_carrot'].map(S.holdCap), [100, 100, 100, 40, 17, 11, 11, 10, 0, 0, 0], 'เพดานการถือตามมูลค่า (ไม่ใช่ของขาย = ไม่จำกัด)');
-  for (const k of S.SELLABLE) { const c = S.holdCap(k); assert.ok(c >= H.min && c <= H.max, k + ' เพดานต้องอยู่ในช่วง'); }
-  p.rec.inv.fish_whale = S.holdCap('fish_whale') - 1; assert.ok(!w.holdFull(p, 'fish_whale', 1) && w.holdFull(p, 'fish_whale', 2), 'ถือเกือบเต็ม: เพิ่ม 1 ได้ เพิ่ม 2 เกิน');
-  p.rec.inv.fish_whale = S.holdCap('fish_whale'); assert.ok(w.holdFull(p, 'fish_whale', 1), 'ถือเต็มแล้วเพิ่มไม่ได้'); delete p.rec.inv.fish_whale;
   // ตลาดหมวดฟื้นตามเวลาจริงตอนออฟไลน์
   p.rec.cat = { fish: 0.5 }; p.rec.catAt = Date.now() - 60 * 60000; w.catJoin(p);
   assert.ok(Math.abs(p.rec.cat.fish - (1 - 0.5 * Math.pow(1 - S.CATFAT.recover, 60))) < 1e-3, 'ออฟไลน์ 60 นาที ตลาดหมวดฟื้นตามเวลาจริง');
@@ -104,30 +99,22 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   w.trimNpc(S.ORDER.npcMaxOpen); assert.strictEqual(w.orders.length, S.ORDER.npcMaxOpen, 'ตัดใบ NPC ที่ล้น');
   console.log('  ใบสั่งซื้อ NPC: 60 ใบหมุนเวียน ' + new Set(seen).size + ' ชนิด หมวดซ้ำติดกัน ' + sameCat + ' ครั้ง เปิดค้างไม่เกิน ' + S.ORDER.npcMaxOpen);
 }
-// ตู้เก็บของ: ประดิษฐ์ ฝาก/ถอน ความจุตามมูลค่า ถอนไม่เกินเพดานการถือ
+// ถือได้ไม่จำกัด + ขายเป็นชุดใหญ่: ราคาต่อชิ้นลดแต่ไม่ต่ำกว่า 80% ของราคาตอนเริ่ม ส่วนตลาดยังจำว่าขายไปเท่าไร
 {
-  const msgs = []; const oldToast = w.toast; w.toast = (pp, t2) => msgs.push(t2); w.nearShopKind = () => 'wood'; p.rec.skills = Object.assign({}, p.rec.skills, { wood: 1e6 });
-  for (const k of ['storage_1', 'storage_2', 'storage_3']) assert.ok(S.CRAFT.find(r => r.id === k) && S.itemInfo(k).name, k + ' ต้องมีสูตรและข้อมูลไอเทม');
-  assert.strictEqual(S.holdCap('storage_1'), 0, 'ตู้ไม่ใช่ของขาย ไม่จำกัดการถือ');
-  p.rec.inv.plank = 100; p.rec.inv.log = 100; p.rec.inv.hardwood = 30; p.rec.inv.storage_1 = 0; delete p.rec.inv.storage_1;
-  w.craft(p, 'storage_1'); assert.strictEqual(p.rec.inv.storage_1, 1, 'ประดิษฐ์ตู้ระดับ 1 สำเร็จ'); assert.strictEqual(p.rec.inv.plank, 88, 'ใช้วัตถุดิบตามสูตร');
-  w.craft(p, 'storage_1'); assert.strictEqual(p.rec.inv.storage_1, 1, 'ทำระดับเดิมซ้ำไม่ได้'); assert.strictEqual(p.rec.inv.plank, 88, 'ไม่เสียวัตถุดิบตอนถูกปฏิเสธ');
-  assert.strictEqual(S.stashTier(p.rec.inv), 1, 'ระดับตู้ที่มี');
-  // ฝาก/ถอนต้องอยู่ใกล้ ATM
-  p.x = 3 * 32; p.y = 3 * 32; p.rec.inv.egg = 300; w.stashHandle(p, { a: 'dep', item: 'egg', n: 'all' }); assert.strictEqual(p.rec.inv.egg, 300, 'ไกลตู้ ATM ฝากไม่ได้');
-  p.x = (S.ATM.x + 0.5) * 32; p.y = (S.ATM.y + 0.5) * 32;
-  const eggSell = S.itemInfo('egg').sell, capVal = S.STORAGE[1].cap, maxEggs = Math.floor(capVal / eggSell);
-  w.stashHandle(p, { a: 'dep', item: 'egg', n: 'all' });
-  assert.strictEqual(w.stashOf(p).egg, Math.min(300, maxEggs), 'ฝากได้ไม่เกินความจุตามมูลค่า'); assert.ok(S.stashValue(w.stashOf(p)) <= capVal, 'มูลค่าในตู้ไม่เกินความจุ'); assert.strictEqual(p.rec.inv.egg + w.stashOf(p).egg, 300, 'ของไม่หาย');
-  w.stashHandle(p, { a: 'dep', item: 'bait', n: 5 }); assert.ok(!w.stashOf(p).bait, 'ของที่ไม่ใช่ของขายฝากไม่ได้');
-  p.rec.inv.egg = 0; w.stashHandle(p, { a: 'wd', item: 'egg', n: 'all' }); assert.strictEqual(p.rec.inv.egg, Math.min(S.holdCap('egg'), maxEggs), 'ถอนได้ไม่เกินเพดานการถือ');
-  w.stashHandle(p, { a: 'wd', item: 'egg', n: 'all' }); assert.strictEqual(p.rec.inv.egg, S.holdCap('egg'), 'ถือเต็มแล้วถอนเพิ่มไม่ได้');
-  assert.ok(w.stashPub(p).t === 'stash' && w.stashPub(p).tier === 1 && w.stashPub(p).cap === capVal, 'ข้อมูลส่ง client');
-  // ระดับสูงกว่าเปลี่ยนความจุ และทำระดับต่ำกว่าไม่ได้แล้ว
-  w.craft(p, 'storage_2'); assert.strictEqual(S.stashTier(p.rec.inv), 2); w.craft(p, 'storage_1'); assert.strictEqual(p.rec.inv.storage_1, 1, 'มีระดับสูงกว่าแล้วต้องไม่ทำระดับต่ำซ้ำ (ไม่ถูกเพิ่ม)');
-  assert.strictEqual(w.stashPub(p).cap, S.STORAGE[2].cap, 'ความจุตามระดับสูงสุด');
-  console.log('  ตู้เก็บของ: ฝากไข่ ' + Math.min(300, maxEggs) + ' ฟอง (ความจุ 🪙' + capVal + ') • ถอนได้ไม่เกินเพดานถือ ' + S.holdCap('egg'));
-  w.toast = oldToast; p.rec.inv.egg = 0; p.rec.stash = {};
+  const F = S.BATCH_FLOOR, C = S.CATFAT; assert.strictEqual(F, 0.8);
+  assert.strictEqual(S.sellQuote(100, 1, 1, C.step, F).total, S.sellQuote(100, 1, 1).total, 'ชิ้นแรกราคาเท่าเดิม');
+  const big = S.sellQuote(100, 1, 400, C.step, F).total; assert.ok(big >= 400 * 80 && big < 400 * 100, 'ชุด 400 ชิ้น: ทุกชิ้นได้ไม่ต่ำกว่า 80% (ได้ ' + big + ')');
+  assert.ok(S.sellQuote(100, 1, 400, C.step, F).total > S.sellQuote(100, 1, 400, C.step).total * 2, 'ไม่มีพื้นราคาต่ำกว่ามาก');
+  for (const m0 of [0.5, 1, 1.3]) assert.ok(S.sellQuote(100, m0, 100, C.step, F).total >= 100 * Math.round(100 * m0 * 0.8) - 100, 'พื้น 80% ของราคาตอนเริ่ม ที่ตัวคูณ ' + m0);
+  // ผ่านระบบจริง: ถือ 3,000 ชิ้นขายทีเดียวได้ ไม่มีเพดาน
+  w.event = () => {}; w.nearShopKind = () => 'animal'; w.market.egg = w.market.egg || { m: 1, t: 1 }; p.rec.cat = null; p.rec.mk = {}; p.rec.sold = null; p.rec.inv.egg = 3000;
+  const m0 = w.effMult(p, 'egg'), base = S.itemInfo('egg').sell, c0 = p.rec.inv.coin; w.sell(p, 'egg', 'all');
+  const got = p.rec.inv.coin - c0; assert.strictEqual(p.rec.inv.egg || 0, 0, 'ขายหมดทั้ง 3,000 ชิ้น');
+  assert.ok(got >= 3000 * Math.round(base * m0 * 0.8) - 3000 && got <= 3000 * Math.round(base * m0), 'ได้ไม่ต่ำกว่า 80% ต่อชิ้นของราคาตอนเริ่ม (ได้ ' + got + ')');
+  assert.ok(Math.abs(w.catOf(p, 'animal') - Math.max(C.min, Math.pow(C.step, 3000))) < 1e-9, 'ความอิ่มตัวหมวดลดตามจำนวนชิ้นเต็ม ไม่ถูกพื้น 80% จำกัด');
+  const pm = w.pmOf(p, 'egg'); assert.ok(pm < 0.5, 'ตลาดส่วนตัวชนิดนี้จำการขายหนัก (' + pm.toFixed(2) + ')');
+  console.log('  ขายไข่ 3,000 ชิ้นทีเดียว ได้ ' + got + ' (' + Math.round(got / (3000 * Math.round(base * m0)) * 100) + '% ของราคาตอนเริ่ม) • ตลาดหมวดหลังขาย ' + Math.round(w.catOf(p, 'animal') * 100) + '% ส่วนตัว ' + Math.round(pm * 100) + '%');
+  p.rec.cat = null; p.rec.mk = {};
 }
 const w2 = new World('main');
 assert.strictEqual(w2.projects.bridge.coin, 5000, 'bridge coin lost after reload');

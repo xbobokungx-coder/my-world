@@ -561,29 +561,6 @@ class World {
       if (e.ex && e.v >= S.ENERGY.resume) { e.ex = false; this.toast(p, '⚡ พักพอแล้ว กลับไปทำงานได้'); this.enPush(p); } else if (push) this.enPush(p);
     }
   }
-  // ----- ตู้เก็บของ: ฝาก/ถอนของขายที่ตู้ ATM (ต้องประดิษฐ์ตู้ก่อน) -----
-  stashOf(p) { const o = p.rec.stash = p.rec.stash && typeof p.rec.stash === 'object' ? p.rec.stash : {}; for (const k of Object.keys(o)) if (!(o[k] > 0) || !S.holdCap(k)) delete o[k]; return o; }
-  stashPub(p) { const tier = S.stashTier(p.rec.inv), st = this.stashOf(p); return { t: 'stash', tier, cap: tier ? S.STORAGE[tier].cap : 0, value: S.stashValue(st), items: st }; }
-  stashPush(p) { send(p, this.stashPub(p)); }
-  stashHandle(p, m) {
-    if (!this.nearAtm(p)) return this.toast(p, 'ต้องอยู่ใกล้ตู้ ATM ที่ลานกองไฟ');
-    const tier = S.stashTier(p.rec.inv); if (!tier) return this.toast(p, '📦 ยังไม่มีตู้เก็บของ ประดิษฐ์ได้ที่ร้านช่างไม้ (ไม้กระดาน + ไม้ท่อน)');
-    const item = String(m.item || ''), info = S.itemInfo(item), st = this.stashOf(p), inv = p.rec.inv;
-    if (!info || !info.sell || !S.holdCap(item)) return;
-    const want = m.n === 'all' ? Infinity : Math.floor(m.n) || 0; if (!(want > 0)) return;
-    if (m.a === 'dep') {
-      const room = Math.floor((S.STORAGE[tier].cap - S.stashValue(st)) / info.sell), n = Math.min(want, inv[item] || 0, room);
-      if (n <= 0) return this.toast(p, room <= 0 ? `📦 ตู้เต็มแล้ว (ความจุ 🪙${S.STORAGE[tier].cap} ตามมูลค่าของ) ประดิษฐ์ตู้ระดับสูงกว่าหรือเอาไปขาย` : 'ไม่มีของให้ฝาก');
-      this.add(p, item, -n); st[item] = (st[item] || 0) + n; this.toast(p, `📦 ฝาก ${info.emoji} ${info.name} ×${n} เข้าตู้แล้ว`);
-    } else if (m.a === 'wd') {
-      const n = Math.min(want, st[item] || 0, S.holdCap(item) - (inv[item] || 0));
-      if (n <= 0) return this.toast(p, (st[item] || 0) ? `🎒 ถือ ${info.emoji} ${info.name} ครบ ${S.holdCap(item)} ชิ้นแล้ว ขายหรือใช้ก่อนค่อยถอน` : 'ไม่มีของในตู้');
-      st[item] -= n; if (st[item] <= 0) delete st[item]; this.add(p, item, n); this.toast(p, `🎒 ถอน ${info.emoji} ${info.name} ×${n} ออกจากตู้แล้ว`);
-    } else return;
-    this.sfxTo(p, 'click'); this.dirty = true; this.stashPush(p);
-  }
-  holdFull(p, item, n) { const c = S.holdCap(item); return c > 0 && (p.rec.inv[item] || 0) + (n || 1) > c; } // ถือชนิดนี้ครบเพดานแล้ว (ถ้าเพิ่ม n ชิ้นจะเกิน)
-  holdToast(p, item) { const i = S.itemInfo(item); this.toast(p, `🎒 ถือ ${i.emoji} ${i.name} ครบ ${S.holdCap(item)} ชิ้นแล้ว ไปขาย/ใช้ก่อน หรือฝากตู้เก็บของที่ตู้ ATM (ประดิษฐ์ที่ร้านช่างไม้)`); }
   catJoin(p) { // ความอิ่มตัวของตลาดหมวดฟื้นตามเวลาจริงที่ผ่านไปแม้ออฟไลน์ (เหมือนพลังงาน) catAt = ครั้งล่าสุดที่คิดการฟื้น
     const ct = p.rec.cat, now = Date.now(), min = Math.max(0, (now - (p.rec.catAt || now)) / 60000), f = Math.pow(1 - S.CATFAT.recover, min);
     if (ct) for (const k of Object.keys(ct)) { ct[k] = 1 - (1 - ct[k]) * f; if (ct[k] > 0.995) delete ct[k]; }
@@ -831,7 +808,6 @@ class World {
     if (this.lv(p, 'cook') < r.lv) return this.toast(p, `สูตรนี้ปลดล็อกที่เชฟเลเวล ${r.lv} (ตอนนี้ ${this.lv(p, 'cook')}) — ทำเมนูง่ายขึ้นก่อนเพื่อเก็บเลเวล`);
     const now = Date.now();
     if (now < (p.cookReady || 0)) return this.toast(p, `เตายังร้อนอยู่ รออีก ${Math.ceil((p.cookReady - now) / 1000)} วินาที`);
-    if (this.holdFull(p, r.id, 1)) return this.holdToast(p, r.id);
     const inv = p.rec.inv, use = {};
     for (const need of r.in) {
       if (need.k) { if ((inv[need.k] || 0) < need.n) return this.toast(p, 'วัตถุดิบไม่พอ'); use[need.k] = (use[need.k] || 0) + need.n; continue; }
@@ -852,11 +828,9 @@ class World {
     const r = typeof id === 'string' ? S.CRAFT.find(x => x.id === id) : null; if (!r) return;
     if (this.nearShopKind(p) !== 'wood') return this.toast(p, 'ต้องยืนใกล้เคาน์เตอร์ร้านช่างไม้ถึงจะประดิษฐ์ได้');
     if (this.lv(p, 'wood') < r.lv) return this.toast(p, `ต้องเป็นช่างไม้เลเวล ${r.lv} ก่อน`);
-    if (/^storage_/.test(r.id) && S.stashTier(p.rec.inv) >= +r.id.slice(8)) return this.toast(p, '📦 มีตู้เก็บของระดับนี้หรือสูงกว่าแล้ว');
-    if (this.holdFull(p, r.id, 1)) return this.holdToast(p, r.id);
     for (const [k, n] of Object.entries(r.in)) if ((p.rec.inv[k] || 0) < n) return this.toast(p, 'วัตถุดิบไม่พอ');
     for (const [k, n] of Object.entries(r.in)) this.add(p, k, -n);
-    this.add(p, r.id, 1); this.addXp(p, 'wood', r.xp); if (/^storage_/.test(r.id)) this.stashPush(p);
+    this.add(p, r.id, 1); this.addXp(p, 'wood', r.xp);
     const info = S.itemInfo(r.id); this.toast(p, `🔨 ประดิษฐ์ ${info.emoji} ${info.name} สำเร็จ! (+${r.xp} XP)`); this.sfx(p, 'collect');
     if (info.furn) this.bookAdd(p, 'furn', info.furn);
     this.event(p, 'craft');
@@ -968,7 +942,7 @@ class World {
     });
     send(p, { t: 'arcs', a: this.arcsPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
-    send(p, { t: 'proj', p: this.projPub() }); this.stashPush(p); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
+    send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     this.orderPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
@@ -1065,7 +1039,6 @@ class World {
       case 'craft': this.craft(p, m.id); break;
       case 'quest': this.questHandle(p, m); break;
       case 'bank': this.bankHandle(p, m); break;
-      case 'stash': this.stashHandle(p, m); break;
       case 'cin': this.cinemaHandle(p, m); break;
       case 'lamp': { // เปิด/ปิดตะเกียงที่ถืออยู่ (ต้องมีตะเกียงในกระเป๋า)
         p.rec.lamp = p.lamp = !!m.on && !!p.rec.inv.lamp;
@@ -1334,7 +1307,7 @@ class World {
     // ชนิดนี้นับเป็น "ชนิดที่ขายวันนี้" ได้เมื่อขายจริงจัง (≥ minQty ชิ้น หรือ ≥ minCoin เหรียญ) กันการขายอย่างละ 1 ชิ้นเพื่อเอาโบนัส
     const counted = items0.includes(item) || q >= S.VARIETY.minQty || quote.total >= S.VARIETY.minCoin;
     if (!counted) { nUsed = items0.length; mEff = this.effMultN(p, item, nUsed); quote = S.sellQuote(info.sell, mEff, q); }
-    const cat = S.sellCat(item), pay = S.sellQuote(info.sell, mEff, q, S.CATFAT.step).total; // จ่ายตามราคาที่รวมความอิ่มตัวของหมวด ลดต่อชิ้นภายในการขายครั้งเดียวด้วย (quote ด้านบนใช้อัปเดตตลาดชนิดนี้เหมือนเดิม)
+    const cat = S.sellCat(item), pay = S.sellQuote(info.sell, mEff, q, S.CATFAT.step, S.BATCH_FLOOR).total; // จ่ายต่อชิ้นตามชนิด ลดลงภายในชุดแต่ไม่ต่ำกว่า 80% ของราคาตอนเริ่ม (quote ด้านบนและความอิ่มตัวของหมวดยังลดตามจำนวนชิ้นเต็ม ตลาดจำว่าขายไปเท่าไร)
     this.add(p, item, -q);
     this.add(p, 'coin', pay, 'sell');
     { const ct = p.rec.cat = p.rec.cat || {}; ct[cat] = Math.max(S.CATFAT.min, this.catOf(p, cat) * Math.pow(S.CATFAT.step, q)); }
@@ -1370,7 +1343,6 @@ class World {
         const pool = FISH.filter(f => f.lv <= fl && !(rareCd && f.sell >= 100)).map(f => ({ f, w: f.w * (f.sell >= 100 ? 1 + 0.12 * (fl - 1) + 0.35 * (rod - 1) : 1) / (f.id === 'boot' ? 1 + rod : 1) * S.baitWeight(f, p.fish.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) })).filter(x => x.w > 0);
         let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
         for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
-        if (this.holdFull(p, 'fish_' + f.id, 1)) { this.toast(p, `🎒 ถือ ${f.emoji} ${f.name} ครบ ${S.holdCap('fish_' + f.id)} ตัวแล้ว ปล่อยกลับน้ำไป (ไปขายก่อนค่อยเก็บเพิ่ม)`); p.fish = null; return; }
         this.add(p, 'fish_' + f.id, 1);
         this.addXp(p, 'fish', f.xp); this.tire(p, 'fish', f.sell);
         if (f.sell >= 100) { p.rec.rareAt = Date.now() + S.ENERGY.rareCdMs; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.ENERGY.rareCdMs / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
@@ -1414,7 +1386,6 @@ class World {
     }
     if (prod) {
       const A = ANIMALS[prod.type], info = S.itemInfo(A.product);
-      if (this.holdFull(p, A.product, 2)) return this.holdToast(p, A.product); // เผื่อได้ผลผลิตงาม ×2 ผลผลิตยังอยู่กับสัตว์
       prod.prod = false;
       const mine = prod.feeder && prod.feeder === p.key; // คนที่ให้อาหาร (เลี้ยง) ตัวนี้มาเก็บผลผลิตเอง
       this.add(p, A.product, 1);
@@ -1432,7 +1403,6 @@ class World {
     if (tile && tile.c && S.cropStage(tile) === 3) {
       if (this.cropLocked(tile, p)) return this.toast(p, `🌱 ต้นนี้เป็นของ ${tile.on || 'ผู้เล่นอื่น'} — ถ้าเขาไม่มาเก็บภายใน ${Math.max(1, Math.ceil((S.DAY_MS - (tile.rm || 0)) / 60000))} นาที (1 วันในเกม) คนอื่นถึงจะมาเก็บได้`);
       const c = CROPS[tile.c];
-      if (this.holdFull(p, 'crop_' + tile.c, 1)) return this.holdToast(p, 'crop_' + tile.c); // ถือเต็ม: ผลผลิตยังอยู่ในแปลง
       this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp); this.tire(p, 'harvest', c.sell);
       this.toast(p, `เก็บ ${c.emoji} ${c.name}`); if (c.sell >= 100) this.addLog(`${c.emoji} ${p.name} เก็บเกี่ยว${c.name}สำเร็จ`);
       this.sfx(p, 'harvest'); this.event(p, 'harvest', tile.c); this.bookAdd(p, 'crop', tile.c);
@@ -1498,7 +1468,6 @@ class World {
     } else if (tool === 'axe') {
       const axe = inv.axe_3 ? 3 : inv.axe_2 ? 2 : inv.axe_1 ? 1 : 0;
       if (!axe) return this.toast(p, 'ต้องมีขวานก่อน ซื้อได้ที่ร้านช่างไม้ 🪓');
-      if (this.holdFull(p, 'log', 3) || this.holdFull(p, 'hardwood', 1)) return this.holdToast(p, this.holdFull(p, 'log', 3) ? 'log' : 'hardwood');
       if (!S.isChoppable(this.map, tx, ty)) return this.toast(p, 'ใช้ขวานฟันต้นไม้ 🌳 (ต้นไม้ขอบแมพตัดไม่ได้)');
       const key = tx + ',' + ty; let h = this.treeHp.get(key);
       if (!h || now - h.t > 20000) h = { hp: S.TREE_HP, t: now };
