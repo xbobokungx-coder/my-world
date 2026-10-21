@@ -12,17 +12,18 @@ const HATS = ['#e8c66a'].concat(PALETTE);
 const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 
 // ---------- เครื่องมือบน hotbar ----------
-const SLOTS = [ // ช่อง 1 = เครื่องมือ (จอบ/บัวรดน้ำ/เบ็ด/ขวาน/มือเปล่า เลือกจากเมนู) • 2 = เมล็ด • 3 = อาหารสัตว์/ยา
+const SLOTS = [ // ช่อง 1 = เครื่องมือ (จอบ/บัวรดน้ำ/เบ็ด/ขวาน เลือกจากเมนู) • 2 = เมล็ด • 3 = อาหารสัตว์/ยา • 4 = มือเปล่า (ไม่มีเมนู)
   { id: 'tool', n: 'เครื่องมือ', pick: true },
   { id: 'seed', n: 'เมล็ดพันธุ์', pick: true },
   { id: 'feed', n: 'อาหารสัตว์/ยา', pick: true },
+  { id: 'hand', n: 'มือเปล่า' },
 ];
-const TOOL_LIST = ['hand', 'hoe', 'water', 'rod', 'axe'], TOOL_SHORT = { hand: 'มือเปล่า', hoe: 'จอบ', water: 'บัวรดน้ำ', rod: 'เบ็ด', axe: 'ขวาน' };
+const TOOL_LIST = ['hoe', 'water', 'rod', 'axe'], TOOL_SHORT = { hand: 'มือเปล่า', hoe: 'จอบ', water: 'บัวรดน้ำ', rod: 'เบ็ด', axe: 'ขวาน' };
 const FEEDS = ['feed', 'hay', 'slop', 'medicine'], BAIT_KEYS = ['bait', 'bait_2', 'bait_3'];
 let selBait = ls.get('mw_bait') || 'bait';
 let slot = 0, selSeed = 'carrot', selFeed = 'feed';
 let selTool = TOOL_LIST.includes(ls.get('mw_tool')) ? ls.get('mw_tool') : 'hoe';
-const toolId = () => { const s = SLOTS[slot].id; return s === 'tool' ? selTool : s === 'seed' ? 'seed_' + selSeed : selFeed; };
+const toolId = () => { const s = SLOTS[slot].id; return s === 'tool' ? selTool : s === 'hand' ? 'hand' : s === 'seed' ? 'seed_' + selSeed : selFeed; };
 
 // ---------- state ----------
 let ws, joined = false, myId = 0, me = null, roomName = '', isAdmin = false;
@@ -676,6 +677,7 @@ function addChat(name, text, sys) {
 }
 function slotInfo(i) {
   const s = SLOTS[i];
+  if (s.id === 'hand') return { e: '✋', n: 'มือเปล่า (เก็บผลผลิต เปิดร้าน นั่ง)', sub: 'เก็บ/เปิดร้าน', cnt: null };
   if (s.id === 'tool') return toolInfo(selTool);
   if (s.id === 'seed') return { e: CROPS[selSeed].emoji, n: 'เมล็ด' + CROPS[selSeed].name, cnt: inv['seed_' + selSeed] || 0 };
   if (s.id === 'feed') { const f = itemInfo(selFeed); return { e: f.emoji, n: f.name, cnt: inv[selFeed] || 0 }; }
@@ -701,7 +703,7 @@ function renderHud() {
   });
 }
 let lastHeld = null;
-function heldEmoji() { const s = SLOTS[slot]; if (!s || (s.id === 'tool' && (selTool === 'hand' || (selTool === 'axe' && !axeLevel())))) return ''; return slotInfo(slot).e || ''; } // ช่องที่เลือกอยู่ → อีโมจิที่ถือ (ขวานที่ยังไม่มีไม่ถือ)
+function heldEmoji() { const s = SLOTS[slot]; if (!s || s.id === 'hand' || (s.id === 'tool' && selTool === 'axe' && !axeLevel())) return ''; return slotInfo(slot).e || ''; } // ช่องที่เลือกอยู่ → อีโมจิที่ถือ (ขวานที่ยังไม่มีไม่ถือ)
 function pickSlot(i) {
   if (i === slot && SLOTS[i].pick) { $('picker').classList.contains('hidden') ? showPicker() : hidePicker(); return; }
   slot = i; hidePicker(); renderHud(); toast(`${slotInfo(i).e} ${slotInfo(i).n}`); playSfx('click');
