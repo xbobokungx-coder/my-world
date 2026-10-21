@@ -308,19 +308,21 @@
   #toast { background:var(--paper); }
   .banner, .chip, .vs span { border-radius:0; }
 
-  /* ===== มือถือ/จอสัมผัสเท่านั้น (คอมไม่เปลี่ยน): แผงเลือกของเป็นตารางเล็ก, เมนูกระชับ, ไม่ถูกจอยสติ๊กทับ ===== */
-  body.touch #picker { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:5px; width:min(94vw,360px); max-width:none; max-height:min(46vh,330px); overflow-y:auto; overscroll-behavior:contain; justify-content:stretch; }
-  body.touch #picker > div { grid-column:1 / -1; }
-  body.touch #picker .opt { min-width:0; padding:3px 1px; font-size:10.5px; line-height:1.15; overflow:hidden; text-overflow:ellipsis; }
-  body.touch #picker .opt b { font-size:19px; line-height:1.1; }
-  body.touch #picker .opt .pxe { width:24px; height:24px; }
+  /* ===== มือถือ/จอสัมผัสเท่านั้น (คอมไม่เปลี่ยน): แผงเลือกของเป็นตารางเล็ก, เมนูกระชับ, ไม่ถูกจอยสติ๊กทับ =====
+     ปรับขนาดที่ตัวแปร 4 ตัวนี้ตัวเดียว: ไอคอนในแผงเลือกของ / ตัวหนังสือในแผง / ความสูงปุ่มเมนู / ตัวหนังสือใต้ปุ่มเมนู */
+  body.touch { --pk-ico:14px; --pk-txt:8px; --mn-h:28px; --mn-txt:8px; }
+  body.touch #picker { display:grid; grid-template-columns:repeat(8,1fr); gap:3px; padding:4px; width:min(94vw,360px); max-width:none; max-height:min(40vh,260px); overflow-y:auto; overscroll-behavior:contain; justify-content:stretch; }
+  body.touch #picker > div { grid-column:1 / -1; font-size:10px !important; margin-top:2px !important; }
+  body.touch #picker .opt { min-width:0; padding:2px 0; font-size:var(--pk-txt); line-height:1.1; overflow:hidden; text-overflow:ellipsis; }
+  body.touch #picker .opt b { font-size:var(--pk-ico); line-height:1.1; }
+  body.touch #picker .opt .pxe { width:var(--pk-ico); height:var(--pk-ico); }
   body.touch #picker .opt:disabled { opacity:.4; }
   body.touch #hudTop { z-index:8; }
-  body.touch #hudMenu { padding:6px 8px 8px; max-height:calc(100dvh - 120px); width:min(94vw,340px); }
-  body.touch #hudMenu .mtitle { margin:5px 2px 3px; font-size:11px; }
-  body.touch #hudMenu .mgrid { gap:4px; }
-  body.touch #hudMenu .btn { min-height:50px; font-size:20px; padding:4px 1px; }
-  body.touch #hudMenu .btn::after { font-size:10px; }
+  body.touch #hudMenu { padding:5px 6px 6px; max-height:calc(100dvh - 120px); width:min(94vw,340px); }
+  body.touch #hudMenu .mtitle { margin:4px 2px 2px; font-size:10px; }
+  body.touch #hudMenu .mgrid { grid-template-columns:repeat(6,1fr); gap:3px; }
+  body.touch #hudMenu .btn { min-height:var(--mn-h); height:auto; font-size:14px; padding:2px 0; gap:0; border-bottom-width:3px; }
+  body.touch #hudMenu .btn::after { font-size:var(--mn-txt); }
   body.touch.menu-open #mini, body.touch.menu-open #guide { display:none; }
 </style>
 </head>
