@@ -1357,7 +1357,7 @@ class World {
     let [tx, ty] = S.facing(p.x, p.y, p.dir);
     if (Number.isInteger(cx) && Number.isInteger(cy)) { // คลิกเลือกช่องเอง
       const px = Math.floor(p.x / TS), py = Math.floor(p.y / TS);
-      const reach = tool === 'rod' ? S.W : 2; // เบ็ดโยนไกลแค่ไหนก็ได้ (แต่ต้องยืนริมสระ ดูด้านล่าง)
+      const reach = tool === 'rod' && this.map[cy] && this.map[cy][cx] === T.WATER ? S.W : 2; // เบ็ดโยนไกลแค่ไหนก็ได้ถ้าเป็นน้ำ (แต่ต้องยืนริมสระ ดูด้านล่าง) ของอย่างอื่นต้องอยู่ใกล้
       if (cx < 0 || cy < 0 || cx >= S.W || cy >= S.H || Math.max(Math.abs(cx - px), Math.abs(cy - py)) > reach) {
         return this.toast(p, 'ไกลเกินไป เดินเข้าไปใกล้ๆ ก่อน');
       }

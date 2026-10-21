@@ -1036,11 +1036,11 @@ function closeChat() { $('chatHist').classList.add('hidden'); $('chatLog').style
 
 // act() = ใช้กับช่องที่หันหน้าไป (Space / ปุ่ม A), act(tx,ty) = ใช้กับช่องที่คลิก/แตะ
 const FISH_SHORE = 2; // ตกปลาต้องยืนห่างจากน้ำไม่เกิน 2 ช่อง แต่โยนเหยื่อไปไกลแค่ไหนก็ได้
-const reachOf = () => (toolId() === 'rod' ? 999 : 2);
+const reachOf = (tx, ty) => (toolId() === 'rod' && MAP[ty] && MAP[ty][tx] === T.WATER ? 999 : 2); // เบ็ดโยนไกลได้เฉพาะไปที่น้ำ ของอย่างอื่นยังต้องอยู่ใกล้
 const nearWater = (x, y) => { for (let dy = -FISH_SHORE; dy <= FISH_SHORE; dy++) for (let dx = -FISH_SHORE; dx <= FISH_SHORE; dx++) if (MAP[y + dy] && MAP[y + dy][x + dx] === T.WATER) return true; return false; };
 const myTile = () => [Math.floor(me.x / TS), Math.floor(me.y / TS)];
 const cheb = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
-const inReach = (tx, ty) => { const [px, py] = myTile(); return cheb(tx, ty, px, py) <= reachOf(); };
+const inReach = (tx, ty) => { const [px, py] = myTile(); return cheb(tx, ty, px, py) <= reachOf(tx, ty); };
 function act(tx, ty) {
   const now = performance.now();
   if (!me || chatFocus || modalOpen() || now - lastAct < 200) return;
@@ -1102,8 +1102,9 @@ function onTileClick(tx, ty) {
   if (hubSignAt(tx, ty)) { stopWalk(); openHub(); return; } // กดป้าย Arcade Hub = เปิดแต้ม/อันดับ
   const [px, py] = myTile();
   if (interactive(tx, ty)) {
-    if (inReach(tx, ty) && ((toolId() !== 'rod' && !(toolId() === 'water' && MAP[ty][tx] === T.WATER)) || nearWater(px, py))) { stopWalk(); act(tx, ty); return; }
-    const rod = toolId() === 'rod' || (toolId() === 'water' && MAP[ty][tx] === T.WATER); // เดินเข้าไปใกล้พอแล้วค่อยทำให้เอง (เบ็ด: ริมสระไม่เกิน 2 ช่อง)
+    const onWater = MAP[ty][tx] === T.WATER, rod = (toolId() === 'rod' || toolId() === 'water') && onWater; // เบ็ด/บัวรดน้ำกับน้ำ ต้องยืนริมสระ (ไม่เกิน 2 ช่อง)
+    if (inReach(tx, ty) && (!rod || nearWater(px, py))) { stopWalk(); act(tx, ty); return; }
+    // เดินเข้าไปใกล้พอแล้วค่อยทำให้เอง
     const pts = findPath(px, py, (x, y) => rod ? nearWater(x, y) : cheb(x, y, tx, ty) <= 1);
     if (!pts) { toast('เดินไปไม่ถึงตรงนั้น'); return; }
     walk = { pts, act: { tx, ty }, dest: pts.length ? pts[pts.length - 1] : [px, py], stuck: 0 };
