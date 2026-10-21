@@ -2542,13 +2542,20 @@ function step(now) {
   }
   ctx.restore();
   // ใบบัวกระจายทั่วสระ มีทั้งใบใหญ่และเล็ก (วางตายตัวตามพิกัดช่อง ไม่ขยับ) อยู่เหนือปลา
+  // ใบใหญ่มีแฉกเว้าเป็นรูปตัววี (ตัดออกจากขอบด้านขวา) ส่วนใบเล็กเป็นวงรีเต็ม
+  const lilyPath = (px, py, rx, ry, notch) => {
+    ctx.beginPath();
+    if (notch) { ctx.moveTo(px, py); ctx.ellipse(px, py, rx, ry, 0, 0.4, Math.PI * 2 - 0.4); ctx.closePath(); }
+    else ctx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+  };
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-    if (MAP[y][x] !== T.WATER || hash(x, y, 9) > 0.05) continue;
+    if (MAP[y][x] !== T.WATER || hash(x, y, 9) > 0.09) continue;
     const px = (x + 0.5) * TS, py = (y + 0.5) * TS, big = hash(x, y, 11) < 0.5;
-    const rx = big ? 9 : 5, ry = big ? 6.5 : 3.6; // ใบใหญ่ 18×13 px • ใบเล็ก 10×7 px
-    ctx.fillStyle = '#1f4f1f'; ctx.beginPath(); ctx.ellipse(px, py, rx + 1, ry + 1, 0, 0.3, Math.PI * 2 - 0.3); ctx.fill(); // ขอบเข้ม 1 px
-    ctx.fillStyle = '#2d6e2a'; ctx.beginPath(); ctx.ellipse(px, py, rx, ry, 0, 0.3, Math.PI * 2 - 0.3); ctx.fill(); // ใบ (เว้าด้านหนึ่งเป็นแฉก)
-    ctx.fillStyle = '#4fa048'; ctx.beginPath(); ctx.ellipse(px - rx * 0.15, py - ry * 0.2, rx * 0.55, ry * 0.45, 0, 0, Math.PI * 2); ctx.fill(); // ไฮไลต์
+    const rx = big ? 11 : 5, ry = big ? 8 : 3.6; // ใบใหญ่ 22×16 px • ใบเล็ก 10×7 px
+    ctx.fillStyle = '#1f4f1f'; lilyPath(px, py, rx + 1, ry + 1, big); // ขอบเข้ม 1 px
+    ctx.fillStyle = '#2d6e2a'; lilyPath(px, py, rx, ry, big); // ใบ
+    ctx.fillStyle = '#4fa048'; ctx.beginPath(); ctx.ellipse(px - rx * 0.15, py - ry * 0.2, rx * 0.5, ry * 0.4, 0, 0, Math.PI * 2); ctx.fill(); // ไฮไลต์
   }
   // ช่องฟาร์ม
   for (const k in farm) {
