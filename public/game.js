@@ -1,6 +1,6 @@
 (() => {
 'use strict';
-const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
+const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, COMPANIONS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
   GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
@@ -91,7 +91,7 @@ const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 // ---------- messages ----------
 function mkPlayer(o) {
-  return { id: o.id, held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
+  return { id: o.id, held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
 }
 function applyTrees(list) { // ซิงก์ต้นไม้ที่ตัดได้ให้ตรงกับเซิร์ฟเวอร์ (ต้นไม้ขอบแมพไม่เปลี่ยน)
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (isChoppable(MAP, x, y)) MAP[y][x] = T.GRASS;
@@ -128,6 +128,7 @@ function handle(m) {
     case 'status': { const p = players.get(m.id); if (p) { p.status = m.s || ''; if (peopleShown()) renderPeople(true); } break; }
     case 'voice': { const p = players.get(m.id); if (p) { p.voice = m.on; if (!m.on) p.speaking = false; } break; }
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
+    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.cp = null; if (shopKind === 'pet') renderShop(); } break; }
     case 'tree': if (MAP[m.y]) { if (m.on) { if (MAP[m.y][m.x] === T.GRASS) MAP[m.y][m.x] = T.TREE; } else if (isChoppable(MAP, m.x, m.y)) MAP[m.y][m.x] = T.GRASS; } break;
     case 'hun': setHunger(m.v); break;
     case 'rtc': onRtc(m.from, m.d); break;
@@ -928,6 +929,12 @@ function renderShop() {
       + (i.food && inv[k] ? ` <button class="btn small" data-eat="${k}" style="background:#2ecc71;border-bottom-color:#1e8f4e" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน</button>` : '')
       + (i.once && inv[k] ? ` <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sellbackValue(k)}</button>` : '') + `</span></div>`;
   }
+  if (shopKind === 'pet') {
+    const own = Object.keys(COMPANIONS).filter(c => inv['pet_' + c] > 0), cur = me.pet || '';
+    h += '<div class="sec">🐾 พาสัตว์เลี้ยงไปด้วย (พาได้ทีละตัว เดินตามคุณไปทุกที่ ไม่ต้องให้อาหาร)</div>';
+    h += own.length ? own.map(c => `<div class="row"><span>${COMPANIONS[c].emoji} ${COMPANIONS[c].name}<br><small>${cur === c ? 'กำลังเดินตามคุณอยู่ 💕' : 'อยู่บ้าน'}</small></span><span><button class="btn small${cur === c ? ' muted' : ''}" data-petsel="${cur === c ? '' : c}">${cur === c ? '🏠 ให้พักบ้าน' : '🐾 พาไปด้วย'}</button></span></div>`).join('') : '<p style="opacity:.7;margin:6px 0">ยังไม่มีสัตว์เลี้ยง ซื้อตัวแรกได้เลย 🐶🐱🐦</p>';
+    h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ซื้อได้หลายตัวแต่พาไปได้ทีละตัว • ทุกคนในเมืองเห็นสัตว์เลี้ยงของคุณ • ขายคืนได้ 70% ของราคา</p>';
+  }
   const tierOf = t => (t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : 1);
   const fixable = seedTab || sellTab ? [] : Object.keys(DURABILITY).filter(t => DURABILITY[t].shop === shopKind && tierOf(t) > 0);
   if (fixable.length) {
@@ -978,6 +985,7 @@ function renderShop() {
   body.querySelectorAll('[data-ftab]').forEach(b => b.onclick = () => { farmTab = b.dataset.ftab; renderShop(); });
   body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft }));
   body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook }));
+  body.querySelectorAll('[data-petsel]').forEach(b => b.onclick = () => send({ t: 'pet', pet: b.dataset.petsel }));
   body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: +b.dataset.n }));
   body.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => send({ t: 'sell', item: b.dataset.sell, n: b.dataset.n === 'all' ? 'all' : 1 }));
   body.querySelectorAll('[data-eat]').forEach(b => b.onclick = () => send({ t: 'eat', item: b.dataset.eat }));
@@ -1935,7 +1943,7 @@ if ($('zoomOutBtn')) $('zoomOutBtn').onclick = () => setZoom(userZoom / 1.15);
 
 const hash = (x, y, s = 0) => { let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const trees = [];
-const GOODS = { furn: ['🛋️', '🪑'], farm: ['🥕', '🌽'], fish: ['🐟', '🎣'], animal: ['🥛', '🥚'], cloth: ['👕', '👖'], food: ['🍞', '🍜'], wood: ['🪵', '🪓'], vehicle: ['🚲', '🛵'] };
+const GOODS = { furn: ['🛋️', '🪑'], farm: ['🥕', '🌽'], fish: ['🐟', '🎣'], animal: ['🥛', '🥚'], cloth: ['👕', '👖'], food: ['🍞', '🍜'], wood: ['🪵', '🪓'], vehicle: ['🚲', '🛵'], pet: ['🐶', '🐱'] };
 const FONT = '"Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif';
 
 // พื้นโลกวาดเป็นพิกเซลที่ครึ่งความละเอียด (16 px ต่อช่อง ดู pixelart.js) แล้วขยาย 2 เท่าตอนวาด
@@ -2398,6 +2406,24 @@ function drawPet(q, now) { // แมว (นั่งเมื่อหยุด
   const ph = Math.sin(q.anim * (cat ? 9 : 11)), wag = Math.floor(now / (cat ? 700 : 220)) % 2;
   PixelUI.animal(ctx, type, q, { f: q.dx || 1, step: idle ? wag : (ph > 0 ? 1 : 0), blink: blinkOf(q, now), idle });
 }
+function drawCompanion(q, now) { // สัตว์เลี้ยงคู่ใจ: หมา/แมวใช้ภาพเดียวกับสัตว์ประกอบฉาก นกวาดเองตัวเล็กๆ บินต่ำเกาะตามหลังเจ้าของ
+  if (q.x < camX - 40 || q.x > camX + vw + 40 || q.y < camY - 40 || q.y > camY + vh + 40) return;
+  if (q.kind === 'bird') {
+    const fly = q.moving, hop = fly ? Math.abs(Math.sin(q.anim * 14)) * 3 : Math.max(0, Math.sin(now / 900 + q.id) * 2 - 1.2), by = q.y - 4 - (fly ? 7 : 0) - hop, f = q.dx || 1;
+    ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(q.x, q.y + 6, 4, 1.4, 0, 0, 7); ctx.fill();
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(q.x + x * f - (f < 0 ? w : 0)), Math.round(by + y), w, h); };
+    R(PixelArt.OUT, -5, -5, 10, 9); R(PixelArt.OUT, 3, -8, 6, 6);                        // ขอบ 1 px
+    R('#4aa8e8', -4, -4, 8, 7); R('#8fd0ff', -3, -3, 5, 3); R('#f4efe0', -3, 1, 6, 2);   // ตัวสีฟ้า ท้องขาว
+    R('#4aa8e8', 4, -7, 4, 4); R('#8fd0ff', 4, -7, 2, 2); R('#1b1d33', 6, -6, 1, 1);      // หัว + ตา
+    R('#f2a33a', 8, -5, 2, 2);                                                           // จะงอยปาก
+    R('#2f7fb8', -7, -2, 3, 2);                                                          // หาง
+    R('#2f7fb8', -2, fly ? -6 - Math.round(Math.sin(q.anim * 28) * 2) : -2, 4, 2);       // ปีก (กระพือเมื่อบิน)
+    if (!fly) { R('#f2a33a', -1, 4, 1, 2); R('#f2a33a', 1, 4, 1, 2); }
+  } else {
+    drawPet(q, now);
+  }
+  if (q.sayAt && now - q.sayAt < 1800) { const t = (now - q.sayAt) / 1800; PixelUI.world(ctx, '💕', q.x + 6, q.y - (q.kind === 'dog' ? 14 : q.kind === 'bird' ? 22 : 12) - t * 12, 11); }
+}
 function hungerMark(c, now) { // สัตว์ที่หิว: แถบความอิ่มเล็กๆ + หน้าตาเศร้า (หิวจนหมดแล้วจะตายถ้าไม่มีใครให้อาหาร) / สัตว์ป่วยมี 🤒
   const h = c.h === undefined ? 100 : c.h;
   const x = c.x, y = c.y - (({ cow: 28, sheep: 26, pig: 24 })[c.type] || 20);
@@ -2576,6 +2602,15 @@ function step(now) {
     p.x += dx * Math.min(1, dt * 12); p.y += dy * Math.min(1, dt * 12);
     if (p.moving) p.anim += dt;
   }
+  for (const p of players.values()) { // สัตว์เลี้ยงคู่ใจเดินตามเจ้าของ (จำลองฝั่งเว็บ ไม่ต้องส่งตำแหน่ง)
+    if (!p.pet || !COMPANIONS[p.pet]) { p.cp = null; continue; }
+    const side = [[0, -1], [0, 1], [1, 0], [-1, 0]][p.dir | 0] || [0, -1], cp = p.cp || (p.cp = { id: p.id, kind: COMPANIONS[p.pet].kind, v: COMPANIONS[p.pet].v, x: p.x - 18, y: p.y + 6, dx: 1, anim: Math.random() * 6, moving: false, nextSay: now + 8000 + Math.random() * 15000 });
+    const bird = cp.kind === 'bird', gx = p.x + side[0] * 22, gy = p.y + side[1] * 14 + 4, d = Math.hypot(gx - cp.x, gy - cp.y);
+    if (d > TS * 12) { cp.x = gx; cp.y = gy; }
+    else if (d > (bird ? 10 : 14)) { const sp = Math.min(d, (bird ? 120 : cp.kind === 'dog' ? 100 : 85) * dt * (d > 70 ? 1.8 : 1)); cp.x += (gx - cp.x) / d * sp; cp.y += (gy - cp.y) / d * sp; cp.moving = true; cp.anim += dt; if (Math.abs(gx - cp.x) > 3) cp.dx = gx > cp.x ? 1 : -1; }
+    else { cp.moving = false; if (bird) cp.anim += dt * 0.5; }
+    if (now > cp.nextSay) { cp.sayAt = now; cp.nextSay = now + 20000 + Math.random() * 30000; }
+  }
   for (const n of npcs.values()) { const dx = n.tx - n.x, dy = n.ty - n.y; n.moving = Math.hypot(dx, dy) > 1; n.x += dx * Math.min(1, dt * 12); n.y += dy * Math.min(1, dt * 12); if (n.moving) n.anim += dt; }
   for (const q of pets.values()) { const dx = q.tx - q.x, dy = q.ty - q.y; q.moving = q.srvMoving || Math.hypot(dx, dy) > 1.5; q.x += dx * Math.min(1, dt * 8); q.y += dy * Math.min(1, dt * 8); if (q.moving) q.anim += dt; }
   for (const c of animals.values()) { // ขยับให้ลื่น: วัดความเร็วจริงแบบเฉลี่ย แล้วตัดสินเดิน/หยุด/ทิศหันแบบมีช่วงกันสั่น (ไม่สลับท่าไปมาทุกเฟรม)
@@ -2687,6 +2722,7 @@ function step(now) {
   }
   for (const c of animals.values()) list.push({ y: c.y + 8, f: () => { (c.type === 'cow' ? drawCow : c.type === 'pig' ? drawPig : ANIMAL_DRAW[c.type] || drawChicken)(c, now); animalFx(c, now, ANIMAL_TOP[c.type] || 14); hungerMark(c, now); } });
   for (const q of pets.values()) list.push({ y: q.y + 8, f: () => drawPet(q, now) });
+  for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
   for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
   for (const n of npcs.values()) if (n.x > camX - 40 && n.x < camX + vw + 40 && n.y > camY - 60 && n.y < camY + vh + 60) list.push({ y: n.y + 12, f: () => drawPlayer(n, now) });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
