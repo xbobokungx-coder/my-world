@@ -772,7 +772,8 @@ $('bag').addEventListener('pointerdown', e => { if (e.target === $('bag')) close
 document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => { bagTab = t.dataset.tab; renderBag(); });
 $('bagBody').addEventListener('click', e => {
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
-  const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); }
+  const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); return; }
+  const ib = e.target.closest('[data-info]'); if (ib) { const k = ib.dataset.info, i = itemInfo(k); if (i) toast(`${i.emoji} ${i.name} ×${inv[k] || 0}` + (i.sell ? ` • ราคาขาย 🪙${i.sell}` : '') + (i.food ? ` • กินได้ +${i.food} ความอิ่ม` : '')); }
 });
 $('hungerChip').onclick = () => openBag('eat');
 // ตะเกียง: ปุ่ม 🏮 (หรือกด L) เปิด/ปิดแสงรอบตัว 3 ช่อง เห็นเฉพาะตอนกลางคืน (เพื่อนเห็นแสงของคุณด้วย)
@@ -821,7 +822,7 @@ function renderBag() {
     for (const [cat, title] of CATS) {
       const ks = Object.keys(inv).filter(k => { const i = itemInfo(k); return i && i.cat === cat; });
       if (!ks.length) continue; any = true;
-      h += `<div class="sec">${title}</div><div class="grid">` + ks.map(k => { const i = itemInfo(k); return `<div class="card"><b>${i.emoji}</b>${i.name}<br>×${inv[k]}${i.food ? `<br><button class="btn small" data-eat="${k}" style="margin-top:4px;padding:3px 8px;font-size:12px" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน +${i.food}</button>` : ''}</div>`; }).join('') + '</div>';
+      h += `<div class="sec">${title}</div><div class="grid mini">` + ks.map(k => { const i = itemInfo(k); return `<div class="card mini" data-info="${k}" title="${i.name} ×${inv[k]}"><b>${i.emoji}</b>×${inv[k]}</div>`; }).join('') + '</div>';
     }
     // ของกินได้ที่อยู่ในหมวดอื่น (ผลผลิตดิบ) ก็มีปุ่มกินในการ์ดของมันเอง
     h += `<div class="sec">🎣 อุปกรณ์ (ความทนทาน)</div><div class="grid">` + Object.keys(DURABILITY).filter(t => t !== 'axe' || axeLevel() > 0).map(t => {
