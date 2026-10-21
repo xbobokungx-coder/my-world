@@ -948,9 +948,9 @@ class World {
       if (!it || (it.price > 0 && !rec.inv[S.wearKey(cat, it.id)])) rec.wear[cat] = S.WEAR_DEFAULT[cat];
     }
     if (rec.pet && !(S.COMPANIONS[rec.pet] && rec.inv['pet_' + rec.pet])) rec.pet = ''; // พาไปได้เฉพาะสัตว์เลี้ยงที่ซื้อไว้จริง
-    rec.pet = rec.pet || '';
+    rec.pet = rec.pet || ''; rec.pmode = rec.pmode === 'play' ? 'play' : 'follow';
     if (S.blockedAt(this.map, rec.x, rec.y)) { rec.x = SPAWN.x; rec.y = SPAWN.y; }
-    const p = { id: this.nextId++, ws, key, name, admin: !!admin, color: rec.color, hat: rec.hat, pc: rec.pc, wear: rec.wear, lamp: !!rec.lamp, pet: rec.pet, sit: null, title: this.titleOf(rec), rec, x: rec.x, y: rec.y, dir: 0, fish: null, lastChat: 0, lastAct: 0, activeAt: Date.now(), voice: false };
+    const p = { id: this.nextId++, ws, key, name, admin: !!admin, color: rec.color, hat: rec.hat, pc: rec.pc, wear: rec.wear, lamp: !!rec.lamp, pet: rec.pet, pm: rec.pmode, pax: rec.x, pay: rec.y, sit: null, title: this.titleOf(rec), rec, x: rec.x, y: rec.y, dir: 0, fish: null, lastChat: 0, lastAct: 0, activeAt: Date.now(), voice: false };
     this.players.set(p.id, p); p.joinedAt = Date.now(); rec.joins = (rec.joins || 0) + 1;
     logEv(this.room, 'join', { p: key, first: rec.joins === 1, joins: rec.joins, since: rec.firstSeen || null });
     const now = Date.now(), farm = {};
@@ -958,15 +958,16 @@ class World {
     send(p, {
       t: 'w', admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), house: this.housePub(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
-      players: [...this.players.values()].map(q => ({ id: q.id, held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, x: q.x, y: q.y, dir: q.dir, voice: !!q.voice })),
+      players: [...this.players.values()].map(q => ({ id: q.id, held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, pm: q.pm, pax: q.pax, pay: q.pay, psick: !!(q.pet && this.petSt(q, q.pet).sick), x: q.x, y: q.y, dir: q.dir, voice: !!q.voice })),
     });
+    send(p, { t: 'pst', pst: rec.pst || {} });
     send(p, { t: 'arcs', a: this.arcsPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
     send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     this.orderPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
-    this.broadcast({ t: 'p+', id: p.id, held: p.held || '', title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, pet: p.pet, x: p.x, y: p.y }, p);
+    this.broadcast({ t: 'p+', id: p.id, held: p.held || '', title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, pet: p.pet, pm: p.pm, pax: p.pax, pay: p.pay, psick: !!(p.pet && this.petSt(p, p.pet).sick), x: p.x, y: p.y }, p);
     this.dirty = true;
     return { p };
   }
@@ -1049,7 +1050,8 @@ class World {
       }
       case 'eat': this.eat(p, m.item); break;
       case 'sellback': this.sellback(p, m.item); break;
-      case 'pet': { const id = m.pet || ''; if ((!id || p.rec.inv['pet_' + id] > 0) && p.rec.pet !== id) this.setPet(p, id); break; } // เลือกสัตว์เลี้ยงที่จะพาไป หรือเก็บเข้าบ้าน
+      case 'pet': { const id = m.pet || ''; if (!id || p.rec.inv['pet_' + id] > 0) this.setPet(p, id, m.mode); break; }
+      case 'petcare': this.petCare(p, m.a); break; // เลือกสัตว์เลี้ยงที่จะพาไป หรือเก็บเข้าบ้าน
       case 'repair': this.repair(p, m.tool); break;
       case 'rebuy': this.rebuy(p, m.tool); break;
       case 'trade': this.tradeHandle(p, m); break;
@@ -1084,10 +1086,36 @@ class World {
     }
   }
 
-  setPet(p, id) { // id = ชนิดสัตว์เลี้ยงที่พาไป ('' = เก็บเข้าบ้าน) ต้องเป็นตัวที่ซื้อไว้แล้ว
+  petSt(p, id) { const o = p.rec.pst || (p.rec.pst = {}); return o[id] || (o[id] = { h: 100, sick: false }); } // สถานะสัตว์เลี้ยงแต่ละตัว: h = ความอิ่ม 0-100, sick = ป่วย (เฉพาะตัวที่พาออกมาถึงจะหิว/ป่วย)
+  petPubOf(p) { const id = p.pet || ''; return { t: 'pet', id: p.id, pet: id, mode: p.pm || 'follow', ax: Math.round(p.pax || 0), ay: Math.round(p.pay || 0), sick: !!(id && this.petSt(p, id).sick) }; }
+  petPush(p) { const o = this.petPubOf(p); this.broadcast(o, p); send(p, o); send(p, { t: 'pst', pst: p.rec.pst || {} }); }
+  setPet(p, id, mode) { // id = ชนิดสัตว์เลี้ยงที่พาออกมา ('' = เก็บเข้าบ้าน) ต้องเป็นตัวที่ซื้อไว้แล้ว • mode: follow = เดินตาม, play = ปล่อยวิ่งเล่นรอบจุดที่ยืนอยู่
     id = typeof id === 'string' && S.COMPANIONS[id] && p.rec.inv['pet_' + id] > 0 ? id : '';
-    p.rec.pet = p.pet = id; this.dirty = true;
-    this.broadcast({ t: 'pet', id: p.id, pet: id }); send(p, { t: 'pet', id: p.id, pet: id });
+    p.rec.pet = p.pet = id; p.rec.pmode = p.pm = mode === 'play' ? 'play' : 'follow';
+    p.pax = p.x; p.pay = p.y; this.dirty = true; this.petPush(p);
+  }
+  petCare(p, a) {
+    const id = p.pet; if (!id) return this.toast(p, 'ยังไม่ได้พาสัตว์เลี้ยงออกมา');
+    const st = this.petSt(p, id), C = S.COMPANIONS[id];
+    if (a === 'feed') {
+      if (!(p.rec.inv.petfood > 0)) return this.toast(p, 'ไม่มีอาหารสัตว์เลี้ยง ซื้อได้ที่ร้านสัตว์เลี้ยง');
+      if (st.h >= 95) return this.toast(p, `${C.emoji} ${C.name}อิ่มอยู่แล้ว`);
+      this.add(p, 'petfood', -1); st.h = Math.min(100, st.h + S.PETCARE.food);
+      this.toast(p, `🦴 ให้อาหาร${C.emoji} ${C.name} (อิ่ม ${Math.round(st.h)}/100)`); this.sfx(p, 'eat');
+    } else if (a === 'heal') {
+      if (!st.sick) return this.toast(p, `${C.emoji} ${C.name}ไม่ได้ป่วย`);
+      if (!(p.rec.inv.medicine > 0)) return this.toast(p, 'ไม่มียา 💊 ซื้อได้ที่ร้านสัตว์เลี้ยง');
+      this.add(p, 'medicine', -1); st.sick = false; st.h = Math.max(st.h, 30);
+      this.toast(p, `💊 รักษา${C.emoji} ${C.name}หายป่วยแล้ว!`); this.sfx(p, 'heal');
+    } else return;
+    this.dirty = true; this.petPush(p);
+  }
+  petTick15(p) { // ทุก 15 วินาที: สัตว์ที่พาออกมาหิวลง หิวจัดมีโอกาสป่วย (ไม่ตาย แค่เศร้าและเดินช้า)
+    const id = p.pet; if (!id) return;
+    const st = this.petSt(p, id), C = S.COMPANIONS[id], was = st.sick;
+    st.h = Math.max(0, st.h - S.PETCARE.hungerTick);
+    if (!st.sick && st.h < S.PETCARE.sickBelow && Math.random() < S.PETCARE.sickChance) { st.sick = true; this.toast(p, `🤒 ${C.emoji} ${C.name}ป่วยแล้ว! รักษาด้วยยา 💊 ในเมนู 🐾`); }
+    if (st.sick !== was) this.petPush(p); else send(p, { t: 'pst', pst: p.rec.pst });
   }
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); }
   treeList() { const out = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) out.push([x, y]); return out; }
@@ -2463,7 +2491,7 @@ class World {
     // ความหิว: นับเฉพาะตอนมีผู้เล่นออนไลน์ (กันสัตว์/คนหิวตายตอนทุกคนไม่อยู่)
     if (this.players.size) {
       this.hunTick = (this.hunTick || 0) + dt * 1000;
-      if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) { if (p.sit) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul)); } } // นั่งพักอยู่ = ความหิวไม่ลด
+      if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) this.petTick15(p); for (const p of this.players.values()) { if (p.sit) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul)); } } // นั่งพักอยู่ = ความหิวไม่ลด
       this.sitTick = (this.sitTick || 0) + dt * 1000;
       if (this.sitTick >= S.PLAYER_HUNGER.sitMs) { this.sitTick = 0; for (const p of this.players.values()) if (p.sit && p.rec.hunger < 100) this.setHunger(p, p.rec.hunger + S.PLAYER_HUNGER.sitGain, true); } // นั่งพักค่อยๆ อิ่มขึ้นทีละนิด
       this.energyTick(dt);

@@ -1,6 +1,6 @@
 (() => {
 'use strict';
-const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, COMPANIONS, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
+const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
   GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, ORDER, orderBand, SELLABLE } = Shared;
@@ -91,7 +91,7 @@ const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 // ---------- messages ----------
 function mkPlayer(o) {
-  return { id: o.id, held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
+  return { id: o.id, held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', pm: o.pm || 'follow', pax: o.pax || o.x, pay: o.pay || o.y, psick: !!o.psick, x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
 }
 function applyTrees(list) { // ซิงก์ต้นไม้ที่ตัดได้ให้ตรงกับเซิร์ฟเวอร์ (ต้นไม้ขอบแมพไม่เปลี่ยน)
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (isChoppable(MAP, x, y)) MAP[y][x] = T.GRASS;
@@ -110,7 +110,7 @@ function handle(m) {
       m.players.forEach(p => players.set(p.id, mkPlayer(p)));
       npcs.clear(); (m.npcs || []).forEach(n => npcs.set(n.id, mkPlayer(n)));
       pets.clear(); (m.pets || []).forEach(q => pets.set(q.id, { id: q.id, kind: q.kind, v: q.v, x: q.x, y: q.y, tx: q.x, ty: q.y, dir: q.dir, dx: q.dir === 2 ? -1 : 1, anim: Math.random() * 6, moving: false }));
-      me = players.get(myId); updateLampBtn(); syncDeaf();
+      me = players.get(myId); updateLampBtn(); updatePetBtn(); syncDeaf();
       $('login').classList.add('hidden');
       ['hudTop', 'hotbar', 'chat', 'mini'].forEach(i => $(i).classList.remove('hidden'));
       layoutHud(); setMini(miniState);
@@ -128,7 +128,8 @@ function handle(m) {
     case 'status': { const p = players.get(m.id); if (p) { p.status = m.s || ''; if (peopleShown()) renderPeople(true); } break; }
     case 'voice': { const p = players.get(m.id); if (p) { p.voice = m.on; if (!m.on) p.speaking = false; } break; }
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
-    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.cp = null; if (shopKind === 'pet') renderShop(); } break; }
+    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.cp = null; if (p === me) refreshOpen(); } break; }
+    case 'pst': petSt = m.pst || {}; refreshOpen(); updatePetBtn(); break;
     case 'tree': if (MAP[m.y]) { if (m.on) { if (MAP[m.y][m.x] === T.GRASS) MAP[m.y][m.x] = T.TREE; } else if (isChoppable(MAP, m.x, m.y)) MAP[m.y][m.x] = T.GRASS; } break;
     case 'hun': setHunger(m.v); break;
     case 'rtc': onRtc(m.from, m.d); break;
@@ -156,7 +157,7 @@ function handle(m) {
       break;
     }
     case 'tile': if (m.v) farm[m.k] = m.v; else delete farm[m.k]; break;
-    case 'inv': inv = m.inv; renderHud(); refreshOpen(); updateLampBtn(); break;
+    case 'inv': inv = m.inv; renderHud(); refreshOpen(); updateLampBtn(); updatePetBtn(); break;
     case 'skills': skills = m.skills; refreshOpen(); break;
     case 'msg': toast(m.text); break;
     case 'mkt': Object.assign(market, m.m); refreshOpen(); break;
@@ -789,6 +790,7 @@ function updateLampBtn() {
   b.classList.toggle('hidden', !(inv.lamp > 0));
   const on = !!(me && me.lamp); b.style.opacity = on ? 1 : .55; b.title = on ? 'ตะเกียง: เปิดอยู่ (L)' : 'ตะเกียง: ปิดอยู่ (L)'; b.textContent = on ? '🏮' : '🔦';
 }
+$('petBtn').onclick = () => { if (me) { openPetMenu(); playSfx('click'); } };
 $('lampBtn').onclick = () => { if (me) { send({ t: 'lamp', on: !me.lamp }); playSfx('click'); } };
 
 const CATS = [['furn', '🛋️ เฟอร์นิเจอร์ (วางในบ้านด้วยปุ่ม 🏠)'], ['food', '🍽️ อาหารสำเร็จรูป (กินแล้วหายหิว)'], ['seed', '🌱 เมล็ดพันธุ์'], ['crop', '🥬 พืชผล'], ['fish', '🐟 ปลาที่ตกได้'], ['animal', '🥚 ผลผลิตจากสัตว์'], ['feed', '🌾 อาหารสัตว์ / ยา'], ['tool', '🪱 เหยื่อตกปลา'], ['wood', '🪵 ไม้'], ['gear', '🎒 อุปกรณ์ที่ซื้อ']];
@@ -898,7 +900,32 @@ const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '�
 // เมนูปลาใหม่ขายได้เฉพาะแท็บ 💰 ขาย ของร้านอาหาร (ไม่ขายใต้เมนูทำอาหารเดิม)
 const FISH_DISH_SELL_TAB = new Set(['dish_fishsoup', 'dish_sashimi', 'dish_fishburger', 'dish_fishpie']);
 const seedProfit = k => { const c = CROPS[k.slice(5)]; return (c.sell - c.seed) / (c.time / 60000); };
+let petSt = {}; // สถานะสัตว์เลี้ยงของเรา: { dog: { h: ความอิ่ม, sick } }
+function petPanelHtml() { // เมนูสัตว์เลี้ยง: พาออกมา/เดินตาม/ปล่อยเล่น/เก็บ + ให้อาหาร + รักษา (ใช้ทั้งในร้านและเมนู 🐾)
+  const own = Object.keys(COMPANIONS).filter(c => inv['pet_' + c] > 0), cur = me.pet || '', mode = me.pm || 'follow';
+  let h = '<div class="sec">🐾 สัตว์เลี้ยงของคุณ</div>';
+  if (!own.length) return h + '<p style="opacity:.7;margin:6px 0">ยังไม่มีสัตว์เลี้ยง ซื้อได้ที่ร้านสัตว์เลี้ยง (36,11) 🐶🐱🐦</p>';
+  for (const c of own) {
+    const C = COMPANIONS[c], st = petSt[c] || { h: 100, sick: false }, out = cur === c, hp = Math.round(st.h);
+    h += `<div class="row"><span>${C.emoji} ${C.name}${st.sick ? ' 🤒 <small style="color:#c0392b">ป่วย</small>' : ''}<br><small>${out ? (mode === 'play' ? '🎾 กำลังวิ่งเล่น' : '🚶 เดินตามคุณ') : '🏠 อยู่บ้าน'} • อิ่ม ${hp}/100${out ? '' : ' (ไม่หิวตอนอยู่บ้าน)'}</small><div class="hbar" style="width:120px;height:7px"><i style="width:${hp}%;${hp <= 25 ? 'background:#e74c3c' : ''}"></i></div></span><span>`
+      + (out ? `<button class="btn small${mode === 'follow' ? ' muted' : ''}" data-petmode="follow" data-pet="${c}">🚶 เดินตาม</button> <button class="btn small${mode === 'play' ? ' muted' : ''}" data-petmode="play" data-pet="${c}">🎾 ปล่อยเล่น</button> <button class="btn small muted" data-petmode="store" data-pet="">🏠 เก็บ</button>`
+        : `<button class="btn small" data-petmode="follow" data-pet="${c}">🐾 พาออกมา</button>`) + '</span></div>';
+  }
+  const ci = cur ? petSt[cur] || { h: 100, sick: false } : null;
+  h += '<div class="sec">🦴 ดูแลสัตว์เลี้ยง</div>'
+    + `<div class="row"><span>🦴 ให้อาหาร<br><small>มีอาหาร ${inv.petfood || 0} ชิ้น • +${PETCARE.food} อิ่ม • ซื้อที่ร้านสัตว์เลี้ยง</small></span><span><button class="btn small" data-petcare="feed" ${cur && inv.petfood > 0 && ci.h < 95 ? '' : 'disabled'}>ให้อาหาร</button></span></div>`
+    + `<div class="row"><span>💊 รักษาสัตว์ป่วย<br><small>มียา ${inv.medicine || 0} ขวด • สัตว์หิวจัดจะป่วย (เดินช้า เศร้า)</small></span><span><button class="btn small" data-petcare="heal" ${cur && ci.sick && inv.medicine > 0 ? '' : 'disabled'}>รักษา</button></span></div>`
+    + '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ต้องพาสัตว์ออกมาก่อนถึงจะให้อาหาร/รักษาได้ • ปล่อยเล่นแล้วสัตว์จะซนอยู่รอบจุดที่ปล่อย • เดินตาม: ห่างเกิน 2 ช่องจะวิ่งมาหา ยืนเฉยๆ จะเดินไปมาใกล้ตัว</p>';
+  return h;
+}
+function bindPet(body) {
+  body.querySelectorAll('[data-petmode]').forEach(b => b.onclick = () => send({ t: 'pet', pet: b.dataset.pet, mode: b.dataset.petmode }));
+  body.querySelectorAll('[data-petcare]').forEach(b => b.onclick = () => send({ t: 'petcare', a: b.dataset.petcare }));
+}
+function openPetMenu() { shopKind = 'petmenu'; $('shop').classList.remove('hidden'); renderShop(); }
+function updatePetBtn() { const b = $('petBtn'); if (b) b.classList.toggle('hidden', !Object.keys(COMPANIONS).some(c => inv['pet_' + c] > 0)); }
 function renderShop() {
+  if (shopKind === 'petmenu') { $('shopTitle').textContent = '🐾 สัตว์เลี้ยง'; $('shopInfo').textContent = '🪙 ' + (inv.coin || 0); $('shopBody').innerHTML = petPanelHtml(); bindPet($('shopBody')); updatePetBtn(); return; }
   const sh = SHOPS[shopKind]; if (!sh) return;
   $('shopTitle').textContent = sh.name;
   $('shopInfo').textContent = (sh.skill ? `${SKILLS[sh.skill].emoji} ${SKILLS[sh.skill].name} เลเวล ${lvl(sh.skill)} • ` : '') + `🪙 ${inv.coin || 0}` + (shopKind === 'food' ? ` • 🍖 ความอิ่ม ${hunger}/100` : '');
@@ -929,12 +956,7 @@ function renderShop() {
       + (i.food && inv[k] ? ` <button class="btn small" data-eat="${k}" style="background:#2ecc71;border-bottom-color:#1e8f4e" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน</button>` : '')
       + (i.once && inv[k] ? ` <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sellbackValue(k)}</button>` : '') + `</span></div>`;
   }
-  if (shopKind === 'pet') {
-    const own = Object.keys(COMPANIONS).filter(c => inv['pet_' + c] > 0), cur = me.pet || '';
-    h += '<div class="sec">🐾 พาสัตว์เลี้ยงไปด้วย (พาได้ทีละตัว เดินตามคุณไปทุกที่ ไม่ต้องให้อาหาร)</div>';
-    h += own.length ? own.map(c => `<div class="row"><span>${COMPANIONS[c].emoji} ${COMPANIONS[c].name}<br><small>${cur === c ? 'กำลังเดินตามคุณอยู่ 💕' : 'อยู่บ้าน'}</small></span><span><button class="btn small${cur === c ? ' muted' : ''}" data-petsel="${cur === c ? '' : c}">${cur === c ? '🏠 ให้พักบ้าน' : '🐾 พาไปด้วย'}</button></span></div>`).join('') : '<p style="opacity:.7;margin:6px 0">ยังไม่มีสัตว์เลี้ยง ซื้อตัวแรกได้เลย 🐶🐱🐦</p>';
-    h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ซื้อได้หลายตัวแต่พาไปได้ทีละตัว • ทุกคนในเมืองเห็นสัตว์เลี้ยงของคุณ • ขายคืนได้ 70% ของราคา</p>';
-  }
+  if (shopKind === 'pet') h += petPanelHtml();
   const tierOf = t => (t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : 1);
   const fixable = seedTab || sellTab ? [] : Object.keys(DURABILITY).filter(t => DURABILITY[t].shop === shopKind && tierOf(t) > 0);
   if (fixable.length) {
@@ -985,7 +1007,7 @@ function renderShop() {
   body.querySelectorAll('[data-ftab]').forEach(b => b.onclick = () => { farmTab = b.dataset.ftab; renderShop(); });
   body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft }));
   body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook }));
-  body.querySelectorAll('[data-petsel]').forEach(b => b.onclick = () => send({ t: 'pet', pet: b.dataset.petsel }));
+  bindPet(body);
   body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: +b.dataset.n }));
   body.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => send({ t: 'sell', item: b.dataset.sell, n: b.dataset.n === 'all' ? 'all' : 1 }));
   body.querySelectorAll('[data-eat]').forEach(b => b.onclick = () => send({ t: 'eat', item: b.dataset.eat }));
@@ -2422,7 +2444,8 @@ function drawCompanion(q, now) { // สัตว์เลี้ยงคู่�
   } else {
     drawPet(q, now);
   }
-  if (q.sayAt && now - q.sayAt < 1800) { const t = (now - q.sayAt) / 1800; PixelUI.world(ctx, '💕', q.x + 6, q.y - (q.kind === 'dog' ? 14 : q.kind === 'bird' ? 22 : 12) - t * 12, 11); }
+  if (q.sick) PixelUI.world(ctx, '🤒', q.x, q.y - (q.kind === 'dog' ? 16 : q.kind === 'bird' ? 24 : 14) + Math.sin(now / 200), 13);
+  else if (q.sayAt && now - q.sayAt < 1800) { const t = (now - q.sayAt) / 1800; PixelUI.world(ctx, '💕', q.x + 6, q.y - (q.kind === 'dog' ? 14 : q.kind === 'bird' ? 22 : 12) - t * 12, 11); }
 }
 function hungerMark(c, now) { // สัตว์ที่หิว: แถบความอิ่มเล็กๆ + หน้าตาเศร้า (หิวจนหมดแล้วจะตายถ้าไม่มีใครให้อาหาร) / สัตว์ป่วยมี 🤒
   const h = c.h === undefined ? 100 : c.h;
@@ -2602,13 +2625,31 @@ function step(now) {
     p.x += dx * Math.min(1, dt * 12); p.y += dy * Math.min(1, dt * 12);
     if (p.moving) p.anim += dt;
   }
-  for (const p of players.values()) { // สัตว์เลี้ยงคู่ใจเดินตามเจ้าของ (จำลองฝั่งเว็บ ไม่ต้องส่งตำแหน่ง)
+  for (const p of players.values()) { // สัตว์เลี้ยงคู่ใจ (จำลองฝั่งเว็บ ไม่ต้องส่งตำแหน่ง)
     if (!p.pet || !COMPANIONS[p.pet]) { p.cp = null; continue; }
-    const side = [[0, -1], [0, 1], [1, 0], [-1, 0]][p.dir | 0] || [0, -1], cp = p.cp || (p.cp = { id: p.id, kind: COMPANIONS[p.pet].kind, v: COMPANIONS[p.pet].v, x: p.x - 18, y: p.y + 6, dx: 1, anim: Math.random() * 6, moving: false, nextSay: now + 8000 + Math.random() * 15000 });
-    const bird = cp.kind === 'bird', gx = p.x + side[0] * 22, gy = p.y + side[1] * 14 + 4, d = Math.hypot(gx - cp.x, gy - cp.y);
-    if (d > TS * 12) { cp.x = gx; cp.y = gy; }
-    else if (d > (bird ? 10 : 14)) { const sp = Math.min(d, (bird ? 120 : cp.kind === 'dog' ? 100 : 85) * dt * (d > 70 ? 1.8 : 1)); cp.x += (gx - cp.x) / d * sp; cp.y += (gy - cp.y) / d * sp; cp.moving = true; cp.anim += dt; if (Math.abs(gx - cp.x) > 3) cp.dx = gx > cp.x ? 1 : -1; }
-    else { cp.moving = false; if (bird) cp.anim += dt * 0.5; }
+    const C = COMPANIONS[p.pet], bird = C.kind === 'bird', play = p.pm === 'play';
+    const cp = p.cp || (p.cp = { id: p.id, kind: C.kind, v: C.v, x: p.x - 18, y: p.y + 6, dx: 1, anim: Math.random() * 6, moving: false, chase: false, wait: 0, gx: p.x, gy: p.y, nextSay: now + 8000 + Math.random() * 15000 });
+    cp.sick = p.psick;
+    const ax = play ? p.pax : p.x, ay = play ? p.pay : p.y, od = Math.hypot(p.x - cp.x, p.y - cp.y);
+    const base = (bird ? 120 : C.kind === 'dog' ? 100 : 85) * (cp.sick ? 0.5 : 1);
+    const free = (x, y) => bird || !blockedAt(MAP, x, y);
+    if (!play) { // เดินตาม: ห่างเกิน 2 ช่องจะวิ่งตามมาให้เหลือ 1 ช่อง • ยืนเฉยๆ เดินไปมาไม่เกิน 2 ช่อง
+      if (od > TS * 14) { cp.x = p.x - 18; cp.y = p.y + 6; cp.chase = false; }
+      if (od > TS * 2) cp.chase = true; else if (od <= TS) cp.chase = false;
+      if (cp.chase) { const side = [[0, -1], [0, 1], [1, 0], [-1, 0]][p.dir | 0] || [0, -1]; cp.gx = p.x + side[0] * 22; cp.gy = p.y + side[1] * 14 + 4; cp.wait = 0; }
+      else if (!cp.moving && (cp.wait -= dt) <= 0) { // สุ่มจุดเดินเล่นรอบเจ้าของ รัศมีไม่เกิน 2 ช่อง
+        for (let k = 0; k < 8; k++) { const a = Math.random() * 6.283, r = (0.3 + Math.random() * 1.6) * TS, gx = p.x + Math.cos(a) * r, gy = p.y + Math.sin(a) * r; if (free(gx, gy)) { cp.gx = gx; cp.gy = gy; break; } }
+        cp.wait = 1.2 + Math.random() * 3;
+      }
+    } else if (!cp.moving && (cp.wait -= dt) <= 0) { // ปล่อยวิ่งเล่น: ซนไปทั่วรัศมี 6 ช่องรอบจุดที่ปล่อย
+      for (let k = 0; k < 10; k++) { const a = Math.random() * 6.283, r = Math.random() * 6 * TS, gx = ax + Math.cos(a) * r, gy = ay + Math.sin(a) * r; if (free(gx, gy)) { cp.gx = gx; cp.gy = gy; break; } }
+      cp.wait = 0.4 + Math.random() * 2;
+    }
+    const d = Math.hypot(cp.gx - cp.x, cp.gy - cp.y), run = cp.chase ? (od > 70 ? 1.8 : 1.2) : play ? 1.25 : 0.45;
+    if (d > 3) {
+      const sp = Math.min(d, base * run * dt), nx = cp.x + (cp.gx - cp.x) / d * sp, ny = cp.y + (cp.gy - cp.y) / d * sp;
+      if (free(nx, ny)) { cp.x = nx; cp.y = ny; cp.moving = true; cp.anim += dt * (cp.chase || play ? 1.4 : 1); if (Math.abs(cp.gx - cp.x) > 3) cp.dx = cp.gx > cp.x ? 1 : -1; } else { cp.gx = cp.x; cp.gy = cp.y; cp.moving = false; }
+    } else { cp.moving = false; if (bird) cp.anim += dt * 0.5; }
     if (now > cp.nextSay) { cp.sayAt = now; cp.nextSay = now + 20000 + Math.random() * 30000; }
   }
   for (const n of npcs.values()) { const dx = n.tx - n.x, dy = n.ty - n.y; n.moving = Math.hypot(dx, dy) > 1; n.x += dx * Math.min(1, dt * 12); n.y += dy * Math.min(1, dt * 12); if (n.moving) n.anim += dt; }
