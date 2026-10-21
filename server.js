@@ -2516,11 +2516,12 @@ const bugImgExt = b => (b.length > 12 && b[0] === 0x89 && b[1] === 0x50 && b[2] 
   : (b.length > 6 && /^GIF8[79]a/.test(b.toString('latin1', 0, 6))) ? 'gif' : ''; // ดูไบต์จริง ไม่เชื่อนามสกุล/ชนิดที่ client บอก
 const bugClip = (v, n) => String(v === undefined || v === null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').slice(0, n);
 const BUG_ID_RE = /^[a-z0-9]{6,24}$/;
-function bugList() { // รายงานล่าสุด 50 รายการ (ไม่รวมตัวภาพ) สำหรับหน้าผู้ดูแล
+function bugList() { // รายงานสำหรับหน้าผู้ดูแล (ไม่รวมตัวภาพ)
   let names = []; try { names = fs.readdirSync(BUG_DIR).filter(f => f.endsWith('.json')); } catch (e) { return []; }
   const out = [];
-  for (const f of names) { try { const r = JSON.parse(fs.readFileSync(path.join(BUG_DIR, f), 'utf8')); if (BUG_ID_RE.test(r.id)) out.push({ id: r.id, time: r.time, name: r.name, room: r.room, text: r.text, ctx: r.ctx || {}, img: !!r.img }); } catch (e) { /* ไฟล์เสียข้ามไป */ } }
-  return out.sort((a, b) => b.time - a.time).slice(0, 50);
+  for (const f of names) { try { const r = JSON.parse(fs.readFileSync(path.join(BUG_DIR, f), 'utf8')); if (BUG_ID_RE.test(r.id)) out.push({ id: r.id, time: r.time, name: r.name, room: r.room, text: r.text, ctx: r.ctx || {}, img: !!r.img, fixed: r.status === 'fixed', fixedAt: r.fixedAt || 0, fixedBy: r.fixedBy || '' }); } catch (e) { /* ไฟล์เสียข้ามไป */ } }
+  const open = out.filter(b => !b.fixed).sort((a, b) => b.time - a.time), fixed = out.filter(b => b.fixed).sort((a, b) => b.fixedAt - a.fixedAt);
+  return open.slice(0, 200).concat(fixed.slice(0, 100)); // ยังไม่แก้ไม่ตกหล่น ส่วนที่แก้แล้วโชว์ล่าสุด 100 (ไฟล์ยังเก็บครบทั้งหมด)
 }
 function bugRead(id) { try { return BUG_ID_RE.test(id) ? JSON.parse(fs.readFileSync(path.join(BUG_DIR, id + '.json'), 'utf8')) : null; } catch (e) { return null; } }
 const bugMime = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
@@ -2626,11 +2627,14 @@ function adminHandle(p, world, m) {
     let b; try { b = fs.readFileSync(path.join(BUG_DIR, path.basename(r.img))); } catch (e) { return reply({ err: 'อ่านภาพไม่ได้', bugs: bugList() }); }
     return reply({ bugimg: { id: r.id, uri: 'data:' + (bugMime[path.extname(r.img).slice(1)] || 'application/octet-stream') + ';base64,' + b.toString('base64') } });
   }
-  if (m.a === 'bugdel') {
-    const r = bugRead(String(m.id || ''));
-    if (r) { for (const f of [r.id + '.json', r.img]) if (f) try { fs.unlinkSync(path.join(BUG_DIR, path.basename(f))); } catch (e) { /* ไม่มีแล้ว */ } console.log('ลบรายงานบั๊ก #' + r.id, '(โดย ' + p.name + ')'); }
-    return reply({ bugs: bugList(), bugdeleted: !!r });
+  if (m.a === 'bugfix' || m.a === 'bugreopen') { // ทำเครื่องหมาย แก้แล้ว / เปิดใหม่ — ไม่ลบ เก็บรายงานและภาพไว้ตลอด
+    const r = bugRead(String(m.id || '')); if (!r) return reply({ err: 'ไม่พบรายงานนี้', bugs: bugList() });
+    if (m.a === 'bugfix') { r.status = 'fixed'; r.fixedAt = Date.now(); r.fixedBy = p.name; } else { delete r.status; delete r.fixedAt; delete r.fixedBy; }
+    try { const f = path.join(BUG_DIR, r.id + '.json'); fs.writeFileSync(f + '.tmp', JSON.stringify(r, null, 1)); fs.renameSync(f + '.tmp', f); } catch (e) { console.error('บันทึกสถานะบั๊กไม่ได้', e.message); return reply({ err: 'บันทึกไม่ได้', bugs: bugList() }); }
+    console.log((m.a === 'bugfix' ? 'บั๊กแก้แล้ว #' : 'เปิดบั๊กใหม่ #') + r.id, '(โดย ' + p.name + ')');
+    return reply({ bugs: bugList(), bugmark: m.a === 'bugfix' ? 'fixed' : 'open' });
   }
+
   if (m.a === 'ban' || m.a === 'unban') { // แบน/ปลดแบนชื่อตัวละคร: ถูกแบนแล้วเข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น (เตะออกทันทีถ้าออนไลน์)
     const w = worlds.get(String(m.room || '')) || getWorld(String(m.room || ''));
     if (!w) return reply({ err: 'ไม่พบห้องนี้', users: userList(), bans: banList() });
