@@ -2159,15 +2159,50 @@ function drawFurn(o) {
   ctx.font = `${d.size || 27}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#000';
   PixelUI.world(ctx, d.emoji, px + 16, py + 17, d.size || 27);
 }
+// กองไฟพิกเซล: วงหิน + ฟืนไขว้ + ถ่านแดง (สไปรต์เดียว) แล้วซ้อนเปลวไฟ 4 เฟรม (ขอบส้มเข้ม) + ประกายไฟลอยขึ้น
+const FIRE_ART = (() => {
+  const { mk, r, ell, addOutline } = PixelArt;
+  const stone = (x, sx, sy, w) => { r(x, '#8d8a94', sx, sy, w, 3); r(x, '#b9b6bf', sx, sy, w - 1, 1); r(x, '#5f5c68', sx + 1, sy + 2, w - 1, 1); };
+  const RING = [[-11, 0], [-9, -3], [-5, -4], [0, -5], [5, -4], [9, -3], [11, 0], [9, 3], [5, 4], [0, 5], [-5, 4], [-9, 3]];
+  const log = (x, x0, y0, x1, y1) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let i = 0; i <= n; i++) { const X = Math.round(x0 + (x1 - x0) * i / n), Y = Math.round(y0 + (y1 - y0) * i / n); r(x, '#7a4a24', X, Y, 2, 2); r(x, '#a8703c', X, Y, 1, 1); } r(x, '#e0bb85', x0, y0, 2, 2); r(x, '#c99a5e', x0 + 1, y0 + 1, 1, 1); r(x, '#e0bb85', x1, y1, 2, 2); };
+  const base = mk(28, 13, x => {
+    const cx = 13, cy = 6;
+    ell(x, cx, cy, 10, 4, '#4a3f38'); ell(x, cx, cy, 7, 3, '#3a302b');
+    for (const [dx, dy] of RING) if (dy < 0) stone(x, cx + dx - 1, cy + dy - 1, 4);
+    log(x, cx - 7, cy + 2, cx + 6, cy - 2); log(x, cx - 7, cy - 2, cx + 6, cy + 2);
+    for (const [ex, ey, c] of [[-2, 0, '#e8541c'], [1, 1, '#ff9a2e'], [3, -1, '#e8541c'], [-4, 1, '#c0392b'], [0, -1, '#ffd36a']]) r(x, c, cx + ex, cy + ey, 1, 1);
+    for (const [dx, dy] of RING) if (dy >= 0) stone(x, cx + dx - 1, cy + dy - 1, 4);
+  });
+  const L = ['#e8541c', '#ff8a2a', '#ffc94a', '#fff2b8'];
+  const flames = [0, 1, 2, 3].map(k => {
+    const c = mk(16, 20, x => {
+      const H = 20, cx = 8;
+      const tongue = (bx, h, wMax, ph, layer) => { // เปลวหนึ่งลิ้น: กว้างที่ฐาน แคบลงด้านบน ปลายส่ายตามเฟรม
+        for (let y = 0; y < h; y++) { const t = y / h, w = Math.max(0, Math.round(wMax * Math.pow(1 - t, 0.8) * (t < 0.15 ? 0.8 + t : 1))), off = Math.round(Math.sin(t * 3.2 + ph) * t * 2); if (w > 0 || y < h - 1) r(x, L[layer], bx - w + off, H - 1 - y, w * 2 + 1, 1); }
+      };
+      const sw = [0, 1, 2, 1][k], ph = k * 1.6;
+      tongue(cx - 4, 8 + sw, 2, ph + 1, 0); tongue(cx + 4, 10 - sw, 2, ph + 2.5, 0);
+      tongue(cx, 18 - (k % 2), 5, ph, 0); tongue(cx, 13 - (k % 2), 3, ph + .4, 1); tongue(cx, 8, 2, ph + .8, 2); tongue(cx, 4, 1, ph + 1.2, 3);
+    }, false);
+    addOutline(c, '#7a240c'); return c;
+  });
+  return { base, flames };
+})();
 function drawFire(now) {
-  const px = FIRE.x * TS + 16, py = FIRE.y * TS + 22;
-  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(px, py + 6, 20, 7, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = '#777'; for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; ctx.beginPath(); ctx.arc(px + Math.cos(a) * 15, py + 3 + Math.sin(a) * 6, 4, 0, 7); ctx.fill(); }
-  ctx.fillStyle = '#5a3a1c'; ctx.save(); ctx.translate(px, py + 2); ctx.rotate(0.5); ctx.fillRect(-12, -2, 24, 4); ctx.rotate(-1); ctx.fillRect(-12, -2, 24, 4); ctx.restore();
+  const px = FIRE.x * TS + 16, py = FIRE.y * TS + 22, A = FIRE_ART;
+  ctx.imageSmoothingEnabled = false;
   const f = 1 + Math.sin(now / 90) * 0.12 + Math.sin(now / 53) * 0.08;
-  ctx.fillStyle = '#e8541c'; ctx.beginPath(); ctx.moveTo(px - 9, py); ctx.quadraticCurveTo(px - 8, py - 14 * f, px, py - 24 * f); ctx.quadraticCurveTo(px + 8, py - 14 * f, px + 9, py); ctx.fill();
-  ctx.fillStyle = '#ff9a2e'; ctx.beginPath(); ctx.moveTo(px - 6, py); ctx.quadraticCurveTo(px - 5, py - 10 * f, px, py - 17 * f); ctx.quadraticCurveTo(px + 5, py - 10 * f, px + 6, py); ctx.fill();
-  ctx.fillStyle = '#ffe48a'; ctx.beginPath(); ctx.moveTo(px - 3, py); ctx.quadraticCurveTo(px - 3, py - 6 * f, px, py - 10 * f); ctx.quadraticCurveTo(px + 3, py - 6 * f, px + 3, py); ctx.fill();
+  const g = ctx.createRadialGradient(px, py, 2, px, py, 34 * f); g.addColorStop(0, 'rgba(255,170,70,.32)'); g.addColorStop(1, 'rgba(255,150,50,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(px, py + 2, 34 * f, 16 * f, 0, 0, 7); ctx.fill(); // แสงอุ่นบนพื้นรอบกองไฟ
+  ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px, py + 6, 26, 8, 0, 0, 7); ctx.fill();
+  ctx.drawImage(A.base, px - 28, py - 12, A.base.width * 2, A.base.height * 2);
+  const fl = A.flames[Math.floor(now / 160) % 4], fh = Math.round(fl.height * 2 * (0.94 + (f - 1) * 0.4)); // 4 เฟรม ~6 ภาพ/วิ + ยืดหดเบาๆ ตามจังหวะกะพริบ
+  ctx.drawImage(fl, px - fl.width, py - 1 - fh, fl.width * 2, fh); // ฐานเปลวอยู่เหนือจุดไขว้ฟืน ให้ยังเห็นฟืน
+  for (let i = 0; i < 5; i++) { // ประกายไฟลอยขึ้นแล้วจาง
+    const t = ((now / 1000) * 0.6 + i * 0.37) % 1, sx = Math.round(px + Math.sin(i * 2.3 + t * 5) * (4 + t * 8)), sy = Math.round(py - 22 - t * 30);
+    ctx.globalAlpha = 1 - t; ctx.fillStyle = t < 0.5 ? '#ffd36a' : '#ff8a2a'; ctx.fillRect(sx, sy, 2, 2);
+  }
+  ctx.globalAlpha = 1;
 }
 function drawTree(x, y) { // สไปรต์ต้นไม้พิกเซล (สุ่มแบบตามตำแหน่ง) โคนต้นอยู่กลางขอบล่างของช่อง
   const s = PixelArt.tree(x, y);
