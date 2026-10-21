@@ -20,6 +20,31 @@ p.rec.bank = { bal: 5000 }; p.activeAt = Date.now();
 for (let i = 0; i < 20; i++) w.tick(60, Date.now());
 assert.strictEqual(w.bankOf(p).bal, 5000, 'ยอดฝากเปลี่ยนเอง (ไม่ควรมีดอกเบี้ย)');
 assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่มีแล้ว');
+// โควตาขายราคาเต็มต่อวัน
+{
+  const Q = S.QUOTA, near = (a, b, e = 1) => Math.abs(a - b) <= e;
+  assert.strictEqual(S.quotaPay(0, 1000).pay, 1000, 'ในโควตาต้องได้เต็ม');
+  assert.strictEqual(S.quotaPay(0, Q.full).pay, Q.full, 'ถึงโควตาพอดีได้เต็ม');
+  assert.ok(near(S.quotaPay(Q.full - 500, 1500).pay, 500 + 1000 * Q.over), 'ข้ามโควตากลางการขาย: ส่วนเกินได้ over');
+  assert.ok(near(S.quotaPay(Q.full, 1000).pay, 1000 * Q.over), 'เกินโควตาแล้วได้ 30%');
+  assert.ok(near(S.quotaPay(Q.full * 2, 1000).pay, 1000 * Q.over * Q.decay), 'ขายเกินต่อเนื่อง ลดลงอีกขั้น');
+  assert.ok(near(S.quotaPay(Q.full * 50, 1000).pay, 1000 * Q.floor), 'ลดถึงพื้นแล้วคงที่');
+  assert.ok(S.quotaPay(Q.full * 50, 1).pay >= 1, 'ขายชิ้นเล็กอย่างน้อยได้ 1 เหรียญ');
+  // ขายแบ่งหลายครั้งต้องได้เท่ากับขายครั้งเดียว (กันแกล้งแบ่งขายเลี่ยงลดราคา)
+  let g = 0, parts = 0; for (let i = 0; i < 40; i++) { parts += S.quotaPay(g, 500).pay; g += 500; }
+  assert.ok(near(parts, S.quotaPay(0, 20000).pay, 40), 'แบ่งขายต้องไม่ได้มากกว่าขายรวด');
+  // ผ่านระบบจริง: ขายผ่าน World.sell
+  w.event = () => {}; // ปิดรางวัลเควส/คู่มือที่ผูกกับการขาย จะได้วัดเฉพาะเหรียญจากการขาย
+  w.nearShopKind = () => 'farm'; w.market.crop_melon = w.market.crop_melon || { m: 1 };
+  p.rec.inv.crop_melon = 400; p.rec.sold = null; const c0 = p.rec.inv.coin;
+  w.sell(p, 'crop_melon', 'all');
+  const got = p.rec.inv.coin - c0, gross = p.rec.sold.gross;
+  assert.ok(gross > Q.full, 'ต้องขายพอให้เกินโควตาในเทสต์');
+  assert.strictEqual(got, S.quotaPay(0, gross).pay, 'เหรียญที่ได้จริงต้องตรงกับสูตรโควตา');
+  assert.ok(got < gross, 'เกินโควตาต้องได้น้อยกว่าราคาตลาด');
+  const q = w.quotaPub(p); assert.ok(q.rate < 1 && q.gross === gross && q.resetAt > Date.now(), 'ข้อมูลที่ส่งให้ป้ายสถานะต้องถูกต้อง');
+  console.log('  โควตา: ขายตลาด', gross, 'ได้จริง', got, '(' + Math.round(got / gross * 100) + '%) อัตราถัดไป', Math.round(q.rate * 100) + '%');
+}
 const w2 = new World('main');
 assert.strictEqual(w2.projects.bridge.coin, 5000, 'bridge coin lost after reload');
 assert.strictEqual(w2.projects.lighthouse.coin, 500, 'lighthouse coin lost after reload');

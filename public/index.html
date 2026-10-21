@@ -255,6 +255,7 @@
   #bag .tabs { flex-wrap:wrap; gap:4px; }
   #bag .tab { padding:6px 9px; font-size:13px; white-space:nowrap; flex:1 1 auto; }
   /* เมนูหลัก: ไอคอนที่ใช้บ่อยอยู่แถบบน ที่เหลือซ่อนในเมนู แบ่งหมวดพร้อมชื่อสั้นๆ */
+  #hudTop #quotaChip { cursor:pointer; font-size:13px; } #hudTop #quotaChip.warn { background:#a8661f; } #hudTop #quotaChip.over { background:#8f2a22; }
   #hudMenu { position:absolute; top:calc(100% + 6px); left:0; width:min(92vw,340px); box-sizing:border-box; padding:8px 10px 10px; background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); z-index:6; max-height:calc(100vh - 90px); overflow:auto; }
   #hudMenu .mtitle { font-size:12px; font-weight:800; color:#5a4636; opacity:.8; margin:8px 2px 4px; }
   #hudMenu .mtitle:first-child { margin-top:2px; }
@@ -348,6 +349,7 @@
   <div class="panel" id="clock">🕒 --:--</div>
   <div class="panel hidden" id="happyChip" title="Happy Village: บัฟร่วมของทั้งเมือง">🎉</div>
   <div class="panel" id="online">👥 1</div>
+  <div class="panel hidden" id="quotaChip" role="status"></div>
   <button class="btn small" id="bagBtn" title="กระเป๋า (B)" aria-label="กระเป๋า">🎒</button>
   <button class="btn small" id="chatBtn" title="แชท (Enter)" aria-label="แชท">💬</button>
   <button class="btn small mic" id="micBtn" title="ไมค์: ปิดอยู่ (กดเพื่อเปิด)" aria-label="เปิด/ปิดไมค์">🎤</button>

@@ -518,6 +518,8 @@ class World {
     delete b.acc; // ตัวนับเวลาดอกเบี้ยเดิม (ยกเลิกแล้ว)
     return b;
   }
+  quotaPub(p) { const so = p.rec.sold; const gross = so && so.day === this.today() ? so.gross || 0 : 0, d = new Date(); return { t: 'quota', full: S.QUOTA.full, gross, rate: S.quotaRate(gross), resetAt: new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime() }; }
+  quotaPush(p) { send(p, this.quotaPub(p)); }
   bankPush(p) { const b = this.bankOf(p); send(p, { t: 'bank', bal: b.bal, cap: S.BANK.cap }); }
   nearAtm(p) { return Math.hypot(p.x - (S.ATM.x + 0.5) * TS, p.y - (S.ATM.y + 0.5) * TS) < 4.5 * TS; }
   bankHandle(p, m) {
@@ -890,7 +892,7 @@ class World {
     });
     send(p, { t: 'arcs', a: this.arcsPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
-    send(p, { t: 'proj', p: this.projPub() });
+    send(p, { t: 'proj', p: this.projPub() }); this.quotaPush(p);
     this.orderPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
@@ -1253,22 +1255,24 @@ class World {
     // ชนิดนี้นับเป็น "ชนิดที่ขายวันนี้" ได้เมื่อขายจริงจัง (≥ minQty ชิ้น หรือ ≥ minCoin เหรียญ) กันการขายอย่างละ 1 ชิ้นเพื่อเอาโบนัส
     const counted = items0.includes(item) || q >= S.VARIETY.minQty || quote.total >= S.VARIETY.minCoin;
     if (!counted) { nUsed = items0.length; mEff = this.effMultN(p, item, nUsed); quote = S.sellQuote(info.sell, mEff, q); }
+    const dayQ = this.today(), soQ = p.rec.sold = p.rec.sold && p.rec.sold.day === dayQ ? p.rec.sold : { day: dayQ, items: [] };
+    const qp = S.quotaPay(soQ.gross || 0, quote.total); soQ.gross = (soQ.gross || 0) + quote.total; // โควตาราคาเต็มต่อวัน: เกินแล้วได้เหรียญลดลง (ยอดนับด้วยราคาตลาดก่อนลด)
     this.add(p, item, -q);
-    this.add(p, 'coin', quote.total, 'sell');
+    this.add(p, 'coin', qp.pay, 'sell');
     let bonusTxt = '';
     if (g) {
       const bonus = S.varietyBonus(nUsed), r = mEff > 0 ? quote.m / mEff : 1;
       g.m = Math.min(S.MARKET.max, Math.max(S.MARKET.min, g.m * Math.pow(r, 1 - S.PMARKET.share)));
       const mk = p.rec.mk = p.rec.mk || {};
       mk[item] = Math.min(1, Math.max(S.PMARKET.min, this.pmOf(p, item) * Math.pow(r, S.PMARKET.share)));
-      const day = this.today(), so = p.rec.sold = p.rec.sold && p.rec.sold.day === day ? p.rec.sold : { day, items: [] };
+      const so = soQ;
       if (counted && !so.items.includes(item)) so.items.push(item);
       if (bonus > 0) bonusTxt = ` (โบนัสขายหลายชนิด +${Math.round(bonus * 100)}%)`;
       this.dirty = true; send(p, { t: 'mkt', m: this.mktFor(p) }); // ผู้ขายเห็นราคาใหม่ทุกชนิด (โบนัสหลากหลายเปลี่ยนทั้งชุด)
       for (const q2 of this.players.values()) if (q2 !== p) send(q2, { t: 'mkt', m: { [item]: Math.round(this.effMult(q2, item) * 100) / 100 } });
     }
-    logEv(this.room, 'sell', { p: p.key, item, q, coin: quote.total, m: Math.round(mEff * 100) / 100 });
-    this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${quote.total}${bonusTxt}`); this.event(p, 'sell');
+    logEv(this.room, 'sell', { p: p.key, item, q, coin: qp.pay, gross: quote.total, m: Math.round(mEff * 100) / 100 });
+    this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${qp.pay}${bonusTxt}${qp.pay < quote.total ? ` ⏳ เกินโควตาราคาเต็ม ได้ ${Math.round(qp.pay / quote.total * 100)}%` : ''}`); this.quotaPush(p); this.event(p, 'sell');
     if (S.SHOPS.animal.sell.includes(item)) this.event(p, 'sellproduct');
     this.sfxTo(p, 'coin');
   }

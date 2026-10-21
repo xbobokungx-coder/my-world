@@ -174,6 +174,20 @@
     { id: 'tos',    name: 'Tears of Steel',  emoji: '🤖', yt: 'R6MlUcmOul8', sec: 734 },
     { id: 'ed',     name: "Elephant's Dream", emoji: '🐘', yt: 'TLkA0RELQ1g', sec: 654 },
   ];
+  // โควตา "ขายได้ราคาเต็ม" ต่อวัน (วันจริง รีเซ็ตเที่ยงคืน): ยอดขายรวมวันนี้ (หลังคิดราคาตลาดแล้ว) ถึง full ได้เต็ม
+  // เกินแล้วได้ over (30%) และลดลงอีกเมื่อขายเกินต่อเนื่อง: ทุก full เหรียญที่เกินคูณ decay จนถึง floor — หน่วงทุกคนเท่ากัน ไม่ดูว่ารวยหรือจน
+  const QUOTA = { full: 2500, over: 0.3, decay: 0.7, floor: 0.1 };
+  const quotaRate = gross => gross < QUOTA.full ? 1 : Math.max(QUOTA.floor, QUOTA.over * Math.pow(QUOTA.decay, Math.floor((gross - QUOTA.full) / QUOTA.full)));
+  function quotaPay(gross, total) { // gross = ยอดที่นับเข้าโควตาแล้ววันนี้ total = ราคาตลาดของที่กำลังขาย → { pay: เหรียญที่ได้จริง, rate: อัตราของเหรียญสุดท้าย }
+    let pay = 0, rem = total, g = gross;
+    while (rem > 0) {
+      const r = quotaRate(g);
+      if (r <= QUOTA.floor) { pay += rem * r; break; }
+      const end = g < QUOTA.full ? QUOTA.full : QUOTA.full * (Math.floor((g - QUOTA.full) / QUOTA.full) + 2), take = Math.min(rem, end - g);
+      pay += take * r; rem -= take; g += take;
+    }
+    return { pay: total > 0 ? Math.max(1, Math.round(pay)) : 0, rate: quotaRate(gross + total) };
+  }
   function sellQuote(base, m, q) { // ราคารวมเมื่อขาย q ชิ้นต่อเนื่อง และตัวคูณใหม่
     let total = 0;
     for (let i = 0; i < q; i++) { total += Math.max(1, Math.round(base * m)); m = Math.max(MARKET.min, m * MARKET.step); }
@@ -676,7 +690,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, QUOTA, quotaRate, quotaPay, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     ORDER, orderBand, SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);
