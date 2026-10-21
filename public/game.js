@@ -2042,25 +2042,37 @@ function buildBase() {
     b.counter.forEach(([cx, cy], i) => { PixelUI.world(gh, GOODS[b.kind][i % 2], cx * TS + 16, cy * TS + 22, 15); });
   }
   // ตู้เกม (เรียงเป็นรูปตัว U) + พื้นลานตู้เกมมีลวดลาย
-  for (const cab of CABINETS) {
-    const px = cab.x * TS, py = cab.y * TS;
-    // ตู้อาร์เคด: ป้ายหัวตู้ จอมีแสงสะท้อน แผงปุ่มควบคุม (จอย + ปุ่ม 3 สี) และช่องลำโพงหน้าตาเหมือนเดิม • สีตามธีมเกม (ม่วง)
-    const game = !!cab.game, acc = game ? '#6a3fb5' : '#6b6b75', body = game ? '#2b2f55' : '#4a4a55';
+  // ตู้เกม: สีไม่ซ้ำกันแต่กลมกลืนกับธีม และมี 3 ทรงหน้าตา (สลับตามลำดับตู้) • ตู้ว่างเป็นสีเทา
+  const CAB_PAL = [
+    { body: '#2b2f55', acc: '#6a3fb5', trim: '#8a6fd1' }, // ม่วง
+    { body: '#1e3d33', acc: '#2e9e6b', trim: '#6fd3a0' }, // เขียวเข้ม
+    { body: '#4a1f1f', acc: '#c9402c', trim: '#f08a6a' }, // แดง
+    { body: '#1f3550', acc: '#2f80c9', trim: '#7fb8ea' }, // น้ำเงิน
+    { body: '#4a3216', acc: '#d9982a', trim: '#f5cf7a' }, // ทองอำพัน
+    { body: '#3d1f4a', acc: '#c9488a', trim: '#f09acb' }, // ชมพู
+    { body: '#1a3f4a', acc: '#1f9fb3', trim: '#7fdbe8' }, // ฟ้าอมเขียว
+    { body: '#33384a', acc: '#6f7ca3', trim: '#b8c2dc' }, // เทาน้ำเงิน
+  ];
+  for (const [ci, cab] of CABINETS.entries()) {
+    const px = cab.x * TS, py = cab.y * TS, game = !!cab.game, pal = game ? CAB_PAL[ci % CAB_PAL.length] : { body: '#4a4a55', acc: '#6b6b75', trim: '#8a8a95' }, style = ci % 3;
     g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(px + 2, py + 28, 28, 4);            // เงา
-    g.fillStyle = body; g.fillRect(px + 3, py - 6, 26, 34);                          // ตัวตู้
-    g.fillStyle = game ? '#8a6fd1' : '#8a8a95'; g.fillRect(px + 3, py - 6, 3, 34); g.fillRect(px + 26, py - 6, 3, 34); // เสาข้าง
-    g.fillStyle = acc; g.fillRect(px + 2, py - 11, 28, 6); g.fillRect(px + 2, py - 11, 28, 1); // ป้ายหัวตู้ (marquee)
+    g.fillStyle = pal.body; g.fillRect(px + 3, py - 6, 26, 34);                      // ตัวตู้
+    g.fillStyle = pal.trim; g.fillRect(px + 3, py - 6, 3, 34); g.fillRect(px + 26, py - 6, 3, 34); // เสาข้าง
+    if (style === 2) { g.fillStyle = pal.acc; g.fillRect(px + 2, py + 21, 28, 7); } // แท่นล่างสีเน้น (ทรงที่ 3)
+    if (style === 1) { g.fillStyle = pal.trim; g.fillRect(px + 12, py + 1, 8, 1); g.fillRect(px + 12, py + 25, 8, 1); } // ลายเส้นกลางตัวตู้ (ทรงที่ 2)
+    g.fillStyle = pal.acc; g.fillRect(px + 2, py - 11, 28, 6); g.fillRect(px + 2, py - 11, 28, 1); // ป้ายหัวตู้ (marquee)
+    if (style === 1) { g.fillStyle = pal.acc; g.fillRect(px + 3, py - 14, 3, 4); g.fillRect(px + 26, py - 14, 3, 4); } // หัวเสาสูง (ทรงที่ 2)
     g.fillStyle = game ? '#f4f0ff' : '#c9c9d2'; g.fillRect(px + 4, py - 10, 24, 1);  // ขอบสว่างบนป้าย
     g.fillStyle = '#2d2d33'; g.fillRect(px + 7, py - 2, 18, 14);                     // กรอบจอ
     g.fillStyle = game ? '#0c1a2e' : '#1d2230'; g.fillRect(px + 8, py - 1, 16, 12);  // จอ
     g.fillStyle = 'rgba(170,225,255,.3)'; g.fillRect(px + 10, py + 1, 3, 9); g.fillRect(px + 16, py + 1, 2, 9); // แสงสะท้อนบนจอ
-    g.fillStyle = game ? '#c9b7f0' : '#b8b8c2'; g.fillRect(px + 4, py + 13, 24, 4);  // แผงควบคุม
+    g.fillStyle = pal.trim; g.fillRect(px + 4, py + 13, 24, 4);                      // แผงควบคุม
     g.fillStyle = '#2d2d33'; g.fillRect(px + 7, py + 11, 2, 3);                      // ก้านจอย
     g.fillStyle = game ? '#e74c3c' : '#666'; g.beginPath(); g.arc(px + 8, py + 10.5, 2.2, 0, 7); g.fill(); // หัวจอย
     g.fillStyle = game ? '#f1c40f' : '#666'; g.beginPath(); g.arc(px + 14, py + 15, 1.4, 0, 7); g.fill();
     g.fillStyle = game ? '#2ecc71' : '#666'; g.beginPath(); g.arc(px + 18, py + 15, 1.4, 0, 7); g.fill();
     g.fillStyle = game ? '#3498db' : '#666'; g.beginPath(); g.arc(px + 22, py + 15, 1.4, 0, 7); g.fill();
-    g.fillStyle = acc; g.fillRect(px + 3, py + 18, 26, 3);                           // แถบล่างตัวตู้
+    g.fillStyle = pal.acc; g.fillRect(px + 3, py + 18, 26, 3);                       // แถบล่างตัวตู้
     g.fillStyle = '#3a3a48'; g.fillRect(px + 9, py + 21, 14, 7);                    // ช่องลำโพง
     g.fillStyle = game ? '#ff6b8a' : '#666'; g.fillRect(px + 11, py + 23, 2, 1); g.fillRect(px + 19, py + 23, 2, 1); // ตาสองดวง
     g.fillStyle = '#111'; g.fillRect(px + 12, py + 25, 8, 1);                        // ปาก
@@ -2659,8 +2671,13 @@ function step(now) {
     const s = arcStatus[i]; if (!s) return;
     const uno = ['uno', 'bacc', 'bj', 'pok', 'react', 'rps'].includes(s[7]);
     const txt = s[2] === 'waiting' ? `⏳ ${s[4]}${uno ? ' ' + s[5] : ''}${s[3] ? ' 🪙' + s[3] : ''}` : s[2] === 'playing' ? (uno ? `${s[7] === 'uno' ? '🃏 กำลังเล่น' : PARTY_GAMES.has(s[7]) ? '🎮 กำลังเล่น' : '🎰 เล่นอยู่'} ${s[5]}` : `⚔️ ${s[4]} vs ${s[5]}`) : s[2] === 'over' ? '🏁 จบเกม' : '🎮 ว่าง';
+    if (s[2] === 'idle') { // ว่าง = จุดสีเขียวบนป้ายตู้ (ไม่ใช้คำว่าว่าง)
+      ctx.fillStyle = '#1b5e20'; ctx.beginPath(); ctx.arc(c.x * TS + 24, c.y * TS - 8, 3.4, 0, 7); ctx.fill();
+      ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.arc(c.x * TS + 24, c.y * TS - 8, 2.4, 0, 7); ctx.fill();
+      return;
+    }
     const w = ctx.measureText(txt).width + 10, cx = c.x * TS + 16, cy = c.y * TS - 16;
-    ctx.fillStyle = s[2] === 'idle' ? 'rgba(0,0,0,.45)' : 'rgba(138,111,209,.92)'; ctx.fillRect(cx - w / 2, cy - 7, w, 14);
+    ctx.fillStyle = 'rgba(138,111,209,.92)'; ctx.fillRect(cx - w / 2, cy - 7, w, 14);
     ctx.fillStyle = '#fff'; ctx.fillText(txt, cx, cy);
   });
   // เบ็ด + แอนิเมชันเครื่องมือ
