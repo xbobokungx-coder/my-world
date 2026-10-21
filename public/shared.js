@@ -278,6 +278,11 @@
     { id: 'dish_omelet',  name: 'ไข่เจียวผักรวม',    emoji: '🍳', sell: 80,  food: 55,  lv: 3, xp: 20, time: 4000,  in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 1 }] },
     { id: 'dish_seafood', name: 'ซีฟู้ดไข่นุ่ม',     emoji: '🍤', sell: 135, food: 70,  lv: 5, xp: 34, time: 6000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
     { id: 'dish_feast',   name: 'ชุดเลี้ยงฉลอง',     emoji: '🍽️', sell: 330, food: 100, lv: 7, xp: 70, time: 9000,  in: [{ c: 'fish', n: 2 }, { c: 'crop', n: 2 }, { c: 'egg', n: 2 }, { k: 'milk', n: 1 }] },
+    // เมนูปลา: ปลาทุกชนิดในกระเป๋า (ยกเว้นรองเท้าเก่า) ใช้ทำได้
+    { id: 'dish_fishsoup', name: 'ต้มยำปลา',         emoji: '🍲', sell: 75,  food: 50,  lv: 2, xp: 16, time: 3500,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_sashimi',  name: 'ซาชิมิปลา',         emoji: '🍣', sell: 120, food: 55,  lv: 4, xp: 26, time: 4000,  in: [{ c: 'fish', n: 2 }] },
+    { id: 'dish_fishburger', name: 'เบอร์เกอร์ปลา',   emoji: '🍔', sell: 170, food: 80,  lv: 6, xp: 38, time: 5000,  in: [{ c: 'fish', n: 1 }, { k: 'meal_bread', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_fishpie',  name: 'พายปลาไข่',         emoji: '🥧', sell: 250, food: 90,  lv: 8, xp: 50, time: 7000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
   ];
   const cookCat = (c, k) => c === 'fish' ? /^fish_/.test(k) && k !== 'fish_boot' : c === 'crop' ? /^crop_/.test(k) : c === 'egg' ? (k === 'egg' || k === 'duck_egg') : false;
   // โครงการพัฒนาเมือง: ที่เก็บเงินขนาดใหญ่ ทุกคนลงขันที่ตู้เซฟกองกลาง ปลดล็อกตามลำดับ ครบเป้าแล้วขึ้นข่าวและประกาศชื่อผู้ร่วมสร้าง
@@ -294,6 +299,7 @@
     crop_potato: 12, crop_chili: 6, crop_broccoli: 10, crop_cherry: 10, crop_grape: 12, crop_pineapple: 15, crop_mango: 18,
     egg: 8, milk: 15, truffle: 5, duck_egg: 8,
     dish_grill: 45, dish_omelet: 55, dish_seafood: 70, dish_feast: 100,
+    dish_fishsoup: 50, dish_sashimi: 55, dish_fishburger: 80, dish_fishpie: 90,
   };
 
   // อาคาร: เคาน์เตอร์ร้าน (counter) อยู่ใกล้กับสิ่งที่ผู้เล่นทำในสายนั้น
