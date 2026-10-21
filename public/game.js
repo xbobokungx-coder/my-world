@@ -2519,17 +2519,18 @@ function step(now) {
     ctx.fillStyle = v > 0.85 ? '#e4f4ff' : '#9fd0f0';
     ctx.fillRect(x * TS + 2 + Math.floor(hash(x, y, i + 3) * 11) * 2, y * TS + 4 + Math.floor(hash(x, y, i + 6) * 12) * 2, 4 + (i ? 2 : 0), 2);
   }
-  // สระใหญ่ด้านล่าง (ตรงกับ shared.js: วงรีศูนย์กลาง (43,38) รัศมี 12×5 ช่อง): ปลาเล็กๆ ว่ายไป-กลับคนละจังหวะ หันหัวตามทิศที่ว่าย
-  const POND = { cx: 43, cy: 38, rx: 12, ry: 5 };
-  for (let i = 0; i < 4; i++) {
-    const sp = 0.0008 + i * 0.00015, ph = i * 2.3 + 0.7, sw = Math.sin(now * sp + ph), sv = Math.sin(now * sp * 0.7 + ph * 1.3);
-    const ahead = Math.cos(now * sp + ph) > 0 ? 1 : -1, wag = Math.sin(now / 90 + i) > 0 ? 1 : 0; // หางกระดิกสลับไปมา
-    // ระยะ 0.7·rx และ 0.6·ry ทำให้ทุกจุดอยู่ในสระแน่นอน (0.7² + 0.6² < 1)
-    const fx = (POND.cx + 0.7 * POND.rx * sw + 0.5) * TS, fy = (POND.cy + 0.6 * POND.ry * sv + 0.5) * TS;
+  // สระใหญ่ด้านล่าง (ตรงกับ shared.js: วงรีศูนย์กลาง (43,38) รัศมี 12×5 ช่อง • สะพาน x43–44 • เกาะทราย x39–41): ปลา 6 ตัว แบ่งฝั่งซ้าย/ขวาของสะพาน ไม่ว่ายทับสะพานหรือเกาะ
+  const POND = { cx: 43, cy: 38, rx: 12, ry: 5 }, POND_SIDE = [{ x0: 34, x1: 38 }, { x0: 45.5, x1: 52 }];
+  for (let i = 0; i < 6; i++) {
+    const side = POND_SIDE[i % 2], sp = 0.00022 + i * 0.00004, ph = i * 2.3 + 0.7;
+    const sw = Math.sin(now * sp + ph), sv = Math.sin(now * sp * 0.7 + ph * 1.3);
+    const ahead = Math.cos(now * sp + ph) > 0 ? 1 : -1, wag = Math.sin(now / 150 + i) > 0 ? 1 : 0; // หางกระดิกสลับไปมา
+    // ช่วงแนวนอนและแนวตั้งเลือกให้อยู่ในวงรีของสระเสมอ (ค่า dx ≤ 0.75 และ dy ≤ 0.5 ⇒ dx² + dy² < 1)
+    const fx = (side.x0 + (sw + 1) / 2 * (side.x1 - side.x0) + 0.5) * TS, fy = (POND.cy + 0.5 * POND.ry * sv + 0.5) * TS;
     if (fx < camX - TS || fx > camX + vw + TS || fy < camY - TS || fy > camY + vh + TS) continue;
     ctx.save(); ctx.translate(fx, fy); ctx.scale(ahead, 1);
     ctx.fillStyle = '#1d3e5c'; ctx.fillRect(-7, -3 + wag, 3, 6); ctx.fillRect(-4, -4, 9, 8); // ขอบเข้ม 1 px
-    ctx.fillStyle = ['#ff9a3c', '#f4f4f4', '#ffd23f', '#ff7a45'][i]; ctx.fillRect(-6, -2 + wag, 1, 4); ctx.fillRect(-3, -3, 7, 6);
+    ctx.fillStyle = ['#ff9a3c', '#f4f4f4', '#ffd23f', '#ff7a45', '#ffb347', '#f4f4f4'][i]; ctx.fillRect(-6, -2 + wag, 1, 4); ctx.fillRect(-3, -3, 7, 6);
     ctx.fillStyle = '#1d3e5c'; ctx.fillRect(2, -2, 1, 1); // ตา
     ctx.restore();
   }
