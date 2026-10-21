@@ -211,6 +211,8 @@
     dog:  { name: 'ลูกสุนัข', emoji: '🐶', price: 500, kind: 'dog', v: 1, say: 'โฮ่ง โฮ่ง! 🐶' },
     cat:  { name: 'ลูกแมว',  emoji: '🐱', price: 450, kind: 'cat', v: 0, say: 'เหมียว~ 🐱' },
     bird: { name: 'นกน้อย',  emoji: '🐦', price: 300, kind: 'bird', v: 0, say: 'จิ๊บ จิ๊บ 🐦' },
+    monkey: { name: 'ลิงน้อย', emoji: '🐒', price: 700, kind: 'monkey', v: 0, say: 'อุ๊ก อุ๊ก 🐒' },
+    capybara: { name: 'คาปิบาร่า', emoji: '🦫', price: 900, kind: 'capy', v: 0, say: 'ฟี้~ 🦫' },
   };
   const PETCARE = { food: 40, hungerTick: 1, sickBelow: 25, sickChance: 0.12 }; // อาหาร 1 ชิ้นเพิ่มความอิ่ม 40 • ความอิ่มลด 1 ทุก 15 วินาทีที่พาออกมา (เต็มอยู่ได้ ~25 นาที) ต่ำกว่า 25 มีโอกาสป่วยทุกรอบ
   const ANIMAL_GRACE_MS = 4 * 60 * 1000;   // สัตว์ที่หิวจนหมดแล้ว ถ้าไม่มีใครให้อาหารภายใน 4 นาทีจะตาย

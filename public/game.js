@@ -2430,6 +2430,7 @@ function drawPet(q, now) { // แมว (นั่งเมื่อหยุด
   const ph = Math.sin(q.anim * (cat ? 9 : 11)), wag = Math.floor(now / (cat ? 700 : 220)) % 2;
   PixelUI.animal(ctx, type, q, { f: q.dx || 1, step: idle ? wag : (ph > 0 ? 1 : 0), blink: blinkOf(q, now), idle });
 }
+const PET_TOP = { dog: 14, cat: 12, bird: 20, monkey: 18, capy: 14 }; // ความสูงจากพื้นถึงหัว ใช้วางชื่อ/อีโมจิ
 function drawCompanion(q, now) { // สัตว์เลี้ยงคู่ใจ: หมา/แมวใช้ภาพเดียวกับสัตว์ประกอบฉาก นกวาดเองตัวเล็กๆ บินต่ำเกาะตามหลังเจ้าของ
   if (q.x < camX - 40 || q.x > camX + vw + 40 || q.y < camY - 40 || q.y > camY + vh + 40) return;
   if (q.kind === 'bird') {
@@ -2443,12 +2444,35 @@ function drawCompanion(q, now) { // สัตว์เลี้ยงคู่�
     R('#2f7fb8', -7, -2, 3, 2);                                                          // หาง
     R('#2f7fb8', -2, fly ? -6 - Math.round(Math.sin(q.anim * 28) * 2) : -2, 4, 2);       // ปีก (กระพือเมื่อบิน)
     if (!fly) { R('#f2a33a', -1, 4, 1, 2); R('#f2a33a', 1, 4, 1, 2); }
+  } else if (q.kind === 'monkey' || q.kind === 'capy') {
+    const f = q.dx || 1, walk = q.moving, ph = Math.sin(q.anim * 12), bob = walk ? Math.abs(ph) * 1.5 : 0, y0 = q.y - bob, O = PixelArt.OUT;
+    ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(q.x, q.y + 6, q.kind === 'capy' ? 8 : 5, 2, 0, 0, 7); ctx.fill();
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(q.x + x * f - (f < 0 ? w : 0)), Math.round(y0 + y), w, h); };
+    const blink = blinkOf(q, now);
+    if (q.kind === 'monkey') {
+      const tail = Math.sin(now / 260) > 0 ? 0 : 1;
+      R(O, -9, -6 - tail, 3, 9); R(O, -9, -8 - tail, 5, 3); R('#6b4423', -8, -5 - tail, 1, 8); R('#6b4423', -8, -7 - tail, 3, 1); // หางโค้งชูขึ้น
+      R(O, -5, -7, 10, 11); R('#7a4d28', -4, -6, 8, 9); R('#a8703c', -4, -6, 3, 3); R('#d9b183', -2, -2, 5, 4); // ตัว ท้องสีครีม
+      R(O, 1, -14, 10, 9); R('#7a4d28', 2, -13, 8, 7); R('#d9b183', 4, -11, 6, 5); R('#a8703c', 2, -13, 3, 2); // หัว หน้าสีครีม
+      R(O, -1, -12, 4, 4); R('#d9b183', 0, -11, 2, 2);                                                         // หู
+      R(blink ? '#d9b183' : '#1b1d33', 6, -10, 1, blink ? 0 : 2); R('#1b1d33', 9, -8, 1, 1);                  // ตา จมูก
+      const s1 = walk ? Math.round(ph * 2) : 0;
+      R(O, -4, 3, 3, 4); R('#6b4423', -3 + s1, 3, 2, 3); R(O, 1, 3, 3, 4); R('#6b4423', 2 - s1, 3, 2, 3);      // ขา
+      R('#7a4d28', 3, -3, 3, 2);                                                                              // แขน
+    } else {
+      R(O, -11, -6, 22, 12); R('#9a6b3d', -10, -5, 20, 10); R('#b98652', -9, -5, 12, 3); R('#7d5430', -10, 2, 20, 3); // ลำตัวอ้วนกลม
+      R(O, 8, -8, 8, 10); R('#9a6b3d', 9, -7, 6, 8); R('#b98652', 9, -7, 4, 2); R('#6e4a2a', 14, -3, 2, 4);      // หัว/จมูกบื้อ
+      R(O, 9, -10, 3, 3); R('#7d5430', 10, -9, 1, 1);                                                          // หู
+      R(blink ? '#9a6b3d' : '#1b1d33', 12, -6, 1, blink ? 0 : 2); R('#2a1b14', 15, -3, 1, 1);                  // ตา รูจมูก
+      const s1 = walk ? Math.round(ph * 2) : 0;
+      R(O, -8, 5, 4, 4); R('#7d5430', -7 + s1, 5, 2, 3); R(O, 4, 5, 4, 4); R('#7d5430', 5 - s1, 5, 2, 3);      // ขาสั้นๆ
+    }
   } else {
     drawPet(q, now);
   }
-  if (q.name) { ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; const ny = q.y - (q.kind === 'dog' ? 14 : q.kind === 'bird' ? 20 : 12), nw = Math.ceil(ctx.measureText(q.name).width) + 6; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(Math.round(q.x - nw / 2), ny - 10, nw, 11); ctx.fillStyle = '#fff3d6'; ctx.fillText(q.name, q.x, ny - 1); }
-  if (q.sick) PixelUI.world(ctx, '🤒', q.x, q.y - (q.kind === 'dog' ? 16 : q.kind === 'bird' ? 24 : 14) + Math.sin(now / 200), 13);
-  else if (q.sayAt && now - q.sayAt < 1800) { const t = (now - q.sayAt) / 1800; PixelUI.world(ctx, '💕', q.x + 6, q.y - (q.kind === 'dog' ? 14 : q.kind === 'bird' ? 22 : 12) - t * 12, 11); }
+  if (q.name) { ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; const ny = q.y - (PET_TOP[q.kind] || 12), nw = Math.ceil(ctx.measureText(q.name).width) + 6; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(Math.round(q.x - nw / 2), ny - 10, nw, 11); ctx.fillStyle = '#fff3d6'; ctx.fillText(q.name, q.x, ny - 1); }
+  if (q.sick) PixelUI.world(ctx, '🤒', q.x, q.y - (PET_TOP[q.kind] || 12) - 4 + Math.sin(now / 200), 13);
+  else if (q.sayAt && now - q.sayAt < 1800) { const t = (now - q.sayAt) / 1800; PixelUI.world(ctx, '💕', q.x + 6, q.y - (PET_TOP[q.kind] || 12) - 2 - t * 12, 11); }
 }
 function hungerMark(c, now) { // สัตว์ที่หิว: แถบความอิ่มเล็กๆ + หน้าตาเศร้า (หิวจนหมดแล้วจะตายถ้าไม่มีใครให้อาหาร) / สัตว์ป่วยมี 🤒
   const h = c.h === undefined ? 100 : c.h;
