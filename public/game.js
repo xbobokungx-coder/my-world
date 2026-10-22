@@ -2627,24 +2627,24 @@ let last = performance.now();
 // ประภาคารกลางน้ำ: วาดเป็นชั้นบนสุดของโลก (ทับปลา ใบบัว และประกายน้ำ) • ฐานเป็นเกาะทราย
 function drawLighthouse(g) {
   if (!builtProj.has('lighthouse')) return;
-    const L = Shared.LIGHTHOUSE, bx = L.x0 * TS, by = L.y0 * TS, w = (L.x1 - L.x0 + 1) * TS, h = (L.y1 - L.y0 + 1) * TS, cx = bx + w / 2;
-    g.save(); g.translate(cx, by + h); g.scale(0.8, 0.8); g.translate(-cx, -(by + h)); // ย่อ 80% จากฐาน (ตัวตันยังเท่าเดิม แค่ภาพเล็กลง)
-    // ฐานเป็นเกาะทรายเล็กๆ รอบตัวหอ (ขอบเข้มก่อน แล้วทรายทับ)
-    g.fillStyle = '#d9c383'; g.beginPath(); g.ellipse(cx, by + h - 6, 42, 20, 0, 0, 7); g.fill();
-    g.fillStyle = '#efdfa4'; g.beginPath(); g.ellipse(cx, by + h - 8, 40, 18, 0, 0, 7); g.fill();
-    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(bx + 2, by + h - 8, w - 4, 9);
-    g.fillStyle = '#7d828c'; g.fillRect(bx + 4, by + h - 22, w - 8, 18); g.fillStyle = '#a3a8b2'; g.fillRect(bx + 4, by + h - 22, w - 8, 4);
-    const top = by + 30, bottom = by + h - 22;
-    for (let y = top; y < bottom; y += 4) {
-      const t = (y - top) / (bottom - top), half = 13 + t * 9, stripe = Math.floor((y - top) / 18) % 2;
-      g.fillStyle = stripe ? '#c0392b' : '#eee8da'; g.fillRect(cx - half, y, half * 2, 4);
-      g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(cx + half - 5, y, 5, 4); g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(cx - half, y, 3, 4);
-    }
-    g.fillStyle = '#3a3f4a'; g.fillRect(cx - 19, by + 24, 38, 6); g.fillRect(cx - 17, by + 30, 3, 5); g.fillRect(cx + 14, by + 30, 3, 5);
-    g.fillStyle = '#ffe08a'; g.fillRect(cx - 11, by + 10, 22, 14); g.fillStyle = '#fff6cf'; g.fillRect(cx - 8, by + 12, 8, 9);
-    g.fillStyle = '#3a3f4a'; g.fillRect(cx - 12, by + 9, 24, 2); g.fillRect(cx - 12, by + 23, 24, 2); g.fillRect(cx - 1, by + 10, 2, 14);
-    for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#a82f23' : '#c0392b'; g.fillRect(cx - 14 + i * 2, by + 9 - i * 2, 28 - i * 4, 2); }
-    g.fillStyle = '#f1c40f'; g.fillRect(cx - 1, by - 5, 2, 4);
+  const L = Shared.LIGHTHOUSE, bx = L.x0 * TS, by = L.y0 * TS, w = (L.x1 - L.x0 + 1) * TS, h = (L.y1 - L.y0 + 1) * TS, cx = bx + w / 2;
+  g.save(); g.translate(cx, by + h); g.scale(0.8, 0.8); g.translate(-cx, -(by + h)); // ย่อ 80% จากฐาน (ตัวตันยังเท่าเดิม แค่ภาพเล็กลง)
+  // ฐานเป็นเกาะทรายเล็กๆ รอบตัวหอ (ขอบเข้มก่อน แล้วทรายทับ)
+  g.fillStyle = '#d9c383'; g.beginPath(); g.ellipse(cx, by + h - 6, 42, 20, 0, 0, 7); g.fill();
+  g.fillStyle = '#efdfa4'; g.beginPath(); g.ellipse(cx, by + h - 8, 40, 18, 0, 0, 7); g.fill();
+  g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(bx + 2, by + h - 8, w - 4, 9);
+  g.fillStyle = '#7d828c'; g.fillRect(bx + 4, by + h - 22, w - 8, 18); g.fillStyle = '#a3a8b2'; g.fillRect(bx + 4, by + h - 22, w - 8, 4);
+  const top = by + 30, bottom = by + h - 22;
+  for (let y = top; y < bottom; y += 4) {
+    const t = (y - top) / (bottom - top), half = 13 + t * 9, stripe = Math.floor((y - top) / 18) % 2;
+    g.fillStyle = stripe ? '#c0392b' : '#eee8da'; g.fillRect(cx - half, y, half * 2, 4);
+    g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(cx + half - 5, y, 5, 4); g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(cx - half, y, 3, 4);
+  }
+  g.fillStyle = '#3a3f4a'; g.fillRect(cx - 19, by + 24, 38, 6); g.fillRect(cx - 17, by + 30, 3, 5); g.fillRect(cx + 14, by + 30, 3, 5);
+  g.fillStyle = '#ffe08a'; g.fillRect(cx - 11, by + 10, 22, 14); g.fillStyle = '#fff6cf'; g.fillRect(cx - 8, by + 12, 8, 9);
+  g.fillStyle = '#3a3f4a'; g.fillRect(cx - 12, by + 9, 24, 2); g.fillRect(cx - 12, by + 23, 24, 2); g.fillRect(cx - 1, by + 10, 2, 14);
+  for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#a82f23' : '#c0392b'; g.fillRect(cx - 14 + i * 2, by + 9 - i * 2, 28 - i * 4, 2); }
+  g.fillStyle = '#f1c40f'; g.fillRect(cx - 1, by - 5, 2, 4);
 }
 
 function step(now) {
