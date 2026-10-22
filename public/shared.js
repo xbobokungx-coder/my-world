@@ -679,14 +679,14 @@
   // สิ่งก่อสร้างจากโครงการพัฒนาเมือง (PROJECTS): ยอดลงขันครบเป้าเมื่อไร ก็แปลงช่องบนแมพตามตารางนี้ทันที
   // server กับ client เรียก applyProject ตัวเดียวกัน (server ใช้คุมการเดินตัน/ทะลุ client ใช้วาดภาพ) เพิ่มโครงการใหม่ = เพิ่มแถวใน STRUCTS
   const BRIDGE = { x0: 43, y0: 34, x1: 44, y1: 42 };                        // สะพานไม้กว้าง 2 ช่อง พาดเหนือ(y33)→ใต้(y43) กลางสระ
-  const LIGHTHOUSE = { x0: 56, y0: 31, x1: 57, y1: 34 };                    // ประภาคาร 2x4 ช่อง ริมสระฝั่งตะวันออกเฉียงเหนือ (ตัวตัน)
+  const LIGHTHOUSE = { x0: 48, y0: 39, x1: 49, y1: 42 };                    // ประภาคาร 2x4 ช่อง ตั้งกลางน้ำในสระฝั่งล่างขวา (ฐานหินตัน ยืนจากน้ำได้)
   const ISLAND = { x0: 39, y0: 37, x1: 41, y1: 39, walk: { x: 42, y: 38 } }; // เกาะทราย 3x3 ข้างสะพาน + ทางไม้สั้นๆ ต่อกับสะพาน
   const FESTIVAL = { plaza: { x0: 46, y0: 25, x1: 59, y1: 28 }, stage: { x0: 51, y0: 24, x1: 54, y1: 25 }, tents: [{ x0: 47, y0: 26, x1: 48, y1: 27 }, { x0: 57, y0: 26, x1: 58, y1: 27 }] };
   const GROUND = [T.GRASS, T.TREE];
   function put(m, r, v, from) { for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) if (m[y] && from.includes(m[y][x])) m[y][x] = v; } // แปลงเฉพาะช่องชนิดที่อนุญาต ไม่ทับอาคาร/รั้วอื่น
   const STRUCTS = {
     bridge: m => put(m, BRIDGE, T.BRIDGE, [T.WATER]),
-    lighthouse: m => put(m, LIGHTHOUSE, T.LANDMARK, GROUND),
+    lighthouse: m => put(m, LIGHTHOUSE, T.LANDMARK, [...GROUND, T.WATER]),
     island: m => { put(m, ISLAND, T.SAND, [T.WATER]); put(m, { x0: ISLAND.walk.x, y0: ISLAND.walk.y, x1: ISLAND.walk.x, y1: ISLAND.walk.y }, T.BRIDGE, [T.WATER]); },
     festival: m => { put(m, FESTIVAL.plaza, T.PATH, GROUND); for (const r of [FESTIVAL.stage, ...FESTIVAL.tents]) put(m, r, T.LANDMARK, [...GROUND, T.PATH]); },
   };
