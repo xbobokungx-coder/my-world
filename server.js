@@ -107,46 +107,58 @@ class World {
     { const t = this.treeList(); if (t.length > this.treeCap) { for (let i = t.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [t[i], t[j]] = [t[j], t[i]]; } for (const [x, y] of t.slice(this.treeCap)) this.map[y][x] = T.GRASS; this.dirty = true; } } // ถ้าเกินเพดาน สุ่มตัดแต่งให้เหลือพอดี
   }
 
-  // ----- บ้านหลังใหญ่: ทุกคนมีบ้านของตัวเองหลังเดียว เป็นแมพแยก (ฉาก p.scene = key เจ้าของ, null = เมือง) เข้าจากเมนู เจ้าของเท่านั้นที่วาง/เก็บเฟอร์นิเจอร์ได้ คนอื่นเข้าเยี่ยมจากลีดเดอร์บอร์ด (ของที่เก็บคืนเข้ากระเป๋าเจ้าของ)
+  // ----- บ้านหลังใหญ่: ทุกคนมีบ้านของตัวเองหลังเดียว เป็นแมพแยก (ฉาก p.scene = key เจ้าของ, null = เมือง) เข้าจากเมนู เจ้าของเท่านั้นที่วาง/ย้าย/หมุน/เก็บเฟอร์นิเจอร์ได้ คนอื่นเข้าเยี่ยมจากลีดเดอร์บอร์ด (ของที่เก็บคืนเข้ากระเป๋าเจ้าของ)
+  // ตกแต่งอิสระ: houses[key] = { items: { <id>: { f, x, y, r, z, on, wl, u } }, next } พิกัดเป็นหน่วยช่อง ดูกติกาที่ houseCheck ใน shared.js
   loadHouse(d) {
-    this.houses = Object.create(null); this.hmaps = new Map();
-    const ok = (x, y, f) => Number.isInteger(x) && Number.isInteger(y) && S.houseInside(x, y) && !S.houseKeep(x, y) && !!S.FURN[f];
+    this.houses = Object.create(null); this.hrects = new Map(); this.hmap = S.makeHouseMap();
+    const refund = (key, f) => { const inv = this.saved[key].inv || (this.saved[key].inv = {}); inv['furn_' + f] = (inv['furn_' + f] || 0) + 1; this.dirty = true; }; // ของที่โหลดแล้ววางไม่ได้ (ข้อมูลเก่า/ผิดพลาด) คืนเข้ากระเป๋าเจ้าของ ไม่ให้หาย
+    const build = (key, list) => { // list = [{f,x,y,r,z,on,wl,u}] → ใส่เข้าบ้านพร้อมตรวจกติกา
+      const h = { items: {}, next: 1 };
+      for (const it of list) {
+        if (!S.FURN[it.f]) continue;
+        const r = it.r ? 1 : 0, res = S.houseCheck(h.items, it.f, S.snapQ(+it.x), S.snapQ(+it.y), r, { wl: it.wl, u: it.u });
+        if (!res.ok) { refund(key, it.f); continue; }
+        h.items[h.next++] = { f: it.f, x: res.x !== undefined ? res.x : S.snapQ(+it.x), y: res.y !== undefined ? res.y : S.snapQ(+it.y), r, z: res.z, on: res.on, wl: res.wl, u: res.u };
+      }
+      if (Object.keys(h.items).length > S.HOUSE_MAX_ITEMS) { for (const id of Object.keys(h.items).slice(S.HOUSE_MAX_ITEMS)) { refund(key, h.items[id].f); delete h.items[id]; } }
+      this.houses[key] = h;
+    };
+    // ของแต่ละชิ้นที่เก็บแบบเก่า "x,y" → f (ช่องละชิ้น) แปลงเป็นกึ่งกลางช่อง ภาพวาดเก่าแปลงเป็นของติดผนังหลังขวา
+    const fromGrid = items => Object.entries(items).map(([k, f]) => { const [x, y] = k.split(',').map(Number); return S.FURN[f] && S.FURN[f].wall ? { f, wl: 'n', u: x + 0.5 } : { f, x: x + 0.5, y: y + 0.5 }; }).filter(it => it.wl || (Number.isFinite(it.x) && Number.isFinite(it.y)));
     if (d.houses && typeof d.houses === 'object') {
       for (const [key, h] of Object.entries(d.houses)) {
         if (!this.saved[key] || !h || typeof h.items !== 'object') continue;
-        const items = {};
-        for (const [k, f] of Object.entries(h.items)) { const [x, y] = k.split(',').map(Number); if (ok(x, y, f)) items[k] = f; }
-        this.houses[key] = { items };
+        const vals = Object.values(h.items);
+        if (vals.length && typeof vals[0] === 'string') build(key, fromGrid(h.items)); // บ้านรุ่นแรก (ช่องละชิ้น)
+        else { // รุ่นปัจจุบัน: เก็บ id เดิมไว้ ตรวจกติกาทีละชิ้นตามลำดับ id
+          const out = { items: {}, next: Math.max(1, +h.next || 1) };
+          for (const [id, it] of Object.entries(h.items).sort((a, b) => a[0] - b[0])) {
+            if (!it || !S.FURN[it.f]) continue;
+            const res = S.houseCheck(out.items, it.f, S.snapQ(+it.x), S.snapQ(+it.y), it.r ? 1 : 0, { wl: it.wl, u: it.u });
+            if (!res.ok || out.items[id]) { refund(key, it.f); continue; }
+            out.items[id] = { f: it.f, x: res.x !== undefined ? res.x : S.snapQ(+it.x), y: res.y !== undefined ? res.y : S.snapQ(+it.y), r: it.r ? 1 : 0, z: res.z, on: res.on, wl: res.wl, u: res.u };
+            out.next = Math.max(out.next, +id + 1);
+          }
+          this.houses[key] = out;
+        }
       }
     } else if (d.owners) { // ย้ายข้อมูลจากระบบที่ดิน 6 แปลงเดิม: ของในแปลงมาวางในบ้านใหม่ที่ตำแหน่งสัมพันธ์เดิม (มุมซ้ายบนของพื้นบ้าน)
       for (const [i, key] of Object.entries(d.owners)) {
         const x0 = S.HOUSING.plots[i];
         if (x0 === undefined || typeof key !== 'string' || !this.saved[key]) continue;
-        const items = {};
-        for (const [k, f] of Object.entries(d.items || {})) {
-          const [x, y] = k.split(',').map(Number);
-          if (S.plotAt(x, y) !== +i) continue;
-          const nx = 23 + (x - x0), ny = 18 + (y - S.HOUSING.y0);
-          if (ok(nx, ny, f)) items[nx + ',' + ny] = f;
-        }
-        this.houses[key] = { items };
+        const grid = {};
+        for (const [k, f] of Object.entries(d.items || {})) { const [x, y] = k.split(',').map(Number); if (S.plotAt(x, y) === +i) grid[(23 + (x - x0)) + ',' + (18 + (y - S.HOUSING.y0))] = f; }
+        build(key, fromGrid(grid));
       }
-      this.dirty = true;
     }
+    if (d.houses || d.owners) this.dirty = true;
   }
-  houseMap(key) { // แมพบ้านของเจ้าของ key (สร้างตอนต้องใช้ เก็บแคชไว้)
-    let m = this.hmaps.get(key);
-    if (!m) {
-      m = S.makeHouseMap();
-      const h = this.houses[key];
-      if (h) for (const [k, f] of Object.entries(h.items)) { const [x, y] = k.split(',').map(Number); if (S.FURN[f].solid) m[y][x] = T.FURN; }
-      this.hmaps.set(key, m);
-    }
-    return m;
-  }
-  mapOf(p) { return p.scene ? this.houseMap(p.scene) : this.map; }
+  houseMap() { return this.hmap; } // แมพบ้านเป็นผนัง/พื้นเหมือนกันทุกหลัง (ของตกแต่งอยู่นอกตาราง ดู houseRects)
+  houseRects(key) { let r = this.hrects.get(key); if (!r) { r = S.houseSolidRects(this.houses[key] ? this.houses[key].items : {}); this.hrects.set(key, r); } return r; }
+  mapOf(p) { return p.scene ? this.houseMap() : this.map; }
+  blockedFor(p, x, y) { return p.scene ? S.houseBlockedAt(this.houseMap(), this.houseRects(p.scene), x, y, p.x, p.y) : S.blockedAt(this.map, x, y); } // ในบ้านรวมกล่องเฟอร์นิเจอร์ (ถ้าอยู่ในกล่องอยู่แล้ว เช่นเพิ่งลุกจากเก้าอี้ เดินออกได้)
   nameOfKey(key) { return (this.saved[key] && this.saved[key].name) || key; }
-  houseItemsPub(key) { const h = this.houses[key]; return h ? Object.entries(h.items).map(([k, f]) => { const [x, y] = k.split(',').map(Number); return [x, y, f]; }) : []; }
+  houseItemsPub(key) { const h = this.houses[key]; return h ? Object.entries(h.items).map(([i, it]) => Object.assign({ i: +i }, it)) : []; }
   houseBoard(p) { // ลีดเดอร์บอร์ดบ้านที่ตกแต่งแล้ว: เรียงตามมูลค่าเฟอร์นิเจอร์ แล้วตามจำนวนชิ้น
     const rows = [];
     for (const [key, h] of Object.entries(this.houses)) {
@@ -176,7 +188,7 @@ class World {
     if (!mine && !(this.houses[key] && S.houseScore(this.houses[key].items).count > 0)) return this.toast(p, 'บ้านหลังนี้ยังไม่ได้ตกแต่ง');
     if (!p.scene) { this.arcLeave(p); this.tradeCancel(p, 'ผู้เล่นเข้าบ้าน'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast(); p.ret = { x: p.x, y: p.y }; }
     const first = mine && !this.houses[key];
-    if (first) this.houses[key] = { items: {} };
+    if (first) this.houses[key] = { items: {}, next: 1 };
     this.changeScene(p, key, S.HOUSE_SPAWN.x, S.HOUSE_SPAWN.y);
     this.toast(p, first ? '🏠 ยินดีต้อนรับสู่บ้านของคุณ! ซื้อเฟอร์นิเจอร์ที่ร้านเฟอร์นิเจอร์มาตกแต่ง แล้วกดปุ่ม 🏠 เพื่อเข้าโหมดตกแต่ง' : mine ? '🏠 กลับบ้านแล้ว' : `🏘️ มาเยี่ยมบ้านของ ${this.nameOfKey(key)}`);
   }
@@ -185,11 +197,14 @@ class World {
     const r = this.townPos(p); p.ret = null;
     this.changeScene(p, null, r.x, r.y);
   }
-  setFurn(key, x, y, f) { // f = null คือเอาออก (ช่องกลับเป็นพื้นไม้)
-    const h = this.houses[key], k = x + ',' + y, m = this.houseMap(key);
-    if (f) { h.items[k] = f; m[y][x] = S.FURN[f].solid ? T.FURN : T.FLOOR; }
-    else { delete h.items[k]; m[y][x] = T.FLOOR; }
-    this.sceneBroadcast(key, { t: 'furn', x, y, f: f || null }); this.dirty = true;
+  setItem(key, id, it) { // วาง/แก้ชิ้นที่ id แล้วบอกคนในบ้านหลังนี้
+    this.houses[key].items[id] = it; this.hrects.delete(key);
+    this.sceneBroadcast(key, { t: 'furn', op: 'set', o: Object.assign({ i: +id }, it) }); this.dirty = true;
+  }
+  delItem(key, id) {
+    const h = this.houses[key]; delete h.items[id]; this.hrects.delete(key);
+    for (const q of this.sceneMates(key)) if (q.sit && q.sit.i === +id) q.sit = null; // ที่นั่งหาย = ลุกขึ้น
+    this.sceneBroadcast(key, { t: 'furn', op: 'del', i: +id }); this.dirty = true;
   }
   houseHandle(p, m) {
     switch (m.a) {
@@ -201,39 +216,55 @@ class World {
         break;
       }
       case 'exit': this.leaveHouse(p); break;
-      case 'place': case 'remove': {
-        const x = m.x, y = m.y, key = p.scene;
+      case 'place': case 'move': case 'rot': case 'remove': {
+        const key = p.scene;
         if (!key || key !== p.key) return this.toast(p, 'ตกแต่งได้เฉพาะในบ้านของตัวเอง');
-        if (!Number.isInteger(x) || !Number.isInteger(y) || !S.houseInside(x, y)) return this.toast(p, 'วางได้เฉพาะบนพื้นบ้าน');
-        if (Math.max(Math.abs(x - Math.floor(p.x / TS)), Math.abs(y - Math.floor(p.y / TS))) > 8) return this.toast(p, 'ไกลเกินไป เดินเข้าไปใกล้ๆ ก่อน');
-        const k = x + ',' + y, cur = this.houses[key].items[k];
-        if (m.a === 'remove') {
-          if (!cur) return;
-          this.setFurn(key, x, y, null); this.add(p, 'furn_' + cur, 1); this.sfx(p, 'collect');
+        const h = this.houses[key], mates = this.sceneMates(key).concat(p).map(q => ({ x: q.x, y: q.y }));
+        if (m.a === 'place') {
+          const f = m.f;
+          if (typeof f !== 'string' || !S.FURN[f] || !(p.rec.inv['furn_' + f] > 0)) return;
+          if (Object.keys(h.items).length >= S.HOUSE_MAX_ITEMS) return this.toast(p, `บ้านเต็มแล้ว (วางได้สูงสุด ${S.HOUSE_MAX_ITEMS} ชิ้น)`);
+          const r = m.r ? 1 : 0, x = S.snapQ(+m.x), y = S.snapQ(+m.y);
+          if (!S.FURN[f].wall && (!Number.isFinite(x) || !Number.isFinite(y))) return;
+          const res = S.houseCheck(h.items, f, x, y, r, { wl: m.wl, u: S.snapQ(+m.u), mates });
+          if (!res.ok) return this.toast(p, res.why);
+          this.add(p, 'furn_' + f, -1);
+          this.setItem(key, h.next++, { f, x: res.x !== undefined ? res.x : x, y: res.y !== undefined ? res.y : y, r, z: res.z, on: res.on, wl: res.wl, u: res.u });
+          this.sfx(p, 'plant');
           return;
         }
-        const f = m.f;
-        if (typeof f !== 'string' || !S.FURN[f] || !(p.rec.inv['furn_' + f] > 0)) return;
-        if (cur) return this.toast(p, 'ช่องนี้มีของอยู่แล้ว');
-        if (S.houseKeep(x, y)) return this.toast(p, 'เว้นทางหน้าประตูไว้ วางตรงนี้ไม่ได้');
-        if (S.FURN[f].solid) { // ห้ามวางทับคนที่ยืนอยู่ (เฉพาะคนในบ้านหลังนี้)
-          const hm = this.houseMap(key); hm[y][x] = T.FURN;
-          const hit = this.sceneMates(key).some(q => S.blockedAt(hm, q.x, q.y));
-          hm[y][x] = T.FLOOR;
-          if (hit) return this.toast(p, 'มีคนยืนอยู่ตรงนั้น วางไม่ได้');
+        const id = m.i | 0, it = h.items[id];
+        if (!it) return;
+        if (m.a === 'remove') {
+          this.delItem(key, id); this.add(p, 'furn_' + it.f, 1); this.sfx(p, 'collect');
+          for (const [cid, c] of Object.entries(h.items)) if (c.on === id) this.setItem(key, cid, Object.assign({}, c, { z: 0, on: null })); // ของที่วางอยู่บนหลังตกลงพื้น
+          return;
         }
-        this.add(p, 'furn_' + f, -1); this.setFurn(key, x, y, f); this.sfx(p, 'plant');
+        const d = S.FURN[it.f];
+        let nx = it.x, ny = it.y, nr = it.r, wl = it.wl, u = it.u;
+        if (m.a === 'rot') { if (d.wall) return; nr = it.r ? 0 : 1; }
+        else if (d.wall) { wl = m.wl === 'w' ? 'w' : 'n'; u = S.snapQ(+m.u); }
+        else { nx = S.snapQ(+m.x); ny = S.snapQ(+m.y); if (!Number.isFinite(nx) || !Number.isFinite(ny)) return; }
+        const others = Object.assign({}, h.items); delete others[id];
+        const res = S.houseCheck(others, it.f, nx, ny, nr, { wl, u, mates });
+        if (!res.ok) return this.toast(p, res.why);
+        const fx = res.x !== undefined ? res.x : nx, fy = res.y !== undefined ? res.y : ny, dx = fx - it.x, dy = fy - it.y;
+        const kids = Object.entries(h.items).filter(([, c]) => c.on === id); // ของบนหลังย้ายตาม ต้องยังอยู่ในพื้นบ้าน
+        for (const [, c] of kids) { const r2 = S.furnRect(Object.assign({}, c, { x: c.x + dx, y: c.y + dy })); if (r2.x0 < S.HFLOOR.x0 || r2.y0 < S.HFLOOR.y0 || r2.x1 > S.HFLOOR.x1 || r2.y1 > S.HFLOOR.y1) return this.toast(p, 'ย้ายไปตรงนั้นไม่ได้ ของที่วางบนหลังจะตกขอบ'); }
+        this.setItem(key, id, { f: it.f, x: fx, y: fy, r: nr, z: res.z, on: res.on, wl: res.wl, u: res.u });
+        for (const [cid, c] of kids) this.setItem(key, cid, Object.assign({}, c, { x: c.x + dx, y: c.y + dy }));
+        this.sfx(p, 'plant');
         break;
       }
     }
   }
   houseAct(p, m) { // ในบ้าน แตะเก้าอี้/โซฟาเพื่อนั่งได้อย่างเดียว (เครื่องมือฟาร์มใช้ไม่ได้)
     const now = Date.now(); if (now - p.lastAct < 150) return; p.lastAct = p.activeAt = now;
-    const tx = m.tx, ty = m.ty, h = this.houses[p.scene], f = Number.isInteger(tx) && Number.isInteger(ty) && h && h.items[tx + ',' + ty];
-    if (!f || !S.FURN[f].seat) return;
-    if (Math.max(Math.abs(tx - Math.floor(p.x / TS)), Math.abs(ty - Math.floor(p.y / TS))) > 3) return;
-    if (this.sceneMates(p.scene, p).some(q => q.sit && q.sit.x === tx && q.sit.y === ty)) return this.toast(p, 'มีคนนั่งอยู่แล้ว');
-    p.sit = { x: tx, y: ty }; p.x = (tx + 0.5) * TS; p.y = (ty + 0.5) * TS; p.dir = 0;
+    const h = this.houses[p.scene], id = m.i | 0, it = h && h.items[id];
+    if (!it || !S.FURN[it.f].seat) return;
+    if (Math.hypot(it.x * TS - p.x, it.y * TS - p.y) > 4 * TS) return this.toast(p, 'ไกลเกินไป เดินเข้าไปใกล้ๆ ก่อน');
+    if (this.sceneMates(p.scene, p).some(q => q.sit && q.sit.i === id)) return this.toast(p, 'มีคนนั่งอยู่แล้ว');
+    p.sit = { i: id }; p.x = it.x * TS; p.y = it.y * TS; p.dir = 0;
     send(p, { t: 'tp', x: p.x, y: p.y }); this.toast(p, '🪑 นั่งพักผ่อน... (เดินเพื่อลุก)');
   }
 
@@ -1055,7 +1086,7 @@ class World {
         const x = +m.x, y = +m.y;
         if (!isFinite(x) || !isFinite(y)) return;
         const d = Math.hypot(x - p.x, y - p.y);
-        if (d > 60 || S.blockedAt(this.mapOf(p), x, y)) { send(p, { t: 'tp', x: p.x, y: p.y }); return; }
+        if (d > 60 || this.blockedFor(p, x, y)) { send(p, { t: 'tp', x: p.x, y: p.y }); return; }
         if (d > 3 && p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); this.toast(p, 'เลิกตกปลาแล้ว'); }
         if (p.sit && d > 3) p.sit = null; // เดินออกจากที่นั่ง = ลุก
         if (Math.hypot(x - p.x, y - p.y) > 0.5) p.activeAt = Date.now(); // ขยับจริงถึงนับว่ามีกิจกรรม (กันเงินฟรีตอนทิ้งตัวละครไว้)

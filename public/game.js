@@ -32,7 +32,7 @@ const roomLink = name => location.origin + location.pathname + (name && name !==
 const pets = new Map(); // สัตว์เลี้ยงประกอบฉาก (แมว/หมา) เซิร์ฟเวอร์คุมการเดิน
 const players = new Map(), animals = new Map(), npcs = new Map(); // npcs = ชาวเมือง NPC (ไม่นับเป็นผู้เล่น)
 let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, hunger = 80;
-const furn = new Map();               // เฟอร์นิเจอร์ในบ้านทุกหลัง: "x,y" -> { x, y, f }
+const furn = new Map();               // เฟอร์นิเจอร์ในบ้านที่เปิดอยู่ (ฉากบ้าน): id -> { i, f, x, y, r, z, on, wl, u } พิกัดหน่วยช่อง
 let townLog = [], chestSt = { coin: 0, dead: {} }, townTab = 'log';
 let orderSt = { lock: 0, level: 0, fee: 0.05, earnLeft: 0, list: [] }; // กระดานใบสั่งซื้อ
 let orderForm = { item: 'crop_carrot', qty: 10, perUnit: 0 };          // ฟอร์มตั้งใบสั่งซื้อฝั่งผู้เล่น
@@ -45,7 +45,7 @@ let villageEnd = 0; // เวลาที่บัฟ Happy Village หมด (m
 const happyOn = () => villageEnd > Date.now();
 const buffExp = {}; // บัฟที่ยังมีผลอยู่: id -> เวลาหมด (ms ของนาฬิกาเครื่องนี้)
 const buffOn = id => (buffExp[id] || 0) > Date.now();
-const build = { on: false, sel: null, erase: false };
+const build = { on: false, sel: null, erase: false, pick: null, rot: 0 }; // sel = ชนิดที่จะวาง • erase = เก็บคืน • pick = id ของชิ้นที่เลือกไว้จะย้าย/หมุน • rot = ทิศของชิ้นที่จะวาง
 let fg = null, wtr = 10, dur = {}, cin = null, cinAt = 0, cinWatching = false, tradeSt = null, tradeReq = null;
 const mult = k => market[k] || 1;
 let timeOffset = 0, lastSend = 0, lastSent = '', swing = 0, lastAct = 0, shopKind = null, bagTab = 'status', flash = null;
@@ -178,7 +178,7 @@ function handle(m) {
     }
     case 'trade': onTrade(m); break;
     case 'cin': onCin(m); break;
-    case 'furn': setFurn(m.x, m.y, m.f); break;
+    case 'furn': applyFurnOp(m); break;
     case 'admin': onAdmin(m); break;
     case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break;
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
@@ -564,32 +564,34 @@ $('townClose').onclick = closeTown;
 $('town').addEventListener('pointerdown', e => { if (e.target === $('town')) closeTown(); });
 
 // ---------- บ้าน / ตกแต่ง ----------
-function setFurn(x, y, f) {
-  const k = x + ',' + y;
-  if (f && FURN[f]) { furn.set(k, { x, y, f }); MAP[y][x] = FURN[f].solid ? T.FURN : T.FLOOR; }
-  else { furn.delete(k); if (MAP[y][x] === T.FURN) MAP[y][x] = T.FLOOR; }
-}
 const furnKeys = () => Object.keys(inv).filter(k => k.startsWith('furn_') && FURN[k.slice(5)]);
-// ---------- บ้านหลังใหญ่: แมพแยก (ฉาก) ----------
-// ตอนอยู่ในบ้าน MAP ถูกสลับเป็นแมพบ้านชั่วคราว (เก็บแถวของแมพเมืองไว้ใน townRows) ของเมืองที่มาใหม่ระหว่างนั้น (ต้นไม้/โครงการ) แก้ที่ tmap()
-let scene = null, houseInfo = null, townRows = null, townBase = null, townBaseHi = null, townMini = null, townDirty = false, hboard = null;
+// ---------- บ้านหลังใหญ่: แมพแยก (ฉาก) มุมมองไอโซเมตริก ตกแต่งอิสระ ----------
+// ตอนอยู่ในบ้าน MAP ถูกสลับเป็นแมพบ้านชั่วคราว (ผนัง/พื้น/ประตู) เก็บแถวของแมพเมืองไว้ใน townRows ของเมืองที่มาใหม่ระหว่างนั้น (ต้นไม้/โครงการ) แก้ที่ tmap()
+let scene = null, houseInfo = null, townRows = null, townDirty = false, hboard = null, houseRects = [], houseBg = null, houseGrid = null;
 const tmap = () => (scene ? townRows : MAP);
 const inMyHouse = () => !!scene && !!houseInfo && houseInfo.mine;
 const setSceneRows = rows => { for (let y = 0; y < H; y++) MAP[y] = rows[y]; };
+const furnObj = skip => { const o = {}; for (const [i, it] of furn) if (i !== skip) o[i] = it; return o; };
+const rebuildRects = () => { houseRects = Shared.houseSolidRects(furnObj()); };
+function applyFurnOp(m) { // ข้อความ furn จากเซิร์ฟเวอร์: set = วาง/ย้าย/หมุนชิ้นหนึ่ง • del = เก็บออก
+  if (m.op === 'del') { furn.delete(m.i); if (build.pick === m.i) build.pick = null; }
+  else if (m.op === 'set') furn.set(m.o.i, m.o);
+  rebuildRects(); if (build.on) renderBuild();
+}
 function resetScene() { // กลับไปแมพเมืองฝั่งเว็บ (ตอนเซิร์ฟเวอร์ส่งฉากเมือง หรือเข้าเกมใหม่)
   if (!scene) return;
-  setSceneRows(townRows); furn.clear(); scene = null; houseInfo = null; build.on = false;
-  if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; } else { base = townBase; baseHi = townBaseHi; miniBase = townMini; }
-  townRows = townBase = townBaseHi = townMini = null;
+  setSceneRows(townRows); furn.clear(); houseRects = []; scene = null; houseInfo = null; townRows = null; build.on = false; build.pick = null;
+  if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; }
 }
 function applyScene(m) {
   walk = null; fg = null; $('fgauge').classList.add('hidden'); hidePicker();
   if (m.sc) {
-    if (!scene) { townRows = MAP.slice(); townBase = base; townBaseHi = baseHi; townMini = miniBase; }
+    if (!scene) townRows = MAP.slice();
     setSceneRows(Shared.makeHouseMap()); furn.clear();
-    for (const [x, y, f] of m.items || []) setFurn(x, y, f);
-    scene = m.sc; houseInfo = { owner: m.owner, mine: !!m.mine }; build.on = false;
-    base = buildHouseBase(); miniBase = makeMiniBase();
+    for (const it of m.items || []) furn.set(it.i, it);
+    rebuildRects();
+    scene = m.sc; houseInfo = { owner: m.owner, mine: !!m.mine }; build.on = false; build.pick = null;
+    if (!houseBg) { houseBg = buildHouseIsoBg(); houseGrid = buildHouseGrid(); }
   } else resetScene();
   const old = me; players.clear();
   for (const q of m.players) { if (q.id === myId) { old.x = old.tx = m.x; old.y = old.ty = m.y; old.sit = false; old.fs = 0; players.set(myId, old); } else players.set(q.id, mkPlayer(q)); }
@@ -600,14 +602,15 @@ function updateHouseUi() {
   $('houseExit').textContent = '🚪 ออกจากบ้าน' + (scene && !houseInfo.mine ? ' (บ้านของ ' + houseInfo.owner + ')' : '');
   $('houseBtn').dataset.lbl = inMyHouse() ? 'ตกแต่ง' : 'บ้านฉัน';
   $('houseBtn').title = inMyHouse() ? 'โหมดตกแต่งบ้าน (H)' : 'เข้าบ้านตัวเอง (H)';
+  $('mini').style.display = scene ? 'none' : ''; // ในบ้านไม่ใช้แผนที่ย่อ
 }
 const enterHouse = who => send({ t: 'house', a: 'enter', who: who || '' });
 const homeAction = () => { if (inMyHouse()) toggleBuild(); else enterHouse(); }; // อยู่ในบ้านตัวเอง = เปิด/ปิดโหมดตกแต่ง • ที่อื่น = เข้าบ้านตัวเอง
 function toggleBuild(on) {
   if (on === undefined) on = !build.on;
   if (on && !inMyHouse()) { enterHouse(); return; }
-  build.on = on; build.erase = false;
-  if (on && !build.sel) build.sel = (furnKeys()[0] || '').slice(5) || null;
+  build.on = on; build.erase = false; build.pick = null; build.rot = 0;
+  if (on && !build.sel && furnKeys().length) build.sel = furnKeys()[0].slice(5);
   renderBuild();
 }
 function renderBuild() {
@@ -616,12 +619,28 @@ function renderBuild() {
   if (!build.on) return;
   const ks = furnKeys();
   if (build.sel && !(inv['furn_' + build.sel] > 0)) build.sel = (ks[0] || '').slice(5) || null;
-  el.innerHTML = `<div class="bhint">🏠 โหมดตกแต่งบ้าน — ${build.erase ? 'แตะของในบ้านเพื่อเก็บคืนเข้ากระเป๋า' : build.sel ? 'แตะช่องพื้นไม้เพื่อวางของ (เดินเข้าไปใกล้ๆ ได้ไกลสุด 8 ช่อง)' : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ริมถนนหลัก)'}</div><div class="bitems">`
+  if (build.pick != null && !furn.has(build.pick)) build.pick = null;
+  const pk = build.pick != null ? furn.get(build.pick) : null;
+  const hint = build.erase ? 'แตะของในบ้านเพื่อเก็บคืนเข้ากระเป๋า'
+    : build.sel ? `แตะที่พื้นเพื่อวาง ${FURN[build.sel].emoji}${FURN[build.sel].wall ? ' (ของติดผนัง: แตะที่ผนัง)' : FURN[build.sel].small ? ' (ของเล็กวางบนโต๊ะ/เตียงได้)' : ''} • 🔄 หมุน • วางได้ละเอียดทีละ ¼ ช่อง ซ้อนใกล้กันได้`
+    : pk ? `เลือก ${FURN[pk.f].emoji} ${FURN[pk.f].name} แล้ว • แตะพื้น/ผนังเพื่อย้าย • 🔄 หมุน • 🧹 เก็บคืน`
+    : ks.length ? 'แตะของในบ้านเพื่อเลือก แล้วแตะที่ใหม่เพื่อย้าย • หรือเลือกของจากกระเป๋าด้านล่างเพื่อวาง' : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ริมถนนหลัก) • แตะของในบ้านเพื่อเลือกย้ายได้';
+  el.innerHTML = `<div class="bhint">🏠 โหมดตกแต่งบ้าน — ${hint}</div><div class="bitems">`
     + ks.map(k => { const f = k.slice(5); return `<button class="btn small${!build.erase && build.sel === f ? ' on' : ''}" data-bf="${f}" title="${FURN[f].name}">${FURN[f].emoji} ×${inv[k]}</button>`; }).join('')
+    + `<button class="btn small${!build.erase && !build.sel ? ' on' : ''}" data-edit="1">🖐️ เลือก/ย้าย</button><button class="btn small" data-rot="1">🔄 หมุน</button>`
+    + (pk ? '<button class="btn small" data-pickdel="1">🧹 เก็บชิ้นนี้</button>' : '')
     + `<button class="btn small${build.erase ? ' on' : ''}" data-erase="1">🧹 เก็บคืน</button><button class="btn small muted" data-bexit="1">✖ ออก</button></div>`;
-  el.querySelectorAll('[data-bf]').forEach(b => b.onclick = () => { build.sel = b.dataset.bf; build.erase = false; playSfx('click'); renderBuild(); });
-  el.querySelector('[data-erase]').onclick = () => { build.erase = !build.erase; playSfx('click'); renderBuild(); };
+  el.querySelectorAll('[data-bf]').forEach(b => b.onclick = () => { build.sel = b.dataset.bf; build.erase = false; build.pick = null; playSfx('click'); renderBuild(); });
+  el.querySelector('[data-edit]').onclick = () => { build.sel = null; build.erase = false; playSfx('click'); renderBuild(); };
+  el.querySelector('[data-rot]').onclick = rotateBuild;
+  if (pk) el.querySelector('[data-pickdel]').onclick = () => { send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; };
+  el.querySelector('[data-erase]').onclick = () => { build.erase = !build.erase; if (build.erase) { build.sel = null; build.pick = null; } playSfx('click'); renderBuild(); };
   el.querySelector('[data-bexit]').onclick = () => toggleBuild(false);
+}
+function rotateBuild() { // หมุนชิ้นที่เลือกไว้ หรือหมุนทิศของชิ้นที่กำลังจะวาง
+  if (!build.on) return;
+  if (build.pick != null) send({ t: 'house', a: 'rot', i: build.pick });
+  else if (build.sel) { build.rot = build.rot ? 0 : 1; playSfx('click'); }
 }
 $('houseBtn').onclick = homeAction;
 $('houseExit').onclick = () => send({ t: 'house', a: 'exit' });
@@ -643,19 +662,6 @@ function renderPlots() {
 $('plotsClose').onclick = closePlots;
 $('plots').addEventListener('pointerdown', e => { if (e.target === $('plots')) closePlots(); });
 $('friendsBtn').onclick = openPlots;
-function houseClick(tx, ty) { // คืน true ถ้าการแตะนี้ถูกใช้กับระบบบ้านแล้ว (ในบ้านเท่านั้น)
-  if (!scene) return false;
-  if (inMyHouse() && build.on) {
-    if (!Shared.houseInside(tx, ty)) { toast('วางได้เฉพาะบนพื้นบ้าน'); return true; }
-    const cur = furn.get(tx + ',' + ty);
-    if (build.erase || (cur && !build.sel)) { if (cur) send({ t: 'house', a: 'remove', x: tx, y: ty }); else toast('ช่องนี้ไม่มีของให้เก็บ'); }
-    else if (cur) toast('ช่องนี้มีของอยู่แล้ว (กด 🧹 เก็บคืน เพื่อเก็บออก)');
-    else if (build.sel) send({ t: 'house', a: 'place', f: build.sel, x: tx, y: ty });
-    else toast('เลือกเฟอร์นิเจอร์ก่อน');
-    return true;
-  }
-  return false;
-}
 
 // กล่องยืนยันในเกม แทน confirm() ที่บางเบราว์เซอร์มือถือ/เว็บวิวไม่แสดง
 let askYes = null;
@@ -1091,6 +1097,7 @@ addEventListener('keydown', e => {
   if (c === 'KeyB' || c === 'KeyI') { $('bagBtn').onclick(); return; }
   if (c === 'KeyC') { $('statBtn').onclick(); return; }
   if (c === 'KeyH') { homeAction(); return; }
+  if (c === 'KeyR' && build.on) { rotateBuild(); return; }
   if (c === 'KeyL') { if (inv.lamp > 0) $('lampBtn').onclick(); return; }
   if (c === 'KeyM') { setMini(miniState === 'off' ? 'small' : miniState === 'small' ? 'big' : 'off'); return; }
   const dg = /^(?:Digit|Numpad)([1-9])$/.exec(c);
@@ -1162,11 +1169,9 @@ function findPath(sx, sy, goal) { // BFS แบบ 4 ทิศ คืนรา�
 }
 const animalAt = (tx, ty) => { for (const a of animals.values()) if (Math.hypot(a.x - (tx + 0.5) * TS, a.y - (ty + 0.5) * TS) < 40) return a; return null; };
 function interactive(tx, ty) { // ช่องนี้มีอะไรให้ทำด้วยเครื่องมือที่ถืออยู่ไหม
-  if (scene) { const fu = furn.get(tx + ',' + ty); return !!(fu && FURN[fu.f].seat); } // ในบ้านมีแค่ที่นั่งให้แตะ
   const id = toolId(), t = MAP[ty][tx], f = farm[tx + ',' + ty];
   if (t === T.SHOP || animalAt(tx, ty) || cinemaAt(tx, ty)) return true;
   if (seatAt(tx, ty)) return true;
-  const fu = furn.get(tx + ',' + ty); if (fu && FURN[fu.f].seat) return true; // แตะเก้าอี้/โซฟาเพื่อนั่ง
   if (f && f.c && f.s === 3) return true;
   if (id === 'hoe') return !!f || (t === T.GRASS && inFarm(tx, ty));
   if (id === 'water') return !!f || t === T.WATER;
@@ -1179,7 +1184,6 @@ const hubSign = BUILDINGS.find(b => b.kind === 'sign');
 const hubSignAt = (tx, ty) => !!hubSign && tx >= hubSign.x0 && tx <= hubSign.x1 && ty >= hubSign.y0 - 1 && ty <= hubSign.y1;
 function onTileClick(tx, ty) {
   if (!me || chatFocus || modalOpen() || tx < 0 || ty < 0 || tx >= W || ty >= H) return;
-  if (houseClick(tx, ty)) { stopWalk(); return; }
   if (!scene && hubSignAt(tx, ty)) { stopWalk(); openHub(); return; } // กดป้าย Arcade Hub = เปิดแต้ม/อันดับ
   const [px, py] = myTile();
   if (interactive(tx, ty)) {
@@ -1198,12 +1202,12 @@ function onTileClick(tx, ty) {
   walk = pts.length ? { pts, act: null, dest: pts[pts.length - 1], stuck: 0 } : null;
 }
 
-const mouse = { active: false, tx: 0, ty: 0 };
+const mouse = { active: false, tx: 0, ty: 0, sx: 0, sy: 0 };
 const tileAt = e => [Math.floor((camX + e.clientX * (canvas.width / innerWidth) / zoom) / TS), Math.floor((camY + e.clientY * (canvas.height / innerHeight) / zoom) / TS)];
 const ptrs = new Map(); let pinch = null; // นิ้วที่แตะบน canvas (สำหรับ pinch-zoom + แยกแตะ/ลาก บนมือถือ)
 const pinchDist = () => { const v = [...ptrs.values()]; return Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y); };
 canvas.addEventListener('pointermove', e => {
-  if (e.pointerType === 'mouse') { if (!me) return; mouse.active = true; [mouse.tx, mouse.ty] = tileAt(e); return; }
+  if (e.pointerType === 'mouse') { if (!me) return; mouse.active = true; [mouse.tx, mouse.ty] = tileAt(e); if (scene) [mouse.sx, mouse.sy] = isoPtr(e); return; }
   const p = ptrs.get(e.pointerId); if (!p) return;
   p.x = e.clientX; p.y = e.clientY;
   if (pinch && ptrs.size >= 2 && pinch.d0 > 0) setZoom(pinch.z0 * pinchDist() / pinch.d0); // บีบ/ถ่างสองนิ้ว = ซูม
@@ -1213,7 +1217,8 @@ canvas.addEventListener('pointerdown', e => {
   if (!me) return;
   if (e.pointerType === 'mouse') { // เมาส์: แตะช่องทำงานทันทีเหมือนเดิม
     if (e.button !== 0) return;
-    hidePicker(); const [tx, ty] = tileAt(e); mouse.active = true; mouse.tx = tx; mouse.ty = ty;
+    hidePicker(); if (scene) { [mouse.sx, mouse.sy] = isoPtr(e); mouse.active = true; houseIsoClick(mouse.sx, mouse.sy); return; }
+    const [tx, ty] = tileAt(e); mouse.active = true; mouse.tx = tx; mouse.ty = ty;
     flash = { tx, ty, t: performance.now() }; onTileClick(tx, ty); return;
   }
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() }); // มือถือ: แตะทำงานตอนปล่อยนิ้ว (แยกจาก pinch)
@@ -1225,6 +1230,7 @@ const endPtr = e => {
   const wasPinch = !!pinch; if (ptrs.size < 2) pinch = null;
   if (!p || wasPinch) return; // นิ้วที่เป็นส่วนหนึ่งของ pinch ไม่นับเป็นแตะ
   const moved = Math.hypot(e.clientX - p.sx, e.clientY - p.sy), dur = performance.now() - p.t;
+  if (ptrs.size === 0 && moved < 18 && dur < 400 && scene) { hidePicker(); const [sx, sy] = isoPtr(e); houseIsoClick(sx, sy); return; }
   if (ptrs.size === 0 && moved < 18 && dur < 400) { hidePicker(); const [tx, ty] = tileAt(e); flash = { tx, ty, t: performance.now() }; onTileClick(tx, ty); } // แตะสั้นๆ นิ้วเดียว = ทำงานช่องนั้น
 };
 canvas.addEventListener('pointerup', endPtr);
@@ -2237,12 +2243,6 @@ function drawSeat(s) {
     ctx.fillStyle = '#9a6430'; ctx.fillRect(px + (s.face === 2 ? 20 : 6), py + 2, 6, 14);
   }
 }
-function drawFurn(o) {
-  const d = FURN[o.f], px = o.x * TS, py = o.y * TS;
-  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(px + 16, py + 27, 12, 4, 0, 0, 7); ctx.fill();
-  ctx.font = `${d.size || 27}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#000';
-  PixelUI.world(ctx, d.emoji, px + 16, py + 17, d.size || 27);
-}
 // กองไฟพิกเซล: วงหิน + ฟืนไขว้ + ถ่านแดง (สไปรต์เดียว) แล้วซ้อนเปลวไฟ 4 เฟรม (ขอบส้มเข้ม) + ประกายไฟลอยขึ้น
 const FIRE_ART = (() => {
   const { mk, r, ell, addOutline } = PixelArt;
@@ -2604,8 +2604,9 @@ function drawNight(dark, now) {
   const LH = !scene && builtProj.has('lighthouse') && Shared.LIGHTHOUSE, lx = LH ? (LH.x0 + (LH.x1 - LH.x0 + 1) / 2) * TS : 0, ly = LH ? LH.y0 * TS + 39 : 0, lAng = now / 1800; // ประภาคาร: ห้องตะเกียงอยู่ใกล้ยอดหอ ลำแสงหมุนรอบ ~11 วินาที
   const beam = (r, half, ang, a0) => { const g = lctx.createRadialGradient(lx, ly, 0, lx, ly, r); g.addColorStop(0, `rgba(0,0,0,${a0})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(lx, ly); lctx.arc(lx, ly, r, ang - half, ang + half); lctx.closePath(); lctx.fill(); };
   if (LH) { hole(lx, ly, TS * 7 * (1 + Math.sin(now / 400) * 0.02), 0.25); beam(TS * 18, 0.2, lAng, 0.95); beam(TS * 18, 0.2, lAng + Math.PI, 0.95); }
-  for (const p of players.values()) if (p.lamp) hole(p.x, p.y - 4, TS * 5, 0.82);
-  for (const o of furn.values()) if (FURN[o.f].light) hole((o.x + 0.5) * TS, (o.y + 0.5) * TS, TS * 3.2, 0.6); // โคมไฟในบ้าน
+  const pj = (x, y, z = 0) => (scene ? [x - y, (x + y) / 2 - z] : [x, y]); // ในบ้านวาดแบบไอโซเมตริก ฉายตำแหน่งแสงด้วย
+  for (const p of players.values()) if (p.lamp) hole(...pj(p.x, p.y, 4), TS * 5, 0.82);
+  for (const o of furn.values()) if (FURN[o.f].light) hole(...pj(o.x * TS, o.y * TS, (o.z || 0) + 22), TS * 3.2, 0.6); // โคมไฟในบ้าน
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(lightCv, 0, 0);
   // แสงอุ่นสีส้มบางๆ ซ้อนทับบริเวณที่สว่าง
   ctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom); ctx.globalCompositeOperation = 'lighter';
@@ -2615,7 +2616,7 @@ function drawNight(dark, now) {
     wg(lx, ly, TS * 6, 0.4 * Math.min(1, dark * 1.3)); ctx.beginPath(); ctx.arc(lx, ly, TS * 6, 0, 7); ctx.fill();
     for (const a of [lAng, lAng + Math.PI]) { wg(lx, ly, TS * 18, 0.22 * Math.min(1, dark * 1.3)); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.arc(lx, ly, TS * 18, a - 0.2, a + 0.2); ctx.closePath(); ctx.fill(); }
   }
-  if (!scene) warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); for (const p of players.values()) if (p.lamp) warm(p.x, p.y - 4, TS * 5, 0.16 * Math.min(1, dark * 1.2));
+  if (!scene) warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); for (const p of players.values()) if (p.lamp) warm(...pj(p.x, p.y, 4), TS * 5, 0.16 * Math.min(1, dark * 1.2));
   ctx.globalCompositeOperation = 'source-over'; ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
@@ -2730,6 +2731,362 @@ function drawLighthouse(g, now) {
   g.restore();
 }
 
+// ---------- บ้านหลังใหญ่: ภาพไอโซเมตริก + ตกแต่งอิสระ ----------
+// พิกัดโลกของบ้านยังเป็นพิกเซลแบบเดิม (ช่อง = TS px) แต่วาดฉายเป็นมุมเฉียง 2:1: จอ x = X − Y, จอ y = (X + Y) / 2 − ความสูง
+// ของแต่ละชิ้นวาดจากกล่อง 3 ด้านซ้อนกันเป็นสไปรต์ (ไม่ใช้อีโมจิ) วางตำแหน่งอิสระละเอียด ¼ ช่อง ดูกติกาที่ houseCheck ใน shared.js
+const HF = Shared.HFLOOR, FX0 = HF.x0 * TS, FX1 = HF.x1 * TS, FY0 = HF.y0 * TS, FY1 = HF.y1 * TS, WALL_H = 96, INK = '#2a1b14';
+const iso = (X, Y, z = 0) => [X - Y, (X + Y) / 2 - z];       // พื้นโลก (px) → จอไอโซเมตริก
+const unIso = (sx, sy) => [sy + sx / 2, sy - sx / 2];       // จอ → พื้นโลก (ที่ความสูง 0)
+const ISO_B = { x0: FX0 - FY1 - 40, y0: (FX0 + FY0) / 2 - WALL_H - 40, x1: FX1 - FY0 + 40, y1: (FX1 + FY1) / 2 + 60 };
+ISO_B.w = ISO_B.x1 - ISO_B.x0; ISO_B.h = ISO_B.y1 - ISO_B.y0;
+const rgbOf = hex => { const n = parseInt(hex.slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255]; };
+const tint = (hex, k) => `rgb(${rgbOf(hex).map(v => Math.max(0, Math.min(255, Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k)))).join(',')})`; // k<0 เข้มขึ้น k>0 สว่างขึ้น
+function poly(g, pts, fill, stroke) {
+  g.beginPath(); pts.forEach((q, i) => (i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]))); g.closePath();
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1; g.stroke(); }
+}
+const pip = (pts, x, y) => { let on = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) on = !on; } return on; };
+// กล่อง 3 ด้าน: (X,Y) = กึ่งกลางฐาน w×d px ตั้งแต่ความสูง z0 สูง h • ซ้ายล่างหันหาผู้เล่น ขวาล่างเข้มกว่า (แสงมาจากซ้ายบน)
+function ibox(g, X, Y, w, d, z0, h, c, o = {}) {
+  const x0 = X - w / 2, x1 = X + w / 2, y0 = Y - d / 2, y1 = Y + d / 2, zt = z0 + h, st = o.flat ? null : INK;
+  poly(g, [iso(x0, y1, zt), iso(x1, y1, zt), iso(x1, y1, z0), iso(x0, y1, z0)], o.left || tint(c, -0.1), st);
+  poly(g, [iso(x1, y0, zt), iso(x1, y1, zt), iso(x1, y1, z0), iso(x1, y0, z0)], o.right || tint(c, -0.3), st);
+  poly(g, [iso(x0, y0, zt), iso(x1, y0, zt), iso(x1, y1, zt), iso(x0, y1, zt)], o.top || tint(c, 0.15), st);
+}
+// แผ่นสีบนด้านของกล่อง (u0..u1 = สัดส่วนตามด้าน): L = ด้านซ้ายล่าง (y = y1) R = ด้านขวาล่าง (x = x1)
+const faceL = (g, X, Y, w, d, u0, u1, z0, z1, c) => poly(g, [iso(X - w / 2 + u0 * w, Y + d / 2, z1), iso(X - w / 2 + u1 * w, Y + d / 2, z1), iso(X - w / 2 + u1 * w, Y + d / 2, z0), iso(X - w / 2 + u0 * w, Y + d / 2, z0)], c);
+const faceR = (g, X, Y, w, d, u0, u1, z0, z1, c) => poly(g, [iso(X + w / 2, Y - d / 2 + u0 * d, z1), iso(X + w / 2, Y - d / 2 + u1 * d, z1), iso(X + w / 2, Y - d / 2 + u1 * d, z0), iso(X + w / 2, Y - d / 2 + u0 * d, z0)], c);
+const backSlab = (X, Y, W, D, r, t) => (r ? [X - W / 2 + t / 2, Y, t, D] : [X, Y - D / 2 + t / 2, W, t]); // แผ่นบางชิดด้านหลัง (r=0 ชิดเหนือ, r=1 ชิดตะวันตก)
+const dot = (g, X, Y, z, rx, ry, c) => { const [px, py] = iso(X, Y, z); g.fillStyle = c; g.beginPath(); g.ellipse(px, py, rx, ry, 0, 0, 7); g.fill(); };
+// สไปรต์เฟอร์นิเจอร์: (g, X, Y = กึ่งกลางฐาน, W, D = ขนาดฐาน px หลังหมุน, r = หมุนไหม, d = ข้อมูลใน FURN, now)
+const ART = {
+  rug(g, X, Y, W, D) {
+    const q = (k, c, s) => poly(g, [iso(X - W / 2 + k, Y - D / 2 + k, 1), iso(X + W / 2 - k, Y - D / 2 + k, 1), iso(X + W / 2 - k, Y + D / 2 - k, 1), iso(X - W / 2 + k, Y + D / 2 - k, 1)], c, s);
+    q(0, '#8c2a22', INK); q(3, '#e8c66a'); q(6, '#c0453a'); q(14, '#a8322a');
+    poly(g, [iso(X, Y - 7, 1), iso(X + 12, Y, 1), iso(X, Y + 7, 1), iso(X - 12, Y, 1)], '#e8c66a');
+  },
+  chair(g, X, Y, W, D, r) {
+    const [bx, by, bw, bd] = backSlab(X, Y, W * 0.9, D * 0.9, r, 5);
+    ibox(g, bx, by, bw, bd, 0, 30, '#a8703a');
+    ibox(g, X, Y, W * 0.9, D * 0.9, 0, 12, '#c98b4a');
+    ibox(g, X, Y, W * 0.7, D * 0.7, 12, 3, '#d65a4a', { flat: true });
+  },
+  sofa(g, X, Y, W, D, r) {
+    const c = '#4a6fa5', [bx, by, bw, bd] = backSlab(X, Y, W, D, r, (r ? W : D) * 0.3);
+    ibox(g, bx, by, bw, bd, 0, 32, tint(c, -0.1) && '#3d5d8f');
+    if (r) ibox(g, X, Y - D / 2 + 5, W, 10, 0, 22, '#3d5d8f'); else ibox(g, X - W / 2 + 5, Y, 10, D, 0, 22, '#3d5d8f');
+    ibox(g, X, Y, W, D, 0, 12, c);
+    if (r) { ibox(g, X, Y - D * 0.22, W * 0.7, D * 0.4, 12, 4, '#5e86bd', { flat: true }); ibox(g, X, Y + D * 0.22, W * 0.7, D * 0.4, 12, 4, '#5e86bd', { flat: true }); }
+    else { ibox(g, X - W * 0.22, Y + D * 0.08, W * 0.4, D * 0.7, 12, 4, '#5e86bd', { flat: true }); ibox(g, X + W * 0.22, Y + D * 0.08, W * 0.4, D * 0.7, 12, 4, '#5e86bd', { flat: true }); }
+    if (r) ibox(g, X, Y + D / 2 - 5, W, 10, 0, 22, '#3d5d8f'); else ibox(g, X + W / 2 - 5, Y, 10, D, 0, 22, '#3d5d8f');
+  },
+  table(g, X, Y, W, D) {
+    const lg = (dx, dy) => ibox(g, X + dx * (W / 2 - 5), Y + dy * (D / 2 - 5), 5, 5, 0, 13, '#8b5a2b');
+    lg(-1, -1); lg(1, -1); lg(-1, 1); lg(1, 1);
+    ibox(g, X, Y, W, D, 13, 4, '#c98b4a');
+    ibox(g, X - W * 0.18, Y, 13, 13, 17, 1.5, '#f4f4f4', { flat: true }); ibox(g, X + W * 0.2, Y + D * 0.12, 8, 8, 17, 6, '#e8e1d0');
+  },
+  bed(g, X, Y, W, D, r) {
+    const [hx, hy, hw, hd] = backSlab(X, Y, W, D, r, 6);
+    ibox(g, hx, hy, hw, hd, 0, 30, '#7a4a24');
+    ibox(g, X, Y, W, D, 0, 10, '#8b5a2b');
+    ibox(g, X, Y, W - 6, D - 6, 10, 7, '#f0e4c0');
+    if (r) { ibox(g, X, Y, W * 0.55 - 3, D - 6, 17, 2, '#d1543e', { flat: true }); ibox(g, X - W / 2 + 16, Y - D * 0.22, 14, D * 0.36, 17, 5, '#fdf6e3'); ibox(g, X - W / 2 + 16, Y + D * 0.22, 14, D * 0.36, 17, 5, '#fdf6e3'); }
+    else { ibox(g, X, Y + D * 0.18, W - 6, D * 0.55, 17, 2, '#d1543e', { flat: true }); ibox(g, X - W * 0.22, Y - D / 2 + 16, W * 0.36, 14, 17, 5, '#fdf6e3'); ibox(g, X + W * 0.22, Y - D / 2 + 16, W * 0.36, 14, 17, 5, '#fdf6e3'); }
+  },
+  shelf(g, X, Y, W, D, r, d) {
+    ibox(g, X, Y, W, D, 0, d.h, '#8b5a2b');
+    const f = r ? faceR : faceL, cols = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6', '#e67e22'];
+    for (let k = 0; k < 3; k++) {
+      f(g, X, Y, W, D, 0.06, 0.94, 5 + k * 13, 15 + k * 13, '#4b2e17');
+      for (let i = 0; i < 7; i++) f(g, X, Y, W, D, 0.09 + i * 0.125, 0.09 + i * 0.125 + 0.09, 6 + k * 13, 14 + k * 13 - (i % 3), cols[(i + k) % 6]);
+    }
+  },
+  tv(g, X, Y, W, D, r) {
+    ibox(g, X, Y, W, D, 0, 14, '#6b4423');
+    const [sx, sy, sw, sd] = backSlab(X, Y, W * 0.92, D * 0.92, r, 7);
+    ibox(g, sx, sy, sw, sd, 14, 24, '#171a2b');
+    const f = r ? faceR : faceL; f(g, sx, sy, sw, sd, 0.05, 0.95, 16, 36, '#2e3c68'); f(g, sx, sy, sw, sd, 0.12, 0.4, 28, 35, '#5a6fa8');
+  },
+  fridge(g, X, Y, W, D, r, d) {
+    ibox(g, X, Y, W, D, 0, d.h, '#dfe6ee');
+    const f = r ? faceR : faceL;
+    f(g, X, Y, W, D, 0.05, 0.95, d.h * 0.62, d.h - 2, '#cfd9e6'); f(g, X, Y, W, D, 0.05, 0.95, 3, d.h * 0.6, '#e8eef6'); f(g, X, Y, W, D, 0.78, 0.86, 8, d.h * 0.5, '#7a8aa0'); f(g, X, Y, W, D, 0.78, 0.86, d.h * 0.66, d.h - 8, '#7a8aa0');
+  },
+  plant(g, X, Y, W, D) {
+    ibox(g, X, Y, W * 0.7, D * 0.7, 0, 11, '#c0652d');
+    dot(g, X, Y, 17, 8, 6.5, '#2d6e2a'); dot(g, X - 6, Y + 3, 21, 6.5, 5.5, '#3f9a3a'); dot(g, X + 6, Y - 2, 23, 6.5, 5.5, '#3f9a3a'); dot(g, X, Y, 28, 6, 5, '#4fa048'); dot(g, X - 2, Y - 3, 33, 4, 3.5, '#6cc65a');
+  },
+  piano(g, X, Y, W, D, r) {
+    ibox(g, X, Y, W, D, 0, 26, '#23232d'); ibox(g, X, Y, W * 0.98, D * 0.98, 26, 5, '#15151c');
+    const f = r ? faceR : faceL; f(g, X, Y, W, D, 0.06, 0.94, 15, 21, '#f4f4f4');
+    for (let i = 1; i < 12; i++) f(g, X, Y, W, D, 0.06 + i * 0.0733, 0.067 + i * 0.0733, 15, 21, '#2a2a33');
+  },
+  trophy(g, X, Y) { ibox(g, X, Y, 12, 12, 0, 5, '#7a5a1e'); ibox(g, X, Y, 5, 5, 5, 8, '#e8c04a', { flat: true }); ibox(g, X, Y, 12, 12, 13, 8, '#f1c40f'); },
+  teddy(g, X, Y) {
+    dot(g, X, Y, 0, 9, 3.5, 'rgba(0,0,0,.2)'); dot(g, X, Y, 6, 6, 6, '#c98b4a'); dot(g, X, Y, 6.5, 3.5, 4, '#e8c78a'); dot(g, X, Y, 15, 5, 5, '#c98b4a');
+    dot(g, X - 5, Y, 19, 2, 2, '#c98b4a'); dot(g, X + 5, Y, 19, 2, 2, '#c98b4a'); dot(g, X, Y, 14, 2.2, 1.6, '#e8c78a'); dot(g, X - 2, Y, 16, .8, .8, INK); dot(g, X + 2, Y, 16, .8, .8, INK); dot(g, X, Y, 14.6, .9, .6, INK);
+  },
+  cat(g, X, Y, W, D, r, d, now) {
+    dot(g, X, Y, 0, 10, 3.5, 'rgba(0,0,0,.2)'); dot(g, X, Y, 5, 8, 5, '#e8943a'); dot(g, X - 3, Y, 6, 1.4, 4, '#c97a28'); dot(g, X + 2, Y, 6, 1.4, 4, '#c97a28');
+    dot(g, X + 5, Y, 11, 4.8, 4.4, '#e8943a'); poly(g, [iso(X + 2, Y, 14), iso(X + 3, Y, 18), iso(X + 5, Y, 14)], '#e8943a'); poly(g, [iso(X + 6, Y, 14), iso(X + 8, Y, 18), iso(X + 9, Y, 13)], '#e8943a');
+    dot(g, X + 4, Y, 11.5, .8, 1, INK); dot(g, X + 7, Y, 11.5, .8, 1, INK);
+    const tw = Math.sin(now / 400) * 3; g.strokeStyle = '#e8943a'; g.lineWidth = 2; g.beginPath(); g.moveTo(...iso(X - 7, Y, 4)); g.quadraticCurveTo(...iso(X - 13, Y, 10), ...iso(X - 11 + tw, Y, 15)); g.stroke();
+  },
+  statue(g, X, Y, W, D) {
+    ibox(g, X, Y, W * 0.7, D * 0.7, 0, 18, '#8e949e'); ibox(g, X, Y, W * 0.32, D * 0.32, 18, 26, '#c4c8cf');
+    dot(g, X, Y, 49, 7.5, 7.5, INK); dot(g, X, Y, 49, 6.5, 6.5, '#c4c8cf');
+  },
+  fountain(g, X, Y, W, D, r, d, now) {
+    ibox(g, X, Y, W, D, 0, 12, '#aab4c4');
+    poly(g, [iso(X - W / 2 + 5, Y - D / 2 + 5, 12), iso(X + W / 2 - 5, Y - D / 2 + 5, 12), iso(X + W / 2 - 5, Y + D / 2 - 5, 12), iso(X - W / 2 + 5, Y + D / 2 - 5, 12)], '#6cc6d6', INK);
+    ibox(g, X, Y, 8, 8, 12, 16, '#cfd6e0');
+    for (let i = 0; i < 8; i++) { const ph = (now / 700 + i / 8) % 1, a = i * 0.785, rr = ph * 16, [px, py] = iso(X + Math.cos(a) * rr, Y + Math.sin(a) * rr, 30 - ph * ph * 24); g.fillStyle = 'rgba(190,235,250,.95)'; g.fillRect(px - 1, py - 1, 2, 2); }
+  },
+  flag(g, X, Y, W, D, r, d, now) {
+    ibox(g, X, Y, 4, 4, 0, d.h, '#7a4a24'); const [px, py] = iso(X, Y, d.h), w = Math.sin(now / 250) * 2;
+    poly(g, [[px, py], [px + 22, py + 3 + w], [px + 22, py + 15 + w], [px, py + 13]], '#e74c3c', INK);
+  },
+  crate(g, X, Y, W, D, r, d) { ibox(g, X, Y, W, D, 0, d.h, '#c98b4a'); faceL(g, X, Y, W, D, 0.04, 0.96, d.h * 0.42, d.h * 0.52, '#8b5a2b'); faceR(g, X, Y, W, D, 0.04, 0.96, d.h * 0.42, d.h * 0.52, '#6b4423'); },
+  barrel(g, X, Y, W, D, r, d) { ibox(g, X, Y, W * 0.9, D * 0.9, 0, d.h, '#8b5a2b'); for (const z of [5, d.h - 8]) ibox(g, X, Y, W * 0.94, D * 0.94, z, 3, '#3a3f4a'); },
+  signpost(g, X, Y, W, D, r, d) { ibox(g, X, Y, 5, 5, 0, d.h, '#8b5a2b'); ibox(g, X, Y, 22, 4, d.h - 16, 12, '#e8c66a'); },
+  mailbox(g, X, Y) { ibox(g, X, Y, 5, 5, 0, 24, '#6b4423'); ibox(g, X, Y, 18, 10, 24, 13, '#2e7bb5'); const [px, py] = iso(X + 9, Y, 36); poly(g, [[px, py], [px + 8, py - 2], [px + 8, py + 4], [px, py + 4]], '#e74c3c', INK); },
+  toolbox(g, X, Y, W, D, r, d) { ibox(g, X, Y, W, D, 0, d.h, '#c0392b'); ibox(g, X, Y, W * 0.5, 4, d.h, 5, '#3a3f4a'); },
+  hut(g, X, Y, W, D) {
+    ibox(g, X, Y, W, D, 0, 34, '#c9a869');
+    const ap = iso(X, Y, 64); poly(g, [iso(X - W / 2, Y + D / 2, 34), iso(X + W / 2, Y + D / 2, 34), ap], '#a8552f', INK); poly(g, [iso(X + W / 2, Y - D / 2, 34), iso(X + W / 2, Y + D / 2, 34), ap], '#8a4426', INK);
+    faceL(g, X, Y, W, D, 0.38, 0.62, 0, 20, '#4a2f18');
+  },
+  lantern(g, X, Y, W, D, r, d, now) {
+    ibox(g, X, Y, 5, 5, 0, 18, '#3a3f4a'); ibox(g, X, Y, 12, 12, 18, 11, '#ffd36a');
+    const [px, py] = iso(X, Y, 24), gr = g.createRadialGradient(px, py, 0, px, py, 22); gr.addColorStop(0, `rgba(255,220,120,${0.5 + Math.sin(now / 300) * 0.06})`); gr.addColorStop(1, 'rgba(255,220,120,0)'); g.fillStyle = gr; g.fillRect(px - 22, py - 22, 44, 44);
+  },
+};
+function artGeneric(g, X, Y, W, D, r, d) { ibox(g, X, Y, W * 0.85, D * 0.85, 0, (d.h || 24) * 0.8, '#9aa0aa'); }
+const hits = []; // พื้นที่แตะของแต่ละชิ้นที่วาดในเฟรมนี้ (เรียงตามลำดับวาด ตัวท้ายสุดอยู่หน้าสุด)
+function drawFurnIso(g, it, now, alpha, ghost) {
+  const d = FURN[it.f], [w, dd] = Shared.furnDims(it.f, it.r), X = it.x * TS, Y = it.y * TS, W = w * TS, D = dd * TS, z = it.z || 0;
+  g.save(); if (alpha != null) g.globalAlpha = alpha;
+  if (!z && !d.flat) poly(g, [iso(X - W / 2 - 2, Y - D / 2 - 2), iso(X + W / 2 + 2, Y - D / 2 - 2), iso(X + W / 2 + 2, Y + D / 2 + 2), iso(X - W / 2 - 2, Y + D / 2 + 2)], 'rgba(40,20,5,.2)'); // เงาบนพื้น
+  g.translate(0, -z);
+  (ART[it.f] || artGeneric)(g, X, Y, W, D, it.r, d, now);
+  g.restore();
+  if (ghost) return;
+  if (d.flat) hits.push({ i: it.i, test: (sx, sy) => pip([iso(X - W / 2, Y - D / 2), iso(X + W / 2, Y - D / 2), iso(X + W / 2, Y + D / 2), iso(X - W / 2, Y + D / 2)], sx, sy) });
+  else { const [cx, cy] = iso(X, Y, z), hw = (W + D) / 2, h = (d.h || 24) + 4; hits.push({ i: it.i, test: (sx, sy) => sx >= cx - hw && sx <= cx + hw && sy >= cy - hw / 2 - h && sy <= cy + hw / 2 }); }
+}
+// ของติดผนัง: wl 'n' = ผนังหลังขวา (แนวแกน x) 'w' = ผนังหลังซ้าย (แนวแกน y) u = ตำแหน่งตามแนวผนัง (ช่อง)
+const wallPt = (wl, u, z) => (wl === 'n' ? iso(u, FY0, z) : iso(FX0, u, z));
+const wallRect = (g, wl, u0, u1, z0, z1, fill, stroke) => poly(g, [wallPt(wl, u0, z0), wallPt(wl, u1, z0), wallPt(wl, u1, z1), wallPt(wl, u0, z1)], fill, stroke);
+function drawWallItem(g, it, alpha) {
+  const d = FURN[it.f], U = it.u * TS, hw = (d.w || 1) * TS / 2, hh = (d.h || 30) / 2, zc = 60, wl = it.wl;
+  g.save(); if (alpha != null) g.globalAlpha = alpha;
+  if (it.f === 'painting') {
+    wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c98b4a', INK); wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc + hh - 4, '#8fd0f0');
+    wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc - 2, '#5fa844'); wallRect(g, wl, U - hw + 8, U - 2, zc - 2, zc + 6, '#4a8a3a'); wallRect(g, wl, U + hw - 14, U + hw - 8, zc + 4, zc + 10, '#ffe08a');
+  } else if (it.f === 'clock') {
+    const ring = R => { const out = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; out.push(wallPt(wl, U + Math.cos(a) * R, zc + Math.sin(a) * R)); } return out; };
+    poly(g, ring(14), '#3a3f4a', INK); poly(g, ring(11.5), '#fff8e7');
+    g.strokeStyle = INK; g.lineWidth = 1.5; g.beginPath(); g.moveTo(...wallPt(wl, U, zc)); g.lineTo(...wallPt(wl, U, zc + 8)); g.moveTo(...wallPt(wl, U, zc)); g.lineTo(...wallPt(wl, U + 6, zc - 1)); g.stroke();
+  } else if (it.f === 'map') {
+    wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#8b5a2b', INK); wallRect(g, wl, U - hw + 3, U + hw - 3, zc - hh + 3, zc + hh - 3, '#e8d6a0');
+    wallRect(g, wl, U - hw + 8, U - 6, zc - 8, zc + 8, '#6cc6d6'); wallRect(g, wl, U - 2, U + 18, zc - 2, zc + 10, '#7bc65a'); wallRect(g, wl, U + 4, U + 14, zc - 12, zc - 5, '#5fa844');
+  } else if (it.f === 'records') {
+    const cols = ['#e84a5f', '#2e9e6b', '#8a5bd1'], n = 3, sw = hw * 2 / n;
+    for (let k = 0; k < n; k++) {
+      const u0 = U - hw + k * sw + 1, u1 = u0 + sw - 2; wallRect(g, wl, u0, u1, zc - hh, zc + hh, '#2b2f55', INK);
+      const uc = (u0 + u1) / 2; wallRect(g, wl, uc - 5, uc + 5, zc - 5, zc + 5, cols[k]); wallRect(g, wl, uc - 1.5, uc + 1.5, zc - 1.5, zc + 1.5, '#fff3d6');
+    }
+  } else wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c98b4a', INK);
+  g.restore();
+  const quad = [wallPt(wl, U - hw, zc - hh), wallPt(wl, U + hw, zc - hh), wallPt(wl, U + hw, zc + hh), wallPt(wl, U - hw, zc + hh)];
+  if (it.i >= 0 && alpha == null) hits.push({ i: it.i, test: (sx, sy) => pip(quad, sx, sy) });
+}
+function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง 2 ด้าน + หน้าต่าง + พรมหน้าประตู (วาดครั้งเดียว)
+  const c = document.createElement('canvas'); c.width = ISO_B.w; c.height = ISO_B.h;
+  const g = c.getContext('2d'); g.translate(-ISO_B.x0, -ISO_B.y0);
+  g.fillStyle = '#17110d'; g.fillRect(ISO_B.x0, ISO_B.y0, ISO_B.w, ISO_B.h);
+  const hs = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+  poly(g, [iso(FX0, FY1), iso(FX1, FY1), iso(FX1, FY1, -12), iso(FX0, FY1, -12)], '#8a5430', INK); // ความหนาแผ่นพื้น
+  poly(g, [iso(FX1, FY0), iso(FX1, FY1), iso(FX1, FY1, -12), iso(FX1, FY0, -12)], '#6b3f22', INK);
+  const PL = ['#c98a56', '#be7f4b', '#d29560', '#b87846'];
+  for (let row = 0, y = FY0; y < FY1; row++, y += 16) { // ไม้กระดานเรียงตามแกน x ต่อกันสลับรอยต่อ
+    let x = FX0 - Math.floor(hs(row, 7) * 96);
+    for (let k = 0; x < FX1; k++, x += 96) {
+      const xa = Math.max(x, FX0), xb = Math.min(x + 96, FX1); if (xb <= xa) continue;
+      const q = [iso(xa, y), iso(xb, y), iso(xb, y + 16), iso(xa, y + 16)];
+      poly(g, q, PL[Math.floor(hs(row, k) * 4)]);
+      g.strokeStyle = 'rgba(70,35,15,.55)'; g.lineWidth = 1; g.beginPath(); g.moveTo(...q[0]); g.lineTo(...q[3]); g.lineTo(...q[2]); g.lineTo(...q[1]); g.stroke();
+      g.strokeStyle = 'rgba(255,230,190,.16)'; g.beginPath(); g.moveTo(...q[0]); g.lineTo(...q[1]); g.stroke();
+    }
+  }
+  const WH = WALL_H;
+  for (const wl of ['n', 'w']) { // ผนัง: วอลเปเปอร์ลายขีด + แผ่นไม้ครึ่งล่าง + ราว + บัวพื้น
+    const u0 = wl === 'n' ? FX0 : FY0, u1 = wl === 'n' ? FX1 : FY1;
+    wallRect(g, wl, u0, u1, 34, WH, '#efe3c2'); for (let u = u0; u < u1; u += 20) wallRect(g, wl, u, Math.min(u + 10, u1), 34, WH, '#e2d1a4');
+    wallRect(g, wl, u0, u1, 0, 34, '#b9602f'); for (let u = u0 + 7; u < u1; u += 14) wallRect(g, wl, u, u + 1.5, 4, 33, '#8a4420');
+    wallRect(g, wl, u0, u1, 34, 38, '#d98a4b'); wallRect(g, wl, u0, u1, 0, 5, '#7a3f1d');
+    const wins = wl === 'n' ? [4.5, 11, 17.5] : [4.5, 10];
+    for (const wc of wins) { // หน้าต่างบานเกล็ด
+      const uc = (wl === 'n' ? FX0 : FY0) + wc * TS, a = uc - 30, b = uc + 30;
+      wallRect(g, wl, a - 3, b + 3, 42, 90, '#7a3f1d', INK); wallRect(g, wl, a, b, 46, 86, '#a8dcf2');
+      for (let z = 48; z < 86; z += 5) wallRect(g, wl, a, b, z, z + 3, '#f3ead0');
+      wallRect(g, wl, uc - 1, uc + 1, 46, 86, '#7a3f1d'); wallRect(g, wl, a - 5, b + 5, 38, 42, '#c98b4a', INK);
+    }
+    if (wl === 'w') { poly(g, [iso(FX0, FY0), iso(FX0, FY1), iso(FX0, FY1, WH), iso(FX0, FY0, WH)], 'rgba(60,30,10,.16)'); }
+  }
+  const cap = 14; // ขอบบนของผนัง (หนา)
+  poly(g, [iso(FX0 - cap, FY0 - cap, WH + 10), iso(FX1, FY0 - cap, WH + 10), iso(FX1, FY0, WH + 10), iso(FX0 - cap, FY0, WH + 10)], '#f09a5a', INK);
+  poly(g, [iso(FX0 - cap, FY0, WH), iso(FX1, FY0, WH), iso(FX1, FY0, WH + 10), iso(FX0 - cap, FY0, WH + 10)], '#d9743a', INK);
+  poly(g, [iso(FX0 - cap, FY0 - cap, WH + 10), iso(FX0, FY0 - cap, WH + 10), iso(FX0, FY1, WH + 10), iso(FX0 - cap, FY1, WH + 10)], '#e88a4a', INK);
+  poly(g, [iso(FX0, FY0, WH), iso(FX0, FY1, WH), iso(FX0, FY1, WH + 10), iso(FX0, FY0, WH + 10)], '#b85a28', INK);
+  poly(g, [iso(FX1, FY0 - cap, WH + 10), iso(FX1, FY0, WH + 10), iso(FX1, FY0, 0), iso(FX1, FY0 - cap, 0)], '#8a4a22', INK);
+  poly(g, [iso(FX0 - cap, FY1, WH + 10), iso(FX0, FY1, WH + 10), iso(FX0, FY1, 0), iso(FX0 - cap, FY1, 0)], '#8a4a22', INK);
+  poly(g, [iso(FX0, FY0, 0), iso(FX1, FY0, 0), iso(FX1, FY0 + 12), iso(FX0 + 12, FY0 + 12)], 'rgba(40,20,5,.16)'); poly(g, [iso(FX0, FY0, 0), iso(FX0 + 12, FY0 + 12), iso(FX0 + 12, FY1), iso(FX0, FY1, 0)], 'rgba(40,20,5,.12)'); // เงาโคนผนังบนพื้น
+  const mx0 = Shared.HOUSE.door[0] * TS, mx1 = (Shared.HOUSE.door[1] + 1) * TS, my0 = (Shared.HOUSE.y1 - 1.2) * TS, my1 = Shared.HOUSE.y1 * TS; // พรมหน้าประตู + ลูกศรออก
+  poly(g, [iso(mx0, my0, 1), iso(mx1, my0, 1), iso(mx1, my1, 1), iso(mx0, my1, 1)], '#8c2a22', INK); poly(g, [iso(mx0 + 3, my0 + 3, 1), iso(mx1 - 3, my0 + 3, 1), iso(mx1 - 3, my1 - 3, 1), iso(mx0 + 3, my1 - 3, 1)], '#e8c66a'); poly(g, [iso(mx0 + 6, my0 + 6, 1), iso(mx1 - 6, my0 + 6, 1), iso(mx1 - 6, my1 - 6, 1), iso(mx0 + 6, my1 - 6, 1)], '#a8322a');
+  const mc = (mx0 + mx1) / 2; g.strokeStyle = '#e8c66a'; g.lineWidth = 2; for (const o of [-6, 4]) { g.beginPath(); g.moveTo(...iso(mc - 12, (my0 + my1) / 2 + o - 3, 1)); g.lineTo(...iso(mc, (my0 + my1) / 2 + o + 4, 1)); g.lineTo(...iso(mc + 12, (my0 + my1) / 2 + o - 3, 1)); g.stroke(); }
+  return c;
+}
+function buildHouseGrid() { // เส้นตารางจาง ๆ ตอนตกแต่ง (ทุกครึ่งช่อง เส้นหนักทุกช่อง)
+  const c = document.createElement('canvas'); c.width = ISO_B.w; c.height = ISO_B.h;
+  const g = c.getContext('2d'); g.translate(-ISO_B.x0, -ISO_B.y0); g.lineWidth = 1;
+  for (let X = FX0, k = 0; X <= FX1; X += TS / 2, k++) { g.strokeStyle = k % 2 ? 'rgba(255,255,255,.10)' : 'rgba(255,255,255,.26)'; g.beginPath(); g.moveTo(...iso(X, FY0)); g.lineTo(...iso(X, FY1)); g.stroke(); }
+  for (let Y = FY0, k = 0; Y <= FY1; Y += TS / 2, k++) { g.strokeStyle = k % 2 ? 'rgba(255,255,255,.10)' : 'rgba(255,255,255,.26)'; g.beginPath(); g.moveTo(...iso(FX0, Y)); g.lineTo(...iso(FX1, Y)); g.stroke(); }
+  return c;
+}
+function drawIsoPlayer(p, now) { // ตัวละครเดิมวาดที่พิกัดโลก → เลื่อนไปยังพิกัดไอโซเมตริก (นั่งแล้วยกขึ้นตามที่นั่ง)
+  const [sx, sy] = iso(p.x, p.y); let lift = 0;
+  if (p.sit) for (const it of furn.values()) if (FURN[it.f].seat && Math.abs(it.x * TS - p.x) < 6 && Math.abs(it.y * TS - p.y) < 6) lift = 8;
+  ctx.save(); ctx.translate(sx - p.x, sy - p.y - 10 - lift); drawPlayer(p, now); ctx.restore();
+}
+function drawIsoCompanion(cp, now) { const [sx, sy] = iso(cp.x, cp.y); ctx.save(); ctx.translate(sx - cp.x, sy - cp.y - 6); drawCompanion(cp, now); ctx.restore(); }
+function drawHouseWorld(now) {
+  ctx.drawImage(houseBg, ISO_B.x0, ISO_B.y0);
+  hits.length = 0;
+  const its = [...furn.values()], list = [];
+  for (const it of its) if (FURN[it.f].wall) drawWallItem(ctx, it);
+  if (build.on) ctx.drawImage(houseGrid, ISO_B.x0, ISO_B.y0);
+  for (const it of its) if (FURN[it.f].flat) drawFurnIso(ctx, it, now);
+  for (const it of its) { const d = FURN[it.f]; if (!d.wall && !d.flat) list.push({ k: (it.x + it.y) * TS + (it.on ? 1 : 0), f: () => drawFurnIso(ctx, it, now) }); }
+  for (const p of players.values()) { list.push({ k: p.x + p.y, f: () => drawIsoPlayer(p, now) }); if (p.cp) list.push({ k: p.cp.x + p.cp.y, f: () => drawIsoCompanion(p.cp, now) }); }
+  list.sort((a, b) => a.k - b.k).forEach(o => o.f());
+  drawHouseOverlay(now);
+}
+function footprintPts(it, z = 0) { const [w, d] = Shared.furnDims(it.f, it.r), X = it.x * TS, Y = it.y * TS, W = w * TS / 2, D = d * TS / 2; return [iso(X - W, Y - D, z), iso(X + W, Y - D, z), iso(X + W, Y + D, z), iso(X - W, Y + D, z)]; }
+function outlineItem(it, color) {
+  if (!it) return;
+  if (FURN[it.f].wall) { const U = it.u * TS, hw = (FURN[it.f].w || 1) * TS / 2, hh = (FURN[it.f].h || 30) / 2; poly(ctx, [wallPt(it.wl, U - hw, 60 - hh), wallPt(it.wl, U + hw, 60 - hh), wallPt(it.wl, U + hw, 60 + hh), wallPt(it.wl, U - hw, 60 + hh)], null, color); return; }
+  ctx.save(); ctx.lineWidth = 2; poly(ctx, footprintPts(it, it.z || 0), null, color); ctx.restore();
+}
+function ghostFor(f, sx, sy, selfId, r) { // ชิ้น f ถ้าวางตรงเมาส์/นิ้วตอนนี้ จะอยู่ตรงไหน (ปัด ¼ ช่อง) และวางได้ไหม
+  const d = FURN[f], items = furnObj(selfId), mates = [...players.values()].map(q => ({ x: q.x, y: q.y }));
+  if (d.wall) {
+    const [X, Y] = unIso(sx, sy + 60), toN = Math.abs(Y - FY0) <= Math.abs(X - FX0), wl = toN ? 'n' : 'w', u = Shared.snapQ((toN ? X : Y) / TS);
+    const res = Shared.houseCheck(items, f, 0, 0, 0, { wl, u });
+    return { f, r: 0, wl, u: res.u !== undefined ? res.u : u, x: res.x, y: res.y, z: 0, res };
+  }
+  let [X, Y] = unIso(sx, sy);
+  if (d.small) { // ชี้ที่หลังโต๊ะ/เตียง ฯลฯ: ลองยกจุดชี้ขึ้นตามความสูงของแต่ละตัว เอาตัวที่สูงสุดที่ชี้ถูก
+    let best = 0;
+    for (const [id, it] of furn) { if (id === selfId) continue; const o = FURN[it.f]; if (!o.top || it.z > 0 || o.h <= best) continue; const [px, py] = unIso(sx, sy + o.h), rc = Shared.furnRect(it); if (px / TS >= rc.x0 && px / TS <= rc.x1 && py / TS >= rc.y0 && py / TS <= rc.y1) { best = o.h; X = px; Y = py; } }
+  }
+  const x = Shared.snapQ(X / TS), y = Shared.snapQ(Y / TS), res = Shared.houseCheck(items, f, x, y, r, { mates });
+  return { f, r, x, y, z: res.z || 0, on: res.on, res };
+}
+function drawHouseOverlay(now) {
+  if (!inMyHouse() || !build.on) return;
+  const pulse = 0.55 + 0.45 * Math.sin(now / 160);
+  if (build.pick != null && furn.has(build.pick)) outlineItem(furn.get(build.pick), `rgba(255,255,255,${pulse})`);
+  if (!mouse.active || isTouch) return;
+  const hv = hitItem(mouse.sx, mouse.sy); let g = null;
+  if (build.erase) { if (hv != null) outlineItem(furn.get(hv), 'rgba(255,90,90,.95)'); return; }
+  if (build.sel) g = ghostFor(build.sel, mouse.sx, mouse.sy, null, build.rot);
+  else if (build.pick != null) { const it = furn.get(build.pick); if (it) g = ghostFor(it.f, mouse.sx, mouse.sy, build.pick, it.r); }
+  else { if (hv != null) outlineItem(furn.get(hv), 'rgba(255,255,255,.6)'); return; }
+  if (!g) return;
+  const gi = { i: -1, f: g.f, x: g.x, y: g.y, r: g.r, z: g.z, wl: g.wl, u: g.u }, ok = g.res.ok;
+  if (FURN[g.f].wall) { drawWallItem(ctx, gi, 0.65); outlineItem(gi, ok ? 'rgba(80,230,120,.95)' : 'rgba(255,80,80,.95)'); }
+  else { poly(ctx, footprintPts(gi, gi.z), ok ? 'rgba(80,220,120,.35)' : 'rgba(240,70,70,.4)'); drawFurnIso(ctx, gi, now, 0.7, true); }
+}
+// ---------- แตะ/คลิกในบ้าน ----------
+const isoPtr = e => [camX + e.clientX * (canvas.width / innerWidth) / zoom, camY + e.clientY * (canvas.height / innerHeight) / zoom];
+function hitItem(sx, sy) { for (let k = hits.length - 1; k >= 0; k--) if (hits[k].test(sx, sy)) return hits[k].i; return null; }
+function findHousePath(sx, sy, gx, gy) { // หาทางเดินบนกริด 16 px (หลบเฟอร์นิเจอร์) คืนจุดพิกเซล หรือ null
+  const C = 16, x0 = FX0, y0 = FY0, cols = Math.ceil((FX1 - FX0) / C), rows = Math.ceil((FY1 + TS - FY0) / C);
+  const cell = (x, y) => [Math.max(0, Math.min(cols - 1, Math.floor((x - x0) / C))), Math.max(0, Math.min(rows - 1, Math.floor((y - y0) / C)))];
+  const center = (cx, cy) => [x0 + cx * C + C / 2, y0 + cy * C + C / 2];
+  const bad = (cx, cy) => { const [x, y] = center(cx, cy); return Shared.houseBlockedAt(MAP, houseRects, x, y); };
+  const [scx, scy] = cell(sx, sy), [gcx, gcy] = cell(gx, gy), prev = new Map(), q = [[scx, scy]], key = (a, b) => b * cols + a;
+  prev.set(key(scx, scy), null);
+  let best = [scx, scy], bd = Infinity;
+  for (let i = 0; i < q.length; i++) {
+    const [cx, cy] = q[i], dd = Math.abs(cx - gcx) + Math.abs(cy - gcy);
+    if (dd < bd) { bd = dd; best = [cx, cy]; }
+    if (dd === 0) break;
+    for (const [dx, dy] of DIRS) {
+      const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || prev.has(key(nx, ny)) || bad(nx, ny)) continue;
+      prev.set(key(nx, ny), [cx, cy]); q.push([nx, ny]);
+    }
+  }
+  const out = []; let c = best; while (prev.get(key(c[0], c[1])) !== null) { out.push(center(c[0], c[1])); c = prev.get(key(c[0], c[1])); }
+  out.reverse();
+  if (bd === 0 && !bad(gcx, gcy)) out[out.length - 1] = [gx, gy]; // จุดสุดท้ายเดินตรงถึงจุดที่แตะ
+  const clear = (a, b) => { const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 6); for (let k = 1; k < n; k++) if (Shared.houseBlockedAt(MAP, houseRects, a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n)) return false; return true; };
+  const res = []; let from = [sx, sy], i = 0; // ตัดจุดกลางทางที่เดินตรงถึงได้
+  while (i < out.length) { let j = out.length - 1; while (j > i && !clear(from, out[j])) j--; res.push(out[j]); from = out[j]; i = j + 1; }
+  return res;
+}
+function walkHouse(X, Y, act) {
+  X = Math.max(FX0 + 10, Math.min(FX1 - 10, X)); Y = Math.max(FY0 + 10, Math.min(FY1 + TS * 0.5, Y));
+  const pts = findHousePath(me.x, me.y, X, Y);
+  if (!pts || !pts.length) { toast('เดินไปไม่ถึงตรงนั้น'); return; }
+  walk = { pts, px: true, act: act || null, dest: pts[pts.length - 1], stuck: 0 };
+}
+function houseIsoClick(sx, sy) {
+  if (!me || chatFocus || modalOpen()) return;
+  const [X, Y] = unIso(sx, sy), hit = hitItem(sx, sy);
+  if (inMyHouse() && build.on) return buildClick(sx, sy, hit);
+  if (hit != null) {
+    const it = furn.get(hit);
+    if (it && FURN[it.f].seat) { // แตะเก้าอี้/โซฟา: ถ้าอยู่ใกล้ก็นั่งเลย ไม่งั้นเดินไปก่อนแล้วนั่ง
+      if (Math.hypot(it.x * TS - me.x, it.y * TS - me.y) <= 3.5 * TS) { stopWalk(); send({ t: 'act', tool: '', i: hit }); }
+      else walkHouse(it.x * TS, it.y * TS + FURN[it.f].d * TS / 2 + 14, { sit: hit });
+      return;
+    }
+  }
+  const door = Shared.HOUSE; // แตะพรมหน้าประตู = เดินออกจากบ้าน
+  if (X >= door.door[0] * TS && X <= (door.door[1] + 1) * TS && Y >= (door.y1 - 1.2) * TS && Y <= door.y1 * TS) { walkHouse(Shared.HOUSE_SPAWN.x, (door.y1 + 0.5) * TS); return; }
+  walkHouse(X, Y);
+}
+function buildClick(sx, sy, hit) {
+  if (build.erase) { if (hit != null) send({ t: 'house', a: 'remove', i: hit }); else toast('แตะของที่จะเก็บคืน'); return; }
+  if (build.sel) {
+    const g = ghostFor(build.sel, sx, sy, null, build.rot);
+    if (!g.res.ok) { toast(g.res.why); return; }
+    send({ t: 'house', a: 'place', f: build.sel, x: g.x, y: g.y, r: build.rot, wl: g.wl, u: g.u }); return;
+  }
+  if (hit != null) { build.pick = hit === build.pick ? null : hit; renderBuild(); return; } // แตะของ = เลือก (แตะซ้ำ = เลิกเลือก)
+  if (build.pick == null) { toast('แตะของในบ้านเพื่อเลือก แล้วแตะที่ใหม่เพื่อย้าย'); return; }
+  const it = furn.get(build.pick), g = ghostFor(it.f, sx, sy, build.pick, it.r);
+  if (!g.res.ok) { toast(g.res.why); return; }
+  send({ t: 'house', a: 'move', i: build.pick, x: g.x, y: g.y, wl: g.wl, u: g.u });
+}
+
+function frameTail(now, wall) { // กลางวัน/กลางคืน + นาฬิกา + แผนที่ย่อ (ใช้ทั้งในเมืองและในบ้าน)
+  const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
+  const dark = daylight(hour);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  drawNight(scene ? dark * 0.4 : dark, now); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
+  if (!scene) drawGuideArrow(now);
+  const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);
+  const icon = dark > 0.45 ? '🌙' : hour < 8 || hour >= 17 ? '🌅' : '☀️';
+  const txt = `${icon} ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')}`;
+  if ($('clock').textContent !== txt) $('clock').textContent = txt;
+  drawMini(now);
+}
+const blk = (x, y, fx, fy) => (scene ? Shared.houseBlockedAt(MAP, houseRects, x, y, fx, fy) : blockedAt(MAP, x, y)); // ชนผนัง/ของ (ในบ้านรวมเฟอร์นิเจอร์ตัน)
 function step(now) {
   requestAnimationFrame(step);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -2740,14 +3097,15 @@ function step(now) {
   if (performance.now() - lastKeyEvt > KEY_STALE_MS) clearKeys(); // ปุ่มค้าง: ไม่มี keydown เข้ามานานผิดปกติ → เคลียร์ทั้งหมด
   let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x;
   let iy = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0) + joy.y;
+  if (scene) { const jx = ix + iy, jy = iy - ix; ix = jx; iy = jy; } // ในบ้านมุมไอโซเมตริก: ปุ่มเดินตามทิศบนจอ (ขวาจอ = +x −y, ลงจอ = +x +y)
   if (chatFocus || modalOpen()) { ix = iy = 0; walk = null; }
   let mag = Math.hypot(ix, iy);
   if (mag > 0.1) walk = null;
   else if (walk) {
     const wp = walk.pts[0];
-    if (!wp) { const a = walk.act; walk = null; if (a) act(a.tx, a.ty); }
+    if (!wp) { const a = walk.act; walk = null; if (a && a.sit !== undefined) send({ t: 'act', tool: '', i: a.sit }); else if (a) act(a.tx, a.ty); }
     else {
-      const dx = wp[0] * TS + 16 - me.x, dy = wp[1] * TS + 16 - me.y, d = Math.hypot(dx, dy);
+      const dx = (walk.px ? wp[0] : wp[0] * TS + 16) - me.x, dy = (walk.px ? wp[1] : wp[1] * TS + 16) - me.y, d = Math.hypot(dx, dy);
       if (d < 3) walk.pts.shift(); else { ix = dx / d; iy = dy / d; mag = 1; }
     }
   }
@@ -2755,9 +3113,10 @@ function step(now) {
   if (me.moving) {
     if (mag > 1) { ix /= mag; iy /= mag; }
     const sp = 110 * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
-    if (!blockedAt(MAP, me.x + ix * sp, me.y)) me.x += ix * sp;
-    if (!blockedAt(MAP, me.x, me.y + iy * sp)) me.y += iy * sp;
-    me.dir = Math.abs(ix) > Math.abs(iy) ? (ix < 0 ? 2 : 3) : (iy < 0 ? 1 : 0);
+    if (!blk(me.x + ix * sp, me.y, me.x, me.y)) me.x += ix * sp;
+    if (!blk(me.x, me.y + iy * sp, me.x, me.y)) me.y += iy * sp;
+    const dsx = scene ? ix - iy : ix, dsy = scene ? (ix + iy) / 2 : iy; // ทิศที่หันตามหน้าจอ
+    me.dir = Math.abs(dsx) > Math.abs(dsy) ? (dsx < 0 ? 2 : 3) : (dsy < 0 ? 1 : 0);
     me.anim += dt;
     if (walk) { walk.stuck = Math.hypot(me.x - ox, me.y - oy) < sp * 0.2 ? walk.stuck + dt : 0; if (walk.stuck > 0.5) walk = null; }
   }
@@ -2778,7 +3137,7 @@ function step(now) {
     cp.sick = p.psick; cp.name = p.pname;
     const ax = play ? p.pax : p.x, ay = play ? p.pay : p.y, od = Math.hypot(p.x - cp.x, p.y - cp.y);
     const base = (bird ? 120 : C.kind === 'dog' ? 100 : 85) * (cp.sick ? 0.5 : 1);
-    const free = (x, y) => bird || !blockedAt(MAP, x, y);
+    const free = (x, y) => bird || !blk(x, y);
     if (!play) { // เดินตาม: ห่างเกิน 2 ช่องจะวิ่งตามมาให้เหลือ 1 ช่อง • ยืนเฉยๆ เดินไปมาไม่เกิน 2 ช่อง
       if (od > TS * 14) { cp.x = p.x - 18; cp.y = p.y + 6; cp.chase = false; }
       if (od > TS * 2) cp.chase = true; else if (od <= TS) cp.chase = false;
@@ -2815,15 +3174,22 @@ function step(now) {
   updateSpeaking(now);
 
   // กล้อง
-  const HB = scene ? Shared.HOUSE : null, bx0 = HB ? HB.x0 * TS : 0, by0 = HB ? HB.y0 * TS : 0, mw = HB ? (HB.x1 + 1 - HB.x0) * TS : W * TS, mh = HB ? (HB.y1 + 1 - HB.y0) * TS : H * TS; // ในบ้านกล้องไม่ออกนอกตัวบ้าน
-  camX = mw <= vw ? bx0 + (mw - vw) / 2 : Math.max(bx0, Math.min(bx0 + mw - vw, me.x - vw / 2));
-  camY = mh <= vh ? by0 + (mh - vh) / 2 : Math.max(by0, Math.min(by0 + mh - vh, me.y - vh / 2));
+  if (scene) { // ในบ้านกล้องตามตัวละครบนจอไอโซเมตริก ไม่ออกนอกตัวบ้าน
+    const ex = me.x - me.y, ey = (me.x + me.y) / 2 - 14;
+    camX = ISO_B.w <= vw ? ISO_B.x0 + (ISO_B.w - vw) / 2 : Math.max(ISO_B.x0, Math.min(ISO_B.x0 + ISO_B.w - vw, ex - vw / 2));
+    camY = ISO_B.h <= vh ? ISO_B.y0 + (ISO_B.h - vh) / 2 : Math.max(ISO_B.y0, Math.min(ISO_B.y0 + ISO_B.h - vh, ey - vh / 2));
+  } else {
+    const mw = W * TS, mh = H * TS;
+    camX = mw <= vw ? (mw - vw) / 2 : Math.max(0, Math.min(mw - vw, me.x - vw / 2));
+    camY = mh <= vh ? (mh - vh) / 2 : Math.max(0, Math.min(mh - vh, me.y - vh / 2));
+  }
   camX = Math.round(camX); camY = Math.round(camY);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = scene ? '#17110d' : '#2d4a2b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
   ctx.imageSmoothingEnabled = false;
+  if (scene) { drawHouseWorld(now); frameTail(now, wall); return; } // ในบ้านวาดแยกแบบไอโซเมตริก
   ctx.drawImage(base, 0, 0, W * TS, H * TS);
   ctx.drawImage(baseHi, 0, 0);
 
@@ -2880,13 +3246,6 @@ function step(now) {
     if (fx < x0 || fx > x1 || fy < y0 || fy > y1) continue;
     drawCrop(farm[k], fx * TS, fy * TS, now);
   }
-  // พรมปูพื้นในบ้าน (อยู่ใต้ทุกอย่าง)
-  for (const o of furn.values()) if (FURN[o.f].flat && o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1) {
-    const px = o.x * TS, py = o.y * TS;
-    ctx.fillStyle = '#a8322a'; ctx.fillRect(px + 2, py + 3, TS - 4, TS - 6);
-    ctx.fillStyle = '#e8c66a'; ctx.fillRect(px + 5, py + 6, TS - 10, TS - 12);
-    ctx.fillStyle = '#c0453a'; ctx.fillRect(px + 8, py + 9, TS - 16, TS - 18);
-  }
   // จุดหมายที่คลิกให้เดิน
   if (walk && walk.dest) {
     ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2;
@@ -2903,10 +3262,6 @@ function step(now) {
   // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
   if (!scene) for (const s of SEATS) if (s.x >= x0 - 1 && s.x <= x1 + 1 && s.y >= y0 - 1 && s.y <= y1 + 1) list.push({ y: s.y * TS + 12, f: () => drawSeat(s) });
   if (!scene) if (FIRE.x >= x0 - 1 && FIRE.x <= x1 + 1 && FIRE.y >= y0 - 1 && FIRE.y <= y1 + 1) list.push({ y: FIRE.y * TS + 28, f: () => drawFire(now) });
-  for (const o of furn.values()) {
-    const d = FURN[o.f]; if (d.flat || o.x < x0 - 1 || o.x > x1 + 1 || o.y < y0 - 1 || o.y > y1 + 1) continue;
-    list.push({ y: o.y * TS + (d.seat ? 12 : 28), f: () => drawFurn(o) });
-  }
   if (!scene) for (const [hx, hy] of Shared.BEE.hives) list.push({ y: (hy + 1) * TS - 2, f: () => drawHive(hx, hy, now) });
   if (!scene) for (const key of Object.keys(Shared.PENS)) list.push({ y: (Shared.PENS[key].sign[1] + 1) * TS, f: () => drawPenSign(key) });
   if (!scene) for (const c of animals.values()) list.push({ y: c.y + 8, f: () => { (c.type === 'cow' ? drawCow : c.type === 'pig' ? drawPig : ANIMAL_DRAW[c.type] || drawChicken)(c, now); animalFx(c, now, ANIMAL_TOP[c.type] || 14); hungerMark(c, now); } });
@@ -2960,17 +3315,7 @@ function step(now) {
   }
 
   if (!scene) drawLighthouse(ctx, now);
-  // กลางวัน/กลางคืน
-  const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
-  const dark = daylight(hour);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  drawNight(scene ? dark * 0.4 : dark, now); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
-  if (!scene) drawGuideArrow(now);
-  const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);
-  const icon = dark > 0.45 ? '🌙' : hour < 8 || hour >= 17 ? '🌅' : '☀️';
-  const txt = `${icon} ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')}`;
-  if ($('clock').textContent !== txt) $('clock').textContent = txt;
-  drawMini(now);
+  frameTail(now, wall);
 }
 requestAnimationFrame(step);
 })();

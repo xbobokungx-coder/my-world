@@ -20,36 +20,90 @@
     for (const x of HOUSE.door) m[HOUSE.y1][x] = T.PATH; // ช่องประตู เดินออกได้
     return m;
   }
-  const houseScore = items => { let value = 0, count = 0; for (const f of Object.values(items)) if (FURN[f]) { value += FURN[f].price; count++; } return { value, count }; }; // คะแนนลีดเดอร์บอร์ด: มูลค่า (ตามราคาร้าน) และจำนวนชิ้น
+  const houseScore = items => { let value = 0, count = 0; for (const it of Object.values(items)) if (it && FURN[it.f]) { value += FURN[it.f].price; count++; } return { value, count }; }; // คะแนนลีดเดอร์บอร์ด: มูลค่า (ตามราคาร้าน) และจำนวนชิ้น
+  // ตกแต่งอิสระ: ชิ้นหนึ่ง = { f, x, y, r, z, on, wl, u } พิกัด x,y เป็นหน่วยช่อง (จุดกึ่งกลางฐาน) r=1 หมุน (สลับกว้าง/ลึก) z=ความสูงที่วางบนของอื่น on=id ของที่รองรับ
+  // ของติดผนัง: wl='n' (ผนังหลังขวา, y คงที่) หรือ 'w' (ผนังหลังซ้าย, x คงที่) u=ตำแหน่งตามแนวผนัง
+  const HFLOOR = { x0: HOUSE.x0 + 1, y0: HOUSE.y0 + 2, x1: HOUSE.x1, y1: HOUSE.y1 };            // พื้นบ้านหน่วยช่อง [x0,x1) × [y0,y1)
+  const HKEEP = { x0: HOUSE.door[0] - 0.25, y0: HOUSE.y1 - 1.5, x1: HOUSE.door[1] + 1.25, y1: HOUSE.y1 }; // หน้าประตู ห้ามวางของตัน
+  const HOUSE_MAX_ITEMS = 300, SNAP = 4;                                                        // ชิ้นสูงสุดต่อบ้าน • ละเอียด 1/4 ช่อง
+  const snapQ = v => Math.round(v * SNAP) / SNAP;
+  const furnDims = (f, r) => { const d = FURN[f], w = d.w || 1, dd = d.d || 1; return r ? [dd, w] : [w, dd]; };
+  const furnRect = it => { const [w, d] = furnDims(it.f, it.r); return { x0: it.x - w / 2, y0: it.y - d / 2, x1: it.x + w / 2, y1: it.y + d / 2 }; };
+  const rectOvl = (a, b, e = 0.04) => a.x0 < b.x1 - e && a.x1 > b.x0 + e && a.y0 < b.y1 - e && a.y1 > b.y0 + e;
+  const rectHas = (r, x, y) => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1;
+  const isFloorItem = it => { const d = FURN[it.f]; return !d.wall; };
+  function houseSolidRects(items) { // กล่องชนของเฟอร์นิเจอร์ตัน (หน่วยพิกเซล) ไว้ใช้ตอนเดิน: เฉพาะชิ้นที่อยู่บนพื้น
+    const out = [];
+    for (const it of Object.values(items)) { const d = FURN[it.f]; if (!d || !d.solid || d.wall || d.flat || it.z > 0) continue; const r = furnRect(it); out.push({ x0: r.x0 * TS, y0: r.y0 * TS, x1: r.x1 * TS, y1: r.y1 * TS }); }
+    return out;
+  }
+  function houseBlockedAt(map, rects, x, y, fx, fy) { // เดินชนผนัง/ขอบบ้าน หรือเฟอร์นิเจอร์ตัวไหนไหม (ตัวละครกว้าง 16 px) • fx,fy = ตำแหน่งก่อนเดิน: ถ้าเดิมอยู่ในกล่องของชิ้นนั้นอยู่แล้ว (เช่นเพิ่งลุกจากเก้าอี้) ให้เดินออกได้
+    if (blockedAt(map, x, y)) return true;
+    const r = 8, hit = (b, px, py) => px + r > b.x0 + 1 && px - r < b.x1 - 1 && py + r > b.y0 + 1 && py - r < b.y1 - 1;
+    for (const b of rects) if (hit(b, x, y) && !(fx !== undefined && hit(b, fx, fy))) return true;
+    return false;
+  }
+  function houseTopAt(items, x, y, selfId) { // ชิ้นที่วางของบนหลังได้ (top) และจุด x,y อยู่บนหลังมัน: เอาตัวที่สูงสุด
+    let best = null;
+    for (const [id, it] of Object.entries(items)) { if (+id === selfId) continue; const d = FURN[it.f]; if (!d || !d.top || it.z > 0) continue; if (rectHas(furnRect(it), x, y) && (!best || d.h > best.h)) best = { id: +id, h: d.h || 20 }; }
+    return best;
+  }
+  // ตรวจว่าวางชิ้น f ที่ (x,y) ได้ไหม (ใช้ทั้งเซิร์ฟเวอร์และเว็บ) opts: selfId (ตอนย้าย) wl,u (ของติดผนัง) mates (ตัวละครที่ยืนอยู่ {x,y} พิกเซล)
+  function houseCheck(items, f, x, y, r, opts = {}) {
+    const d = FURN[f]; if (!d) return { ok: false, why: 'ไม่รู้จักของชิ้นนี้' };
+    const self = opts.selfId;
+    if (d.wall) {
+      const wl = opts.wl === 'w' ? 'w' : 'n', u = Number(opts.u);
+      if (!Number.isFinite(u)) return { ok: false, why: 'แตะที่ผนังเพื่อติดของ' };
+      const half = (d.w || 1) / 2, lo = wl === 'n' ? HFLOOR.x0 : HFLOOR.y0, hi = wl === 'n' ? HFLOOR.x1 : HFLOOR.y1;
+      if (u - half < lo - 1e-6 || u + half > hi + 1e-6) return { ok: false, why: 'ติดผนังตรงนี้ไม่ได้ (เกินขอบผนัง)' };
+      for (const [id, it] of Object.entries(items)) { if (+id === self || !FURN[it.f].wall || it.wl !== wl) continue; if (Math.abs(it.u - u) < half + (FURN[it.f].w || 1) / 2 - 0.04) return { ok: false, why: 'มีของติดผนังอยู่แล้วตรงนี้' }; }
+      return { ok: true, z: 0, on: null, wl, u, x: wl === 'n' ? u : HFLOOR.x0, y: wl === 'n' ? HFLOOR.y0 : u };
+    }
+    const [w, dd] = furnDims(f, r), rect = { x0: x - w / 2, y0: y - dd / 2, x1: x + w / 2, y1: y + dd / 2 };
+    if (rect.x0 < HFLOOR.x0 - 1e-6 || rect.y0 < HFLOOR.y0 - 1e-6 || rect.x1 > HFLOOR.x1 + 1e-6 || rect.y1 > HFLOOR.y1 + 1e-6) return { ok: false, why: 'วางนอกพื้นบ้านไม่ได้' };
+    if (d.flat) return { ok: true, z: 0, on: null };
+    if (d.solid && rectOvl(rect, HKEEP, 0)) return { ok: false, why: 'เว้นทางหน้าประตูไว้ วางตรงนี้ไม่ได้' };
+    let z = 0, on = null;
+    if (d.small) { const t = houseTopAt(items, x, y, self); if (t) { z = t.h; on = t.id; } }
+    if (d.solid && !on) {
+      for (const [id, it] of Object.entries(items)) { if (+id === self) continue; const o = FURN[it.f]; if (!o.solid || o.wall || o.flat || it.z > 0) continue; if (rectOvl(rect, furnRect(it))) return { ok: false, why: 'ชนกับของอื่น วางตรงนี้ไม่ได้' }; }
+      for (const m of opts.mates || []) if (m.x + 8 > rect.x0 * TS && m.x - 8 < rect.x1 * TS && m.y + 8 > rect.y0 * TS && m.y - 8 < rect.y1 * TS) return { ok: false, why: 'มีคนยืนอยู่ตรงนั้น วางไม่ได้' };
+    }
+    return { ok: true, z, on };
+  }
   const plotSignAt = (tx, ty) => ty === HOUSING.y0 - 1 ? plotAt(tx, HOUSING.y0) : -1; // ป้ายหน้าที่ดิน (แถวเหนือพื้นไม้)
   // เฟอร์นิเจอร์: solid = เดินผ่านไม่ได้, seat = นั่งได้, flat = พรมปูพื้น, light = ให้แสงตอนกลางคืน
   const FURN_SELL = 0.35; // ร้านเฟอร์นิเจอร์รับซื้อคืนกี่เปอร์เซ็นต์ของราคาซื้อ (ตั้งต่ำไว้ให้เป็นของตกแต่ง ไม่ใช่ช่องทางทำเงิน)
   const FURN = {
-    rug:      { name: 'พรมปูพื้น',     emoji: '🟥', price: 150,  flat: true },
-    chair:    { name: 'เก้าอี้',        emoji: '🪑', price: 120,  seat: true },
-    sofa:     { name: 'โซฟา',         emoji: '🛋️', price: 400, seat: true },
-    table:    { name: 'โต๊ะอาหาร',     emoji: '🍽️', price: 250,  solid: true },
-    bed:      { name: 'เตียงนอน',      emoji: '🛏️', price: 600, solid: true, size: 30 },
-    shelf:    { name: 'ชั้นหนังสือ',    emoji: '📚', price: 350, solid: true },
-    tv:       { name: 'ทีวี',          emoji: '📺', price: 700, solid: true },
-    fridge:   { name: 'ตู้เย็น',        emoji: '🧊', price: 500, solid: true },
-    plant:    { name: 'ต้นไม้ในกระถาง', emoji: '🪴', price: 90,  solid: true },
-    piano:    { name: 'เปียโน',        emoji: '🎹', price: 1200, solid: true },
-    trophy:   { name: 'ถ้วยรางวัล',    emoji: '🏆', price: 800, solid: true },
-    painting: { name: 'ภาพวาด',       emoji: '🖼️', price: 200 },
-    teddy:    { name: 'ตุ๊กตาหมี',      emoji: '🧸', price: 160 },
-    statue:   { name: 'รูปปั้นหินประจำเมือง', emoji: '🗿', price: 1500, solid: true, rare: true },
-    fountain: { name: 'น้ำพุ',               emoji: '⛲', price: 1500, solid: true, rare: true },
-    cat:      { name: 'แมวเฝ้าบ้าน',          emoji: '🐈', price: 1500, rare: true },
-    flag:     { name: 'ธงหมู่บ้าน',           emoji: '🚩', price: 1500, rare: true },
+    rug:      { name: 'พรมปูพื้น',     emoji: '🟥', price: 150,  flat: true, w: 2, d: 2 },
+    chair:    { name: 'เก้าอี้',        emoji: '🪑', price: 120,  seat: true, solid: true, w: 0.75, d: 0.75, h: 26 },
+    sofa:     { name: 'โซฟา',         emoji: '🛋️', price: 400, seat: true, solid: true, w: 2, d: 1, h: 30 },
+    table:    { name: 'โต๊ะอาหาร',     emoji: '🍽️', price: 250,  solid: true, w: 2, d: 1.25, h: 16, top: true },
+    bed:      { name: 'เตียงนอน',      emoji: '🛏️', price: 600, solid: true, size: 30, w: 2, d: 3, h: 24, top: true },
+    shelf:    { name: 'ชั้นหนังสือ',    emoji: '📚', price: 350, solid: true, w: 1.5, d: 0.5, h: 42, top: true },
+    tv:       { name: 'ทีวี',          emoji: '📺', price: 700, solid: true, w: 1.5, d: 0.75, h: 34 },
+    fridge:   { name: 'ตู้เย็น',        emoji: '🧊', price: 500, solid: true, w: 1, d: 1, h: 50 },
+    plant:    { name: 'ต้นไม้ในกระถาง', emoji: '🪴', price: 90,  solid: true, w: 0.75, d: 0.75, h: 30, small: true },
+    piano:    { name: 'เปียโน',        emoji: '🎹', price: 1200, solid: true, w: 2, d: 1, h: 34, top: true },
+    trophy:   { name: 'ถ้วยรางวัล',    emoji: '🏆', price: 800, solid: true, w: 0.5, d: 0.5, h: 20, small: true },
+    painting: { name: 'ภาพวาด',       emoji: '🖼️', price: 200, wall: true, w: 1.25, h: 34 },
+    clock:    { name: 'นาฬิกาแขวนผนัง', emoji: '🕰️', price: 260, wall: true, w: 0.75, h: 30 },
+    map:      { name: 'แผนที่โลก',     emoji: '🗺️', price: 220, wall: true, w: 1.5, h: 34 },
+    records:  { name: 'แผ่นเสียงติดผนัง', emoji: '💿', price: 320, wall: true, w: 1.5, h: 34 },
+    teddy:    { name: 'ตุ๊กตาหมี',      emoji: '🧸', price: 160, w: 0.5, d: 0.5, h: 16, small: true },
+    statue:   { name: 'รูปปั้นหินประจำเมือง', emoji: '🗿', price: 1500, solid: true, rare: true, w: 1.5, d: 1.5, h: 56 },
+    fountain: { name: 'น้ำพุ',               emoji: '⛲', price: 1500, solid: true, rare: true, w: 2, d: 2, h: 40 },
+    cat:      { name: 'แมวเฝ้าบ้าน',          emoji: '🐈', price: 1500, rare: true, w: 0.5, d: 0.5, h: 16, small: true },
+    flag:     { name: 'ธงหมู่บ้าน',           emoji: '🚩', price: 1500, rare: true, w: 0.5, d: 0.5, h: 52, small: true },
     // ของที่ช่างไม้ประดิษฐ์เองเท่านั้น (ไม่วางขายในร้าน)
-    crate:    { name: 'ลังไม้',            emoji: '📦', price: 180,  solid: true, craft: true },
-    barrel:   { name: 'ถังไม้โอ๊ก',         emoji: '🛢️', price: 270,  solid: true, craft: true },
-    signpost: { name: 'ป้ายชี้ทาง',         emoji: '🪧', price: 285,  craft: true },
-    mailbox:  { name: 'ตู้ไปรษณีย์',        emoji: '📮', price: 360, solid: true, craft: true },
-    toolbox:  { name: 'ตู้เครื่องมือช่าง',   emoji: '🧰', price: 465, solid: true, craft: true },
-    hut:      { name: 'กระท่อมไม้น้อย',     emoji: '🛖', price: 1400, solid: true, craft: true, size: 31 },
-    lantern:  { name: 'โคมไฟ (สว่างตอนกลางคืน)', emoji: '🏮', price: 350, light: true },
+    crate:    { name: 'ลังไม้',            emoji: '📦', price: 180,  solid: true, craft: true, w: 1, d: 1, h: 24, top: true },
+    barrel:   { name: 'ถังไม้โอ๊ก',         emoji: '🛢️', price: 270,  solid: true, craft: true, w: 0.75, d: 0.75, h: 30 },
+    signpost: { name: 'ป้ายชี้ทาง',         emoji: '🪧', price: 285,  craft: true, w: 0.5, d: 0.5, h: 44, small: true },
+    mailbox:  { name: 'ตู้ไปรษณีย์',        emoji: '📮', price: 360, solid: true, craft: true, w: 0.5, d: 0.5, h: 40, small: true },
+    toolbox:  { name: 'ตู้เครื่องมือช่าง',   emoji: '🧰', price: 465, solid: true, craft: true, w: 1, d: 0.6, h: 30, top: true },
+    hut:      { name: 'กระท่อมไม้น้อย',     emoji: '🛖', price: 1400, solid: true, craft: true, size: 31, w: 2, d: 2, h: 60 },
+    lantern:  { name: 'โคมไฟ (สว่างตอนกลางคืน)', emoji: '🏮', price: 350, light: true, w: 0.5, d: 0.5, h: 30, small: true },
   };
   const FARM = { x0: 6, y0: 8, x1: 21, y1: 17 };       // แปลงผัก (ช่องที่ขุดได้)
   // เล้า 6 เล้า ขนาดเท่ากัน (ภายใน 3×4 ช่อง) เรียง 2 แถวๆละ 3 เล้า มีรั้วล้อมรอบ 1 ช่อง • gate = ช่องประตู (ด้านซ้ายของเล้า) • sign = ป้ายประจำเล้า (ชื่อสัตว์อยู่บนป้าย)
@@ -734,7 +788,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_SPAWN, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
