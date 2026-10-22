@@ -580,7 +580,7 @@ function applyFurnOp(m) { // ข้อความ furn จากเซิร์
 }
 function resetScene() { // กลับไปแมพเมืองฝั่งเว็บ (ตอนเซิร์ฟเวอร์ส่งฉากเมือง หรือเข้าเกมใหม่)
   if (!scene) return;
-  setSceneRows(townRows); furn.clear(); houseRects = []; scene = null; houseInfo = null; townRows = null; build.on = false; build.pick = null;
+  doorLatch = true; setSceneRows(townRows); furn.clear(); houseRects = []; scene = null; houseInfo = null; townRows = null; build.on = false; build.pick = null;
   if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; }
 }
 function applyScene(m) {
@@ -662,6 +662,16 @@ function renderPlots() {
 $('plotsClose').onclick = closePlots;
 $('plots').addEventListener('pointerdown', e => { if (e.target === $('plots')) closePlots(); });
 $('friendsBtn').onclick = openPlots;
+// ประตูบ้านหลังใหญ่ในเมือง (HOUSE_DOOR): เดินเข้ามายืนที่ช่องนี้ (หรือแตะตัวบ้าน) แล้วเลือกเข้าบ้านตัวเอง/บ้านเพื่อน
+let doorLatch = false; // ยืนอยู่บนช่องประตูแล้วถามไปแล้ว ไม่ถามซ้ำจนกว่าจะเดินออกจากช่อง
+const homeChoiceShown = () => !$('homeChoice').classList.contains('hidden');
+function openHomeChoice() { walk = null; setMenu(false); $('homeChoice').classList.remove('hidden'); }
+function closeHomeChoice() { $('homeChoice').classList.add('hidden'); }
+$('hcOwn').onclick = () => { closeHomeChoice(); enterHouse(); };
+$('hcFriend').onclick = () => { closeHomeChoice(); openPlots(); };
+$('hcNo').onclick = closeHomeChoice;
+$('homeChoice').addEventListener('pointerdown', e => { if (e.target === $('homeChoice')) closeHomeChoice(); });
+const inHouseBld = (tx, ty) => tx >= Shared.HOUSE_BLD.x0 && tx <= Shared.HOUSE_BLD.x1 && ty >= Shared.HOUSE_BLD.y0 && ty <= Shared.HOUSE_BLD.y1;
 
 // กล่องยืนยันในเกม แทน confirm() ที่บางเบราว์เซอร์มือถือ/เว็บวิวไม่แสดง
 let askYes = null;
@@ -796,7 +806,7 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
 } else $('fsBtn').remove();
 
 // ---------- กระเป๋า / อาชีพ / ตัวละคร ----------
-const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'plots', 'ask'].some(id => !$(id).classList.contains('hidden'));
+const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'plots', 'homeChoice', 'ask'].some(id => !$(id).classList.contains('hidden'));
 function openBag(tab) { if (tab) bagTab = tab; $('bag').classList.remove('hidden'); renderBag(); }
 function closeBag() { $('bag').classList.add('hidden'); }
 const bagShown = () => !$('bag').classList.contains('hidden');
@@ -1091,7 +1101,7 @@ addEventListener('keydown', e => {
   // ใช้ e.code (ตำแหน่งปุ่มจริงบนคีย์บอร์ด) ไม่ใช่ e.key เพื่อให้ WASD และปุ่มลัดทำงานได้แม้เปลี่ยนเป็นแป้นพิมพ์ภาษาไทย
   const c = e.code;
   if (c === 'Enter' || c === 'NumpadEnter') { e.preventDefault(); openChat(); return; }
-  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (TOOL_LIST[n] === 'axe' && !axeLevel()); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
   if (c === 'KeyB' || c === 'KeyI') { $('bagBtn').onclick(); return; }
@@ -1184,6 +1194,10 @@ const hubSign = BUILDINGS.find(b => b.kind === 'sign');
 const hubSignAt = (tx, ty) => !!hubSign && tx >= hubSign.x0 && tx <= hubSign.x1 && ty >= hubSign.y0 - 1 && ty <= hubSign.y1;
 function onTileClick(tx, ty) {
   if (!me || chatFocus || modalOpen() || tx < 0 || ty < 0 || tx >= W || ty >= H) return;
+  if (!scene && (inHouseBld(tx, ty) || (tx === Shared.HOUSE_DOOR.x && ty === Shared.HOUSE_DOOR.y))) { // แตะตัวบ้าน/ประตู = เดินไปที่ประตู (ยืนอยู่แล้วก็ถามเลย)
+    const [px, py] = myTile(); if (px === Shared.HOUSE_DOOR.x && py === Shared.HOUSE_DOOR.y) { openHomeChoice(); return; }
+    tx = Shared.HOUSE_DOOR.x; ty = Shared.HOUSE_DOOR.y;
+  }
   if (!scene && hubSignAt(tx, ty)) { stopWalk(); openHub(); return; } // กดป้าย Arcade Hub = เปิดแต้ม/อันดับ
   const [px, py] = myTile();
   if (interactive(tx, ty)) {
@@ -2139,6 +2153,23 @@ function buildBase() {
     }
     b.counter.forEach(([cx, cy], i) => { PixelUI.world(gh, GOODS[b.kind][i % 2], cx * TS + 16, cy * TS + 22, 15); });
   }
+  { // บ้านหลังใหญ่: หน้าบ้านเหนือประตู HOUSE_DOOR (27,5) เดินเข้าประตูแล้วเลือกเข้าบ้านตัวเอง/บ้านเพื่อน
+    const B = Shared.HOUSE_BLD, bx = B.x0 * TS, by = B.y0 * TS, bw = (B.x1 - B.x0 + 1) * TS, bh = (B.y1 - B.y0 + 1) * TS, dx = Shared.HOUSE_DOOR.x * TS;
+    g.drawImage(oc, (B.x0 - 7) * U, B.y0 * U, (B.x1 - B.x0 + 1) * U, (B.y1 - B.y0 + 1) * U, bx, by, bw, bh); // พื้นหญ้าใต้ตัวบ้าน (ช่องตัน) คัดลอกลายหญ้าข้างๆ มาปิดสีทางเดิน
+    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(bx + 6, by + bh - 6, bw - 8, 10);
+    g.fillStyle = '#7a4a24'; g.fillRect(bx + 8, by + 48, bw - 16, bh - 48); g.fillStyle = '#f0e0bc'; g.fillRect(bx + 11, by + 51, bw - 22, bh - 54);
+    for (let x = bx + 11; x < bx + bw - 11; x += 14) { g.fillStyle = '#e2cf9e'; g.fillRect(x, by + 51, 2, bh - 54); }
+    g.fillStyle = '#b9602f'; g.fillRect(bx + 11, by + bh - 20, bw - 22, 14); g.fillStyle = '#7a3f1d'; g.fillRect(bx + 11, by + bh - 8, bw - 22, 2);
+    g.fillStyle = '#a82f23'; g.beginPath(); g.moveTo(bx - 4, by + 54); g.lineTo(bx + bw / 2, by + 2); g.lineTo(bx + bw + 4, by + 54); g.closePath(); g.fill();
+    g.fillStyle = '#c0392b'; g.beginPath(); g.moveTo(bx + 6, by + 50); g.lineTo(bx + bw / 2, by + 8); g.lineTo(bx + bw - 6, by + 50); g.closePath(); g.fill();
+    for (let i = 0; i < 6; i++) { g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(bx + bw / 2 - 2 + i * 18, by + 14 + i * 6, 2, 34 - i * 6); }
+    g.fillStyle = '#5a3a1c'; g.fillRect(bx + bw - 50, by + 16, 14, 24); g.fillStyle = '#8d8a94'; g.fillRect(bx + bw - 52, by + 13, 18, 5); // ปล่องไฟ
+    g.fillStyle = '#5a3a1c'; g.fillRect(dx - 3, by + bh - 52, 38, 52); g.fillStyle = '#9a5a2a'; g.fillRect(dx, by + bh - 49, 32, 49); g.fillStyle = '#b87a3d'; g.fillRect(dx + 3, by + bh - 46, 12, 22); g.fillRect(dx + 17, by + bh - 46, 12, 22);
+    g.fillStyle = '#f1c40f'; g.fillRect(dx + 25, by + bh - 24, 3, 3);
+    for (const wx of [bx + 24, bx + bw - 68]) { g.fillStyle = '#5a3a1c'; g.fillRect(wx, by + 74, 44, 32); g.fillStyle = '#a8dcf2'; g.fillRect(wx + 3, by + 77, 38, 26); g.fillStyle = '#d6f0fb'; g.fillRect(wx + 3, by + 77, 38, 8); g.fillStyle = '#5a3a1c'; g.fillRect(wx + 20, by + 77, 3, 26); g.fillRect(wx, by + 105, 44, 4); }
+    g.fillStyle = '#5a3a1c'; g.fillRect(dx - 24, by + 56, 80, 16); g.fillStyle = '#e8c66a'; g.fillRect(dx - 22, by + 58, 76, 12); // ป้ายเหนือประตู
+    gh.font = `bold 11px ${FONT}`; gh.fillStyle = '#3d2a1a'; gh.fillText('🏠 บ้านหลังใหญ่', dx + 16, by + 64.5);
+  }
   // ตู้เกม (เรียงเป็นรูปตัว U) + พื้นลานตู้เกมมีลวดลาย
   // ตู้เกม: สีไม่ซ้ำกันแต่กลมกลืนกับธีม และมี 3 ทรงหน้าตา (สลับตามลำดับตู้) • ตู้ว่างเป็นสีเทา
   const CAB_PAL = [
@@ -2677,7 +2708,7 @@ function drawMini(now) {
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = `${Math.round((big ? 15 : 11) * k)}px sans-serif`;
   if (!scene) for (const b of BUILDINGS) g.fillText(b.sign, (b.x0 + b.x1 + 1) / 2 * sx, (b.y0 + b.y1 + 1) / 2 * sy + 2 * k);
-  if (!scene) { g.fillText('🌾', 14 * sx, 12.5 * sy); g.fillText('🐄', 54 * sx, 21 * sy); g.fillText('🌊', 43 * sx, 38 * sy); g.fillText('🐖', 59.5 * sx, 11.5 * sy); g.fillText('🔥', FIRE.x * sx + sx / 2, FIRE.y * sy + sy / 2); }
+  if (!scene) { g.fillText('🏠', (Shared.HOUSE_DOOR.x + 0.5) * sx, 3 * sy); g.fillText('🌾', 14 * sx, 12.5 * sy); g.fillText('🐄', 54 * sx, 21 * sy); g.fillText('🌊', 43 * sx, 38 * sy); g.fillText('🐖', 59.5 * sx, 11.5 * sy); g.fillText('🔥', FIRE.x * sx + sx / 2, FIRE.y * sy + sy / 2); }
   g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 1.5 * k; g.strokeRect(camX / TS * sx, camY / TS * sy, vw / TS * sx, vh / TS * sy);
   const list = [...players.values()].sort((a, b) => (a === me) - (b === me));
   g.font = `bold ${Math.round((big ? 11 : 9) * k)}px ${FONT}`;
@@ -3173,6 +3204,10 @@ function step(now) {
   { const he = heldEmoji(); if (he !== lastHeld) { lastHeld = he; me.held = he; send({ t: 'held', e: he }); } } // อุปกรณ์ในมือเปลี่ยน → บอกเซิร์ฟเวอร์
   updateSpeaking(now);
 
+  { // เดินเข้าประตูบ้านหลังใหญ่ในเมือง → ถามว่าจะเข้าบ้านใคร
+    const onDoor = !scene && Math.floor(me.x / TS) === Shared.HOUSE_DOOR.x && Math.floor(me.y / TS) === Shared.HOUSE_DOOR.y;
+    if (onDoor && !doorLatch && !modalOpen()) { doorLatch = true; openHomeChoice(); } else if (!onDoor && !scene) doorLatch = false;
+  }
   // กล้อง
   if (scene) { // ในบ้านกล้องตามตัวละครบนจอไอโซเมตริก ไม่ออกนอกตัวบ้าน
     const ex = me.x - me.y, ey = (me.x + me.y) / 2 - 14;

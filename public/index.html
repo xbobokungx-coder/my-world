@@ -277,8 +277,8 @@
   body.touch #hudMenu .btn { min-height:60px; font-size:23px; padding:6px 2px; }
   #hudMenu .btn.hidden { display:none !important; }
   #menuBadge { position:absolute; top:-6px; right:-6px; min-width:17px; height:17px; padding:0 4px; box-sizing:border-box; border-radius:9px; background:#e74c3c; color:#fff; font-size:11px; line-height:17px; text-align:center; }
-  #ask { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:30; }
-  #ask .panel { width:min(90vw,340px); padding:16px; text-align:center; }
+  #ask, #homeChoice { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:30; }
+  #ask .panel, #homeChoice .panel { width:min(90vw,340px); padding:16px; text-align:center; }
   #askText { white-space:pre-line; margin-bottom:12px; font-size:15px; }
   #tradeBody { max-height:70vh; overflow:auto; }
 
@@ -485,6 +485,7 @@
   <h2><span>🏘️ บ้านเพื่อน • อันดับตกแต่ง</span> <button class="btn small" id="plotsClose">ปิด</button></h2>
   <div id="plotsBody"></div>
 </div></div>
+<div id="homeChoice" class="hidden"><div class="panel"><h2 style="justify-content:center">🏠 บ้านหลังใหญ่</h2><p style="margin:0 0 12px;font-size:15px">จะเข้าบ้านของใคร?</p><div style="display:flex;flex-direction:column;gap:8px"><button class="btn" id="hcOwn">🏠 เข้าบ้านตัวเอง</button><button class="btn" id="hcFriend">🏘️ เข้าบ้านเพื่อน (ดูอันดับ)</button><button class="btn small muted" id="hcNo">ยกเลิก</button></div></div></div>
 <div id="ask" class="hidden"><div class="panel"><div id="askText"></div><div class="center"><button class="btn small muted" id="askNo">ยกเลิก</button> <button class="btn small" id="askYes">ยืนยัน</button></div></div></div>
 <div id="cinema" class="hidden"><div class="panel" style="width:min(96vw,760px)">
   <h2><span>🎬 หนังกลางแปลง</span> <button class="btn small" id="cinClose">ปิด</button></h2>

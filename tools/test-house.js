@@ -14,6 +14,10 @@ const H = m => (m.t = 'house', m);
 const items = () => w.houses.alice.items;
 const idOf = f => Object.keys(items()).find(i => items()[i].f === f);
 
+// ประตูบ้านหลังใหญ่ในเมือง (27,5): ช่องประตูเดินได้ ต่อกับถนน ตัวบ้านเหนือประตูเป็นช่องตัน
+{ const t = S.makeMap(), D = S.HOUSE_DOOR; assert.deepStrictEqual([D.x, D.y], [27, 5]);
+  assert.ok(!S.blockedAt(t, D.x * TS + 16, D.y * TS + 16), 'ช่องประตูต้องเดินได้'); assert.ok(!S.blockedAt(t, D.x * TS + 16, 6 * TS + 16), 'ถนนหน้าประตูต้องเดินได้');
+  assert.ok(S.blockedAt(t, D.x * TS + 16, 4 * TS + 16) && S.blockedAt(t, S.HOUSE_BLD.x0 * TS + 16, S.HOUSE_BLD.y0 * TS + 16), 'ตัวบ้านต้องตัน'); }
 // เมืองไม่มีที่ดินแล้ว • แมพบ้าน: พื้น 22x15, ผนัง/ช่องว่างเดินทะลุไม่ได้, ประตูเดินออกได้
 { const t = S.makeMap(); assert.ok(!t.some(r => r.includes(S.T.FLOOR)), 'แมพเมืองต้องไม่มีพื้นไม้ของที่ดินเดิม'); }
 { const m = S.makeHouseMap(); let f = 0; for (const r of m) for (const c of r) if (c === S.T.FLOOR) f++; assert.strictEqual(f, 22 * 15);
