@@ -686,7 +686,7 @@
   function put(m, r, v, from) { for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) if (m[y] && from.includes(m[y][x])) m[y][x] = v; } // แปลงเฉพาะช่องชนิดที่อนุญาต ไม่ทับอาคาร/รั้วอื่น
   const STRUCTS = {
     bridge: m => put(m, BRIDGE, T.BRIDGE, [T.WATER]),
-    lighthouse: m => put(m, LIGHTHOUSE, T.LANDMARK, [...GROUND, T.WATER]),
+    lighthouse: () => {}, // ตัวหอวาดทับบนน้ำ ไม่เปลี่ยนชนิดช่อง (น้ำเดินไม่ได้อยู่แล้ว) พื้นจึงเป็นน้ำ ไม่เชื่อมกับตัวหอเป็นทางเดิน
     island: m => { put(m, ISLAND, T.SAND, [T.WATER]); put(m, { x0: ISLAND.walk.x, y0: ISLAND.walk.y, x1: ISLAND.walk.x, y1: ISLAND.walk.y }, T.BRIDGE, [T.WATER]); },
     festival: m => { put(m, FESTIVAL.plaza, T.PATH, GROUND); for (const r of [FESTIVAL.stage, ...FESTIVAL.tents]) put(m, r, T.LANDMARK, [...GROUND, T.PATH]); },
   };
