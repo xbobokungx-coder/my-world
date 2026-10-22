@@ -51,6 +51,7 @@ const NPC_DEFS = [
 ];
 
 const CAT_NAME = { fish: 'ปลา', crop: 'ผัก/ผลไม้', animal: 'ผลผลิตสัตว์', wood: 'ไม้', dish: 'อาหาร' }; // ชื่อหมวดในข้อความแจ้งผู้เล่น
+const HOUSE_MSG = new Set(['m', 'act', 'held', 'status', 'deaf', 'voice', 'rtc', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'house']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
 class World {
   constructor(room) {
     this.room = room;
@@ -106,74 +107,135 @@ class World {
     { const t = this.treeList(); if (t.length > this.treeCap) { for (let i = t.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [t[i], t[j]] = [t[j], t[i]]; } for (const [x, y] of t.slice(this.treeCap)) this.map[y][x] = T.GRASS; this.dirty = true; } } // ถ้าเกินเพดาน สุ่มตัดแต่งให้เหลือพอดี
   }
 
-  // ----- บ้าน: ที่ดินคนละ 1 แปลง เจ้าของเท่านั้นที่วาง/เก็บเฟอร์นิเจอร์ได้ (ของที่เก็บคืนเข้ากระเป๋า) คนอื่นเดินเข้าชมได้ -----
+  // ----- บ้านหลังใหญ่: ทุกคนมีบ้านของตัวเองหลังเดียว เป็นแมพแยก (ฉาก p.scene = key เจ้าของ, null = เมือง) เข้าจากเมนู เจ้าของเท่านั้นที่วาง/เก็บเฟอร์นิเจอร์ได้ คนอื่นเข้าเยี่ยมจากลีดเดอร์บอร์ด (ของที่เก็บคืนเข้ากระเป๋าเจ้าของ)
   loadHouse(d) {
-    this.house = { owners: {}, items: {} };
-    for (const [i, key] of Object.entries(d.owners || {})) if (S.HOUSING.plots[i] !== undefined && typeof key === 'string' && this.saved[key]) this.house.owners[i] = key;
-    for (const [k, f] of Object.entries(d.items || {})) {
-      const [x, y] = k.split(',').map(Number), pi = S.plotAt(x, y);
-      if (pi >= 0 && this.house.owners[pi] && S.FURN[f] && this.map[y][x] === T.FLOOR) { this.house.items[k] = f; if (S.FURN[f].solid) this.map[y][x] = T.FURN; }
+    this.houses = Object.create(null); this.hmaps = new Map();
+    const ok = (x, y, f) => Number.isInteger(x) && Number.isInteger(y) && S.houseInside(x, y) && !S.houseKeep(x, y) && !!S.FURN[f];
+    if (d.houses && typeof d.houses === 'object') {
+      for (const [key, h] of Object.entries(d.houses)) {
+        if (!this.saved[key] || !h || typeof h.items !== 'object') continue;
+        const items = {};
+        for (const [k, f] of Object.entries(h.items)) { const [x, y] = k.split(',').map(Number); if (ok(x, y, f)) items[k] = f; }
+        this.houses[key] = { items };
+      }
+    } else if (d.owners) { // ย้ายข้อมูลจากระบบที่ดิน 6 แปลงเดิม: ของในแปลงมาวางในบ้านใหม่ที่ตำแหน่งสัมพันธ์เดิม (มุมซ้ายบนของพื้นบ้าน)
+      for (const [i, key] of Object.entries(d.owners)) {
+        const x0 = S.HOUSING.plots[i];
+        if (x0 === undefined || typeof key !== 'string' || !this.saved[key]) continue;
+        const items = {};
+        for (const [k, f] of Object.entries(d.items || {})) {
+          const [x, y] = k.split(',').map(Number);
+          if (S.plotAt(x, y) !== +i) continue;
+          const nx = 23 + (x - x0), ny = 18 + (y - S.HOUSING.y0);
+          if (ok(nx, ny, f)) items[nx + ',' + ny] = f;
+        }
+        this.houses[key] = { items };
+      }
+      this.dirty = true;
     }
   }
-  plotOwnerName(i) { const k = this.house.owners[i]; return k ? ((this.saved[k] && this.saved[k].name) || k) : null; }
-  housePub() { return { plots: S.HOUSING.plots.map((_, i) => this.plotOwnerName(i)), items: Object.entries(this.house.items).map(([k, f]) => { const [x, y] = k.split(',').map(Number); return [x, y, f]; }) }; }
-  plotOf(p) { for (const i of Object.keys(this.house.owners)) if (this.house.owners[i] === p.key) return +i; return -1; }
-  setFurn(x, y, f) { // f = null คือเอาออก (ช่องกลับเป็นพื้นไม้)
-    const k = x + ',' + y;
-    if (f) { this.house.items[k] = f; this.map[y][x] = S.FURN[f].solid ? T.FURN : T.FLOOR; }
-    else { delete this.house.items[k]; this.map[y][x] = T.FLOOR; }
-    this.broadcast({ t: 'furn', x, y, f: f || null }); this.dirty = true;
+  houseMap(key) { // แมพบ้านของเจ้าของ key (สร้างตอนต้องใช้ เก็บแคชไว้)
+    let m = this.hmaps.get(key);
+    if (!m) {
+      m = S.makeHouseMap();
+      const h = this.houses[key];
+      if (h) for (const [k, f] of Object.entries(h.items)) { const [x, y] = k.split(',').map(Number); if (S.FURN[f].solid) m[y][x] = T.FURN; }
+      this.hmaps.set(key, m);
+    }
+    return m;
+  }
+  mapOf(p) { return p.scene ? this.houseMap(p.scene) : this.map; }
+  nameOfKey(key) { return (this.saved[key] && this.saved[key].name) || key; }
+  houseItemsPub(key) { const h = this.houses[key]; return h ? Object.entries(h.items).map(([k, f]) => { const [x, y] = k.split(',').map(Number); return [x, y, f]; }) : []; }
+  houseBoard(p) { // ลีดเดอร์บอร์ดบ้านที่ตกแต่งแล้ว: เรียงตามมูลค่าเฟอร์นิเจอร์ แล้วตามจำนวนชิ้น
+    const rows = [];
+    for (const [key, h] of Object.entries(this.houses)) {
+      const sc = S.houseScore(h.items);
+      if (sc.count > 0) rows.push({ n: this.nameOfKey(key), v: sc.value, c: sc.count, on: [...this.players.values()].some(q => q.key === key) ? 1 : 0, me: key === p.key ? 1 : 0 });
+    }
+    rows.sort((a, b) => b.v - a.v || b.c - a.c || (a.n < b.n ? -1 : 1));
+    return rows.slice(0, 100);
+  }
+  sceneMates(scene, except) { const sc = scene || null; return [...this.players.values()].filter(q => q !== except && (q.scene || null) === sc); }
+  sceneBroadcast(scene, o, except) { const s = JSON.stringify(o); for (const q of this.sceneMates(scene, except)) if (q.ws.readyState === 1) q.ws.send(s); }
+  pubFull(q) { return { id: q.id, held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, pm: q.pm, pax: q.pax, pay: q.pay, psick: !!(q.pet && this.petSt(q, q.pet).sick), pname: q.pet ? this.petName(q, q.pet) : '', x: q.x, y: q.y, dir: q.dir, voice: !!q.voice }; }
+  townPos(p) { const r = p.scene ? p.ret : { x: p.x, y: p.y }; return r && !S.blockedAt(this.map, r.x, r.y) ? r : { x: SPAWN.x, y: SPAWN.y }; } // ตำแหน่งในเมืองที่จะบันทึก/กลับไป (ถ้าอยู่ในบ้านคือที่ที่ยืนก่อนเข้า)
+  changeScene(p, scene, x, y) { // ย้ายผู้เล่นไปฉากใหม่: คนฉากเก่าเห็นเขาหายไป คนฉากใหม่เห็นเขาโผล่ ตัวเองได้รับฉากใหม่
+    const old = p.scene || null; scene = scene || null;
+    this.sceneBroadcast(old, { t: 'p-', id: p.id, quiet: 1 }, p);
+    p.scene = scene; p.x = x; p.y = y; p.sit = null; p.dir = 0;
+    if (p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); }
+    this.sceneBroadcast(scene, Object.assign({ t: 'p+', quiet: 1 }, this.pubFull(p)), p);
+    send(p, { t: 'scene', sc: scene, owner: scene ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene ? this.houseItemsPub(scene) : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
+    this.dirty = true;
+  }
+  enterHouse(p, key) {
+    if (!key || !this.saved[key]) return this.toast(p, 'ไม่พบบ้านหลังนี้');
+    if (p.scene === key) return;
+    const mine = key === p.key;
+    if (!mine && !(this.houses[key] && S.houseScore(this.houses[key].items).count > 0)) return this.toast(p, 'บ้านหลังนี้ยังไม่ได้ตกแต่ง');
+    if (!p.scene) { this.arcLeave(p); this.tradeCancel(p, 'ผู้เล่นเข้าบ้าน'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast(); p.ret = { x: p.x, y: p.y }; }
+    const first = mine && !this.houses[key];
+    if (first) this.houses[key] = { items: {} };
+    this.changeScene(p, key, S.HOUSE_SPAWN.x, S.HOUSE_SPAWN.y);
+    this.toast(p, first ? '🏠 ยินดีต้อนรับสู่บ้านของคุณ! ซื้อเฟอร์นิเจอร์ที่ร้านเฟอร์นิเจอร์มาตกแต่ง แล้วกดปุ่ม 🏠 เพื่อเข้าโหมดตกแต่ง' : mine ? '🏠 กลับบ้านแล้ว' : `🏘️ มาเยี่ยมบ้านของ ${this.nameOfKey(key)}`);
+  }
+  leaveHouse(p) {
+    if (!p.scene) return;
+    const r = this.townPos(p); p.ret = null;
+    this.changeScene(p, null, r.x, r.y);
+  }
+  setFurn(key, x, y, f) { // f = null คือเอาออก (ช่องกลับเป็นพื้นไม้)
+    const h = this.houses[key], k = x + ',' + y, m = this.houseMap(key);
+    if (f) { h.items[k] = f; m[y][x] = S.FURN[f].solid ? T.FURN : T.FLOOR; }
+    else { delete h.items[k]; m[y][x] = T.FLOOR; }
+    this.sceneBroadcast(key, { t: 'furn', x, y, f: f || null }); this.dirty = true;
   }
   houseHandle(p, m) {
-    const mine = this.plotOf(p), H = S.HOUSING;
     switch (m.a) {
-      case 'buy': {
-        const i = m.plot | 0;
-        if (!(i >= 0 && i < H.plots.length)) return;
-        if (this.house.owners[i]) return this.toast(p, 'ที่ดินแปลงนี้มีเจ้าของแล้ว');
-        if (mine >= 0) return this.toast(p, 'คุณมีบ้านอยู่แล้ว (คนละ 1 แปลง)');
-        if ((p.rec.inv.coin || 0) < H.price) return this.toast(p, `เหรียญไม่พอ ที่ดินราคา 🪙 ${H.price}`);
-        this.add(p, 'coin', -H.price, 'house'); this.house.owners[i] = p.key;
-        this.broadcast({ t: 'plot', i, owner: p.name }); this.dirty = true; this.addLog(`🏠 ${p.name} ซื้อที่ดินสร้างบ้าน`);
-        this.toast(p, '🏠 ได้ที่ดินแล้ว! ไปซื้อเฟอร์นิเจอร์ที่ร้านเฟอร์นิเจอร์มาตกแต่งได้เลย'); this.sfxTo(p, 'levelup');
+      case 'board': send(p, { t: 'hboard', list: this.houseBoard(p) }); break;
+      case 'enter': { // who ว่าง = บ้านตัวเอง • ไม่งั้นเป็นชื่อเจ้าของบ้านที่จะไปเยี่ยม
+        const now = Date.now(); if (now - (p.lastEnter || 0) < 600) return; p.lastEnter = now;
+        const who = String(m.who || '').trim().toLowerCase();
+        this.enterHouse(p, who && who !== p.key ? who : p.key);
         break;
       }
-      case 'leave': { // คืนที่ดิน: เฟอร์นิเจอร์ทั้งหมดกลับเข้ากระเป๋า และได้เงินคืนบางส่วน
-        if (mine < 0) return;
-        for (const k of Object.keys(this.house.items)) {
-          const [x, y] = k.split(',').map(Number);
-          if (S.plotAt(x, y) === mine) { this.add(p, 'furn_' + this.house.items[k], 1); this.setFurn(x, y, null); }
-        }
-        delete this.house.owners[mine]; this.broadcast({ t: 'plot', i: mine, owner: null });
-        const back = Math.floor(H.price * H.refund); this.add(p, 'coin', back, 'house');
-        this.toast(p, `คืนที่ดินแล้ว ได้เงินคืน 🪙 ${back} (เฟอร์นิเจอร์กลับเข้ากระเป๋า)`); this.sfxTo(p, 'coin'); this.dirty = true;
-        break;
-      }
+      case 'exit': this.leaveHouse(p); break;
       case 'place': case 'remove': {
-        const x = m.x, y = m.y;
-        if (!Number.isInteger(x) || !Number.isInteger(y) || mine < 0 || S.plotAt(x, y) !== mine) return this.toast(p, 'วางได้เฉพาะในที่ดินของตัวเอง');
+        const x = m.x, y = m.y, key = p.scene;
+        if (!key || key !== p.key) return this.toast(p, 'ตกแต่งได้เฉพาะในบ้านของตัวเอง');
+        if (!Number.isInteger(x) || !Number.isInteger(y) || !S.houseInside(x, y)) return this.toast(p, 'วางได้เฉพาะบนพื้นบ้าน');
         if (Math.max(Math.abs(x - Math.floor(p.x / TS)), Math.abs(y - Math.floor(p.y / TS))) > 8) return this.toast(p, 'ไกลเกินไป เดินเข้าไปใกล้ๆ ก่อน');
-        const k = x + ',' + y, cur = this.house.items[k];
+        const k = x + ',' + y, cur = this.houses[key].items[k];
         if (m.a === 'remove') {
           if (!cur) return;
-          this.setFurn(x, y, null); this.add(p, 'furn_' + cur, 1); this.sfx(p, 'collect');
+          this.setFurn(key, x, y, null); this.add(p, 'furn_' + cur, 1); this.sfx(p, 'collect');
           return;
         }
         const f = m.f;
         if (typeof f !== 'string' || !S.FURN[f] || !(p.rec.inv['furn_' + f] > 0)) return;
         if (cur) return this.toast(p, 'ช่องนี้มีของอยู่แล้ว');
-        if (S.FURN[f].solid) { // ห้ามวางทับคนที่ยืนอยู่
-          this.map[y][x] = T.FURN;
-          const hit = [...this.players.values()].some(q => S.blockedAt(this.map, q.x, q.y));
-          this.map[y][x] = T.FLOOR;
+        if (S.houseKeep(x, y)) return this.toast(p, 'เว้นทางหน้าประตูไว้ วางตรงนี้ไม่ได้');
+        if (S.FURN[f].solid) { // ห้ามวางทับคนที่ยืนอยู่ (เฉพาะคนในบ้านหลังนี้)
+          const hm = this.houseMap(key); hm[y][x] = T.FURN;
+          const hit = this.sceneMates(key).some(q => S.blockedAt(hm, q.x, q.y));
+          hm[y][x] = T.FLOOR;
           if (hit) return this.toast(p, 'มีคนยืนอยู่ตรงนั้น วางไม่ได้');
         }
-        this.add(p, 'furn_' + f, -1); this.setFurn(x, y, f); this.sfx(p, 'plant');
+        this.add(p, 'furn_' + f, -1); this.setFurn(key, x, y, f); this.sfx(p, 'plant');
         break;
       }
     }
   }
-  furnSeat(tx, ty) { const f = this.house.items[tx + ',' + ty]; return f && S.FURN[f].seat ? { x: tx, y: ty, face: 0 } : null; }
+  houseAct(p, m) { // ในบ้าน แตะเก้าอี้/โซฟาเพื่อนั่งได้อย่างเดียว (เครื่องมือฟาร์มใช้ไม่ได้)
+    const now = Date.now(); if (now - p.lastAct < 150) return; p.lastAct = p.activeAt = now;
+    const tx = m.tx, ty = m.ty, h = this.houses[p.scene], f = Number.isInteger(tx) && Number.isInteger(ty) && h && h.items[tx + ',' + ty];
+    if (!f || !S.FURN[f].seat) return;
+    if (Math.max(Math.abs(tx - Math.floor(p.x / TS)), Math.abs(ty - Math.floor(p.y / TS))) > 3) return;
+    if (this.sceneMates(p.scene, p).some(q => q.sit && q.sit.x === tx && q.sit.y === ty)) return this.toast(p, 'มีคนนั่งอยู่แล้ว');
+    p.sit = { x: tx, y: ty }; p.x = (tx + 0.5) * TS; p.y = (ty + 0.5) * TS; p.dir = 0;
+    send(p, { t: 'tp', x: p.x, y: p.y }); this.toast(p, '🪑 นั่งพักผ่อน... (เดินเพื่อลุก)');
+  }
 
   // ----- เมือง: กระดานข่าว (log โลก 50 รายการล่าสุด) + ตู้เซฟกองกลาง (ทุกคนลงขันเหรียญ → จ่ายยา/อาหารสัตว์อัตโนมัติ และชุบสัตว์ที่ตาย) -----
   loadTown(d) {
@@ -959,8 +1021,8 @@ class World {
     for (const k in this.farm) farm[k] = this.pub(this.farm[k], now);
     send(p, {
       t: 'w', admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
-      trees: this.treeList(), house: this.housePub(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
-      players: [...this.players.values()].map(q => ({ id: q.id, held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, pm: q.pm, pax: q.pax, pay: q.pay, psick: !!(q.pet && this.petSt(q, q.pet).sick), pname: q.pet ? this.petName(q, q.pet) : '', x: q.x, y: q.y, dir: q.dir, voice: !!q.voice })),
+      trees: this.treeList(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
+      players: [...this.players.values()].filter(q => !q.scene).map(q => this.pubFull(q)),
     });
     send(p, { t: 'pst', pst: rec.pst || {}, names: rec.pnames || {} });
     send(p, { t: 'arcs', a: this.arcsPub() });
@@ -969,7 +1031,7 @@ class World {
     this.orderPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
-    this.broadcast({ t: 'p+', id: p.id, held: p.held || '', title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, pet: p.pet, pm: p.pm, pax: p.pax, pay: p.pay, psick: !!(p.pet && this.petSt(p, p.pet).sick), pname: p.pet ? this.petName(p, p.pet) : '', x: p.x, y: p.y }, p);
+    this.sceneBroadcast(null, { t: 'p+', id: p.id, held: p.held || '', title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, pet: p.pet, pm: p.pm, pax: p.pax, pay: p.pay, psick: !!(p.pet && this.petSt(p, p.pet).sick), pname: p.pet ? this.petName(p, p.pet) : '', x: p.x, y: p.y }, p);
     this.dirty = true;
     return { p };
   }
@@ -981,27 +1043,30 @@ class World {
     logEv(this.room, 'leave', { p: p.key, sec: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000) });
     p.rec.catAt = Date.now();
     this.players.delete(p.id); this.addLog(`🚪 ${p.name} ออกไปแล้ว`);
-    p.rec.x = p.x; p.rec.y = p.y;
-    this.broadcast({ t: 'p-', id: p.id });
+    { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; }
+    this.sceneBroadcast(p.scene, { t: 'p-', id: p.id }, p);
     this.dirty = true;
   }
 
   handle(p, m) {
+    if (p.scene && !HOUSE_MSG.has(m.t)) return;
     switch (m.t) {
       case 'm': {
         const x = +m.x, y = +m.y;
         if (!isFinite(x) || !isFinite(y)) return;
         const d = Math.hypot(x - p.x, y - p.y);
-        if (d > 60 || S.blockedAt(this.map, x, y)) { send(p, { t: 'tp', x: p.x, y: p.y }); return; }
+        if (d > 60 || S.blockedAt(this.mapOf(p), x, y)) { send(p, { t: 'tp', x: p.x, y: p.y }); return; }
         if (d > 3 && p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); this.toast(p, 'เลิกตกปลาแล้ว'); }
         if (p.sit && d > 3) p.sit = null; // เดินออกจากที่นั่ง = ลุก
         if (Math.hypot(x - p.x, y - p.y) > 0.5) p.activeAt = Date.now(); // ขยับจริงถึงนับว่ามีกิจกรรม (กันเงินฟรีตอนทิ้งตัวละครไว้)
         p.x = x; p.y = y;
         if (m.d >= 0 && m.d < 4) p.dir = m.d | 0;
+        if (p.scene) { if (Math.floor(y / TS) >= S.HOUSE.y1 && S.HOUSE.door.includes(Math.floor(x / TS))) this.leaveHouse(p); break; } // เดินถึงประตูบ้าน = ออกไปเมือง
         this.arcRangeCheck(p);
         break;
       }
       case 'act': {
+        if (p.scene) return this.houseAct(p, m);
         const now = Date.now();
         if (now - p.lastAct < 150) return;
         p.lastAct = p.activeAt = now;
@@ -1439,7 +1504,7 @@ class World {
     if (this.exhausted(p) && this.heavyAction(tool, k) && tt !== T.SHOP) { const e = this.enOf(p), sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000); return this.toast(p, `😮‍💨 เหนื่อยอยู่ พักอีกประมาณ ${sec} วินาทีถึงทำงานหนักได้ (นั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า)`); }
     if (p.rec.hunger <= 0 && tt !== T.SHOP) return this.toast(p, '😵 หิวจนไม่มีแรง! ไปกินอาหารก่อนนะ (ร้านอาหาร หรือกินผลผลิตจากกระเป๋า)');
     // 0) นั่งที่ม้านั่ง/กองฟาง/เก้าอี้ในลานกลางหมู่บ้าน
-    const seat = S.seatAt(tx, ty) || this.furnSeat(tx, ty);
+    const seat = S.seatAt(tx, ty);
     if (seat) {
       if ([...this.players.values()].some(q => q !== p && q.sit && q.sit.x === seat.x && q.sit.y === seat.y)) return this.toast(p, 'มีคนนั่งอยู่แล้ว');
       p.sit = { x: seat.x, y: seat.y }; p.x = (seat.x + 0.5) * TS; p.y = (seat.y + 0.5) * TS; p.dir = seat.face;
@@ -2593,13 +2658,17 @@ class World {
       else if (f.st === 'bite' && now >= f.at) { p.fish = null; send(p, { t: 'fg', off: 1 }); this.toast(p, 'ปลาหนีไปแล้ว...'); }
     }
     if (!this.players.size) return;
-    this.broadcast({
-      t: 's',
-      p: [...this.players.values()].map(p => [p.id, Math.round(p.x), Math.round(p.y), p.dir, p.fish ? (p.fish.st === 'bite' ? 2 : 1) : 0, p.fish ? p.fish.fx : 0, p.fish ? p.fish.fy : 0, p.sit ? 1 : 0, p.fish ? p.fish.bt || 1 : 1]),
-      n: this.npcs.map(n => [n.id, Math.round(n.x), Math.round(n.y), n.dir]),
-      pt: this.pets.map(q => [q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? 1 : 0]),
-      c: this.animals.map(a => [a.id, a.type, Math.round(a.x), Math.round(a.y), a.prod ? 1 : 0, a.fed ? 1 : 0, a.dx, Math.round(a.hunger), a.sick ? 1 : 0, a.prod && a.feeder && (a.pm || 0) < S.DAY_MS ? 1 : 0, a.prod ? a.fn || '' : '']),
-    });
+    const groups = new Map(); // ส่งตำแหน่งแยกตามฉาก: คนในบ้านเห็นเฉพาะคนในบ้านเดียวกัน
+    for (const q of this.players.values()) { const k = q.scene || ''; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(q); }
+    for (const [k, ps] of groups) {
+      const msg = { t: 's', p: ps.map(p => [p.id, Math.round(p.x), Math.round(p.y), p.dir, p.fish ? (p.fish.st === 'bite' ? 2 : 1) : 0, p.fish ? p.fish.fx : 0, p.fish ? p.fish.fy : 0, p.sit ? 1 : 0, p.fish ? p.fish.bt || 1 : 1]), n: [], pt: [], c: [] };
+      if (!k) {
+        msg.n = this.npcs.map(n => [n.id, Math.round(n.x), Math.round(n.y), n.dir]);
+        msg.pt = this.pets.map(q => [q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? 1 : 0]);
+        msg.c = this.animals.map(a => [a.id, a.type, Math.round(a.x), Math.round(a.y), a.prod ? 1 : 0, a.fed ? 1 : 0, a.dx, Math.round(a.hunger), a.sick ? 1 : 0, a.prod && a.feeder && (a.pm || 0) < S.DAY_MS ? 1 : 0, a.prod ? a.fn || '' : '']);
+      }
+      const str = JSON.stringify(msg); for (const q of ps) if (q.ws.readyState === 1) q.ws.send(str);
+    }
   }
 
   cropTick(now) {
@@ -2620,9 +2689,9 @@ class World {
   save(sync) {
     if (!this.dirty) return;
     this.dirty = false;
-    for (const p of this.players.values()) { p.rec.x = p.x; p.rec.y = p.y; }
+    for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; }
     const animals = {}; for (const t of Object.keys(ANIMALS)) animals[t] = this.count(t);
-    const data = JSON.stringify({ farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: this.house, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, banned: [...(this.banned || [])] }, replacer);
+    const data = JSON.stringify({ farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, banned: [...(this.banned || [])] }, replacer);
     if (sync) { fs.writeFileSync(this.file, data); return; }
     fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
   }

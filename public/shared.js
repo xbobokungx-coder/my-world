@@ -1,14 +1,26 @@
 // โค้ดที่ใช้ร่วมกันระหว่างเซิร์ฟเวอร์และเบราว์เซอร์ (แมพ, ข้อมูลพืช/ปลา/สัตว์/ร้าน, เลเวล, การชน)
 (function (root) {
   const TS = 32, W = 64, H = 46;
-  const T = { GRASS: 0, WATER: 1, TREE: 2, BUILD: 3, PATH: 4, FENCE: 5, SAND: 6, SHOP: 7, FLOOR: 8, FURN: 9, BRIDGE: 10, LANDMARK: 11 };
-  // บ้าน: ที่ดิน 6 แปลงเรียงแถวบนสุดของแมพ (ซื้อได้คนละแปลง) พื้นไม้ เจ้าของวาง/เก็บเฟอร์นิเจอร์ได้ คนอื่นเดินเข้าชมได้
+  const T = { GRASS: 0, WATER: 1, TREE: 2, BUILD: 3, PATH: 4, FENCE: 5, SAND: 6, SHOP: 7, FLOOR: 8, FURN: 9, BRIDGE: 10, LANDMARK: 11, WALL: 12, VOID: 13 };
+  // บ้าน (ระบบเดิม): ที่ดิน 6 แปลงแถวบนสุดของแมพ ตอนนี้เลิกใช้แล้ว เหลือไว้ให้ server ย้ายข้อมูลเก่าเข้าบ้านหลังใหญ่ (ดู HOUSE ด้านล่าง)
   const HOUSING = { price: 400, refund: 0.7, y0: 2, y1: 5, w: 6, plots: [2, 9, 16, 23, 30, 37] };
   const plotAt = (tx, ty) => {
     if (ty < HOUSING.y0 || ty > HOUSING.y1) return -1;
     for (let i = 0; i < HOUSING.plots.length; i++) if (tx >= HOUSING.plots[i] && tx < HOUSING.plots[i] + HOUSING.w) return i;
     return -1;
   };
+  // บ้านหลังใหญ่ของทุกคน: แมพแยก (ฉาก) ใช้พิกัดช่วงเดียวกับแมพเมือง กรอบนอกรวมผนัง: ผนังบน 2 แถว ผนังซ้าย/ขวา/ล่าง 1 ช่อง ประตูอยู่ผนังล่าง
+  const HOUSE = { x0: 20, y0: 14, x1: 43, y1: 31, door: [31, 32] };
+  const houseInside = (x, y) => x > HOUSE.x0 && x < HOUSE.x1 && y >= HOUSE.y0 + 2 && y < HOUSE.y1; // ช่องพื้นที่วางของได้
+  const houseKeep = (x, y) => y === HOUSE.y1 - 1 && HOUSE.door.includes(x); // ช่องหน้าประตู เว้นว่างไว้ ไม่ให้วางของปิดทางออก
+  const HOUSE_SPAWN = { x: HOUSE.door[1] * 32, y: (HOUSE.y1 - 0.5) * 32 };  // จุดเกิดตอนเข้าบ้าน (กลางประตู ด้านใน)
+  function makeHouseMap() {
+    const m = Array.from({ length: H }, () => new Array(W).fill(T.VOID));
+    for (let y = HOUSE.y0; y <= HOUSE.y1; y++) for (let x = HOUSE.x0; x <= HOUSE.x1; x++) m[y][x] = houseInside(x, y) ? T.FLOOR : T.WALL;
+    for (const x of HOUSE.door) m[HOUSE.y1][x] = T.PATH; // ช่องประตู เดินออกได้
+    return m;
+  }
+  const houseScore = items => { let value = 0, count = 0; for (const f of Object.values(items)) if (FURN[f]) { value += FURN[f].price; count++; } return { value, count }; }; // คะแนนลีดเดอร์บอร์ด: มูลค่า (ตามราคาร้าน) และจำนวนชิ้น
   const plotSignAt = (tx, ty) => ty === HOUSING.y0 - 1 ? plotAt(tx, HOUSING.y0) : -1; // ป้ายหน้าที่ดิน (แถวเหนือพื้นไม้)
   // เฟอร์นิเจอร์: solid = เดินผ่านไม่ได้, seat = นั่งได้, flat = พรมปูพื้น, light = ให้แสงตอนกลางคืน
   const FURN_SELL = 0.35; // ร้านเฟอร์นิเจอร์รับซื้อคืนกี่เปอร์เซ็นต์ของราคาซื้อ (ตั้งต่ำไว้ให้เป็นของตกแต่ง ไม่ใช่ช่องทางทำเงิน)
@@ -647,7 +659,6 @@
     road(PLAZA.x0, PLAZA.y0, PLAZA.x1, PLAZA.y1); // ลานรวมพลกลางหมู่บ้าน (กองไฟ + ที่นั่ง)
     road(14, 30, 19, 37);                         // ลานดูหนังกลางแปลง
     road(2, HOUSING.y1 + 1, 42, HOUSING.y1 + 1); road(23, HOUSING.y1 + 1, 24, 21); // ทางหน้าย่านบ้านและทางลงมาต่อถนนหลัก
-    for (const x0 of HOUSING.plots) for (let y = HOUSING.y0; y <= HOUSING.y1; y++) for (let x = x0; x < x0 + HOUSING.w; x++) set(x, y, T.FLOOR); // พื้นไม้ของที่ดิน
     // รั้ว + ประตู
     fence(FARM.x0 - 1, FARM.y0 - 1, FARM.x1 + 1, FARM.y1 + 1); set(13, 18, T.PATH); set(14, 18, T.PATH); set(22, 12, T.PATH); set(22, 13, T.PATH); // ประตูสวน: กลางล่าง + กลางขวา
     for (const P of Object.values(PENS)) { fence(P.x0 - 1, P.y0 - 1, P.x1 + 1, P.y1 + 1); for (const [x, y] of P.gate) set(x, y, T.PATH); }
@@ -706,7 +717,7 @@
   function solid(m, tx, ty) {
     if (tx < 0 || ty < 0 || tx >= W || ty >= H) return true;
     const t = m[ty][tx];
-    return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN || t === T.LANDMARK;
+    return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN || t === T.LANDMARK || t === T.WALL || t === T.VOID;
   }
   function blockedAt(m, x, y) {
     const r = 8;
@@ -723,7 +734,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_SPAWN, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

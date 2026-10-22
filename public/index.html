@@ -233,6 +233,8 @@
   }
   #cinFrame iframe { width:100%; aspect-ratio:16/9; border:0; border-radius:8px; background:#000; display:block; margin-bottom:8px; }
   #cinFrame:empty { display:none; }
+  #houseExit { position:fixed; left:50%; transform:translateX(-50%); top:calc(60px + var(--sat,0px)); z-index:6; box-shadow:0 2px 8px rgba(0,0,0,.35); }
+  body.touch #houseExit { top:calc(54px + var(--sat,0px)); }
   #build { position:fixed; left:50%; transform:translateX(-50%); bottom:84px; z-index:6; max-width:min(96vw,640px); text-align:center; }
   #build .bhint { font-size:13px; margin-bottom:6px; }
   #build .bitems { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
@@ -374,7 +376,8 @@
       <button class="btn small" id="bookBtn" data-lbl="สมุด" title="สมุด" aria-label="สมุดรวบรวม">📖</button>
       <button class="btn small" id="achBtn" data-lbl="ฉายา" title="ฉายา &amp; ความสำเร็จ" aria-label="ฉายาและความสำเร็จ">🏅</button>
       <button class="btn small" id="myStatusBtn" data-lbl="สถานะ" title="ตั้งสถานะ" aria-label="ตั้งสถานะ">💭</button>
-      <button class="btn small" id="houseBtn" data-lbl="บ้าน" title="ตกแต่งบ้าน (H)" aria-label="ตกแต่งบ้าน">🏠</button>
+      <button class="btn small" id="houseBtn" data-lbl="บ้านฉัน" title="เข้าบ้านตัวเอง (H)" aria-label="เข้าบ้านตัวเอง">🏠</button>
+      <button class="btn small" id="friendsBtn" data-lbl="บ้านเพื่อน" title="บ้านเพื่อน (ลีดเดอร์บอร์ดบ้านตกแต่ง)" aria-label="บ้านเพื่อน">🏘️</button>
     </div>
     <div class="mtitle">🏘️ เมือง</div>
     <div class="mgrid">
@@ -409,6 +412,7 @@
 <div id="hotbar" class="panel hidden"></div>
 <div id="picker" class="panel hidden"></div>
 <div id="build" class="panel hidden"></div>
+<button class="btn small hidden" id="houseExit">🚪 ออกจากบ้าน</button>
 <div id="chat" class="hidden"><div id="chatHist" class="hidden"></div><div id="chatLog"></div><input id="chatIn" class="hidden" maxlength="80" enterkeyhint="send" placeholder="พิมพ์ข้อความ แล้วกด Enter"></div>
 <div id="toast" class="panel"></div>
 <div id="shop" class="hidden"><div class="panel">
@@ -478,7 +482,7 @@
   <div id="adminBody"></div>
 </div></div>
 <div id="plots" class="hidden"><div class="panel">
-  <h2><span>🏠 ที่ดินในหมู่บ้าน</span> <button class="btn small" id="plotsClose">ปิด</button></h2>
+  <h2><span>🏘️ บ้านเพื่อน • อันดับตกแต่ง</span> <button class="btn small" id="plotsClose">ปิด</button></h2>
   <div id="plotsBody"></div>
 </div></div>
 <div id="ask" class="hidden"><div class="panel"><div id="askText"></div><div class="center"><button class="btn small muted" id="askNo">ยกเลิก</button> <button class="btn small" id="askYes">ยืนยัน</button></div></div></div>

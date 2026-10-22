@@ -33,7 +33,6 @@ const pets = new Map(); // สัตว์เลี้ยงประกอบ�
 const players = new Map(), animals = new Map(), npcs = new Map(); // npcs = ชาวเมือง NPC (ไม่นับเป็นผู้เล่น)
 let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, hunger = 80;
 const furn = new Map();               // เฟอร์นิเจอร์ในบ้านทุกหลัง: "x,y" -> { x, y, f }
-let plotOwners = [];                  // ชื่อเจ้าของที่ดินแต่ละแปลง (null = ว่าง)
 let townLog = [], chestSt = { coin: 0, dead: {} }, townTab = 'log';
 let orderSt = { lock: 0, level: 0, fee: 0.05, earnLeft: 0, list: [] }; // กระดานใบสั่งซื้อ
 let orderForm = { item: 'crop_carrot', qty: 10, perUnit: 0 };          // ฟอร์มตั้งใบสั่งซื้อฝั่งผู้เล่น
@@ -101,11 +100,10 @@ function handle(m) {
   switch (m.t) {
     case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
     case 'w':
-      lastHeld = null; joined = true; myId = m.id; inv = m.inv; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
+      resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
       dur = m.dur || {}; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
       if (m.trees) applyTrees(m.trees);
-      furn.clear(); plotOwners = (m.house && m.house.plots) || [];
-      for (const [x, y, f] of (m.house ? m.house.items : [])) setFurn(x, y, f);
+      furn.clear();
       players.clear();
       m.players.forEach(p => players.set(p.id, mkPlayer(p)));
       npcs.clear(); (m.npcs || []).forEach(n => npcs.set(n.id, mkPlayer(n)));
@@ -130,11 +128,11 @@ function handle(m) {
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
     case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.cp = null; if (p === me) refreshOpen(); } break; }
     case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
-    case 'tree': if (MAP[m.y]) { if (m.on) { if (MAP[m.y][m.x] === T.GRASS) MAP[m.y][m.x] = T.TREE; } else if (isChoppable(MAP, m.x, m.y)) MAP[m.y][m.x] = T.GRASS; } break;
+    case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; } else if (isChoppable(tm, m.x, m.y)) tm[m.y][m.x] = T.GRASS; } break; }
     case 'hun': setHunger(m.v); break;
     case 'rtc': onRtc(m.from, m.d); break;
-    case 'p+': players.set(m.id, mkPlayer(m)); updateOnline(); addChat('', `${m.name} เข้ามาในฟาร์ม 👋`, true); break;
-    case 'p-': { const p = players.get(m.id); if (p) addChat('', `${p.name} ออกไปแล้ว`, true); players.delete(m.id); closePeer(m.id); updateOnline(); break; }
+    case 'p+': players.set(m.id, mkPlayer(m)); updateOnline(); if (!m.quiet) addChat('', `${m.name} เข้ามาในฟาร์ม 👋`, true); break;
+    case 'p-': { const p = players.get(m.id); if (p && !m.quiet) addChat('', `${p.name} ออกไปแล้ว`, true); players.delete(m.id); closePeer(m.id); updateOnline(); break; }
     case 's': {
       for (const [id, x, y, d, fs, fx, fy, sit, bt] of m.p) {
         const p = players.get(id); if (!p) continue;
@@ -203,7 +201,8 @@ function handle(m) {
     case 'arcpts': arcSt = m.arc; if (hubShown()) renderHub(); break;
     case 'lb': lbSt = m; if (hubShown()) renderHub(); break;
     case 'town': openTown(m.w === 'chest' ? 'chest' : m.w === 'atm' ? 'bank' : m.w === 'board' ? 'order' : 'log'); break;
-    case 'plot': plotOwners[m.i] = m.owner; if (plotsShown()) renderPlots(); if (build.on && myPlot() < 0) { build.on = false; renderBuild(); } break;
+    case 'scene': applyScene(m); break;
+    case 'hboard': hboard = m; if (plotsShown()) renderPlots(); break;
   }
 }
 
@@ -570,12 +569,43 @@ function setFurn(x, y, f) {
   if (f && FURN[f]) { furn.set(k, { x, y, f }); MAP[y][x] = FURN[f].solid ? T.FURN : T.FLOOR; }
   else { furn.delete(k); if (MAP[y][x] === T.FURN) MAP[y][x] = T.FLOOR; }
 }
-const myPlot = () => (me ? plotOwners.indexOf(me.name) : -1);
 const furnKeys = () => Object.keys(inv).filter(k => k.startsWith('furn_') && FURN[k.slice(5)]);
+// ---------- บ้านหลังใหญ่: แมพแยก (ฉาก) ----------
+// ตอนอยู่ในบ้าน MAP ถูกสลับเป็นแมพบ้านชั่วคราว (เก็บแถวของแมพเมืองไว้ใน townRows) ของเมืองที่มาใหม่ระหว่างนั้น (ต้นไม้/โครงการ) แก้ที่ tmap()
+let scene = null, houseInfo = null, townRows = null, townBase = null, townBaseHi = null, townMini = null, townDirty = false, hboard = null;
+const tmap = () => (scene ? townRows : MAP);
+const inMyHouse = () => !!scene && !!houseInfo && houseInfo.mine;
+const setSceneRows = rows => { for (let y = 0; y < H; y++) MAP[y] = rows[y]; };
+function resetScene() { // กลับไปแมพเมืองฝั่งเว็บ (ตอนเซิร์ฟเวอร์ส่งฉากเมือง หรือเข้าเกมใหม่)
+  if (!scene) return;
+  setSceneRows(townRows); furn.clear(); scene = null; houseInfo = null; build.on = false;
+  if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; } else { base = townBase; baseHi = townBaseHi; miniBase = townMini; }
+  townRows = townBase = townBaseHi = townMini = null;
+}
+function applyScene(m) {
+  walk = null; fg = null; $('fgauge').classList.add('hidden'); hidePicker();
+  if (m.sc) {
+    if (!scene) { townRows = MAP.slice(); townBase = base; townBaseHi = baseHi; townMini = miniBase; }
+    setSceneRows(Shared.makeHouseMap()); furn.clear();
+    for (const [x, y, f] of m.items || []) setFurn(x, y, f);
+    scene = m.sc; houseInfo = { owner: m.owner, mine: !!m.mine }; build.on = false;
+    base = buildHouseBase(); miniBase = makeMiniBase();
+  } else resetScene();
+  const old = me; players.clear();
+  for (const q of m.players) { if (q.id === myId) { old.x = old.tx = m.x; old.y = old.ty = m.y; old.sit = false; old.fs = 0; players.set(myId, old); } else players.set(q.id, mkPlayer(q)); }
+  me = players.get(myId); updateOnline(); updateHouseUi(); renderBuild(); closePlots();
+}
+function updateHouseUi() {
+  $('houseExit').classList.toggle('hidden', !scene);
+  $('houseExit').textContent = '🚪 ออกจากบ้าน' + (scene && !houseInfo.mine ? ' (บ้านของ ' + houseInfo.owner + ')' : '');
+  $('houseBtn').dataset.lbl = inMyHouse() ? 'ตกแต่ง' : 'บ้านฉัน';
+  $('houseBtn').title = inMyHouse() ? 'โหมดตกแต่งบ้าน (H)' : 'เข้าบ้านตัวเอง (H)';
+}
+const enterHouse = who => send({ t: 'house', a: 'enter', who: who || '' });
+const homeAction = () => { if (inMyHouse()) toggleBuild(); else enterHouse(); }; // อยู่ในบ้านตัวเอง = เปิด/ปิดโหมดตกแต่ง • ที่อื่น = เข้าบ้านตัวเอง
 function toggleBuild(on) {
   if (on === undefined) on = !build.on;
-  if (on && myPlot() < 0) { openPlots(); return; }
-  if (false) { toast(`🏠 ยังไม่มีบ้าน — กดที่ป้าย "ที่ดินว่าง" แถวบนสุดของแมพเพื่อซื้อ (🪙${HOUSING.price})`); on = false; }
+  if (on && !inMyHouse()) { enterHouse(); return; }
   build.on = on; build.erase = false;
   if (on && !build.sel) build.sel = (furnKeys()[0] || '').slice(5) || null;
   renderBuild();
@@ -586,42 +616,37 @@ function renderBuild() {
   if (!build.on) return;
   const ks = furnKeys();
   if (build.sel && !(inv['furn_' + build.sel] > 0)) build.sel = (ks[0] || '').slice(5) || null;
-  el.innerHTML = `<div class="bhint">🏠 โหมดตกแต่งบ้าน — ${build.erase ? 'แตะของในบ้านเพื่อเก็บคืนเข้ากระเป๋า' : build.sel ? 'แตะช่องพื้นไม้เพื่อวางของ' : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ริมถนนหลัก)'}</div><div class="bitems">`
+  el.innerHTML = `<div class="bhint">🏠 โหมดตกแต่งบ้าน — ${build.erase ? 'แตะของในบ้านเพื่อเก็บคืนเข้ากระเป๋า' : build.sel ? 'แตะช่องพื้นไม้เพื่อวางของ (เดินเข้าไปใกล้ๆ ได้ไกลสุด 8 ช่อง)' : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ริมถนนหลัก)'}</div><div class="bitems">`
     + ks.map(k => { const f = k.slice(5); return `<button class="btn small${!build.erase && build.sel === f ? ' on' : ''}" data-bf="${f}" title="${FURN[f].name}">${FURN[f].emoji} ×${inv[k]}</button>`; }).join('')
-    + `<button class="btn small${build.erase ? ' on' : ''}" data-erase="1">🧹 เก็บคืน</button><button class="btn small muted" data-bleave="1">🏷️ คืนที่ดิน</button><button class="btn small muted" data-bexit="1">✖ ออก</button></div>`;
+    + `<button class="btn small${build.erase ? ' on' : ''}" data-erase="1">🧹 เก็บคืน</button><button class="btn small muted" data-bexit="1">✖ ออก</button></div>`;
   el.querySelectorAll('[data-bf]').forEach(b => b.onclick = () => { build.sel = b.dataset.bf; build.erase = false; playSfx('click'); renderBuild(); });
   el.querySelector('[data-erase]').onclick = () => { build.erase = !build.erase; playSfx('click'); renderBuild(); };
   el.querySelector('[data-bexit]').onclick = () => toggleBuild(false);
-  el.querySelector('[data-bleave]').onclick = () => ask(`คืนที่ดิน?\nเฟอร์นิเจอร์ทั้งหมดจะกลับเข้ากระเป๋า และได้เงินคืน 🪙${Math.floor(HOUSING.price * HOUSING.refund)} (70%)`, () => { send({ t: 'house', a: 'leave' }); toggleBuild(false); });
 }
-$('houseBtn').onclick = () => toggleBuild();
+$('houseBtn').onclick = homeAction;
+$('houseExit').onclick = () => send({ t: 'house', a: 'exit' });
+// บ้านเพื่อน: ลีดเดอร์บอร์ดเรียงตามมูลค่าเฟอร์นิเจอร์ในบ้าน (ราคาร้าน) แล้วตามจำนวนชิ้น • กดชื่อเพื่อเข้าไปเยี่ยม
 const plotsShown = () => !$('plots').classList.contains('hidden');
-function openPlots() { $('plots').classList.remove('hidden'); renderPlots(); }
+function openPlots() { $('plots').classList.remove('hidden'); send({ t: 'house', a: 'board' }); renderPlots(); }
 function closePlots() { $('plots').classList.add('hidden'); }
 function renderPlots() {
-  const el = $('plotsBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), mine = myPlot(), coin = inv.coin || 0;
-  let h = `<p style="font-size:13px;opacity:.75;margin:0 0 8px">คนละ 1 แปลง พื้นไม้ ${HOUSING.w}×${HOUSING.y1 - HOUSING.y0 + 1} ช่อง ตกแต่งด้วยเฟอร์นิเจอร์ได้ คืนที่ดินได้ 70% • ที่ดินอยู่แถวบนสุดของแมพ (เหนือถนนฝั่งเหนือ)</p>`;
-  h += HOUSING.plots.map((_, i) => {
-    const owner = plotOwners[i], isMine = owner && me && owner === me.name;
-    return `<div class="row"><span>🏠 แปลงที่ ${i + 1}<br><small>${owner ? (isMine ? '✅ ของคุณ' : 'บ้านของ ' + esc(owner)) : '🪙' + HOUSING.price + ' • ว่าง'}</small></span><span>`
-      + (!owner ? `<button class="btn small" data-buyplot="${i}" ${mine >= 0 || coin < HOUSING.price ? 'disabled' : ''}>${mine >= 0 ? 'มีบ้านแล้ว' : coin < HOUSING.price ? 'เหรียญไม่พอ' : 'ซื้อ'}</button>` : isMine ? '<button class="btn small" data-buildnow="1">🛠️ ตกแต่ง</button>' : '') + '</span></div>';
-  }).join('');
+  const el = $('plotsBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  let h = `<p style="font-size:13px;opacity:.75;margin:0 0 8px">จัดอันดับตามมูลค่าเฟอร์นิเจอร์ในบ้าน (ตามราคาร้าน) และจำนวนชิ้นที่ตกแต่ง • กดที่ชื่อเพื่อเข้าไปเยี่ยมบ้านหลังนั้น</p>`
+    + `<div class="center" style="margin:0 0 8px"><button class="btn small" data-homego="1">🏠 เข้าบ้านตัวเอง</button></div>`;
+  if (!hboard) h += '<p class="center" style="opacity:.6">กำลังโหลด…</p>';
+  else if (!hboard.list.length) h += '<p class="center" style="opacity:.6">ยังไม่มีใครตกแต่งบ้าน — เป็นคนแรกเลย! 🛋️</p>';
+  else h += hboard.list.map((r, i) => `<div class="row"><span>${['🥇', '🥈', '🥉'][i] || '<small>' + (i + 1) + '.</small>'} <a href="#" data-visit="${esc(r.n)}" style="color:inherit;font-weight:800;text-decoration:underline">${esc(r.n)}</a>${r.me ? ' <small>(ฉัน)</small>' : ''}${r.on ? ' <small title="ออนไลน์">🟢</small>' : ''}</span><span>🪙 ${r.v.toLocaleString()} • 🛋️ ${r.c} ชิ้น</span></div>`).join('');
   el.innerHTML = h;
-  el.querySelectorAll('[data-buyplot]').forEach(b => b.onclick = () => ask(`ซื้อที่ดินแปลงที่ ${+b.dataset.buyplot + 1} ราคา 🪙${HOUSING.price} ?\n(ซื้อได้คนละ 1 แปลง คืนที่ดินได้ 70%)`, () => send({ t: 'house', a: 'buy', plot: +b.dataset.buyplot })));
-  el.querySelectorAll('[data-buildnow]').forEach(b => b.onclick = () => { closePlots(); toggleBuild(true); });
+  el.querySelector('[data-homego]').onclick = () => { closePlots(); enterHouse(); };
+  el.querySelectorAll('[data-visit]').forEach(a => a.onclick = e => { e.preventDefault(); closePlots(); enterHouse(a.dataset.visit); });
 }
 $('plotsClose').onclick = closePlots;
 $('plots').addEventListener('pointerdown', e => { if (e.target === $('plots')) closePlots(); });
-function houseClick(tx, ty) { // คืน true ถ้าการแตะนี้ถูกใช้กับระบบบ้านแล้ว
-  const si = plotSignAt(tx, ty), pi = plotAt(tx, ty);
-  if (si >= 0) {
-    const owner = plotOwners[si];
-    if (!owner) openPlots();
-    else if (si === myPlot()) toggleBuild();
-    else toast(`🏠 บ้านของ ${owner} — เดินเข้าไปชมได้เลย`);
-    return true;
-  }
-  if (build.on && pi >= 0 && pi === myPlot()) {
+$('friendsBtn').onclick = openPlots;
+function houseClick(tx, ty) { // คืน true ถ้าการแตะนี้ถูกใช้กับระบบบ้านแล้ว (ในบ้านเท่านั้น)
+  if (!scene) return false;
+  if (inMyHouse() && build.on) {
+    if (!Shared.houseInside(tx, ty)) { toast('วางได้เฉพาะบนพื้นบ้าน'); return true; }
     const cur = furn.get(tx + ',' + ty);
     if (build.erase || (cur && !build.sel)) { if (cur) send({ t: 'house', a: 'remove', x: tx, y: ty }); else toast('ช่องนี้ไม่มีของให้เก็บ'); }
     else if (cur) toast('ช่องนี้มีของอยู่แล้ว (กด 🧹 เก็บคืน เพื่อเก็บออก)');
@@ -997,7 +1022,7 @@ function renderShop() {
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน หรือใช้กระดานใบสั่งซื้อ 📋 • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ (ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';
   }
   if (shopKind === 'food' && !cookTab) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">🍖 ความอิ่มลดลงเรื่อยๆ ขณะออนไลน์ ถึง 0 จะใช้เครื่องมือไม่ได้ • ผลผลิตของตัวเองก็กินได้ (อิ่มน้อยกว่า) ในกระเป๋า 🎒</p>';
-  if (shopKind === 'furn') h += `<p style="font-size:12px;opacity:.65;margin:8px 0 0">🏠 ซื้อที่ดินได้ที่ป้าย "ที่ดินว่าง" แถวบนสุดของแมพ (🪙${HOUSING.price}) แล้วกดปุ่ม 🏠 เพื่อวางของ • เก้าอี้/โซฟานั่งได้ • โคมไฟสว่างตอนกลางคืน</p>`;
+  if (shopKind === 'furn') h += `<p style="font-size:12px;opacity:.65;margin:8px 0 0">🏠 ทุกคนมีบ้านหลังใหญ่เป็นของตัวเอง เข้าได้จากเมนู ☰ → 🏠 บ้านฉัน แล้วกดปุ่ม 🏠 อีกครั้ง (หรือ H) เพื่อวางของ • มูลค่าและจำนวนของที่ตกแต่งจะขึ้นอันดับใน 🏘️ บ้านเพื่อน • เก้าอี้/โซฟานั่งได้ • โคมไฟสว่างตอนกลางคืน</p>`;
   if (shopKind === 'wood') {
     h += '<div class="sec">🔨 โรงงานช่างไม้ (ประดิษฐ์ของจากไม้ที่หามาได้)</div>';
     for (const r of CRAFT) {
@@ -1065,7 +1090,7 @@ addEventListener('keydown', e => {
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
   if (c === 'KeyB' || c === 'KeyI') { $('bagBtn').onclick(); return; }
   if (c === 'KeyC') { $('statBtn').onclick(); return; }
-  if (c === 'KeyH') { toggleBuild(); return; }
+  if (c === 'KeyH') { homeAction(); return; }
   if (c === 'KeyL') { if (inv.lamp > 0) $('lampBtn').onclick(); return; }
   if (c === 'KeyM') { setMini(miniState === 'off' ? 'small' : miniState === 'small' ? 'big' : 'off'); return; }
   const dg = /^(?:Digit|Numpad)([1-9])$/.exec(c);
@@ -1098,7 +1123,8 @@ const inReach = (tx, ty) => { const [px, py] = myTile(); return cheb(tx, ty, px,
 function act(tx, ty) {
   const now = performance.now();
   if (!me || chatFocus || modalOpen() || now - lastAct < 200) return;
-  const o = { t: 'act', tool: toolId() }; if (o.tool === 'rod') o.bait = selBait;
+  if (scene && tx === undefined) return; // ในบ้านใช้เครื่องมือฟาร์มไม่ได้ (แตะที่นั่งเพื่อนั่งอย่างเดียว)
+  const o = { t: 'act', tool: scene ? '' : toolId() }; if (o.tool === 'rod') o.bait = selBait;
   if (tx !== undefined) {
     if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
     if (!inReach(tx, ty)) { toast('ไกลเกินไป เดินเข้าไปใกล้ๆ ก่อน'); return; }
@@ -1114,7 +1140,7 @@ function act(tx, ty) {
 const solidTile = (tx, ty) => {
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return true;
   const t = MAP[ty][tx];
-  return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN || t === T.LANDMARK;
+  return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN || t === T.LANDMARK || t === T.WALL || t === T.VOID;
 };
 function findPath(sx, sy, goal) { // BFS แบบ 4 ทิศ คืนรายการช่องที่ต้องเดิน (ไม่รวมช่องเริ่ม)
   const prev = new Map(), q = [[sx, sy]], key = (x, y) => y * W + x;
@@ -1136,6 +1162,7 @@ function findPath(sx, sy, goal) { // BFS แบบ 4 ทิศ คืนรา�
 }
 const animalAt = (tx, ty) => { for (const a of animals.values()) if (Math.hypot(a.x - (tx + 0.5) * TS, a.y - (ty + 0.5) * TS) < 40) return a; return null; };
 function interactive(tx, ty) { // ช่องนี้มีอะไรให้ทำด้วยเครื่องมือที่ถืออยู่ไหม
+  if (scene) { const fu = furn.get(tx + ',' + ty); return !!(fu && FURN[fu.f].seat); } // ในบ้านมีแค่ที่นั่งให้แตะ
   const id = toolId(), t = MAP[ty][tx], f = farm[tx + ',' + ty];
   if (t === T.SHOP || animalAt(tx, ty) || cinemaAt(tx, ty)) return true;
   if (seatAt(tx, ty)) return true;
@@ -1153,7 +1180,7 @@ const hubSignAt = (tx, ty) => !!hubSign && tx >= hubSign.x0 && tx <= hubSign.x1 
 function onTileClick(tx, ty) {
   if (!me || chatFocus || modalOpen() || tx < 0 || ty < 0 || tx >= W || ty >= H) return;
   if (houseClick(tx, ty)) { stopWalk(); return; }
-  if (hubSignAt(tx, ty)) { stopWalk(); openHub(); return; } // กดป้าย Arcade Hub = เปิดแต้ม/อันดับ
+  if (!scene && hubSignAt(tx, ty)) { stopWalk(); openHub(); return; } // กดป้าย Arcade Hub = เปิดแต้ม/อันดับ
   const [px, py] = myTile();
   if (interactive(tx, ty)) {
     const onWater = MAP[ty][tx] === T.WATER, rod = (toolId() === 'rod' || toolId() === 'water') && onWater; // เบ็ด/บัวรดน้ำกับน้ำ ต้องยืนริมสระ (ไม่เกิน 2 ช่อง)
@@ -2032,6 +2059,46 @@ function drawStructures(g, gh) {
     for (let x = xa, i = 0; x < xb - 8; x += 12, i++) { const sag = Math.round(Math.sin((x - xa) / (xb - xa) * Math.PI) * 7); g.fillStyle = '#3a2418'; g.fillRect(x, y0 + sag, 12, 1); g.fillStyle = cols[i % cols.length]; g.fillRect(x + 1, y0 + sag + 1, 9, 3); g.fillRect(x + 2, y0 + sag + 4, 7, 2); g.fillRect(x + 4, y0 + sag + 6, 3, 2); }
   }
 }
+// พื้นและผนังข้างในบ้านหลังใหญ่ (ภาพพิกเซลที่ 16 px ต่อช่อง ขยาย 2 เท่าเหมือนพื้นเมือง) • ฟังก์ชันนี้สลับใช้แทน buildBase() ตอนอยู่ในบ้าน
+function buildHouseBase() {
+  const U = PixelArt.U, HS = Shared.HOUSE, oc = document.createElement('canvas'); oc.width = W * U; oc.height = H * U;
+  const g = oc.getContext('2d'), R = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+  const hh = (x, y, sd = 0) => { let h = (x * 374761393 + y * 668265263 + sd * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+  R('#17110d', 0, 0, oc.width, oc.height);
+  const fx0 = (HS.x0 + 1) * U, fy0 = (HS.y0 + 2) * U, fw = (HS.x1 - HS.x0 - 1) * U, fh = (HS.y1 - HS.y0 - 2) * U;
+  const PL = ['#c99a5b', '#c4944f', '#d1a265', '#bf8f50'];
+  for (let r = 0, ry = fy0; ry < fy0 + fh; r++, ry += 8) { // พื้นไม้กระดาน แถวละ 8 px ยาวสลับรอยต่อ
+    let px = fx0 - ((r * 11) % 24);
+    while (px < fx0 + fw) {
+      const x = Math.max(px, fx0), w = Math.min(px + 24, fx0 + fw) - x;
+      if (w > 0) { R(PL[Math.floor(hh(px, ry) * 4)], x, ry, w, 8); R('rgba(255,235,190,.18)', x, ry, w, 1); R('#a9794a', x, ry + 7, w, 1); if (px >= fx0) R('#a9794a', px, ry, 1, 8); }
+      px += 24;
+    }
+  }
+  const wallTop = HS.y0 * U, wallH = 2 * U;
+  R('#e8d9b8', HS.x0 * U, wallTop, (HS.x1 - HS.x0 + 1) * U, wallH); // ผนังบน: วอลเปเปอร์ลายขีด + ราวไม้ + บัวพื้น
+  for (let x = HS.x0 * U; x < (HS.x1 + 1) * U; x += 8) R('#dccaa0', x, wallTop, 1, U + 2);
+  R('#c98b4a', HS.x0 * U, wallTop + U + 2, (HS.x1 - HS.x0 + 1) * U, 2); R('#a0692f', HS.x0 * U, wallTop + U + 4, (HS.x1 - HS.x0 + 1) * U, U - 6); R('#7a4a24', HS.x0 * U, wallTop + wallH - 2, (HS.x1 - HS.x0 + 1) * U, 2);
+  for (const wx of [HS.x0 + 4, Math.floor((HS.x0 + HS.x1) / 2) - 1, HS.x1 - 6]) { // หน้าต่าง 3 บาน
+    const x = wx * U, y = wallTop + 3;
+    R('#5a3a1c', x - 1, y - 1, 34, 18); R('#a8dcf2', x + 1, y + 1, 30, 14); R('#d6f0fb', x + 1, y + 1, 30, 4); R('#5a3a1c', x + 15, y + 1, 2, 14); R('#5a3a1c', x - 3, y + 15, 38, 3); R('#c98b4a', x - 3, y + 15, 38, 1);
+  }
+  const sideC = ['#b87a3d', '#a0692f'];
+  for (let y = HS.y0 + 2; y <= HS.y1; y++) for (const x of [HS.x0, HS.x1]) { // ผนังซ้าย/ขวา
+    R(sideC[0], x * U, y * U, U, U); R(sideC[1], x * U + (x === HS.x0 ? U - 3 : 0), y * U, 3, U); R('#c98b4a', x * U + (x === HS.x0 ? 0 : U - 2), y * U, 2, U);
+  }
+  for (let x = HS.x0; x <= HS.x1; x++) { // ผนังล่าง + ช่องประตู
+    if (HS.door.includes(x)) { R('#2a1b14', x * U, HS.y1 * U, U, U); continue; }
+    R(sideC[0], x * U, HS.y1 * U, U, U); R(sideC[1], x * U, HS.y1 * U, U, 3); R('#c98b4a', x * U, HS.y1 * U + U - 2, U, 2);
+  }
+  const dx = HS.door[0] * U - 3, dw = HS.door.length * U + 6; // กรอบประตู + พรมเช็ดเท้าหน้าประตู
+  R('#5a3a1c', dx, HS.y1 * U - 2, 3, U + 2); R('#5a3a1c', dx + dw - 3, HS.y1 * U - 2, 3, U + 2); R('#5a3a1c', dx, HS.y1 * U - 3, dw, 3);
+  R('#8c2a22', HS.door[0] * U + 2, (HS.y1 - 1) * U + 2, HS.door.length * U - 4, U - 4); R('#e8c66a', HS.door[0] * U + 4, (HS.y1 - 1) * U + 4, HS.door.length * U - 8, 2); R('#e8c66a', HS.door[0] * U + 4, (HS.y1 - 1) * U + U - 6, HS.door.length * U - 8, 2);
+  baseHi = document.createElement('canvas'); baseHi.width = W * TS; baseHi.height = H * TS;
+  const gh = baseHi.getContext('2d'); gh.textAlign = 'center'; gh.textBaseline = 'middle';
+  PixelUI.world(gh, '🚪', (HS.door[0] + 1) * TS, HS.y1 * TS + 16, 15); // ป้ายประตูทางออก
+  return oc;
+}
 function buildBase() {
   const U = PixelArt.U, oc = document.createElement('canvas'); oc.width = W * U; oc.height = H * U;
   const g = oc.getContext('2d');
@@ -2141,9 +2208,9 @@ function checkProjects() { // โครงการไหนครบเป้�
   let changed = false;
   for (const P of Shared.PROJECTS) {
     const st = projSt.find(x => x.id === P.id);
-    if (!builtProj.has(P.id) && ((st && Shared.projectDone(P.id, st.coin)) || DEMO_STRUCTS.includes(P.id))) { builtProj.add(P.id); Shared.applyProject(MAP, P.id); changed = true; }
+    if (!builtProj.has(P.id) && ((st && Shared.projectDone(P.id, st.coin)) || DEMO_STRUCTS.includes(P.id))) { builtProj.add(P.id); Shared.applyProject(tmap(), P.id); changed = true; }
   }
-  if (changed) { base = buildBase(); miniBase = makeMiniBase(); }
+  if (changed) { if (scene) townDirty = true; else { base = buildBase(); miniBase = makeMiniBase(); } }
 }
 
 // ---------- drawing helpers ----------
@@ -2533,8 +2600,8 @@ function drawNight(dark, now) {
   lctx.globalCompositeOperation = 'destination-out'; lctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
   const hole = (x, y, r, inner) => { const g = lctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(inner, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, r, 0, 7); lctx.fill(); };
   const fx = FIRE.x * TS + 16, fy = FIRE.y * TS + 12, fr = TS * 10.5 * (1 + Math.sin(now / 130) * 0.02 + Math.sin(now / 71) * 0.015);
-  hole(fx, fy, fr, 0.3);
-  const LH = builtProj.has('lighthouse') && Shared.LIGHTHOUSE, lx = LH ? (LH.x0 + (LH.x1 - LH.x0 + 1) / 2) * TS : 0, ly = LH ? LH.y0 * TS + 39 : 0, lAng = now / 1800; // ประภาคาร: ห้องตะเกียงอยู่ใกล้ยอดหอ ลำแสงหมุนรอบ ~11 วินาที
+  if (!scene) hole(fx, fy, fr, 0.3);
+  const LH = !scene && builtProj.has('lighthouse') && Shared.LIGHTHOUSE, lx = LH ? (LH.x0 + (LH.x1 - LH.x0 + 1) / 2) * TS : 0, ly = LH ? LH.y0 * TS + 39 : 0, lAng = now / 1800; // ประภาคาร: ห้องตะเกียงอยู่ใกล้ยอดหอ ลำแสงหมุนรอบ ~11 วินาที
   const beam = (r, half, ang, a0) => { const g = lctx.createRadialGradient(lx, ly, 0, lx, ly, r); g.addColorStop(0, `rgba(0,0,0,${a0})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(lx, ly); lctx.arc(lx, ly, r, ang - half, ang + half); lctx.closePath(); lctx.fill(); };
   if (LH) { hole(lx, ly, TS * 7 * (1 + Math.sin(now / 400) * 0.02), 0.25); beam(TS * 18, 0.2, lAng, 0.95); beam(TS * 18, 0.2, lAng + Math.PI, 0.95); }
   for (const p of players.values()) if (p.lamp) hole(p.x, p.y - 4, TS * 5, 0.82);
@@ -2548,7 +2615,7 @@ function drawNight(dark, now) {
     wg(lx, ly, TS * 6, 0.4 * Math.min(1, dark * 1.3)); ctx.beginPath(); ctx.arc(lx, ly, TS * 6, 0, 7); ctx.fill();
     for (const a of [lAng, lAng + Math.PI]) { wg(lx, ly, TS * 18, 0.22 * Math.min(1, dark * 1.3)); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.arc(lx, ly, TS * 18, a - 0.2, a + 0.2); ctx.closePath(); ctx.fill(); }
   }
-  warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); for (const p of players.values()) if (p.lamp) warm(p.x, p.y - 4, TS * 5, 0.16 * Math.min(1, dark * 1.2));
+  if (!scene) warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); for (const p of players.values()) if (p.lamp) warm(p.x, p.y - 4, TS * 5, 0.16 * Math.min(1, dark * 1.2));
   ctx.globalCompositeOperation = 'source-over'; ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
@@ -2557,9 +2624,9 @@ let miniBase = makeMiniBase();
 function makeMiniBase() {
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
-  const col = { [T.GRASS]: '#7bc65a', [T.WATER]: '#4aa3df', [T.TREE]: '#3f9a3a', [T.BUILD]: '#c9a86a', [T.PATH]: '#dcbf82', [T.FENCE]: '#8b5a2b', [T.SAND]: '#efdfa4', [T.SHOP]: '#a0692f', [T.FLOOR]: '#c99a5b', [T.FURN]: '#c99a5b', [T.BRIDGE]: '#a8703a', [T.LANDMARK]: '#b0453a' };
+  const col = { [T.GRASS]: '#7bc65a', [T.WATER]: '#4aa3df', [T.TREE]: '#3f9a3a', [T.BUILD]: '#c9a86a', [T.PATH]: '#dcbf82', [T.FENCE]: '#8b5a2b', [T.SAND]: '#efdfa4', [T.SHOP]: '#a0692f', [T.FLOOR]: '#c99a5b', [T.FURN]: '#c99a5b', [T.BRIDGE]: '#a8703a', [T.LANDMARK]: '#b0453a', [T.WALL]: '#8b5a2b', [T.VOID]: '#17110d' };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { g.fillStyle = (MAP[y][x] === T.GRASS && inFarm(x, y)) ? '#8bbf5a' : col[MAP[y][x]]; g.fillRect(x, y, 1, 1); }
-  for (const b of BUILDINGS) { g.fillStyle = b.roof; g.fillRect(b.x0, b.y0, b.x1 - b.x0 + 1, 1); }
+  if (!scene) for (const b of BUILDINGS) { g.fillStyle = b.roof; g.fillRect(b.x0, b.y0, b.x1 - b.x0 + 1, 1); }
   return c;
 }
 function layoutHud() { // แผนที่อยู่มุมบนขวาสุด แถบปุ่มด้านบนเว้นที่ให้ ไม่ทับกัน • คู่มือ/แชทอยู่ใต้แถบปุ่ม
@@ -2608,8 +2675,8 @@ function drawMini(now) {
   g.imageSmoothingEnabled = false; g.drawImage(miniBase, 0, 0, cw, ch);
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = `${Math.round((big ? 15 : 11) * k)}px sans-serif`;
-  for (const b of BUILDINGS) g.fillText(b.sign, (b.x0 + b.x1 + 1) / 2 * sx, (b.y0 + b.y1 + 1) / 2 * sy + 2 * k);
-  g.fillText('🌾', 14 * sx, 12.5 * sy); g.fillText('🐄', 54 * sx, 21 * sy); g.fillText('🌊', 43 * sx, 38 * sy); g.fillText('🐖', 59.5 * sx, 11.5 * sy); g.fillText('🔥', FIRE.x * sx + sx / 2, FIRE.y * sy + sy / 2);
+  if (!scene) for (const b of BUILDINGS) g.fillText(b.sign, (b.x0 + b.x1 + 1) / 2 * sx, (b.y0 + b.y1 + 1) / 2 * sy + 2 * k);
+  if (!scene) { g.fillText('🌾', 14 * sx, 12.5 * sy); g.fillText('🐄', 54 * sx, 21 * sy); g.fillText('🌊', 43 * sx, 38 * sy); g.fillText('🐖', 59.5 * sx, 11.5 * sy); g.fillText('🔥', FIRE.x * sx + sx / 2, FIRE.y * sy + sy / 2); }
   g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 1.5 * k; g.strokeRect(camX / TS * sx, camY / TS * sy, vw / TS * sx, vh / TS * sy);
   const list = [...players.values()].sort((a, b) => (a === me) - (b === me));
   g.font = `bold ${Math.round((big ? 11 : 9) * k)}px ${FONT}`;
@@ -2748,13 +2815,13 @@ function step(now) {
   updateSpeaking(now);
 
   // กล้อง
-  const mw = W * TS, mh = H * TS;
-  camX = mw <= vw ? (mw - vw) / 2 : Math.max(0, Math.min(mw - vw, me.x - vw / 2));
-  camY = mh <= vh ? (mh - vh) / 2 : Math.max(0, Math.min(mh - vh, me.y - vh / 2));
+  const HB = scene ? Shared.HOUSE : null, bx0 = HB ? HB.x0 * TS : 0, by0 = HB ? HB.y0 * TS : 0, mw = HB ? (HB.x1 + 1 - HB.x0) * TS : W * TS, mh = HB ? (HB.y1 + 1 - HB.y0) * TS : H * TS; // ในบ้านกล้องไม่ออกนอกตัวบ้าน
+  camX = mw <= vw ? bx0 + (mw - vw) / 2 : Math.max(bx0, Math.min(bx0 + mw - vw, me.x - vw / 2));
+  camY = mh <= vh ? by0 + (mh - vh) / 2 : Math.max(by0, Math.min(by0 + mh - vh, me.y - vh / 2));
   camX = Math.round(camX); camY = Math.round(camY);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#2d4a2b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = scene ? '#17110d' : '#2d4a2b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(base, 0, 0, W * TS, H * TS);
@@ -2776,7 +2843,7 @@ function step(now) {
   ctx.rect(B.x0 * TS, B.y0 * TS, (B.x1 - B.x0 + 1) * TS, (B.y1 - B.y0 + 1) * TS);
   ctx.rect(I.x0 * TS, I.y0 * TS, (I.x1 - I.x0 + 1) * TS, (I.y1 - I.y0 + 1) * TS);
   ctx.clip('evenodd');
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < (scene ? 0 : 6); i++) {
     const ph = i * 2.3 + 0.7, fa = now * (0.00010 + i * 0.000025) + ph, fb = now * (0.00008 + i * 0.00002) + ph * 1.7;
     const ahead = Math.cos(fa) > 0 ? 1 : -1, wag = Math.sin(now / 150 + i) > 0 ? 1 : 0; // หางกระดิกสลับไปมา
     // ใช้ 0.7·rx กับ 0.6·ry ทำให้ทุกจุดอยู่ในสระแน่นอน (0.7² + 0.6² < 1)
@@ -2808,7 +2875,7 @@ function step(now) {
     ctx.fillStyle = '#4fa048'; ctx.beginPath(); ctx.ellipse(px - rx * 0.15, py - ry * 0.2, rx * 0.5, ry * 0.4, 0, 0, Math.PI * 2); ctx.fill(); // ไฮไลต์
   }
   // ช่องฟาร์ม
-  for (const k in farm) {
+  if (!scene) for (const k in farm) {
     const [fx, fy] = k.split(',').map(Number);
     if (fx < x0 || fx > x1 || fy < y0 || fy > y1) continue;
     drawCrop(farm[k], fx * TS, fy * TS, now);
@@ -2828,39 +2895,29 @@ function step(now) {
   // ไม่วาดกรอบสี่เหลี่ยมบนพื้นแล้ว (ช่องที่ชี้/ช่องที่คลิก) — ใช้เคอร์เซอร์เมาส์เปลี่ยนเป็นรูปมือเมื่อชี้ของที่กดได้แทน
   { let cur = ''; if (mouse.active && !isTouch && mouse.tx >= 0 && mouse.ty >= 0 && mouse.tx < W && mouse.ty < H && (interactive(mouse.tx, mouse.ty) || hubSignAt(mouse.tx, mouse.ty))) cur = 'pointer'; if (canvas.style.cursor !== cur) canvas.style.cursor = cur; }
 
-  drawButterflies(now);
+  if (!scene) drawButterflies(now);
   // วาดตามลำดับ y
   const list = [];
   for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) list.push({ y: y * TS + 30, f: () => drawTree(x, y) });
-  for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
+  if (!scene) for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
   // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
-  for (const s of SEATS) if (s.x >= x0 - 1 && s.x <= x1 + 1 && s.y >= y0 - 1 && s.y <= y1 + 1) list.push({ y: s.y * TS + 12, f: () => drawSeat(s) });
-  if (FIRE.x >= x0 - 1 && FIRE.x <= x1 + 1 && FIRE.y >= y0 - 1 && FIRE.y <= y1 + 1) list.push({ y: FIRE.y * TS + 28, f: () => drawFire(now) });
+  if (!scene) for (const s of SEATS) if (s.x >= x0 - 1 && s.x <= x1 + 1 && s.y >= y0 - 1 && s.y <= y1 + 1) list.push({ y: s.y * TS + 12, f: () => drawSeat(s) });
+  if (!scene) if (FIRE.x >= x0 - 1 && FIRE.x <= x1 + 1 && FIRE.y >= y0 - 1 && FIRE.y <= y1 + 1) list.push({ y: FIRE.y * TS + 28, f: () => drawFire(now) });
   for (const o of furn.values()) {
     const d = FURN[o.f]; if (d.flat || o.x < x0 - 1 || o.x > x1 + 1 || o.y < y0 - 1 || o.y > y1 + 1) continue;
     list.push({ y: o.y * TS + (d.seat ? 12 : 28), f: () => drawFurn(o) });
   }
-  for (const [hx, hy] of Shared.BEE.hives) list.push({ y: (hy + 1) * TS - 2, f: () => drawHive(hx, hy, now) });
-  for (const key of Object.keys(Shared.PENS)) list.push({ y: (Shared.PENS[key].sign[1] + 1) * TS, f: () => drawPenSign(key) });
-  for (const c of animals.values()) list.push({ y: c.y + 8, f: () => { (c.type === 'cow' ? drawCow : c.type === 'pig' ? drawPig : ANIMAL_DRAW[c.type] || drawChicken)(c, now); animalFx(c, now, ANIMAL_TOP[c.type] || 14); hungerMark(c, now); } });
-  for (const q of pets.values()) list.push({ y: q.y + 8, f: () => drawPet(q, now) });
+  if (!scene) for (const [hx, hy] of Shared.BEE.hives) list.push({ y: (hy + 1) * TS - 2, f: () => drawHive(hx, hy, now) });
+  if (!scene) for (const key of Object.keys(Shared.PENS)) list.push({ y: (Shared.PENS[key].sign[1] + 1) * TS, f: () => drawPenSign(key) });
+  if (!scene) for (const c of animals.values()) list.push({ y: c.y + 8, f: () => { (c.type === 'cow' ? drawCow : c.type === 'pig' ? drawPig : ANIMAL_DRAW[c.type] || drawChicken)(c, now); animalFx(c, now, ANIMAL_TOP[c.type] || 14); hungerMark(c, now); } });
+  if (!scene) for (const q of pets.values()) list.push({ y: q.y + 8, f: () => drawPet(q, now) });
   for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
   for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
-  for (const n of npcs.values()) if (n.x > camX - 40 && n.x < camX + vw + 40 && n.y > camY - 60 && n.y < camY + vh + 60) list.push({ y: n.y + 12, f: () => drawPlayer(n, now) });
+  if (!scene) for (const n of npcs.values()) if (n.x > camX - 40 && n.x < camX + vw + 40 && n.y > camY - 60 && n.y < camY + vh + 60) list.push({ y: n.y + 12, f: () => drawPlayer(n, now) });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
 
-  // ป้ายหน้าที่ดิน: ที่ดินว่าง (ซื้อได้) หรือบ้านของใคร
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `bold 11px ${FONT}`;
-  HOUSING.plots.forEach((px0, i) => {
-    if (px0 + HOUSING.w < x0 || px0 > x1 || HOUSING.y0 - 1 < y0 - 1 || HOUSING.y0 - 1 > y1) return;
-    const owner = plotOwners[i], mineP = owner && me && owner === me.name;
-    const txt = owner ? `🏠 บ้านของ ${owner}` : `🏷️ ที่ดินว่าง 🪙${HOUSING.price}`;
-    const w = ctx.measureText(txt).width + 12, cx = (px0 + HOUSING.w / 2) * TS, cy = (HOUSING.y0 - 1) * TS + 16;
-    ctx.fillStyle = mineP ? 'rgba(46,160,90,.92)' : owner ? 'rgba(0,0,0,.55)' : 'rgba(214,140,30,.92)'; ctx.fillRect(cx - w / 2, cy - 9, w, 18);
-    ctx.fillStyle = '#fff'; ctx.fillText(txt, cx, cy);
-  });
   // โรงหนัง: ป้ายสถานะใต้จอ + 🍿 เหนือหัวคนที่กำลังดู
-  if (cin) {
+  if (cin && !scene) {
     const mv = cin.movie ? { name: cin.name } : null, txt = mv ? `▶ ${mv.name} • 🍿 ${cin.viewers.length} คน` : '🎬 ว่าง กดที่จอเพื่อฉายหนัง';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `bold 11px ${FONT}`;
     const w = ctx.measureText(txt).width + 12, cx = 17 * TS, cy = 35 * TS - 4;
@@ -2869,7 +2926,7 @@ function step(now) {
     for (const id of cin.viewers) { const p = players.get(id); if (p) { ctx.font = '14px sans-serif'; ctx.fillText('🍿', p.x + 14, p.y - 34); } }
   }
   // ป้าย Arcade Hub: ให้รู้ว่ากดได้ — กรอบเรืองแสงกะพริบ + ป้ายเล็ก "แตะ" ลอยเหนือป้าย + เมาส์ชี้เปลี่ยนเป็นรูปมือ
-  if (hubSign) {
+  if (hubSign && !scene) {
     const bx = hubSign.x0 * TS, by = hubSign.y0 * TS, bw = (hubSign.x1 - hubSign.x0 + 1) * TS, hov = mouse.active && hubSignAt(mouse.tx, mouse.ty), pl = 0.5 + 0.5 * Math.sin(now / 320);
     ctx.lineWidth = hov ? 3 : 2; ctx.strokeStyle = hov ? '#ffffff' : `rgba(255,226,102,${0.35 + 0.55 * pl})`; ctx.strokeRect(bx - 2, by - 4, bw + 4, 26);
     const lt = hov ? '👆 กดเลย!' : '👆 คะแนน', ly = by - 14 - (hov ? 0 : pl * 2);
@@ -2880,7 +2937,7 @@ function step(now) {
   // ป้ายสถานะเหนือตู้เกม (ว่าง / รอคู่ / กำลังเล่น)
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `bold 10px ${FONT}`;
   CABINETS.forEach((c, i) => {
-    if (!c.game || c.x < x0 - 1 || c.x > x1 + 1 || c.y < y0 - 1 || c.y > y1 + 1) return;
+    if (scene || !c.game || c.x < x0 - 1 || c.x > x1 + 1 || c.y < y0 - 1 || c.y > y1 + 1) return;
     const s = arcStatus[i]; if (!s) return;
     const uno = ['uno', 'bacc', 'bj', 'pok', 'react', 'rps'].includes(s[7]);
     const txt = s[2] === 'waiting' ? `⏳ ${s[4]}${uno ? ' ' + s[5] : ''}${s[3] ? ' 🪙' + s[3] : ''}` : s[2] === 'playing' ? (uno ? `${s[7] === 'uno' ? '🃏 กำลังเล่น' : PARTY_GAMES.has(s[7]) ? '🎮 กำลังเล่น' : '🎰 เล่นอยู่'} ${s[5]}` : `⚔️ ${s[4]} vs ${s[5]}`) : s[2] === 'over' ? '🏁 จบเกม' : '🎮 ว่าง';
@@ -2902,13 +2959,13 @@ function step(now) {
     $('fgmk').style.left = pos * 100 + '%'; $('fgauge').classList.toggle('hit', inZ);
   }
 
-  drawLighthouse(ctx, now);
+  if (!scene) drawLighthouse(ctx, now);
   // กลางวัน/กลางคืน
   const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
   const dark = daylight(hour);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  drawNight(dark, now);
-  drawGuideArrow(now);
+  drawNight(scene ? dark * 0.4 : dark, now); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
+  if (!scene) drawGuideArrow(now);
   const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);
   const icon = dark > 0.45 ? '🌙' : hour < 8 || hour >= 17 ? '🌅' : '☀️';
   const txt = `${icon} ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')}`;
