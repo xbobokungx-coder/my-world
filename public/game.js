@@ -2625,7 +2625,7 @@ function drawMini(now) {
 // ---------- main loop ----------
 let last = performance.now();
 // ประภาคารกลางน้ำ: วาดเป็นชั้นบนสุดของโลก (ทับปลา ใบบัว และประกายน้ำ) • ฐานเป็นเกาะทราย
-function drawLighthouse(g) {
+function drawLighthouse(g, now) {
   if (!builtProj.has('lighthouse')) return;
   const L = Shared.LIGHTHOUSE, bx = L.x0 * TS, by = L.y0 * TS, w = (L.x1 - L.x0 + 1) * TS, h = (L.y1 - L.y0 + 1) * TS, cx = bx + w / 2;
   g.save(); g.translate(cx, by + h); g.scale(0.8, 0.8); g.translate(-cx, -(by + h)); // ย่อ 80% จากฐาน (ตัวตันยังเท่าเดิม แค่ภาพเล็กลง)
@@ -2645,6 +2645,22 @@ function drawLighthouse(g) {
   g.fillStyle = '#3a3f4a'; g.fillRect(cx - 12, by + 9, 24, 2); g.fillRect(cx - 12, by + 23, 24, 2); g.fillRect(cx - 1, by + 10, 2, 14);
   for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#a82f23' : '#c0392b'; g.fillRect(cx - 14 + i * 2, by + 9 - i * 2, 28 - i * 4, 2); }
   g.fillStyle = '#f1c40f'; g.fillRect(cx - 1, by - 5, 2, 4);
+  // นกนางนวลเกาะอยู่บนยอดหอ ขยับตัวเบาๆ (แกว่งหัว กระพือปีกเล็กน้อย) กะพริบตานานๆ
+  const gx = cx + 6, bob = Math.sin(now / 700) * 0.5, sway = Math.sin(now / 1300) * 0.6, flap = Math.sin(now / 260) * 0.35;
+  const gy = by - 2 + bob, blink = now % 4200 < 130;
+  g.fillStyle = '#3a3f4a'; g.beginPath(); g.ellipse(gx, gy, 5.5, 3.8, -0.1, 0, 7); g.fill(); // ขอบลำตัว
+  g.fillStyle = '#f4f4f4'; g.beginPath(); g.ellipse(gx, gy, 4.5, 2.8, -0.1, 0, 7); g.fill();
+  g.fillStyle = '#b8c4cc'; g.beginPath(); g.ellipse(gx - 1.5, gy - 0.5 - flap, 3.6, 1.8 + flap * 0.4, -0.25, 0, 7); g.fill(); // ปีก
+  g.fillStyle = '#3a3f4a'; g.fillRect(gx - 6.5, gy + 1.2, 2.5, 3.8); // ขา
+  g.fillStyle = '#f39c12'; g.fillRect(gx - 6, gy + 3.5, 1.5, 1.5);
+  const hx = gx + 3.8, hy = gy - 3.6 + sway;
+  g.fillStyle = '#3a3f4a'; g.beginPath(); g.arc(hx, hy, 3.3, 0, 7); g.fill(); // ขอบหัว
+  g.fillStyle = '#f4f4f4'; g.beginPath(); g.arc(hx, hy, 2.6, 0, 7); g.fill();
+  g.fillStyle = '#f1c40f'; g.beginPath(); g.moveTo(hx + 2.2, hy - 0.6); g.lineTo(hx + 5.4, hy + 0.2); g.lineTo(hx + 2.2, hy + 0.9); g.fill(); // จงอย
+  g.fillStyle = '#ffb3b3'; g.fillRect(hx - 0.4, hy + 0.9, 1.4, 1); // แก้มชมพู
+  if (blink) { g.fillStyle = '#3a3f4a'; g.fillRect(hx + 0.2, hy - 0.7, 1.6, 0.6); }
+  else { g.fillStyle = '#1b1f2a'; g.beginPath(); g.arc(hx + 0.9, hy - 0.5, 0.95, 0, 7); g.fill(); g.fillStyle = '#fff'; g.fillRect(hx + 0.4, hy - 1.1, 0.5, 0.5); } // ตาดำมีประกาย
+  g.restore();
 }
 
 function step(now) {
@@ -2886,7 +2902,7 @@ function step(now) {
     $('fgmk').style.left = pos * 100 + '%'; $('fgauge').classList.toggle('hit', inZ);
   }
 
-  drawLighthouse(ctx);
+  drawLighthouse(ctx, now);
   // กลางวัน/กลางคืน
   const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
   const dark = daylight(hour);
