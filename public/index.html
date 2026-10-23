@@ -236,8 +236,6 @@
   }
   #cinFrame iframe { width:100%; aspect-ratio:16/9; border:0; border-radius:8px; background:#000; display:block; margin-bottom:8px; }
   #cinFrame:empty { display:none; }
-  #houseExit { position:fixed; left:50%; transform:translateX(-50%); top:calc(60px + var(--sat,0px)); z-index:6; box-shadow:0 2px 8px rgba(0,0,0,.35); }
-  body.touch #houseExit { top:calc(54px + var(--sat,0px)); }
   #build { position:fixed; left:50%; transform:translateX(-50%); bottom:84px; z-index:6; max-width:min(96vw,640px); text-align:center; }
   #build .bhint { font-size:13px; margin-bottom:6px; }
   #build .bitems { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
@@ -414,7 +412,6 @@
 <div id="hotbar" class="panel hidden"></div>
 <div id="picker" class="panel hidden"></div>
 <div id="build" class="panel hidden"></div>
-<button class="btn small hidden" id="houseExit">🚪 ออกจากบ้าน</button>
 <div id="chat" class="hidden"><div id="chatHist" class="hidden"></div><div id="chatLog"></div><input id="chatIn" class="hidden" maxlength="80" enterkeyhint="send" placeholder="พิมพ์ข้อความ แล้วกด Enter"></div>
 <div id="toast" class="panel"></div>
 <div id="shop" class="hidden"><div class="panel">

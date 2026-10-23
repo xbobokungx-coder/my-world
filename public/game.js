@@ -603,8 +603,6 @@ function applyScene(m) {
   players.forEach((q, id) => { if (id !== myId) callPeer(id); });
 }
 function updateHouseUi() {
-  $('houseExit').classList.toggle('hidden', !scene);
-  $('houseExit').textContent = '🚪 ออกจากบ้าน' + (scene && !houseInfo.mine ? ' (บ้านของ ' + houseInfo.owner + ')' : '');
   $('houseBtn').dataset.lbl = inMyHouse() ? 'ตกแต่ง' : 'บ้านฉัน';
   $('houseBtn').title = inMyHouse() ? 'โหมดตกแต่งบ้าน (H)' : 'เข้าบ้านตัวเอง (H)';
   $('mini').style.display = scene ? 'none' : ''; // ในบ้านไม่ใช้แผนที่ย่อ
@@ -648,7 +646,6 @@ function rotateBuild() { // หมุนชิ้นที่เลือกไ�
   else if (build.sel) { build.rot = build.rot ? 0 : 1; playSfx('click'); }
 }
 $('houseBtn').onclick = homeAction;
-$('houseExit').onclick = () => send({ t: 'house', a: 'exit' });
 // บ้านเพื่อน: ลีดเดอร์บอร์ดเรียงตามมูลค่าเฟอร์นิเจอร์ในบ้าน (ราคาร้าน) แล้วตามจำนวนชิ้น • กดชื่อเพื่อเข้าไปเยี่ยม
 const plotsShown = () => !$('plots').classList.contains('hidden');
 function openPlots() { $('plots').classList.remove('hidden'); send({ t: 'house', a: 'board' }); renderPlots(); }
