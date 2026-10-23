@@ -2139,7 +2139,7 @@ function buildBase() {
       g.fillStyle = '#6b4423'; g.fillRect(sx + 4, by + 6, 4, 16); g.fillRect(sx + sw - 8, by + 6, 4, 16);
       g.fillStyle = b.roof; g.fillRect(sx, by + 1, sw, 16); g.fillStyle = '#fff'; g.fillRect(sx + 2, by + 3, sw - 4, 12);
       g.fillStyle = b.roof; g.fillRect(sx + 3, by + 4, sw - 6, 10);
-      gh.font = `bold 9px ${FONT}`; gh.fillStyle = '#fff'; gh.fillText('Arcade', bx + bw / 2, by + 9.5);
+      gh.font = `bold 12px ${FONT}`; gh.fillStyle = '#fff'; gh.fillText('Arcade', bx + bw / 2, by + 9.5);
       continue;
     }
     if (b.kind === 'cinema') { // จอหนังกลางแปลง: เสา 2 ต้น + จอขาวใหญ่
@@ -3320,7 +3320,7 @@ function step(now) {
     const bx = hubSign.x0 * TS, by = hubSign.y0 * TS, bw = (hubSign.x1 - hubSign.x0 + 1) * TS, hov = mouse.active && hubSignAt(mouse.tx, mouse.ty), pl = 0.5 + 0.5 * Math.sin(now / 320);
     ctx.lineWidth = hov ? 3 : 2; ctx.strokeStyle = hov ? '#ffffff' : `rgba(255,226,102,${0.35 + 0.55 * pl})`; ctx.strokeRect(bx - 2, by - 4, bw + 4, 26);
     const lt = hov ? '👆 กดเลย!' : '👆 คะแนน', ly = by - 14 - (hov ? 0 : pl * 2);
-    ctx.font = `bold 10px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const lw = bw * 0.5; // กว้างเท่าป้าย Arcade
+    ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const lw = bw * 0.5; // กว้างเท่าป้าย Arcade
     ctx.fillStyle = '#3d2a1a'; ctx.fillRect(bx + bw / 2 - lw / 2 - 1, ly - 8, lw + 2, 17); ctx.fillStyle = hov ? '#ffe266' : '#fff3d6'; ctx.fillRect(bx + bw / 2 - lw / 2, ly - 7, lw, 15);
     ctx.fillStyle = '#3d2a1a'; ctx.fillText(lt, bx + bw / 2, ly);
   }
