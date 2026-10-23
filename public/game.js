@@ -252,7 +252,7 @@ function renderAdmin() {
       + `<button class="btn small" data-copy="${esc(r.name)}">🔗 คัดลอกลิงก์</button> `
       + (r.name !== adminSt.current ? `<button class="btn small" data-go="${esc(r.name)}">↪️ ไปห้องนี้</button> ` : '')
       + (!r.main ? `<button class="btn small muted" data-rm="${esc(r.name)}">🗑️ เลิกใช้</button>` : '') + '</span></div>').join('');
-    h += `<div class="sec">🪙 ปรับเหรียญของตัวเอง</div><div class="row"><span>${me ? esc(me.name) : ''}</span><span><input type="number" id="admCoin" placeholder="เหรียญ (ติดลบ = ลด)" style="width:130px"> <button class="btn small" id="admCoinGo">🪙 ปรับ</button></span></div>`;
+    h += `<div class="sec">🪙 เหรียญของตัวเอง</div><div class="row"><span>${me ? esc(me.name) : ''}</span><span><button class="btn small" data-admcoin="100">➕ 100</button> <button class="btn small muted" data-admcoin="-100">➖ 100</button></span></div>`;
     h += '<div class="sec">👥 ผู้เล่นและ IP <button class="btn small" id="ipRefresh">🔄 รีเฟรช</button></div>';
     h += (adminSt.users || []).map(u => `<div class="arow"><span>${u.online ? '🟢' : '⚪'} <b>${esc(u.name)}</b> <small>ห้อง ${esc(u.room)}</small><br><small>${u.online ? 'IP ตอนนี้: <b>' + esc(u.ip) + '</b>' : 'เข้าล่าสุด ' + ago(u.last)}</small>`
       + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
@@ -265,7 +265,7 @@ function renderAdmin() {
   el.querySelectorAll('[data-bugreopen]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'bugreopen', id: b.dataset.bugreopen }));
   const bR = $('bugRefresh'); if (bR) bR.onclick = () => send({ t: 'admin', a: 'bugs' });
   el.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => ask('เตะ ' + b.dataset.kick + ' ออกจากห้อง?\n(เขาเข้ามาใหม่ได้ทันที)', () => send({ t: 'admin', a: 'kick', room: b.dataset.kroom, name: b.dataset.kick })));
-  const admCoinGo = $('admCoinGo'); if (admCoinGo) admCoinGo.onclick = () => { const n = Math.trunc(+$('admCoin').value); if (!n) { toast('ใส่จำนวนเหรียญที่ไม่ใช่ 0 ก่อน (ติดลบ = ลด)'); return; } ask((n > 0 ? 'เพิ่ม ' : 'ลด ') + Math.abs(n) + ' เหรียญของคุณ?', () => send({ t: 'admin', a: 'coin', n })); };
+  el.querySelectorAll('[data-admcoin]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'coin', n: +b.dataset.admcoin }));
   el.querySelectorAll('[data-ban]').forEach(b => b.onclick = () => ask('แบน ' + b.dataset.ban + '?\n(เข้าเกมด้วยชื่อนี้ไม่ได้อีก จนกว่าจะใช้ชื่ออื่น • เตะออกทันทีถ้าออนไลน์)', () => send({ t: 'admin', a: 'ban', room: b.dataset.broom, name: b.dataset.ban })));
   el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'unban', room: b.dataset.uroom, name: b.dataset.unban }));
   el.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { const url = roomLink(b.dataset.copy); try { await navigator.clipboard.writeText(url); toast('คัดลอกลิงก์แล้ว 🔗'); } catch (e) { prompt('คัดลอกลิงก์นี้:', url); } });
