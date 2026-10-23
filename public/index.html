@@ -236,16 +236,16 @@
   }
   #cinFrame iframe { width:100%; aspect-ratio:16/9; border:0; border-radius:8px; background:#000; display:block; margin-bottom:8px; }
   #cinFrame:empty { display:none; }
-  #build { position:fixed; left:50%; transform:translateX(-50%); bottom:84px; z-index:6; max-width:min(96vw,640px); text-align:center; }
-  #build .bhint { font-size:13px; margin-bottom:6px; }
-  #build .bitems { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+  #build { position:fixed; right:8px; top:196px; z-index:6; width:214px; max-width:calc(100vw - 16px); max-height:calc(100vh - 220px); overflow-y:auto; text-align:left; padding:8px; }
+  #build .bhint { font-size:12px; margin-bottom:6px; }
+  #build .btools { display:flex; flex-direction:column; gap:5px; margin-bottom:8px; }
+  #build .btools .btn { width:100%; }
+  #build .btabs { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
+  #build .btabs .btn { font-size:11px; padding:3px 6px; }
+  #build .bitems { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  #build .bitems .btn { width:100%; font-size:12px; padding:4px 4px; }
   #build .btn.on { outline:3px solid #fff; box-shadow:0 0 0 5px var(--accent); }
-  /* มือถือ: โหมดตกแต่งซ่อน hotbar แล้วใช้แถบเดียวกันนั้นแทน (เลื่อนซ้าย-ขวาได้) ไม่ทับจอยสติ๊ก/ปุ่ม A */
-  body.touch.building #hotbar { display:none; }
-  body.touch #build { bottom:calc(8px + var(--sab)); width:calc(100vw - 16px); max-width:none; padding:6px 8px; }
-  body.touch #build .bhint { font-size:12px; margin-bottom:4px; }
-  body.touch #build .bitems { flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start; -webkit-overflow-scrolling:touch; padding-bottom:2px; }
-  body.touch #build .btn { flex:none; white-space:nowrap; }
+  body.touch #build { top:150px; right:6px; width:190px; max-height:calc(100vh - 170px); }
   #trade .panel { background:#fff8e6; }
   #townBody { max-height:68vh; overflow:auto; }
   #townBody .logrow, #bagBody .logrow { display:flex; gap:8px; padding:5px 0; border-bottom:1px dashed rgba(0,0,0,.12); font-size:14px; }
