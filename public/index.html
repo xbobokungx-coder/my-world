@@ -170,6 +170,8 @@
   .mbtn { border:0; background:transparent; font-size:14px; padding:2px 4px; }
   #mini.off canvas, #mini.off #miniSize { display:none; }
   #mini.off #miniTitle { display:inline; }
+  #callBox { position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:9; display:flex; gap:8px; align-items:center; background:#fff3d6; border:2px solid #3d2a1a; border-radius:12px; padding:8px 12px; font-size:14px; font-weight:700; color:#3d2a1a; }
+  #callBox.hidden { display:none; }
   .stat { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0; }
   .stat div { border:2px solid var(--edge); border-radius:10px; background:#fffdf5; padding:6px 8px; font-size:13px; }
   .stat div b { display:block; font-size:16px; }
@@ -495,6 +497,7 @@
 <div id="dc" class="hidden"><div>หลุดจากการเชื่อมต่อ 😢</div><button class="btn" onclick="location.reload()">เชื่อมต่อใหม่</button></div>
 <div id="joy" class="hidden"><div id="knob"></div></div>
 <button id="abtn" class="hidden">A</button>
+<div id="callBox" class="hidden"><span id="callText"></span><button class="btn small" id="callAccept">📞 รับสาย</button><button class="btn small" id="callDecline">ปฏิเสธ</button></div>
 
 <script src="shared.js"></script>
 <script src="pixelart.js"></script>

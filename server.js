@@ -1133,7 +1133,8 @@ class World {
       }
       case 'pcall': { // โทรส่วนตัว: แจ้งคู่สาย (ฉากเดียวกันเท่านั้น) ให้ฝั่งนั้นส่งเสียงให้กันคนเดียว
         const q = this.players.get(m.to | 0);
-        if (q && q !== p && (q.scene || null) === (p.scene || null)) send(q, { t: 'pcall', from: p.id, on: !!m.on });
+        const k = ['ring', 'ok', 'no', 'end'].includes(m.k) ? m.k : '';
+        if (k && q && q !== p && (q.scene || null) === (p.scene || null)) send(q, { t: 'pcall', from: p.id, k });
         break;
       }
       case 'rtc': { // ส่งต่อข้อมูลเชื่อมต่อเสียง (WebRTC signaling) ระหว่างผู้เล่น
