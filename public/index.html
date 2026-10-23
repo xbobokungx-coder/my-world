@@ -236,16 +236,22 @@
   }
   #cinFrame iframe { width:100%; aspect-ratio:16/9; border:0; border-radius:8px; background:#000; display:block; margin-bottom:8px; }
   #cinFrame:empty { display:none; }
-  #build { position:fixed; right:8px; top:196px; z-index:6; width:214px; max-width:calc(100vw - 16px); max-height:calc(100vh - 220px); overflow-y:auto; text-align:left; padding:8px; }
-  #build .bhint { font-size:12px; margin-bottom:6px; }
-  #build .btools { display:flex; flex-direction:column; gap:5px; margin-bottom:8px; }
-  #build .btools .btn { width:100%; }
-  #build .btabs { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
-  #build .btabs .btn { font-size:11px; padding:3px 6px; }
-  #build .bitems { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-  #build .bitems .btn { width:100%; font-size:12px; padding:4px 4px; }
-  #build .btn.on { outline:3px solid #fff; box-shadow:0 0 0 5px var(--accent); }
-  body.touch #build { top:150px; right:6px; width:190px; max-height:calc(100vh - 170px); }
+  #build { position:fixed; right:6px; top:clamp(150px, 26vh, 200px); z-index:6; width:clamp(118px, 30vw, 200px); max-width:calc(100vw - 12px); max-height:calc(100vh - 230px); overflow-y:auto; text-align:left; padding:5px; font-size:clamp(10px, 2.7vw, 13px); }
+  #build .bhint { font-size:11px; margin-bottom:4px; }
+  #build .btools { display:flex; flex-direction:column; gap:3px; margin-bottom:5px; }
+  #build .btools .btn { width:100%; padding:3px 5px; font-size:inherit; text-align:left; }
+  #build .btabs { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:4px; }
+  #build .btabs .btn { font-size:10px; padding:2px 4px; }
+  #build .bitems { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+  #build .bitems .btn { width:100%; font-size:inherit; padding:3px 4px; }
+  #build .btn.on { outline:3px solid #fff; box-shadow:0 0 0 4px var(--accent); }
+  body.touch #build { top:clamp(140px, 22vh, 180px); bottom:auto; right:4px; width:clamp(104px, 36vw, 150px); max-height:calc(100vh - 290px); font-size:10px; }
+  body.touch #build .blbl { display:none; }
+  body.touch #build .btools { flex-direction:row; flex-wrap:wrap; }
+  body.touch #build .btools .btn { width:auto; flex:1 1 30%; text-align:center; }
+  body.touch #build .bitems { grid-template-columns:1fr 1fr 1fr; }
+  body.touch #build .bitems .btn { padding:2px; text-align:center; }
+  body.touch #build .bitems .btn small { display:block; font-size:9px; }
   #trade .panel { background:#fff8e6; }
   #townBody { max-height:68vh; overflow:auto; }
   #townBody .logrow, #bagBody .logrow { display:flex; gap:8px; padding:5px 0; border-bottom:1px dashed rgba(0,0,0,.12); font-size:14px; }

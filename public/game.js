@@ -599,12 +599,12 @@ function renderBuild() {
   const tab = build.tab && cats.some(c => c[0] === build.tab) ? build.tab : 'living';
   const shown = ks.filter(k => (FURN[k.slice(5)].cat || 'other') === tab);
   el.innerHTML = `<div class="bhint">🏠 ${hint}</div>`
-    + `<div class="btools"><button class="btn small" data-rot="1">🔄 หมุน</button>`
-    + `<button class="btn small${!build.erase && !build.sel ? ' on' : ''}" data-edit="1">🖐️ เลือก/ย้าย</button>`
-    + (pk ? '<button class="btn small" data-pickdel="1">🧹 เก็บชิ้นนี้</button>' : '')
-    + `<button class="btn small${build.erase ? ' on' : ''}" data-erase="1">🧹 เก็บคืน</button><button class="btn small muted" data-bexit="1">✖ ออก</button></div>`
+    + `<div class="btools"><button class="btn small" data-rot="1">🔄<span class="blbl"> หมุน</span></button>`
+    + `<button class="btn small${!build.erase && !build.sel ? ' on' : ''}" data-edit="1">🖐️<span class="blbl"> เลือก/ย้าย</span></button>`
+    + (pk ? '<button class="btn small" data-pickdel="1">🧹<span class="blbl"> เก็บชิ้นนี้</span></button>' : '')
+    + `<button class="btn small${build.erase ? ' on' : ''}" data-erase="1">🧹<span class="blbl"> เก็บคืน</span></button><button class="btn small muted" data-bexit="1">✖<span class="blbl"> ออก</span></button></div>`
     + `<div class="btabs">` + cats.map(([c, n]) => { const cnt = ks.filter(k => (FURN[k.slice(5)].cat || 'other') === c).length; return cnt ? `<button class="btn small${c === tab ? ' on' : ''}" data-btab="${c}">${n}</button>` : ''; }).join('') + `</div>`
-    + `<div class="bitems">` + (shown.length ? shown.map(k => { const f = k.slice(5); return `<button class="btn small${!build.erase && build.sel === f ? ' on' : ''}" data-bf="${f}" title="${FURN[f].name}">${FURN[f].emoji} ${FURN[f].name} ×${inv[k]}</button>`; }).join('') : '<small style="opacity:.7">ไม่มีของในหมวดนี้</small>') + `</div>`;
+    + `<div class="bitems">` + (shown.length ? shown.map(k => { const f = k.slice(5); return `<button class="btn small${!build.erase && build.sel === f ? ' on' : ''}" data-bf="${f}" title="${FURN[f].name}">${FURN[f].emoji}<span class="blbl"> ${FURN[f].name}</span> <small>×${inv[k]}</small></button>`; }).join('') : '<small style="opacity:.7">ไม่มีของในหมวดนี้</small>') + `</div>`;
   el.querySelectorAll('[data-btab]').forEach(b => b.onclick = () => { build.tab = b.dataset.btab; playSfx('click'); renderBuild(); });
   el.querySelectorAll('[data-bf]').forEach(b => b.onclick = () => { build.sel = b.dataset.bf; build.erase = false; build.pick = null; playSfx('click'); renderBuild(); });
   el.querySelector('[data-edit]').onclick = () => { build.sel = null; build.erase = false; playSfx('click'); renderBuild(); };
