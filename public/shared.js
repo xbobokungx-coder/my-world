@@ -353,7 +353,6 @@
     { id: 'sandwich', name: 'แซนด์วิช',          emoji: '🥪', price: 10 },
     { id: 'soup',     name: 'ซุปร้อน',           emoji: '🍲', price: 13 },
     { id: 'rice',     name: 'ข้าวผัดไข่',         emoji: '🍛', price: 16 },
-    { id: 'cake',     name: 'เค้กสตรอว์เบอร์รี',  emoji: '🍰', price: 10 },
   ];
   // ห้องครัวที่ร้านอาหาร: ทำอาหารจากวัตถุดิบข้ามสาย (ปลา + ผัก + ไข่/นม) ได้ราคาขายสูงกว่าขายของดิบแยกหลายเท่า
   // in: c = หมวด (fish = ปลาชนิดใดก็ได้ [ใช้ชนิดที่ถูกสุดก่อน], crop = ผัก, egg = ไข่ไก่/ไข่เป็ด) หรือ k = ไอเทมระบุชนิด
@@ -385,7 +384,7 @@
   ];
   const PROJ_DONATE = [100, 500, 2000];
   const FOOD = {
-    meal_bread: 15, meal_sandwich: 25, meal_soup: 32, meal_rice: 40, meal_cake: 15, // อาหารร้าน ฟื้นความอิ่มน้อยกว่าเมนูที่ทำเองทุกสูตร (ต่ำสุดของเมนูทำเองคือ 45)
+    meal_bread: 15, meal_sandwich: 25, meal_soup: 32, meal_rice: 40, // อาหารร้าน ฟื้นความอิ่มน้อยกว่าเมนูที่ทำเองทุกสูตร (ต่ำสุดของเมนูทำเองคือ 45)
     crop_carrot: 6, crop_cabbage: 8, crop_corn: 12, crop_tomato: 8, crop_eggplant: 10, crop_strawberry: 10, crop_pumpkin: 15, crop_melon: 15,
     crop_potato: 12, crop_chili: 6, crop_broccoli: 10, crop_cherry: 10, crop_grape: 12, crop_pineapple: 15, crop_mango: 18,
     egg: 8, milk: 15, truffle: 5, duck_egg: 8,
@@ -493,7 +492,7 @@
       { chest: 300,  lv: 8,  coin: 25,  meals: ['bread', 'sandwich'] },
       { chest: 600,  lv: 12, coin: 50,  meals: ['sandwich', 'soup'] },
       { chest: 1000, lv: 16, coin: 90,  meals: ['soup', 'rice'] },
-      { chest: 2000, lv: 22, coin: 150, meals: ['rice', 'soup', 'cake'] },
+      { chest: 2000, lv: 22, coin: 150, meals: ['rice', 'soup', 'sandwich'] },
     ],
   };
   const playLevel = skills => Object.keys(SKILLS).reduce((n, k) => n + levelOf(skills && skills[k]), 0);
