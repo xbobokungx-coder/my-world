@@ -711,7 +711,7 @@
     for (const x of [HOUSE_DOOR.x - 1, HOUSE_DOOR.x, HOUSE_DOOR.x + 1]) set(x, HOUSE_DOOR.y, T.PATH);
     // อาคารและเคาน์เตอร์
     for (const b of BUILDINGS) {
-      for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) set(x, y, T.BUILD);
+      if (b.kind !== 'sign') for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) set(x, y, T.BUILD); // ป้าย Arcade เป็นป้ายลอย เดินผ่านได้ (แตะได้จากพื้นที่ป้าย)
       for (const [x, y] of b.counter) set(x, y, T.SHOP);
     }
     // ลานหน้าร้าน: ช่องหน้าอาคารที่ไม่ใช่เคาน์เตอร์ปูทางให้ต่อกับถนน ร้านจะได้ไม่ลอยอยู่กลางหญ้า
