@@ -51,7 +51,7 @@ const NPC_DEFS = [
 ];
 
 const CAT_NAME = { fish: 'ปลา', crop: 'ผัก/ผลไม้', animal: 'ผลผลิตสัตว์', wood: 'ไม้', dish: 'อาหาร' }; // ชื่อหมวดในข้อความแจ้งผู้เล่น
-const HOUSE_MSG = new Set(['m', 'act', 'held', 'status', 'deaf', 'voice', 'rtc', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'house']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
+const HOUSE_MSG = new Set(['m', 'act', 'held', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'house']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
 class World {
   constructor(room) {
     this.room = room;
@@ -1129,6 +1129,11 @@ class World {
       case 'voice': {
         p.voice = !!m.on;
         this.broadcast({ t: 'voice', id: p.id, on: p.voice }, p);
+        break;
+      }
+      case 'pcall': { // โทรส่วนตัว: แจ้งคู่สาย (ฉากเดียวกันเท่านั้น) ให้ฝั่งนั้นส่งเสียงให้กันคนเดียว
+        const q = this.players.get(m.to | 0);
+        if (q && q !== p && (q.scene || null) === (p.scene || null)) send(q, { t: 'pcall', from: p.id, on: !!m.on });
         break;
       }
       case 'rtc': { // ส่งต่อข้อมูลเชื่อมต่อเสียง (WebRTC signaling) ระหว่างผู้เล่น

@@ -131,8 +131,9 @@ function handle(m) {
     case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; } else if (isChoppable(tm, m.x, m.y)) tm[m.y][m.x] = T.GRASS; } break; }
     case 'hun': setHunger(m.v); break;
     case 'rtc': onRtc(m.from, m.d); break;
+    case 'pcall': if (m.on) { const q = players.get(m.from); setCall(m.from); toast(`📞 ${q ? q.name : 'เพื่อน'} โทรหาคุณแบบส่วนตัว — มีแค่คุณสองคนที่ได้ยิน`); } else if (callWith === m.from) { setCall(0); } break;
     case 'p+': players.set(m.id, mkPlayer(m)); updateOnline(); if (!m.quiet) addChat('', `${m.name} เข้ามาในฟาร์ม 👋`, true); break;
-    case 'p-': { const p = players.get(m.id); if (p && !m.quiet) addChat('', `${p.name} ออกไปแล้ว`, true); players.delete(m.id); closePeer(m.id); updateOnline(); break; }
+    case 'p-': { const p = players.get(m.id); if (p && !m.quiet) addChat('', `${p.name} ออกไปแล้ว`, true); players.delete(m.id); closePeer(m.id); if (callWith === m.id) setCall(0); updateOnline(); break; }
     case 's': {
       for (const [id, x, y, d, fs, fx, fy, sit, bt] of m.p) {
         const p = players.get(id); if (!p) continue;
@@ -584,6 +585,7 @@ function resetScene() { // กลับไปแมพเมืองฝั่�
   if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; }
 }
 function applyScene(m) {
+  if (callWith) { send({ t: 'pcall', to: callWith, on: false }); setCall(0); } // เปลี่ยนฉากแล้ววางสายอัตโนมัติ
   walk = null; fg = null; $('fgauge').classList.add('hidden'); hidePicker();
   if (m.sc) {
     if (!scene) townRows = MAP.slice();
@@ -1277,6 +1279,17 @@ const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls:
 const peers = new Map(), levels = new Map();
 window.__mw = { peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
+let callWith = 0; // id ของคู่สายโทรส่วนตัว (0 = ไม่ได้โทร)
+function setCall(id) { callWith = id; peers.forEach(attachMic); renderPeople(true); }
+function startCall(id) {
+  if (callWith && callWith !== id) send({ t: 'pcall', to: callWith, on: false });
+  send({ t: 'pcall', to: id, on: true }); setCall(id);
+  toast(`📞 โทรหา ${players.get(id).name} — มีแค่คุณสองคนที่ได้ยินกัน`);
+}
+function endCall() {
+  if (!callWith) return; const q = players.get(callWith); send({ t: 'pcall', to: callWith, on: false }); setCall(0);
+  toast(`📵 วางสาย${q ? 'กับ ' + q.name : ''}แล้ว`);
+}
 
 function getPeer(id) {
   let p = peers.get(id);
@@ -1300,14 +1313,14 @@ function closePeer(id) {
   p.pc.close(); if (p.audio) p.audio.srcObject = null;
   peers.delete(id); levels.delete(id);
 }
-const attachMic = p => p.pc.getTransceivers().forEach(t => { if (t.sender) t.sender.replaceTrack(micOn ? micTrack : null).catch(() => {}); });
+const attachMic = (p, id) => p.pc.getTransceivers().forEach(t => { if (t.sender) t.sender.replaceTrack(micOn && (!callWith || id === callWith) ? micTrack : null).catch(() => {}); }); // โทรส่วนตัวอยู่: ส่งเสียงให้คู่สายคนเดียว
 async function flushIce(p) { for (const c of p.pending.splice(0)) await p.pc.addIceCandidate(c).catch(() => {}); }
 async function callPeer(id) {
   try {
     closePeer(id); // เริ่มการเชื่อมต่อใหม่เสมอ ไม่ใช้การเชื่อมต่อเก่าที่อาจค้างจากฉากก่อน
     const p = getPeer(id);
     p.pc.addTransceiver('audio', { direction: 'sendrecv' });
-    attachMic(p);
+    attachMic(p, id);
     await p.pc.setLocalDescription(await p.pc.createOffer());
     send({ t: 'rtc', to: id, d: { o: p.pc.localDescription } });
   } catch (e) { console.warn('call failed', e); }
@@ -1319,7 +1332,7 @@ async function onRtc(from, d) {
     if (d.o) {
       await pc.setRemoteDescription(d.o);
       pc.getTransceivers().forEach(t => { t.direction = 'sendrecv'; });
-      attachMic(p);
+      attachMic(p, from);
       await pc.setLocalDescription(await pc.createAnswer());
       send({ t: 'rtc', to: from, d: { a: pc.localDescription } });
       await flushIce(p);
@@ -1350,7 +1363,7 @@ function updateSpeaking(now) {
   peers.forEach((pe, id) => {
     const p = players.get(id);
     if (!pe.audio || !p || !me) return;
-    pe.audio.volume = pe.vol = isMuted(p) ? 0 : voiceGain(Math.hypot(p.x - me.x, p.y - me.y) / TS);
+    pe.audio.volume = pe.vol = isMuted(p) || (callWith && id !== callWith) ? 0 : voiceGain(Math.hypot(p.x - me.x, p.y - me.y) / TS); // ระหว่างโทรส่วนตัวได้ยินคู่สายคนเดียว
   });
   if (actx && actx.state === 'suspended') actx.resume().catch(() => {});
   levels.forEach((l, id) => {
@@ -1734,7 +1747,7 @@ function applyMute() { saveMute(); syncDeaf(); setSpkUi(); lastLevel = 0; update
 function renderPeople(force) {
   if (!peopleShown() || !me) return;
   const list = [...players.values()].sort((a, b) => (a === me ? -1 : b === me ? 1 : a.name.localeCompare(b.name)));
-  const sig = JSON.stringify([mute, list.map(p => [p.id, p.name, p.color, p.voice, p.deaf, p.status])]);
+  const sig = JSON.stringify([mute, callWith, list.map(p => [p.id, p.name, p.color, p.voice, p.deaf, p.status])]);
   if (force || sig !== peopleSig) {
     peopleSig = sig;
     const others = list.filter(p => p !== me), talking = others.filter(p => p.voice).length, off = others.filter(isMuted).length;
@@ -1743,7 +1756,7 @@ function renderPeople(force) {
     for (const p of list) {
       const m = p !== me && isMuted(p);
       h += `<div class="row prow" data-id="${p.id}"><span><span class="dot" style="background:${esc(p.color)}"></span> <b>${esc(p.name)}</b>${p === me ? ' (คุณ)' : ''} ${p.voice ? '🎙️' : ''}${p.deaf ? ' 🔇' : ''}<span class="spk"></span>${p.status ? `<br><small style="opacity:.8">💭 ${esc(p.status)}</small>` : ''}</span>`
-        + (p === me ? '' : `<span><button class="btn small" data-trade="${p.id}" title="ชวนเทรดของ (ต้องอยู่ใกล้กัน ${TRADE.range} ช่อง)">🤝 เทรด</button> <button class="btn small${m ? ' muted' : ''}" data-mute="${p.id}">${m ? '🔇 เปิดเสียง' : '🔊 ปิดเสียง'}</button></span>`) + '</div>';
+        + (p === me ? '' : `<span><button class="btn small${callWith === p.id ? ' on' : ''}" data-call="${p.id}" title="โทรส่วนตัว: มีแค่คุณสองคนที่ได้ยินกัน">${callWith === p.id ? '📵 วางสาย' : '📞 โทร'}</button> <button class="btn small" data-trade="${p.id}" title="ชวนเทรดของ (ต้องอยู่ใกล้กัน ${TRADE.range} ช่อง)">🤝 เทรด</button> <button class="btn small${m ? ' muted' : ''}" data-mute="${p.id}">${m ? '🔇 เปิดเสียง' : '🔊 ปิดเสียง'}</button></span>`) + '</div>';
     }
     $('peopleBody').innerHTML = h;
   }
@@ -1759,6 +1772,7 @@ $('peopleBody').addEventListener('click', e => {
     if (Math.hypot(q.x - me.x, q.y - me.y) > TRADE.range * TS) { toast(`ต้องเดินเข้าไปใกล้ ${q.name} ก่อน (ไม่เกิน ${TRADE.range} ช่อง)`); return; }
     closePeople(); send({ t: 'trade', a: 'req', to: q.id }); return;
   }
+  if (b.dataset.call) { const q = players.get(+b.dataset.call); if (!q) return; if (callWith === q.id) endCall(); else startCall(q.id); renderPeople(true); return; }
   const p = players.get(+b.dataset.mute); if (!p) return;
   const key = p.name.toLowerCase(), now = isMuted(p);
   mute.names[key] = !now;
