@@ -370,6 +370,10 @@
     { id: 'dish_sashimi',  name: 'ซาชิมิปลา',         emoji: '🍣', sell: 120, food: 55,  lv: 4, xp: 26, time: 4000,  in: [{ c: 'fish', n: 2 }] },
     { id: 'dish_fishburger', name: 'เบอร์เกอร์ปลา',   emoji: '🍔', sell: 170, food: 80,  lv: 6, xp: 38, time: 5000,  in: [{ c: 'fish', n: 1 }, { k: 'meal_bread', n: 1 }, { c: 'crop', n: 1 }] },
     { id: 'dish_fishpie',  name: 'พายปลาไข่',         emoji: '🥧', sell: 250, food: 90,  lv: 8, xp: 50, time: 7000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
+    // เมนูปลารวม: u = ปลาต้องเป็นคนละชนิดกัน (ชนิดละ 1 ตัว) ปลาชนิดเดียวกันหลายตัวใช้ทำไม่ได้
+    { id: 'dish_fishmix',  name: 'ปลารวมทอดกรอบ',    emoji: '🥘', sell: 110, food: 65,  lv: 3, xp: 22, time: 4000,  in: [{ c: 'fish', n: 2, u: true }, { c: 'crop', n: 1 }] },
+    { id: 'dish_fishstew', name: 'แกงปลารวมหม้อใหญ่', emoji: '🫕', sell: 220, food: 85,  lv: 6, xp: 44, time: 7000,  in: [{ c: 'fish', n: 3, u: true }, { c: 'crop', n: 1 }] },
+    { id: 'dish_platter',  name: 'จานปลาทะเลรวม',    emoji: '🥡', sell: 380, food: 105, lv: 8, xp: 80, time: 10000, in: [{ c: 'fish', n: 4, u: true }, { c: 'egg', n: 1 }] },
   ];
   const cookCat = (c, k) => c === 'fish' ? /^fish_/.test(k) && k !== 'fish_boot' : c === 'crop' ? /^crop_/.test(k) : c === 'egg' ? (k === 'egg' || k === 'duck_egg') : false;
   // โครงการพัฒนาเมือง: ที่เก็บเงินขนาดใหญ่ ทุกคนลงขันที่ตู้เซฟกองกลาง ปลดล็อกตามลำดับ ครบเป้าแล้วขึ้นข่าวและประกาศชื่อผู้ร่วมสร้าง
@@ -387,6 +391,7 @@
     egg: 8, milk: 15, truffle: 5, duck_egg: 8,
     dish_grill: 45, dish_omelet: 55, dish_seafood: 70, dish_feast: 100,
     dish_fishsoup: 50, dish_sashimi: 55, dish_fishburger: 80, dish_fishpie: 90,
+    dish_fishmix: 65, dish_fishstew: 85, dish_platter: 105,
   };
 
   // อาคาร: เคาน์เตอร์ร้าน (counter) อยู่ใกล้กับสิ่งที่ผู้เล่นทำในสายนั้น

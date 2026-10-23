@@ -1030,9 +1030,11 @@ function renderShop() {
   if (cookTab) {
     h += `<div class="sec">👨‍🍳 ห้องครัวเชฟ — เชฟเลเวล ${lvl('cook')} (ทำอาหารข้ามสาย ได้ XP เชฟ ยิ่งเลเวลสูงปลดสูตรแพงขึ้น)</div>`;
     const have = c => Object.keys(inv).reduce((s, k) => s + (inv[k] > 0 && cookCat(c, k) ? inv[k] : 0), 0);
+    const haveU = c => Object.keys(inv).filter(k => inv[k] > 0 && cookCat(c, k)).length; // จำนวนชนิดที่มี (สูตรที่ต้องคนละชนิด)
+    const hv = n => n.c ? (n.u ? haveU(n.c) : have(n.c)) : (inv[n.k] || 0);
     for (const r of COOK) {
-      const parts = r.in.map(n => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, nm = n.c ? COOK_CATS[n.c].name : itemInfo(n.k).name, got = n.c ? have(n.c) : (inv[n.k] || 0); return `${emo}${nm} ×${n.n}` + (got >= n.n ? '' : ` <small style="color:#c0392b">(มี ${got})</small>`); }).join(' + ');
-      const locked = lvl('cook') < r.lv, ok = r.in.every(n => (n.c ? have(n.c) : (inv[n.k] || 0)) >= n.n);
+      const parts = r.in.map(n => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, nm = n.c ? COOK_CATS[n.c].name + (n.u ? ' (คนละชนิด)' : '') : itemInfo(n.k).name, got = hv(n); return `${emo}${nm} ×${n.n}` + (got >= n.n ? '' : ` <small style="color:#c0392b">(มี ${got})</small>`); }).join(' + ');
+      const locked = lvl('cook') < r.lv, ok = r.in.every(n => hv(n) >= n.n);
       h += `<div class="row${locked ? ' lock' : ''}"><span>${r.emoji} ${r.name}${locked ? ` <small>🔒 เชฟ Lv${r.lv}</small>` : ''}<br><small>ใช้ ${parts} • +${r.xp} XP • เวลาทำ ${Math.round(r.time / 1000)} วิ • ค่าเตา 🪙${Math.round(r.sell * COOK_FEE)} • ขายได้ราว 🪙${r.sell} • กินอิ่ม +${r.food}</small></span><span><button class="btn small" data-cook="${r.id}" ${!locked && ok && (inv.coin || 0) >= Math.round(r.sell * COOK_FEE) ? '' : 'disabled'}>ทำ</button></span></div>`;
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน หรือใช้กระดานใบสั่งซื้อ 📋 • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ (ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';

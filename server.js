@@ -922,6 +922,12 @@ class World {
     const inv = p.rec.inv, use = {};
     for (const need of r.in) {
       if (need.k) { if ((inv[need.k] || 0) < need.n) return this.toast(p, 'วัตถุดิบไม่พอ'); use[need.k] = (use[need.k] || 0) + need.n; continue; }
+      if (need.u) { // ต้องเป็นปลาคนละชนิดกัน ชนิดละ 1 ตัว เริ่มจากชนิดที่ถูกที่สุด
+        const kinds = Object.keys(inv).filter(k => inv[k] - (use[k] || 0) > 0 && S.cookCat(need.c, k)).sort((x, y) => S.itemInfo(x).sell - S.itemInfo(y).sell);
+        if (kinds.length < need.n) return this.toast(p, `วัตถุดิบไม่พอ ต้องใช้ปลาคนละชนิดอย่างน้อย ${need.n} ชนิด`);
+        for (const k of kinds.slice(0, need.n)) use[k] = (use[k] || 0) + 1;
+        continue;
+      }
       const own = Object.keys(inv).filter(k => inv[k] > 0 && S.cookCat(need.c, k)).sort((x, y) => S.itemInfo(x).sell - S.itemInfo(y).sell);
       let left = need.n;
       for (const k of own) { const take = Math.min(left, inv[k] - (use[k] || 0)); if (take > 0) { use[k] = (use[k] || 0) + take; left -= take; } if (!left) break; }
