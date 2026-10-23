@@ -205,9 +205,6 @@
   const MARKET = { drop: 0.01, min: 0.2, max: 1.4, recover: 0.06 }; // drop = ราคาต่อชิ้นลดลงชิ้นละ 1 จุดเปอร์เซ็นต์ของราคาฐาน (เชิงเส้น: ชิ้นที่ N ได้ (101-N)% เมื่อราคาตั้งต้น 100%) • min = พื้นราคาต่อชิ้น = 20% ของราคาฐาน (ถึงพื้นที่ชิ้นที่ 81)
   // ตลาดแยกต่อคน: ราคาที่ผู้เล่นเห็น = ตลาดกลาง × ตลาดส่วนตัว × โบนัสความหลากหลาย ขายชนิดเดิมซ้ำๆ ตลาดส่วนตัวของคนนั้นตกหนัก (share = สัดส่วนที่ตกเป็นของส่วนตัว) และฟื้นช้า (recover ต่อ 1 นาทีที่ออนไลน์)
   const PMARKET = { share: 0.75, min: 0.25, recover: 0.03 };
-  // โบนัสความหลากหลาย: ขายหลายชนิดในวันเดียว (วันจริง) ได้ตัวคูณเพิ่มต่อชนิดที่ต่างกัน
-  const VARIETY = { per: 0.05, max: 0.4, minQty: 3, minCoin: 40 }; // ชนิดที่ขายนับเข้าโบนัสเมื่อขาย ≥ minQty ชิ้น หรือได้ ≥ minCoin เหรียญ
-  const varietyBonus = n => Math.min(VARIETY.max, VARIETY.per * Math.max(0, n - 1)); // n = จำนวนชนิดที่ขายวันนี้ รวมชนิดที่กำลังขาย
   // ความทนทานเครื่องมือ: ใช้งานทุกครั้งสึกหรอ 1 หน่วย ใช้ครบแล้วใช้ไม่ได้จนกว่าจะซ่อมที่ร้านเสียเหรียญ (ค่าซ่อมคิดตามส่วนที่สึกหรอ) = รายจ่ายที่เกิดขึ้นสม่ำเสมอ
   const DURABILITY = {
     hoe:   { max: [0, 120, 120, 120], fix: [0, 24, 24, 24],  shop: 'farm',   name: 'จอบ' },
@@ -263,7 +260,9 @@
     : Math.max(1, Math.round(value / ENERGY.coinsPerEnergy) - (kind === 'harvest' ? ENERGY.cost.dig + ENERGY.cost.plant + ENERGY.cost.water : 0)); // เก็บเกี่ยว = ส่วนที่เหลือของรอบ หลังหักขุด/ปลูก/รดน้ำ
   // ความอิ่มตัวของตลาดต่อ "หมวด" (ต่อผู้เล่น): เดิมแต่ละชนิดอิ่มตัวแยกกัน คนขายเยอะจึงสลับชนิดหนีได้ (ข้อมูลจริง: ขายทีละ ~4 ชิ้น หลายสิบชนิด ได้ราคา ~100% ของราคาฐาน)
   // ตอนนี้ขายของหมวดเดียวกันต่อเนื่อง ต่อให้สลับชนิด ราคาทั้งหมวดก็ลดลงด้วย (การลดต่อชิ้นแบ่งครึ่ง: ครึ่งหนึ่งเข้าตลาดของชนิดนั้น อีกครึ่งเข้าตลาดของหมวด) และฟื้นช้าๆ ตามเวลา (recover ของช่องว่างต่อนาที แม้ออฟไลน์) • ไม่มีเพดาน/ลิมิตรายวัน
-  const CATFAT = { min: 0.3, recover: 0.04 };
+  // ความอิ่มตัวของหมวด: ขายหมวดไหนเยอะ หมวดนั้นตกเร็ว (ตามปริมาณ) แต่หมวดอื่นฟื้นเร็วขึ้น spread ต่อชิ้น สูงสุด spreadMax
+  const CATFAT = { min: 0.3, recover: 0.04, spread: 0.01, spreadMax: 0.25 };
+  const CAT_KEYS = ['fish', 'crop', 'animal', 'wood', 'dish', 'other'];
   const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'].includes(k) ? 'animal' : ['log', 'hardwood', 'plank'].includes(k) ? 'wood' : 'other';
   // ขายเป็นชุดใหญ่ (ถือของได้ไม่จำกัดจำนวน): คิดราคาทีละชิ้นตามชนิด ราคาต่อชิ้นลดลงเชิงเส้นชิ้นละ 1% ของราคาฐาน (MARKET.drop) จนถึงพื้น 20% แล้วคงที่
   // ตัวอย่างขาย 100 ชิ้นเมื่อราคาตั้งต้น 100%: ชิ้นที่ 1 = 100%, 2 = 99% … 80 = 21%, ชิ้นที่ 81-100 = 20% รวม 5,240 จากราคาฐาน 100/ชิ้น (กด "ขายทั้งหมด" คำนวณทั้งชุดให้เลย)
@@ -800,7 +799,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellCat, VARIETY, varietyBonus, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, CAT_KEYS, sellCat, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     ORDER, orderBand, SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

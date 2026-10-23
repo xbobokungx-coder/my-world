@@ -955,9 +955,7 @@ class World {
 
   // ----- ตลาดราคาไดนามิก: ขายเยอะราคาตก ปล่อยไว้ราคาค่อยๆ กลับ และทุก 1 วันในเกมราคาเป้าหมายสุ่มใหม่ (มีข่าวราคาพุ่ง/ตก) -----
   pmOf(p, k) { const o = p.rec.mk; return o && Number.isFinite(o[k]) ? o[k] : 1; }
-  varN(p, k) { const day = this.today(), o = p.rec.sold; return (o && o.day === day ? o.items.length + (o.items.includes(k) ? 0 : 1) : 1); }
-  effMultN(p, k, n) { const g = this.market[k]; return g ? g.m * this.pmOf(p, k) * this.catOf(p, S.sellCat(k)) * (1 + S.varietyBonus(n)) : 1; }
-  effMult(p, k) { return this.effMultN(p, k, this.varN(p, k)); }
+  effMult(p, k) { const g = this.market[k]; return g ? g.m * this.pmOf(p, k) * this.catOf(p, S.sellCat(k)) : 1; } // ตลาดกลาง × ตลาดส่วนตัว × ความอิ่มตัวของหมวด
   mktFor(p) { const o = {}; for (const k of SELLABLE) o[k] = Math.round(this.effMult(p, k) * 100) / 100; return o; }
   mktSend(keys) { for (const p of this.players.values()) { const o = {}; for (const k of keys || SELLABLE) o[k] = Math.round(this.effMult(p, k) * 100) / 100; send(p, { t: 'mkt', m: o }); } }
   mktPub() { const o = {}; for (const k of SELLABLE) o[k] = Math.round(this.market[k].m * 100) / 100; return o; }
@@ -1471,31 +1469,27 @@ class World {
     const info = S.itemInfo(item), have = p.rec.inv[item] || 0;
     if (!info || !info.sell || !have) return;
     const q = n === 'all' || !(n > 0) ? have : Math.min(have, n | 0);
-    const g = this.market[item], day0 = this.today(), items0 = p.rec.sold && p.rec.sold.day === day0 ? p.rec.sold.items : [];
-    let nUsed = this.varN(p, item), mEff = this.effMultN(p, item, nUsed); // ตลาดกลาง × ส่วนตัว × โบนัสความหลากหลาย
-    let quote = S.sellQuote(info.sell, mEff, q); // ขายหลายชิ้นต่อเนื่อง ราคาต่อชิ้นค่อยๆ ลดลง
-    // ชนิดนี้นับเป็น "ชนิดที่ขายวันนี้" ได้เมื่อขายจริงจัง (≥ minQty ชิ้น หรือ ≥ minCoin เหรียญ) กันการขายอย่างละ 1 ชิ้นเพื่อเอาโบนัส
-    const counted = items0.includes(item) || q >= S.VARIETY.minQty || quote.total >= S.VARIETY.minCoin;
-    if (!counted) { nUsed = items0.length; mEff = this.effMultN(p, item, nUsed); quote = S.sellQuote(info.sell, mEff, q); }
+    const g = this.market[item], mEff = this.effMult(p, item);
+    const quote = S.sellQuote(info.sell, mEff, q); // ขายหลายชิ้นต่อเนื่อง ราคาต่อชิ้นค่อยๆ ลดลง
     const cat = S.sellCat(item), pay = quote.total; // จ่ายต่อชิ้นตามชนิด ลดชิ้นละ 1% ของราคาฐานจนพื้น 20%
     this.add(p, item, -q);
     this.add(p, 'coin', pay, 'sell');
     const r = mEff > 0 ? Math.min(1, quote.m / mEff) : 1; // สัดส่วนที่ราคารวมลดลงจากการขายชุดนี้ ตลาดจำไว้เท่ากันไม่ว่าขายรวดหรือทยอย (แบ่งครึ่ง: ชนิด/ส่วนตัว กับ หมวด)
-    { const ct = p.rec.cat = p.rec.cat || {}; ct[cat] = Math.max(S.CATFAT.min, this.catOf(p, cat) * Math.pow(r, 0.5)); }
-    let bonusTxt = '';
+    { // หมวดที่ขายจะตกตามปริมาณที่ขาย ส่วนหมวดอื่นฟื้นเร็วขึ้นตามปริมาณนั้น (ได้ตรงนี้ต้องแลกกับหมวดที่ขาย)
+      const ct = p.rec.cat = p.rec.cat || {}; ct[cat] = Math.max(S.CATFAT.min, this.catOf(p, cat) * Math.pow(r, 0.5));
+      const lift = Math.min(S.CATFAT.spreadMax, S.CATFAT.spread * q);
+      for (const c of S.CAT_KEYS) if (c !== cat) { const v = this.catOf(p, c) + (1 - this.catOf(p, c)) * lift; if (v > 0.995) delete ct[c]; else ct[c] = v; }
+    }
     if (g) {
-      const bonus = S.varietyBonus(nUsed), ri = Math.sqrt(r);
+      const ri = Math.sqrt(r);
       g.m = Math.min(S.MARKET.max, Math.max(S.MARKET.min, g.m * Math.pow(ri, 1 - S.PMARKET.share)));
       const mk = p.rec.mk = p.rec.mk || {};
       mk[item] = Math.min(1, Math.max(S.PMARKET.min, this.pmOf(p, item) * Math.pow(ri, S.PMARKET.share)));
-      const day = this.today(), so = p.rec.sold = p.rec.sold && p.rec.sold.day === day ? p.rec.sold : { day, items: [] };
-      if (counted && !so.items.includes(item)) so.items.push(item);
-      if (bonus > 0) bonusTxt = ` (โบนัสขายหลายชนิด +${Math.round(bonus * 100)}%)`;
-      this.dirty = true; send(p, { t: 'mkt', m: this.mktFor(p) }); // ผู้ขายเห็นราคาใหม่ทุกชนิด (โบนัสหลากหลายเปลี่ยนทั้งชุด)
+      this.dirty = true; send(p, { t: 'mkt', m: this.mktFor(p) }); // ผู้ขายเห็นราคาใหม่ทุกชนิด
       for (const q2 of this.players.values()) if (q2 !== p) send(q2, { t: 'mkt', m: { [item]: Math.round(this.effMult(q2, item) * 100) / 100 } });
     }
     logEv(this.room, 'sell', { p: p.key, item, q, coin: pay, m: Math.round(mEff * 100) / 100, cat, base: info.sell * q });
-    this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${pay}${bonusTxt}${this.catOf(p, cat) < 0.85 ? ` 📉 ตลาด${CAT_NAME[cat] || 'หมวดนี้'}อิ่มตัว (ราคา ${Math.round(this.catOf(p, cat) * 100)}%)` : ''}`); this.catPush(p); this.event(p, 'sell');
+    this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${pay}${this.catOf(p, cat) < 0.85 ? ` 📉 ตลาด${CAT_NAME[cat] || 'หมวดนี้'}อิ่มตัว (ราคา ${Math.round(this.catOf(p, cat) * 100)}%)` : ''}`); this.catPush(p); this.event(p, 'sell');
     if (S.SHOPS.animal.sell.includes(item)) this.event(p, 'sellproduct');
     this.sfxTo(p, 'coin');
   }
