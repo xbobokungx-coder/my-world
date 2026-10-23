@@ -245,7 +245,8 @@
   #build .bitems { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
   #build .bitems .btn { width:100%; font-size:inherit; padding:3px 4px; }
   #build .btn.on { outline:3px solid #fff; box-shadow:0 0 0 4px var(--accent); }
-  body.touch #build { top:112px; bottom:auto; right:4px; width:clamp(104px, 36vw, 150px); max-height:calc(100vh - 130px); font-size:10px; }
+  body.touch #build { top:calc(8px + var(--sat)); bottom:auto; right:calc(4px + var(--sar)); width:clamp(104px, 36vw, 150px); max-height:calc(100vh - 24px); font-size:10px; }
+  body.touch.building #hudTop { right:calc(clamp(104px, 36vw, 150px) + 16px + var(--sar)); } /* โหมดตกแต่ง: แถบบนหลบเมนูมุมบนขวา */
   body.touch #build .blbl { display:none; }
   body.touch #build .btools { flex-direction:row; flex-wrap:wrap; }
   body.touch #build .btools .btn { width:auto; flex:1 1 30%; text-align:center; }
