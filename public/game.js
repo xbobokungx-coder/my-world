@@ -19,7 +19,7 @@ const SLOTS = [ // ช่อง 1 = เครื่องมือ (จอบ/�
   { id: 'hand', n: 'มือเปล่า' },
 ];
 const TOOL_LIST = ['hoe', 'water', 'rod', 'axe'], TOOL_SHORT = { hand: 'มือเปล่า', hoe: 'จอบ', water: 'บัวรดน้ำ', rod: 'เบ็ด', axe: 'ขวาน' };
-const FEEDS = ['feed', 'hay', 'slop', 'medicine'], BAIT_KEYS = ['bait', 'bait_2', 'bait_3'];
+const FEEDS = ['feed', 'hay', 'slop', 'nectar', 'medicine'], BAIT_KEYS = ['bait', 'bait_2', 'bait_3'];
 let selBait = ls.get('mw_bait') || 'bait';
 let slot = 0, selSeed = 'carrot', selFeed = 'feed';
 let selTool = TOOL_LIST.includes(ls.get('mw_tool')) ? ls.get('mw_tool') : 'hoe';
