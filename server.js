@@ -941,6 +941,7 @@ class World {
       t: 'w', admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
       players: [...this.players.values()].filter(q => !q.scene).map(q => this.pubFull(q)),
+      roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
     });
     send(p, { t: 'pst', pst: rec.pst || {}, names: rec.pnames || {} });
     send(p, { t: 'arcs', a: this.arcsPub() });
@@ -948,6 +949,7 @@ class World {
     send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
+    this.broadcast(Object.assign({ t: 'on', voice: !!p.voice }, this.pubFull(p)), p); // รายชื่อออนไลน์ทุกฉาก
     this.sceneBroadcast(null, { t: 'p+', id: p.id, held: p.held || '', title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, pet: p.pet, pm: p.pm, pax: p.pax, pay: p.pay, psick: !!(p.pet && this.petSt(p, p.pet).sick), pname: p.pet ? this.petName(p, p.pet) : '', x: p.x, y: p.y }, p);
     this.dirty = true;
     return { p };
@@ -962,6 +964,7 @@ class World {
     this.players.delete(p.id); this.addLog(`🚪 ${p.name} ออกไปแล้ว`);
     { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; }
     this.sceneBroadcast(p.scene, { t: 'p-', id: p.id }, p);
+    this.broadcast({ t: 'off', id: p.id }, p); // ออกจากห้อง: เลิกแสดงในรายชื่อทุกฉาก
     this.dirty = true;
   }
 
@@ -1013,15 +1016,15 @@ class World {
         this.broadcast({ t: 'voice', id: p.id, on: p.voice }, p);
         break;
       }
-      case 'pcall': { // โทรส่วนตัว: แจ้งคู่สาย (ฉากเดียวกันเท่านั้น) ให้ฝั่งนั้นส่งเสียงให้กันคนเดียว
+      case 'pcall': { // โทรส่วนตัว: แจ้งคู่สายทุกฉาก ให้ฝั่งนั้นส่งเสียงให้กันคนเดียว
         const q = this.players.get(m.to | 0);
         const k = ['ring', 'ok', 'no', 'end'].includes(m.k) ? m.k : '';
-        if (k && q && q !== p && (q.scene || null) === (p.scene || null)) send(q, { t: 'pcall', from: p.id, k });
+        if (k && q && q !== p) send(q, { t: 'pcall', from: p.id, k }); // โทรส่วนตัวข้ามฉากได้
         break;
       }
       case 'rtc': { // ส่งต่อข้อมูลเชื่อมต่อเสียง (WebRTC signaling) ระหว่างผู้เล่น
         const q = this.players.get(m.to | 0);
-        if (q && q !== p && (q.scene || null) === (p.scene || null) && m.d && typeof m.d === 'object') send(q, { t: 'rtc', from: p.id, d: m.d }); // คนละฉากส่งสัญญาณเสียงให้กันไม่ได้
+        if (q && q !== p && m.d && typeof m.d === 'object') send(q, { t: 'rtc', from: p.id, d: m.d });
         break;
       }
       case 'look': { // เปลี่ยนสี (เสื้อ/กางเกง/หมวก) และสวมเสื้อผ้าที่ซื้อไว้

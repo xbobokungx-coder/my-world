@@ -30,7 +30,8 @@ let ws, joined = false, myId = 0, me = null, roomName = '', isAdmin = false;
 const roomParam = () => { try { return new URLSearchParams(location.search).get('room') || ''; } catch (e) { return ''; } };
 const roomLink = name => location.origin + location.pathname + (name && name !== 'main' ? '?room=' + encodeURIComponent(name) : '');
 const pets = new Map(); // สัตว์เลี้ยงประกอบฉาก (แมว/หมา) เซิร์ฟเวอร์คุมการเดิน
-const players = new Map(), animals = new Map(), npcs = new Map(); // npcs = ชาวเมือง NPC (ไม่นับเป็นผู้เล่น)
+const players = new Map(), animals = new Map(), npcs = new Map(); const roster = new Map();
+const presence = (id, fn) => { for (const p of [players.get(id), roster.get(id)]) if (p) fn(p); }; // roster = ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้รายชื่อและการโทร • players = คนในฉากเดียวกัน (วาดและเสียงรอบตัว) // npcs = ชาวเมือง NPC (ไม่นับเป็นผู้เล่น)
 let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, hunger = 80;
 const furn = new Map();               // เฟอร์นิเจอร์ในบ้านที่เปิดอยู่ (ฉากบ้าน): id -> { i, f, x, y, r, z, on, wl, u } พิกัดหน่วยช่อง
 let townLog = [], chestSt = { coin: 0, dead: {} }, townTab = 'log';
@@ -104,6 +105,7 @@ function handle(m) {
       furn.clear();
       players.clear();
       m.players.forEach(p => players.set(p.id, mkPlayer(p)));
+      roster.clear(); (m.roster || []).forEach(q => roster.set(q.id, mkPlayer(q)));
       npcs.clear(); (m.npcs || []).forEach(n => npcs.set(n.id, mkPlayer(n)));
       pets.clear(); (m.pets || []).forEach(q => pets.set(q.id, { id: q.id, kind: q.kind, v: q.v, x: q.x, y: q.y, tx: q.x, ty: q.y, dir: q.dir, dx: q.dir === 2 ? -1 : 1, anim: Math.random() * 6, moving: false }));
       me = players.get(myId); updateLampBtn(); updatePetBtn(); syncDeaf();
@@ -118,20 +120,22 @@ function handle(m) {
       break;
     case 'chatlog': chatHist.length = 0; for (const e of m.list || []) chatHist.push(e); break;
     case 'ach': achSt = { cnt: m.cnt || {}, got: m.got || {}, sel: m.sel || '' }; if (achShown()) renderAch(); break;
-    case 'deaf': { const p = players.get(m.id); if (p) p.deaf = !!m.on; break; }
+    case 'deaf': presence(m.id, p => { p.deaf = !!m.on; }); break;
     case 'use': { const p = players.get(m.id); if (p) p.useAt = performance.now(); break; }
     case 'held': { const p = players.get(m.id); if (p) p.held = m.e || ''; break; }
-    case 'status': { const p = players.get(m.id); if (p) { p.status = m.s || ''; if (peopleShown()) renderPeople(true); } break; }
-    case 'voice': { const p = players.get(m.id); if (p) { p.voice = m.on; if (!m.on) p.speaking = false; } break; }
+    case 'status': presence(m.id, p => { p.status = m.s || ''; }); if (peopleShown()) renderPeople(true); break;
+    case 'voice': presence(m.id, p => { p.voice = m.on; if (!m.on) p.speaking = false; }); if (peopleShown()) renderPeople(true); break;
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
-    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.cp = null; if (p === me) refreshOpen(); } break; }
+    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.cp = null; if (p.id === myId) refreshOpen(); } break; }
     case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
     case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; } else if (isChoppable(tm, m.x, m.y)) tm[m.y][m.x] = T.GRASS; } break; }
     case 'hun': setHunger(m.v); break;
     case 'rtc': onRtc(m.from, m.d); break;
     case 'pcall': onPcall(m.from, m.k); break;
+    case 'on': if (m.id !== myId) roster.set(m.id, mkPlayer(m)); updateOnline(); if (peopleShown()) renderPeople(true); break;
+    case 'off': { const id = m.id; roster.delete(id); if (callIn === id) { callIn = 0; clearTimeout(callTimer); callBox(false); } if (callWith === id || callPend === id) { const q = roster.get(id); leaveCall(); toast(`📵 ${q ? q.name : 'เพื่อน'} ออกจากเกมแล้ว สายถูกวาง`); } closePeer(id); updateOnline(); if (peopleShown()) renderPeople(true); break; }
     case 'p+': players.set(m.id, mkPlayer(m)); updateOnline(); if (!m.quiet) addChat('', `${m.name} เข้ามาในฟาร์ม 👋`, true); break;
-    case 'p-': { const p = players.get(m.id); if (p && !m.quiet) addChat('', `${p.name} ออกไปแล้ว`, true); players.delete(m.id); closePeer(m.id); if (callWith === m.id || callPend === m.id || callIn === m.id) { if (callIn === m.id) callBox(false); if (callWith === m.id || callPend === m.id) leaveCall(); else { callIn = 0; clearTimeout(callTimer); } } updateOnline(); break; }
+    case 'p-': { const p = players.get(m.id); if (p && !m.quiet) addChat('', `${p.name} ออกไปแล้ว`, true); players.delete(m.id); if (m.id !== callWith) closePeer(m.id); updateOnline(); break; } // ย้ายฉาก: สายโทรส่วนตัวยังต่ออยู่
     case 's': {
       for (const [id, x, y, d, fs, fx, fy, sit, bt] of m.p) {
         const p = players.get(id); if (!p) continue;
@@ -547,7 +551,6 @@ function resetScene() { // กลับไปแมพเมืองฝั่�
   if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; }
 }
 function applyScene(m) {
-  if (callWith || callPend || callIn) { if (callWith) pcSend(callWith, 'end'); if (callPend) pcSend(callPend, 'end'); if (callIn) pcSend(callIn, 'no'); leaveCall(); } // เปลี่ยนฉากแล้ววางสายอัตโนมัติ
   walk = null; fg = null; $('fgauge').classList.add('hidden'); hidePicker();
   if (m.sc) {
     if (!scene) townRows = MAP.slice();
@@ -561,8 +564,9 @@ function applyScene(m) {
   for (const q of m.players) { if (q.id === myId) { old.x = old.tx = m.x; old.y = old.ty = m.y; old.sit = false; old.fs = 0; players.set(myId, old); } else players.set(q.id, mkPlayer(q)); }
   me = players.get(myId); updateOnline(); updateHouseUi(); renderBuild(); closePlots();
   // เปลี่ยนฉาก: ตัดเสียงกับคนฉากเก่าแล้วโทรหาทุกคนในฉากใหม่ (ผู้เล่นเดิมจะรับสายเองผ่าน onRtc)
-  [...peers.keys()].forEach(closePeer);
-  players.forEach((q, id) => { if (id !== myId) callPeer(id); });
+  [...peers.keys()].forEach(id => { if (id !== callWith) closePeer(id); }); // สายโทรส่วนตัวยังต่ออยู่ข้ามฉาก
+  players.forEach((q, id) => { if (id !== myId && id !== callWith) callPeer(id); });
+  if (callWith && !peers.has(callWith)) callPeer(callWith);
 }
 function updateHouseUi() {
   $('houseBtn').dataset.lbl = inMyHouse() ? 'ตกแต่ง' : 'บ้านฉัน';
@@ -667,7 +671,7 @@ function setHunger(v) {
   if (bagShown() && bagTab === 'eat') renderBag();
   if (bagShown()) renderBag();
 }
-function updateOnline() { $('online').textContent = '👥 ' + players.size + (mute.all ? ' 🔇' : ''); }
+function updateOnline() { $('online').textContent = '👥 ' + roster.size + (mute.all ? ' 🔇' : ''); }
 const chatHist = []; // แชทผู้เล่นล่าสุด 10 ข้อความ (ไม่รวมข้อความระบบ) แสดงเป็นแผงโปร่งแสงตอนเปิดช่องแชท
 function renderChatHist() {
   const el = $('chatHist'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -816,7 +820,7 @@ function renderBag() {
     const cards = [
       ['🪙 เหรียญ', inv.coin || 0], ['💰 ของที่ขายได้ (รวม)', '🪙 ' + worth], ['📦 ของในกระเป๋า', pieces + ' ชิ้น'], ['🎣 คันเบ็ด', RODS[rodLevel()].name], [CANS[canTier(inv)].emoji + ' บัวรดน้ำ', `${CANS[canTier(inv)].name} (${wtr}/${CANS[canTier(inv)].cap})`],
       ['📍 ตำแหน่ง', `${tx}, ${ty}`], ['🕒 เวลาในเกม', $('clock').textContent.replace(/^\S+\s/, '')],
-      ['👥 ออนไลน์', players.size + ' คน'], ['🎙️ ไมค์', micOn ? 'เปิดอยู่' : 'ปิดอยู่'],
+      ['👥 ออนไลน์', roster.size + ' คน'], ['🎙️ ไมค์', micOn ? 'เปิดอยู่' : 'ปิดอยู่'],
       ['🐔 ไก่ในฟาร์ม', animalCount('chicken') + ' ตัว'], ['🐄 วัวในฟาร์ม', animalCount('cow') + ' ตัว'], ['🐖 หมูในฟาร์ม', animalCount('pig') + ' ตัว'],
       ['🪱 เหยื่อตกปลา', BAIT_KEYS.map(k => itemInfo(k).emoji + (inv[k] || 0)).join(' ')], ['⭐ ระดับการเล่น', 'Lv ' + playLevel(skills)],
     ];
@@ -1250,18 +1254,18 @@ function leaveCall() { // วางสายทั้งหมดและคื
   if (callMicOn) { callMicOn = false; if (micOn) $('micBtn').click(); }
 }
 function beginCall(id) { // สายต่อแล้ว: เปิดไมค์ทั้งสองฝั่ง และส่งเสียงให้คู่สายคนเดียว
-  const q = players.get(id); callPend = 0; callIn = 0; clearTimeout(callTimer); callBox(false);
+  const q = roster.get(id); callPend = 0; callIn = 0; clearTimeout(callTimer); callBox(false);
   callWith = id; if (!micOn) { callMicOn = true; $('micBtn').click(); }
   setCall(id); toast(`📞 สายต่อกับ ${q ? q.name : 'เพื่อน'} แล้ว เปิดไมค์ทั้งสองฝั่ง — มีแค่คุณสองคนที่ได้ยิน`);
 }
 function startCall(id) {
   if (callWith || callPend || callIn) leaveCall();
-  const q = players.get(id); if (!q) return;
+  const q = roster.get(id); if (!q) return;
   callPend = id; pcSend(id, 'ring'); toast(`📞 กำลังโทรหา ${q.name} รอให้รับสาย...`); renderPeople(true);
   clearTimeout(callTimer); callTimer = setTimeout(() => { if (callPend === id) cancelCall(); }, 30000); // ไม่มีคนรับภายใน 30 วินาทีให้ยกเลิกเอง
 }
 function cancelCall() { // ยกเลิกการโทรที่ยังไม่มีคนรับ
-  if (!callPend) return; pcSend(callPend, 'end'); const q = players.get(callPend); callPend = 0; toast(`📵 ยกเลิกการโทร${q ? 'หา ' + q.name : ''}`); renderPeople(true);
+  if (!callPend) return; pcSend(callPend, 'end'); const q = roster.get(callPend); callPend = 0; toast(`📵 ยกเลิกการโทร${q ? 'หา ' + q.name : ''}`); renderPeople(true);
 }
 function endCall() { // วางสายที่ต่ออยู่
   const id = callWith; if (!id) return; pcSend(id, 'end'); leaveCall(); toast('📵 วางสายแล้ว');
@@ -1272,16 +1276,16 @@ $('callAccept').onclick = acceptCall; $('callDecline').onclick = declineCall;
 function onPcall(from, k) {
   if (k === 'ring') {
     if (callWith || callPend || callIn) { pcSend(from, 'no'); return; } // กำลังสายอยู่ ตอบว่าไม่ว่าง
-    callIn = from; const q = players.get(from);
+    callIn = from; const q = roster.get(from);
     callBox(true, `📞 ${q ? q.name : 'เพื่อน'} โทรหาคุณ`); clearTimeout(callTimer); callTimer = setTimeout(declineCall, 30000);
     renderPeople(true);
   } else if (k === 'ok') { // อีกฝั่งรับสายแล้ว
-    if (callPend === from) beginCall(from);
+    if (callPend === from) { beginCall(from); if (!peers.has(from)) callPeer(from); } // ผู้โทรเป็นฝ่ายส่งสัญญาณเสียงก่อน (กรณีคนละฉาก)
   } else if (k === 'no') { // ไม่รับ หรือไม่ว่าง
-    if (callPend === from) { callPend = 0; const q = players.get(from); toast(`📵 ${q ? q.name : 'เพื่อน'} ไม่รับสาย`); renderPeople(true); }
+    if (callPend === from) { callPend = 0; const q = roster.get(from); toast(`📵 ${q ? q.name : 'เพื่อน'} ไม่รับสาย`); renderPeople(true); }
   } else if (k === 'end') { // อีกฝั่งยกเลิกหรือวางสาย
     if (callIn === from) { callIn = 0; clearTimeout(callTimer); callBox(false); renderPeople(true); }
-    else if (callWith === from || callPend === from) { const q = players.get(from); leaveCall(); toast(`📵 ${q ? q.name : 'เพื่อน'} วางสายแล้ว`); }
+    else if (callWith === from || callPend === from) { const q = roster.get(from); leaveCall(); toast(`📵 ${q ? q.name : 'เพื่อน'} วางสายแล้ว`); }
   }
 }
 const attachMic = (p, id) => p.pc.getTransceivers().forEach(t => { if (t.sender) t.sender.replaceTrack(micOn && (!callWith || id === callWith) ? micTrack : null).catch(() => {}); }); // ระหว่างสายต่อ ส่งเสียงให้คู่สายคนเดียว
@@ -1319,7 +1323,7 @@ async function callPeer(id) {
   } catch (e) { console.warn('call failed', e); }
 }
 async function onRtc(from, d) {
-  if (!players.has(from)) return; // สัญญาณเสียงจากคนที่ไม่ได้อยู่ฉากเดียวกันแล้ว (ค้างมาจากฉากก่อน) ไม่รับ
+  if (!players.has(from) && ![callWith, callPend, callIn].includes(from)) return; // สัญญาณเสียงค้างจากคนอยู่คนละฉาก ไม่รับ (ยกเว้นคู่สายโทรส่วนตัว)
   try {
     if (d.o) closePeer(from); // ข้อเสนอใหม่ = เริ่มการเชื่อมต่อใหม่ ไม่ต่อกับท่อเสียงเก่าที่เงียบแล้ว
     const p = getPeer(from), pc = p.pc;
@@ -1355,13 +1359,13 @@ let lastLevel = 0;
 function updateSpeaking(now) {
   if (now - lastLevel < 100) return; lastLevel = now;
   peers.forEach((pe, id) => {
-    const p = players.get(id);
-    if (!pe.audio || !p || !me) return;
-    pe.audio.volume = pe.vol = isMuted(p) || (callWith && id !== callWith) ? 0 : voiceGain(Math.hypot(p.x - me.x, p.y - me.y) / TS); // ระหว่างโทรส่วนตัวได้ยินคู่สายคนเดียว
+    const p = roster.get(id) || players.get(id), partner = id === callWith;
+    if (!pe.audio || !p || !me || (!partner && !players.has(id))) return;
+    pe.audio.volume = pe.vol = isMuted(p) || (callWith && !partner) ? 0 : partner ? 1 : voiceGain(Math.hypot(p.x - me.x, p.y - me.y) / TS); // ระหว่างโทรส่วนตัวได้ยินคู่สายคนเดียว
   });
   if (actx && actx.state === 'suspended') actx.resume().catch(() => {});
   levels.forEach((l, id) => {
-    const p = players.get(id); if (!p) return;
+    const p = roster.get(id) || players.get(id); if (!p) return;
     l.an.getByteTimeDomainData(l.buf);
     let s = 0; for (const v of l.buf) s += (v - 128) * (v - 128);
     const pe = peers.get(id);
@@ -1740,22 +1744,22 @@ function setSpkUi() { const b = $('spkBtn'); if (!b) return; b.classList.toggle(
 function applyMute() { saveMute(); syncDeaf(); setSpkUi(); lastLevel = 0; updateSpeaking(performance.now() + 1000); updateOnline(); renderPeople(true); }
 function renderPeople(force) {
   if (!peopleShown() || !me) return;
-  const list = [...players.values()].sort((a, b) => (a === me ? -1 : b === me ? 1 : a.name.localeCompare(b.name)));
+  const list = [...roster.values()].sort((a, b) => (a.id === myId ? -1 : b.id === myId ? 1 : a.name.localeCompare(b.name)));
   const sig = JSON.stringify([mute, callWith, callPend, callIn, list.map(p => [p.id, p.name, p.color, p.voice, p.deaf, p.status])]);
   if (force || sig !== peopleSig) {
     peopleSig = sig;
-    const others = list.filter(p => p !== me), talking = others.filter(p => p.voice).length, off = others.filter(isMuted).length;
+    const others = list.filter(p => p.id !== myId), talking = others.filter(p => p.voice).length, off = others.filter(isMuted).length;
     let h = `<div class="row"><span><b>🔊 เสียงเพื่อน</b><br><small>เปิดไมค์ ${talking} คน • ปิดเสียงไว้ ${off}/${others.length} คน</small></span>`
       + `<small style="opacity:.7">ปิด/เปิดทั้งหมดที่ปุ่ม ${mute.all ? '🔇' : '🔊'} ข้างไมค์</small></div>`;
     for (const p of list) {
-      const m = p !== me && isMuted(p);
-      h += `<div class="row prow" data-id="${p.id}"><span><span class="dot" style="background:${esc(p.color)}"></span> <b>${esc(p.name)}</b>${p === me ? ' (คุณ)' : ''} ${p.voice ? '🎙️' : ''}${p.deaf ? ' 🔇' : ''}<span class="spk"></span>${p.status ? `<br><small style="opacity:.8">💭 ${esc(p.status)}</small>` : ''}</span>`
-        + (p === me ? '' : `<span><button class="btn small${callWith === p.id || callPend === p.id ? ' on' : ''}" data-call="${p.id}" title="โทรส่วนตัว: ต้องให้อีกฝ่ายรับสายก่อน">${callWith === p.id ? '📵 วางสาย' : callPend === p.id ? '⏳ ยกเลิก' : callIn === p.id ? '📞 รับสาย' : '📞 โทร'}</button> <button class="btn small" data-trade="${p.id}" title="ชวนเทรดของ (ต้องอยู่ใกล้กัน ${TRADE.range} ช่อง)">🤝 เทรด</button> <button class="btn small${m ? ' muted' : ''}" data-mute="${p.id}">${m ? '🔇 เปิดเสียง' : '🔊 ปิดเสียง'}</button></span>`) + '</div>';
+      const m = p.id !== myId && isMuted(p);
+      h += `<div class="row prow" data-id="${p.id}"><span><span class="dot" style="background:${esc(p.color)}"></span> <b>${esc(p.name)}</b>${p.id === myId ? ' (คุณ)' : ''} ${p.voice ? '🎙️' : ''}${p.deaf ? ' 🔇' : ''}<span class="spk"></span>${p.status ? `<br><small style="opacity:.8">💭 ${esc(p.status)}</small>` : ''}</span>`
+        + (p.id === myId ? '' : `<span><button class="btn small${callWith === p.id || callPend === p.id ? ' on' : ''}" data-call="${p.id}" title="โทรส่วนตัว: ต้องให้อีกฝ่ายรับสายก่อน">${callWith === p.id ? '📵 วางสาย' : callPend === p.id ? '⏳ ยกเลิก' : callIn === p.id ? '📞 รับสาย' : '📞 โทร'}</button> <button class="btn small" data-trade="${p.id}" title="ชวนเทรดของ (ต้องอยู่ใกล้กัน ${TRADE.range} ช่อง)">🤝 เทรด</button> <button class="btn small${m ? ' muted' : ''}" data-mute="${p.id}">${m ? '🔇 เปิดเสียง' : '🔊 ปิดเสียง'}</button></span>`) + '</div>';
     }
     $('peopleBody').innerHTML = h;
   }
   $('peopleBody').querySelectorAll('.prow').forEach(r => { // ไฟแสดงว่าใครกำลังพูด (อัปเดตโดยไม่วาดรายการใหม่ ปุ่มจะได้ไม่กระตุก)
-    const p = players.get(+r.dataset.id), talk = !!(p && p.speaking);
+    const p = roster.get(+r.dataset.id), talk = !!(p && p.speaking);
     r.classList.toggle('talk', talk); r.querySelector('.spk').textContent = talk ? '🟢 กำลังพูด' : '';
   });
 }
@@ -1767,7 +1771,7 @@ $('peopleBody').addEventListener('click', e => {
     closePeople(); send({ t: 'trade', a: 'req', to: q.id }); return;
   }
   if (b.dataset.call) { const id = +b.dataset.call; if (callIn === id) acceptCall(); else if (callWith === id) endCall(); else if (callPend === id) cancelCall(); else startCall(id); return; }
-  const p = players.get(+b.dataset.mute); if (!p) return;
+  const p = roster.get(+b.dataset.mute); if (!p) return;
   const key = p.name.toLowerCase(), now = isMuted(p);
   mute.names[key] = !now;
   if (mute.names[key] === mute.all) delete mute.names[key];
@@ -2730,11 +2734,11 @@ function drawMini(now) {
   const list = [...players.values()].sort((a, b) => (a === me) - (b === me));
   g.font = `bold ${Math.round((big ? 11 : 9) * k)}px ${FONT}`;
   for (const p of list) {
-    const x = p.x / TS * sx, y = p.y / TS * sy, r = (p === me ? 5 : 4) * k;
-    if (p === me) { g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 2 * k; g.beginPath(); g.arc(x, y, r + 3 * k + Math.sin(now / 200) * 1.5 * k, 0, 7); g.stroke(); }
+    const x = p.x / TS * sx, y = p.y / TS * sy, r = (p.id === myId ? 5 : 4) * k;
+    if (p.id === myId) { g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 2 * k; g.beginPath(); g.arc(x, y, r + 3 * k + Math.sin(now / 200) * 1.5 * k, 0, 7); g.stroke(); }
     g.fillStyle = p.color; g.strokeStyle = '#fff'; g.lineWidth = 1.8 * k; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.stroke();
     g.lineWidth = 3 * k; g.strokeStyle = 'rgba(0,0,0,.75)'; g.strokeText(p.name, x, y - r - 5 * k);
-    g.fillStyle = p === me ? '#ffe680' : '#fff'; g.fillText(p.name, x, y - r - 5 * k);
+    g.fillStyle = p.id === myId ? '#ffe680' : '#fff'; g.fillText(p.name, x, y - r - 5 * k);
   }
 }
 
@@ -3172,7 +3176,7 @@ function step(now) {
   if (sig !== lastSent && now - lastSend > 66) { send({ t: 'm', x: me.x, y: me.y, d: me.dir }); lastSent = sig; lastSend = now; }
   // คนอื่น/สัตว์
   for (const p of players.values()) {
-    if (p === me) continue;
+    if (p.id === myId) continue;
     const dx = p.tx - p.x, dy = p.ty - p.y;
     p.moving = Math.hypot(dx, dy) > 1;
     p.x += dx * Math.min(1, dt * 12); p.y += dy * Math.min(1, dt * 12);
