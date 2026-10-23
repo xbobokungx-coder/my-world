@@ -1304,6 +1304,7 @@ const attachMic = p => p.pc.getTransceivers().forEach(t => { if (t.sender) t.sen
 async function flushIce(p) { for (const c of p.pending.splice(0)) await p.pc.addIceCandidate(c).catch(() => {}); }
 async function callPeer(id) {
   try {
+    closePeer(id); // เริ่มการเชื่อมต่อใหม่เสมอ ไม่ใช้การเชื่อมต่อเก่าที่อาจค้างจากฉากก่อน
     const p = getPeer(id);
     p.pc.addTransceiver('audio', { direction: 'sendrecv' });
     attachMic(p);
@@ -1313,6 +1314,7 @@ async function callPeer(id) {
 }
 async function onRtc(from, d) {
   try {
+    if (d.o) closePeer(from); // ข้อเสนอใหม่ = เริ่มการเชื่อมต่อใหม่ ไม่ต่อกับท่อเสียงเก่าที่เงียบแล้ว
     const p = getPeer(from), pc = p.pc;
     if (d.o) {
       await pc.setRemoteDescription(d.o);
