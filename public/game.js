@@ -216,6 +216,7 @@ function onAdmin(m) {
   if (m.bugimg) bugImgs[m.bugimg.id] = m.bugimg.uri;
   if (m.bugmark) toast(m.bugmark === 'fixed' ? '✅ ย้ายไปส่วน「แก้แล้ว」' : '↩️ เปิดรายงานใหม่ (กลับไป「ยังไม่แก้」)');
   if (m.created) { const url = roomLink(m.created); try { navigator.clipboard.writeText(url).catch(() => {}); } catch (e) { /* ไม่ได้ก็ไม่เป็นไร */ } toast('สร้างห้อง ' + m.created + ' แล้ว คัดลอกลิงก์ให้แล้ว 🔗'); }
+  if (m.coinmsg) toast(m.coinmsg);
   if (m.kicked) { toast('เตะ ' + m.kicked + ' ออกแล้ว'); setTimeout(() => send({ t: 'admin', a: 'users' }), 700); }
   if (m.banned) toast('🚫 แบน ' + m.banned + ' แล้ว (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)');
   if (m.unbanned) toast('✅ ปลดแบน ' + m.unbanned + ' แล้ว');
@@ -253,7 +254,7 @@ function renderAdmin() {
       + (!r.main ? `<button class="btn small muted" data-rm="${esc(r.name)}">🗑️ เลิกใช้</button>` : '') + '</span></div>').join('');
     h += '<div class="sec">👥 ผู้เล่นและ IP <button class="btn small" id="ipRefresh">🔄 รีเฟรช</button></div>';
     h += (adminSt.users || []).map(u => `<div class="arow"><span>${u.online ? '🟢' : '⚪'} <b>${esc(u.name)}</b> <small>ห้อง ${esc(u.room)}</small><br><small>${u.online ? 'IP ตอนนี้: <b>' + esc(u.ip) + '</b>' : 'เข้าล่าสุด ' + ago(u.last)}</small>`
-      + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
+      + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<input type="number" class="coinin" data-cin="${esc(u.name)}" placeholder="เหรียญ" style="width:84px"> <button class="btn small" data-coin="${esc(u.name)}" data-croom="${esc(u.room)}">🪙 ปรับเหรียญ</button> <button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; renderAdmin(); });
@@ -263,6 +264,7 @@ function renderAdmin() {
   el.querySelectorAll('[data-bugreopen]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'bugreopen', id: b.dataset.bugreopen }));
   const bR = $('bugRefresh'); if (bR) bR.onclick = () => send({ t: 'admin', a: 'bugs' });
   el.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => ask('เตะ ' + b.dataset.kick + ' ออกจากห้อง?\n(เขาเข้ามาใหม่ได้ทันที)', () => send({ t: 'admin', a: 'kick', room: b.dataset.kroom, name: b.dataset.kick })));
+  el.querySelectorAll('[data-coin]').forEach(b => b.onclick = () => { const n = Math.trunc(+el.querySelector(`[data-cin="${CSS.escape(b.dataset.coin)}"]`).value); if (!n) { toast('ใส่จำนวนเหรียญที่ไม่ใช่ 0 ก่อน (ติดลบ = ลด)'); return; } ask((n > 0 ? 'เพิ่ม ' : 'ลด ') + Math.abs(n) + ' เหรียญ ' + (n > 0 ? 'ให้ ' : 'จาก ') + b.dataset.coin + '?', () => send({ t: 'admin', a: 'coin', room: b.dataset.croom, name: b.dataset.coin, n })); });
   el.querySelectorAll('[data-ban]').forEach(b => b.onclick = () => ask('แบน ' + b.dataset.ban + '?\n(เข้าเกมด้วยชื่อนี้ไม่ได้อีก จนกว่าจะใช้ชื่ออื่น • เตะออกทันทีถ้าออนไลน์)', () => send({ t: 'admin', a: 'ban', room: b.dataset.broom, name: b.dataset.ban })));
   el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'unban', room: b.dataset.uroom, name: b.dataset.unban }));
   el.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { const url = roomLink(b.dataset.copy); try { await navigator.clipboard.writeText(url); toast('คัดลอกลิงก์แล้ว 🔗'); } catch (e) { prompt('คัดลอกลิงก์นี้:', url); } });
