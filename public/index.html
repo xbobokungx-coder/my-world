@@ -22,7 +22,8 @@
   .btn.mic { background:#9aa0a6; border-bottom-color:#6f757b; }
   .btn.mic.on { background:#2ecc71; border-bottom-color:#1e8f4e; }
   .btn.lamp { background:#9aa0a6; border-bottom-color:#6f757b; }
-  .btn.lamp.on { background:#f4c430; border-bottom-color:#c99a10; }
+  .btn.lamp:not(.on) { filter:grayscale(1); }
+  .btn.lamp.on { background:#3cb44b; border-bottom-color:#238a33; }
   .btn.spk { background:#4aa3df; border-bottom-color:#2e7bb5; }
   .btn.spk.off { background:#9aa0a6; border-bottom-color:#6f757b; }
   #stage { cursor:crosshair; }
@@ -360,7 +361,6 @@
   <div class="panel" id="hungerChip">🍖 80</div>
   <div class="panel" id="enChip" role="status">⚡ 100</div>
   <div class="panel hidden" id="cdChip" role="status"></div>
-  <div class="panel" id="clock">🕒 --:--</div>
   <div class="panel hidden" id="happyChip" title="Happy Village: บัฟร่วมของทั้งเมือง">🎉</div>
   <div class="panel" id="online">👥 1</div>
   <div class="panel hidden" id="satChip" role="status"></div>
@@ -404,7 +404,7 @@
   </div>
 </div>
 <div id="mini" class="panel hidden">
-  <div id="miniBar"><span id="miniTitle">🗺️ แผนที่</span><span><button class="mbtn" id="miniSize" title="ขยาย/ย่อ" aria-label="ขยายหรือย่อแผนที่">🔍</button><button class="mbtn" id="miniHide" title="ซ่อน/แสดง" aria-label="ซ่อนแผนที่">➖</button></span></div>
+  <div id="miniBar"><span id="miniTitle">🗺️ แผนที่</span><span id="clock">🕒 --:--</span><span><button class="mbtn" id="miniSize" title="ขยาย/ย่อ" aria-label="ขยายหรือย่อแผนที่">🔍</button><button class="mbtn" id="miniHide" title="ซ่อน/แสดง" aria-label="ซ่อนแผนที่">➖</button></span></div>
   <canvas id="miniMap"></canvas>
 </div>
 <div id="guide" class="panel hidden" title="คู่มือเริ่มต้น: แตะเพื่อดูทั้งหมด"></div>

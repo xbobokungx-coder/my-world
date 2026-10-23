@@ -831,7 +831,7 @@ function updateLampBtn() {
   b.classList.toggle('hidden', !(inv.lamp > 0));
   const on = !!(me && me.lamp);
   b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
-  b.title = on ? 'ตะเกียง: เปิดอยู่ (กดหรือ L เพื่อปิด)' : 'ตะเกียง: ปิดอยู่ (กดหรือ L เพื่อเปิด)'; b.textContent = on ? '🏮' : '🔦';
+  b.title = on ? 'ตะเกียง: เปิดอยู่ (กดหรือ L เพื่อปิด)' : 'ตะเกียง: ปิดอยู่ (กดหรือ L เพื่อเปิด)'; b.textContent = '🔦';
 }
 $('petBtn').onclick = () => { if (me) { openPetMenu(); playSfx('click'); } };
 $('lampBtn').onclick = () => { if (me) { send({ t: 'lamp', on: !me.lamp }); playSfx('click'); } };
@@ -2234,6 +2234,8 @@ function buildBase() {
     g.fillStyle = '#7a4a24'; g.fillRect(cx + 3, cy + 8, 26, 21); g.fillStyle = '#a8703a'; g.fillRect(cx + 3, cy + 8, 26, 9);
     g.fillStyle = '#c98b4a'; g.fillRect(cx + 3, cy + 8, 26, 3); g.fillStyle = '#f1c40f'; g.fillRect(cx + 3, cy + 16, 26, 2); g.fillRect(cx + 13, cy + 14, 6, 7);
     g.fillStyle = '#5a3a1c'; g.fillRect(cx + 15, cy + 17, 2, 3); PixelUI.world(gh, '🪙', cx + 16, cy + 2, 14); }
+  { const tag = (txt, cx, y) => { gh.font = 'bold 8px sans-serif'; const w = gh.measureText(txt).width + 8; g.fillStyle = 'rgba(40,28,14,.85)'; g.fillRect(cx - w / 2, y, w, 11); gh.fillStyle = '#fff'; gh.textAlign = 'center'; gh.textBaseline = 'middle'; gh.fillText(txt, cx, y + 5.5); }; // ป้ายชื่อเหนือกระดานข่าว ATM และตู้กองกลาง
+    tag('ข่าวเมือง', BOARD.x * TS + 16, BOARD.y * TS - 22); tag('ATM', ATM.x * TS + 16, ATM.y * TS - 22); tag('กองกลาง', CHEST.x * TS + 16, CHEST.y * TS - 14); }
   // สิ่งก่อสร้างจากโครงการพัฒนาเมือง (วาดเมื่อครบเป้า) • ฟังก์ชันใน drawStructures ด้านล่าง
   drawStructures(g, gh);
   return oc;

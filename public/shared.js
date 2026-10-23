@@ -219,7 +219,7 @@
   const WEAR_RATE = { base: 1.35, cool: 0.2, perHeat: 0.01, maxBonus: 1, warnHeat: 35 };
   // ซ่อมได้จำกัด: ซ่อมแต่ละครั้งความทนทานสูงสุดลดลง decay ของค่าเดิม ค่าซ่อมแพงขึ้น growth ต่อครั้ง ซ่อมครบ maxFixes ครั้งแล้วซ่อมไม่ได้อีก ต้องซื้อใหม่ (ราคา TOOL_PRICE)
   // สมดุล: ค่าซ่อมเต็ม = pct × ราคาซื้อ × (1 + growth × ครั้งที่ซ่อมมาแล้ว) แต่ได้ความทนทานน้อยลงเรื่อยๆ → ซ่อมครั้งที่ ~4 ขึ้นไปต่อหน่วยการใช้งานแพงกว่าซื้อใหม่
-  const REPAIR = { decay: 0.15, maxFixes: 5, growth: 0.5, pct: 0.25 };
+  const REPAIR = { decay: 0.15, maxFixes: 3, growth: 0.5, pct: 0.25 };
   const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900], axe: [0, 50, 220, 700] };
   const tierN = t => Math.max(1, Math.min(3, t || 1));
   const durMax = (tool, tier, fixes) => Math.max(1, Math.floor(DURABILITY[tool].max[tierN(tier)] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fixes || 0))));
@@ -353,7 +353,7 @@
     { id: 'sandwich', name: 'แซนด์วิช',          emoji: '🥪', price: 15 },
     { id: 'soup',     name: 'ซุปร้อน',           emoji: '🍲', price: 20 },
     { id: 'rice',     name: 'ข้าวผัดไข่',         emoji: '🍛', price: 28 },
-    { id: 'cake',     name: 'เค้กสตรอว์เบอร์รี',  emoji: '🍰', price: 40 },
+    { id: 'cake',     name: 'เค้กสตรอว์เบอร์รี',  emoji: '🍰', price: 30 },
   ];
   // ห้องครัวที่ร้านอาหาร: ทำอาหารจากวัตถุดิบข้ามสาย (ปลา + ผัก + ไข่/นม) ได้ราคาขายสูงกว่าขายของดิบแยกหลายเท่า
   // in: c = หมวด (fish = ปลาชนิดใดก็ได้ [ใช้ชนิดที่ถูกสุดก่อน], crop = ผัก, egg = ไข่ไก่/ไข่เป็ด) หรือ k = ไอเทมระบุชนิด
@@ -381,7 +381,7 @@
   ];
   const PROJ_DONATE = [100, 500, 2000];
   const FOOD = {
-    meal_bread: 20, meal_sandwich: 35, meal_soup: 40, meal_rice: 60, meal_cake: 35,
+    meal_bread: 15, meal_sandwich: 25, meal_soup: 32, meal_rice: 40, meal_cake: 15, // อาหารร้าน ฟื้นความอิ่มน้อยกว่าเมนูที่ทำเองทุกสูตร (ต่ำสุดของเมนูทำเองคือ 45)
     crop_carrot: 6, crop_cabbage: 8, crop_corn: 12, crop_tomato: 8, crop_eggplant: 10, crop_strawberry: 10, crop_pumpkin: 15, crop_melon: 15,
     crop_potato: 12, crop_chili: 6, crop_broccoli: 10, crop_cherry: 10, crop_grape: 12, crop_pineapple: 15, crop_mango: 18,
     egg: 8, milk: 15, truffle: 5, duck_egg: 8,
