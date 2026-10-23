@@ -1204,7 +1204,7 @@ canvas.addEventListener('pointermove', e => {
   if (e.pointerType === 'mouse') { if (!me) return; mouse.active = true; [mouse.tx, mouse.ty] = tileAt(e); if (scene) [mouse.sx, mouse.sy] = isoPtr(e); if (dragB && dragB.mouse && Math.hypot(mouse.sx - dragB.sx, mouse.sy - dragB.sy) > 6) dragB.moved = true; return; }
   const p = ptrs.get(e.pointerId); if (!p) return;
   p.x = e.clientX; p.y = e.clientY;
-  if (dragB && !dragB.mouse && ptrs.size === 1 && scene) { const [x, y] = isoPtr(e); if (Math.hypot(x - dragB.sx, y - dragB.sy) > 8) dragB.moved = true; dragB.lx = x; dragB.ly = y; }
+  if (dragB && !dragB.mouse && ptrs.size === 1 && scene) { const [x, y] = isoPtr(e); if (Math.hypot(x - dragB.sx, y - dragB.sy) > 8) { dragB.moved = true; clearTimeout(dragB.lpT); } dragB.lx = x; dragB.ly = y; }
   if (pinch && ptrs.size >= 2 && pinch.d0 > 0) setZoom(pinch.z0 * pinchDist() / pinch.d0); // บีบ/ถ่างสองนิ้ว = ซูม
 });
 canvas.addEventListener('pointerleave', () => { mouse.active = false; });
@@ -1217,13 +1217,16 @@ canvas.addEventListener('pointerdown', e => {
     flash = { tx, ty, t: performance.now() }; onTileClick(tx, ty); return;
   }
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() }); // มือถือ: แตะทำงานตอนปล่อยนิ้ว (แยกจาก pinch)
-  if (scene && ptrs.size === 1 && buildCanDrag()) { const [sx, sy] = isoPtr(e), h = hitItem(sx, sy); if (h != null) dragB = { i: h, sx, sy, moved: false }; }
+  if (scene && ptrs.size === 1 && inMyHouse() && !build.sel && !build.erase) { // กดค้างที่ของ = หยิบของ เมนูตกแต่งเด้งขึ้นมาให้ลาก/หมุนได้ทันที
+    const [sx, sy] = isoPtr(e), h = hitItem(sx, sy);
+    if (h != null) { dragB = { i: h, sx, sy, moved: false, lp: false }; dragB.lpT = setTimeout(() => buildLongPick(h), 420); }
+  }
   if (ptrs.size === 2) pinch = { d0: pinchDist(), z0: userZoom };
 });
 const endPtr = e => {
   if (e.pointerType === 'mouse') { if (dragB && dragB.mouse) { const d = dragB; dragB = null; if (d.moved) { const [x, y] = isoPtr(e); buildDrop(d, x, y); } else houseIsoClick(d.sx, d.sy); } return; }
   const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId);
-  if (dragB && !dragB.mouse && ptrs.size === 0) { const d = dragB; dragB = null; if (d.moved) buildDrop(d, d.lx, d.ly); else houseIsoClick(d.sx, d.sy); return; }
+  if (dragB && !dragB.mouse && ptrs.size === 0) { const d = dragB; dragB = null; clearTimeout(d.lpT); if (d.moved) { if (build.on) buildDrop(d, d.lx, d.ly); } else if (!d.lp) houseIsoClick(d.sx, d.sy); return; }
   const wasPinch = !!pinch; if (ptrs.size < 2) pinch = null;
   if (!p || wasPinch) return; // นิ้วที่เป็นส่วนหนึ่งของ pinch ไม่นับเป็นแตะ
   const moved = Math.hypot(e.clientX - p.sx, e.clientY - p.sy), dur = performance.now() - p.t;
@@ -3125,6 +3128,12 @@ function houseIsoClick(sx, sy) {
   walkHouse(X, Y);
 }
 let dragB = null; // ของที่กำลังลาก (โหมดตกแต่ง): {i, sx, sy, moved, mouse}
+function buildLongPick(i) { // กดค้างแล้วยังไม่ลาก = หยิบชิ้นนี้ เปิดเมนูตกแต่งให้ลาก/หมุน/เก็บได้ทันที
+  if (!dragB || dragB.i !== i || dragB.moved) return;
+  dragB.lp = true; build.on = true; build.sel = null; build.erase = false; build.pick = i;
+  const f = furn.get(i); if (f) build.tab = FURN[f.f].cat || build.tab;
+  if (navigator.vibrate) navigator.vibrate(12); playSfx('click'); renderBuild();
+}
 const buildCanDrag = () => inMyHouse() && build.on && !build.sel && !build.erase;
 function buildDrop(d, sx, sy) { // ปล่อยของที่ลากตรงช่องใหม่ (ถ้าวางไม่ได้จะบอกเหตุผล)
   const it = furn.get(d.i); if (!it) return;
