@@ -563,6 +563,7 @@ function applyScene(m) {
   const old = me; players.clear();
   for (const q of m.players) { if (q.id === myId) { old.x = old.tx = m.x; old.y = old.ty = m.y; old.sit = false; old.fs = 0; players.set(myId, old); } else players.set(q.id, mkPlayer(q)); }
   me = players.get(myId); updateOnline(); updateHouseUi(); renderBuild(); closePlots();
+  if (inMyHouse()) toggleBuild(true); // เข้าบ้านตัวเองแล้วเปิดเมนูตกแต่งให้เลย
   // เปลี่ยนฉาก: ตัดเสียงกับคนฉากเก่าแล้วโทรหาทุกคนในฉากใหม่ (ผู้เล่นเดิมจะรับสายเองผ่าน onRtc)
   [...peers.keys()].forEach(id => { if (id !== callWith) closePeer(id); }); // สายโทรส่วนตัวยังต่ออยู่ข้ามฉาก
   players.forEach((q, id) => { if (id !== myId && id !== callWith) callPeer(id); });
