@@ -596,6 +596,9 @@ function applyScene(m) {
   const old = me; players.clear();
   for (const q of m.players) { if (q.id === myId) { old.x = old.tx = m.x; old.y = old.ty = m.y; old.sit = false; old.fs = 0; players.set(myId, old); } else players.set(q.id, mkPlayer(q)); }
   me = players.get(myId); updateOnline(); updateHouseUi(); renderBuild(); closePlots();
+  // เปลี่ยนฉาก: ตัดเสียงกับคนฉากเก่าแล้วโทรหาทุกคนในฉากใหม่ (ผู้เล่นเดิมจะรับสายเองผ่าน onRtc)
+  [...peers.keys()].forEach(closePeer);
+  players.forEach((q, id) => { if (id !== myId) callPeer(id); });
 }
 function updateHouseUi() {
   $('houseExit').classList.toggle('hidden', !scene);
