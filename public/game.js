@@ -901,7 +901,7 @@ let farmTab = 'gear';
 const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '🌱 เมล็ดพันธุ์'], ['sell', '💰 ขายผลผลิต']], fish: [['gear', '🎣 อุปกรณ์ตกปลา'], ['sell', '🐟 ขายปลา']],
   food: [['buy', '🍜 ซื้ออาหาร'], ['cook', '👨‍🍳 ทำอาหาร'], ['sell', '💰 ขาย']], animal: [['feed', '🌾 อาหาร / ยา'], ['pets', '🐾 สัตว์เลี้ยง'], ['sell', '💰 ขาย']],
   wood: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']], furn: [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['sell', '💰 ขาย']] };
-const furnCatOf = k => k === 'lamp' ? 'decor' : (FURN[k.slice(5)] || {}).cat; // หมวดของที่ร้านเฟอร์นิเจอร์ (ดูจาก cat ใน FURN)
+const furnCatOf = k => (FURN[k.slice(5)] || {}).cat; // หมวดของที่ร้านเฟอร์นิเจอร์ (ดูจาก cat ใน FURN)
 // เมนูปลาใหม่ขายได้เฉพาะแท็บ 💰 ขาย ของร้านอาหาร (ไม่ขายใต้เมนูทำอาหารเดิม)
 const FISH_DISH_SELL_TAB = new Set(['dish_fishsoup', 'dish_sashimi', 'dish_fishburger', 'dish_fishpie']);
 const seedProfit = k => { const c = CROPS[k.slice(5)]; return (c.sell - c.seed) / (c.time / 60000); };

@@ -738,7 +738,7 @@ class World {
     if (S.STARTER.every(s => st.done[s.id])) {
       st.final = true; this.add(p, 'coin', S.STARTER_FINAL.coin, 'starter'); for (const it of S.STARTER_FINAL.items) this.add(p, it, 1);
       this.addLog(`🎓 ${p.name} ผ่านคู่มือเริ่มต้นครบแล้ว!`);
-      this.toast(p, `🎓 ผ่านคู่มือเริ่มต้นครบ! รับ 🪙${S.STARTER_FINAL.coin} + 🪑 เก้าอี้ + 🪴 ต้นไม้ (เปิดโหมดตกแต่งบ้านด้วยปุ่ม 🏠)`); this.sfxTo(p, 'levelup');
+      this.toast(p, `🎓 ผ่านคู่มือเริ่มต้นครบ! รับ 🪙${S.STARTER_FINAL.coin} + 🪑 เก้าอี้ + 🪴 ต้นไม้ + 🔦 ตะเกียง (เปิดโหมดตกแต่งบ้านด้วยปุ่ม 🏠)`); this.sfxTo(p, 'levelup');
     }
     this.dirty = true; this.questPush(p);
   }

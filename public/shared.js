@@ -546,7 +546,7 @@
     { id: 'rich1k',     e: '💵', name: 'เศรษฐีน้อย',         desc: 'มีเหรียญในกระเป๋าถึง 1,000',          stat: 'wealth',  goal: 1000, coin: 50 },
     { id: 'rich10k',    e: '💎', name: 'เศรษฐีเมือง',        desc: 'มีเหรียญในกระเป๋าถึง 10,000',         stat: 'wealth',  goal: 10000, coin: 500, title: 'เศรษฐีเมือง' },
   ];
-  const STARTER_FINAL = { coin: 100, items: ['furn_chair', 'furn_plant'] };
+  const STARTER_FINAL = { coin: 100, items: ['furn_chair', 'furn_plant', 'lamp'] };
   // สมุดสะสม: ได้ครบทุกชนิดในหมวดไหนรับรางวัลหมวดนั้น (ชนิดใหม่แต่ละชนิดได้ BOOK_ENTRY_COIN) rare = เฟอร์นิเจอร์หายากที่เป็นรางวัล
   const BOOK_ENTRY_COIN = 8;
   const BOOK = {
@@ -598,7 +598,7 @@
     ] },
     cloth:  { name: '👕 ร้านเสื้อผ้า',    skill: null,     buy: Object.keys(WEAR).flatMap(c => WEAR[c].filter(i => i.price > 0).map(i => wearKey(c, i.id))), sell: [] },
     food:   { name: '🍜 ร้านอาหาร',      skill: null,     buy: MEALS.map(m => 'meal_' + m.id), sell: ['dish_'] },
-    furn:   { name: '🛋️ ร้านเฟอร์นิเจอร์', skill: null,     buy: Object.keys(FURN).filter(f => !FURN[f].rare && !FURN[f].craft).map(f => 'furn_' + f).concat('lamp'), sell: ['furn_'] }, // รับซื้อเฟอร์นิเจอร์ในกระเป๋า (ที่ยังไม่ได้วาง) คืนที่ SELLBACK ของราคา
+    furn:   { name: '🛋️ ร้านเฟอร์นิเจอร์', skill: null,     buy: Object.keys(FURN).filter(f => !FURN[f].rare && !FURN[f].craft).map(f => 'furn_' + f), sell: ['furn_'] }, // รับซื้อเฟอร์นิเจอร์ในกระเป๋า (ที่ยังไม่ได้วาง) คืนที่ SELLBACK ของราคา
   };
 
   // ข้อมูลของแต่ละไอเทม: buy/sell = ราคา, lv + skill = เงื่อนไขเลเวลตอนซื้อ
@@ -613,7 +613,7 @@
     if (k === 'log') return { name: 'ไม้ท่อน', emoji: '🪵', sell: WOOD.log.sell, cat: 'wood' };
     if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 58, cat: 'wood' };
     if (k === 'hardwood') return { name: 'ไม้เนื้อแข็ง', emoji: '🟫', sell: WOOD.hardwood.sell, cat: 'wood' };
-    if (k === 'lamp') return { name: 'ตะเกียง (สว่างรอบตัว 5 ช่อง)', emoji: '🏮', buy: 150, once: true, cat: 'gear' };
+    if (k === 'lamp') return { name: 'ตะเกียง/ไฟฉาย (สว่างรอบตัว 5 ช่อง)', emoji: '🔦', cat: 'gear' }; // ไม่มีขายในร้านและขายต่อไม่ได้ ได้จากรางวัลคู่มือเริ่มต้น
     if (k === 'medicine') return { name: 'ยารักษาสัตว์', emoji: '💊', buy: 20, cat: 'feed' };
     const fm = /^furn_(\w+)$/.exec(k);
     if (fm) return FURN[fm[1]] ? { name: FURN[fm[1]].name, emoji: FURN[fm[1]].emoji, buy: FURN[fm[1]].price, sell: FURN[fm[1]].rare ? undefined : Math.floor(FURN[fm[1]].price * FURN_SELL), cat: 'furn', furn: fm[1] } : null;
