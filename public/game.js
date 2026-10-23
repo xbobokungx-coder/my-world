@@ -1217,7 +1217,7 @@ canvas.addEventListener('pointerdown', e => {
     flash = { tx, ty, t: performance.now() }; onTileClick(tx, ty); return;
   }
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() }); // มือถือ: แตะทำงานตอนปล่อยนิ้ว (แยกจาก pinch)
-  if (scene && ptrs.size === 1 && inMyHouse() && !build.sel && !build.erase) { // กดค้างที่ของ = หยิบของ เมนูตกแต่งเด้งขึ้นมาให้ลาก/หมุนได้ทันที
+  if (scene && ptrs.size === 1 && inMyHouse() && !build.erase) { // กดค้างที่ของ = หยิบของ เมนูตกแต่งเด้งขึ้นมาให้ลาก/หมุนได้ทันที
     const [sx, sy] = isoPtr(e), h = hitItem(sx, sy);
     if (h != null) { dragB = { i: h, sx, sy, moved: false, lp: false }; dragB.lpT = setTimeout(() => buildLongPick(h), 420); }
   }
