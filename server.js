@@ -2789,20 +2789,12 @@ function adminHandle(p, world, m) {
     try { t.ws.close(); } catch (e) { /* ปิดไม่ได้ก็ไม่เป็นไร */ }
     return reply({ kicked: t.name });
   }
-  if (m.a === 'coin') { // ผู้ดูแลเพิ่ม/ลดเหรียญผู้เล่น (ออนไลน์หรือออฟไลน์) n = จำนวน (ติดลบ = ลด ลดได้ไม่ต่ำกว่า 0)
+  if (m.a === 'coin') { // ผู้ดูแลปรับเหรียญของตัวเองเท่านั้น (ห้องที่กำลังอยู่) n = จำนวน (ติดลบ = ลด ลดได้ไม่ต่ำกว่า 0)
     const n = Math.trunc(Number(m.n));
     if (!Number.isFinite(n) || n === 0 || Math.abs(n) > 1000000) return reply({ err: 'จำนวนต้องเป็นตัวเลขที่ไม่ใช่ 0 และไม่เกิน 1,000,000', users: userList() });
-    const w = worlds.get(String(m.room || '')); if (!w) return reply({ err: 'ไม่พบห้องนี้', users: userList() });
-    const key = String(m.name || '').toLowerCase().slice(0, 24);
-    const t = [...w.players.values()].find(q => q.key === key);
-    let after;
-    if (t) { w.add(t, 'coin', n, 'admin'); after = t.rec.inv.coin; }
-    else {
-      const rec = w.saved[key]; if (!rec) return reply({ err: 'ไม่พบผู้เล่นคนนี้', users: userList() });
-      rec.inv.coin = Math.max(0, (rec.inv.coin || 0) + n); w.dirty = true; after = rec.inv.coin; logEv(w.room, 'coin', { p: key, n, why: 'admin' });
-    }
-    console.log('ผู้ดูแลปรับเหรียญ:', key, (n > 0 ? '+' : '') + n, '→', after, '(โดย ' + p.name + ')');
-    return reply({ coinmsg: `🪙 ${key}: ${n > 0 ? '+' : ''}${n} (เหลือ ${after})`, users: userList() });
+    world.add(p, 'coin', n, 'admin');
+    console.log('ผู้ดูแลปรับเหรียญตัวเอง:', p.name, (n > 0 ? '+' : '') + n, '→', p.rec.inv.coin, '(ห้อง ' + world.room + ')');
+    return reply({ coinmsg: `🪙 ${p.name}: ${n > 0 ? '+' : ''}${n} (เหลือ ${p.rec.inv.coin})`, users: userList() });
   }
   if (m.a === 'users') { // รายชื่อผู้เล่นทุกห้องพร้อม IP (ออนไลน์ก่อน แล้วเรียงตามเวลาเข้าล่าสุด) + รายชื่อที่ถูกแบน
     return reply({ users: userList(), bans: banList() });
