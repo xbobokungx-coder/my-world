@@ -586,6 +586,7 @@ function toggleBuild(on) {
 function renderBuild() {
   const el = $('build'); el.classList.toggle('hidden', !build.on); document.body.classList.toggle('building', build.on);
   $('houseBtn').style.opacity = build.on ? 1 : .8;
+  $('homeQuick').classList.toggle('hidden', build.on); // ปิดเมนูตกแต่งแล้ว ปุ่มบ้านเด้งกลับมาข้างไฟฉาย
   if (!build.on) return;
   const ks = furnKeys();
   if (build.sel && !(inv['furn_' + build.sel] > 0)) build.sel = (ks[0] || '').slice(5) || null;
@@ -619,6 +620,7 @@ function rotateBuild() { // หมุนชิ้นที่เลือกไ�
   else if (build.sel) { build.rot = build.rot ? 0 : 1; playSfx('click'); }
 }
 $('houseBtn').onclick = homeAction;
+$('homeQuick').onclick = homeAction;
 // บ้านเพื่อน: ลีดเดอร์บอร์ดเรียงตามมูลค่าเฟอร์นิเจอร์ในบ้าน (ราคาร้าน) แล้วตามจำนวนชิ้น • กดชื่อเพื่อเข้าไปเยี่ยม
 const plotsShown = () => !$('plots').classList.contains('hidden');
 function openPlots() { $('plots').classList.remove('hidden'); send({ t: 'house', a: 'board' }); renderPlots(); }

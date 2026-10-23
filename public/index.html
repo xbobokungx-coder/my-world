@@ -245,7 +245,7 @@
   #build .bitems { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
   #build .bitems .btn { width:100%; font-size:inherit; padding:3px 4px; }
   #build .btn.on { outline:3px solid #fff; box-shadow:0 0 0 4px var(--accent); }
-  body.touch #build { top:clamp(140px, 22vh, 180px); bottom:auto; right:4px; width:clamp(104px, 36vw, 150px); max-height:calc(100vh - 290px); font-size:10px; }
+  body.touch #build { top:112px; bottom:auto; right:4px; width:clamp(104px, 36vw, 150px); max-height:calc(100vh - 130px); font-size:10px; }
   body.touch #build .blbl { display:none; }
   body.touch #build .btools { flex-direction:row; flex-wrap:wrap; }
   body.touch #build .btools .btn { width:auto; flex:1 1 30%; text-align:center; }
@@ -280,7 +280,7 @@
   #hudTop #satChip, #hudTop #enChip, #hudTop #cdChip { cursor:pointer; font-size:13px; } #hudTop .panel.warn { background:#a8661f; } #hudTop .panel.over { background:#8f2a22; }
   #hudTop > :not(.hidden):not(#hudMenu) { height:38px; box-sizing:border-box; margin:0; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; line-height:1; }
   #hudTop > .btn.small { font-size:15px; padding:0 12px; }
-  #hudTop > #bagBtn, #hudTop > #chatBtn, #hudTop > #micBtn, #hudTop > #lampBtn { width:38px; padding:0; }
+  #hudTop > #bagBtn, #hudTop > #chatBtn, #hudTop > #micBtn, #hudTop > #lampBtn, #hudTop > #homeQuick { width:38px; padding:0; }
   #hudMenu { position:absolute; top:calc(100% + 6px); left:0; width:min(92vw,340px); box-sizing:border-box; padding:8px 10px 10px; background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); z-index:6; max-height:calc(100vh - 90px); overflow:auto; }
   #hudMenu .mtitle { font-size:12px; font-weight:800; color:#5a4636; opacity:.8; margin:8px 2px 4px; }
   #hudMenu .mtitle:first-child { margin-top:2px; }
@@ -380,6 +380,7 @@
   <button class="btn small" id="chatBtn" title="แชท (Enter)" aria-label="แชท">💬</button>
   <button class="btn small mic" id="micBtn" title="ไมค์: ปิดอยู่ (กดเพื่อเปิด)" aria-label="เปิด/ปิดไมค์">🎤</button>
   <button class="btn small lamp hidden" id="lampBtn" title="ตะเกียง (L)" aria-label="เปิด/ปิดตะเกียง" aria-pressed="false">🔦</button>
+  <button class="btn small" id="homeQuick" title="เข้าบ้านตัวเอง / ตกแต่งบ้าน (H)" aria-label="บ้านฉัน">🏠</button>
   <div id="hudMenu" class="hidden" role="menu" aria-label="เมนูหลัก">
     <div class="mtitle">🧍 ตัวละคร</div>
     <div class="mgrid">
