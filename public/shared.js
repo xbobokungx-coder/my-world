@@ -226,22 +226,6 @@
   const canRepair = (tool, tier, cur, fixes) => (fixes || 0) < REPAIR.maxFixes && cur < durMax(tool, tier, (fixes || 0) + 1);
   // เทรดของระหว่างผู้เล่น: เทรดเหรียญไม่ได้ เทรดได้เฉพาะของที่ไม่ผูกกับตัว มูลค่ารวมฝั่งละไม่เกิน maxValue ต่อรอบ
   const TRADE = { maxValue: 1000, range: 8 };
-  // กระดานใบสั่งซื้อ (ลานกองไฟ): ผู้เล่น/NPC ตั้ง "ต้องการซื้อ X ชิ้น จ่ายเหรียญรวม Y" เหรียญถูกกันไว้ (escrow) คนอื่นเอาของมาส่งรับเหรียญ หัก fee เป็น sink
-  // ช่วยให้เกิดการพึ่งพากัน (จ่ายเป็นเหรียญได้จริง ต่างจากการเทรดที่แลกของอย่างเดียว) — มี cap หลายชั้นกันบัญชีสำรองฟอกเงิน
-  const ORDER = {
-    minLevel: 6,          // ซ่อนกระดานจนเลเวลรวมทุกอาชีพ ≥ นี้ (ผู้เล่นใหม่ยังไม่รก)
-    fee: 0.05,            // ค่าธรรมเนียม 5% หักจากเหรียญที่ผู้ส่งของได้รับ (หายจากระบบ = sink)
-    maxOpen: 3,           // ใบสั่งที่ยังเปิดค้างได้พร้อมกันต่อคน
-    maxQty: 50,           // จำนวนของต่อใบ
-    priceLo: 0.6, priceHi: 1.5, // ราคาต่อชิ้นต้องอยู่ 60–150% ของราคาฐาน (กันตั้งราคาเพี้ยนเพื่อโอนเงิน)
-    expireHours: 24,      // ใบหมดอายุกี่ชั่วโมง (คืนเหรียญที่เหลือให้ผู้ตั้ง)
-    earnCapPerDay: 3000,  // เพดานเหรียญที่ "รับจากการส่งของ" ได้ต่อวันต่อคน (กันบัญชีสำรองฟอกเงิน)
-    npcDaily: 1,          // NPC โพสต์ใบสั่งซื้อกี่ใบต่อ "วันเกม" (12 นาที) • ใบเก่าสุดถูกแทนที่เมื่อเกิน npcMaxOpen ทำให้เมนูหมุนเวียน
-    npcMaxOpen: 6,        // ใบของ NPC ที่เปิดค้างพร้อมกันได้สูงสุด (เดิมไม่จำกัด ล้นกระดานจนใบของผู้เล่นมองไม่เห็น: เจอ 59 ใบ)
-    npcPremium: 1.15,     // NPC จ่าย 115% ของราคาที่ร้านรับซื้อตอนนั้น (ราคาฐาน × ตัวคูณตลาดกลาง) • ลำดับสินค้าสลับด้วยสำรับ ไม่ซ้ำกับใบที่เปิดอยู่และไม่ซ้ำหมวดติดกัน
-    npcQty: [8, 20],      // ช่วงจำนวนของในใบสั่งของ NPC
-  };
-  const orderBand = base => [Math.max(1, Math.ceil(base * ORDER.priceLo)), Math.max(1, Math.ceil(base * ORDER.priceHi))]; // [ราคาต่อชิ้นต่ำสุด, สูงสุด]
   // โรงหนังกลางแปลง: ฉายวิดีโอเดียวกันให้ทุกคนที่เข้าไปดู (ได้ยินเสียงเฉพาะคนที่ดู) ตั๋วชิ้นละ TICKET เหรียญต่อการฉาย 1 รอบ
   const TICKET = 15;
   const MOVIES = [
@@ -800,6 +784,6 @@
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, CAT_KEYS, sellCat, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
-    ORDER, orderBand, SELLABLE };
+    SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);
