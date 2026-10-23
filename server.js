@@ -1222,16 +1222,25 @@ class World {
     } else if (a === 'heal') {
       if (!st.sick) return this.toast(p, `${C.emoji} ${C.name}ไม่ได้ป่วย`);
       if (!(p.rec.inv.medicine > 0)) return this.toast(p, 'ไม่มียา 💊 ซื้อได้ที่ร้านสัตว์เลี้ยง');
-      this.add(p, 'medicine', -1); st.sick = false; st.h = Math.max(st.h, 30);
+      this.add(p, 'medicine', -1); st.sick = false; st.sickMs = 0; st.h = Math.max(st.h, 30);
       this.toast(p, `💊 รักษา${C.emoji} ${C.name}หายป่วยแล้ว!`); this.sfx(p, 'heal');
     } else return;
     this.dirty = true; this.petPush(p);
   }
-  petTick15(p) { // ทุก 15 วินาที: สัตว์ที่พาออกมาหิวลง หิวจัดมีโอกาสป่วย (ไม่ตาย แค่เศร้าและเดินช้า)
+  petTick15(p) { // ทุก 15 วินาที: สัตว์ที่พาออกมาหิวลง หิวจัดมีโอกาสป่วย ป่วยแล้วไม่รักษาเกิน 1 วันในเกมจะตาย
     const id = p.pet; if (!id) return;
     const st = this.petSt(p, id), C = S.COMPANIONS[id], was = st.sick;
     st.h = Math.max(0, st.h - S.PETCARE.hungerTick);
-    if (!st.sick && st.h < S.PETCARE.sickBelow && Math.random() < S.PETCARE.sickChance) { st.sick = true; this.toast(p, `🤒 ${C.emoji} ${C.name}ป่วยแล้ว! รักษาด้วยยา 💊 ในเมนู 🐾`); }
+    if (!st.sick && st.h < S.PETCARE.sickBelow && Math.random() < S.PETCARE.sickChance) { st.sick = true; st.sickMs = 0; this.toast(p, `🤒 ${C.emoji} ${C.name}ป่วยแล้ว! รักษาด้วยยา 💊 ในเมนู 🐾 ไม่งั้นจะตายใน 1 วัน`); }
+    if (st.sick) {
+      st.sickMs = (st.sickMs || 0) + S.PLAYER_HUNGER.tickMs / HFAST;
+      if (st.sickMs >= S.PETCARE.sickDieMs) { // ตาย: เอาออกจากกระเป๋า ซื้อใหม่ได้ที่ร้านสัตว์เลี้ยง
+        this.add(p, 'pet_' + id, -1, 'petdie'); delete p.rec.pst[id]; if (p.rec.pnames) delete p.rec.pnames[id];
+        p.rec.pet = p.pet = ''; this.dirty = true;
+        this.toast(p, `💀 ${C.emoji} ${C.name}ตายแล้ว เพราะป่วยนานเกิน 1 วัน ซื้อตัวใหม่ได้ที่ 🐾 ร้านสัตว์เลี้ยง`); this.sfx(p, 'die');
+        this.petPush(p); return;
+      }
+    } else st.sickMs = 0;
     if (st.sick !== was) this.petPush(p); else send(p, { t: 'pst', pst: p.rec.pst, names: p.rec.pnames || {} });
   }
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); }
