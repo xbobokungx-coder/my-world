@@ -1319,6 +1319,7 @@ async function callPeer(id) {
   } catch (e) { console.warn('call failed', e); }
 }
 async function onRtc(from, d) {
+  if (!players.has(from)) return; // สัญญาณเสียงจากคนที่ไม่ได้อยู่ฉากเดียวกันแล้ว (ค้างมาจากฉากก่อน) ไม่รับ
   try {
     if (d.o) closePeer(from); // ข้อเสนอใหม่ = เริ่มการเชื่อมต่อใหม่ ไม่ต่อกับท่อเสียงเก่าที่เงียบแล้ว
     const p = getPeer(from), pc = p.pc;

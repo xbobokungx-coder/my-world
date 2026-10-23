@@ -1021,7 +1021,7 @@ class World {
       }
       case 'rtc': { // ส่งต่อข้อมูลเชื่อมต่อเสียง (WebRTC signaling) ระหว่างผู้เล่น
         const q = this.players.get(m.to | 0);
-        if (q && q !== p && m.d && typeof m.d === 'object') send(q, { t: 'rtc', from: p.id, d: m.d });
+        if (q && q !== p && (q.scene || null) === (p.scene || null) && m.d && typeof m.d === 'object') send(q, { t: 'rtc', from: p.id, d: m.d }); // คนละฉากส่งสัญญาณเสียงให้กันไม่ได้
         break;
       }
       case 'look': { // เปลี่ยนสี (เสื้อ/กางเกง/หมวก) และสวมเสื้อผ้าที่ซื้อไว้
