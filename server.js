@@ -513,6 +513,7 @@ class World {
   achOf(rec) { const a = rec.ach = rec.ach && typeof rec.ach === 'object' ? rec.ach : {}; if (!a.cnt || typeof a.cnt !== 'object') a.cnt = {}; if (!a.got || typeof a.got !== 'object') a.got = {}; return a; }
   titleOf(rec) { // ฉายาที่แสดงเหนือหัว: ที่เลือกไว้ (ต้องปลดล็อกแล้ว) ไม่งั้นใช้ฉายาตามจำนวนเควสสะสม
     if (rec.ttl === 'wk1' && rec.wk1 && rec.wk1.final) return S.WEEK1.final.title;
+    if (typeof rec.ttl === 'string' && rec.ttl.startsWith('star:')) { const sk = rec.ttl.slice(5); if (S.SKILLS[sk] && this.starOf(rec, sk) >= S.MASTERY.max) return 'ปรมาจารย์' + S.SKILLS[sk].name; }
     if (typeof rec.ttl === 'string' && rec.ttl.startsWith('arc:')) { const x = S.ARC_SHOP.find(y => 'arc:' + y.id === rec.ttl); if (x && rec.arc && (rec.arc.tt || []).includes(x.id)) return x.title; } // ฉายาจากร้านแต้มตู้เกม
     const d = rec.ttl && S.ACH.find(x => x.id === rec.ttl), a = rec.ach;
     return d && d.title && a && a.got && a.got[d.id] ? d.title : S.titleFor(rec.qtotal);
@@ -807,6 +808,19 @@ class World {
     this.dirty = true; this.questPush(p);
   }
 
+  // ----- ความชำนาญหลัง Lv10 (S.MASTERY) -----
+  starOf(rec, sk) { return (rec.stars && rec.stars[sk]) || 0; }
+  starClaim(p, sk) {
+    if (!Object.hasOwn(S.SKILLS, sk)) return; const n = this.starOf(p.rec, sk) + 1, M = S.MASTERY;
+    if (n > M.max) return this.toast(p, 'ได้ดาวครบแล้ว');
+    const need = S.xpFor(S.MAX_LV) + n * M.xpPer, cost = M.costBase * n;
+    if ((p.rec.skills[sk] || 0) < need) return this.toast(p, `ต้องมี XP ${S.SKILLS[sk].name} ${need.toLocaleString()} ก่อน`);
+    if ((p.rec.inv.coin || 0) < cost) return this.toast(p, `เหรียญไม่พอ (ดาวที่ ${n} ใช้ 🪙${cost})`);
+    this.add(p, 'coin', -cost, 'mastery'); (p.rec.stars || (p.rec.stars = {}))[sk] = n; this.dirty = true;
+    this.toast(p, `⭐ ${S.SKILLS[sk].emoji} ${S.SKILLS[sk].name} ดาวที่ ${n}!`); this.sfxTo(p, 'levelup'); this.addLog(`⭐ ${p.name} ได้ดาวความชำนาญ${S.SKILLS[sk].name} ${'⭐'.repeat(n)}`);
+    if (n >= M.max) { p.rec.ttl = 'star:' + sk; p.title = this.titleOf(p.rec); this.broadcast({ t: 'title', id: p.id, title: p.title }); }
+    send(p, { t: 'stars', s: p.rec.stars });
+  }
   // ----- อีเวนต์ประจำสัปดาห์ (S.EVENTS) -----
   evWindow(now = Date.now()) { // อีเวนต์ที่กำลังเล่น หรือครั้งถัดไป (ภายใน 7 วัน) → { E, start, end }
     let next = null;
@@ -1161,7 +1175,8 @@ class World {
     const day = Math.floor(now / S.DAY_MS);
     if (day !== this.mktDay) {
       this.mktDay = day;
-      for (const k of SELLABLE) this.market[k].t = Math.min(1.3, Math.max(0.75, 1 + (Math.random() - 0.5) * 0.4));
+      for (const k of SELLABLE) { const sz = k.startsWith('crop_') ? S.cropSeason(k.slice(5), now) : 0; this.market[k].t = Math.min(S.MARKET.max, Math.min(1.3, Math.max(0.75, 1 + (Math.random() - 0.5) * 0.4)) * (sz > 0 ? S.SEASONS.inMul : sz < 0 ? S.SEASONS.outMul : 1)); } // ฤดูกาล: พืชในฤดูราคาดีกว่า
+      { const se = S.seasonAt(now); if (se.on && this.seasonId !== se.s.id) { if (this.seasonId) { const m = `${se.s.emoji} เข้าสู่${se.s.name}แล้ว! พืชในฤดู: ${se.s.crops.map(c => CROPS[c].emoji).join(' ')} ราคาดี โตเร็ว (พืชนอกฤดูโตช้าลง)`; this.broadcast({ t: 'msg', text: m }); this.addLog(m); } this.seasonId = se.s.id; } }
       const up = SELLABLE[Math.floor(Math.random() * SELLABLE.length)]; let dn = SELLABLE[Math.floor(Math.random() * SELLABLE.length)];
       if (dn === up) dn = SELLABLE[(SELLABLE.indexOf(up) + 1) % SELLABLE.length];
       this.market[up].t = 1.35; this.market[dn].t = 0.7;
@@ -1273,7 +1288,7 @@ class World {
       roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
     });
     send(p, { t: 'pst', pst: rec.pst || {}, names: rec.pnames || {} });
-    send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); send(p, { t: 'auc', a: this.aucPub() }); this.chPush(p); send(p, { t: 'evt', e: this.evPub() }); send(p, { t: 'fest', f: this.festPub() });
+    send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); send(p, { t: 'auc', a: this.aucPub() }); this.chPush(p); send(p, { t: 'evt', e: this.evPub() }); send(p, { t: 'stars', s: rec.stars || {} }); send(p, { t: 'fest', f: this.festPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
     send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
@@ -1413,6 +1428,7 @@ class World {
       case 'arcbuy': this.arcBuy(p, m.id); break;
       case 'rent': this.rentHandle(p, String(m.id || '')); break;
       case 'veh': this.setVeh(p, m.v); break;
+      case 'star': this.starClaim(p, String(m.skill || '')); break;
       case 'ch': if (m.a === 'start') this.chStart(p); else if (m.a === 'redeem') this.chRedeem(p); else this.chPush(p); break;
       case 'stall': if (m.a === 'list') send(p, { t: 'stall', l: this.stallPub() }); else this.stallHandle(p, m); break;
       case 'orders': if (m.a === 'fill') this.orderFill(p, m.id); send(p, { t: 'orders', o: this.ordersPub(p) }); break;
@@ -2977,7 +2993,7 @@ class World {
     if (!this.players.size) return; // โลกจำศีล: ไม่มีคนออนไลน์ พืชไม่โต
     for (const k in this.farm) {
       const t = this.farm[k];
-      if (t.c && t.wu > now && S.cropStage(t) < 3) t.g = Math.min(CROPS[t.c].time, (t.g || 0) + dt * (t.m || 1));
+      if (t.c && t.wu > now && S.cropStage(t) < 3) t.g = Math.min(CROPS[t.c].time, (t.g || 0) + dt * (t.m || 1) / (S.cropSeason(t.c, now) < 0 ? S.SEASONS.outGrow : 1)); // นอกฤดูโตช้าลง
       else if (t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS) { t.rm = (t.rm || 0) + dt; this.dirty = true; } // สุกค้างอยู่ นับเวลาจนครบ 1 วันในเกม
       else if (!t.c) { // แปลงว่างที่ไม่มีใครถาง/ปลูกเกินเวลาที่กำหนด หญ้าขึ้นกลับ
         t.idle = (t.idle || 0) + dt;

@@ -216,6 +216,7 @@ function handle(m) {
     case 'auc': aucSt = m.a; if (townShown()) renderTown(); break;
     case 'ch': chSt = { ch: m.ch, wet: m.wet, chain: m.chain }; if (questShown()) renderQuestPanel(); break;
     case 'chain': chSt.chain = m.n; break;
+    case 'stars': starsSt = m.s || {}; if (bagShown()) renderBag(); break;
     case 'evt': evtSt = m.e; renderEvChip(); if (townShown() && townTab === 'log') renderTown(); break;
     case 'wet': { const p = players.get(m.id); if (p) p.wet = !!m.on; break; }
     case 'stall': stallSt = m.l || []; if (townShown() && townTab === 'stall') renderTown(); break;
@@ -367,7 +368,7 @@ function eventCard() { // การ์ดอีเวนต์ในข่าว
 }
 setInterval(renderEnergy, 1000);
 // ความสดของสินค้า (Shared.FRESH): อายุของแต่ละกองในกระเป๋าจากเซิร์ฟเวอร์ คิดระดับสด/ค้าง/เก่าตามเวลาปัจจุบัน
-let evtSt = null, freshSt = { l: {}, fz: false }, rentsSt = {}, aucSt = null, festSt = null, pinSt = false, stallSt = [], ordersSt = null, chSt = { ch: null, wet: 0, chain: 0 }; // chSt = ชาเลนจ์ถังน้ำ // pinSt = บัญชีนี้ตั้ง PIN แล้ว // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
+let starsSt = {}, evtSt = null, freshSt = { l: {}, fz: false }, rentsSt = {}, aucSt = null, festSt = null, pinSt = false, stallSt = [], ordersSt = null, chSt = { ch: null, wet: 0, chain: 0 }; // chSt = ชาเลนจ์ถังน้ำ // pinSt = บัญชีนี้ตั้ง PIN แล้ว // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
 const freshMulsOf = (k, q) => Shared.perishable(k) ? Shared.freshMuls(freshSt.l[k], q, Date.now() + timeOffset, freshSt.fz) : null;
 function freshBadge(k) { // 🟢12 🟡3 🔴1 (แสดงเมื่อมีของค้าง/เก่า) • ก่อนวันเริ่มระบบไม่แสดง
   if (!Shared.perishable(k) || !freshSt.l[k] || Date.now() + timeOffset < Shared.FRESH.startAt) return '';
@@ -1015,6 +1016,7 @@ $('bag').addEventListener('pointerdown', e => { if (e.target === $('bag')) close
 document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => { bagTab = t.dataset.tab; renderBag(); });
 $('bagBody').addEventListener('click', e => {
   if (e.target.closest('[data-pinset]')) { showPinBox(pinSt); return; }
+  { const b = e.target.closest('[data-star]'); if (b) { send({ t: 'star', skill: b.dataset.star }); return; } }
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
   const sb = e.target.closest('[data-sub]'); if (sb) { bagSub = sb.dataset.sub; renderBag(); return; }
   const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); return; }
@@ -1060,7 +1062,9 @@ function renderBag() {
       + `<button class="btn small" data-sfx="1" style="margin:4px 0 6px">${sfxOn ? '🔊 เอฟเฟกต์เสียง: เปิด' : '🔇 เอฟเฟกต์เสียง: ปิด'}</button><div class="sec">เลเวลอาชีพ</div>`
       + Object.keys(SKILLS).map(k => {
         const L = lvl(k), xp = skills[k] || 0, base = xpFor(L), need = L >= MAX_LV ? 0 : xpFor(L + 1) - base;
-        return `<div class="skill"><b>${SKILLS[k].emoji} ${SKILLS[k].name}</b> — เลเวล ${L}${L >= MAX_LV ? ' (สูงสุด)' : ''} <small style="display:inline">XP ${xp}</small><div class="bar"><i style="width:${need ? Math.min(100, Math.round((xp - base) / need * 100)) : 100}%"></i></div></div>`;
+        const st = starsSt[k] || 0, M = Shared.MASTERY, nxt = st < M.max && L >= MAX_LV ? xpFor(MAX_LV) + (st + 1) * M.xpPer : 0;
+        return `<div class="skill"><b>${SKILLS[k].emoji} ${SKILLS[k].name}</b> — เลเวล ${L}${L >= MAX_LV ? ' (สูงสุด)' : ''} ${'⭐'.repeat(st)} <small style="display:inline">XP ${xp}</small><div class="bar"><i style="width:${need ? Math.min(100, Math.round((xp - base) / need * 100)) : 100}%"></i></div>`
+          + (nxt ? `<small>ดาวความชำนาญที่ ${st + 1}: XP ${nxt.toLocaleString()} + 🪙${M.costBase * (st + 1)} <button class="btn small" data-star="${k}" ${xp < nxt || (inv.coin || 0) < M.costBase * (st + 1) ? 'disabled' : ''}>รับดาว</button></small>` : '') + '</div>';
       }).join('');
   } else if (bagTab === 'eat') { // กดไอคอนความหิว: แสดงอาหารที่มีในตัวให้กินได้ ถ้าไม่มีก็แสดงเมนูว่าง ๆ
     const ks = Object.keys(inv).filter(k => { const i = itemInfo(k); return i && i.food && inv[k] > 0; });
@@ -1196,6 +1200,7 @@ function renderShop() {
     if (i.animal) sub = `มี ${animalCount(i.animal)}/${ANIMALS[i.animal].cap} ตัว`;
     else if (i.once) sub = inv[k] ? 'มีแล้ว ✅' : '';
     else sub = `มี ${inv[k] || 0}${i.food ? ` • อิ่ม +${i.food}` : ''}`;
+    if (seedTab) { const sz = Shared.cropSeason(k.slice(5), Date.now() + timeOffset); if (sz) sub += sz > 0 ? ' • 🌟 ในฤดู ราคาดี' : ' • 🐢 นอกฤดู โตช้า'; }
     if (seedTab) { const c = CROPS[k.slice(5)], pr = seedProfit(k), ix = keys.indexOf(k); sub += ` • กำไร ${c.sell - c.seed}/ต้น (${pr.toFixed(1)}/นาที) ${ix < 3 ? '⭐ ดี' : ix >= keys.length - 3 ? '▼ ต่ำ' : ''}`; }
     const lockTxt = locked ? ` <small>🔒 Lv${i.lv}</small>` : '';
     const off = locked || (i.once && inv[k]) || (i.animal && animalCount(i.animal) >= ANIMALS[i.animal].cap);
@@ -3578,7 +3583,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   if (!scene) drawGuideArrow(now);
   const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);
   const icon = dark > 0.45 ? '🌙' : hour < 8 || hour >= 17 ? '🌅' : '☀️';
-  const txt = `${icon} ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')}`;
+  const se = Shared.seasonAt(Date.now() + timeOffset), txt = `${se.on ? se.s.emoji + ' ' : ''}${icon} ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')}`; // ฤดูกาล + เวลาในเกม
   if ($('clock').textContent !== txt) $('clock').textContent = txt;
   drawMini(now);
 }
