@@ -51,7 +51,7 @@ let timeOffset = 0, lastSend = 0, lastSent = '', swing = 0, lastAct = 0, shopKin
 let miniState = ls.get('mw_mini') || 'small'; // small | big | off
 const keys = {}, joy = { x: 0, y: 0 };
 let chatFocus = false, walk = null;
-const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+const isTouch = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window && !matchMedia('(any-pointer: fine)').matches); // โน้ตบุ๊กจอสัมผัสที่มีเมาส์ ใช้โหมดคอม
 if (isTouch) document.body.classList.add('touch');
 ['gesturestart', 'gesturechange', 'contextmenu'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
 const lvl = s => levelOf(skills[s]);
@@ -2046,6 +2046,7 @@ function resize() {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
   baseZoom = Math.max(isTouch ? 1.35 : 1.2, Math.min(innerWidth / 720, innerHeight / 450)) * dpr; // auto-fit ตามขนาดจอ/ความละเอียด
+  document.documentElement.style.setProperty('--ui', isTouch ? 1 : Math.max(1, Math.min(1.8, Math.min(innerWidth / 1280, innerHeight / 720))).toFixed(2)); // UI คอมจอใหญ่ขยายตามสเกลจอ
   zoom = baseZoom * userZoom;
   vw = canvas.width / zoom; vh = canvas.height / zoom;
 }

@@ -71,7 +71,7 @@
   #fgauge.hit .mk { background:#ffe06a; }
   body.touch #fgauge { bottom:calc(86px + var(--sab)); }
   #shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
-  #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; overflow:auto; }
+  #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; max-height:92dvh; overflow:auto; }
   #shop h2,#bag h2,#people h2,#archub h2,#status h2,#bug h2,#quest h2,#ach h2,#arcade h2,#trade h2,#cinema h2,#town h2,#admin h2,#plots h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
   #bugText { width:100%; box-sizing:border-box; padding:8px 10px; border:2px solid var(--edge); border-radius:10px; font:inherit; font-size:15px; resize:vertical; min-height:96px; background:#fffdf6; }
   #bug .bugfile { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:10px 0 6px; font-size:12px; opacity:.9; }
@@ -345,6 +345,19 @@
   body.touch #hudTop > #bagBtn, body.touch #hudTop > #chatBtn, body.touch #hudTop > #micBtn, body.touch #hudTop > #homeQuick { display:none !important; }
   body.touch #hudTop > #online, body.touch #hudTop > #hungerChip:not(.low) { display:none !important; }
   body:not(.touch) #hudMenu .mtouch { display:none !important; }
+  #hudMenu .spk { margin-left:0; color:inherit; }
+  /* คอมจอใหญ่: ขยาย UI ตามสเกลจอ (--ui คำนวณใน game.js resize) ให้สัดส่วนกับโลกในเกมเท่ากับจอเล็ก */
+  body:not(.touch) :is(#hudTop,#hotbar,#inv,#chat,#mini,#guide,#toast,#picker,#build,#fgauge,#callBox) { zoom:var(--ui,1); }
+  body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#ask,#homeChoice) > .panel { zoom:var(--ui,1); }
+  body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots) > .panel { max-height:calc(92dvh / var(--ui,1)); }
+  body:not(.touch) #hudMenu { max-height:calc((100dvh - 90px) / var(--ui,1)); }
+  body:not(.touch) #build { max-height:calc((100dvh - 24px) / var(--ui,1)); }
+  body:not(.touch) :is(#townBody,#tradeBody) { max-height:calc(68vh / var(--ui,1)); }
+  /* จอสัมผัส: ปุ่มเล็กต้องแตะง่าย (อย่างน้อย ~40px) */
+  body.touch .mbtn { min-width:40px; min-height:36px; font-size:18px; }
+  body.touch .sw { width:36px; height:36px; }
+  body.touch .tab { min-height:40px; }
+  body.touch .opt { min-height:44px; }
 </style>
 </head>
 <body>
