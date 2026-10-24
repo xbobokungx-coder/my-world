@@ -18,6 +18,7 @@ const HFAST = Math.max(1, +process.env.HUNGER_FAST || 1);
 const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs, RESULT_MS = +process.env.CASINO_RESULT_MS || 8000, EMPTY_MS = +process.env.CIN_EMPTY_MS || 20000; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
 const SNAP_MS = +process.env.SNAP_MS || 60 * 60 * 1000; // ระยะห่างของ event snap (ไว้ทดสอบ)
 if (process.env.FRESH_START) S.FRESH.startAt = +process.env.FRESH_START; // ไว้ทดสอบ: เริ่มระบบความสดเร็วขึ้น (ms)
+if (process.env.EVENT_NOW) { const d = new Date(Date.now() + 3000); S.EVENTS.list.unshift(Object.assign({}, S.EVENTS.list[0], { dow: d.getDay(), hour: d.getHours(), min: d.getMinutes(), mins: 1 })); } // ไว้ทดสอบ: อีเวนต์ตกปลาเริ่มภายในนาทีนี้ ยาว 1 นาที
 const rand = (a, b) => a + Math.random() * (b - a);
 // บันทึกเหตุการณ์ไว้วิเคราะห์ (หนึ่งไฟล์ต่อวัน data/events/YYYY-MM-DD.jsonl) สรุปด้วย node tools/stats.js
 const EVENT_DIR = path.join(DATA_DIR, 'events');
@@ -81,7 +82,7 @@ class World {
         for (const [x, y, k] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2) { this.map[y][x] = T.TREE; if (Object.hasOwn(S.TREE_KINDS, k)) treeKinds[x + ',' + y] = k; }
       }
       mk = d.market || {}; this.mktDay = Number.isInteger(d.mktDay) ? d.mktDay : -1;
-      houseSaved = d.house || {}; townSaved = { chain: d.chain, invites: d.invites, stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, chest: d.chest, projects: d.projects, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
+      houseSaved = d.house || {}; townSaved = { evt: d.evt, chain: d.chain, invites: d.invites, stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, chest: d.chest, projects: d.projects, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
     } catch (e) {
       // ไม่มีไฟล์ = โลกใหม่ แต่ถ้ามีไฟล์แต่อ่านไม่ได้ ให้สำรองไว้ก่อน ไม่งั้นการบันทึกครั้งต่อไปจะเขียนทับข้อมูลเดิมทิ้ง
       if (e.code !== 'ENOENT') { try { fs.copyFileSync(this.file, this.file + '.broken-' + Date.now()); console.error('อ่านไฟล์บันทึกไม่ได้ สำรองไว้แล้ว:', e.message); } catch (e2) { /* ไม่มีอะไรให้สำรอง */ } }
@@ -290,6 +291,7 @@ class World {
 
   // ----- เมือง: กระดานข่าว (log โลก 50 รายการล่าสุด) + ตู้เซฟกองกลาง (ทุกคนลงขันเหรียญ → จ่ายยา/อาหารสัตว์อัตโนมัติ และชุบสัตว์ที่ตาย) -----
   loadTown(d) {
+    this.evt = d.evt && typeof d.evt === 'object' ? d.evt : { key: '', scores: {}, done: true }; // อีเวนต์ประจำสัปดาห์ที่กำลังนับคะแนน
     this.chain = Number.isFinite(d.chain) ? d.chain : 0; this.invites = d.invites && typeof d.invites === 'object' ? d.invites : {}; // ชาเลนจ์ถังน้ำ: จำนวนที่ทำสำเร็จทั้งเมือง + รหัสลิงก์ท้า
     this.stall = (Array.isArray(d.stall) ? d.stall : []).filter(x => x && typeof x.seller === 'string' && typeof x.item === 'string' && x.n > 0 && x.price > 0); this.stallNext = this.stall.reduce((a, x) => Math.max(a, x.id || 0), 0) + 1;
     this.orders = d.orders && Array.isArray(d.orders.list) ? d.orders : { day: '', list: [], by: {} };
@@ -346,7 +348,7 @@ class World {
     const a = this.arcOf(rec), day = this.today(); if (a.day !== day) { a.day = day; a.dayPts = 0; }
     const gain = Math.min(play + (won ? S.ARCPTS.win : 0), Math.max(0, S.ARCPTS.dailyCap - a.dayPts)); a.dayPts += gain;
     a.pts += gain; a.total += gain; a.wk += gain; this.dirty = true;
-    this.achAdd(rec, 'arcplay'); if (won) this.achAdd(rec, 'arcwin'); if (p) this.wk1Step(p, 'arcplay');
+    this.achAdd(rec, 'arcplay'); if (won) this.achAdd(rec, 'arcwin'); if (p) { this.wk1Step(p, 'arcplay'); if (won) this.evHit(p, 'arcwin'); }
     if (p) { send(p, { t: 'arcpts', arc: this.arcPub(rec) }); this.toast(p, gain ? `🎮 +${gain} แต้มตู้เกม${won ? ' (ชนะ!)' : ''} • มีอยู่ ${a.pts}` : `🎮 วันนี้ได้แต้มตู้เกมครบ ${S.ARCPTS.dailyCap} แล้ว พรุ่งนี้มาใหม่นะ`); }
   }
   sendLeaderboard(p) { // อันดับแต้มตู้เกมในห้องนี้ (สะสมตลอดกาล + สัปดาห์นี้) Top 10
@@ -480,7 +482,7 @@ class World {
     this.statDay(); this.starterStep(p, ev);
     if (ev === 'feed' || ev === 'collect' || ev === 'cook' || ev === 'craft') this.telAdd(p, ev, 0);
     if (ev === 'harvest' || ev === 'collect' || ev === 'chop' || ev === 'cook' || ev === 'hplace') this.wk1Step(p, ev);
-    this.chEvent(p, ev); // งานเบาที่ไม่ผ่าน tire()
+    this.chEvent(p, ev); this.evHit(p, ev, arg); // งานเบาที่ไม่ผ่าน tire()
     { const c = this.achOf(p.rec).cnt; c[ev] = (c[ev] || 0) + 1; if (ev === 'fish' && arg >= 55) c.fishbig = (c.fishbig || 0) + 1; } // ตัวนับสะสมสำหรับ Achievement
     if (S.FAME[ev]) { this.villageBump(p); }
     if (S.FAME[ev]) { const m = this.stats.ev[ev] || (this.stats.ev[ev] = Object.create(null)); m[p.name] = (m[p.name] || 0) + 1; this.dirty = true; }
@@ -805,6 +807,44 @@ class World {
     this.dirty = true; this.questPush(p);
   }
 
+  // ----- อีเวนต์ประจำสัปดาห์ (S.EVENTS) -----
+  evWindow(now = Date.now()) { // อีเวนต์ที่กำลังเล่น หรือครั้งถัดไป (ภายใน 7 วัน) → { E, start, end }
+    let next = null;
+    for (const E of S.EVENTS.list) for (let k = -1; k < 8; k++) {
+      const d = new Date(now); d.setDate(d.getDate() + k); if (d.getDay() !== E.dow) continue;
+      d.setHours(E.hour, E.min, 0, 0); const start = d.getTime(), end = start + E.mins * 60000;
+      if (end <= now) continue; if (!next || start < next.start) next = { E, start, end };
+    }
+    return next;
+  }
+  evPub() { const w = this.evWindow(), on = w && w.start <= Date.now(), sc = this.evt.key === (w && w.E.id + w.start) ? this.evt.scores : {};
+    const top = nb => Object.values(sc).filter(x => !!x.nb === nb && x.s > 0).sort((a, b) => b.s - a.s || b.n - a.n).slice(0, 3).map(x => [x.name, x.s]);
+    return w ? { id: w.E.id, start: w.start, end: w.end, on, top: top(false), topNb: top(true) } : null; }
+  evTick() {
+    const now = Date.now(), w = this.evWindow(now), ev = this.evt;
+    if (ev.key && !ev.done && ev.end <= now) this.evSettle();
+    if (!w) return;
+    const key = w.E.id + w.start;
+    if (w.start <= now && ev.key !== key) { this.evt = { key, id: w.E.id, end: w.end, scores: {}, done: false }; this.dirty = true; const m = `${w.E.emoji} อีเวนต์ "${w.E.name}" เริ่มแล้ว! ${w.E.mins} นาที แข่งกันที่${w.E.unit} (มือใหม่แยกอันดับ)`; this.broadcast({ t: 'msg', text: m }); this.addLog(m); this.broadcast({ t: 'evt', e: this.evPub() }); }
+    else if (w.start > now && w.start - now <= 60 * 60000 && this.evWarned !== key) { this.evWarned = key; this.broadcast({ t: 'msg', text: `${w.E.emoji} อีก ${Math.ceil((w.start - now) / 60000)} นาที อีเวนต์ "${w.E.name}" จะเริ่ม! มาลานกลางเมืองกัน` }); this.broadcast({ t: 'evt', e: this.evPub() }); }
+  }
+  evHit(p, ev, arg) { // นับคะแนนระหว่างอีเวนต์
+    const e = this.evt; if (!e.key || e.done || Date.now() > e.end) return; const E = S.EVENTS.list.find(x => x.id === e.id); if (!E || E.ev !== ev) return;
+    const s = e.scores[p.key] || (e.scores[p.key] = { name: p.name, s: 0, n: 0, nb: S.playLevel(p.rec.skills) < S.EVENTS.newbieLv, seen: [] });
+    s.n++; if (E.score === 'max') s.s = Math.max(s.s, +arg || 0); else if (E.score === 'distinct') { if (!s.seen.includes(arg)) { s.seen.push(arg); s.s = s.seen.length; } } else s.s++;
+    this.dirty = true; this.evPushAcc = (this.evPushAcc || 0) + 1; if (this.evPushAcc % 3 === 1) this.broadcast({ t: 'evt', e: this.evPub() });
+  }
+  evSettle() { // จบอีเวนต์: ให้รางวัลแต่ละกลุ่ม (ทั่วไป / มือใหม่)
+    const e = this.evt; e.done = true; this.dirty = true; const E = S.EVENTS.list.find(x => x.id === e.id); if (!E) return;
+    const lines = [];
+    for (const nb of [false, true]) {
+      const rank = Object.entries(e.scores).filter(([, x]) => !!x.nb === nb && x.s > 0).sort((a, b) => b[1].s - a[1].s || b[1].n - a[1].n).slice(0, 3);
+      rank.forEach(([key, x], i) => { if (!i) this.creditInv(key, S.EVENTS.prize.item, 1); const rec = this.saved[key]; if (rec) { const a = this.arcOf(rec); a.pts += S.EVENTS.prize.pts[i]; a.total += S.EVENTS.prize.pts[i]; const q = [...this.players.values()].find(o => o.key === key); if (q) { send(q, { t: 'arcpts', arc: this.arcPub(rec) }); this.toast(q, `${E.emoji} ได้อันดับ ${i + 1}${nb ? ' (มือใหม่)' : ''}! +${S.EVENTS.prize.pts[i]} แต้มตู้เกม${i ? '' : ' + 🏆 ถ้วยรางวัล'}`); } } });
+      if (rank.length) lines.push((nb ? '🌱 มือใหม่: ' : '') + rank.map(([, x], i) => `${['🥇', '🥈', '🥉'][i]} ${x.name} (${x.s})`).join(' '));
+    }
+    const m = `${E.emoji} จบอีเวนต์ "${E.name}" ${lines.length ? lines.join(' • ') : 'ไม่มีผู้ร่วมแข่ง'}`; this.broadcast({ t: 'msg', text: m }); this.addLog(m); logEv(this.room, 'event', { id: E.id, n: Object.keys(e.scores).length });
+    this.broadcast({ t: 'evt', e: this.evPub() });
+  }
   // ----- ชาเลนจ์ถังน้ำ 🪣 (S.CHALLENGE) -----
   chDef(id) { return S.CHALLENGE.list.find(c => c.id === id); }
   chPub(rec) { const c = rec.ch; return { ch: c ? { id: c.id, st: c.st, n: c.n || 0, end: c.end || 0, by: c.byName || '', code: c.code || '', ms: c.ms || 0 } : null, wet: rec.wet > Date.now() ? rec.wet : 0, chain: this.chain }; }
@@ -1233,7 +1273,7 @@ class World {
       roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
     });
     send(p, { t: 'pst', pst: rec.pst || {}, names: rec.pnames || {} });
-    send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); send(p, { t: 'auc', a: this.aucPub() }); this.chPush(p); send(p, { t: 'fest', f: this.festPub() });
+    send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); send(p, { t: 'auc', a: this.aucPub() }); this.chPush(p); send(p, { t: 'evt', e: this.evPub() }); send(p, { t: 'fest', f: this.festPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
     send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
@@ -2830,7 +2870,7 @@ class World {
       if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) this.petTick15(p); for (const p of this.players.values()) { if (p.sit) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul)); } } // นั่งพักอยู่ = ความหิวไม่ลด
       this.sitTick = (this.sitTick || 0) + dt * 1000;
       if (this.sitTick >= S.PLAYER_HUNGER.sitMs) { this.sitTick = 0; for (const p of this.players.values()) if (p.sit && p.rec.hunger < 100) this.setHunger(p, p.rec.hunger + S.PLAYER_HUNGER.sitGain, true); } // นั่งพักค่อยๆ อิ่มขึ้นทีละนิด
-      this.energyTick(dt); this.chAcc = (this.chAcc || 0) + dt; if (this.chAcc >= 2) { this.chAcc = 0; this.chTick(); }
+      this.energyTick(dt); this.chAcc = (this.chAcc || 0) + dt; if (this.chAcc >= 2) { this.chAcc = 0; this.chTick(); this.evTick(); }
       for (const a of this.animals) {
         const A = ANIMALS[a.type];
         a.hunger = Math.max(0, a.hunger - dt * HFAST * 100 / (A.starveMin * 60));
@@ -2952,7 +2992,7 @@ class World {
     this.dirty = false;
     for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; }
     const animals = {}; for (const t of Object.keys(ANIMALS)) animals[t] = this.count(t);
-    const data = JSON.stringify({ chain: this.chain, invites: this.invites, rents: this.rents, farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])] }, replacer);
+    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, rents: this.rents, farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])] }, replacer);
     if (sync) { fs.writeFileSync(this.file, data); return; }
     fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
   }

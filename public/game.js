@@ -216,6 +216,7 @@ function handle(m) {
     case 'auc': aucSt = m.a; if (townShown()) renderTown(); break;
     case 'ch': chSt = { ch: m.ch, wet: m.wet, chain: m.chain }; if (questShown()) renderQuestPanel(); break;
     case 'chain': chSt.chain = m.n; break;
+    case 'evt': evtSt = m.e; renderEvChip(); if (townShown() && townTab === 'log') renderTown(); break;
     case 'wet': { const p = players.get(m.id); if (p) p.wet = !!m.on; break; }
     case 'stall': stallSt = m.l || []; if (townShown() && townTab === 'stall') renderTown(); break;
     case 'orders': ordersSt = m.o; if (townShown() && townTab === 'orders') renderTown(); break;
@@ -349,9 +350,24 @@ function renderEnergy() {
   if (left > 0) { cd.classList.add('warn'); cd.textContent = `🐟 ปลาหายากพัก ${fmtLeft(left)}`; cd.title = 'ตกปลาหายากไปแล้ว ต้องรอก่อนถึงจะตกปลาหายากได้อีก (ปลาธรรมดาตกได้ปกติ)'; }
 }
 $('enChip').onclick = () => toast($('enChip').title); $('cdChip').onclick = () => toast($('cdChip').title);
+// อีเวนต์ประจำสัปดาห์: ป้ายแถบบน (กำลังแข่ง = เวลาที่เหลือ • อีกไม่เกิน 24 ชม. = นับถอยหลัง) แตะเพื่อเปิดข่าวเมืองดูอันดับ
+function renderEvChip() {
+  const el = $('evChip'), e = evtSt, now = Date.now() + timeOffset, E = e && Shared.EVENTS.list.find(x => x.id === e.id);
+  const show = !!(E && (now >= e.start ? now < e.end : e.start - now < 24 * 3600e3)); el.classList.toggle('hidden', !show); if (!show) return;
+  const on = now >= e.start; el.classList.toggle('warn', on);
+  el.textContent = on ? `${E.emoji} ${E.name} เหลือ ${fmtLeft(e.end - now)}` : `${E.emoji} ${E.name} เริ่มใน ${fmtLeft(e.start - now)}`;
+  el.title = `${E.name}: แข่งกันที่${E.unit} ${E.mins} นาที • มือใหม่แยกอันดับ • ที่ 1 ได้ถ้วยรางวัล + แต้มตู้เกม`;
+}
+setInterval(renderEvChip, 1000);
+$('evChip').onclick = () => openTown('log');
+function eventCard() { // การ์ดอีเวนต์ในข่าวเมือง: เวลา + อันดับ 3 คนแรกของแต่ละกลุ่ม
+  const e = evtSt, E = e && Shared.EVENTS.list.find(x => x.id === e.id); if (!E) return '';
+  const now = Date.now() + timeOffset, on = now >= e.start, rows = (arr, t) => arr.length ? `<div><small>${t}</small> ${arr.map((x, i) => `${['🥇', '🥈', '🥉'][i]} ${esc0(x[0])} (${x[1]})`).join(' ')}</div>` : '';
+  return `<div class="vcard${on ? ' on' : ''}"><b>${E.emoji} ${E.name}</b> <small>${on ? `กำลังแข่ง เหลือ ${fmtLeft(e.end - now)}` : `เริ่ม ${new Date(e.start).toLocaleString('th-TH', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`}</small><br><small>แข่งกันที่${E.unit} ${E.mins} นาที • ที่ 1 ได้ 🏆 ถ้วยรางวัล + แต้มตู้เกม • มือใหม่แยกอันดับ</small>${rows(e.top, 'ทั่วไป')}${rows(e.topNb, '🌱 มือใหม่')}</div>`;
+}
 setInterval(renderEnergy, 1000);
 // ความสดของสินค้า (Shared.FRESH): อายุของแต่ละกองในกระเป๋าจากเซิร์ฟเวอร์ คิดระดับสด/ค้าง/เก่าตามเวลาปัจจุบัน
-let freshSt = { l: {}, fz: false }, rentsSt = {}, aucSt = null, festSt = null, pinSt = false, stallSt = [], ordersSt = null, chSt = { ch: null, wet: 0, chain: 0 }; // chSt = ชาเลนจ์ถังน้ำ // pinSt = บัญชีนี้ตั้ง PIN แล้ว // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
+let evtSt = null, freshSt = { l: {}, fz: false }, rentsSt = {}, aucSt = null, festSt = null, pinSt = false, stallSt = [], ordersSt = null, chSt = { ch: null, wet: 0, chain: 0 }; // chSt = ชาเลนจ์ถังน้ำ // pinSt = บัญชีนี้ตั้ง PIN แล้ว // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
 const freshMulsOf = (k, q) => Shared.perishable(k) ? Shared.freshMuls(freshSt.l[k], q, Date.now() + timeOffset, freshSt.fz) : null;
 function freshBadge(k) { // 🟢12 🟡3 🔴1 (แสดงเมื่อมีของค้าง/เก่า) • ก่อนวันเริ่มระบบไม่แสดง
   if (!Shared.perishable(k) || !freshSt.l[k] || Date.now() + timeOffset < Shared.FRESH.startAt) return '';
@@ -597,7 +613,7 @@ function renderTown() {
     return;
   }
   if (townTab === 'log') {
-    el.innerHTML = tabs + villageCard() + weeklyCard() + '<div class="sec">🏆 อันดับวันนี้</div>' + fameHTML() + '<div class="sec">📰 ข่าวล่าสุด (' + TOWN.logMax + ' ข่าว)</div>' + (townLog.length ? townLog.slice().reverse().map(([t, s]) => { const d = new Date(t); return `<div class="logrow"><time>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</time><span>${esc(s)}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีข่าว</p>');
+    el.innerHTML = tabs + eventCard() + villageCard() + weeklyCard() + '<div class="sec">🏆 อันดับวันนี้</div>' + fameHTML() + '<div class="sec">📰 ข่าวล่าสุด (' + TOWN.logMax + ' ข่าว)</div>' + (townLog.length ? townLog.slice().reverse().map(([t, s]) => { const d = new Date(t); return `<div class="logrow"><time>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</time><span>${esc(s)}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีข่าว</p>');
     bindTabs();
     el.querySelectorAll('[data-wkclaim]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'weekly' }));
     return;

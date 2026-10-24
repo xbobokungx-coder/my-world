@@ -296,7 +296,7 @@
   #bag .tabs { flex-wrap:wrap; gap:4px; }
   #bag .tab { padding:6px 9px; font-size:13px; white-space:nowrap; flex:1 1 auto; }
   /* เมนูหลัก: ไอคอนที่ใช้บ่อยอยู่แถบบน ที่เหลือซ่อนในเมนู แบ่งหมวดพร้อมชื่อสั้นๆ */
-  #hudTop #satChip, #hudTop #enChip, #hudTop #cdChip { cursor:pointer; font-size:13px; } #hudTop .panel.warn { background:#a8661f; } #hudTop .panel.over { background:#8f2a22; }
+  #hudTop #satChip, #hudTop #enChip, #hudTop #cdChip, #hudTop #evChip { cursor:pointer; font-size:13px; } #hudTop .panel.warn { background:#a8661f; } #hudTop .panel.over { background:#8f2a22; }
   #hudTop > :not(.hidden):not(#hudMenu) { height:38px; box-sizing:border-box; margin:0; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; line-height:1; }
   #hudTop > .btn.small { font-size:15px; padding:0 12px; }
   #hudTop > #bagBtn, #hudTop > #chatBtn, #hudTop > #micBtn, #hudTop > #lampBtn, #hudTop > #homeQuick { width:38px; padding:0; }
@@ -420,6 +420,7 @@
   <div class="panel" id="hungerChip">🍖 80</div>
   <div class="panel" id="enChip" role="status">⚡ 100</div>
   <div class="panel hidden" id="cdChip" role="status"></div>
+  <div class="panel hidden" id="evChip" role="status"></div>
   <div class="panel hidden" id="happyChip" title="Happy Village: บัฟร่วมของทั้งเมือง">🎉</div>
   <div class="panel" id="online">👥 1</div>
   <div class="panel hidden" id="satChip" role="status"></div>
