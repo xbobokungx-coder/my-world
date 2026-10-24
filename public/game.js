@@ -616,8 +616,8 @@ function renderBuild() {
   const fd = build.sel && FURN[build.sel], pd = pk && FURN[pk.f];
   const hint = build.erase ? '🧹 แตะของที่จะเก็บคืนเข้ากระเป๋า'
     : fd ? `${fd.emoji} ${fd.name}: ${isTouch ? 'ลากลงห้อง (ปล่อยนิ้วเพื่อวาง) หรือแตะที่' : 'คลิกที่'}${fd.wall ? 'ผนัง' : 'พื้น'}เพื่อวาง${fd.small ? ' • ของเล็กวางบนโต๊ะ/เตียงได้' : ''}`
-    : pd ? `${pd.emoji} ${pd.name}: ลากไปปล่อยที่ใหม่ได้เลย • หมุน/เก็บคืนได้ที่ปุ่มด้านล่าง`
-    : ks.length ? 'ลากของในห้องเพื่อย้าย • ลากของจากรายการลงห้อง • แตะของเพื่อเลือกหมุน/เก็บ' : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ริมถนนหลัก)';
+    : pd ? `${pd.emoji} ${pd.name}: ${isTouch ? 'ลากไปปล่อย หรือแตะที่ใหม่เพื่อวาง' : 'ขยับเมาส์จัดตำแหน่ง แล้วคลิกอีกครั้งเพื่อวาง'} • หมุน/เก็บคืนได้ที่ปุ่ม`
+    : ks.length ? (isTouch ? 'ลากของในห้องเพื่อย้าย • ลากของจากรายการลงห้อง' : 'คลิกของในห้องเพื่อหยิบ แล้วคลิกอีกครั้งเพื่อวาง • หรือเลือกของจากรายการ') : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ริมถนนหลัก)';
   const cats = [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['craft', '🔨 ประดิษฐ์'], ['rare', '⭐ พิเศษ']];
   const tab = build.tab && cats.some(c => c[0] === build.tab) ? build.tab : 'living';
   const shown = ks.filter(k => (FURN[k.slice(5)].cat || 'other') === tab);
@@ -1269,7 +1269,7 @@ canvas.addEventListener('pointermove', e => {
   const p = ptrs.get(e.pointerId); if (!p) return;
   p.x = e.clientX; p.y = e.clientY;
   if (dragB && !dragB.mouse && ptrs.size === 1 && scene) { const [x, y] = isoPtr(e); if (Math.hypot(x - dragB.sx, y - dragB.sy) > 8) { dragB.moved = true; clearTimeout(dragB.lpT); } dragB.lx = x; dragB.ly = y; }
-  if (scene && build.on && build.sel && ptrs.size === 1 && !dragB) touchAim = isoPtr(e); // เงาตามนิ้ว
+  if (scene && build.on && (build.sel || build.pick != null) && ptrs.size === 1 && !dragB) touchAim = isoPtr(e); // เงาตามนิ้ว
   if (pinch && ptrs.size >= 2 && pinch.d0 > 0) { // บีบ/ถ่างสองนิ้ว = ซูม (ตกแต่งบ้าน: ซูมเข้าแล้วลากสองนิ้วเลื่อนมุมมองได้)
     if (scene && build.on) {
       const v = [...ptrs.values()], mx = (v[0].x + v[1].x) / 2, my = (v[0].y + v[1].y) / 2;
@@ -1282,7 +1282,7 @@ canvas.addEventListener('pointerleave', () => { mouse.active = false; });
 canvas.addEventListener('pointerdown', e => {
   if (!me) return;
   if (e.pointerType === 'mouse') { // เมาส์: แตะช่องทำงานทันทีเหมือนเดิม
-    if (e.button !== 0) { if (scene && build.on && bz.z > 1) panDrag = { x: e.clientX, y: e.clientY }; return; }
+    if (e.button !== 0) { if (scene && build.on && (build.sel || build.pick != null || build.erase)) { build.sel = null; build.pick = null; build.erase = false; renderBuild(); } else if (scene && build.on && bz.z > 1) panDrag = { x: e.clientX, y: e.clientY }; return; }
     hidePicker(); if (scene) { [mouse.sx, mouse.sy] = isoPtr(e); mouse.active = true; const h = buildCanDrag() ? hitItem(mouse.sx, mouse.sy) : null; if (h != null) { dragB = { i: h, sx: mouse.sx, sy: mouse.sy, moved: false, mouse: true }; return; } houseIsoClick(mouse.sx, mouse.sy); return; }
     const [tx, ty] = tileAt(e); mouse.active = true; mouse.tx = tx; mouse.ty = ty;
     flash = { tx, ty, t: performance.now() }; onTileClick(tx, ty); return;
@@ -1290,8 +1290,8 @@ canvas.addEventListener('pointerdown', e => {
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() }); // มือถือ: แตะทำงานตอนปล่อยนิ้ว (แยกจาก pinch)
   if (scene && ptrs.size === 1 && inMyHouse() && !build.erase) { // กดค้างที่ของ = หยิบของ เมนูตกแต่งเด้งขึ้นมาให้ลาก/หมุนได้ทันที
     const [sx, sy] = isoPtr(e), h = hitItem(sx, sy);
-    if (h != null) { dragB = { i: h, sx, sy, moved: false, lp: false }; dragB.lpT = setTimeout(() => buildLongPick(h), 420); }
-    else if (build.on && build.sel) touchAim = [sx, sy];
+    if (h != null && (build.pick == null || h === build.pick || !build.on)) { dragB = { i: h, sx, sy, moved: false, lp: false }; dragB.lpT = setTimeout(() => buildLongPick(h), 420); }
+    else if (build.on && (build.sel || build.pick != null)) touchAim = [sx, sy];
   }
   if (ptrs.size === 2) { const v = [...ptrs.values()]; touchAim = null; pinch = { d0: pinchDist(), z0: userZoom, b0: bz.z, mx: (v[0].x + v[1].x) / 2, my: (v[0].y + v[1].y) / 2 }; }
 });
@@ -1301,7 +1301,7 @@ const endPtr = e => {
   if (dragB && !dragB.mouse && ptrs.size === 0) { const d = dragB; dragB = null; clearTimeout(d.lpT); if (d.moved) { if (build.on) buildDrop(d, d.lx, d.ly); } else if (!d.lp) houseIsoClick(d.sx, d.sy); return; }
   const wasPinch = !!pinch; if (ptrs.size < 2) pinch = null;
   const aim = touchAim; if (ptrs.size === 0) touchAim = null;
-  if (p && !wasPinch && aim && ptrs.size === 0 && scene && build.on && build.sel && !modalOpen()) { buildClick(aim[0], aim[1], null); return; } // เลือกของไว้แล้วแตะ/ลากบนพื้น: ปล่อยนิ้วตรงไหนวางตรงนั้น
+  if (p && !wasPinch && aim && ptrs.size === 0 && scene && build.on && (build.sel || build.pick != null) && !modalOpen()) { buildClick(aim[0], aim[1], null); return; } // เลือกของไว้แล้วแตะ/ลากบนพื้น: ปล่อยนิ้วตรงไหนวางตรงนั้น
   if (!p || wasPinch) return; // นิ้วที่เป็นส่วนหนึ่งของ pinch ไม่นับเป็นแตะ
   const moved = Math.hypot(e.clientX - p.sx, e.clientY - p.sy), dur = performance.now() - p.t;
   if (ptrs.size === 0 && moved < 18 && dur < 400 && scene) { hidePicker(); const [sx, sy] = isoPtr(e); houseIsoClick(sx, sy); return; }
@@ -3117,10 +3117,11 @@ function drawHouseWorld(now) {
   ctx.drawImage(houseBg, ISO_B.x0, ISO_B.y0);
   hits.length = 0;
   const its = [...furn.values()], list = [];
-  for (const it of its) if (FURN[it.f].wall) drawWallItem(ctx, it);
+  const held = build.on && !isTouch && mouse.active && build.pick != null ? furn.get(build.pick) : null; // ของที่หยิบอยู่บนคอม ซ่อนตัวจริงไว้ ให้เงาติดเมาส์แทน
+  for (const it of its) if (it !== held && FURN[it.f].wall) drawWallItem(ctx, it);
   if (build.on) ctx.drawImage(houseGrid, ISO_B.x0, ISO_B.y0);
-  for (const it of its) if (FURN[it.f].flat) drawFurnIso(ctx, it, now);
-  for (const it of its) { const d = FURN[it.f]; if (!d.wall && !d.flat) list.push({ k: (it.x + it.y) * TS + (it.on ? 1 : 0), f: () => drawFurnIso(ctx, it, now) }); }
+  for (const it of its) if (it !== held && FURN[it.f].flat) drawFurnIso(ctx, it, now);
+  for (const it of its) { if (it === held) continue; const d = FURN[it.f]; if (!d.wall && !d.flat) list.push({ k: (it.x + it.y) * TS + (it.on ? 1 : 0), f: () => drawFurnIso(ctx, it, now) }); }
   for (const p of players.values()) { list.push({ k: p.x + p.y, f: () => drawIsoPlayer(p, now) }); if (p.cp) list.push({ k: p.cp.x + p.cp.y, f: () => drawIsoCompanion(p.cp, now) }); }
   list.sort((a, b) => a.k - b.k).forEach(o => o.f());
   drawHouseOverlay(now);
@@ -3155,12 +3156,13 @@ function buildAim() { // จุดบนจอที่เงาของที�
 function drawHouseOverlay(now) {
   if (!inMyHouse() || !build.on) return;
   const pulse = 0.55 + 0.45 * Math.sin(now / 160);
-  if (build.pick != null && furn.has(build.pick)) outlineItem(furn.get(build.pick), `rgba(255,255,255,${pulse})`);
+  if (build.pick != null && furn.has(build.pick) && (isTouch || !mouse.active)) outlineItem(furn.get(build.pick), `rgba(255,255,255,${pulse})`);
   const aim = buildAim(); if (!aim) return;
   const [ax, ay] = aim, hv = hitItem(ax, ay); let g = null;
   if (build.erase) { if (hv != null) outlineItem(furn.get(hv), 'rgba(255,90,90,.95)'); return; }
   if (dragB && dragB.moved) { const it = furn.get(dragB.i); if (it) g = ghostFor(it.f, ax, ay, dragB.i, it.r); }
   else if (build.sel) g = ghostFor(build.sel, ax, ay, null, build.rot);
+  else if (build.pick != null) { const it = furn.get(build.pick); if (it) g = ghostFor(it.f, ax, ay, build.pick, it.r); }
   else { if (hv != null && !isTouch) outlineItem(furn.get(hv), 'rgba(255,255,255,.6)'); return; }
   if (!g) return;
   const gi = { i: -1, f: g.f, x: g.x, y: g.y, r: g.r, z: g.z, wl: g.wl, u: g.u }, ok = g.res.ok;
@@ -3224,12 +3226,12 @@ function buildLongPick(i) { // กดค้างแล้วยังไม่�
   const f = furn.get(i); if (f) build.tab = FURN[f.f].cat || build.tab;
   if (navigator.vibrate) navigator.vibrate(12); playSfx('click'); renderBuild();
 }
-const buildCanDrag = () => inMyHouse() && build.on && !build.sel && !build.erase;
+const buildCanDrag = () => inMyHouse() && build.on && !build.sel && !build.erase && build.pick == null; // เมาส์: คลิกหยิบ-คลิกวาง (ไม่ลาก) • ถ้าเลือกอยู่ ไม่เริ่มลาก
 function buildDrop(d, sx, sy) { // ปล่อยของที่ลากตรงช่องใหม่ (ถ้าวางไม่ได้จะบอกเหตุผล)
   const it = furn.get(d.i); if (!it) return;
   const g = ghostFor(it.f, sx, sy, d.i, it.r);
   if (!g.res.ok) { toast(g.res.why); return; }
-  send({ t: 'house', a: 'move', i: d.i, x: g.x, y: g.y, wl: g.wl, u: g.u });
+  send({ t: 'house', a: 'move', i: d.i, x: g.x, y: g.y, wl: g.wl, u: g.u }); build.pick = null; renderBuild();
 }
 function buildClick(sx, sy, hit) {
   if (build.erase) { if (hit != null) send({ t: 'house', a: 'remove', i: hit }); else toast('แตะของที่จะเก็บคืน'); return; }
@@ -3238,9 +3240,14 @@ function buildClick(sx, sy, hit) {
     if (!g.res.ok) { toast(g.res.why); return; }
     send({ t: 'house', a: 'place', f: build.sel, x: g.x, y: g.y, r: build.rot, wl: g.wl, u: g.u }); return;
   }
-  if (hit != null) { build.pick = hit === build.pick ? null : hit; renderBuild(); return; } // แตะ/คลิกของ = เลือก (ซ้ำ = เลิกเลือก) ย้ายด้วยการลากแล้วปล่อย ไม่มีเงาตามเมาส์
-  if (build.pick != null) { build.pick = null; renderBuild(); return; } // แตะพื้นที่ว่าง = เลิกเลือก
-  toast('ลากของในห้องเพื่อย้าย หรือลากของจากรายการลงห้อง');
+  if (build.pick != null) { // ถือของอยู่ (หยิบแล้วเงาติดเมาส์): คลิก/แตะที่ไหนก็วางตรงนั้น วางสำเร็จ = จบ (วางไม่ได้ = ยังถืออยู่ ขยับหาที่ใหม่)
+    const it = furn.get(build.pick), g = it && ghostFor(it.f, sx, sy, build.pick, it.r);
+    if (!it) { build.pick = null; renderBuild(); return; }
+    if (!g.res.ok) { toast(g.res.why); return; }
+    send({ t: 'house', a: 'move', i: build.pick, x: g.x, y: g.y, wl: g.wl, u: g.u }); build.pick = null; renderBuild(); return;
+  }
+  if (hit != null) { build.pick = hit; renderBuild(); return; } // คลิก/แตะของ = หยิบ (เงาติดเมาส์)
+  toast(isTouch ? 'ลากของในห้องเพื่อย้าย หรือลากของจากรายการลงห้อง' : 'คลิกของในห้องเพื่อหยิบ แล้วคลิกอีกครั้งเพื่อวาง');
 }
 
 function frameTail(now, wall) { // กลางวัน/กลางคืน + นาฬิกา + แผนที่ย่อ (ใช้ทั้งในเมืองและในบ้าน)
