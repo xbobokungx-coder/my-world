@@ -185,7 +185,7 @@
   // เล้าผึ้ง: ต้นไม้ถาวร 1 ต้น (ตัดไม่ได้) และรังผึ้ง (ลัง) 2 ลังวางในเล้า • ผึ้งบินวนรอบรัง
   const BEE = { trees: [[61, 18]], hives: [[59, 20], [61, 21]] };
   const SPAWN = { x: 31 * TS + 16, y: 22 * TS + 16 };
-  const START_SPAWN = { x: 14 * TS, y: 19 * TS + 16 }; // ผู้เล่นที่เข้าเกมครั้งแรกเกิดตรงประตูแปลงผัก (ใกล้ข้อแรกของคู่มือ) คนเก่าอยู่ตรงที่ออกไว้
+  const START_SPAWN = { x: 14 * TS, y: 15 * TS + 16 }; // ผู้เล่นที่เข้าเกมครั้งแรกเกิดในแปลงผัก ถือจอบพร้อมขุด (ข้อแรกของคู่มือ) คนเก่าอยู่ตรงที่ออกไว้
   const DAY_MS = 12 * 60 * 1000;                       // หน่วย "วัน" ของเศรษฐกิจ (ดอกเบี้ย ผักสุกค้าง สัตว์ป่วย ตลาด) = 12 นาที
   const FARM_REGROW_MS = DAY_MS;                       // แปลงที่ถางแล้วแต่ไม่มีใครปลูกหรือถางต่อเกินเวลานี้ (นับเฉพาะตอนมีคนออนไลน์) หญ้าขึ้นกลับเป็นเหมือนเดิม ต้องถางใหม่
   const FARM_CAP = { base: 20, perLv: 2, max: 40 };       // เพดานจำนวนต้นที่ผู้เล่นหนึ่งคนปลูกค้างในแปลงกลางได้พร้อมกัน (ฐาน + เลเวลชาวนา×perLv) กันคนเดียวปลูกเต็มจนคนอื่นไม่มีที่ ช่องว่างหลังเก็บเกี่ยวนับคืนทันที
@@ -462,7 +462,7 @@
     { kind: 'fish',   x0: 36, y0: 26, x1: 38, y1: 27, counter: [[37, 28], [38, 28]], name: 'ร้านตกปลา',      sign: '🎣', roof: '#2e7bb5', wall: '#e6d9b5' },
     { kind: 'animal', x0: 40, y0: 14, x1: 42, y1: 15, counter: [[41, 16], [42, 16]], name: 'ร้านปศุสัตว์',    sign: '🐄', roof: '#a8552f', wall: '#f0dcae' },
     { kind: 'pet',   x0: 36, y0: 10, x1: 38, y1: 11, counter: [[37, 12], [38, 12]], name: 'ร้านสัตว์เลี้ยง',  sign: '🐾', roof: '#e0748a', wall: '#fdeef0' },
-    { kind: 'cloth',  x0: 12, y0: 26, x1: 14, y1: 27, counter: [[13, 28], [14, 28]], name: 'ร้านเสื้อผ้า',    sign: '👕', roof: '#d6559a', wall: '#f7e1ee' },
+    { kind: 'cloth',  x0: 19, y0: 2,  x1: 21, y1: 3,  counter: [[20, 4], [21, 4]], name: 'ร้านเสื้อผ้า',    sign: '👕', roof: '#d6559a', wall: '#f7e1ee' },
     { kind: 'food',   x0: 20, y0: 26, x1: 22, y1: 27, counter: [[21, 28], [22, 28]], name: 'ร้านอาหาร',      sign: '🍜', roof: '#e08a1e', wall: '#fdeccb' },
     { kind: 'wood',   x0: 6,  y0: 26, x1: 8,  y1: 27, counter: [[7, 28], [8, 28]],   name: 'ร้านช่างไม้',     sign: '🪓', roof: '#8a5a2b', wall: '#f3e2c3' },
     { kind: 'vehicle', x0: 40, y0: 26, x1: 42, y1: 27, counter: [[41, 28], [42, 28]], name: 'ร้านยานพาหนะ',   sign: '🚲', roof: '#3b6ea5', wall: '#e4ecf5' },
@@ -562,7 +562,7 @@
   const doleCost = t => t.coin + t.meals.reduce((n, id) => n + MEALS.find(m => m.id === id).price, 0);
   const dolePackage = (chestCoin, level) => { for (let i = DOLE.tiers.length - 1; i >= 0; i--) { const t = DOLE.tiers[i]; if (chestCoin >= t.chest && level >= t.lv) return t; } return null; };
   const NPC = { sayMin: 45000, sayMax: 110000, gap: 12000, speed: 50 }; // ชาวเมือง NPC: พิมพ์ข้อความทุก sayMin-sayMax ms, เดินด้วยความเร็ว speed px/วินาที
-  // คู่มือเริ่มต้น: ทำครบทุกข้อ (ลำดับไหนก็ได้) ได้ของรางวัลเล็กทีละข้อ + รางวัลใหญ่ตอนจบ ปุ่มช่วยบนจอบอก "ข้อถัดไป" ให้เสมอ
+  // คู่มือเริ่มต้น 6 ข้อ (เดิม 12: ข้อสัตว์/เควส/นั่ง ผ่านแค่ 13–25% ตัดออก 25 ต.ค. 2026 จะย้ายไปภารกิจวันที่ 2 ใน GROWTH-PLAN N2): ทำครบทุกข้อ (ลำดับไหนก็ได้) ได้ของรางวัลเล็กทีละข้อ + รางวัลใหญ่ตอนจบ ปุ่มช่วยบนจอบอก "ข้อถัดไป" ให้เสมอ
   // how = วิธีกดทีละขั้น (แสดงในเมนู 📋 เควส → เริ่มต้น) • ตัวเลข 1–7 = ช่องเครื่องมือด้านล่างจอ (กดเลขบนคีย์บอร์ด หรือแตะที่ช่องบนมือถือ)
   const STARTER = [
     { id: 'dig',     ev: 'dig',       hint: 'ขุดดินในรั้วแปลงผัก ⛏️',     text: 'ขุดดินในรั้วแปลงผัก', coin: 15,
@@ -577,18 +577,6 @@
       how: ['เดินไปที่ร้านเมล็ดพันธุ์ 🌱 (ลูกศรชี้ทาง)', 'คลิก/แตะที่เคาน์เตอร์ร้านใต้หลังคาเขียว', 'ในหน้าร้าน เลื่อนลงไปที่ "ขาย" แล้วกดปุ่ม ขาย / ทั้งหมด'] },
     { id: 'fish',    ev: 'fish',      hint: 'ตกปลาริมสระ 🎣',            text: 'ตกปลา 1 ตัว', coin: 20,
       how: ['ซื้อเหยื่อที่ร้านตกปลา 🎣 (ไส้เดือนราคาถูก) แล้วกดช่อง 1 เลือก 🎣 เบ็ด (เมนูเดียวกันมีแถวให้เลือกเหยื่อ)', 'ยืนริมสระ คลิก/แตะที่น้ำเพื่อเหวี่ยงเบ็ด', 'พอขึ้น ❗ ให้กดตอนตัวชี้อยู่ในโซนเขียวของเกจ'] },
-    { id: 'buyfeed', ev: 'buyfeed',   hint: 'ซื้ออาหารไก่ที่ร้านปศุสัตว์ 🌾', text: 'ซื้ออาหารสัตว์ที่ร้านปศุสัตว์', coin: 15,
-      how: ['เดินไปร้านปศุสัตว์ 🐄 (หลังคาส้ม ลูกศรชี้ทาง)', 'คลิก/แตะที่เคาน์เตอร์ร้าน', 'แท็บ "อาหาร / ยา" กดซื้อ 🌾 อาหารสัตว์ (อาหารไก่ราคา 5)'] },
-    { id: 'feed',    ev: 'feed',      hint: 'ให้อาหารไก่ในคอก 🐔',       text: 'ให้อาหารสัตว์ที่คอก', coin: 20,
-      how: ['กดช่อง 3 (เลข 3) 🌾 แล้วเลือกอาหารสัตว์จากเมนู', 'เดินเข้าคอกไก่ (รั้วทางขวาของแมพ) แล้วคลิก/แตะที่ตัวไก่', 'สัตว์ที่ให้อาหารแล้วจะผลิตไข่ใน 25–45 วินาที ผู้ที่ให้อาหารคือเจ้าของผลผลิตรอบนั้น'] },
-    { id: 'collect', ev: 'collect',   hint: 'เก็บไข่จากไก่ 🥚',          text: 'เก็บไข่/นม จากสัตว์', coin: 20,
-      how: ['รอจนมี 🥚 ลอยเหนือหัวไก่ที่คุณเลี้ยง', 'คลิก/แตะที่ไก่ตัวนั้นด้วยมือเปล่า', 'ต้องเก็บภายใน 1 วันในเกม ไม่งั้นคนอื่นมาเก็บแทนได้'] },
-    { id: 'sellprod', ev: 'sellproduct', hint: 'ขายไข่ที่ร้านปศุสัตว์ 🪙', text: 'ขายไข่/นมที่ร้านปศุสัตว์', coin: 20,
-      how: ['กลับไปที่ร้านปศุสัตว์ 🐄 คลิก/แตะที่เคาน์เตอร์', 'เลื่อนลงไปที่ "ขาย" กดปุ่ม ขาย หรือ ทั้งหมด ที่ 🥚 ไข่'] },
-    { id: 'quest',   ev: 'questdone', hint: 'ทำเควสสักข้อ (ปุ่ม 📋 เควส)',    text: 'ทำเควสประจำวันให้สำเร็จ 1 ข้อ', coin: 30,
-      how: ['กดปุ่ม 📋 ที่แถบเมนูด้านบน → แท็บ "เควสวันนี้"', 'เลือกข้อที่ง่ายที่สุด (เช่น ขุดดิน ปลูก รดน้ำ) แล้วทำตามนั้น ความคืบหน้านับให้เอง'] },
-    { id: 'sit',     ev: 'sit',       hint: 'แตะม้านั่งเพื่อนั่งพัก 🪑',  text: 'นั่งพักที่ม้านั่งหรือกองฟางที่ลานกองไฟ', coin: 10,
-      how: ['เดินไปลานกองไฟกลางหมู่บ้าน', 'คลิก/แตะที่ม้านั่งหรือกองฟาง นั่งแล้วความหิวไม่ลดและค่อยๆ อิ่มขึ้น'] },
   ];
   // จุดหมายของลูกศรนำทางแต่ละข้อ (ช่อง x,y) • null = ไม่มีลูกศร
   const STARTER_GO = { dig: [14, 13], plant: [14, 13], water: [14, 13], harvest: [14, 13], sell: [26, 12], fish: [18, 19], buyfeed: [41, 16], feed: [48, 11], collect: [48, 11], sellprod: [41, 16], quest: null, sit: [29, 26] };
@@ -626,7 +614,10 @@
     { id: 'rich1k',     e: '💵', name: 'เศรษฐีน้อย',         desc: 'มีเหรียญในกระเป๋าถึง 1,000',          stat: 'wealth',  goal: 1000, coin: 50 },
     { id: 'rich10k',    e: '💎', name: 'เศรษฐีเมือง',        desc: 'มีเหรียญในกระเป๋าถึง 10,000',         stat: 'wealth',  goal: 10000, coin: 500, title: 'เศรษฐีเมือง' },
   ];
-  const STARTER_FINAL = { coin: 100, items: ['furn_chair', 'furn_plant', 'lamp'] };
+  const STARTER_FINAL = { coin: 150, items: ['furn_chair', 'furn_plant', 'lamp'] }; // 150 (เดิม 100 ตอนคู่มือมี 12 ข้อ) เงินช่วงแรกรวมใกล้เดิม
+  // 60 วินาทีแรกของคนใหม่ (GROWTH-PLAN.md N1): กล่องของขวัญสุ่มของแต่งตัว 1 ชิ้น • เมล็ดเร่งโตสำหรับการปลูก quickSeeds ครั้งแรก (โตเร็ว ×quickMul) • ปลาตัวแรกในชีวิตเป็น firstFish
+  // ต้อนรับจากเมือง: คนที่ออนไลน์ทักคนใหม่ได้ภายใน greetMs หลังเข้าเกมครั้งแรก (ไม่มีของ/เงิน ผู้ทักได้แต้มความดี greetPts)
+  const NEWBIE = { gift: [...WEAR.hat, ...WEAR.acc].filter(i => i.price >= 60 && i.price <= 150).map(i => wearKey(WEAR.hat.includes(i) ? 'hat' : 'acc', i.id)), quickSeeds: 3, quickMul: 3, firstFish: 'koi', greetMs: 10 * 60 * 1000, greetPts: 1 };
   // สมุดสะสม: ได้ครบทุกชนิดในหมวดไหนรับรางวัลหมวดนั้น (ชนิดใหม่แต่ละชนิดได้ BOOK_ENTRY_COIN) rare = เฟอร์นิเจอร์หายากที่เป็นรางวัล
   const BOOK_ENTRY_COIN = 8;
   const BOOK = {
@@ -779,6 +770,7 @@
     road(17, 24, 18, 29); road(12, 29, 23, 29); // ลานเล็กๆ ระหว่างร้านเสื้อผ้า (ซ้าย) กับร้านอาหาร (ขวา) และทางเดินหน้าเคาน์เตอร์
     road(10, 24, 11, 29); road(6, 29, 11, 29);   // ร้านช่างไม้
     road(34, 29, 43, 29);                        // ต่อทางไปร้านยานพาหนะ
+    road(19, 5, 21, 5);                          // ทางจากร้านเสื้อผ้า (ซ้ายมือตัวบ้าน) ลงมาต่อถนนหลัก
     road(33, 5, 35, 5);                          // ทางจากร้านเฟอร์นิเจอร์ (ขวามือตัวบ้าน) ลงมาต่อถนนหลัก
     road(PLAZA.x0, PLAZA.y0, PLAZA.x1, PLAZA.y1); // ลานรวมพลกลางหมู่บ้าน (กองไฟ + ที่นั่ง)
     road(14, 30, 19, 37);                         // ลานดูหนังกลางแปลง
@@ -858,9 +850,9 @@
   }
   function inFarm(tx, ty) { return tx >= FARM.x0 && tx <= FARM.x1 && ty >= FARM.y0 && ty <= FARM.y1; }
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
-  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
+  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, woodXp, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
