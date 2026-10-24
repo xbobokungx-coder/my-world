@@ -25,7 +25,7 @@ function farm(lv) {
     const grow = c.time / m, waters = Math.ceil(grow / wet), acts = 3 + waters; // ขุด ปลูก เก็บ + รดน้ำทุกครั้งที่ดินแห้ง
     const ppm = Math.min(cap / (grow / 60000), M.apm / acts);                 // ต้นต่อนาที: ติดเพดานแปลงหรือแรงงาน
     const coin = ppm * (c.sell * M.cropPrice - c.seed) * 60, xp = ppm * (c.xp + 1 + 2 + waters) * 60;
-    if (!best || coin > best.coin) best = { pick: k, coin, xp };
+    if (!best || coin > best.coin) best = { pick: k, coin, xp, gross: ppm * c.sell * 60, cost: ppm * c.seed * 60, pieces: ppm * 60, cat: 'crop' };
   }
   return best;
 }
@@ -41,7 +41,7 @@ function fish(lv) {
     const pool = fishPool(lv, rod, t), W = pool.reduce((a, x) => a + x.w, 0);
     const sell = pool.reduce((a, x) => a + x.w * x.f.sell, 0) / W, xp = pool.reduce((a, x) => a + x.w * x.f.xp, 0) / W;
     const coin = cpm * (sell - b.price) * 60;
-    if (!best || coin > best.coin) best = { pick: 'เหยื่อ' + t, coin, xp: cpm * xp * 60 };
+    if (!best || coin > best.coin) best = { pick: 'เหยื่อ' + t, coin, xp: cpm * xp * 60, gross: cpm * sell * 60, cost: cpm * b.price * 60, pieces: cpm * 60, cat: 'fish' };
   }
   return best;
 }
@@ -61,19 +61,19 @@ function wood(lv) {
   }
   const xp = tpm * (chopXp + best.perTree) * wl * 60;
   const coin = tpm * (logs * S.WOOD.log.sell + hard * S.WOOD.hardwood.sell) * 60; // ขายดิบ (เงินไม่ใช่เป้าของเครื่องมือนี้)
-  return { pick: best.pick, coin, xp };
+  return { pick: best.pick, coin, xp, gross: coin, cost: 0, pieces: tpm * (logs + hard) * 60, cat: 'wood' };
 }
 function animal(lv) {
   const sp = Math.max(0.5, 1 - 0.05 * (lv - 1));
-  let cyc = 0, xpc = 0, coinc = 0;
+  let cyc = 0, xpc = 0, coinc = 0, gr = 0, fc = 0;
   for (const A of Object.values(S.ANIMALS)) {
     if (A.lv > lv) continue;
     const per = A.cap / ((A.time[0] + A.time[1]) / 2 * sp / 60000); // รอบผลิตต่อนาทีของเล้าเต็ม
     const prod = S.itemInfo(A.product), feed = S.itemInfo(A.feedItem);
-    cyc += per; xpc += per * (A.xp + 3); coinc += per * ((prod.sell || 0) * 1.5 * 0.65 - feed.buy);
+    cyc += per; xpc += per * (A.xp + 3); coinc += per * ((prod.sell || 0) * 1.5 * 0.65 - feed.buy); gr += per * (prod.sell || 0) * 1.5; fc += per * feed.buy;
   }
   const f = Math.min(1, M.apm / 2 / cyc); // ให้อาหาร + เก็บ = 2 การกระทำต่อรอบ
-  return { pick: 'เล้าเต็ม', coin: coinc * f * 60, xp: xpc * f * 60 };
+  return { pick: 'เล้าเต็ม', coin: coinc * f * 60, xp: xpc * f * 60, gross: gr * f * 60, cost: fc * f * 60, pieces: cyc * 1.5 * f * 60, cat: 'animal' };
 }
 function cook(lv) {
   // นาทีที่ต้องใช้หาวัตถุดิบ 1 ชิ้น เมื่ออาชีพอื่นเลเวลเท่ากัน: ปลาถูกสุด/ผักถูกสุด/ไข่ = เวลาลงมือ (ไม่นับรอโต)
@@ -85,7 +85,7 @@ function cook(lv) {
     let min = r.time / 60000 + 1 / M.apm;
     for (const x of r.in) min += x.n * (need[x.c || x.k] || 0);
     const fee = r.sell * S.COOK_FEE, coin = 60 / min * (r.sell - fee), xp = 60 / min * r.xp;
-    if (!best || xp > best.xp) best = { pick: r.id.replace('dish_', ''), coin, xp };
+    if (!best || xp > best.xp) best = { pick: r.id.replace('dish_', ''), coin, xp, gross: 60 / min * r.sell, cost: 60 / min * fee, pieces: 60 / min, cat: 'dish' };
   }
   return best;
 }
@@ -116,4 +116,4 @@ if (require.main === module) {
   console.log(`\nเหรียญ/ชม. (เพดานคนเดียว ตามทางที่เลือก)`);
   for (const k of Object.keys(SIMS)) console.log(S.SKILLS[k].name.padEnd(12) + r[k].map(x => num(x.coin).padStart(7)).join(''));
 }
-module.exports = { M, simulate, hoursTo };
+module.exports = { M, SIMS, simulate, hoursTo };
