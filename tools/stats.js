@@ -18,6 +18,7 @@ for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.starts
   for (const [k, r] of Object.entries(d.players || {})) players.push({ room: f.replace('.json', ''), key: k, rec: r });
 }
 console.log(`บัญชีทั้งหมด ${players.length}`);
+{ const { realSet, MIN_MINUTES } = require('./realplayers.js'), real = realSet(players.map(p => ({ room: p.room, key: p.key, rec: p.rec })), evs); console.log(`ผู้เล่นจริง (ออนไลน์สะสม ≥ ${MIN_MINUTES} นาที) ${real.size}/${players.length} • ตัวเลขด้านล่างนับทุกบัญชี (ใช้ดูคนหลุดช่วงแรก) รายงานเศรษฐกิจดู tools/economy.js`); }
 const xp = r => Object.values(r.skills || {}).reduce((a, b) => a + b, 0);
 console.log(`ไม่มี XP เลย: ${players.filter(p => !xp(p.rec)).length}/${players.length} | ผ่านคู่มือครบ: ${players.filter(p => p.rec.starter && p.rec.starter.final).length} | ทำเควสอย่างน้อย 1 ข้อ: ${players.filter(p => p.rec.qtotal > 0).length}`);
 
