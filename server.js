@@ -17,6 +17,7 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const HFAST = Math.max(1, +process.env.HUNGER_FAST || 1);
 const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs, RESULT_MS = +process.env.CASINO_RESULT_MS || 8000, EMPTY_MS = +process.env.CIN_EMPTY_MS || 20000; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
 const SNAP_MS = +process.env.SNAP_MS || 60 * 60 * 1000; // ระยะห่างของ event snap (ไว้ทดสอบ)
+if (process.env.FRESH_START) S.FRESH.startAt = +process.env.FRESH_START; // ไว้ทดสอบ: เริ่มระบบความสดเร็วขึ้น (ms)
 const rand = (a, b) => a + Math.random() * (b - a);
 // บันทึกเหตุการณ์ไว้วิเคราะห์ (หนึ่งไฟล์ต่อวัน data/events/YYYY-MM-DD.jsonl) สรุปด้วย node tools/stats.js
 const EVENT_DIR = path.join(DATA_DIR, 'events');
@@ -947,14 +948,30 @@ class World {
     this.dirty = true;
   }
   toast(p, text) { send(p, { t: 'msg', text }); }
-  add(p, key, n, why) {
+  add(p, key, n, why, lots) { // lots = อายุของที่ได้มา (ของเน่าได้ ใช้ตอนเทรดให้อายุติดไปด้วย) • คืนค่า = กองที่ถูกเอาออก (เมื่อ n < 0)
     const inv = p.rec.inv;
     if (key === 'coin' && n) logEv(this.room, 'coin', { p: p.key, n, why: why || 'other' });
+    let taken;
+    if (S.perishable(key) && n) { if (n > 0) this.lotPut(p.rec, key, lots || [[Date.now(), n]]); else taken = this.lotTake(p.rec, key, -n); }
     inv[key] = Math.max(0, (inv[key] || 0) + n);
     if (!inv[key] && key !== 'coin') delete inv[key];
-    send(p, { t: 'inv', inv });
+    send(p, { t: 'inv', inv, fr: this.freshPub(p.rec, p.key) });
     this.dirty = true;
+    return taken;
   }
+  // ----- ความสดของสินค้า (S.FRESH): rec.lots[ชนิด] = [[เวลาที่ได้, จำนวน], ...] เรียงของเก่าก่อน รวมแล้วเท่ากับจำนวนในกระเป๋าเสมอ -----
+  lotsOf(rec, k) { // ปรับให้ตรงกับกระเป๋า (ของที่เข้ากระเป๋าโดยไม่ผ่าน add เช่น ผู้ดูแลให้ = นับเป็นของใหม่)
+    const L = (rec.lots || (rec.lots = {}))[k] || (rec.lots[k] = []), have = rec.inv[k] || 0;
+    let sum = L.reduce((a, x) => a + x[1], 0);
+    if (sum < have) L.push([Date.now(), have - sum]);
+    while (sum > have && L.length) { const d = Math.min(L[0][1], sum - have); L[0][1] -= d; sum -= d; if (!L[0][1]) L.shift(); }
+    if (!L.length) delete rec.lots[k];
+    return L;
+  }
+  lotPut(rec, k, lots) { const L = this.lotsOf(rec, k); for (const [t, n] of lots) { if (!(n > 0)) continue; const last = L[L.length - 1]; if (last && Math.abs(last[0] - t) < 60000) last[1] += n; else L.push([t, n]); } L.sort((a, b) => a[0] - b[0]); rec.lots[k] = L; }
+  lotTake(rec, k, n) { const L = this.lotsOf(rec, k), out = []; while (n > 0 && L.length) { const d = Math.min(L[0][1], n); out.push([L[0][0], d]); L[0][1] -= d; n -= d; if (!L[0][1]) L.shift(); } if (!L.length) delete rec.lots[k]; return out; }
+  hasFridge(key) { const h = this.houses[key]; return !!(h && Object.values(h.items).some(it => it && it.f === 'fridge')); } // ตู้เย็นวางในบ้าน = ของในกระเป๋าเสื่อมช้าลง
+  freshPub(rec, key) { const o = {}; for (const k of Object.keys(rec.inv)) if (S.perishable(k) && rec.inv[k] > 0) o[k] = this.lotsOf(rec, k).map(([t, n]) => [t, n]); return { l: o, fz: this.hasFridge(key) }; }
   lv(p, skill) { return S.levelOf(p.rec.skills[skill]); }
   addXp(p, skill, n) {
     const r = p.rec.skills, before = S.levelOf(r[skill]);
@@ -996,7 +1013,7 @@ class World {
     const now = Date.now(), farm = {};
     for (const k in this.farm) farm[k] = this.pub(this.farm[k], now);
     send(p, {
-      t: 'w', first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
+      t: 'w', first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, fr: this.freshPub(rec, key), skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
       players: [...this.players.values()].filter(q => !q.scene).map(q => this.pubFull(q)),
       roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
@@ -1007,6 +1024,7 @@ class World {
     send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     if (rec.gift) send(p, { t: 'gift', item: rec.gift });
+    if (Date.now() < S.FRESH.startAt && rec.freshNote !== 1) { rec.freshNote = 1; setTimeout(() => { if (p.ws.readyState === 1) this.toast(p, `📢 ตั้งแต่ ${new Date(S.FRESH.startAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ผัก ปลา ไข่ นม อาหาร จะค่อยๆ เสื่อมราคาถ้าเก็บไว้นาน (สด 1 วัน = 100% • 1–3 วัน 70% • เกิน 40%) ของที่มีตอนนี้นับเป็นของสดวันนั้น • มีตู้เย็นในบ้านช่วยชะลอ`); }, 5000); }
     if (rec.joins === 1) this.broadcast({ t: 'newbie', id: p.id, name }, p); // ให้คนที่ออนไลน์ทักคนใหม่ (GROWTH-PLAN N1)
     this.starterStep(p, '');
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
@@ -1300,8 +1318,8 @@ class World {
       if (this.tradeValue(offer) > S.TRADE.maxValue) return this.tradeCancel(pa, 'มูลค่าเกินลิมิต');
       for (const k in offer) if (!S.isTradable(k) || (p.rec.inv[k] || 0) < offer[k]) { tr.a.ok = tr.b.ok = false; this.toast(pa, 'ของในกระเป๋าเปลี่ยนไป กรุณาตรวจข้อเสนอใหม่'); this.toast(pb, 'ของในกระเป๋าเปลี่ยนไป กรุณาตรวจข้อเสนอใหม่'); return this.tradePush(tr); }
     }
-    for (const k in tr.a.offer) { this.add(pa, k, -tr.a.offer[k]); this.add(pb, k, tr.a.offer[k]); }
-    for (const k in tr.b.offer) { this.add(pb, k, -tr.b.offer[k]); this.add(pa, k, tr.b.offer[k]); }
+    for (const k in tr.a.offer) { const lots = this.add(pa, k, -tr.a.offer[k]); this.add(pb, k, tr.a.offer[k], undefined, lots); } // อายุของติดไปด้วย (เทรดไม่ทำให้ของกลับมาสด)
+    for (const k in tr.b.offer) { const lots = this.add(pb, k, -tr.b.offer[k]); this.add(pa, k, tr.b.offer[k], undefined, lots); }
     this.trades.delete(tr.id); pa.tradeId = pb.tradeId = 0;
     send(pa, { t: 'trade', ev: 'done', with: pb.name }); send(pb, { t: 'trade', ev: 'done', with: pa.name });
     this.sfxTo(pa, 'collect'); this.sfxTo(pb, 'collect'); this.dirty = true;
@@ -1433,7 +1451,8 @@ class World {
     if (!info || !info.sell || !have) return;
     const q = n === 'all' || !(n > 0) ? have : Math.min(have, n | 0);
     const g = this.market[item], mEff = this.effMult(p, item);
-    const quote = S.sellQuote(info.sell, mEff, q); // ขายหลายชิ้นต่อเนื่อง ราคาต่อชิ้นค่อยๆ ลดลง
+    const muls = S.perishable(item) ? S.freshMuls(this.lotsOf(p.rec, item), q, Date.now(), this.hasFridge(p.key)) : null; // ของเก่าขายก่อน ราคาตามความสด
+    const quote = S.sellQuote(info.sell, mEff, q, muls); // ขายหลายชิ้นต่อเนื่อง ราคาต่อชิ้นค่อยๆ ลดลง
     const cat = S.sellCat(item), pay = quote.total; // จ่ายต่อชิ้นตามชนิด ลดชิ้นละ 1% ของราคาฐานจนพื้น 20%
     this.add(p, item, -q);
     this.add(p, 'coin', pay, 'sell');
@@ -1451,8 +1470,9 @@ class World {
       this.dirty = true; send(p, { t: 'mkt', m: this.mktFor(p) }); // ผู้ขายเห็นราคาใหม่ทุกชนิด
       for (const q2 of this.players.values()) if (q2 !== p) send(q2, { t: 'mkt', m: { [item]: Math.round(this.effMult(q2, item) * 100) / 100 } });
     }
-    logEv(this.room, 'sell', { p: p.key, item, q, coin: pay, m: Math.round(mEff * 100) / 100, cat, base: info.sell * q });
-    this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${pay}${this.catOf(p, cat) < 0.85 ? ` 📉 ตลาด${CAT_NAME[cat] || 'หมวดนี้'}อิ่มตัว (ราคา ${Math.round(this.catOf(p, cat) * 100)}%)` : ''}`); this.catPush(p); this.event(p, 'sell');
+    const fm = muls ? muls.reduce((a, b) => a + b, 0) / q : 1;
+    logEv(this.room, 'sell', { p: p.key, item, q, coin: pay, m: Math.round(mEff * 100) / 100, cat, base: info.sell * q, fm: Math.round(fm * 100) / 100 });
+    this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${pay}${fm < 0.99 ? ` (ของค้าง/เก่าปนอยู่ ราคาความสดเฉลี่ย ${Math.round(fm * 100)}%)` : ''}${this.catOf(p, cat) < 0.85 ? ` 📉 ตลาด${CAT_NAME[cat] || 'หมวดนี้'}อิ่มตัว (ราคา ${Math.round(this.catOf(p, cat) * 100)}%)` : ''}`); this.catPush(p); this.event(p, 'sell');
     if (S.SHOPS.animal.sell.includes(item)) this.event(p, 'sellproduct');
     this.sfxTo(p, 'coin');
   }

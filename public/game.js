@@ -101,7 +101,7 @@ function handle(m) {
   switch (m.t) {
     case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
     case 'w':
-      resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
+      resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; if (m.fr) freshSt = m.fr; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
       dur = m.dur || {}; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
       if (m.trees) applyTrees(m.trees);
       furn.clear();
@@ -161,7 +161,7 @@ function handle(m) {
       break;
     }
     case 'tile': if (m.v) farm[m.k] = m.v; else delete farm[m.k]; break;
-    case 'inv': inv = m.inv; renderHud(); refreshOpen(); updateLampBtn(); updatePetBtn(); break;
+    case 'inv': inv = m.inv; if (m.fr) freshSt = m.fr; renderHud(); refreshOpen(); updateLampBtn(); updatePetBtn(); break;
     case 'skills': skills = m.skills; refreshOpen(); break;
     case 'msg': toast(m.text); break;
     case 'gift': showGift(m.item); break;
@@ -333,8 +333,16 @@ function renderEnergy() {
 }
 $('enChip').onclick = () => toast($('enChip').title); $('cdChip').onclick = () => toast($('cdChip').title);
 setInterval(renderEnergy, 1000);
-function allTotal(i, m, n) { // ขายทั้งหมด: ยอดรวมทั้งชุด (ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20%) พร้อมเปอร์เซ็นต์เฉลี่ยเทียบราคาชิ้นแรก
-  const t = sellQuote(i.sell, m, n).total, first = Math.max(1, Math.round(i.sell * Math.max(Shared.MARKET.min, m)));
+// ความสดของสินค้า (Shared.FRESH): อายุของแต่ละกองในกระเป๋าจากเซิร์ฟเวอร์ คิดระดับสด/ค้าง/เก่าตามเวลาปัจจุบัน
+let freshSt = { l: {}, fz: false };
+const freshMulsOf = (k, q) => Shared.perishable(k) ? Shared.freshMuls(freshSt.l[k], q, Date.now() + timeOffset, freshSt.fz) : null;
+function freshBadge(k) { // 🟢12 🟡3 🔴1 (แสดงเมื่อมีของค้าง/เก่า) • ก่อนวันเริ่มระบบไม่แสดง
+  if (!Shared.perishable(k) || !freshSt.l[k] || Date.now() + timeOffset < Shared.FRESH.startAt) return '';
+  const c = Shared.freshCount(freshSt.l[k], Date.now() + timeOffset, freshSt.fz); if (!c[1] && !c[2]) return '';
+  return ' <small title="ความสด: สด 100% • ค้าง 70% • เก่า 40% (ขายของเก่าก่อน • ตู้เย็นในบ้านช่วยชะลอ)">' + c.map((n, i) => n ? Shared.FRESH.emoji[i] + n : '').join(' ') + '</small>';
+}
+function allTotal(i, m, n, k) { // ขายทั้งหมด: ยอดรวมทั้งชุด (ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20%) พร้อมเปอร์เซ็นต์เฉลี่ยเทียบราคาชิ้นแรก
+  const t = sellQuote(i.sell, m, n, k ? freshMulsOf(k, n) : null).total, first = Math.max(1, Math.round(i.sell * Math.max(Shared.MARKET.min, m)));
   return `${t} <small>(เฉลี่ย ${Math.round(t / (first * n) * 100)}%)</small>`;
 }
 function renderBankTab(el) {
@@ -900,7 +908,7 @@ $('bagBody').addEventListener('click', e => {
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
   const sb = e.target.closest('[data-sub]'); if (sb) { bagSub = sb.dataset.sub; renderBag(); return; }
   const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); return; }
-  const ib = e.target.closest('[data-info]'); if (ib) { const k = ib.dataset.info, i = itemInfo(k); if (i) toast(`${i.emoji} ${i.name} ×${inv[k] || 0}` + (i.sell ? ` • ราคาขาย 🪙${i.sell}` : '') + (i.food ? ` • กินได้ +${i.food} ความอิ่ม` : '')); }
+  const ib = e.target.closest('[data-info]'); if (ib) { const k = ib.dataset.info, i = itemInfo(k); if (i) toast(`${i.emoji} ${i.name} ×${inv[k] || 0}${freshBadge(k).replace(/<[^>]+>/g, '')}` + (i.sell ? ` • ราคาขาย 🪙${i.sell}` : '') + (i.food ? ` • กินได้ +${i.food} ความอิ่ม` : '')); }
 });
 $('hungerChip').onclick = () => openBag('eat');
 // ตะเกียง/ไฟฉาย: ปุ่มบนแถบบน (หรือกด L) เปิด/ปิดแสงรอบตัว 5 ช่อง เห็นเฉพาะตอนกลางคืน (เพื่อนเห็นแสงของคุณด้วย)
@@ -924,7 +932,7 @@ function renderBag() {
   if (bagTab === 'book') return renderBookTab(el);
   if (bagTab === 'status') {
     const keysOwned = Object.keys(inv).filter(k => k !== 'coin');
-    const worth = keysOwned.reduce((s, k) => { const i = itemInfo(k); return s + (i && i.sell ? sellQuote(i.sell, mult(k), inv[k]).total : 0); }, 0);
+    const worth = keysOwned.reduce((s, k) => { const i = itemInfo(k); return s + (i && i.sell ? sellQuote(i.sell, mult(k), inv[k], freshMulsOf(k, inv[k])).total : 0); }, 0);
     const pieces = keysOwned.reduce((s, k) => s + inv[k], 0);
     const [tx, ty] = myTile();
     const cards = [
@@ -1101,9 +1109,9 @@ function renderShop() {
   for (const k of sellKeys) {
     const i = itemInfo(k), m = mult(k), unit = Math.max(1, Math.round(i.sell * m));
     const trend = (m > 1.03 ? `<span style="color:#1e8f4e">▲ ${Math.round((m - 1) * 100)}%</span>` : m < 0.97 ? `<span style="color:#c0392b">▼ ${Math.round((1 - m) * 100)}%</span>` : '') + (m < 0.5 ? ' <span style="color:#c0392b">⚠️ ตลาดอิ่มตัว รอราคากลับก่อนค่อยขาย</span>' : '');
-    h += `<div class="row"><span>${i.emoji} ${i.name} ×${inv[k]}<br><small>ราคาตลาด 🪙${unit} (ปกติ ${i.sell}) ${trend}</small></span><span>`
+    h += `<div class="row"><span>${i.emoji} ${i.name} ×${inv[k]}${freshBadge(k)}<br><small>ราคาตลาด 🪙${unit} (ปกติ ${i.sell}) ${trend}</small></span><span>`
       + `<button class="btn small" data-sell="${k}" data-n="1">ขาย 1</button> `
-      + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all" title="ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20% ของราคาฐาน">ทั้งหมด 🪙${allTotal(i, m, inv[k])}</button>` : '') + `</span></div>`;
+      + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all" title="ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20% ของราคาฐาน">ทั้งหมด 🪙${allTotal(i, m, inv[k], k)}</button>` : '') + `</span></div>`;
   }
   if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายชนิดเดิมซ้ำๆ ราคาของคุณจะตกเร็วและฟื้นช้า (ตกเหลือต่ำสุด ~20–25% ของราคาปกติ) • ขายหมวดหนึ่งเยอะ หมวดนั้นตกเร็ว แต่หมวดอื่นฟื้นเร็วขึ้น • มีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
   if (cookTab) {

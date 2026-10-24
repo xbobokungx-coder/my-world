@@ -376,11 +376,19 @@
   // ตัวอย่างขาย 100 ชิ้นเมื่อราคาตั้งต้น 100%: ชิ้นที่ 1 = 100%, 2 = 99% … 80 = 21%, ชิ้นที่ 81-100 = 20% รวม 5,240 จากราคาฐาน 100/ชิ้น (กด "ขายทั้งหมด" คำนวณทั้งชุดให้เลย)
   // ตลาดจำการขายด้วยการลดเท่ากันทุกชิ้น (server แบ่งเข้าตลาดชนิด/ส่วนตัว/หมวด) ขายรวดหรือทยอยขายติดกันทีละชิ้นจึงได้เงินเท่ากัน ต่างกันเฉพาะ "รอให้ตลาดฟื้น" ที่ได้ราคาดีขึ้น
   const sellDrop = base => CATFAT.perCoin ? Math.min(CATFAT.dropMax, base * CATFAT.perCoin) : MARKET.drop; // ตัวคูณราคาที่ลดต่อชิ้น (ตามมูลค่า)
-  function sellQuote(base, m, q) { // ราคารวมเมื่อขาย q ชิ้นต่อเนื่อง และตัวคูณใหม่ • ราคาต่อชิ้นไม่ต่ำกว่า MARKET.min ของราคาฐาน
+  function sellQuote(base, m, q, muls) { // ราคารวมเมื่อขาย q ชิ้นต่อเนื่อง และตัวคูณใหม่ • ราคาต่อชิ้นไม่ต่ำกว่า MARKET.min ของราคาฐาน • muls = ตัวคูณความสดต่อชิ้น (ไม่ใส่ = สดทุกชิ้น)
     let total = 0; const drop = sellDrop(base);
-    for (let i = 0; i < q; i++) { total += Math.max(1, Math.round(base * Math.max(MARKET.min, m))); m = Math.max(MARKET.min, m - drop); }
+    for (let i = 0; i < q; i++) { total += Math.max(1, Math.round(base * (muls ? muls[i] : 1) * Math.max(MARKET.min, m))); m = Math.max(MARKET.min, m - drop); }
     return { total, m };
   }
+  // ความสดของสินค้า (ขั้น 1 ใน ECONOMY-PLAN.md): ผัก ผลไม้ ปลา ไข่ นม อาหาร หน่อไม้ ราคาลดตามอายุในกระเป๋า สด < freshMs = 100% • ค้าง < staleMs = 70% • เก่า = 40% (ยังขาย/ทำอาหาร/กินได้)
+  // ของคงทน (ไม้ ขนแกะ น้ำผึ้ง ทรัฟเฟิล มะพร้าว) ไม่เสื่อม • ใช้/ขาย/เทรด ของเก่าก่อนเสมอ (เทรดแล้วอายุติดไปด้วย) • มีตู้เย็นวางในบ้าน = อายุนับช้าลงครึ่งหนึ่ง
+  // startAt: วันเริ่มระบบ ของที่ได้ก่อนวันนี้นับเป็นของสด ณ วันนั้น (ผู้เล่นมีเวลาขายของที่ตุนไว้ก่อน)
+  const FRESH = { startAt: Date.parse('2026-11-01T00:00:00+07:00'), freshMs: 24 * 3600e3, staleMs: 72 * 3600e3, mul: [1, 0.7, 0.4], fridgeMul: 0.5, names: ['สด', 'ค้าง', 'เก่า'], emoji: ['🟢', '🟡', '🔴'] };
+  const perishable = k => /^(crop_|fish_|dish_)/.test(k) || ['egg', 'duck_egg', 'milk', 'shoot'].includes(k);
+  const freshTier = (t, now, fridge) => { if (now < FRESH.startAt) return 0; const age = (now - Math.max(t, FRESH.startAt)) * (fridge ? FRESH.fridgeMul : 1); return age < FRESH.freshMs ? 0 : age < FRESH.staleMs ? 1 : 2; };
+  const freshMuls = (lots, q, now, fridge) => { const out = []; for (const [t, n] of lots || []) for (let i = 0; i < n && out.length < q; i++) out.push(FRESH.mul[freshTier(t, now, fridge)]); while (out.length < q) out.push(1); return out; }; // ตัวคูณต่อชิ้น เรียงของเก่าก่อน
+  const freshCount = (lots, now, fridge) => { const c = [0, 0, 0]; for (const [t, n] of lots || []) c[freshTier(t, now, fridge)] += n; return c; };
   // สัตว์ที่เลี้ยงได้ (ใช้ร่วมกันทั้งโลก): cap = จำนวนสูงสุด, feedItem = อาหารที่กิน
   const ANIMALS = {
     // starveMin = กี่นาที (ที่มีผู้เล่นออนไลน์) ที่สัตว์หิวจากอิ่มเต็มจนหมด, หลังหมดแล้วเหลือเวลาอีก graceMs ก่อนจะตาย
@@ -534,8 +542,6 @@
     { x: 36, y: 15, game: 'react', name: 'ใครกดเร็วกว่า',    label: 'GO!', emoji: '⚡' },
     { x: 31, y: 17, game: 'pok',   name: 'ไพ่ป๊อก',         label: 'POK', emoji: '🎴' },
     { x: 33, y: 17, game: 'c4',    name: 'Connect 4',      label: 'C4',  emoji: '🔴' },
-    { x: 35, y: 17, game: 'bacc',  name: 'บาคาร่า',         label: 'BAC', emoji: '🎴' },
-    { x: 37, y: 17, game: 'bj',    name: 'แบล็คแจ็ค',       label: '21',  emoji: '🂡' },
   ];
   const GAME_TITLES = { xo: '❌⭕ XO', uno: '🃏 UNO', rps: '✊ เป่ายิ้งฉุบ', react: '⚡ ใครกดเร็วกว่า', pok: '🎴 ไพ่ป๊อก', c4: '🔴 Connect 4', bacc: '🎴 บาคาร่า', bj: '🂡 แบล็คแจ็ค' };
   // ลานพักผ่อนกลางหมู่บ้าน: กองไฟตรงกลาง รอบๆ มีม้านั่ง กองฟาง และเก้าอี้ให้นั่งเล่น (กดที่ที่นั่งเพื่อนั่ง) กลางคืนสว่างเฉพาะรอบกองไฟ
@@ -917,7 +923,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);
