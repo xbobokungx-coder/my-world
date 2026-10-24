@@ -83,7 +83,7 @@ $('pinSave').onclick = () => { const p = $('pinNew').value.trim(); if (!/^\d{4,6
 
 function connect(name) {
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
-  ws.onopen = () => ws.send(JSON.stringify({ t: 'join', name, color, room: roomParam(), pin: $('pin').value.trim(), akey: $('akey').value || ls.get('mw_akey') || '' }));
+  ws.onopen = () => ws.send(JSON.stringify({ t: 'join', name, color, room: roomParam(), pin: $('pin').value.trim(), ch: (() => { try { return new URLSearchParams(location.search).get('ch') || ''; } catch (e) { return ''; } })(), akey: $('akey').value || ls.get('mw_akey') || '' }));
   ws.onmessage = e => handle(JSON.parse(e.data));
   ws.onclose = () => {
     if (joined) $('dc').classList.remove('hidden');
@@ -94,7 +94,7 @@ const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 // ---------- messages ----------
 function mkPlayer(o) {
-  return { id: o.id, veh: o.veh || '', held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', pm: o.pm || 'follow', pax: o.pax || o.x, pay: o.pay || o.y, psick: !!o.psick, pname: o.pname || '', x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
+  return { id: o.id, wet: !!o.wet, veh: o.veh || '', held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', pm: o.pm || 'follow', pax: o.pax || o.x, pay: o.pay || o.y, psick: !!o.psick, pname: o.pname || '', x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
 }
 const treeKinds = new Map(); // 'x,y' → ชนิดต้นไม้ (Shared.TREE_KINDS) จากเซิร์ฟเวอร์ ใช้เลือกสไปรต์
 function applyTrees(list) { // ซิงก์ต้นไม้ที่ตัดได้ให้ตรงกับเซิร์ฟเวอร์ (ต้นไม้ขอบแมพไม่เปลี่ยน)
@@ -214,6 +214,9 @@ function handle(m) {
     case 'title': { const p = players.get(m.id); if (p) p.title = m.title; if (achShown()) renderAch(); break; }
     case 'veh': { const p = players.get(m.id); if (p) p.veh = m.v || ''; if (m.id === myId && !$('shop').classList.contains('hidden')) renderShop(); break; }
     case 'auc': aucSt = m.a; if (townShown()) renderTown(); break;
+    case 'ch': chSt = { ch: m.ch, wet: m.wet, chain: m.chain }; if (questShown()) renderQuestPanel(); break;
+    case 'chain': chSt.chain = m.n; break;
+    case 'wet': { const p = players.get(m.id); if (p) p.wet = !!m.on; break; }
     case 'stall': stallSt = m.l || []; if (townShown() && townTab === 'stall') renderTown(); break;
     case 'orders': ordersSt = m.o; if (townShown() && townTab === 'orders') renderTown(); break;
     case 'orders_upd': if (townShown() && townTab === 'orders') send({ t: 'orders', a: 'list' }); break;
@@ -348,7 +351,7 @@ function renderEnergy() {
 $('enChip').onclick = () => toast($('enChip').title); $('cdChip').onclick = () => toast($('cdChip').title);
 setInterval(renderEnergy, 1000);
 // ความสดของสินค้า (Shared.FRESH): อายุของแต่ละกองในกระเป๋าจากเซิร์ฟเวอร์ คิดระดับสด/ค้าง/เก่าตามเวลาปัจจุบัน
-let freshSt = { l: {}, fz: false }, rentsSt = {}, aucSt = null, festSt = null, pinSt = false, stallSt = [], ordersSt = null; // pinSt = บัญชีนี้ตั้ง PIN แล้ว // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
+let freshSt = { l: {}, fz: false }, rentsSt = {}, aucSt = null, festSt = null, pinSt = false, stallSt = [], ordersSt = null, chSt = { ch: null, wet: 0, chain: 0 }; // chSt = ชาเลนจ์ถังน้ำ // pinSt = บัญชีนี้ตั้ง PIN แล้ว // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
 const freshMulsOf = (k, q) => Shared.perishable(k) ? Shared.freshMuls(freshSt.l[k], q, Date.now() + timeOffset, freshSt.fz) : null;
 function freshBadge(k) { // 🟢12 🟡3 🔴1 (แสดงเมื่อมีของค้าง/เก่า) • ก่อนวันเริ่มระบบไม่แสดง
   if (!Shared.perishable(k) || !freshSt.l[k] || Date.now() + timeOffset < Shared.FRESH.startAt) return '';
@@ -460,12 +463,31 @@ $('questClose').onclick = closeQuest;
 $('quest').addEventListener('pointerdown', e => { if (e.target === $('quest')) closeQuest(); });
 function renderQuestPanel() {
   const st = questSt.starter, showStart = !!(st && !st.final);
-  const tabs = (showStart ? [['start', '🌱 เริ่มต้น']] : []).concat(questSt.wk1 ? [['wk1', '🗓️ สัปดาห์แรก']] : []).concat([['daily', '📋 เควสวันนี้'], ['pts', '💛 แต้ม/บัฟ']]);
+  const tabs = (showStart ? [['start', '🌱 เริ่มต้น']] : []).concat(questSt.wk1 ? [['wk1', '🗓️ สัปดาห์แรก']] : []).concat([['daily', '📋 เควสวันนี้'], ['ch', '🪣 ชาเลนจ์'], ['pts', '💛 แต้ม/บัฟ']]);
   if (!tabs.some(t => t[0] === questTab)) questTab = 'daily';
   $('questTabs').innerHTML = tabs.map(([c, n]) => `<button class="tab${questTab === c ? ' on' : ''}" data-qtab="${c}">${n}</button>`).join('');
   $('questTabs').querySelectorAll('[data-qtab]').forEach(b => b.onclick = () => { questTab = b.dataset.qtab; renderQuestPanel(); });
   const el = $('questBody');
-  if (questTab === 'wk1') { // ภารกิจสัปดาห์แรก: ข้อที่ d ปลดล็อกวันที่ d
+  if (questTab === 'ch') { // ชาเลนจ์ถังน้ำ
+    const C = Shared.CHALLENGE, c = chSt.ch, d = c && C.list.find(x => x.id === c.id), now = Date.now() + timeOffset;
+    let h = `<div class="tabs-note">🪣 ทำภารกิจสั้นให้ทันใน ${Math.round(C.ms / 60000)} นาที แล้วท้าเพื่อนต่อ เพื่อนมีเวลา 48 ชม. ไม่ทันโดนราดน้ำ 💦 • ต้นไม้แห่งการส่งต่อกลางลานตอนนี้ <b>${chSt.chain}</b> ใบ</div>`;
+    if (chSt.wet > now) h += `<div class="banner" style="background:#d9efff">💦 คุณตัวเปียกอยู่อีก ${fmtLeft(chSt.wet - now)} <button class="btn small" data-chredeem="1" ${(inv.coin || 0) < C.redeem ? 'disabled' : ''}>ไถ่โทษ ลงขัน 🪙${C.redeem}</button></div>`;
+    if (!c) h += `<div class="center" style="margin:12px 0"><button class="btn" data-chstart="1">🪣 รับชาเลนจ์</button></div><p style="font-size:12px;opacity:.7">สุ่มได้ 1 ใน: ${C.list.map(x => x.emoji + ' ' + x.text).join(' • ')}</p>`;
+    else if (c.st === 'pending') h += `<div class="vcard on"><b>🪣 ${esc0(c.by)} ท้าคุณ!</b><br>${d.emoji} ${d.text} ภายใน ${Math.round(C.ms / 60000)} นาที<br><small>กดเริ่มเมื่อพร้อม (เหลือเวลารับคำท้าอีกไม่ถึง 48 ชม.)</small><div class="center" style="margin-top:8px"><button class="btn" data-chstart="1">เริ่มจับเวลา!</button></div></div>`;
+    else if (c.st === 'run') h += `<div class="vcard on"><b>${d.emoji} ${d.text}</b><div class="bar"><i style="width:${Math.round(c.n / d.goal * 100)}%"></i></div><small>${c.n}/${d.goal} • เหลือเวลา ${fmtLeft(Math.max(0, c.end - now))}</small></div>`;
+    else if (c.st === 'won') h += `<div class="vcard on"><b>🎉 สำเร็จ! ${d.emoji} ${d.text}</b> ใน ${Math.ceil(c.ms / 60000)} นาที<br><small>แชร์การ์ดแล้วท้าเพื่อน 3 คน เพื่อนผ่านคู่มือเมื่อไรคุณได้ฉายา</small><canvas id="chCard" width="600" height="320" style="width:100%;margin:8px 0;border-radius:8px"></canvas><div class="center"><button class="btn small" data-chshare="1">📤 แชร์ท้าเพื่อน</button> <button class="btn small" data-chcopy="1">🔗 คัดลอกลิงก์</button> <button class="btn small muted" data-chsave="1">💾 บันทึกรูป</button></div><div class="center" style="margin-top:8px"><button class="btn small muted" data-chstart="1">รับชาเลนจ์ใหม่</button></div></div>`;
+    el.innerHTML = h;
+    if (c && c.st === 'won') drawChCard($('chCard'), d, c);
+    const link = () => `${location.origin}/?room=${encodeURIComponent(roomName)}&ch=${c.code}`, text = () => `ฉันทำชาเลนจ์ถังน้ำ 🪣 "${d.text}" ใน My World สำเร็จใน ${Math.ceil(c.ms / 60000)} นาที! ท้าคุณทำภายใน 48 ชม. ไม่งั้นโดนราดน้ำ 💦`;
+    el.querySelectorAll('[data-chstart]').forEach(b => b.onclick = () => send({ t: 'ch', a: 'start' }));
+    el.querySelectorAll('[data-chredeem]').forEach(b => b.onclick = () => send({ t: 'ch', a: 'redeem' }));
+    el.querySelectorAll('[data-chcopy]').forEach(b => b.onclick = () => { try { navigator.clipboard.writeText(text() + ' ' + link()); toast('คัดลอกลิงก์แล้ว ส่งให้เพื่อนได้เลย'); } catch (e) { prompt('คัดลอกลิงก์นี้', link()); } });
+    el.querySelectorAll('[data-chsave]').forEach(b => b.onclick = () => { const a = document.createElement('a'); a.download = 'myworld-bucket.png'; a.href = $('chCard').toDataURL('image/png'); a.click(); });
+    el.querySelectorAll('[data-chshare]').forEach(b => b.onclick = () => $('chCard').toBlob(async blob => {
+      const file = new File([blob], 'myworld-bucket.png', { type: 'image/png' }), data = { title: 'ชาเลนจ์ถังน้ำ My World', text: text(), url: link() };
+      try { if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share(Object.assign({ files: [file] }, data)); else if (navigator.share) await navigator.share(data); else { navigator.clipboard.writeText(text() + ' ' + link()); toast('คัดลอกลิงก์แล้ว (เบราว์เซอร์นี้แชร์ตรงไม่ได้)'); } } catch (e) { /* ผู้ใช้ยกเลิก */ }
+    }, 'image/png'));
+  } else if (questTab === 'wk1') { // ภารกิจสัปดาห์แรก: ข้อที่ d ปลดล็อกวันที่ d
     const w = questSt.wk1, W1 = Shared.WEEK1;
     el.innerHTML = `<div class="tabs-note">ภารกิจวันละข้อใน 7 วันแรก (ข้อใหม่ปลดล็อกทุกวัน ทำย้อนหลังได้) ข้อละ 🪙${W1.coin} • ครบ 7 ข้อได้ฉายา "${W1.final.title}" + 🪙${W1.final.coin} + ${itemInfo(W1.final.item).emoji} ${itemInfo(W1.final.item).name}</div>`
       + W1.list.map(m => { const done = w.done.includes(m.d), open = m.d <= w.day, n = Math.min(m.goal, w.n[m.d] || 0);
@@ -809,6 +831,20 @@ const greetSend = k => { if (greetId) send({ t: 'greet', id: greetId, k }); gree
 $('greetWave').onclick = () => greetSend('wave');
 $('greetFlower').onclick = () => greetSend('flower');
 $('greetNo').onclick = () => { greetId = 0; $('greet').classList.add('hidden'); };
+
+// การ์ดผลงานชาเลนจ์ถังน้ำ (แชร์ลงโซเชียล): ตัวละครของเราขยาย 4 เท่า + ชาเลนจ์ + เวลา + ลิงก์เกม
+const esc0 = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function drawChCard(cv, d, c) {
+  if (!cv || !me) return; const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
+  const g = x.createLinearGradient(0, 0, 0, 320); g.addColorStop(0, '#8fd0ff'); g.addColorStop(1, '#bfe8a6'); x.fillStyle = g; x.fillRect(0, 0, 600, 320);
+  x.fillStyle = '#7bc65a'; x.fillRect(0, 250, 600, 70); x.fillStyle = '#2a1b14'; x.fillRect(0, 248, 600, 3); x.lineWidth = 6; x.strokeStyle = '#2a1b14'; x.strokeRect(3, 3, 594, 314);
+  x.save(); x.translate(130, 230); x.scale(4, 4); PixelChar.draw(x, Object.assign({}, me, { x: 0, y: 0, dir: 0, moving: false, sit: null, wet: false }), 0); x.restore();
+  x.fillStyle = '#2a1b14'; x.font = 'bold 30px sans-serif'; x.fillText('🪣 ชาเลนจ์ถังน้ำ', 240, 60);
+  x.font = 'bold 22px sans-serif'; x.fillText(`${me.name} ทำสำเร็จ!`, 240, 100);
+  x.font = '20px sans-serif'; x.fillText(`${d.emoji} ${d.text}`, 240, 140); x.fillText(`⏱️ ใน ${Math.ceil(c.ms / 60000)} นาที`, 240, 172);
+  x.font = 'bold 20px sans-serif'; x.fillStyle = '#c0392b'; x.fillText('ใครกล้ารับต่อ? 48 ชม. ไม่งั้นโดนราดน้ำ 💦', 240, 212);
+  x.fillStyle = '#2a1b14'; x.font = 'bold 18px sans-serif'; x.fillText('🌾 My World • ' + location.host, 240, 290);
+}
 
 // กล่องยืนยันในเกม แทน confirm() ที่บางเบราว์เซอร์มือถือ/เว็บวิวไม่แสดง
 let askYes = null;
@@ -2567,6 +2603,11 @@ function drawFire(now) {
   }
   ctx.globalAlpha = 1;
 }
+function drawChainTree(now) { // โตตามจำนวนชาเลนจ์ที่สำเร็จทั้งเมือง: <5 ต้นกล้า • <20 ต้นกลาง • ≥20 ต้นใหญ่ มีป้ายจำนวนใบ
+  const n = chSt.chain, k = n < 5 ? 1.2 : n < 20 ? 1.6 : 2.1, s = PixelArt.tree(3, 5, 'broad'), w = s.width * k, h = s.height * k, cx = 24 * TS + 16, by = 31 * TS + 32;
+  ctx.drawImage(s, cx - w / 2, by - h, w, h); PixelUI.world(ctx, '🪣', cx + w / 4, by - h * 0.55 + Math.sin(now / 500) * 2, 14);
+  ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(42,27,20,.8)'; ctx.fillRect(cx - 26, by + 2, 52, 13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`🌳 ${n} ใบ`, cx, by + 12);
+}
 function drawTree(x, y) { // สไปรต์ต้นไม้พิกเซล (สุ่มแบบตามตำแหน่ง) โคนต้นอยู่กลางขอบล่างของช่อง
   const s = PixelArt.tree(x, y, treeKinds.get(x + ',' + y));
   ctx.drawImage(s, x * TS + 16 - 28, y * TS + 32 - 64, s.width * 2, s.height * 2);
@@ -2697,6 +2738,7 @@ function drawPlayer(p, now, cx) {
   ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
   if (p.veh && !p.sit && Shared.VEHICLES[p.veh]) PixelUI.world(ctx, Shared.VEHICLES[p.veh].emoji, x, y + 8, 26); // ยานพาหนะใต้ตัวละคร
   PixelChar.draw(ctx, p, now); // ตัวละครพิกเซล chibi (pixelchar.js)
+  if (p.wet) { PixelUI.world(ctx, '🪣', x, y - 20, 16); ctx.fillStyle = 'rgba(120,190,255,.85)'; for (let i = 0; i < 4; i++) { const t = (now / 600 + i / 4) % 1; ctx.fillRect(x - 10 + i * 7, y - 14 + t * 24, 2, 4); } } // โดนราดน้ำจากชาเลนจ์
   if (p.lamp) drawHeldLamp(p, now);
   if (p.held && !p.sit) drawHeldTool(p, now); // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง)
   if (!p.name) return; // ตัวอย่างในตู้เสื้อผ้า ไม่ต้องวาดชื่อ
@@ -3713,6 +3755,7 @@ function step(now) {
   // วาดตามลำดับ y
   const list = [];
   for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) list.push({ y: y * TS + 30, f: () => drawTree(x, y) });
+  if (!scene && chSt.chain > 0 && x0 <= 25 && x1 >= 23 && y0 <= 32 && y1 >= 30) list.push({ y: 31 * TS + 30, f: () => drawChainTree(now) }); // ต้นไม้แห่งการส่งต่อ (ชาเลนจ์ถังน้ำ)
   if (!scene) for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
   // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
   if (!scene) for (const s of SEATS) if (s.x >= x0 - 1 && s.x <= x1 + 1 && s.y >= y0 - 1 && s.y <= y1 + 1) list.push({ y: s.y * TS + 12, f: () => drawSeat(s) });

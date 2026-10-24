@@ -685,6 +685,9 @@
     { id: 'arcwin5',    e: '🏆', name: 'เซียนตู้เกม',        desc: 'ชนะตู้เกมกับคนจริง 5 ครั้ง',           stat: 'arcwin',  goal: 5,   coin: 100,  title: 'เซียนตู้เกม' },
     { id: 'arcwin30',   e: '👑', name: 'แชมป์อาร์เคด',       desc: 'ชนะตู้เกมกับคนจริง 30 ครั้ง',          stat: 'arcwin',  goal: 30,  coin: 500,  title: 'แชมป์อาร์เคด' },
     { id: 'mentor3',    e: '🤗', name: 'พี่เลี้ยงใจดี',       desc: 'ทักคนใหม่แล้วเขาผ่านคู่มือเริ่มต้น 3 คน',  stat: 'mentor',  goal: 3,   coin: 100,  title: 'พี่เลี้ยงใจดี' },
+    { id: 'invite1',    e: '🪣', name: 'ผู้จุดไฟ',            desc: 'ท้าเพื่อนด้วยชาเลนจ์ถังน้ำ แล้วเพื่อนผ่านคู่มือ 1 คน', stat: 'invite', goal: 1,  coin: 0,    title: 'ผู้จุดไฟ' },
+    { id: 'invite3',    e: '🪣', name: 'นักส่งต่อถังน้ำ',      desc: 'ท้าเพื่อนสำเร็จ 3 คน',                 stat: 'invite',  goal: 3,   coin: 0,    title: 'นักส่งต่อถังน้ำ' },
+    { id: 'invite10',   e: '🌳', name: 'ตำนานส่งต่อ',          desc: 'ท้าเพื่อนสำเร็จ 10 คน',                stat: 'invite',  goal: 10,  coin: 0,    title: 'ตำนานส่งต่อ' },
     { id: 'trade1',     e: '🤝', name: 'พ่อค้าแลกเปลี่ยน',   desc: 'เทรดของกับผู้เล่นอื่นสำเร็จ',          stat: 'trade',   goal: 1,   coin: 30 },
     { id: 'sit1',       e: '🪑', name: 'พักผ่อนบ้าง',        desc: 'นั่งพักที่ลานกองไฟ',                  stat: 'sit',     goal: 1,   coin: 10 },
     { id: 'streak3',    e: '🔥', name: 'มาทุกวัน',          desc: 'เข้าเกมติดต่อกัน 3 วัน',               stat: 'streak',  goal: 3,   coin: 50 },
@@ -702,6 +705,14 @@
     { d: 5, ev: 'hplace', goal: 3, emoji: '🏠', text: 'วางของแต่งบ้าน 3 ชิ้น (ปุ่ม 🏠 บ้านฉัน)' },
     { d: 6, ev: 'arcplay', goal: 1, emoji: '🎮', text: 'เล่นตู้เกมกับคนจริงจนจบ 1 ตา' },
     { d: 7, ev: 'help', goal: 3, emoji: '💛', text: 'ช่วยงานเมือง 3 ครั้ง (รดน้ำพืชที่แห้ง ให้อาหารสัตว์ที่หิว ลงขัน)' },
+  ] };
+  // ชาเลนจ์ถังน้ำ 🪣 (GROWTH-PLAN N3): ทำภารกิจสั้นให้ทันเวลา ms → ได้การ์ดผลงาน + ลิงก์ท้าเพื่อน • เพื่อนที่ถูกท้ามีเวลา inviteMs ถ้าไม่สำเร็จโดนราดน้ำ (ตัวเปียก + ถังบนหัว wetMs) หรือไถ่โทษลงขันกองกลาง redeem
+  // รางวัลเป็นฉายาเท่านั้น (ไม่ใช่เหรียญ กันสร้างบัญชีปลอม) นับเมื่อคนที่ถูกท้าผ่านคู่มือเริ่มต้น สูงสุด perWeek คน/สัปดาห์ • ทุกครั้งที่มีคนทำสำเร็จ ต้นไม้แห่งการส่งต่อกลางลานโตขึ้น
+  const CHALLENGE = { ms: 15 * 60e3, inviteMs: 48 * 3600e3, wetMs: 24 * 3600e3, redeem: 50, retryMs: 60 * 60e3, perWeek: 10, list: [
+    { id: 'harvest5', ev: 'harvest', goal: 5, emoji: '🌾', text: 'เก็บเกี่ยวผัก 5 ต้น' },
+    { id: 'fish3',    ev: 'fish',    goal: 3, emoji: '🎣', text: 'ตกปลาให้ได้ 3 ตัว' },
+    { id: 'water8',   ev: 'water',   goal: 8, emoji: '💧', text: 'รดน้ำพืชที่ดินแห้ง 8 ครั้ง' },
+    { id: 'sell5',    ev: 'sell',    goal: 5, emoji: '🪙', text: 'ขายของที่ร้าน 5 ครั้ง' },
   ] };
   const STARTER_FINAL = { coin: 150, items: ['furn_chair', 'furn_plant', 'lamp'] }; // 150 (เดิม 100 ตอนคู่มือมี 12 ข้อ) เงินช่วงแรกรวมใกล้เดิม
   // 60 วินาทีแรกของคนใหม่ (GROWTH-PLAN.md N1): กล่องของขวัญสุ่มของแต่งตัว 1 ชิ้น • เมล็ดเร่งโตสำหรับการปลูก quickSeeds ครั้งแรก (โตเร็ว ×quickMul) • ปลาตัวแรกในชีวิตเป็น firstFish
@@ -952,7 +963,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

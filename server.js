@@ -81,7 +81,7 @@ class World {
         for (const [x, y, k] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2) { this.map[y][x] = T.TREE; if (Object.hasOwn(S.TREE_KINDS, k)) treeKinds[x + ',' + y] = k; }
       }
       mk = d.market || {}; this.mktDay = Number.isInteger(d.mktDay) ? d.mktDay : -1;
-      houseSaved = d.house || {}; townSaved = { stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, chest: d.chest, projects: d.projects, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
+      houseSaved = d.house || {}; townSaved = { chain: d.chain, invites: d.invites, stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, chest: d.chest, projects: d.projects, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
     } catch (e) {
       // ไม่มีไฟล์ = โลกใหม่ แต่ถ้ามีไฟล์แต่อ่านไม่ได้ ให้สำรองไว้ก่อน ไม่งั้นการบันทึกครั้งต่อไปจะเขียนทับข้อมูลเดิมทิ้ง
       if (e.code !== 'ENOENT') { try { fs.copyFileSync(this.file, this.file + '.broken-' + Date.now()); console.error('อ่านไฟล์บันทึกไม่ได้ สำรองไว้แล้ว:', e.message); } catch (e2) { /* ไม่มีอะไรให้สำรอง */ } }
@@ -181,7 +181,7 @@ class World {
   }
   sceneMates(scene, except) { const sc = scene || null; return [...this.players.values()].filter(q => q !== except && (q.scene || null) === sc); }
   sceneBroadcast(scene, o, except) { const s = JSON.stringify(o); for (const q of this.sceneMates(scene, except)) if (q.ws.readyState === 1) q.ws.send(s); }
-  pubFull(q) { return { id: q.id, veh: q.veh || '', held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, pm: q.pm, pax: q.pax, pay: q.pay, psick: !!(q.pet && this.petSt(q, q.pet).sick), pname: q.pet ? this.petName(q, q.pet) : '', x: q.x, y: q.y, dir: q.dir, voice: !!q.voice }; }
+  pubFull(q) { return { id: q.id, wet: q.rec && q.rec.wet > Date.now() ? 1 : 0, veh: q.veh || '', held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, pm: q.pm, pax: q.pax, pay: q.pay, psick: !!(q.pet && this.petSt(q, q.pet).sick), pname: q.pet ? this.petName(q, q.pet) : '', x: q.x, y: q.y, dir: q.dir, voice: !!q.voice }; }
   townPos(p) { const r = p.scene ? p.ret : { x: p.x, y: p.y }; return r && !S.blockedAt(this.map, r.x, r.y) ? r : { x: SPAWN.x, y: SPAWN.y }; } // ตำแหน่งในเมืองที่จะบันทึก/กลับไป (ถ้าอยู่ในบ้านคือที่ที่ยืนก่อนเข้า)
   changeScene(p, scene, x, y) { // ย้ายผู้เล่นไปฉากใหม่: คนฉากเก่าเห็นเขาหายไป คนฉากใหม่เห็นเขาโผล่ ตัวเองได้รับฉากใหม่
     const old = p.scene || null; scene = scene || null;
@@ -290,6 +290,7 @@ class World {
 
   // ----- เมือง: กระดานข่าว (log โลก 50 รายการล่าสุด) + ตู้เซฟกองกลาง (ทุกคนลงขันเหรียญ → จ่ายยา/อาหารสัตว์อัตโนมัติ และชุบสัตว์ที่ตาย) -----
   loadTown(d) {
+    this.chain = Number.isFinite(d.chain) ? d.chain : 0; this.invites = d.invites && typeof d.invites === 'object' ? d.invites : {}; // ชาเลนจ์ถังน้ำ: จำนวนที่ทำสำเร็จทั้งเมือง + รหัสลิงก์ท้า
     this.stall = (Array.isArray(d.stall) ? d.stall : []).filter(x => x && typeof x.seller === 'string' && typeof x.item === 'string' && x.n > 0 && x.price > 0); this.stallNext = this.stall.reduce((a, x) => Math.max(a, x.id || 0), 0) + 1;
     this.orders = d.orders && Array.isArray(d.orders.list) ? d.orders : { day: '', list: [], by: {} };
     this.rents = {}; for (const P of S.FARM_RENT.plots) { const r = d.rents && d.rents[P.id]; if (r && typeof r.key === 'string' && Number.isFinite(r.until)) this.rents[P.id] = { key: r.key, name: String(r.name || r.key).slice(0, 12), until: r.until }; } // แปลงเช่า
@@ -478,7 +479,8 @@ class World {
   event(p, ev, arg) { // เหตุการณ์ที่นับทั้งเควสและสถิติประจำวัน
     this.statDay(); this.starterStep(p, ev);
     if (ev === 'feed' || ev === 'collect' || ev === 'cook' || ev === 'craft') this.telAdd(p, ev, 0);
-    if (ev === 'harvest' || ev === 'collect' || ev === 'chop' || ev === 'cook' || ev === 'hplace') this.wk1Step(p, ev); // งานเบาที่ไม่ผ่าน tire()
+    if (ev === 'harvest' || ev === 'collect' || ev === 'chop' || ev === 'cook' || ev === 'hplace') this.wk1Step(p, ev);
+    this.chEvent(p, ev); // งานเบาที่ไม่ผ่าน tire()
     { const c = this.achOf(p.rec).cnt; c[ev] = (c[ev] || 0) + 1; if (ev === 'fish' && arg >= 55) c.fishbig = (c.fishbig || 0) + 1; } // ตัวนับสะสมสำหรับ Achievement
     if (S.FAME[ev]) { this.villageBump(p); }
     if (S.FAME[ev]) { const m = this.stats.ev[ev] || (this.stats.ev[ev] = Object.create(null)); m[p.name] = (m[p.name] || 0) + 1; this.dirty = true; }
@@ -796,12 +798,57 @@ class World {
     if (S.STARTER.every(s => st.done[s.id])) {
       st.final = true; this.add(p, 'coin', S.STARTER_FINAL.coin, 'starter'); for (const it of S.STARTER_FINAL.items) this.add(p, it, 1);
       this.addLog(`🎓 ${p.name} ผ่านคู่มือเริ่มต้นครบแล้ว!`);
+      { const by = p.rec.invBy && this.saved[p.rec.invBy]; if (by) { const wk = this.weekKey(); if (by.invWk !== wk) { by.invWk = wk; by.invN = 0; } if (by.invN < S.CHALLENGE.perWeek) { by.invN++; this.achAdd(by, 'invite'); const q = [...this.players.values()].find(x => x.key === p.rec.invBy); if (q) this.toast(q, `🪣 ${p.name} ที่คุณท้ามา ผ่านคู่มือเริ่มต้นแล้ว!`); } } }
       for (const g of p.rec.greetedBy || []) { const rg = this.saved[g]; if (!rg) continue; this.achAdd(rg, 'mentor'); const q = [...this.players.values()].find(x => x.key === g); if (q) { this.addPts(q, 5); this.toast(q, `🤗 ${p.name} ที่คุณทักต้อนรับ ผ่านคู่มือเริ่มต้นแล้ว! (+แต้มความดี)`); } }
       this.toast(p, `🎓 ผ่านคู่มือเริ่มต้นครบ! รับ 🪙${S.STARTER_FINAL.coin} + 🪑 เก้าอี้ + 🪴 ต้นไม้ + 🔦 ตะเกียง (เปิดโหมดตกแต่งบ้านด้วยปุ่ม 🏠)`); this.sfxTo(p, 'levelup');
     }
     this.dirty = true; this.questPush(p);
   }
 
+  // ----- ชาเลนจ์ถังน้ำ 🪣 (S.CHALLENGE) -----
+  chDef(id) { return S.CHALLENGE.list.find(c => c.id === id); }
+  chPub(rec) { const c = rec.ch; return { ch: c ? { id: c.id, st: c.st, n: c.n || 0, end: c.end || 0, by: c.byName || '', code: c.code || '', ms: c.ms || 0 } : null, wet: rec.wet > Date.now() ? rec.wet : 0, chain: this.chain }; }
+  chPush(p) { send(p, Object.assign({ t: 'ch' }, this.chPub(p.rec))); }
+  chStart(p) {
+    const rec = p.rec, c = rec.ch, now = Date.now();
+    if (c && c.st === 'run') return this.toast(p, 'กำลังทำชาเลนจ์อยู่');
+    if (c && c.st === 'pending') { c.st = 'run'; c.start = now; c.end = now + S.CHALLENGE.ms; c.n = 0; }
+    else { if (rec.chAt && now - rec.chAt < S.CHALLENGE.retryMs) return this.toast(p, `รับชาเลนจ์ใหม่ได้อีกครั้งใน ${Math.ceil((S.CHALLENGE.retryMs - (now - rec.chAt)) / 60000)} นาที`);
+      const d = S.CHALLENGE.list[Math.floor(Math.random() * S.CHALLENGE.list.length)]; rec.ch = { id: d.id, st: 'run', start: now, end: now + S.CHALLENGE.ms, n: 0 }; }
+    rec.chAt = now; this.dirty = true; const d = this.chDef(rec.ch.id);
+    this.toast(p, `🪣 เริ่มชาเลนจ์! ${d.emoji} ${d.text} ภายใน ${Math.round(S.CHALLENGE.ms / 60000)} นาที`); this.chPush(p);
+  }
+  chEvent(p, ev) {
+    const c = p.rec.ch; if (!c || c.st !== 'run') return; const d = this.chDef(c.id); if (!d || d.ev !== ev) return;
+    if (Date.now() > c.end) return this.chExpire(p);
+    c.n = (c.n || 0) + 1; this.dirty = true;
+    if (c.n < d.goal) return this.chPush(p);
+    c.st = 'won'; c.ms = Date.now() - c.start; this.chain++; delete p.rec.wet;
+    let code; do { code = crypto.randomBytes(4).toString('hex'); } while (this.invites[code]);
+    this.invites[code] = { by: p.key, name: p.name, ch: c.id, t: Date.now() }; c.code = code;
+    for (const [k, v] of Object.entries(this.invites)) if (Date.now() - v.t > 7 * 864e5) delete this.invites[k]; // ลิงก์ใช้ได้ 7 วัน
+    this.toast(p, `🎉 ชาเลนจ์ถังน้ำสำเร็จใน ${Math.ceil(c.ms / 60000)} นาที! แชร์การ์ดแล้วท้าเพื่อนต่อได้เลย`); this.sfxTo(p, 'levelup');
+    this.addLog(`🪣 ${p.name} ทำชาเลนจ์ถังน้ำ "${d.text}" สำเร็จ! (ต้นไม้แห่งการส่งต่อ ${this.chain} ใบ)`);
+    this.broadcast({ t: 'chain', n: this.chain }); this.chPush(p);
+  }
+  chExpire(p) { // หมดเวลา: คนที่ถูกเพื่อนท้ามาแล้วทำไม่ทัน = โดนราดน้ำ • รับเองแล้วไม่ทันแค่จบไป
+    const c = p.rec.ch; if (!c) return; const d = this.chDef(c.id);
+    if (c.by) { p.rec.wet = Date.now() + S.CHALLENGE.wetMs; this.broadcast({ t: 'wet', id: p.id, on: 1 }); this.addLog(`💦 ${p.name} ทำชาเลนจ์ที่ ${c.byName} ท้าไม่ทัน โดนราดน้ำ!`); this.toast(p, `💦 ไม่ทันเวลา! โดนราดน้ำ 🪣 (ตัวเปียก ${Math.round(S.CHALLENGE.wetMs / 3600e3)} ชม. ไถ่โทษได้ด้วยการลงขันกองกลาง 🪙${S.CHALLENGE.redeem})`); }
+    else this.toast(p, `⏰ ชาเลนจ์ "${d ? d.text : ''}" หมดเวลา ลองใหม่ได้ภายหลัง`);
+    p.rec.ch = null; this.dirty = true; this.chPush(p);
+  }
+  chTick() { const now = Date.now(); for (const p of this.players.values()) { const c = p.rec.ch; if (c && ((c.st === 'run' && now > c.end) || (c.st === 'pending' && now > c.deadline))) this.chExpire(p); } }
+  chRedeem(p) {
+    if (!(p.rec.wet > Date.now())) return; if ((p.rec.inv.coin || 0) < S.CHALLENGE.redeem) return this.toast(p, 'เหรียญไม่พอ');
+    this.add(p, 'coin', -S.CHALLENGE.redeem, 'donate'); this.chest.coin += S.CHALLENGE.redeem; this.chestPush(); delete p.rec.wet; this.dirty = true;
+    this.broadcast({ t: 'wet', id: p.id, on: 0 }); this.toast(p, '🌞 ไถ่โทษแล้ว ตัวแห้งแล้ว! (เงินเข้ากองกลาง)'); this.chPush(p);
+  }
+  chJoinInvite(p, code, ip) { // เข้าเกมผ่านลิงก์ท้า: ได้ชาเลนจ์เดียวกับคนท้า มีเวลา 48 ชม.
+    const inv = typeof code === 'string' && this.invites[code]; if (!inv || inv.by === p.key || (p.rec.ch && p.rec.ch.st === 'run')) return;
+    const by = this.saved[inv.by]; if (by && (by.ips || []).some(x => x.ip === ip)) return; // เครื่องเดียวกับคนท้า ไม่นับ
+    p.rec.ch = { id: inv.ch, st: 'pending', by: inv.by, byName: inv.name, deadline: Date.now() + S.CHALLENGE.inviteMs, n: 0 }; if (p.rec.joins === 1) p.rec.invBy = inv.by; this.dirty = true;
+    const d = this.chDef(inv.ch); setTimeout(() => { if (p.ws.readyState === 1) { this.toast(p, `🪣 ${inv.name} ท้าคุณ! "${d.text}" ภายใน 15 นาที (เริ่มเมื่อไหร่ก็ได้ใน 48 ชม.) ไม่งั้นโดนราดน้ำ 💦 • ดูที่ 📋 เควส → 🪣`); this.chPush(p); } }, 4000);
+  }
   // ----- ภารกิจสัปดาห์แรก (S.WEEK1) -----
   wk1Of(rec) { if (!rec.firstSeen || rec.firstSeen < S.WEEK1.since) return null; return rec.wk1 || (rec.wk1 = { n: {}, done: {}, final: false }); }
   wk1Day(rec) { const a = new Date(rec.firstSeen), b = new Date(); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0); return Math.round((b - a) / 864e5) + 1; }
@@ -1186,7 +1233,7 @@ class World {
       roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
     });
     send(p, { t: 'pst', pst: rec.pst || {}, names: rec.pnames || {} });
-    send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); send(p, { t: 'auc', a: this.aucPub() }); send(p, { t: 'fest', f: this.festPub() });
+    send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); send(p, { t: 'auc', a: this.aucPub() }); this.chPush(p); send(p, { t: 'fest', f: this.festPub() });
     send(p, { t: 'mkt', m: this.mktFor(p) });
     send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
@@ -1326,6 +1373,7 @@ class World {
       case 'arcbuy': this.arcBuy(p, m.id); break;
       case 'rent': this.rentHandle(p, String(m.id || '')); break;
       case 'veh': this.setVeh(p, m.v); break;
+      case 'ch': if (m.a === 'start') this.chStart(p); else if (m.a === 'redeem') this.chRedeem(p); else this.chPush(p); break;
       case 'stall': if (m.a === 'list') send(p, { t: 'stall', l: this.stallPub() }); else this.stallHandle(p, m); break;
       case 'orders': if (m.a === 'fill') this.orderFill(p, m.id); send(p, { t: 'orders', o: this.ordersPub(p) }); break;
       case 'auc': if (this.nearChest(p)) this.aucBid(p, +m.amt); else this.toast(p, 'ต้องอยู่ใกล้ตู้เซฟกองกลางที่ลานกองไฟ'); break;
@@ -2782,7 +2830,7 @@ class World {
       if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) this.petTick15(p); for (const p of this.players.values()) { if (p.sit) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul)); } } // นั่งพักอยู่ = ความหิวไม่ลด
       this.sitTick = (this.sitTick || 0) + dt * 1000;
       if (this.sitTick >= S.PLAYER_HUNGER.sitMs) { this.sitTick = 0; for (const p of this.players.values()) if (p.sit && p.rec.hunger < 100) this.setHunger(p, p.rec.hunger + S.PLAYER_HUNGER.sitGain, true); } // นั่งพักค่อยๆ อิ่มขึ้นทีละนิด
-      this.energyTick(dt);
+      this.energyTick(dt); this.chAcc = (this.chAcc || 0) + dt; if (this.chAcc >= 2) { this.chAcc = 0; this.chTick(); }
       for (const a of this.animals) {
         const A = ANIMALS[a.type];
         a.hunger = Math.max(0, a.hunger - dt * HFAST * 100 / (A.starveMin * 60));
@@ -2904,7 +2952,7 @@ class World {
     this.dirty = false;
     for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; }
     const animals = {}; for (const t of Object.keys(ANIMALS)) animals[t] = this.count(t);
-    const data = JSON.stringify({ rents: this.rents, farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])] }, replacer);
+    const data = JSON.stringify({ chain: this.chain, invites: this.invites, rents: this.rents, farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])] }, replacer);
     if (sync) { fs.writeFileSync(this.file, data); return; }
     fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
   }
@@ -3151,6 +3199,7 @@ wss.on('connection', (ws, req) => {
       }
       const r = w.join(ws, m.name, m.color, admin);
       if (!r.err && !prec && PIN_RE.test(pin)) { r.p.rec.pin = pinMake(pin); w.dirty = true; } // บัญชีใหม่ที่ใส่ PIN มาตั้งแต่สมัคร
+      if (!r.err && m.ch) w.chJoinInvite(r.p, String(m.ch).slice(0, 16), ip); // เข้ามาจากลิงก์ชาเลนจ์ถังน้ำ
       if (r.err) err(r.err);
       else {
         player = r.p; world = w; player.ip = ip;
