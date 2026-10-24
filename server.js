@@ -162,6 +162,7 @@ class World {
   houseBoard(p) { // ลีดเดอร์บอร์ดบ้านที่ตกแต่งแล้ว: เรียงตามมูลค่าเฟอร์นิเจอร์ แล้วตามจำนวนชิ้น
     const rows = [];
     for (const [key, h] of Object.entries(this.houses)) {
+      if (key === ADMIN_NAME.toLowerCase()) continue; // บ้านผู้ดูแลไม่ลงอันดับ ไม่ปนกับผู้เล่น
       const sc = S.houseScore(h.items);
       if (sc.count > 0) rows.push({ n: this.nameOfKey(key), v: sc.value, c: sc.count, on: [...this.players.values()].some(q => q.key === key) ? 1 : 0, me: key === p.key ? 1 : 0 });
     }
