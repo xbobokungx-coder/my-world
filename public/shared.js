@@ -148,6 +148,11 @@
     check:  { name: 'กระเบื้องหมากรุก', emoji: '⬜', kind: 'tile',   c: ['#f1ead8', '#6b7f8a'], seam: 'rgba(40,40,40,.35)', edge: ['#8a9096', '#6c7278'] },
     stone:  { name: 'หินเทา',        emoji: '⬛', kind: 'tile',   c: ['#c9ccd2', '#bdc1c8'], seam: 'rgba(60,60,70,.4)',  edge: ['#8c9098', '#6f737b'] },
     carpetr:{ name: 'พรมแดง',        emoji: '🟥', kind: 'carpet', c: ['#a8322a', '#9b2c25'], seam: 'rgba(60,10,10,.25)', edge: ['#6e1f1a', '#521612'] },
+    bamboo: { name: 'ไม้ไผ่',        emoji: '🎍', kind: 'plank',  c: ['#c9b458', '#bda84c', '#d4c066', '#b39e44'], seam: 'rgba(80,65,20,.5)',  edge: ['#8d7c34', '#6b5d24'] },
+    pine:   { name: 'ไม้สนขาว',      emoji: '🤍', kind: 'plank',  c: ['#efe6d4', '#e6dcc6', '#f4ecdc', '#ddd1b8'], seam: 'rgba(120,100,70,.4)', edge: ['#bdb094', '#9a8e74'] },
+    terra:  { name: 'กระเบื้องดินเผา', emoji: '🟧', kind: 'tile',   c: ['#c4673a', '#b85a30'], seam: 'rgba(70,25,10,.45)', edge: ['#8a4220', '#6a3118'] },
+    tatami: { name: 'เสื่อทาทามิ',    emoji: '🌾', kind: 'carpet', c: ['#c8c58a', '#bdba7e'], seam: 'rgba(80,80,40,.25)', edge: ['#8e8c58', '#6c6a40'] },
+    carpetg:{ name: 'พรมเขียวสนาม',  emoji: '🟢', kind: 'carpet', c: ['#5f9a4a', '#558f41'], seam: 'rgba(20,50,15,.25)', edge: ['#3e6a30', '#2e5024'] },
     carpetb:{ name: 'พรมฟ้า',        emoji: '🟦', kind: 'carpet', c: ['#4a78a8', '#416d9c'], seam: 'rgba(10,25,50,.25)', edge: ['#2f5073', '#233c57'] },
   };
   // วอลเปเปอร์: up = ผนังครึ่งบน (base + ลาย) • lo = แผ่นผนังครึ่งล่าง (base + ร่อง) • rail = ราวคาด • skirt = บัวพื้น | pat: stripe ลายขีด / plain เรียบ
@@ -158,9 +163,14 @@
     mint:   { name: 'เขียวมินต์',    emoji: '🟩', pat: 'stripe', up: ['#dcefd9', '#c9e3c5'], lo: ['#5f8f63', '#487349'], rail: '#8cc291', skirt: '#35583a' },
     royal:  { name: 'ม่วงหรู',       emoji: '🟣', pat: 'stripe', up: ['#6d5a8a', '#5f4d7b'], lo: ['#3b2f52', '#2b2140'], rail: '#a88ccc', skirt: '#1f1730' },
     white:  { name: 'ขาวเรียบ',      emoji: '⬜', pat: 'plain',  up: ['#f4f1ea', '#f4f1ea'], lo: ['#cfc6b3', '#b3a98f'], rail: '#e2dccd', skirt: '#9d9378' },
+    lemon:  { name: 'เหลืองเนย',     emoji: '🟨', pat: 'stripe', up: ['#faf0b8', '#f2e49c'], lo: ['#c8963a', '#a67a28'], rail: '#e8c060', skirt: '#7a5a1a' },
+    lavender:{ name: 'ลาเวนเดอร์',   emoji: '🟪', pat: 'stripe', up: ['#e3d9f2', '#d3c6ea'], lo: ['#8a72b0', '#6f5a94'], rail: '#b8a4d8', skirt: '#4a3a6a' },
+    peach:  { name: 'พีชอ่อน',       emoji: '🟧', pat: 'stripe', up: ['#fbdcc4', '#f4c9a8'], lo: ['#c8744a', '#a45a36'], rail: '#e8a070', skirt: '#6e3a20' },
+    sage:   { name: 'เขียวเซจ',      emoji: '🟩', pat: 'plain',  up: ['#cfd8c0', '#cfd8c0'], lo: ['#6b7f5a', '#566846'], rail: '#9db08a', skirt: '#3a4a2c' },
+    brick:  { name: 'ผนังอิฐแดง',    emoji: '🧱', pat: 'brick',  up: ['#b5573a', '#d8c0a8'], lo: ['#5a3a2a', '#3f281c'], rail: '#8a4a30', skirt: '#2e1c12' },
     wood:   { name: 'ผนังไม้',       emoji: '🟫', pat: 'stripe', up: ['#b9783f', '#a96a36'], lo: ['#8a5430', '#6b3f22'], rail: '#d29560', skirt: '#4a2a14' },
   };
-  const HOUSE_FLOOR_ORDER = ['oak', 'dark', 'birch', 'check', 'stone', 'carpetr', 'carpetb'], HOUSE_WALL_ORDER = ['cream', 'sky', 'pink', 'mint', 'royal', 'white', 'wood'];
+  const HOUSE_FLOOR_ORDER = ['oak', 'dark', 'birch', 'pine', 'bamboo', 'check', 'stone', 'terra', 'tatami', 'carpetr', 'carpetb', 'carpetg'], HOUSE_WALL_ORDER = ['cream', 'sky', 'pink', 'mint', 'lemon', 'lavender', 'peach', 'sage', 'royal', 'white', 'brick', 'wood'];
   const HOUSE_STYLE_DEFAULT = { fl: 'oak', wp: 'cream' };
   const FARM = { x0: 6, y0: 8, x1: 21, y1: 17 };       // แปลงผัก (ช่องที่ขุดได้)
   // เล้า 6 เล้า ขนาดเท่ากัน (ภายใน 3×4 ช่อง) เรียง 2 แถวๆละ 3 เล้า มีรั้วล้อมรอบ 1 ช่อง • gate = ช่องประตู (ด้านซ้ายของเล้า) • sign = ป้ายประจำเล้า (ชื่อสัตว์อยู่บนป้าย)

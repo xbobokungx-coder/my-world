@@ -3222,6 +3222,7 @@ function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง
   for (const wl of ['n', 'w']) { // ผนัง: วอลเปเปอร์ลายขีด + แผ่นไม้ครึ่งล่าง + ราว + บัวพื้น
     const u0 = wl === 'n' ? FX0 : FY0, u1 = wl === 'n' ? FX1 : FY1;
     wallRect(g, wl, u0, u1, 34, WH, WP.up[0]); if (WP.pat === 'stripe') for (let u = u0; u < u1; u += 20) wallRect(g, wl, u, Math.min(u + 10, u1), 34, WH, WP.up[1]);
+    if (WP.pat === 'brick') for (let z = 34, row = 0; z < WH; z += 8, row++) { wallRect(g, wl, u0, u1, z, z + 1.2, WP.up[1]); for (let u = u0 + (row & 1 ? 10 : 0); u < u1; u += 20) wallRect(g, wl, u, Math.min(u + 1.2, u1), z, Math.min(z + 8, WH), WP.up[1]); } // อิฐก้อนสลับแถว
     wallRect(g, wl, u0, u1, 0, 34, WP.lo[0]); for (let u = u0 + 7; u < u1; u += 14) wallRect(g, wl, u, u + 1.5, 4, 33, WP.lo[1]);
     wallRect(g, wl, u0, u1, 34, 38, WP.rail); wallRect(g, wl, u0, u1, 0, 5, WP.skirt);
     const wins = wl === 'n' ? [4.5, 11, 17.5] : [4.5, 10];
