@@ -1418,13 +1418,13 @@ class World {
       if (p.fish.st === 'bite') {
         send(p, { t: 'fg', off: 1 });
         const fl = p.fish.fl, rod = p.fish.rod, G = S.FISH_GAUGE, perfect = S.gaugeCore(p.fish, now); // กดเป๊ะกลางโซน = อัตราปลาเต็ม / โดนแค่ขอบโซน = ปลาแพงเจอยากลง
-        const rareCd = (p.rec.rareAt || 0) > Date.now(); // ปลาหายากเพิ่งตกได้ พักรอบก่อน (ยังตกปลาธรรมดาได้)
+        const rareCd = S.ENERGY.on && (p.rec.rareAt || 0) > Date.now(); // ปลาหายากเพิ่งตกได้ พักรอบก่อน (ยังตกปลาธรรมดาได้)
         const pool = FISH.filter(f => f.lv <= fl && !(rareCd && f.sell >= 100)).map(f => ({ f, w: f.w * (f.sell >= 100 ? 1 + 0.12 * (fl - 1) + 0.35 * (rod - 1) : 1) / (f.id === 'boot' ? 1 + rod : 1) * S.baitWeight(f, p.fish.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) })).filter(x => x.w > 0);
         let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
         for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
         this.add(p, 'fish_' + f.id, 1);
         this.addXp(p, 'fish', f.xp); this.tire(p, 'fish', f.sell);
-        if (f.sell >= 100) { p.rec.rareAt = Date.now() + S.ENERGY.rareCdMs; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.ENERGY.rareCdMs / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
+        if (f.sell >= 100 && S.ENERGY.on) { p.rec.rareAt = Date.now() + S.ENERGY.rareCdMs; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.ENERGY.rareCdMs / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
         this.toast(p, `${perfect ? '🎯 เป๊ะ! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (f.sell >= 100) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
         this.event(p, 'fish', f.sell); this.bookAdd(p, 'fish', f.id);
         this.sfx(p, f.sell >= 100 ? 'catch_big' : 'catch');
