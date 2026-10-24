@@ -540,14 +540,35 @@ const inMyHouse = () => !!scene && !!houseInfo && houseInfo.mine;
 const setSceneRows = rows => { for (let y = 0; y < H; y++) MAP[y] = rows[y]; };
 const furnObj = skip => { const o = {}; for (const [i, it] of furn) if (i !== skip) o[i] = it; return o; };
 const rebuildRects = () => { houseRects = Shared.houseSolidRects(furnObj()); };
+// มุมมองตอนตกแต่ง: ซูมให้เห็นทั้งห้องในพื้นที่ที่ไม่ถูกเมนูบัง (bz.z = ซูมเพิ่มจากขนาดพอดีห้อง, bz.px/py = เลื่อนมุมมอง)
+const bz = { z: 1, px: 0, py: 0 };
+let touchAim = null, dragNew = null, panDrag = null, bfLast = false, bfSuppress = 0; // จุดที่นิ้วชี้ • ของที่ลากมาจากรายการ • ลากเลื่อนมุมมองด้วยเมาส์ปุ่มขวา
+const undoStack = []; let undoT = 0, undoUntil = 0; // เก็บคำสั่งย้อนกลับของการวาง/ย้าย/หมุน/เก็บ (สูงสุด 30)
+function pushUndo(m) { // บันทึกคำสั่งย้อนกลับจากข้อความที่เซิร์ฟเวอร์ยืนยันแล้ว (ของที่ถูกย้ายตามหลังพ่อ ส่งมาในจังหวะเดียวกัน นับเป็นก้อนเดียว)
+  const now = performance.now(); if (now < undoUntil) return;
+  const prev = furn.get(m.op === 'del' ? m.i : m.o.i); let inv = null;
+  if (m.op === 'del') { if (prev) inv = { a: 'place', f: prev.f, x: prev.x, y: prev.y, r: prev.r | 0, wl: prev.wl, u: prev.u }; }
+  else if (!prev) inv = { a: 'remove', i: m.o.i };
+  else if ((prev.r | 0) !== (m.o.r | 0)) inv = { a: 'rot', i: m.o.i };
+  else inv = { a: 'move', i: m.o.i, x: prev.x, y: prev.y, wl: prev.wl, u: prev.u };
+  if (!inv) return;
+  if (now - undoT > 150 || !undoStack.length) { undoStack.push(inv); if (undoStack.length > 30) undoStack.shift(); }
+  undoT = now;
+}
+function undoBuild() {
+  if (!build.on) return;
+  const o = undoStack.pop(); if (!o) { toast('ไม่มีอะไรให้เลิกทำ'); return; }
+  undoUntil = performance.now() + 600; send(Object.assign({ t: 'house' }, o)); playSfx('click'); renderBuild();
+}
 function applyFurnOp(m) { // ข้อความ furn จากเซิร์ฟเวอร์: set = วาง/ย้าย/หมุนชิ้นหนึ่ง • del = เก็บออก
+  if (build.on && inMyHouse()) pushUndo(m);
   if (m.op === 'del') { furn.delete(m.i); if (build.pick === m.i) build.pick = null; }
   else if (m.op === 'set') furn.set(m.o.i, m.o);
   rebuildRects(); if (build.on) renderBuild();
 }
 function resetScene() { // กลับไปแมพเมืองฝั่งเว็บ (ตอนเซิร์ฟเวอร์ส่งฉากเมือง หรือเข้าเกมใหม่)
   if (!scene) return;
-  doorLatch = true; setSceneRows(townRows); furn.clear(); houseRects = []; scene = null; houseInfo = null; townRows = null; build.on = false; build.pick = null;
+  doorLatch = true; undoStack.length = 0; setSceneRows(townRows); furn.clear(); houseRects = []; scene = null; houseInfo = null; townRows = null; build.on = false; build.pick = null;
   if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; }
 }
 function applyScene(m) {
@@ -579,12 +600,12 @@ const homeAction = () => { if (inMyHouse()) toggleBuild(); else enterHouse(); };
 function toggleBuild(on) {
   if (on === undefined) on = !build.on;
   if (on && !inMyHouse()) { enterHouse(); return; }
-  build.on = on; build.erase = false; build.pick = null; build.rot = 0;
+  build.on = on; build.erase = false; build.pick = null; build.rot = 0; undoStack.length = 0; touchAim = null; dragNew = null;
   if (on && !build.sel && furnKeys().length) build.sel = furnKeys()[0].slice(5);
   renderBuild();
 }
 function renderBuild() {
-  const el = $('build'); el.classList.toggle('hidden', !build.on); document.body.classList.toggle('building', build.on);
+  const el = $('build'); el.classList.toggle('dragging', !!dragNew); el.classList.toggle('hidden', !build.on); document.body.classList.toggle('building', build.on);
   $('houseBtn').style.opacity = build.on ? 1 : .8;
   $('homeQuick').classList.toggle('hidden', build.on); // ปิดเมนูตกแต่งแล้ว ปุ่มบ้านเด้งกลับมาข้างไฟฉาย
   if (!build.on) return;
@@ -592,22 +613,27 @@ function renderBuild() {
   if (build.sel && !(inv['furn_' + build.sel] > 0)) build.sel = (ks[0] || '').slice(5) || null;
   if (build.pick != null && !furn.has(build.pick)) build.pick = null;
   const pk = build.pick != null ? furn.get(build.pick) : null;
-  const hint = build.erase ? 'แตะของในบ้านเพื่อเก็บคืนเข้ากระเป๋า'
-    : build.sel ? `แตะที่พื้นเพื่อวาง ${FURN[build.sel].emoji}${FURN[build.sel].wall ? ' (ของติดผนัง: แตะที่ผนัง)' : FURN[build.sel].small ? ' (ของเล็กวางบนโต๊ะ/เตียงได้)' : ''} • 🔄 หมุน • วางได้ละเอียดทีละ ¼ ช่อง ซ้อนใกล้กันได้`
-    : pk ? `เลือก ${FURN[pk.f].emoji} ${FURN[pk.f].name} แล้ว • แตะพื้น/ผนังเพื่อย้าย • 🔄 หมุน • 🧹 เก็บคืน`
-    : ks.length ? 'แตะของในบ้านเพื่อเลือก แล้วแตะที่ใหม่เพื่อย้าย • หรือเลือกของจากกระเป๋าด้านล่างเพื่อวาง' : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ริมถนนหลัก) • แตะของในบ้านเพื่อเลือกย้ายได้';
+  const fd = build.sel && FURN[build.sel], pd = pk && FURN[pk.f];
+  const hint = build.erase ? '🧹 แตะของที่จะเก็บคืนเข้ากระเป๋า'
+    : fd ? `${fd.emoji} ${fd.name}: ${isTouch ? 'ลากลงห้อง (ปล่อยนิ้วเพื่อวาง) หรือแตะที่' : 'คลิกที่'}${fd.wall ? 'ผนัง' : 'พื้น'}เพื่อวาง${fd.small ? ' • ของเล็กวางบนโต๊ะ/เตียงได้' : ''}`
+    : pd ? `${pd.emoji} ${pd.name}: ลากหรือแตะที่ใหม่เพื่อย้าย • หมุน/เก็บคืนได้ที่ปุ่มด้านล่าง`
+    : ks.length ? 'ลากของจากรายการลงห้อง • แตะของในห้องเพื่อเลือก/ย้าย' : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ริมถนนหลัก)';
   const cats = [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['craft', '🔨 ประดิษฐ์'], ['rare', '⭐ พิเศษ']];
   const tab = build.tab && cats.some(c => c[0] === build.tab) ? build.tab : 'living';
   const shown = ks.filter(k => (FURN[k.slice(5)].cat || 'other') === tab);
+  const kk = t => isTouch ? '' : ` <small class="bkey">${t}</small>`;
   el.innerHTML = `<div class="bhint">🏠 ${hint}</div>`
-    + `<div class="btools"><button class="btn small" data-rot="1">🔄<span class="blbl"> หมุน</span></button>`
-    + `<button class="btn small${!build.erase && !build.sel ? ' on' : ''}" data-edit="1">🖐️<span class="blbl"> เลือก/ย้าย</span></button>`
-    + (pk ? '<button class="btn small" data-pickdel="1">🧹<span class="blbl"> เก็บชิ้นนี้</span></button>' : '')
-    + `<button class="btn small${build.erase ? ' on' : ''}" data-erase="1">🧹<span class="blbl"> เก็บคืน</span></button><button class="btn small muted" data-bexit="1">✖<span class="blbl"> ออก</span></button></div>`
+    + `<div class="btools"><button class="btn small" data-rot="1" title="หมุน (R)">🔄<span class="blbl"> หมุน${kk('R')}</span></button>`
+    + `<button class="btn small muted" data-undo="1" title="เลิกทำ (Ctrl+Z)"${undoStack.length ? '' : ' disabled'}>↩️<span class="blbl"> เลิกทำ${kk('Z')}</span></button>`
+    + `<button class="btn small${!build.erase && !build.sel ? ' on' : ''}" data-edit="1" title="เลือก/ย้ายของในห้อง">🖐️<span class="blbl"> เลือก/ย้าย</span></button>`
+    + (pk ? `<button class="btn small" data-pickdel="1" title="เก็บชิ้นนี้ (Delete)">🧹<span class="blbl"> เก็บชิ้นนี้${kk('Del')}</span></button>` : '')
+    + `<button class="btn small${build.erase ? ' on' : ''}" data-erase="1" title="โหมดเก็บคืน: แตะของที่จะเก็บ">🗑️<span class="blbl"> เก็บคืน</span></button><button class="btn small done" data-bexit="1" title="เสร็จ ออกจากโหมดตกแต่ง">✔<span class="blbl"> เสร็จ</span></button></div>`
     + `<div class="btabs">` + cats.map(([c, n]) => { const cnt = ks.filter(k => (FURN[k.slice(5)].cat || 'other') === c).length; return cnt ? `<button class="btn small${c === tab ? ' on' : ''}" data-btab="${c}">${n}</button>` : ''; }).join('') + `</div>`
-    + `<div class="bitems">` + (shown.length ? shown.map(k => { const f = k.slice(5); return `<button class="btn small${!build.erase && build.sel === f ? ' on' : ''}" data-bf="${f}" title="${FURN[f].name}">${FURN[f].emoji}<span class="blbl"> ${FURN[f].name}</span> <small>×${inv[k]}</small></button>`; }).join('') : '<small style="opacity:.7">ไม่มีของในหมวดนี้</small>') + `</div>`;
+    + `<div class="bitems">` + (shown.length ? shown.map(k => { const f = k.slice(5); return `<button class="btn small${!build.erase && build.sel === f ? ' on' : ''}" data-bf="${f}" title="${FURN[f].name}">${FURN[f].emoji}<span class="blbl"> ${FURN[f].name}</span> <small>×${inv[k]}</small></button>`; }).join('') : '<small style="opacity:.7">ไม่มีของในหมวดนี้</small>') + `</div>`
+    + (isTouch ? '' : '<div class="bkeys">R หมุน • Del เก็บ • Ctrl+Z เลิกทำ • Esc ยกเลิกที่เลือก • ล้อเมาส์ซูม • ปุ่มขวาลากเลื่อน</div>');
   el.querySelectorAll('[data-btab]').forEach(b => b.onclick = () => { build.tab = b.dataset.btab; playSfx('click'); renderBuild(); });
-  el.querySelectorAll('[data-bf]').forEach(b => b.onclick = () => { build.sel = b.dataset.bf; build.erase = false; build.pick = null; playSfx('click'); renderBuild(); });
+  el.querySelectorAll('[data-bf]').forEach(b => { b.onclick = () => { if (performance.now() - bfSuppress < 400) return; build.sel = b.dataset.bf; build.erase = false; build.pick = null; playSfx('click'); renderBuild(); }; bindDragNew(b, b.dataset.bf); });
+  el.querySelector('[data-undo]').onclick = undoBuild;
   el.querySelector('[data-edit]').onclick = () => { build.sel = null; build.erase = false; playSfx('click'); renderBuild(); };
   el.querySelector('[data-rot]').onclick = rotateBuild;
   if (pk) el.querySelector('[data-pickdel]').onclick = () => { send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; };
@@ -619,6 +645,35 @@ function rotateBuild() { // หมุนชิ้นที่เลือกไ�
   if (build.pick != null) send({ t: 'house', a: 'rot', i: build.pick });
   else if (build.sel) { build.rot = build.rot ? 0 : 1; playSfx('click'); }
 }
+function bindDragNew(btn, f) { // ลากของจากรายการลงห้อง: เงาตามนิ้ว/เมาส์ ปล่อยแล้ววาง (ปล่อยบนเมนู = ยกเลิก)
+  btn.addEventListener('pointerdown', e => {
+    if (e.button > 0) return;
+    const sx = e.clientX, sy = e.clientY, id = e.pointerId, tray = $('build').offsetWidth > innerWidth * 0.7; let on = false;
+    const done = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel); };
+    const mv = ev => {
+      if (ev.pointerId !== id) return;
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (!on) { // แถบล่าง: ต้องลากขึ้น (ลากข้างคือเลื่อนรายการ) • แผงข้าง: ลากไปทางห้อง
+        if (Math.hypot(dx, dy) < 10 || (isTouch && (tray ? !(dy < 0 && -dy > Math.abs(dx) * 0.8) : !(dx < 0 && -dx > Math.abs(dy) * 0.8)))) return;
+        on = true; build.sel = f; build.erase = false; build.pick = null; dragNew = { x: ev.clientX, y: ev.clientY }; try { btn.setPointerCapture(id); } catch (_) {}
+        if (navigator.vibrate) navigator.vibrate(8); renderBuildFlags();
+      }
+      dragNew.x = ev.clientX; dragNew.y = ev.clientY;
+    };
+    const up = ev => {
+      if (ev.pointerId !== id) return; done();
+      if (!on) return;
+      bfSuppress = performance.now();
+      const d = dragNew; dragNew = null;
+      if (d && document.elementFromPoint(ev.clientX, ev.clientY) === canvas) { const [ax, ay] = isoPtr(ev); buildClick(ax, ay, null); }
+      renderBuild();
+    };
+    const cancel = ev => { if (ev.pointerId !== id) return; done(); dragNew = null; if (on) renderBuild(); };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
+  });
+}
+const renderBuildFlags = () => { if ($('build')) $('build').classList.toggle('dragging', !!dragNew); };
+function zoomBy(f) { if (scene && build.on) { bz.z = Math.max(1, Math.min(3, bz.z * f)); resize(); } else setZoom(userZoom * f); }
 $('houseBtn').onclick = homeAction;
 $('homeQuick').onclick = homeAction;
 // บ้านเพื่อน: ลีดเดอร์บอร์ดเรียงตามมูลค่าเฟอร์นิเจอร์ในบ้าน (ราคาร้าน) แล้วตามจำนวนชิ้น • กดชื่อเพื่อเข้าไปเยี่ยม
@@ -1087,6 +1142,9 @@ addEventListener('keydown', e => {
   // ใช้ e.code (ตำแหน่งปุ่มจริงบนคีย์บอร์ด) ไม่ใช่ e.key เพื่อให้ WASD และปุ่มลัดทำงานได้แม้เปลี่ยนเป็นแป้นพิมพ์ภาษาไทย
   const c = e.code;
   if (c === 'Enter' || c === 'NumpadEnter') { e.preventDefault(); openChat(); return; }
+  if (build.on && c === 'Escape' && (build.sel || build.pick != null || build.erase)) { build.sel = null; build.pick = null; build.erase = false; renderBuild(); return; } // Esc ในโหมดตกแต่ง: ยกเลิกสิ่งที่เลือกอยู่ก่อน
+  if (build.on && c === 'KeyZ') { undoBuild(); return; }
+  if (build.on && (c === 'Delete' || c === 'Backspace') && build.pick != null) { e.preventDefault(); send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; return; }
   if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (TOOL_LIST[n] === 'axe' && !axeLevel()); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
@@ -1207,17 +1265,24 @@ const tileAt = e => [Math.floor((camX + e.clientX * (canvas.width / innerWidth) 
 const ptrs = new Map(); let pinch = null; // นิ้วที่แตะบน canvas (สำหรับ pinch-zoom + แยกแตะ/ลาก บนมือถือ)
 const pinchDist = () => { const v = [...ptrs.values()]; return Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y); };
 canvas.addEventListener('pointermove', e => {
-  if (e.pointerType === 'mouse') { if (!me) return; mouse.active = true; [mouse.tx, mouse.ty] = tileAt(e); if (scene) [mouse.sx, mouse.sy] = isoPtr(e); if (dragB && dragB.mouse && Math.hypot(mouse.sx - dragB.sx, mouse.sy - dragB.sy) > 6) dragB.moved = true; return; }
+  if (e.pointerType === 'mouse') { if (!me) return; mouse.active = true; [mouse.tx, mouse.ty] = tileAt(e); if (scene) [mouse.sx, mouse.sy] = isoPtr(e); if (dragB && dragB.mouse && Math.hypot(mouse.sx - dragB.sx, mouse.sy - dragB.sy) > 6) dragB.moved = true; if (panDrag) { bz.px -= (e.clientX - panDrag.x) * (canvas.width / innerWidth) / zoom; bz.py -= (e.clientY - panDrag.y) * (canvas.height / innerHeight) / zoom; panDrag.x = e.clientX; panDrag.y = e.clientY; } return; }
   const p = ptrs.get(e.pointerId); if (!p) return;
   p.x = e.clientX; p.y = e.clientY;
   if (dragB && !dragB.mouse && ptrs.size === 1 && scene) { const [x, y] = isoPtr(e); if (Math.hypot(x - dragB.sx, y - dragB.sy) > 8) { dragB.moved = true; clearTimeout(dragB.lpT); } dragB.lx = x; dragB.ly = y; }
-  if (pinch && ptrs.size >= 2 && pinch.d0 > 0) setZoom(pinch.z0 * pinchDist() / pinch.d0); // บีบ/ถ่างสองนิ้ว = ซูม
+  if (scene && build.on && build.sel && ptrs.size === 1 && !dragB) touchAim = isoPtr(e); // เงาตามนิ้ว
+  if (pinch && ptrs.size >= 2 && pinch.d0 > 0) { // บีบ/ถ่างสองนิ้ว = ซูม (ตกแต่งบ้าน: ซูมเข้าแล้วลากสองนิ้วเลื่อนมุมมองได้)
+    if (scene && build.on) {
+      const v = [...ptrs.values()], mx = (v[0].x + v[1].x) / 2, my = (v[0].y + v[1].y) / 2;
+      bz.px -= (mx - pinch.mx) * (canvas.width / innerWidth) / zoom; bz.py -= (my - pinch.my) * (canvas.height / innerHeight) / zoom; pinch.mx = mx; pinch.my = my;
+      bz.z = Math.max(1, Math.min(3, pinch.b0 * pinchDist() / pinch.d0)); resize();
+    } else setZoom(pinch.z0 * pinchDist() / pinch.d0);
+  }
 });
 canvas.addEventListener('pointerleave', () => { mouse.active = false; });
 canvas.addEventListener('pointerdown', e => {
   if (!me) return;
   if (e.pointerType === 'mouse') { // เมาส์: แตะช่องทำงานทันทีเหมือนเดิม
-    if (e.button !== 0) return;
+    if (e.button !== 0) { if (scene && build.on && bz.z > 1) panDrag = { x: e.clientX, y: e.clientY }; return; }
     hidePicker(); if (scene) { [mouse.sx, mouse.sy] = isoPtr(e); mouse.active = true; const h = buildCanDrag() ? hitItem(mouse.sx, mouse.sy) : null; if (h != null) { dragB = { i: h, sx: mouse.sx, sy: mouse.sy, moved: false, mouse: true }; return; } houseIsoClick(mouse.sx, mouse.sy); return; }
     const [tx, ty] = tileAt(e); mouse.active = true; mouse.tx = tx; mouse.ty = ty;
     flash = { tx, ty, t: performance.now() }; onTileClick(tx, ty); return;
@@ -1226,14 +1291,17 @@ canvas.addEventListener('pointerdown', e => {
   if (scene && ptrs.size === 1 && inMyHouse() && !build.erase) { // กดค้างที่ของ = หยิบของ เมนูตกแต่งเด้งขึ้นมาให้ลาก/หมุนได้ทันที
     const [sx, sy] = isoPtr(e), h = hitItem(sx, sy);
     if (h != null) { dragB = { i: h, sx, sy, moved: false, lp: false }; dragB.lpT = setTimeout(() => buildLongPick(h), 420); }
+    else if (build.on && build.sel) touchAim = [sx, sy];
   }
-  if (ptrs.size === 2) pinch = { d0: pinchDist(), z0: userZoom };
+  if (ptrs.size === 2) { const v = [...ptrs.values()]; touchAim = null; pinch = { d0: pinchDist(), z0: userZoom, b0: bz.z, mx: (v[0].x + v[1].x) / 2, my: (v[0].y + v[1].y) / 2 }; }
 });
 const endPtr = e => {
-  if (e.pointerType === 'mouse') { if (dragB && dragB.mouse) { const d = dragB; dragB = null; if (d.moved) { const [x, y] = isoPtr(e); buildDrop(d, x, y); } else houseIsoClick(d.sx, d.sy); } return; }
+  if (e.pointerType === 'mouse') { panDrag = null; if (dragB && dragB.mouse) { const d = dragB; dragB = null; if (d.moved) { const [x, y] = isoPtr(e); buildDrop(d, x, y); } else houseIsoClick(d.sx, d.sy); } return; }
   const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId);
   if (dragB && !dragB.mouse && ptrs.size === 0) { const d = dragB; dragB = null; clearTimeout(d.lpT); if (d.moved) { if (build.on) buildDrop(d, d.lx, d.ly); } else if (!d.lp) houseIsoClick(d.sx, d.sy); return; }
   const wasPinch = !!pinch; if (ptrs.size < 2) pinch = null;
+  const aim = touchAim; if (ptrs.size === 0) touchAim = null;
+  if (p && !wasPinch && aim && ptrs.size === 0 && scene && build.on && build.sel && !modalOpen()) { buildClick(aim[0], aim[1], null); return; } // เลือกของไว้แล้วแตะ/ลากบนพื้น: ปล่อยนิ้วตรงไหนวางตรงนั้น
   if (!p || wasPinch) return; // นิ้วที่เป็นส่วนหนึ่งของ pinch ไม่นับเป็นแตะ
   const moved = Math.hypot(e.clientX - p.sx, e.clientY - p.sy), dur = performance.now() - p.t;
   if (ptrs.size === 0 && moved < 18 && dur < 400 && scene) { hidePicker(); const [sx, sy] = isoPtr(e); houseIsoClick(sx, sy); return; }
@@ -2048,12 +2116,21 @@ function resize() {
   baseZoom = Math.max(isTouch ? 1.35 : 1.2, Math.min(innerWidth / 720, innerHeight / 450)) * dpr; // auto-fit ตามขนาดจอ/ความละเอียด
   document.documentElement.style.setProperty('--ui', isTouch ? 1 : Math.max(1, Math.min(1.8, Math.min(innerWidth / 1280, innerHeight / 720))).toFixed(2)); // UI คอมจอใหญ่ขยายตามสเกลจอ
   zoom = baseZoom * userZoom;
+  if (scene && build.on) { // ตกแต่งบ้าน: ซูมให้เห็นทั้งห้องในพื้นที่ที่ไม่ถูกแถบบน/เมนูตกแต่งบัง
+    const tr = $('build').getBoundingClientRect(), hb = $('hudTop').getBoundingClientRect(), tray = tr.width > innerWidth * 0.7;
+    const x0 = 8, x1 = tray ? innerWidth - 8 : tr.left - 8, y0 = Math.max(hb.bottom + 4, 0), y1 = tray ? tr.top - 4 : innerHeight - 8;
+    const aw = Math.max(60, x1 - x0), ah = Math.max(60, y1 - y0), fit = Math.min(aw * dpr / ISO_B.w, ah * dpr / ISO_B.h);
+    build.view = { cx: (x0 + aw / 2) * dpr, cy: (y0 + ah / 2) * dpr };
+    zoom = Math.min(fit, baseZoom * 1.6) * bz.z;
+  } else build.view = null;
   vw = canvas.width / zoom; vh = canvas.height / zoom;
 }
 function setZoom(z) { userZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)); ls.set('mw_zoom', userZoom.toFixed(3)); resize(); }
 addEventListener('resize', resize); resize();
-if ($('zoomInBtn')) $('zoomInBtn').onclick = () => setZoom(userZoom * 1.15);
-if ($('zoomOutBtn')) $('zoomOutBtn').onclick = () => setZoom(userZoom / 1.15);
+if ($('zoomInBtn')) $('zoomInBtn').onclick = () => zoomBy(1.15);
+if ($('zoomOutBtn')) $('zoomOutBtn').onclick = () => zoomBy(1 / 1.15);
+canvas.addEventListener('wheel', e => { if (scene && build.on) { e.preventDefault(); zoomBy(e.deltaY < 0 ? 1.15 : 1 / 1.15); } }, { passive: false });
+canvas.addEventListener('contextmenu', e => { if (scene && build.on) e.preventDefault(); });
 
 const hash = (x, y, s = 0) => { let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const trees = [];
@@ -3069,16 +3146,23 @@ function ghostFor(f, sx, sy, selfId, r) { // ชิ้น f ถ้าวาง�
   const x = Shared.snapQ(X / TS), y = Shared.snapQ(Y / TS), res = Shared.houseCheck(items, f, x, y, r, { mates });
   return { f, r, x, y, z: res.z || 0, on: res.on, res };
 }
+function buildAim() { // จุดบนจอที่เงาของที่จะวางควรอยู่: ของที่ลากจากรายการ / ของในห้องที่กำลังลาก / นิ้วที่แตะ / เมาส์
+  if (dragNew) return document.elementFromPoint(dragNew.x, dragNew.y) === canvas ? isoPtr({ clientX: dragNew.x, clientY: dragNew.y }) : null;
+  if (dragB && dragB.moved) return dragB.mouse ? [mouse.sx, mouse.sy] : [dragB.lx, dragB.ly];
+  if (touchAim) return touchAim;
+  return mouse.active && !isTouch ? [mouse.sx, mouse.sy] : null;
+}
 function drawHouseOverlay(now) {
   if (!inMyHouse() || !build.on) return;
   const pulse = 0.55 + 0.45 * Math.sin(now / 160);
   if (build.pick != null && furn.has(build.pick)) outlineItem(furn.get(build.pick), `rgba(255,255,255,${pulse})`);
-  if (!mouse.active || isTouch) return;
-  const hv = hitItem(mouse.sx, mouse.sy); let g = null;
+  const aim = buildAim(); if (!aim) return;
+  const [ax, ay] = aim, hv = hitItem(ax, ay); let g = null;
   if (build.erase) { if (hv != null) outlineItem(furn.get(hv), 'rgba(255,90,90,.95)'); return; }
-  if (build.sel) g = ghostFor(build.sel, mouse.sx, mouse.sy, null, build.rot);
-  else if (build.pick != null) { const it = furn.get(build.pick); if (it) g = ghostFor(it.f, mouse.sx, mouse.sy, build.pick, it.r); }
-  else { if (hv != null) outlineItem(furn.get(hv), 'rgba(255,255,255,.6)'); return; }
+  if (dragB && dragB.moved) { const it = furn.get(dragB.i); if (it) g = ghostFor(it.f, ax, ay, dragB.i, it.r); }
+  else if (build.sel) g = ghostFor(build.sel, ax, ay, null, build.rot);
+  else if (build.pick != null) { const it = furn.get(build.pick); if (it) g = ghostFor(it.f, ax, ay, build.pick, it.r); }
+  else { if (hv != null && !isTouch) outlineItem(furn.get(hv), 'rgba(255,255,255,.6)'); return; }
   if (!g) return;
   const gi = { i: -1, f: g.f, x: g.x, y: g.y, r: g.r, z: g.z, wl: g.wl, u: g.u }, ok = g.res.ok;
   if (FURN[g.f].wall) { drawWallItem(ctx, gi, 0.65); outlineItem(gi, ok ? 'rgba(80,230,120,.95)' : 'rgba(255,80,80,.95)'); }
@@ -3179,6 +3263,7 @@ function step(now) {
   requestAnimationFrame(step);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (!joined || !me) return;
+  { const bf = !!(scene && build.on); if (bf !== bfLast) { bfLast = bf; bz.z = 1; bz.px = bz.py = 0; resize(); } }
   const wall = Date.now() + timeOffset;
 
   // เดิน: คีย์บอร์ด/จอยสติ๊ก (ยกเลิกการเดินจากคลิก) หรือเดินตามเส้นทางที่คลิกไว้
@@ -3266,7 +3351,11 @@ function step(now) {
     if (onDoor && !doorLatch && !modalOpen()) { doorLatch = true; openHomeChoice(); } else if (!onDoor && !scene) doorLatch = false;
   }
   // กล้อง
-  if (scene) { // ในบ้านกล้องตามตัวละครบนจอไอโซเมตริก ไม่ออกนอกตัวบ้าน
+  if (scene && build.on && build.view) { // ตกแต่ง: กล้องนิ่งกลางห้อง (ซูมเข้าแล้วเลื่อนได้ด้วยสองนิ้ว/เมาส์ปุ่มขวา)
+    const mx = ISO_B.w / 2 * (1 - 1 / bz.z), my = ISO_B.h / 2 * (1 - 1 / bz.z);
+    bz.px = Math.max(-mx, Math.min(mx, bz.px)); bz.py = Math.max(-my, Math.min(my, bz.py));
+    camX = ISO_B.x0 + ISO_B.w / 2 + bz.px - build.view.cx / zoom; camY = ISO_B.y0 + ISO_B.h / 2 + bz.py - build.view.cy / zoom;
+  } else if (scene) { // ในบ้านกล้องตามตัวละครบนจอไอโซเมตริก ไม่ออกนอกตัวบ้าน
     const ex = me.x - me.y, ey = (me.x + me.y) / 2 - 14;
     camX = ISO_B.w <= vw ? ISO_B.x0 + (ISO_B.w - vw) / 2 : Math.max(ISO_B.x0, Math.min(ISO_B.x0 + ISO_B.w - vw, ex - vw / 2));
     camY = ISO_B.h <= vh ? ISO_B.y0 + (ISO_B.h - vh) / 2 : Math.max(ISO_B.y0, Math.min(ISO_B.y0 + ISO_B.h - vh, ey - vh / 2));

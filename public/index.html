@@ -248,6 +248,30 @@
   #build .btn { box-shadow:none; border-radius:6px; }
   #build .btn.on { outline:3px solid #fff; box-shadow:0 0 0 4px var(--accent); }
   @media (max-width:700px) { #build .blbl { display:none; } #build .bhint { display:none; } #build .bitems { grid-template-columns:1fr 1fr 1fr; } #build .btools { flex-direction:row; flex-wrap:wrap; } #build .btools .btn { width:auto; flex:1 1 30%; text-align:center; } }
+  /* โหมดตกแต่งบ้าน: ซ่อนปุ่มเดิน/เครื่องมือฟาร์มที่ไม่ได้ใช้ ให้ห้องเห็นเต็มที่ */
+  body.building :is(#joy,#abtn,#hotbar,#picker,#guide,#fgauge) { display:none !important; }
+  #build { touch-action:pan-y; }
+  #build.dragging { opacity:.5; }
+  #build .bhint { min-height:2.6em; line-height:1.3; }
+  #build .bkey { opacity:.7; font-size:.8em; border:1px solid rgba(0,0,0,.35); padding:0 3px; background:rgba(255,255,255,.25); }
+  #build .bkeys { font-size:10px; opacity:.7; margin-top:5px; line-height:1.35; }
+  #build .btn.done { background:#3cb44b; border-bottom-color:#238a33; }
+  #build .btn:disabled { opacity:.4; }
+  /* มือถือแนวตั้ง: เมนูตกแต่งเป็นแถบล่างเต็มความกว้าง ปุ่มใหญ่ นิ้วโป้งกดง่าย รายการของเลื่อนข้าง ลากขึ้นไปวางในห้องได้ */
+  @media (max-width:700px) and (orientation:portrait) {
+    #build { left:calc(6px + var(--sal)); right:calc(6px + var(--sar)); top:auto; bottom:calc(6px + var(--sab)); width:auto; max-width:none; max-height:none; overflow:visible; padding:6px; font-size:13px; touch-action:pan-x; }
+    #build .bhint { display:block; font-size:12px; margin-bottom:5px; }
+    #build .btools { flex-direction:row; flex-wrap:nowrap; gap:4px; margin-bottom:5px; }
+    #build .btools .btn { flex:1 1 0; width:auto; min-height:46px; padding:2px 1px; font-size:20px; text-align:center; line-height:1.1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    #build .btools .btn .blbl, #build .btools .btn .bkey { display:block; font-size:10px; }
+    #build .btools .btn .bkey { display:none; }
+    #build .btabs { flex-wrap:nowrap; overflow-x:auto; touch-action:pan-x; margin-bottom:5px; scrollbar-width:none; }
+    #build .btabs .btn { flex:none; font-size:13px; padding:6px 10px; min-height:38px; white-space:nowrap; }
+    #build .bitems { display:flex; gap:6px; overflow-x:auto; touch-action:pan-x; padding-bottom:2px; scrollbar-width:none; }
+    #build .bitems .btn { flex:none; width:72px; min-height:68px; padding:4px 2px; font-size:22px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; line-height:1.1; }
+    #build .bitems .btn .blbl { display:block; font-size:10px; max-width:66px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #build .bitems .btn small { font-size:11px; }
+  }
   body.building #hudTop { right:calc(clamp(120px, 26vw, 200px) + 16px + var(--sar)); } /* โหมดตกแต่ง: แถบบนหลบเมนูมุมบนขวา */
   #trade .panel { background:#fff8e6; }
   #townBody { max-height:68vh; overflow:auto; }
