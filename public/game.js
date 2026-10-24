@@ -2911,6 +2911,14 @@ const faceR = (g, X, Y, w, d, u0, u1, z0, z1, c) => poly(g, [iso(X + w / 2, Y - 
 const backSlab = (X, Y, W, D, r, t) => (r ? [X - W / 2 + t / 2, Y, t, D] : [X, Y - D / 2 + t / 2, W, t]); // แผ่นบางชิดด้านหลัง (r=0 ชิดเหนือ, r=1 ชิดตะวันตก)
 const dot = (g, X, Y, z, rx, ry, c) => { const [px, py] = iso(X, Y, z); g.fillStyle = c; g.beginPath(); g.ellipse(px, py, rx, ry, 0, 0, 7); g.fill(); };
 // สไปรต์เฟอร์นิเจอร์: (g, X, Y = กึ่งกลางฐาน, W, D = ขนาดฐาน px หลังหมุน, r = หมุนไหม, d = ข้อมูลใน FURN, now)
+// เตียงสองแบบใช้ร่วมกัน: frame = สีโครง/หัวเตียง, blanket = สีผ้าห่ม, pillows = จำนวนหมอน
+const bedArt = (g, X, Y, W, D, r, frame, blanket, pillows) => {
+  const [hx, hy, hw, hd] = backSlab(X, Y, W, D, r, 6); ibox(g, hx, hy, hw, hd, 0, 30, frame); ibox(g, X, Y, W, D, 0, 10, tint(frame, 0.12)); ibox(g, X, Y, W - 6, D - 6, 10, 7, '#f0e4c0');
+  const pw = pillows > 1 ? 0.36 : 0.6, at = k => (pillows > 1 ? (k ? 0.22 : -0.22) : 0);
+  if (r) { ibox(g, X, Y, W * 0.55 - 3, D - 6, 17, 2, blanket, { flat: true }); for (let k = 0; k < pillows; k++) ibox(g, X - W / 2 + 16, Y + D * at(k), 14, D * pw, 17, 5, '#fdf6e3'); }
+  else { ibox(g, X, Y + D * 0.18, W - 6, D * 0.55, 17, 2, blanket, { flat: true }); for (let k = 0; k < pillows; k++) ibox(g, X + W * at(k), Y - D / 2 + 16, W * pw, 14, 17, 5, '#fdf6e3'); }
+};
+const lampGlow = (g, X, Y, z, now) => { const [px, py] = iso(X, Y, z), gr = g.createRadialGradient(px, py, 0, px, py, 22); gr.addColorStop(0, `rgba(255,220,120,${0.5 + Math.sin(now / 300) * 0.06})`); gr.addColorStop(1, 'rgba(255,220,120,0)'); g.fillStyle = gr; g.fillRect(px - 22, py - 22, 44, 44); };
 const ART = {
   rug(g, X, Y, W, D) {
     const q = (k, c, s) => poly(g, [iso(X - W / 2 + k, Y - D / 2 + k, 1), iso(X + W / 2 - k, Y - D / 2 + k, 1), iso(X + W / 2 - k, Y + D / 2 - k, 1), iso(X - W / 2 + k, Y + D / 2 - k, 1)], c, s);
@@ -3011,7 +3019,78 @@ const ART = {
   },
   lantern(g, X, Y, W, D, r, d, now) {
     ibox(g, X, Y, 5, 5, 0, 18, '#3a3f4a'); ibox(g, X, Y, 12, 12, 18, 11, '#ffd36a');
-    const [px, py] = iso(X, Y, 24), gr = g.createRadialGradient(px, py, 0, px, py, 22); gr.addColorStop(0, `rgba(255,220,120,${0.5 + Math.sin(now / 300) * 0.06})`); gr.addColorStop(1, 'rgba(255,220,120,0)'); g.fillStyle = gr; g.fillRect(px - 22, py - 22, 44, 44);
+    lampGlow(g, X, Y, 24, now);
+  },
+  armchair(g, X, Y, W, D, r) {
+    const [bx, by, bw, bd] = backSlab(X, Y, W, D, r, 8); ibox(g, bx, by, bw, bd, 0, 32, '#a8553a');
+    if (r) { ibox(g, X, Y - D / 2 + 4, W, 8, 0, 20, '#a8553a'); ibox(g, X, Y + D / 2 - 4, W, 8, 0, 20, '#a8553a'); } else { ibox(g, X - W / 2 + 4, Y, 8, D, 0, 20, '#a8553a'); ibox(g, X + W / 2 - 4, Y, 8, D, 0, 20, '#a8553a'); }
+    ibox(g, X, Y, W, D, 0, 12, '#c0654a'); ibox(g, X, Y, W * 0.6, D * 0.6, 12, 4, '#d97a5e', { flat: true });
+  },
+  coffeetable(g, X, Y, W, D) {
+    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) ibox(g, X + dx * (W / 2 - 4), Y + dy * (D / 2 - 4), 4, 4, 0, 10, '#8b5a2b');
+    ibox(g, X, Y, W, D, 10, 4, '#a8703a'); ibox(g, X + W * 0.15, Y, 8, 8, 14, 5, '#f4f4f4'); dot(g, X + W * 0.15, Y, 19.5, 3.5, 2, '#6b4423');
+  },
+  stool(g, X, Y, W, D) { for (const dx of [-1, 1]) for (const dy of [-1, 1]) ibox(g, X + dx * (W / 2 - 3), Y + dy * (D / 2 - 3), 3, 3, 0, 10, '#8b5a2b'); ibox(g, X, Y, W, D, 10, 4, '#d65a4a'); },
+  fireplace(g, X, Y, W, D, r, d, now) {
+    ibox(g, X, Y, W, D, 0, d.h, '#a8584a'); ibox(g, X, Y, W * 1.06, D * 1.06, d.h - 5, 5, '#6b4423');
+    const f = r ? faceR : faceL; f(g, X, Y, W, D, 0.22, 0.78, 0, 28, '#2a1a14'); f(g, X, Y, W, D, 0.3, 0.7, 0, 6, '#5a3a24');
+    const fx = r ? X + W / 2 - 1 : X, fy = r ? Y : Y + D / 2 - 1, fl = Math.sin(now / 130) * 1.2;
+    dot(g, fx, fy, 9, 7, 5 + fl, '#e8541a'); dot(g, fx, fy, 10, 4.5, 4 - fl / 2, '#ffb02e'); dot(g, fx, fy, 11, 2, 2.5, '#fff0a0');
+  },
+  bedsingle: (g, X, Y, W, D, r) => bedArt(g, X, Y, W, D, r, '#8b5a2b', '#5a8a5a', 1),
+  bedking: (g, X, Y, W, D, r) => bedArt(g, X, Y, W, D, r, '#4a2f18', '#7a3a8a', 2),
+  wardrobe(g, X, Y, W, D, r, d) {
+    ibox(g, X, Y, W, D, 0, d.h, '#8b5a2b'); const f = r ? faceR : faceL;
+    f(g, X, Y, W, D, 0.06, 0.48, 4, d.h - 4, '#7a4f2a'); f(g, X, Y, W, D, 0.52, 0.94, 4, d.h - 4, '#7a4f2a'); f(g, X, Y, W, D, 0.41, 0.45, 28, 34, '#e8c04a'); f(g, X, Y, W, D, 0.55, 0.59, 28, 34, '#e8c04a');
+  },
+  nightstand(g, X, Y, W, D, r, d) { ibox(g, X, Y, W, D, 0, d.h, '#a8703a'); const f = r ? faceR : faceL; f(g, X, Y, W, D, 0.12, 0.88, 3, 12, '#8b5a2b'); f(g, X, Y, W, D, 0.44, 0.56, 7, 9, '#e8c04a'); },
+  dresser(g, X, Y, W, D, r, d) {
+    ibox(g, X, Y, W, D, 0, d.h, '#a8703a'); const f = r ? faceR : faceL;
+    for (let k = 0; k < 3; k++) { f(g, X, Y, W, D, 0.05, 0.95, 3 + k * 8, 9 + k * 8, '#c98b4a'); f(g, X, Y, W, D, 0.45, 0.55, 5 + k * 8, 7 + k * 8, '#e8c04a'); }
+  },
+  stove(g, X, Y, W, D, r, d) {
+    ibox(g, X, Y, W, D, 0, d.h, '#cfd5dc'); const f = r ? faceR : faceL;
+    f(g, X, Y, W, D, 0.1, 0.9, 3, 19, '#2a2d36'); f(g, X, Y, W, D, 0.2, 0.8, 6, 16, '#5a5f6b');
+    for (const dx of [-1, 1]) for (const dy of [-1, 1]) dot(g, X + dx * W * 0.22, Y + dy * D * 0.22, d.h + 0.5, 5, 2.5, '#2a2d36');
+  },
+  counter(g, X, Y, W, D, r, d) {
+    ibox(g, X, Y, W, D, 0, d.h - 3, '#c98b4a'); ibox(g, X, Y, W * 1.03, D * 1.03, d.h - 3, 3, '#e8e1d0'); const f = r ? faceR : faceL;
+    f(g, X, Y, W, D, 0.05, 0.48, 3, d.h - 6, '#a8703a'); f(g, X, Y, W, D, 0.52, 0.95, 3, d.h - 6, '#a8703a');
+  },
+  sink(g, X, Y, W, D, r, d) {
+    ART.counter(g, X, Y, W, D, r, d);
+    poly(g, [iso(X - W * 0.3, Y - D * 0.3, d.h + 0.5), iso(X + W * 0.3, Y - D * 0.3, d.h + 0.5), iso(X + W * 0.3, Y + D * 0.3, d.h + 0.5), iso(X - W * 0.3, Y + D * 0.3, d.h + 0.5)], '#9fc5d8', INK);
+    const [fx, fy] = r ? [X - W / 2 + 5, Y] : [X, Y - D / 2 + 5]; ibox(g, fx, fy, 3, 3, d.h, 9, '#9aa0aa');
+  },
+  cupboard(g, X, Y, W, D, r, d) {
+    ibox(g, X, Y, W, D, 0, d.h, '#7b5a3a'); const f = r ? faceR : faceL;
+    f(g, X, Y, W, D, 0.05, 0.48, 4, d.h - 4, '#8f6a45'); f(g, X, Y, W, D, 0.52, 0.95, 4, d.h - 4, '#8f6a45'); f(g, X, Y, W, D, 0.12, 0.42, d.h * 0.5, d.h - 10, '#8fd0f0'); f(g, X, Y, W, D, 0.58, 0.88, d.h * 0.5, d.h - 10, '#8fd0f0');
+  },
+  desk(g, X, Y, W, D, r, d) {
+    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) ibox(g, X + dx * (W / 2 - 4), Y + dy * (D / 2 - 4), 4, 4, 0, d.h - 4, '#6b4423');
+    ibox(g, X, Y, W, D, d.h - 4, 4, '#c98b4a'); ibox(g, X - W * 0.2, Y, 12, 9, d.h, 1.5, '#f4f4f4', { flat: true }); ibox(g, X + W * 0.25, Y + D * 0.1, 5, 5, d.h, 8, '#3498db');
+  },
+  officechair(g, X, Y, W, D, r) {
+    dot(g, X, Y, 1.5, 7, 3.5, '#2a2d36'); ibox(g, X, Y, 3, 3, 1, 11, '#3a3f4a'); ibox(g, X, Y, W * 0.8, D * 0.8, 12, 5, '#3d5d8f');
+    const [bx, by, bw, bd] = backSlab(X, Y, W * 0.8, D * 0.8, r, 4); ibox(g, bx, by, bw, bd, 17, 15, '#3d5d8f');
+  },
+  globe(g, X, Y) { ibox(g, X, Y, 10, 10, 0, 4, '#7a4a24'); ibox(g, X, Y, 2, 2, 4, 6, '#9aa0aa'); dot(g, X, Y, 15, 7, 7, '#3a7bb5'); dot(g, X - 2, Y, 16, 3, 3.5, '#5fa844'); dot(g, X + 3, Y, 13, 2, 2.5, '#5fa844'); },
+  computer(g, X, Y, W, D, r) {
+    ibox(g, X, Y, 8, 8, 0, 3, '#3a3f4a'); const [sx, sy, sw, sd] = backSlab(X, Y, W, D, r, 5); ibox(g, sx, sy, sw, sd, 3, 17, '#171a2b');
+    const f = r ? faceR : faceL; f(g, sx, sy, sw, sd, 0.08, 0.92, 5, 18, '#5a8fd0'); f(g, sx, sy, sw, sd, 0.12, 0.5, 12, 17, '#9cc4ee');
+  },
+  vase(g, X, Y) { ibox(g, X, Y, 8, 8, 0, 10, '#3a7bb5'); dot(g, X - 3, Y, 15, 2.5, 2.5, '#e84a5f'); dot(g, X + 3, Y, 16, 2.5, 2.5, '#f1c40f'); dot(g, X, Y, 18, 2.5, 2.5, '#fff3d6'); dot(g, X, Y, 12, 5, 2, '#3f9a3a'); },
+  floorlamp(g, X, Y, W, D, r, d, now) {
+    ibox(g, X, Y, 10, 10, 0, 3, '#3a3f4a'); ibox(g, X, Y, 3, 3, 3, 36, '#3a3f4a'); ibox(g, X, Y, 14, 14, 38, 12, '#ffd36a'); lampGlow(g, X, Y, 44, now);
+  },
+  roundrug(g, X, Y, W, D) {
+    const ring = (k, c, s) => { const out = []; for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2; out.push(iso(X + Math.cos(a) * (W / 2 - k), Y + Math.sin(a) * (D / 2 - k), 1)); } poly(g, out, c, s); };
+    ring(0, '#1f5a78', INK); ring(3, '#e8d6a0'); ring(7, '#3f8fb5'); ring(15, '#2e6e8e'); ring(22, '#e8d6a0');
+  },
+  aquarium(g, X, Y, W, D, r, d, now) {
+    ibox(g, X, Y, W, D, 0, 12, '#6b4423'); ibox(g, X, Y, W * 0.95, D * 0.9, 12, 20, '#6cc6d6', { left: 'rgba(140,215,240,.75)', right: 'rgba(90,170,200,.8)', top: 'rgba(170,230,250,.8)' });
+    ibox(g, X, Y, W * 0.9, D * 0.85, 12, 3, '#e8d6a0', { flat: true }); dot(g, X - W * 0.25, Y, 16, 3, 4, '#3f9a3a');
+    const sw = Math.sin(now / 700) * W * 0.28; dot(g, X + sw, Y, 24, 3.5, 2, '#ff9a3c'); dot(g, X - sw * 0.7, Y, 20, 3, 1.8, '#e84a5f');
   },
 };
 function artGeneric(g, X, Y, W, D, r, d) { ibox(g, X, Y, W * 0.85, D * 0.85, 0, (d.h || 24) * 0.8, '#9aa0aa'); }
@@ -3032,12 +3111,12 @@ const wallPt = (wl, u, z) => (wl === 'n' ? iso(u, FY0, z) : iso(FX0, u, z));
 const wallRect = (g, wl, u0, u1, z0, z1, fill, stroke) => poly(g, [wallPt(wl, u0, z0), wallPt(wl, u1, z0), wallPt(wl, u1, z1), wallPt(wl, u0, z1)], fill, stroke);
 function drawWallItem(g, it, alpha) {
   const d = FURN[it.f], U = it.u * TS, hw = (d.w || 1) * TS / 2, hh = (d.h || 30) / 2, zc = 60, wl = it.wl;
+  const ring = R => { const out = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; out.push(wallPt(wl, U + Math.cos(a) * R, zc + Math.sin(a) * R)); } return out; };
   g.save(); if (alpha != null) g.globalAlpha = alpha;
   if (it.f === 'painting') {
     wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c98b4a', INK); wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc + hh - 4, '#8fd0f0');
     wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc - 2, '#5fa844'); wallRect(g, wl, U - hw + 8, U - 2, zc - 2, zc + 6, '#4a8a3a'); wallRect(g, wl, U + hw - 14, U + hw - 8, zc + 4, zc + 10, '#ffe08a');
   } else if (it.f === 'clock') {
-    const ring = R => { const out = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; out.push(wallPt(wl, U + Math.cos(a) * R, zc + Math.sin(a) * R)); } return out; };
     poly(g, ring(14), '#3a3f4a', INK); poly(g, ring(11.5), '#fff8e7');
     g.strokeStyle = INK; g.lineWidth = 1.5; g.beginPath(); g.moveTo(...wallPt(wl, U, zc)); g.lineTo(...wallPt(wl, U, zc + 8)); g.moveTo(...wallPt(wl, U, zc)); g.lineTo(...wallPt(wl, U + 6, zc - 1)); g.stroke();
   } else if (it.f === 'map') {
@@ -3049,6 +3128,14 @@ function drawWallItem(g, it, alpha) {
       const u0 = U - hw + k * sw + 1, u1 = u0 + sw - 2; wallRect(g, wl, u0, u1, zc - hh, zc + hh, '#2b2f55', INK);
       const uc = (u0 + u1) / 2; wallRect(g, wl, uc - 5, uc + 5, zc - 5, zc + 5, cols[k]); wallRect(g, wl, uc - 1.5, uc + 1.5, zc - 1.5, zc + 1.5, '#fff3d6');
     }
+  } else if (it.f === 'mirror') {
+    wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c9a24a', INK); wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc + hh - 4, '#cfe8f5');
+    wallRect(g, wl, U - hw + 7, U - hw + 12, zc + 2, zc + hh - 7, '#f4fbff'); wallRect(g, wl, U - hw + 14, U - hw + 17, zc + 8, zc + hh - 7, '#f4fbff');
+  } else if (it.f === 'poster') {
+    wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#f4ecd8', INK); wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc + 4, '#e8a33a');
+    wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc - 6, '#3a7bb5'); wallRect(g, wl, U - 6, U + 6, zc - 6, zc + 2, '#c0453a'); wallRect(g, wl, U - hw + 6, U + hw - 6, zc + hh - 8, zc + hh - 5, '#8b5a2b');
+  } else if (it.f === 'wreath') {
+    poly(g, ring(13), '#2d6e2a', INK); poly(g, ring(9), '#3f9a3a'); poly(g, ring(5), '#2d6e2a'); wallRect(g, wl, U - 4, U + 4, zc - 13, zc - 7, '#e74c3c');
   } else wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c98b4a', INK);
   g.restore();
   const quad = [wallPt(wl, U - hw, zc - hh), wallPt(wl, U + hw, zc - hh), wallPt(wl, U + hw, zc + hh), wallPt(wl, U - hw, zc + hh)];
