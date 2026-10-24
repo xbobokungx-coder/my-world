@@ -52,9 +52,13 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   E.var = VAR; p.rec.wk = {}; p.rec.wkAt = 0; e.v = E.max; e.ex = false;
   const cv = S.energyCost('harvest', S.CROPS.mango.sell); let paid = 0;
   for (let i = 0; i < 12; i++) { e.v = E.max; e.ex = false; const b = e.v; w.tire(p, 'harvest', S.CROPS.mango.sell); paid = b - e.v; }
-  assert.ok(paid > cv * 1.9 && paid <= cv * (1 + VAR.max) + 0.06, 'ทำกลุ่มเดียวซ้ำ ต้นทุนชนเพดาน ×' + (1 + VAR.max));
+  assert.ok(paid > cv * (1 + VAR.max) * 0.95 && paid <= cv * (1 + VAR.max) + 0.06, 'ทำกลุ่มเดียวซ้ำ ต้นทุนชนเพดาน ×' + (1 + VAR.max));
   e.v = E.max; e.ex = false; const bf = e.v; w.tire(p, 'fish', 40); assert.ok(Math.abs((bf - e.v) - S.energyCost('fish', 40)) < 0.06, 'สลับไปกลุ่มอื่นยังจ่ายราคาปกติ');
   p.rec.wkAt -= 10 * VAR.halfLifeMs; e.v = E.max; e.ex = false; const b2 = e.v; w.tire(p, 'harvest', S.CROPS.mango.sell); assert.ok(Math.abs((b2 - e.v) - cv) < 0.06, 'พักนานความล้าหาย กลับมาราคาปกติ');
+  // นั่งพัก: ความล้างานซ้ำหายเร็วขึ้น sitMul เท่า + แจ้ง client ผ่าน enPub
+  p.rec.wk = { farm: 40 }; p.sit = { x: 1, y: 1 }; e.v = 50; w.energyTick(VAR.halfLifeMs / 1000 / E.sitMul); p.sit = null;
+  assert.ok(Math.abs(p.rec.wk.farm - 40 * 0.5 ** ((E.sitMul - 1) / E.sitMul)) < 1e-6, 'นั่งพักความล้าลดเร็ว sitMul เท่า');
+  p.rec.wk = { farm: 25 }; assert.deepStrictEqual(w.enPub(p).wk, { farm: 25 }, 'enPub ส่งความล้างานซ้ำให้ client');
   // กินอาหารฟื้นตาม eatMul
   e.v = 10; p.rec.hunger = 40; p.rec.inv.meal_bread = 1; w.eat(p, 'meal_bread'); const food = S.itemInfo('meal_bread').food;
   assert.ok(Math.abs(e.v - (10 + food * E.eatMul)) < 1e-6, 'กินอาหารฟื้นพลังงานตาม eatMul');

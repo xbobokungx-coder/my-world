@@ -318,8 +318,10 @@ function renderEnergy() {
   const sec = Math.max(1, Math.ceil((enSt.resume - v) / (enSt.rate || 1e-9) / 1000));
   el.classList.toggle('over', enSt.ex); el.classList.toggle('warn', !enSt.ex && v < 30);
   const spent = now - (enSt.spentAt || 0) < 3000 && enSt.lastSpent ? ` (-${enSt.lastSpent})` : ''; // เพิ่งใช้พลังงานไปเท่าไร โชว์ 3 วินาที ให้เห็นว่างานแพงกินพลังงานมากกว่า
-  el.textContent = enSt.ex ? `😮‍💨 เหนื่อย • พักอีก ${fmtLeft(sec * 1000)}${spent}` : `⚡ ${Math.max(0, Math.floor(v))}${spent}`;
-  el.title = enSt.ex ? 'เหนื่อยจนทำงานหนักไม่ได้ (ปลูก/รดน้ำ/ขุด/เก็บเกี่ยว/ตัดไม้/ตกปลา) ไปทำอย่างอื่นก่อน เช่น ทำอาหาร เควส ลงขันเมือง หรือนั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า' : `พลังงาน ${Math.max(0, Math.floor(v))}/${Shared.ENERGY.max} งานที่ได้เงินมากกินพลังงานมากตามมูลค่า ทำงานกลุ่มเดียวซ้ำๆ (ไร่/ตกปลา/ตัดไม้) จะแพงขึ้นสูงสุด 2 เท่า สลับงานไปมาประหยัดกว่า (ประมาณ ${Shared.ENERGY.coinsPerEnergy} เหรียญต่อ 1 พลังงาน) ฟื้นเองช้าๆ นั่งพักฟื้นไว กินอาหารฟื้นเพิ่มเล็กน้อย`;
+  const WKI = { farm: '🌾', fish: '🎣', wood: '🪓' }, hot = Object.keys(enSt.wk || {}).map(g => [g, Math.round(100 * Math.min(enSt.wkMax, enSt.wk[g] * Math.pow(0.5, (now - enSt.at) / enSt.wkHalf) / enSt.wkScale))]).filter(x => x[1] >= 10 && WKI[x[0]]); // งานกลุ่มที่เริ่มล้า (ทำซ้ำ) แสดง % ต้นทุนที่แพงขึ้น
+  const wkTxt = hot.map(x => ` ${WKI[x[0]]}ล้า+${x[1]}%`).join('');
+  el.textContent = enSt.ex ? `😮‍💨 เหนื่อย • พักอีก ${fmtLeft(sec * 1000)}${spent}` : `⚡ ${Math.max(0, Math.floor(v))}${spent}${wkTxt}`;
+  el.title = enSt.ex ? 'เหนื่อยจนทำงานหนักไม่ได้ (ปลูก/รดน้ำ/ขุด/เก็บเกี่ยว/ตัดไม้/ตกปลา) ไปทำอย่างอื่นก่อน เช่น ทำอาหาร เควส ลงขันเมือง หรือนั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า' : `พลังงาน ${Math.max(0, Math.floor(v))}/${Shared.ENERGY.max} งานที่ได้เงินมากกินพลังงานมากตามมูลค่า ทำงานกลุ่มเดียวซ้ำๆ (ไร่/ตกปลา/ตัดไม้) จะล้าและแพงขึ้นสูงสุด 1.5 เท่า (🌾ล้า+% บนป้าย) สลับงานหรือนั่งพักที่ม้านั่งช่วยให้หายล้าเร็วขึ้น (ประมาณ ${Shared.ENERGY.coinsPerEnergy} เหรียญต่อ 1 พลังงาน) ฟื้นเองช้าๆ นั่งพักฟื้นไว กินอาหารฟื้นเพิ่มเล็กน้อย`;
   const left = (enSt.rareUntil || 0) - now; cd.classList.toggle('hidden', left <= 0);
   if (left > 0) { cd.classList.add('warn'); cd.textContent = `🐟 ปลาหายากพัก ${fmtLeft(left)}`; cd.title = 'ตกปลาหายากไปแล้ว ต้องรอก่อนถึงจะตกปลาหายากได้อีก (ปลาธรรมดาตกได้ปกติ)'; }
 }
