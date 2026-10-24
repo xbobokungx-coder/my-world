@@ -233,33 +233,35 @@
     melon:      { name: 'แตงโม',       emoji: '🍉', seed: 90, sell: 150, time: 260000, lv: 8, xp: 38 },
   };
   // ปลา: lv = เลเวลชาวประมงที่เริ่มตกได้, w = น้ำหนักความน่าจะเป็น (หายาก = ราคาแพง: ราคาแปรผันตามความหายาก)
+  // XP ปลา ≈ 6 × ราคา^0.36 (ปลาแพงให้ XP มากขึ้นแต่ไม่ตามราคา) ให้ XP/ชม. ใกล้ชาวนาที่เลเวลเดียวกัน ตรวจด้วย node tools/levelsim.js
   const FISH = [
     { id: 'boot',    name: 'รองเท้าเก่า',  emoji: '👢', sell: 1,   xp: 1,  w: 8,  lv: 1 },
-    { id: 'carp',    name: 'ปลาตะเพียน',  emoji: '🐟', sell: 12,  xp: 6,  w: 40, lv: 1 },
-    { id: 'catfish', name: 'ปลาดุก',      emoji: '🐡', sell: 16,  xp: 8,  w: 25, lv: 1 },
-    { id: 'bass',    name: 'ปลากะพง',     emoji: '🐠', sell: 20,  xp: 12, w: 20, lv: 2 },
-    { id: 'shrimp',  name: 'กุ้ง',        emoji: '🦐', sell: 26,  xp: 15, w: 15, lv: 3 },
-    { id: 'crab',    name: 'ปู',          emoji: '🦀', sell: 32,  xp: 20, w: 12, lv: 4 },
-    { id: 'koi',     name: 'ปลาคอยทอง',   emoji: '🎏', sell: 50,  xp: 35, w: 6,  lv: 5 },
-    { id: 'lobster', name: 'กุ้งมังกร',    emoji: '🦞', sell: 55,  xp: 40, w: 5,  lv: 6 },
-    { id: 'squid',   name: 'หมึก',        emoji: '🦑', sell: 65,  xp: 50, w: 4,  lv: 7 },
-    { id: 'shell',   name: 'หอยเชลล์',     emoji: '🐚', sell: 18,  xp: 9,   w: 22, lv: 2 },
-    { id: 'frog',    name: 'กบน้อย',      emoji: '🐸', sell: 24,  xp: 12,  w: 18, lv: 3 },
+    { id: 'carp',    name: 'ปลาตะเพียน',  emoji: '🐟', sell: 12,  xp: 15,  w: 40, lv: 1 },
+    { id: 'catfish', name: 'ปลาดุก',      emoji: '🐡', sell: 16,  xp: 16,  w: 25, lv: 1 },
+    { id: 'bass',    name: 'ปลากะพง',     emoji: '🐠', sell: 20,  xp: 18, w: 20, lv: 2 },
+    { id: 'shrimp',  name: 'กุ้ง',        emoji: '🦐', sell: 26,  xp: 19, w: 15, lv: 3 },
+    { id: 'crab',    name: 'ปู',          emoji: '🦀', sell: 32,  xp: 21, w: 12, lv: 4 },
+    { id: 'koi',     name: 'ปลาคอยทอง',   emoji: '🎏', sell: 50,  xp: 25, w: 6,  lv: 5 },
+    { id: 'lobster', name: 'กุ้งมังกร',    emoji: '🦞', sell: 55,  xp: 25, w: 5,  lv: 6 },
+    { id: 'squid',   name: 'หมึก',        emoji: '🦑', sell: 65,  xp: 27, w: 4,  lv: 7 },
+    { id: 'shell',   name: 'หอยเชลล์',     emoji: '🐚', sell: 18,  xp: 17,   w: 22, lv: 2 },
+    { id: 'frog',    name: 'กบน้อย',      emoji: '🐸', sell: 24,  xp: 19,  w: 18, lv: 3 },
     { id: 'oyster',  name: 'หอยนางรม',    emoji: '🦪', sell: 36,  xp: 22,  w: 12, lv: 4 },
-    { id: 'turtle',  name: 'เต่าน้อย',     emoji: '🐢', sell: 44,  xp: 30,  w: 6,  lv: 5 },
-    { id: 'shark',   name: 'ฉลามน้อย',    emoji: '🦈', sell: 90, xp: 85,  w: 1.3, lv: 9 },
-    { id: 'whale',   name: 'วาฬน้อย',     emoji: '🐳', sell: 120, xp: 120, w: 0.7, lv: 10 },
-    { id: 'octopus', name: 'ปลาหมึกยักษ์', emoji: '🐙', sell: 75, xp: 70, w: 3,  lv: 8 },
-    { id: 'otter',   name: 'นากน้ำ',       emoji: '🦦', sell: 55,  xp: 45, w: 4,  lv: 6 },
-    { id: 'croc',    name: 'จระเข้น้อย',    emoji: '🐊', sell: 85, xp: 80, w: 1.6, lv: 8 },
-    { id: 'seal',    name: 'แมวน้ำ',       emoji: '🦭', sell: 105, xp: 100, w: 0.9, lv: 9 },
-    { id: 'dolphin', name: 'โลมา',         emoji: '🐬', sell: 140, xp: 140, w: 0.5, lv: 10 },
-    { id: 'humpback', name: 'วาฬหลังค่อม', emoji: '🐋', sell: 190, xp: 200, w: 0.25, lv: 10 },
+    { id: 'turtle',  name: 'เต่าน้อย',     emoji: '🐢', sell: 44,  xp: 23,  w: 6,  lv: 5 },
+    { id: 'shark',   name: 'ฉลามน้อย',    emoji: '🦈', sell: 90, xp: 30,  w: 1.3, lv: 9 },
+    { id: 'whale',   name: 'วาฬน้อย',     emoji: '🐳', sell: 120, xp: 34, w: 0.7, lv: 10 },
+    { id: 'octopus', name: 'ปลาหมึกยักษ์', emoji: '🐙', sell: 75, xp: 28, w: 3,  lv: 8 },
+    { id: 'otter',   name: 'นากน้ำ',       emoji: '🦦', sell: 55,  xp: 25, w: 4,  lv: 6 },
+    { id: 'croc',    name: 'จระเข้น้อย',    emoji: '🐊', sell: 85, xp: 30, w: 1.6, lv: 8 },
+    { id: 'seal',    name: 'แมวน้ำ',       emoji: '🦭', sell: 105, xp: 32, w: 0.9, lv: 9 },
+    { id: 'dolphin', name: 'โลมา',         emoji: '🐬', sell: 140, xp: 36, w: 0.5, lv: 10 },
+    { id: 'humpback', name: 'วาฬหลังค่อม', emoji: '🐋', sell: 190, xp: 40, w: 0.25, lv: 10 },
   ];
   // ช่างไม้: ตัดต้นไม้ด้วยขวาน (ขวานแรงกว่าตัดเร็วกว่า) ได้ไม้ท่อน หายากได้ไม้เนื้อแข็งราคาแพง
   const AXES = { 1: { name: 'ขวานหิน', price: 50, power: 1 }, 2: { name: 'ขวานเหล็ก', price: 220, lv: 3, power: 2 }, 3: { name: 'ขวานเหล็กกล้า', price: 700, lv: 6, power: 3 } };
   const TREE_HP = 4;                       // ต้องฟันกี่แต้มถึงล้ม (ขวานหิน = 4 ครั้ง, เหล็ก 2, เหล็กกล้า 2)
-  const WOOD = { log: { sell: 16, xp: 5 }, hardwood: { sell: 66, xp: 14, chance: 0.16 } };
+  const WOOD = { log: { sell: 16, xp: 5 }, hardwood: { sell: 66, xp: 14, chance: 0.16 }, xpPerLv: 0.15 }; // xpPerLv: XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
+  const woodXp = (xp, lv) => Math.round(xp * (1 + WOOD.xpPerLv * (lv - 1)));
   // สัตว์ป่วย: ป่วยได้พร้อมกันไม่เกิน max ตัว (รวมทุกชนิด) รักษาด้วยยาตัวเดียวกัน ป่วยแล้วถ้าไม่รักษาจะตายเร็วกว่าหิวปกติ
   const SICK = { max: 1, graceMs: 150000, checkMs: DAY_MS, chance: 0.3 }; // สัตว์ป่วยทีละ 1 ตัวเท่านั้น สุ่มวันละครั้ง (1 วันในเกม = 12 นาทีที่มีคนออนไลน์) โอกาส 30% วันไหนไม่ป่วยก็ข้ามไปวันถัดไปเลย
   const SELLBACK = 0.7;                    // ขายของที่ซื้อมา (เสื้อผ้า คันเบ็ด ขวาน ตะเกียง) คืนร้านได้ 70% ของราคาซื้อ (หัก 30%)
@@ -419,20 +421,21 @@
   const COOK_FEE = 0.2; // ค่าเช่าเตา = สัดส่วนของราคาขายอาหาร จ่ายเป็นเหรียญทุกครั้งที่ทำ
   const COOK_CATS = { fish: { name: 'ปลา/สัตว์น้ำ', emoji: '🐟' }, crop: { name: 'ผัก/ผลไม้', emoji: '🥕' }, egg: { name: 'ไข่', emoji: '🥚' } };
   // เชฟ (อาชีพที่ 5): แต่ละสูตรปลดล็อกตามเลเวลเชฟ (lv) ได้ XP เชฟ (xp) และใช้เวลาทำ (time มิลลิวินาที = เตาต้องพักก่อนทำจานถัดไป)
+  // XP สูตร = XP เดิม × (2.3 − 0.08×เลเวลสูตร) (ปรับ 25 ต.ค. 2026) ให้ XP/ชม. ของเชฟรวมเวลาหาวัตถุดิบใกล้ชาวนา ตรวจด้วย node tools/levelsim.js
   const COOK = [
-    { id: 'dish_grill',   name: 'ปลาย่างผักสด',     emoji: '🍱', sell: 60,  food: 45,  lv: 1, xp: 12, time: 3000,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_omelet',  name: 'ไข่เจียวผักรวม',    emoji: '🍳', sell: 80,  food: 55,  lv: 3, xp: 20, time: 4000,  in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_seafood', name: 'ซีฟู้ดไข่นุ่ม',     emoji: '🍤', sell: 135, food: 70,  lv: 5, xp: 34, time: 6000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_feast',   name: 'ชุดเลี้ยงฉลอง',     emoji: '🍽️', sell: 330, food: 100, lv: 7, xp: 70, time: 9000,  in: [{ c: 'fish', n: 2 }, { c: 'crop', n: 2 }, { c: 'egg', n: 2 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_grill',   name: 'ปลาย่างผักสด',     emoji: '🍱', sell: 60,  food: 45,  lv: 1, xp: 27, time: 3000,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_omelet',  name: 'ไข่เจียวผักรวม',    emoji: '🍳', sell: 80,  food: 55,  lv: 3, xp: 41, time: 4000,  in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_seafood', name: 'ซีฟู้ดไข่นุ่ม',     emoji: '🍤', sell: 135, food: 70,  lv: 5, xp: 65, time: 6000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_feast',   name: 'ชุดเลี้ยงฉลอง',     emoji: '🍽️', sell: 330, food: 100, lv: 7, xp: 122, time: 9000,  in: [{ c: 'fish', n: 2 }, { c: 'crop', n: 2 }, { c: 'egg', n: 2 }, { k: 'milk', n: 1 }] },
     // เมนูปลา: ปลาทุกชนิดในกระเป๋า (ยกเว้นรองเท้าเก่า) ใช้ทำได้
-    { id: 'dish_fishsoup', name: 'ต้มยำปลา',         emoji: '🍲', sell: 75,  food: 50,  lv: 2, xp: 16, time: 3500,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_sashimi',  name: 'ซาชิมิปลา',         emoji: '🍣', sell: 120, food: 55,  lv: 4, xp: 26, time: 4000,  in: [{ c: 'fish', n: 2 }] },
-    { id: 'dish_fishburger', name: 'เบอร์เกอร์ปลา',   emoji: '🍔', sell: 170, food: 80,  lv: 6, xp: 38, time: 5000,  in: [{ c: 'fish', n: 1 }, { k: 'meal_bread', n: 1 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_fishpie',  name: 'พายปลาไข่',         emoji: '🥧', sell: 250, food: 90,  lv: 8, xp: 50, time: 7000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_fishsoup', name: 'ต้มยำปลา',         emoji: '🍲', sell: 75,  food: 50,  lv: 2, xp: 34, time: 3500,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_sashimi',  name: 'ซาชิมิปลา',         emoji: '🍣', sell: 120, food: 55,  lv: 4, xp: 51, time: 4000,  in: [{ c: 'fish', n: 2 }] },
+    { id: 'dish_fishburger', name: 'เบอร์เกอร์ปลา',   emoji: '🍔', sell: 170, food: 80,  lv: 6, xp: 69, time: 5000,  in: [{ c: 'fish', n: 1 }, { k: 'meal_bread', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_fishpie',  name: 'พายปลาไข่',         emoji: '🥧', sell: 250, food: 90,  lv: 8, xp: 83, time: 7000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
     // เมนูปลารวม: u = ปลาต้องเป็นคนละชนิดกัน (ชนิดละ 1 ตัว) ปลาชนิดเดียวกันหลายตัวใช้ทำไม่ได้
-    { id: 'dish_fishmix',  name: 'ปลารวมทอดกรอบ',    emoji: '🥘', sell: 110, food: 65,  lv: 3, xp: 22, time: 4000,  in: [{ c: 'fish', n: 2, u: true }, { c: 'crop', n: 1 }] },
-    { id: 'dish_fishstew', name: 'แกงปลารวมหม้อใหญ่', emoji: '🫕', sell: 220, food: 85,  lv: 6, xp: 44, time: 7000,  in: [{ c: 'fish', n: 3, u: true }, { c: 'crop', n: 1 }] },
-    { id: 'dish_platter',  name: 'จานปลาทะเลรวม',    emoji: '🥡', sell: 380, food: 105, lv: 8, xp: 80, time: 10000, in: [{ c: 'fish', n: 4, u: true }, { c: 'egg', n: 1 }] },
+    { id: 'dish_fishmix',  name: 'ปลารวมทอดกรอบ',    emoji: '🥘', sell: 110, food: 65,  lv: 3, xp: 45, time: 4000,  in: [{ c: 'fish', n: 2, u: true }, { c: 'crop', n: 1 }] },
+    { id: 'dish_fishstew', name: 'แกงปลารวมหม้อใหญ่', emoji: '🫕', sell: 220, food: 85,  lv: 6, xp: 80, time: 7000,  in: [{ c: 'fish', n: 3, u: true }, { c: 'crop', n: 1 }] },
+    { id: 'dish_platter',  name: 'จานปลาทะเลรวม',    emoji: '🥡', sell: 380, food: 105, lv: 8, xp: 133, time: 10000, in: [{ c: 'fish', n: 4, u: true }, { c: 'egg', n: 1 }] },
   ];
   const cookCat = (c, k) => c === 'fish' ? /^fish_/.test(k) && k !== 'fish_boot' : c === 'crop' ? /^crop_/.test(k) : c === 'egg' ? (k === 'egg' || k === 'duck_egg') : false;
   // โครงการพัฒนาเมือง: ที่เก็บเงินขนาดใหญ่ ทุกคนลงขันที่ตู้เซฟกองกลาง ปลดล็อกตามลำดับ ครบเป้าแล้วขึ้นข่าวและประกาศชื่อผู้ร่วมสร้าง
@@ -859,7 +862,7 @@
 
   const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
+    AXES, TREE_HP, WOOD, woodXp, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, CAT_KEYS, sellCat, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };

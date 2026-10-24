@@ -863,8 +863,8 @@ class World {
     if (this.lv(p, 'wood') < r.lv) return this.toast(p, `ต้องเป็นช่างไม้เลเวล ${r.lv} ก่อน`);
     for (const [k, n] of Object.entries(r.in)) if ((p.rec.inv[k] || 0) < n) return this.toast(p, 'วัตถุดิบไม่พอ');
     for (const [k, n] of Object.entries(r.in)) this.add(p, k, -n);
-    this.add(p, r.id, 1); this.addXp(p, 'wood', r.xp);
-    const info = S.itemInfo(r.id); this.toast(p, `🔨 ประดิษฐ์ ${info.emoji} ${info.name} สำเร็จ! (+${r.xp} XP)`); this.sfx(p, 'collect');
+    const gain = S.woodXp(r.xp, this.lv(p, 'wood')); this.add(p, r.id, 1); this.addXp(p, 'wood', gain);
+    const info = S.itemInfo(r.id); this.toast(p, `🔨 ประดิษฐ์ ${info.emoji} ${info.name} สำเร็จ! (+${gain} XP)`); this.sfx(p, 'collect');
     if (info.furn) this.bookAdd(p, 'furn', info.furn);
     this.event(p, 'craft');
   }
@@ -1578,7 +1578,7 @@ class World {
       this.broadcast({ t: 'tree', x: tx, y: ty, on: false });
       const wl = this.lv(p, 'wood'), hard = Math.random() < S.WOOD.hardwood.chance + 0.01 * (wl - 1) + (this.happyOn() ? S.VILLAGE.hardBonus : 0), extra = Math.random() < 0.04 * (wl - 1) ? 1 : 0;
       this.add(p, 'log', 2 + extra); if (hard) this.add(p, 'hardwood', 1); // (4C) ต้นละ 2 ไม้ท่อน ดันรายได้ช่างไม้
-      this.addXp(p, 'wood', S.WOOD.log.xp * (2 + extra) + (hard ? S.WOOD.hardwood.xp : 0)); this.tire(p, 'chop', (2 + extra) * S.WOOD.log.sell + (hard ? S.WOOD.hardwood.sell : 0));
+      this.addXp(p, 'wood', S.woodXp(S.WOOD.log.xp * (2 + extra) + (hard ? S.WOOD.hardwood.xp : 0), wl)); this.tire(p, 'chop', (2 + extra) * S.WOOD.log.sell + (hard ? S.WOOD.hardwood.sell : 0));
       this.toast(p, `🌳 ต้นไม้ล้ม! ได้ 🪵 ไม้ท่อน x${2 + extra}${hard ? ' และ 🟫 ไม้เนื้อแข็ง!' : ''}`); this.sfx(p, 'fell'); this.event(p, 'chop'); if (hard) this.event(p, 'hardwood');
     } else if (tool === 'medicine') {
       const a = this.animals.filter(a => a.sick && (Math.hypot(a.x - tcx, a.y - tcy) < 52 || Math.hypot(a.x - p.x, a.y - p.y) < 52))

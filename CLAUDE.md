@@ -30,6 +30,7 @@
 | `README.md` / `HOW-TO-PLAY.md` | รายละเอียดฟีเจอร์และวิธีเล่น อัปเดตเมื่อเพิ่มฟีเจอร์ |
 | `tools/stats.js` | สรุปตัวชี้วัดจาก `data/events/*.jsonl` และไฟล์เซฟ: `node tools/stats.js` |
 | `tools/economy.js` | รายงานเศรษฐกิจรายวัน (เงินรวม Gini เข้า–ออก ราคาจริงต่อหมวด พลังงาน ตลาด คู่มือ): `node tools/economy.js 7` |
+| `tools/levelsim.js` | จำลอง XP/ชม. และเหรียญ/ชม. ทุกอาชีพทุกเลเวล ใช้ก่อนปรับ XP หรือราคา: `node tools/levelsim.js` |
 | `tools/backup.sh` | สำรอง `data/` (cron ทุกชั่วโมง ดูหัวข้อสำรองข้อมูล) |
 | `*.ps1` `*.bat` | สคริปต์สำหรับ Windows (ใช้บนเครื่องที่บ้านได้ ไม่ใช้บน VPS) |
 
