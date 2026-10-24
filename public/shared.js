@@ -131,7 +131,37 @@
     mirror:     { cat: 'decor', name: 'กระจกเงา',         emoji: '🪞', price: 280,  wall: true, w: 1, h: 44 },
     poster:     { cat: 'decor', name: 'โปสเตอร์',         emoji: '📜', price: 140,  wall: true, w: 1, h: 34 },
     wreath:     { cat: 'decor', name: 'พวงหรีดประดับผนัง', emoji: '🌿', price: 130,  wall: true, w: 0.75, h: 26 },
+    // ฉากกั้นห้อง: แผ่นบางตั้งพื้น (กว้าง 2 ช่อง หนา ¼ ช่อง) กั้นเป็นโซนในห้องได้ หมุนได้ เดินทะลุไม่ได้
+    screen_wood:   { cat: 'divider', name: 'ฉากไม้พับ',        emoji: '🪟', price: 280, solid: true, w: 2, d: 0.25, h: 56 },
+    screen_shoji:  { cat: 'divider', name: 'ฉากกระดาษชิโจ',    emoji: '📄', price: 340, solid: true, w: 2, d: 0.25, h: 56 },
+    screen_lattice:{ cat: 'divider', name: 'ฉากระแนงไม้',      emoji: '🔳', price: 300, solid: true, w: 2, d: 0.25, h: 56 },
+    screen_glass:  { cat: 'divider', name: 'ฉากกระจกฝ้า',      emoji: '🔲', price: 420, solid: true, w: 2, d: 0.25, h: 56 },
+    screen_bamboo: { cat: 'divider', name: 'ฉากไม้ไผ่',        emoji: '🎍', price: 260, solid: true, w: 2, d: 0.25, h: 56 },
+    lowwall:       { cat: 'divider', name: 'ผนังกั้นเตี้ย',     emoji: '🧱', price: 220, solid: true, w: 2, d: 0.25, h: 30, top: true },
   };
+  // พื้นบ้าน/วอลเปเปอร์: เลือกเปลี่ยนได้ฟรีไม่จำกัดครั้ง (เก็บ id ไว้ในข้อมูลบ้านเป็น fl / wp) เพิ่มแบบใหม่ได้ที่นี่ + ใส่ไว้ใน HOUSE_*_ORDER
+  // kind: plank = ไม้กระดานเรียงยาว • tile = กระเบื้องสี่เหลี่ยม (c[0],c[1] สลับหมากรุก) • carpet = พรมปูทั้งห้อง | edge = [สีขอบพื้นด้านหน้า, ด้านขวา]
+  const HOUSE_FLOORS = {
+    oak:    { name: 'ไม้โอ๊ก',       emoji: '🟫', kind: 'plank',  c: ['#c98a56', '#be7f4b', '#d29560', '#b87846'], seam: 'rgba(70,35,15,.55)', edge: ['#8a5430', '#6b3f22'] },
+    dark:   { name: 'ไม้เข้ม',       emoji: '🟤', kind: 'plank',  c: ['#8a5a36', '#7e4f2e', '#946240', '#74482a'], seam: 'rgba(30,15,5,.6)',   edge: ['#5a3820', '#44281a'] },
+    birch:  { name: 'ไม้เบิร์ชอ่อน',  emoji: '🟨', kind: 'plank',  c: ['#e3c79a', '#d9bc8b', '#ecd2a6', '#d3b583'], seam: 'rgba(110,80,40,.45)', edge: ['#b69460', '#957749'] },
+    check:  { name: 'กระเบื้องหมากรุก', emoji: '⬜', kind: 'tile',   c: ['#f1ead8', '#6b7f8a'], seam: 'rgba(40,40,40,.35)', edge: ['#8a9096', '#6c7278'] },
+    stone:  { name: 'หินเทา',        emoji: '⬛', kind: 'tile',   c: ['#c9ccd2', '#bdc1c8'], seam: 'rgba(60,60,70,.4)',  edge: ['#8c9098', '#6f737b'] },
+    carpetr:{ name: 'พรมแดง',        emoji: '🟥', kind: 'carpet', c: ['#a8322a', '#9b2c25'], seam: 'rgba(60,10,10,.25)', edge: ['#6e1f1a', '#521612'] },
+    carpetb:{ name: 'พรมฟ้า',        emoji: '🟦', kind: 'carpet', c: ['#4a78a8', '#416d9c'], seam: 'rgba(10,25,50,.25)', edge: ['#2f5073', '#233c57'] },
+  };
+  // วอลเปเปอร์: up = ผนังครึ่งบน (base + ลาย) • lo = แผ่นผนังครึ่งล่าง (base + ร่อง) • rail = ราวคาด • skirt = บัวพื้น | pat: stripe ลายขีด / plain เรียบ
+  const HOUSE_WALLS = {
+    cream:  { name: 'ครีมลายขีด',   emoji: '🟨', pat: 'stripe', up: ['#efe3c2', '#e2d1a4'], lo: ['#b9602f', '#8a4420'], rail: '#d98a4b', skirt: '#7a3f1d' },
+    sky:    { name: 'ฟ้าอ่อน',      emoji: '🟦', pat: 'stripe', up: ['#cfe6f2', '#bcd9ea'], lo: ['#5c7fa8', '#46688f'], rail: '#8fb3d6', skirt: '#34506f' },
+    pink:   { name: 'ชมพูหวาน',     emoji: '🟪', pat: 'stripe', up: ['#f8dfe4', '#f0cdd5'], lo: ['#b86a7a', '#965062'], rail: '#e49aab', skirt: '#7a3a4a' },
+    mint:   { name: 'เขียวมินต์',    emoji: '🟩', pat: 'stripe', up: ['#dcefd9', '#c9e3c5'], lo: ['#5f8f63', '#487349'], rail: '#8cc291', skirt: '#35583a' },
+    royal:  { name: 'ม่วงหรู',       emoji: '🟣', pat: 'stripe', up: ['#6d5a8a', '#5f4d7b'], lo: ['#3b2f52', '#2b2140'], rail: '#a88ccc', skirt: '#1f1730' },
+    white:  { name: 'ขาวเรียบ',      emoji: '⬜', pat: 'plain',  up: ['#f4f1ea', '#f4f1ea'], lo: ['#cfc6b3', '#b3a98f'], rail: '#e2dccd', skirt: '#9d9378' },
+    wood:   { name: 'ผนังไม้',       emoji: '🟫', pat: 'stripe', up: ['#b9783f', '#a96a36'], lo: ['#8a5430', '#6b3f22'], rail: '#d29560', skirt: '#4a2a14' },
+  };
+  const HOUSE_FLOOR_ORDER = ['oak', 'dark', 'birch', 'check', 'stone', 'carpetr', 'carpetb'], HOUSE_WALL_ORDER = ['cream', 'sky', 'pink', 'mint', 'royal', 'white', 'wood'];
+  const HOUSE_STYLE_DEFAULT = { fl: 'oak', wp: 'cream' };
   const FARM = { x0: 6, y0: 8, x1: 21, y1: 17 };       // แปลงผัก (ช่องที่ขุดได้)
   // เล้า 6 เล้า ขนาดเท่ากัน (ภายใน 3×4 ช่อง) เรียง 2 แถวๆละ 3 เล้า มีรั้วล้อมรอบ 1 ช่อง • gate = ช่องประตู (ด้านซ้ายของเล้า) • sign = ป้ายประจำเล้า (ชื่อสัตว์อยู่บนป้าย)
   const PENS = {
@@ -809,7 +839,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)];
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

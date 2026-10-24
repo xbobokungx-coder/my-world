@@ -182,6 +182,7 @@ function handle(m) {
     case 'trade': onTrade(m); break;
     case 'cin': onCin(m); break;
     case 'furn': applyFurnOp(m); break;
+    case 'hstyle': houseSt = { fl: m.fl, wp: m.wp }; if (scene) syncHouseBg(); if (build.on) renderBuild(); break;
     case 'admin': onAdmin(m); break;
     case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break;
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
@@ -536,7 +537,7 @@ $('town').addEventListener('pointerdown', e => { if (e.target === $('town')) clo
 const furnKeys = () => Object.keys(inv).filter(k => k.startsWith('furn_') && FURN[k.slice(5)]);
 // ---------- บ้านหลังใหญ่: แมพแยก (ฉาก) มุมมองไอโซเมตริก ตกแต่งอิสระ ----------
 // ตอนอยู่ในบ้าน MAP ถูกสลับเป็นแมพบ้านชั่วคราว (ผนัง/พื้น/ประตู) เก็บแถวของแมพเมืองไว้ใน townRows ของเมืองที่มาใหม่ระหว่างนั้น (ต้นไม้/โครงการ) แก้ที่ tmap()
-let scene = null, houseInfo = null, townRows = null, townDirty = false, hboard = null, houseRects = [], houseBg = null, houseGrid = null;
+let houseSt = { fl: 'oak', wp: 'cream' }, houseBgKey = '', scene = null, houseInfo = null, townRows = null, townDirty = false, hboard = null, houseRects = [], houseBg = null, houseGrid = null;
 const tmap = () => (scene ? townRows : MAP);
 const inMyHouse = () => !!scene && !!houseInfo && houseInfo.mine;
 const setSceneRows = rows => { for (let y = 0; y < H; y++) MAP[y] = rows[y]; };
@@ -562,6 +563,7 @@ function undoBuild() {
   const o = undoStack.pop(); if (!o) { toast('ไม่มีอะไรให้เลิกทำ'); return; }
   undoUntil = performance.now() + 600; send(Object.assign({ t: 'house' }, o)); playSfx('click'); renderBuild();
 }
+function syncHouseBg() { const k = houseSt.fl + '|' + houseSt.wp; if (!houseBg || houseBgKey !== k) { houseBgKey = k; houseBg = buildHouseIsoBg(); } } // พื้น/วอลเปเปอร์เปลี่ยน = วาดพื้นหลังห้องใหม่
 function applyFurnOp(m) { // ข้อความ furn จากเซิร์ฟเวอร์: set = วาง/ย้าย/หมุนชิ้นหนึ่ง • del = เก็บออก
   if (build.on && inMyHouse()) pushUndo(m);
   if (m.op === 'del') { furn.delete(m.i); if (build.pick === m.i) build.pick = null; }
@@ -581,7 +583,7 @@ function applyScene(m) {
     for (const it of m.items || []) furn.set(it.i, it);
     rebuildRects();
     scene = m.sc; houseInfo = { owner: m.owner, mine: !!m.mine }; build.on = false; build.pick = null;
-    if (!houseBg) { houseBg = buildHouseIsoBg(); houseGrid = buildHouseGrid(); }
+    houseSt = Object.assign({ fl: 'oak', wp: 'cream' }, m.st || {}); if (!houseGrid) houseGrid = buildHouseGrid(); syncHouseBg();
   } else resetScene();
   const old = me; players.clear();
   for (const q of m.players) { if (q.id === myId) { old.x = old.tx = m.x; old.y = old.ty = m.y; old.sit = false; old.fs = 0; players.set(myId, old); } else players.set(q.id, mkPlayer(q)); }
@@ -620,19 +622,22 @@ function renderBuild() {
     : fd ? `${fd.emoji} ${fd.name}: ${isTouch ? 'ลากลงห้อง (ปล่อยนิ้วเพื่อวาง) หรือแตะที่' : 'คลิกที่'}${fd.wall ? 'ผนัง' : 'พื้น'}เพื่อวาง${fd.small ? ' • ของเล็กวางบนโต๊ะ/เตียงได้' : ''}`
     : pd ? `${pd.emoji} ${pd.name}: ${isTouch ? 'ลากไปปล่อย หรือแตะที่ใหม่เพื่อวาง' : 'ขยับเมาส์จัดตำแหน่ง แล้วคลิกอีกครั้งเพื่อวาง'} • หมุน/เก็บคืนได้ที่ปุ่ม`
     : ks.length ? (isTouch ? 'ลากของในห้องเพื่อย้าย • ลากของจากรายการลงห้อง' : 'คลิกของในห้องเพื่อหยิบ แล้วคลิกอีกครั้งเพื่อวาง • หรือเลือกของจากรายการ') : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ขวามือของตัวบ้านหลังใหญ่)';
-  const cats = [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['craft', '🔨 ประดิษฐ์'], ['rare', '⭐ พิเศษ']];
-  const tab = build.tab && cats.some(c => c[0] === build.tab) ? build.tab : 'living';
+  const cats = [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['divider', '🪟 ฉากกั้น'], ['craft', '🔨 ประดิษฐ์'], ['rare', '⭐ พิเศษ']];
+  const styleTabs = [['floor', '🟫 พื้นบ้าน'], ['wall', '🧱 วอลเปเปอร์']], isStyle = build.tab === 'floor' || build.tab === 'wall';
+  const tab = isStyle || (build.tab && cats.some(c => c[0] === build.tab)) ? build.tab : 'living';
   const shown = ks.filter(k => (FURN[k.slice(5)].cat || 'other') === tab);
   const kk = t => isTouch ? '' : ` <small class="bkey">${t}</small>`;
-  el.innerHTML = `<div class="bhint">🏠 ${hint}</div>`
+  const hintTxt = isStyle ? `🏠 แตะแบบที่ชอบเพื่อเปลี่ยน${tab === 'floor' ? 'พื้นบ้าน' : 'วอลเปเปอร์'}ทันที (เปลี่ยนได้ฟรีไม่จำกัด)` : `🏠 ${hint}`;
+  el.innerHTML = `<div class="bhint">${hintTxt}</div>`
     + `<div class="btools"><button class="btn small" data-rot="1" title="หมุน (R)">🔄<span class="blbl"> หมุน${kk('R')}</span></button>`
     + `<button class="btn small muted" data-undo="1" title="เลิกทำ (Ctrl+Z)"${undoStack.length ? '' : ' disabled'}>↩️<span class="blbl"> เลิกทำ${kk('Z')}</span></button>`
     + `<button class="btn small${!build.erase && !build.sel ? ' on' : ''}" data-edit="1" title="เลือก/ย้ายของในห้อง">🖐️<span class="blbl"> เลือก/ย้าย</span></button>`
     + (pk ? `<button class="btn small" data-pickdel="1" title="เก็บชิ้นนี้ (Delete)">🧹<span class="blbl"> เก็บชิ้นนี้${kk('Del')}</span></button>` : '')
     + `<button class="btn small${build.erase ? ' on' : ''}" data-erase="1" title="โหมดเก็บคืน: แตะของที่จะเก็บ">🗑️<span class="blbl"> เก็บคืน</span></button><button class="btn small done" data-bexit="1" title="เสร็จ ออกจากโหมดตกแต่ง">✔<span class="blbl"> เสร็จ</span></button></div>`
-    + `<div class="btabs">` + cats.map(([c, n]) => { const cnt = ks.filter(k => (FURN[k.slice(5)].cat || 'other') === c).length; return cnt ? `<button class="btn small${c === tab ? ' on' : ''}" data-btab="${c}">${n}</button>` : ''; }).join('') + `</div>`
-    + `<div class="bitems">` + (shown.length ? shown.map(k => { const f = k.slice(5); return `<button class="btn small${!build.erase && build.sel === f ? ' on' : ''}" data-bf="${f}" title="${FURN[f].name}">${FURN[f].emoji}<span class="blbl"> ${FURN[f].name}</span> <small>×${inv[k]}</small></button>`; }).join('') : '<small style="opacity:.7">ไม่มีของในหมวดนี้</small>') + `</div>`
+    + `<div class="btabs">` + styleTabs.map(([c, n]) => `<button class="btn small${c === tab ? ' on' : ''}" data-btab="${c}">${n}</button>`).join('') + cats.map(([c, n]) => { const cnt = ks.filter(k => (FURN[k.slice(5)].cat || 'other') === c).length; return cnt ? `<button class="btn small${c === tab ? ' on' : ''}" data-btab="${c}">${n}</button>` : ''; }).join('') + `</div>`
+    + `<div class="bitems">` + (isStyle ? styleItems(tab) : shown.length ? shown.map(k => { const f = k.slice(5); return `<button class="btn small${!build.erase && build.sel === f ? ' on' : ''}" data-bf="${f}" title="${FURN[f].name}">${FURN[f].emoji}<span class="blbl"> ${FURN[f].name}</span> <small>×${inv[k]}</small></button>`; }).join('') : '<small style="opacity:.7">ไม่มีของในหมวดนี้</small>') + `</div>`
     + (isTouch ? '' : '<div class="bkeys">R หมุน • Del เก็บ • Ctrl+Z เลิกทำ • Esc ยกเลิกที่เลือก • ล้อเมาส์ซูม • ปุ่มขวาลากเลื่อน</div>');
+  el.querySelectorAll('[data-sty]').forEach(b => b.onclick = () => { const [k, v] = b.dataset.sty.split(':'); send({ t: 'house', a: 'style', k, v }); playSfx('click'); });
   el.querySelectorAll('[data-btab]').forEach(b => b.onclick = () => { build.tab = b.dataset.btab; playSfx('click'); renderBuild(); });
   el.querySelectorAll('[data-bf]').forEach(b => { b.onclick = () => { if (performance.now() - bfSuppress < 400) return; build.sel = b.dataset.bf; build.erase = false; build.pick = null; playSfx('click'); renderBuild(); }; bindDragNew(b, b.dataset.bf); });
   el.querySelector('[data-undo]').onclick = undoBuild;
@@ -641,6 +646,13 @@ function renderBuild() {
   if (pk) el.querySelector('[data-pickdel]').onclick = () => { send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; };
   el.querySelector('[data-erase]').onclick = () => { build.erase = !build.erase; if (build.erase) { build.sel = null; build.pick = null; } playSfx('click'); renderBuild(); };
   el.querySelector('[data-bexit]').onclick = () => toggleBuild(false);
+}
+function styleItems(tab) { // ตัวอย่างพื้น/วอลเปเปอร์ให้เลือก (สีจากตารางใน shared.js)
+  const isF = tab === 'floor', tbl = isF ? Shared.HOUSE_FLOORS : Shared.HOUSE_WALLS, order = isF ? Shared.HOUSE_FLOOR_ORDER : Shared.HOUSE_WALL_ORDER, cur = isF ? houseSt.fl : houseSt.wp;
+  return order.map(id => {
+    const o = tbl[id], bg = isF ? (o.kind === 'plank' ? `linear-gradient(90deg,${o.c[0]} 0 50%,${o.c[1]} 50% 75%,${o.c[2]} 75%)` : o.kind === 'tile' ? `conic-gradient(${o.c[0]} 25%,${o.c[1]} 0 50%,${o.c[0]} 0 75%,${o.c[1]} 0)` : `repeating-linear-gradient(0deg,${o.c[0]} 0 3px,${o.c[1]} 3px 6px)`) : `linear-gradient(${o.up[0]} 0 55%,${o.rail} 55% 62%,${o.lo[0]} 62%)`;
+    return `<button class="btn small swatch${id === cur ? ' on' : ''}" data-sty="${isF ? 'floor' : 'wall'}:${id}" title="${o.name}"><i style="background:${bg}"></i><span class="blbl"> ${o.name}</span></button>`;
+  }).join('');
 }
 function rotateBuild() { // หมุนชิ้นที่เลือกไว้ หรือหมุนทิศของชิ้นที่กำลังจะวาง
   if (!build.on) return;
@@ -979,7 +991,7 @@ let farmTab = 'gear';
 // ทุกร้านที่รับซื้อมีแท็บ 💰 ขาย ไว้ท้ายสุด (แท็บซื้อของร้านที่ไม่มีแท็บเดิม)
 const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '🌱 เมล็ดพันธุ์'], ['sell', '💰 ขายผลผลิต']], fish: [['gear', '🎣 อุปกรณ์ตกปลา'], ['sell', '🐟 ขายปลา']],
   food: [['buy', '🍜 ซื้ออาหาร'], ['cook', '👨‍🍳 ทำอาหาร'], ['sell', '💰 ขาย']], animal: [['feed', '🌾 อาหาร / ยา'], ['pets', '🐾 สัตว์เลี้ยง'], ['sell', '💰 ขาย']],
-  wood: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']], furn: [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['sell', '💰 ขาย']] };
+  wood: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']], furn: [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['divider', '🪟 ฉากกั้น'], ['sell', '💰 ขาย']] };
 const furnCatOf = k => (FURN[k.slice(5)] || {}).cat; // หมวดของที่ร้านเฟอร์นิเจอร์ (ดูจาก cat ใน FURN)
 // เมนูปลาใหม่ขายได้เฉพาะแท็บ 💰 ขาย ของร้านอาหาร (ไม่ขายใต้เมนูทำอาหารเดิม)
 const FISH_DISH_SELL_TAB = new Set(['dish_fishsoup', 'dish_sashimi', 'dish_fishburger', 'dish_fishpie']);
@@ -3095,6 +3107,39 @@ const ART = {
     const sw = Math.sin(now / 700) * W * 0.28; dot(g, X + sw, Y, 24, 3.5, 2, '#ff9a3c'); dot(g, X - sw * 0.7, Y, 20, 3, 1.8, '#e84a5f');
   },
 };
+// ฉากกั้น: แผ่นบางตั้งพื้น ด้านยาวที่เห็น = faceL (ตั้งตามแกน x) หรือ faceR (หมุนแล้วตามแกน y)
+const screenFrame = (g, X, Y, W, D, r, d, c) => { const f = r ? faceR : faceL; ibox(g, X, Y, W, D, 0, d.h, c); return f; };
+Object.assign(ART, {
+  screen_wood(g, X, Y, W, D, r, d) {
+    const f = screenFrame(g, X, Y, W, D, r, d, '#7a4f2a');
+    for (let k = 0; k < 3; k++) { const a = k / 3 + 0.02, b = (k + 1) / 3 - 0.02, c = k & 1 ? '#c98b4a' : '#b87a3c'; f(g, X, Y, W, D, a, b, 5, d.h - 6, c); f(g, X, Y, W, D, a + 0.03, b - 0.03, 9, d.h - 12, k & 1 ? '#d9a05c' : '#c98b4a'); }
+  },
+  screen_shoji(g, X, Y, W, D, r, d) {
+    const f = screenFrame(g, X, Y, W, D, r, d, '#5a3a1e');
+    f(g, X, Y, W, D, 0.03, 0.97, 4, d.h - 4, '#f6f0dc');
+    for (let k = 1; k < 4; k++) f(g, X, Y, W, D, k / 4 - 0.012, k / 4 + 0.012, 4, d.h - 4, '#6b4423');
+    for (const z of [d.h * 0.33, d.h * 0.66]) f(g, X, Y, W, D, 0.03, 0.97, z - 1, z + 1, '#6b4423');
+  },
+  screen_lattice(g, X, Y, W, D, r, d) {
+    const f = screenFrame(g, X, Y, W, D, r, d, '#6b4423');
+    f(g, X, Y, W, D, 0.04, 0.96, 6, d.h - 6, '#e8d6a0');
+    for (let k = 0; k <= 8; k++) f(g, X, Y, W, D, k / 8 * 0.9 + 0.035, k / 8 * 0.9 + 0.065, 6, d.h - 6, '#8b5a2b');
+    for (let z = 6; z < d.h - 6; z += 10) f(g, X, Y, W, D, 0.04, 0.96, z, z + 2.5, '#8b5a2b');
+  },
+  screen_glass(g, X, Y, W, D, r, d) {
+    ibox(g, X, Y, W, D, 0, 5, '#9aa0aa'); ibox(g, X, Y, W, D, d.h - 4, 4, '#9aa0aa');
+    ibox(g, X, Y, W * 0.97, D * 0.7, 5, d.h - 9, '#cfe8f5', { left: 'rgba(205,230,245,.7)', right: 'rgba(150,190,215,.75)', top: 'rgba(225,242,252,.8)' });
+    const f = r ? faceR : faceL; f(g, X, Y, W, D, 0.12, 0.2, 14, d.h - 12, 'rgba(255,255,255,.55)'); f(g, X, Y, W, D, 0.26, 0.29, 22, d.h - 12, 'rgba(255,255,255,.45)');
+  },
+  screen_bamboo(g, X, Y, W, D, r, d) {
+    const f = screenFrame(g, X, Y, W, D, r, d, '#7d6a2a');
+    for (let k = 0; k < 8; k++) { const a = k / 8 + 0.008, b = (k + 1) / 8 - 0.008; f(g, X, Y, W, D, a, b, 4, d.h - 3, k & 1 ? '#c9b458' : '#b8a24a'); f(g, X, Y, W, D, a, b, d.h * 0.45, d.h * 0.45 + 2, '#7d6a2a'); f(g, X, Y, W, D, a, b, d.h * 0.8, d.h * 0.8 + 2, '#7d6a2a'); }
+  },
+  lowwall(g, X, Y, W, D, r, d) {
+    ibox(g, X, Y, W, D, 0, d.h - 4, '#e8e1d0'); ibox(g, X, Y, W * 1.04, D * 1.4, d.h - 4, 4, '#c98b4a');
+    const f = r ? faceR : faceL; for (let k = 0; k < 4; k++) f(g, X, Y, W, D, k / 4 + 0.03, k / 4 + 0.22, 5, d.h - 8, '#d8d0bc');
+  },
+});
 function artGeneric(g, X, Y, W, D, r, d) { ibox(g, X, Y, W * 0.85, D * 0.85, 0, (d.h || 24) * 0.8, '#9aa0aa'); }
 const hits = []; // พื้นที่แตะของแต่ละชิ้นที่วาดในเฟรมนี้ (เรียงตามลำดับวาด ตัวท้ายสุดอยู่หน้าสุด)
 function drawFurnIso(g, it, now, alpha, ghost) {
@@ -3148,25 +3193,37 @@ function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง
   const g = c.getContext('2d'); g.translate(-ISO_B.x0, -ISO_B.y0);
   g.fillStyle = '#17110d'; g.fillRect(ISO_B.x0, ISO_B.y0, ISO_B.w, ISO_B.h);
   const hs = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
-  poly(g, [iso(FX0, FY1), iso(FX1, FY1), iso(FX1, FY1, -12), iso(FX0, FY1, -12)], '#8a5430', INK); // ความหนาแผ่นพื้น
-  poly(g, [iso(FX1, FY0), iso(FX1, FY1), iso(FX1, FY1, -12), iso(FX1, FY0, -12)], '#6b3f22', INK);
-  const PL = ['#c98a56', '#be7f4b', '#d29560', '#b87846'];
-  for (let row = 0, y = FY0; y < FY1; row++, y += 16) { // ไม้กระดานเรียงตามแกน x ต่อกันสลับรอยต่อ
-    let x = FX0 - Math.floor(hs(row, 7) * 96);
-    for (let k = 0; x < FX1; k++, x += 96) {
-      const xa = Math.max(x, FX0), xb = Math.min(x + 96, FX1); if (xb <= xa) continue;
-      const q = [iso(xa, y), iso(xb, y), iso(xb, y + 16), iso(xa, y + 16)];
-      poly(g, q, PL[Math.floor(hs(row, k) * 4)]);
-      g.strokeStyle = 'rgba(70,35,15,.55)'; g.lineWidth = 1; g.beginPath(); g.moveTo(...q[0]); g.lineTo(...q[3]); g.lineTo(...q[2]); g.lineTo(...q[1]); g.stroke();
-      g.strokeStyle = 'rgba(255,230,190,.16)'; g.beginPath(); g.moveTo(...q[0]); g.lineTo(...q[1]); g.stroke();
+  const FL = Shared.HOUSE_FLOORS[houseSt.fl] || Shared.HOUSE_FLOORS.oak, WP = Shared.HOUSE_WALLS[houseSt.wp] || Shared.HOUSE_WALLS.cream;
+  poly(g, [iso(FX0, FY1), iso(FX1, FY1), iso(FX1, FY1, -12), iso(FX0, FY1, -12)], FL.edge[0], INK); // ความหนาแผ่นพื้น
+  poly(g, [iso(FX1, FY0), iso(FX1, FY1), iso(FX1, FY1, -12), iso(FX1, FY0, -12)], FL.edge[1], INK);
+  if (FL.kind === 'plank') {
+    for (let row = 0, y = FY0; y < FY1; row++, y += 16) { // ไม้กระดานเรียงตามแกน x ต่อกันสลับรอยต่อ
+      let x = FX0 - Math.floor(hs(row, 7) * 96);
+      for (let k = 0; x < FX1; k++, x += 96) {
+        const xa = Math.max(x, FX0), xb = Math.min(x + 96, FX1); if (xb <= xa) continue;
+        const q = [iso(xa, y), iso(xb, y), iso(xb, y + 16), iso(xa, y + 16)];
+        poly(g, q, FL.c[Math.floor(hs(row, k) * FL.c.length)]);
+        g.strokeStyle = FL.seam; g.lineWidth = 1; g.beginPath(); g.moveTo(...q[0]); g.lineTo(...q[3]); g.lineTo(...q[2]); g.lineTo(...q[1]); g.stroke();
+        g.strokeStyle = 'rgba(255,230,190,.16)'; g.beginPath(); g.moveTo(...q[0]); g.lineTo(...q[1]); g.stroke();
+      }
     }
+  } else if (FL.kind === 'tile') { // กระเบื้อง 32 px: หมากรุกสลับสี หรือหินสุ่มโทน
+    for (let j = 0, y = FY0; y < FY1; j++, y += TS) for (let i = 0, x = FX0; x < FX1; i++, x += TS) {
+      const q = [iso(x, y), iso(Math.min(x + TS, FX1), y), iso(Math.min(x + TS, FX1), Math.min(y + TS, FY1)), iso(x, Math.min(y + TS, FY1))];
+      poly(g, q, houseSt.fl === 'check' ? FL.c[(i + j) & 1] : FL.c[hs(i, j) > 0.5 ? 1 : 0]);
+      g.strokeStyle = FL.seam; g.lineWidth = 1; g.beginPath(); g.moveTo(...q[3]); g.lineTo(...q[0]); g.lineTo(...q[1]); g.stroke();
+    }
+  } else { // พรมปูทั้งห้อง: ผืนเดียว มีเส้นทอสลับแถบและขอบเย็บ
+    poly(g, [iso(FX0, FY0), iso(FX1, FY0), iso(FX1, FY1), iso(FX0, FY1)], FL.c[0]);
+    for (let y = FY0, k = 0; y < FY1; y += 8, k++) if (k & 1) poly(g, [iso(FX0, y), iso(FX1, y), iso(FX1, Math.min(y + 8, FY1)), iso(FX0, Math.min(y + 8, FY1))], FL.c[1]);
+    g.strokeStyle = 'rgba(255,255,255,.22)'; g.lineWidth = 2; g.beginPath(); g.moveTo(...iso(FX0 + 10, FY0 + 10)); g.lineTo(...iso(FX1 - 10, FY0 + 10)); g.lineTo(...iso(FX1 - 10, FY1 - 10)); g.lineTo(...iso(FX0 + 10, FY1 - 10)); g.closePath(); g.stroke();
   }
   const WH = WALL_H;
   for (const wl of ['n', 'w']) { // ผนัง: วอลเปเปอร์ลายขีด + แผ่นไม้ครึ่งล่าง + ราว + บัวพื้น
     const u0 = wl === 'n' ? FX0 : FY0, u1 = wl === 'n' ? FX1 : FY1;
-    wallRect(g, wl, u0, u1, 34, WH, '#efe3c2'); for (let u = u0; u < u1; u += 20) wallRect(g, wl, u, Math.min(u + 10, u1), 34, WH, '#e2d1a4');
-    wallRect(g, wl, u0, u1, 0, 34, '#b9602f'); for (let u = u0 + 7; u < u1; u += 14) wallRect(g, wl, u, u + 1.5, 4, 33, '#8a4420');
-    wallRect(g, wl, u0, u1, 34, 38, '#d98a4b'); wallRect(g, wl, u0, u1, 0, 5, '#7a3f1d');
+    wallRect(g, wl, u0, u1, 34, WH, WP.up[0]); if (WP.pat === 'stripe') for (let u = u0; u < u1; u += 20) wallRect(g, wl, u, Math.min(u + 10, u1), 34, WH, WP.up[1]);
+    wallRect(g, wl, u0, u1, 0, 34, WP.lo[0]); for (let u = u0 + 7; u < u1; u += 14) wallRect(g, wl, u, u + 1.5, 4, 33, WP.lo[1]);
+    wallRect(g, wl, u0, u1, 34, 38, WP.rail); wallRect(g, wl, u0, u1, 0, 5, WP.skirt);
     const wins = wl === 'n' ? [4.5, 11, 17.5] : [4.5, 10];
     for (const wc of wins) { // หน้าต่างบานเกล็ด
       const uc = (wl === 'n' ? FX0 : FY0) + wc * TS, a = uc - 30, b = uc + 30;

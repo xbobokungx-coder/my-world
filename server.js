@@ -132,6 +132,7 @@ class World {
         if (vals.length && typeof vals[0] === 'string') build(key, fromGrid(h.items)); // บ้านรุ่นแรก (ช่องละชิ้น)
         else { // รุ่นปัจจุบัน: เก็บ id เดิมไว้ ตรวจกติกาทีละชิ้นตามลำดับ id
           const out = { items: {}, next: Math.max(1, +h.next || 1) };
+          if (S.HOUSE_FLOORS[h.fl]) out.fl = h.fl; if (S.HOUSE_WALLS[h.wp]) out.wp = h.wp; // พื้น/วอลเปเปอร์ที่เลือกไว้
           for (const [id, it] of Object.entries(h.items).sort((a, b) => a[0] - b[0])) {
             if (!it || !S.FURN[it.f]) continue;
             const res = S.houseCheck(out.items, it.f, S.snapQ(+it.x), S.snapQ(+it.y), it.r ? 1 : 0, { wl: it.wl, u: it.u });
@@ -158,6 +159,7 @@ class World {
   mapOf(p) { return p.scene ? this.houseMap() : this.map; }
   blockedFor(p, x, y) { return p.scene ? S.houseBlockedAt(this.houseMap(), this.houseRects(p.scene), x, y, p.x, p.y) : S.blockedAt(this.map, x, y); } // ในบ้านรวมกล่องเฟอร์นิเจอร์ (ถ้าอยู่ในกล่องอยู่แล้ว เช่นเพิ่งลุกจากเก้าอี้ เดินออกได้)
   nameOfKey(key) { return (this.saved[key] && this.saved[key].name) || key; }
+  houseStyle(key) { const h = this.houses[key] || {}; return { fl: h.fl || S.HOUSE_STYLE_DEFAULT.fl, wp: h.wp || S.HOUSE_STYLE_DEFAULT.wp }; }
   houseItemsPub(key) { const h = this.houses[key]; return h ? Object.entries(h.items).map(([i, it]) => Object.assign({ i: +i }, it)) : []; }
   houseBoard(p) { // ลีดเดอร์บอร์ดบ้านที่ตกแต่งแล้ว: เรียงตามมูลค่าเฟอร์นิเจอร์ แล้วตามจำนวนชิ้น
     const rows = [];
@@ -179,7 +181,7 @@ class World {
     p.scene = scene; p.x = x; p.y = y; p.sit = null; p.dir = 0;
     if (p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); }
     this.sceneBroadcast(scene, Object.assign({ t: 'p+', quiet: 1 }, this.pubFull(p)), p);
-    send(p, { t: 'scene', sc: scene, owner: scene ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene ? this.houseItemsPub(scene) : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
+    send(p, { t: 'scene', sc: scene, owner: scene ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene ? this.houseItemsPub(scene) : [], st: scene ? this.houseStyle(scene) : null, players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
     this.dirty = true;
   }
   enterHouse(p, key) {
@@ -217,6 +219,14 @@ class World {
         break;
       }
       case 'exit': this.leaveHouse(p); break;
+      case 'style': { // เปลี่ยนพื้น/วอลเปเปอร์ (เฉพาะบ้านตัวเอง ฟรี)
+        const key = p.scene;
+        if (!key || key !== p.key) return this.toast(p, 'ตกแต่งได้เฉพาะในบ้านของตัวเอง');
+        const h = this.houses[key]; if (!h) return;
+        if (m.k === 'floor' && S.HOUSE_FLOORS[m.v]) h.fl = m.v; else if (m.k === 'wall' && S.HOUSE_WALLS[m.v]) h.wp = m.v; else return;
+        this.sceneBroadcast(key, Object.assign({ t: 'hstyle' }, this.houseStyle(key))); this.sfx(p, 'plant'); this.dirty = true;
+        break;
+      }
       case 'place': case 'move': case 'rot': case 'remove': {
         const key = p.scene;
         if (!key || key !== p.key) return this.toast(p, 'ตกแต่งได้เฉพาะในบ้านของตัวเอง');
