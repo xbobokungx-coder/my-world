@@ -114,3 +114,19 @@ let goods = 0; const holders = [];
 for (const p of players) { let v = 0; for (const [i, n] of Object.entries((p.rec && p.rec.inv) || {})) { if (i === 'coin') continue; const f = S.itemInfo(i); if (f && f.sell) v += f.sell * n; } goods += v; holders.push(v); }
 holders.sort((a, b) => b - a);
 console.log(`มูลค่าของที่ตุน (ราคาฐาน) ${num(goods)} = ${(goods / Math.max(1, total)).toFixed(1)} เท่าของเหรียญ (เป้า ≤ 1.0) | 3 อันดับแรกถือ ${pct(holders.slice(0, 3).reduce((a, b) => a + b, 0), goods)}`);
+
+// ----- 8) ซื้ออะไร (event buy มีตั้งแต่ 25 ต.ค. 2026) และสรุปเกณฑ์ -----
+const PROD = new Set(['seed', 'feed', 'tool', 'animalbuy']); // ต้นทุนผลิต: ซื้อเพื่อหาเงินต่อ (เมล็ด อาหารสัตว์ เหยื่อ สัตว์)
+const buys = {}; let bProd = 0, bOther = 0;
+for (const e of evs) if (e.e === 'buy') { const b = buys[e.cat] = buys[e.cat] || { coin: 0, n: 0 }; b.coin += e.coin; b.n += e.q; if (PROD.has(e.cat)) bProd += e.coin; else bOther += e.coin; }
+console.log(`\n=== ซื้ออะไร (${days} วัน) ===`);
+if (!Object.keys(buys).length) console.log('(ยังไม่มีข้อมูล event buy)');
+else console.log(Object.entries(buys).sort((a, b) => b[1].coin - a[1].coin).map(([c, v]) => `${c}${PROD.has(c) ? '*' : ''} ${num(v.coin)}`).join(' | ') + '  (* = ต้นทุนผลิต)');
+let fin = 0, fout = 0, fspend = 0; // เงินออกที่ "ใช้จริง" = ทุกอย่างยกเว้นซื้อของผลิต
+for (const e of evs) if (e.e === 'coin' && e.why !== 'bank') { if (e.n > 0) fin += e.n; else { fout -= e.n; if (e.why !== 'buy') fspend -= e.n; } }
+fspend += bOther;
+const lastW = {}; for (const e of evs) if (e.e === 'wealth') lastW[e.room + '/' + e.p] = e;
+const wv = Object.values(lastW).map(w => w.coin + w.bank + w.goods + w.house);
+console.log(`\n=== สรุปเกณฑ์ (ECONOMY-PLAN.md 1B) ===`);
+console.log(`G5 Gini เหรียญ+ATM ผู้เล่นจริง ${gini(money).toFixed(2)} (เป้า ≤ 0.65)${wv.length >= 4 ? ` • รวมของ/บ้าน (event wealth ${wv.length} คน) ${gini(wv).toFixed(2)}` : ''}`);
+console.log(`เงินออก ÷ เงินเข้า ${fin ? (fout / fin).toFixed(2) : '-'} (เป้า 0.85–1.0) • เงินออกที่ใช้จริง (ไม่ใช่ต้นทุนผลิต) ${bProd + bOther ? pct(fspend, fout) : '❓ รอ event buy'} (เป้า ≥ 25%)`);

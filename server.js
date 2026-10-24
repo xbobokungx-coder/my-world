@@ -35,7 +35,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const PARTY = new Set(['pok', 'react', 'rps']); // เกมห้องหลายคน (ผู้เล่นหลายคน/บอท) — ดู partyHandle
 const TOOLS = new Set(['hand', 'hoe', 'water', 'rod', 'axe', 'medicine', ...Object.values(ANIMALS).map(a => a.feedItem), ...Object.keys(CROPS).map(c => 'seed_' + c)]);
 // ของที่ตลาดรับซื้อทั้งหมด (ราคาขึ้นลงตามอุปสงค์-อุปทาน)
-const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'log', 'hardwood', 'plank', ...S.COOK.map(c => c.id)];
+const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'log', 'hardwood', 'plank', ...S.COOK.map(c => c.id)];
 const replacer = (k, v) => (k[0] === '_' ? undefined : v);
 const send = (p, o) => { if (p.ws.readyState === 1) p.ws.send(JSON.stringify(o)); };
 const rodOf = inv => (inv.rod_3 ? 3 : inv.rod_2 ? 2 : 1);
@@ -51,7 +51,7 @@ const NPC_DEFS = [
 ];
 
 const CAT_NAME = { fish: 'ปลา', crop: 'ผัก/ผลไม้', animal: 'ผลผลิตสัตว์', wood: 'ไม้', dish: 'อาหาร' }; // ชื่อหมวดในข้อความแจ้งผู้เล่น
-const HOUSE_MSG = new Set(['m', 'act', 'held', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'house']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
+const HOUSE_MSG = new Set(['m', 'act', 'held', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'house', 'gift', 'greet']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
 class World {
   constructor(room) {
     this.room = room;
@@ -574,7 +574,13 @@ class World {
     const mk = {}; for (const k of Object.keys(this.market)) mk[k] = Math.round(this.market[k].m * 100) / 100;
     const an = {}; for (const a of this.animals) if (!a.dead) an[a.type] = (an[a.type] || 0) + 1;
     logEv(this.room, 'snap', { mk, chest: this.chest.coin, dead: this.chest.dead, an, online: this.players.size });
-    for (const p of this.players.values()) this.telFlush(p);
+    for (const p of this.players.values()) { this.telFlush(p); this.wealthLog(p); }
+  }
+  wealthLog(p) { // ความมั่งคั่งของผู้เล่น วันละครั้งต่อคน (ตอนออกจากเกม/รอบ snap): เหรียญ ATM มูลค่าของในกระเป๋า (ราคาฐาน) มูลค่าเฟอร์นิเจอร์ที่วาง
+    const day = this.today(); if (p.rec.wDay === day) return; p.rec.wDay = day;
+    let goods = 0; for (const [k, n] of Object.entries(p.rec.inv)) { if (k === 'coin') continue; const i = S.itemInfo(k); if (i && i.sell) goods += i.sell * n; }
+    const h = this.houses[p.key];
+    logEv(this.room, 'wealth', { p: p.key, coin: p.rec.inv.coin || 0, bank: this.bankOf(p).bal, goods, house: h ? S.houseScore(h.items).value : 0, lv: S.playLevel(p.rec.skills) });
   }
   exhausted(p) { return S.ENERGY.on && this.enOf(p).ex; }
   heavyAction(tool, k) { return ['hoe', 'water', 'axe', 'rod'].includes(tool) || (typeof tool === 'string' && tool.startsWith('seed_')) || (tool === 'hand' && !!(this.farm[k] && this.farm[k].c)); } // เครื่องมือ/การกระทำที่ถูกหยุดเมื่อเหนื่อย (นั่ง/เก็บไข่/ร้านค้า/ให้อาหารสัตว์ไม่ถูกหยุด)
@@ -765,7 +771,7 @@ class World {
     const st = this.starterOf(p); if (st.final) return;
     let changed = false;
     for (const s of S.STARTER) if (s.ev === ev && !st.done[s.id]) { st.done[s.id] = 1; changed = true; logEv(this.room, 'starter', { p: p.key, step: s.id, n: Object.keys(st.done).length, sec: p.rec.firstSeen ? Math.round((Date.now() - p.rec.firstSeen) / 1000) : null, ses: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000), joins: p.rec.joins || 1 }); this.add(p, 'coin', s.coin, 'starter'); this.toast(p, `✅ คู่มือเริ่มต้น: ${s.hint} (+🪙${s.coin})`); }
-    if (!changed) return;
+    if (!changed && !S.STARTER.every(s => st.done[s.id])) return; // ไม่มีข้อใหม่ แต่ครบทุกข้อแล้ว (คู่มือถูกย่อเหลือ 6 ข้อ) ก็ปิดคู่มือให้
     if (S.STARTER.every(s => st.done[s.id])) {
       st.final = true; this.add(p, 'coin', S.STARTER_FINAL.coin, 'starter'); for (const it of S.STARTER_FINAL.items) this.add(p, it, 1);
       this.addLog(`🎓 ${p.name} ผ่านคู่มือเริ่มต้นครบแล้ว!`);
@@ -774,6 +780,25 @@ class World {
     this.dirty = true; this.questPush(p);
   }
 
+  giftOpen(p) { // เปิดกล่องของขวัญต้อนรับ: ได้ของแต่งตัว 1 ชิ้นและสวมให้เลย
+    const item = p.rec.gift; if (!item) return; delete p.rec.gift; p.rec.giftItem = item; // ของขวัญขายคืนร้านไม่ได้ (กันสร้างบัญชีปลอมมาเอาเงิน)
+    const info = S.itemInfo(item); if (!info || !info.wear) return;
+    if (!p.rec.inv[item]) this.add(p, item, 1);
+    p.rec.wear[info.wear.cat] = info.wear.id; p.wear = p.rec.wear; this.dirty = true;
+    this.broadcastLook(p); send(p, { t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp });
+    logEv(this.room, 'gift_open', { p: p.key, item, ses: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000) });
+    this.sfxTo(p, 'levelup');
+  }
+  greet(p, id, k) { // ทักคนใหม่: โบกมือ/ส่งดอกไม้ ขึ้นเป็นข้อความแชทของผู้ทัก (ทุกคนเห็น) ทักคนเดิมได้ครั้งเดียว
+    const q = this.players.get(id | 0); if (!q || q === p || Date.now() - (q.rec.firstSeen || 0) > S.NEWBIE.greetMs) return;
+    q.greeted = q.greeted || new Set(); if (q.greeted.has(p.key)) return; q.greeted.add(p.key);
+    const text = k === 'flower' ? `🌸 ส่งดอกไม้ต้อนรับ ${q.name} สู่เมืองนะ!` : `👋 ยินดีต้อนรับ ${q.name}!`, now = Date.now();
+    this.chatLog.push({ name: p.name, text, t: now }); if (this.chatLog.length > 10) this.chatLog.shift();
+    this.broadcast({ t: 'chat', id: p.id, name: p.name, text });
+    this.toast(q, `${k === 'flower' ? '🌸' : '👋'} ${p.name} ทักทายต้อนรับคุณ!`); this.sfxTo(q, 'collect');
+    this.addPts(p, S.NEWBIE.greetPts);
+    logEv(this.room, 'welcome', { p: q.key, by: p.key, k: k === 'flower' ? 'flower' : 'wave', sec: Math.round((now - q.rec.firstSeen) / 1000), n: q.greeted.size });
+  }
   bookOf(p) { const b = p.rec.book = p.rec.book || {}; for (const c of Object.keys(S.BOOK)) if (!b[c] || typeof b[c] !== 'object') b[c] = {}; return b; }
   bookAdd(p, cat, id) {
     const def = Object.hasOwn(S.BOOK, cat) && S.BOOK[cat]; if (!def || !def.ids.includes(id)) return;
@@ -945,7 +970,7 @@ class World {
     if (!admin && this.banned && this.banned.has(key)) return { err: 'ชื่อนี้ถูกระงับโดยผู้ดูแล 🚫 กรุณาใช้ชื่ออื่น' };
     for (const q of this.players.values()) if (q.key === key) return { err: 'ชื่อนี้กำลังเล่นอยู่ ลองใช้ชื่ออื่น' };
     let rec = this.saved[key];
-    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10 }, mig2: true, xpv: 2, x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
+    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10 }, mig2: true, xpv: 2, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
     if (!rec.mig2) { rec.mig2 = true; rec.inv.bait = (rec.inv.bait || 0) + 10; } // แจกเหยื่อตกปลาชุดแรกให้ผู้เล่นเดิม (ระบบเหยื่อเพิ่งเพิ่ม)
     rec.name = name;
     if (!rec.firstSeen) rec.firstSeen = rec.lastSeen || Date.now(); // บัญชีเก่าก่อนมีตัวนับ: ใช้เวลาเข้าล่าสุดแทน (ใกล้เคียงเท่านั้น)
@@ -969,7 +994,7 @@ class World {
     const now = Date.now(), farm = {};
     for (const k in this.farm) farm[k] = this.pub(this.farm[k], now);
     send(p, {
-      t: 'w', admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
+      t: 'w', first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
       players: [...this.players.values()].filter(q => !q.scene).map(q => this.pubFull(q)),
       roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
@@ -979,6 +1004,9 @@ class World {
     send(p, { t: 'mkt', m: this.mktFor(p) });
     send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
+    if (rec.gift) send(p, { t: 'gift', item: rec.gift });
+    if (rec.joins === 1) this.broadcast({ t: 'newbie', id: p.id, name }, p); // ให้คนที่ออนไลน์ทักคนใหม่ (GROWTH-PLAN N1)
+    this.starterStep(p, '');
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
     this.broadcast(Object.assign({ t: 'on', voice: !!p.voice }, this.pubFull(p)), p); // รายชื่อออนไลน์ทุกฉาก
     this.sceneBroadcast(null, { t: 'p+', id: p.id, held: p.held || '', title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, pet: p.pet, pm: p.pm, pax: p.pax, pay: p.pay, psick: !!(p.pet && this.petSt(p, p.pet).sick), pname: p.pet ? this.petName(p, p.pet) : '', x: p.x, y: p.y }, p);
@@ -989,7 +1017,7 @@ class World {
     this.arcLeave(p);
     this.tradeCancel(p, 'ผู้เล่นออกจากเกม');
     if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
-    this.telFlush(p);
+    this.telFlush(p); this.wealthLog(p);
     logEv(this.room, 'leave', { p: p.key, sec: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000) });
     p.rec.catAt = Date.now();
     this.players.delete(p.id); this.addLog(`🚪 ${p.name} ออกไปแล้ว`);
@@ -1073,6 +1101,8 @@ class World {
         break;
       }
       case 'eat': this.eat(p, m.item); break;
+      case 'gift': this.giftOpen(p); break;
+      case 'greet': this.greet(p, m.id, m.k); break;
       case 'sellback': this.sellback(p, m.item); break;
       case 'pet': { const id = m.pet || ''; if (!id || p.rec.inv['pet_' + id] > 0) this.setPet(p, id, m.mode); break; }
       case 'petname': this.petRename(p, m.pet, m.name); break;
@@ -1321,6 +1351,7 @@ class World {
     if (!kind || typeof item !== 'string' || !S.SHOPS[kind].buy.includes(item) || !(p.rec.inv[item] > 0)) return;
     const v = S.sellbackValue(item), info = S.itemInfo(item);
     if (!v) return;
+    if (item === p.rec.giftItem) return this.toast(p, '🎁 ของขวัญต้อนรับขายคืนไม่ได้ เก็บไว้เป็นที่ระลึกนะ');
     this.add(p, item, -1); this.add(p, 'coin', v, 'sellback');
     if (info.wear && p.rec.wear[info.wear.cat] === info.wear.id) p.rec.wear[info.wear.cat] = S.WEAR_DEFAULT[info.wear.cat];
     if (item === 'lamp') p.rec.lamp = p.lamp = false;
@@ -1380,7 +1411,7 @@ class World {
     }
     const cost = info.buy * n;
     if ((p.rec.inv.coin || 0) < cost) return this.toast(p, 'เหรียญไม่พอ');
-    this.add(p, 'coin', -cost, 'buy');
+    this.add(p, 'coin', -cost, 'buy'); logEv(this.room, 'buy', { p: p.key, item, q: n, coin: cost, cat: info.cat || 'other' }); // ซื้ออะไร: แยกต้นทุนผลิต (เมล็ด อาหารสัตว์ เหยื่อ) กับของสะสม/ความสะดวก
     if (info.animal) { this.spawnAnimal(info.animal); this.toast(p, `ซื้อ${info.emoji} ${ANIMALS[info.animal].name}ตัวใหม่แล้ว!`); return; }
     this.add(p, item, n); if (info.furn) this.bookAdd(p, 'furn', info.furn);
     if (item === 'feed' || item === 'hay' || item === 'slop') this.event(p, 'buyfeed');
@@ -1438,10 +1469,11 @@ class World {
         const pool = FISH.filter(f => f.lv <= fl && !(rareCd && f.sell >= 100)).map(f => ({ f, w: f.w * (f.sell >= 100 ? 1 + 0.12 * (fl - 1) + 0.35 * (rod - 1) : 1) / (f.id === 'boot' ? 1 + rod : 1) * S.baitWeight(f, p.fish.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) })).filter(x => x.w > 0);
         let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
         for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
+        const firstFish = !(this.achOf(p.rec).cnt.fish > 0); if (firstFish) f = FISH.find(x => x.id === S.NEWBIE.firstFish) || f; // ปลาตัวแรกในชีวิตการันตีตัวสวย
         this.add(p, 'fish_' + f.id, 1);
         this.addXp(p, 'fish', f.xp); this.tire(p, 'fish', f.sell);
         if (f.sell >= 100 && S.ENERGY.on) { p.rec.rareAt = Date.now() + S.ENERGY.rareCdMs; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.ENERGY.rareCdMs / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
-        this.toast(p, `${perfect ? '🎯 เป๊ะ! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (f.sell >= 100) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
+        this.toast(p, firstFish ? `🎉 ปลาตัวแรกของคุณเป็น ${f.emoji} ${f.name}! โชคดีสุดๆ` : `${perfect ? '🎯 เป๊ะ! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (firstFish) this.addLog(`🎣 ${p.name} ตกปลาครั้งแรกได้${f.emoji} ${f.name}!`); if (f.sell >= 100) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
         this.event(p, 'fish', f.sell); this.bookAdd(p, 'fish', f.id);
         this.sfx(p, f.sell >= 100 ? 'catch_big' : 'catch');
       } else { this.toast(p, 'ดึงเบ็ดเร็วไป ปลาไม่ทันกิน'); this.sfx(p, 'miss'); }
@@ -1553,6 +1585,7 @@ class World {
       if (mine >= cap) return this.toast(p, `🌱 ปลูกค้างอยู่ครบ ${cap} ต้นแล้ว เก็บเกี่ยวก่อน หรือแบ่งที่ให้คนอื่นปลูกบ้างนะ (เลเวลชาวนาสูงขึ้นปลูกได้มากขึ้น)`);
       this.add(p, tool, -1);
       tile.c = tool.slice(5); tile.o = p.key; tile.on = p.name; tile.rm = 0; tile.g = 0; tile.m = 1 + 0.04 * (this.lv(p, 'farm') - 1);
+      if ((p.rec.quick || 0) < S.NEWBIE.quickSeeds && !this.starterOf(p).final) { p.rec.quick = (p.rec.quick || 0) + 1; tile.m = S.NEWBIE.quickMul; this.toast(p, `🌱 เมล็ดมือใหม่ โตไวพิเศษ! (${p.rec.quick}/${S.NEWBIE.quickSeeds}) รดน้ำแล้วรอแป๊บเดียว`); }
       this.tileUpdate(k, tile); this.addXp(p, 'farm', 2); this.tire(p, 'plant'); this.sfx(p, 'plant'); this.event(p, 'plant');
     } else if (tool === 'rod') {
       if (tt !== T.WATER) return this.toast(p, 'ต้องเลือกช่องที่เป็นน้ำ');

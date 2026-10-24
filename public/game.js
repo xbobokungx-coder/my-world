@@ -108,6 +108,7 @@ function handle(m) {
       roster.clear(); (m.roster || []).forEach(q => roster.set(q.id, mkPlayer(q)));
       npcs.clear(); (m.npcs || []).forEach(n => npcs.set(n.id, mkPlayer(n)));
       pets.clear(); (m.pets || []).forEach(q => pets.set(q.id, { id: q.id, kind: q.kind, v: q.v, x: q.x, y: q.y, tx: q.x, ty: q.y, dir: q.dir, dx: q.dir === 2 ? -1 : 1, anim: Math.random() * 6, moving: false }));
+      if (m.first) { slot = 0; selTool = 'hoe'; ls.set('mw_tool', 'hoe'); } // เข้าเกมครั้งแรก: ถือจอบพร้อมขุด (คู่มือข้อแรก)
       me = players.get(myId); updateLampBtn(); updatePetBtn(); syncDeaf();
       $('login').classList.add('hidden');
       ['hudTop', 'hotbar', 'chat', 'mini'].forEach(i => $(i).classList.remove('hidden'));
@@ -161,6 +162,8 @@ function handle(m) {
     case 'inv': inv = m.inv; renderHud(); refreshOpen(); updateLampBtn(); updatePetBtn(); break;
     case 'skills': skills = m.skills; refreshOpen(); break;
     case 'msg': toast(m.text); break;
+    case 'gift': showGift(m.item); break;
+    case 'newbie': showGreet(m.id, m.name); break;
     case 'mkt': Object.assign(market, m.m); refreshOpen(); break;
     case 'sfx': {
       let k = 1;
@@ -718,6 +721,27 @@ $('hcFriend').onclick = () => { closeHomeChoice(); openPlots(); };
 $('hcNo').onclick = closeHomeChoice;
 $('homeChoice').addEventListener('pointerdown', e => { if (e.target === $('homeChoice')) closeHomeChoice(); });
 const inHouseBld = (tx, ty) => tx >= Shared.HOUSE_BLD.x0 && tx <= Shared.HOUSE_BLD.x1 && ty >= Shared.HOUSE_BLD.y0 && ty <= Shared.HOUSE_BLD.y1;
+
+// กล่องของขวัญต้อนรับ (เข้าเกมครั้งแรก): กดเปิด → กล่องสั่น → เห็นของที่ได้ (เซิร์ฟเวอร์ให้ของและสวมให้ตอนเปิด)
+let giftItem = '';
+function showGift(item) { giftItem = item; $('giftBox').textContent = '🎁'; $('giftTitle').textContent = '🎁 ของขวัญต้อนรับ!'; $('giftText').textContent = 'เพื่อนใหม่ของเมืองได้กล่องของขวัญ 1 กล่อง'; $('giftBtn').textContent = 'เปิดกล่อง!'; $('giftBtn').disabled = false; $('gift').classList.remove('hidden'); }
+$('giftBtn').onclick = () => {
+  if (!giftItem) { $('gift').classList.add('hidden'); return; }
+  const item = giftItem, info = itemInfo(item); giftItem = ''; $('giftBtn').disabled = true; $('giftBox').classList.add('shake'); playSfx('click');
+  setTimeout(() => {
+    $('giftBox').classList.remove('shake'); $('giftBox').textContent = info ? info.emoji : '🎉';
+    $('giftTitle').textContent = '🎉 ได้ของแล้ว!'; $('giftText').textContent = info ? `${info.name} (สวมให้แล้ว เปลี่ยนได้ที่ร้านเสื้อผ้า)` : '';
+    $('giftBtn').textContent = 'ไปเริ่มเล่นกัน 🌱'; $('giftBtn').disabled = false;
+    send({ t: 'gift' });
+  }, 800);
+};
+// ป้ายทักคนใหม่: มีคนเข้าเมืองครั้งแรก กดโบกมือ/ส่งดอกไม้ (ข้อความขึ้นแชทให้ทุกคนเห็น) ปิดเองใน 30 วินาที
+let greetId = 0, greetT = 0;
+function showGreet(id, name) { greetId = id; $('greetText').textContent = `👋 ${name} เพิ่งมาถึงเมืองครั้งแรก! ทักทายหน่อยไหม`; $('greet').classList.remove('hidden'); clearTimeout(greetT); greetT = setTimeout(() => $('greet').classList.add('hidden'), 30000); }
+const greetSend = k => { if (greetId) send({ t: 'greet', id: greetId, k }); greetId = 0; $('greet').classList.add('hidden'); };
+$('greetWave').onclick = () => greetSend('wave');
+$('greetFlower').onclick = () => greetSend('flower');
+$('greetNo').onclick = () => { greetId = 0; $('greet').classList.add('hidden'); };
 
 // กล่องยืนยันในเกม แทน confirm() ที่บางเบราว์เซอร์มือถือ/เว็บวิวไม่แสดง
 let askYes = null;
