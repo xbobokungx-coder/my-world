@@ -616,8 +616,8 @@ function renderBuild() {
   const fd = build.sel && FURN[build.sel], pd = pk && FURN[pk.f];
   const hint = build.erase ? '🧹 แตะของที่จะเก็บคืนเข้ากระเป๋า'
     : fd ? `${fd.emoji} ${fd.name}: ${isTouch ? 'ลากลงห้อง (ปล่อยนิ้วเพื่อวาง) หรือแตะที่' : 'คลิกที่'}${fd.wall ? 'ผนัง' : 'พื้น'}เพื่อวาง${fd.small ? ' • ของเล็กวางบนโต๊ะ/เตียงได้' : ''}`
-    : pd ? `${pd.emoji} ${pd.name}: ลากหรือแตะที่ใหม่เพื่อย้าย • หมุน/เก็บคืนได้ที่ปุ่มด้านล่าง`
-    : ks.length ? 'ลากของจากรายการลงห้อง • แตะของในห้องเพื่อเลือก/ย้าย' : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ริมถนนหลัก)';
+    : pd ? `${pd.emoji} ${pd.name}: ลากไปปล่อยที่ใหม่ได้เลย • หมุน/เก็บคืนได้ที่ปุ่มด้านล่าง`
+    : ks.length ? 'ลากของในห้องเพื่อย้าย • ลากของจากรายการลงห้อง • แตะของเพื่อเลือกหมุน/เก็บ' : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ริมถนนหลัก)';
   const cats = [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['craft', '🔨 ประดิษฐ์'], ['rare', '⭐ พิเศษ']];
   const tab = build.tab && cats.some(c => c[0] === build.tab) ? build.tab : 'living';
   const shown = ks.filter(k => (FURN[k.slice(5)].cat || 'other') === tab);
@@ -3161,7 +3161,6 @@ function drawHouseOverlay(now) {
   if (build.erase) { if (hv != null) outlineItem(furn.get(hv), 'rgba(255,90,90,.95)'); return; }
   if (dragB && dragB.moved) { const it = furn.get(dragB.i); if (it) g = ghostFor(it.f, ax, ay, dragB.i, it.r); }
   else if (build.sel) g = ghostFor(build.sel, ax, ay, null, build.rot);
-  else if (build.pick != null) { const it = furn.get(build.pick); if (it) g = ghostFor(it.f, ax, ay, build.pick, it.r); }
   else { if (hv != null && !isTouch) outlineItem(furn.get(hv), 'rgba(255,255,255,.6)'); return; }
   if (!g) return;
   const gi = { i: -1, f: g.f, x: g.x, y: g.y, r: g.r, z: g.z, wl: g.wl, u: g.u }, ok = g.res.ok;
@@ -3239,11 +3238,9 @@ function buildClick(sx, sy, hit) {
     if (!g.res.ok) { toast(g.res.why); return; }
     send({ t: 'house', a: 'place', f: build.sel, x: g.x, y: g.y, r: build.rot, wl: g.wl, u: g.u }); return;
   }
-  if (hit != null) { build.pick = hit === build.pick ? null : hit; renderBuild(); return; } // แตะของ = เลือก (แตะซ้ำ = เลิกเลือก)
-  if (build.pick == null) { toast('แตะของในบ้านเพื่อเลือก แล้วแตะที่ใหม่เพื่อย้าย'); return; }
-  const it = furn.get(build.pick), g = ghostFor(it.f, sx, sy, build.pick, it.r);
-  if (!g.res.ok) { toast(g.res.why); return; }
-  send({ t: 'house', a: 'move', i: build.pick, x: g.x, y: g.y, wl: g.wl, u: g.u });
+  if (hit != null) { build.pick = hit === build.pick ? null : hit; renderBuild(); return; } // แตะ/คลิกของ = เลือก (ซ้ำ = เลิกเลือก) ย้ายด้วยการลากแล้วปล่อย ไม่มีเงาตามเมาส์
+  if (build.pick != null) { build.pick = null; renderBuild(); return; } // แตะพื้นที่ว่าง = เลิกเลือก
+  toast('ลากของในห้องเพื่อย้าย หรือลากของจากรายการลงห้อง');
 }
 
 function frameTail(now, wall) { // กลางวัน/กลางคืน + นาฬิกา + แผนที่ย่อ (ใช้ทั้งในเมืองและในบ้าน)
