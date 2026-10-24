@@ -2,7 +2,7 @@
 // วาดที่ 16 px ต่อช่อง (U) แล้วให้ game.js ขยาย 2 เท่าเป็นช่อง 32 px แบบไม่เบลอ (imageSmoothingEnabled = false)
 // ทุกสไปรต์สร้างครั้งเดียวแล้วเก็บแคช มีเส้นขอบเข้ม 1 px สี OUT และแสงมาจากซ้ายบน
 const PixelArt = (() => {
-  const { W, H, T, HOUSING, plotAt } = Shared;
+  const { W, H, T, HOUSING, plotAt, isPaved } = Shared;
   const U = 16, OUT = '#2a1b14';
 
   // ---------- utils ----------
@@ -57,12 +57,13 @@ const PixelArt = (() => {
     { const q = []; for (let y = 0; y < H; y++) for (let x2 = 0; x2 < W; x2++) if (tileT(x2, y) === WA) depth[y][x2] = 99; else q.push([x2, y]);
       while (q.length) { const [qx, qy] = q.shift(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = qx + dx, ny = qy + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; if (depth[ny][nx] > depth[qy][qx] + 1) { depth[ny][nx] = depth[qy][qx] + 1; q.push([nx, ny]); } } } }
     const types = new Uint8Array(PW * PH);
+    const pv = (tx, ty) => tx >= 0 && ty >= 0 && tx < W && ty < H && tileT(tx, ty) === P && isPaved(tx, ty); // ลานปูหิน: ขอบคมตามช่อง ไม่ให้หญ้า/ดินรุกเข้ามา
     for (let py = 0; py < PH; py++) for (let px = 0; px < PW; px++) {
       const t0 = tileT(px >> 4, py >> 4); let t = t0;
-      if (BLEND[t0]) {
-        const jx = (vnoise(px, py, 7, 11) - .5) * 9, jy = (vnoise(px, py, 7, 12) - .5) * 9;
-        const t1 = tileT(Math.floor((px + jx) / U), Math.floor((py + jy) / U));
-        if (BLEND[t1]) t = t1;
+      if (BLEND[t0] && !pv(px >> 4, py >> 4)) {
+        const jx = (vnoise(px, py, 7, 11) - .5) * 5, jy = (vnoise(px, py, 7, 12) - .5) * 5; // ขอบถนนสั่นเล็กน้อยให้ดูเป็นธรรมชาติแต่ยังตรงกับผังช่อง
+        const tx1 = Math.floor((px + jx) / U), ty1 = Math.floor((py + jy) / U), t1 = tileT(tx1, ty1);
+        if (BLEND[t1] && !pv(tx1, ty1)) t = t1;
       }
       types[py * PW + px] = t;
     }
@@ -74,6 +75,12 @@ const PixelArt = (() => {
       if (t === G) {
         const v = vnoise(px, py, 56, 1) * .65 + vnoise(px, py, 14, 2) * .35;
         col = GRASS[clamp(Math.floor(v * 4.2 + dith(px, py) - 1.1), 0, 3)];
+      } else if (t === P && pv(px >> 4, py >> 4)) { // ปูหินก้อนสี่เหลี่ยมสลับแถว มีรอยต่อ ขอบนอกเข้ม
+        const row = py >> 3, bx = (px + (row & 1) * 4) >> 3, lx = (px + (row & 1) * 4) & 7, ly = py & 7, bh = hash(bx, row, 31);
+        col = hx(bh < .33 ? '#cfc4aa' : bh < .66 ? '#c4b99e' : '#d6ccb4');
+        if (lx === 0 || ly === 0) col = hx('#a79c80'); else if (ly === 1) col = hx('#e2d9c2'); else if (lx === 7 && ly > 4) col = hx('#b8ad92');
+        if (h < .02) col = hx('#8f8468');
+        if (!pv((px - 1) >> 4, py >> 4) && (px & 15) === 0 || !pv((px + 1) >> 4, py >> 4) && (px & 15) === 15 || !pv(px >> 4, (py - 1) >> 4) && (py & 15) === 0 || !pv(px >> 4, (py + 1) >> 4) && (py & 15) === 15) col = hx('#7d7258'); // ขอบลาน
       } else if (t === P) {
         col = PATH[clamp(Math.floor(vnoise(px, py, 18, 4) * 3 + dith(px, py) * .6 - .3), 0, 2)];
         if (h < .025) col = hx('#e2c08d'); else if (h > .985) col = hx('#a77a4a');

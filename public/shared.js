@@ -557,6 +557,13 @@
     // ป้ายลานตู้เกม (ไม่ใช่อาคาร): ตู้เกมวางเรียงเป็นรูปตัว U อยู่ด้านล่างป้าย
     { kind: 'sign',   x0: 32, y0: 13, x1: 35, y1: 13, counter: [],                  name: 'Arcade Hub',     sign: '🎮', roof: '#6a3fb5', wall: '#8b5a2b' },
   ];
+  // พื้นปูหิน (ลานหน้าร้าน ลานกองไฟ ลานตู้เกม ลานหนัง ทางเข้าบ้าน) ต่างจากถนนดิน ให้ผังเมืองอ่านง่าย: ถนน = ดิน • ลาน = ปูหิน (ใช้ตอนวาดพื้นใน pixelart.js)
+  const PAVED_RECTS = [{ x0: 30, y0: 14, x1: 37, y1: 18 }, { x0: 24, y0: 24, x1: 33, y1: 31 }, { x0: 14, y0: 30, x1: 19, y1: 37 }, { x0: 19, y0: 5, x1: 21, y1: 5 }, { x0: 33, y0: 5, x1: 35, y1: 5 }, { x0: 26, y0: 5, x1: 28, y1: 5 }];
+  const pavedSet = new Set();
+  { const add = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) pavedSet.add(y * 1000 + x); };
+    for (const r of PAVED_RECTS) add(r.x0, r.y0, r.x1, r.y1);
+    for (const b of BUILDINGS) if (b.counter.length) add(b.x0, b.y1 + 1, b.x1, b.y1 + 2); } // หน้าร้านทุกร้าน 2 แถว (แถวเคาน์เตอร์ + แถวที่ยืน)
+  const isPaved = (x, y) => pavedSet.has(y * 1000 + x);
   // ตู้เกม 2 แถว แถวละ 4 ตู้ วางสลับฟันปลาเว้นห่างตู้ละ 1 ช่อง (ไม่ชิดกัน) เดินในแถวกลาง (y=16) ใช้ได้ทั้งสองแถว
   // game = null คือยังไม่เปิด เพิ่มเกมใหม่โดยใส่ game และเขียนกติกาฝั่งเซิร์ฟเวอร์
   const CABINETS = [
@@ -891,10 +898,10 @@
     // ถนน
     road(8, 22, 45, 23);   // ถนนหลัก
     road(13, 18, 14, 21);  // ประตูแปลงผัก
-    road(26, 13, 27, 21);  // ร้านเมล็ดพันธุ์
+    road(26, 13, 27, 13);  // ลานหน้าร้านเมล็ดพันธุ์ (ไม่มีถนนสายขนานชิดถนนกลางแล้ว: หน้าร้านต่อเข้าถนนกลางทางช่อง 25)
     road(34, 24, 35, 29); road(34, 29, 39, 29); // ร้านตกปลา
-    road(41, 17, 42, 21);  // ร้านปศุสัตว์
-    road(44, 11, 45, 21); road(43, 16, 43, 16);  // ไปคอกไก่/ทุ่งวัว
+    road(41, 17, 42, 17); road(43, 16, 43, 17); // ลานหน้าร้านปศุสัตว์ ต่อถนนไปคอกสัตว์ (ตัดถนนขนานที่ชิดกันออก)
+    road(44, 11, 45, 21);  // ไปคอกไก่/ทุ่งวัว
     road(30, 14, 37, 18);  // พื้นลานในวงตัว U ของตู้เกม
     road(32, 19, 32, 21);  // ทางเข้าลานตู้เกม (ตรงกลางฐาน U) ต่อกับถนนหลัก
     road(17, 24, 18, 29); road(12, 29, 23, 29); // ลานเล็กๆ ระหว่างร้านเสื้อผ้า (ซ้าย) กับร้านอาหาร (ขวา) และทางเดินหน้าเคาน์เตอร์
@@ -902,6 +909,7 @@
     road(34, 29, 43, 29);                        // ต่อทางไปร้านยานพาหนะ
     road(19, 5, 21, 5);                          // ทางจากร้านเสื้อผ้า (ซ้ายมือตัวบ้าน) ลงมาต่อถนนหลัก
     road(33, 5, 35, 5);                          // ทางจากร้านเฟอร์นิเจอร์ (ขวามือตัวบ้าน) ลงมาต่อถนนหลัก
+    for (const b of BUILDINGS) if (b.counter.length) for (let x = b.x0; x <= b.x1; x++) setIfGrass(x, b.y1 + 2, T.PATH); // แถวยืนหน้าเคาน์เตอร์ปูทางทุกร้าน
     road(PLAZA.x0, PLAZA.y0, PLAZA.x1, PLAZA.y1); // ลานรวมพลกลางหมู่บ้าน (กองไฟ + ที่นั่ง)
     road(14, 30, 19, 37);                         // ลานดูหนังกลางแปลง
     road(2, HOUSING.y1 + 1, 42, HOUSING.y1 + 1); road(23, HOUSING.y1 + 1, 24, 21); // ทางหน้าย่านบ้านและทางลงมาต่อถนนหลัก
@@ -982,7 +990,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
