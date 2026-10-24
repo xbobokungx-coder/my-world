@@ -23,6 +23,7 @@ function farm(lv) {
   for (const [k, c] of Object.entries(S.CROPS)) {
     if (c.lv > lv) continue;
     const grow = c.time / m, waters = Math.ceil(grow / wet), acts = 3 + waters; // ขุด ปลูก เก็บ + รดน้ำทุกครั้งที่ดินแห้ง
+    if (S.cropCan && S.canTier({ can_2: lv >= 3, can_3: lv >= 6 }) < S.cropCan(c)) continue; // ยังไม่มีบัวที่พืชนี้ต้องใช้
     const ppm = Math.min(cap / (grow / 60000), M.apm / acts);                 // ต้นต่อนาที: ติดเพดานแปลงหรือแรงงาน
     const coin = ppm * (c.sell * M.cropPrice - c.seed) * 60, xp = ppm * (c.xp + 1 + 2 + waters) * 60;
     if (!best || coin > best.coin) best = { pick: k, coin, xp, gross: ppm * c.sell * 60, cost: ppm * c.seed * 60, pieces: ppm * 60, cat: 'crop' };
@@ -30,11 +31,11 @@ function farm(lv) {
   return best;
 }
 function fishPool(lv, rod, tier) {
-  return S.FISH.filter(f => f.lv <= lv).map(f => ({ f, w: f.w * (f.sell >= 100 ? 1 + 0.12 * (lv - 1) + 0.35 * (rod - 1) : 1) / (f.id === 'boot' ? 1 + rod : 1) * S.baitWeight(f, tier) })).filter(x => x.w > 0);
+  return S.FISH.filter(f => f.lv <= lv).map(f => ({ f, w: S.fishWeight(f, lv, rod, tier) })).filter(x => x.w > 0);
 }
 function fishCpm(lv, rod) { return 60 / (8.75 * Math.max(0.4, 1 - 0.05 * (lv - 1)) * (1 - 0.12 * (rod - 1)) + M.fishOver) * M.fishHit; }
 function fish(lv) {
-  const rod = lv >= 6 ? 3 : lv >= 3 ? 2 : 1, cpm = fishCpm(lv, rod);
+  const rod = lv >= 9 ? 4 : lv >= 6 ? 3 : lv >= 3 ? 2 : 1, cpm = fishCpm(lv, rod);
   let best = null;
   for (const t of [1, 2, 3]) {
     const b = S.BAITS[t]; if (b.lv && lv < b.lv) continue;
@@ -70,10 +71,10 @@ function animal(lv) {
     if (A.lv > lv) continue;
     const per = A.cap / ((A.time[0] + A.time[1]) / 2 * sp / 60000); // รอบผลิตต่อนาทีของเล้าเต็ม
     const prod = S.itemInfo(A.product), feed = S.itemInfo(A.feedItem);
-    cyc += per; xpc += per * (A.xp + 3); coinc += per * ((prod.sell || 0) * 1.5 * 0.65 - feed.buy); gr += per * (prod.sell || 0) * 1.5; fc += per * feed.buy;
+    cyc += per; xpc += per * (S.animalXp ? S.animalXp(A.xp + 3, lv) : A.xp + 3); const yld = 1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS); coinc += per * ((prod.sell || 0) * yld * 0.65 - feed.buy); gr += per * (prod.sell || 0) * yld; fc += per * feed.buy;
   }
   const f = Math.min(1, M.apm / 2 / cyc); // ให้อาหาร + เก็บ = 2 การกระทำต่อรอบ
-  return { pick: 'เล้าเต็ม', coin: coinc * f * 60, xp: xpc * f * 60, gross: gr * f * 60, cost: fc * f * 60, pieces: cyc * 1.5 * f * 60, cat: 'animal' };
+  return { pick: 'เล้าเต็ม', coin: coinc * f * 60, xp: xpc * f * 60, gross: gr * f * 60, cost: fc * f * 60, pieces: cyc * (1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS)) * f * 60, cat: 'animal' };
 }
 function cook(lv) {
   // นาทีที่ต้องใช้หาวัตถุดิบ 1 ชิ้น เมื่ออาชีพอื่นเลเวลเท่ากัน: ปลาถูกสุด/ผักถูกสุด/ไข่ = เวลาลงมือ (ไม่นับรอโต)

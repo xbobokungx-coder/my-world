@@ -55,7 +55,7 @@ const isTouch = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in wi
 if (isTouch) document.body.classList.add('touch');
 ['gesturestart', 'gesturechange', 'contextmenu'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
 const lvl = s => levelOf(skills[s]);
-const rodLevel = () => (inv.rod_3 ? 3 : inv.rod_2 ? 2 : 1);
+const rodLevel = () => (inv.rod_4 ? 4 : inv.rod_3 ? 3 : inv.rod_2 ? 2 : 1);
 const axeLevel = () => (inv.axe_3 ? 3 : inv.axe_2 ? 2 : inv.axe_1 ? 1 : 0);
 
 // ---------- login ----------

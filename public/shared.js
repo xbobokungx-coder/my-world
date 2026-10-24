@@ -189,6 +189,8 @@
   const DAY_MS = 12 * 60 * 1000;                       // หน่วย "วัน" ของเศรษฐกิจ (ดอกเบี้ย ผักสุกค้าง สัตว์ป่วย ตลาด) = 12 นาที
   const FARM_REGROW_MS = DAY_MS;                       // แปลงที่ถางแล้วแต่ไม่มีใครปลูกหรือถางต่อเกินเวลานี้ (นับเฉพาะตอนมีคนออนไลน์) หญ้าขึ้นกลับเป็นเหมือนเดิม ต้องถางใหม่
   const FARM_CAP = { base: 20, perLv: 2, max: 40 };       // เพดานจำนวนต้นที่ผู้เล่นหนึ่งคนปลูกค้างในแปลงกลางได้พร้อมกัน (ฐาน + เลเวลชาวนา×perLv) กันคนเดียวปลูกเต็มจนคนอื่นไม่มีที่ ช่องว่างหลังเก็บเกี่ยวนับคืนทันที
+  // พืชชั้นสูงต้องมีบัวรดน้ำระดับสูงถึงปลูกได้: Lv6–7 บัวทองแดง • Lv8+ บัวทอง (ใช้เงินระหว่างทาง) • ลองให้พืชใหญ่กินโควตาแปลงมากกว่าแล้ว XP/ชม. ของ Lv9–10 ตกต่ำกว่า Lv7 จึงไม่ใช้
+  const cropCan = c => (c.lv >= 8 ? 3 : c.lv >= 6 ? 2 : 1);
   const CLOCK_MS = 24 * 60 * 1000;                     // 1 รอบกลางวัน-กลางคืนบนนาฬิกาเกม = 24 นาทีจริง (แยกจาก DAY_MS เพื่อไม่ให้เศรษฐกิจช้าลง)
   const TREE = { cap: 110, growMs: 20000 };            // เพดานต้นไม้ในแมพ (ตัดทั้งแมพก็ไม่ใช่ทางรวยสุด) + งอกใหม่ทุก growMs
   const WATER_MS = 90000;                              // ดินเปียกนานเท่าไร
@@ -214,23 +216,24 @@
   };
 
   // เมล็ดพืช: lv = เลเวลชาวนาที่ปลดล็อก, time = เวลาโต (ms) เมื่อรดน้ำต่อเนื่อง, xp = XP ตอนเก็บเกี่ยว
+  // ราคาเมล็ดลด 25% (25 ต.ค. 2026) ชาวนาเคยได้กำไรน้อยสุดในทุกอาชีพ (tools/econsim.js) เมล็ด ≈ 38–45% ของราคาขาย
   // หลักการตั้งราคา: ใช้เวลาโตนานราคาสูง • กำไรต่อวินาทีต่อแปลง ≈ 0.20-0.25 (ต่ำกว่าสายอื่น เพราะปลูกได้ทีละหลายสิบแปลง)
   const CROPS = {
-    carrot:     { name: 'แครอท',      emoji: '🥕', seed: 10, sell: 20,  time: 60000,  lv: 1, xp: 5 },
-    cabbage:    { name: 'กะหล่ำปลี',   emoji: '🥬', seed: 15, sell: 28,  time: 80000,  lv: 1, xp: 7 },
-    corn:       { name: 'ข้าวโพด',     emoji: '🌽', seed: 20, sell: 39,  time: 100000, lv: 2, xp: 9 },
-    tomato:     { name: 'มะเขือเทศ',   emoji: '🍅', seed: 25, sell: 50,  time: 120000, lv: 3, xp: 12 },
-    eggplant:   { name: 'มะเขือม่วง',  emoji: '🍆', seed: 35, sell: 67,  time: 140000, lv: 4, xp: 16 },
-    strawberry: { name: 'สตรอว์เบอร์รี', emoji: '🍓', seed: 45, sell: 84,  time: 160000, lv: 5, xp: 20 },
-    pumpkin:    { name: 'ฟักทอง',      emoji: '🎃', seed: 60, sell: 102, time: 200000, lv: 6, xp: 26 },
-    potato:     { name: 'มันฝรั่ง',     emoji: '🥔', seed: 18,  sell: 35,  time: 90000,  lv: 2, xp: 10 },
-    chili:      { name: 'พริก',        emoji: '🌶️', seed: 28,  sell: 55,  time: 130000, lv: 3, xp: 14 },
-    broccoli:   { name: 'บรอกโคลี',     emoji: '🥦', seed: 38,  sell: 72,  time: 150000, lv: 4, xp: 18 },
-    cherry:     { name: 'เชอร์รี',      emoji: '🍒', seed: 55,  sell: 99, time: 180000, lv: 5, xp: 22 },
-    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 70,  sell: 116, time: 230000, lv: 6, xp: 28 },
-    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 85,  sell: 143, time: 270000, lv: 7, xp: 34 },
-    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 110, sell: 188, time: 320000, lv: 9, xp: 42 },
-    melon:      { name: 'แตงโม',       emoji: '🍉', seed: 90, sell: 150, time: 260000, lv: 8, xp: 38 },
+    carrot:     { name: 'แครอท',      emoji: '🥕', seed: 8, sell: 20,  time: 60000,  lv: 1, xp: 5 },
+    cabbage:    { name: 'กะหล่ำปลี',   emoji: '🥬', seed: 11, sell: 28,  time: 80000,  lv: 1, xp: 7 },
+    corn:       { name: 'ข้าวโพด',     emoji: '🌽', seed: 15, sell: 39,  time: 100000, lv: 2, xp: 9 },
+    tomato:     { name: 'มะเขือเทศ',   emoji: '🍅', seed: 19, sell: 50,  time: 120000, lv: 3, xp: 12 },
+    eggplant:   { name: 'มะเขือม่วง',  emoji: '🍆', seed: 26, sell: 67,  time: 140000, lv: 4, xp: 16 },
+    strawberry: { name: 'สตรอว์เบอร์รี', emoji: '🍓', seed: 34, sell: 84,  time: 160000, lv: 5, xp: 20 },
+    pumpkin:    { name: 'ฟักทอง',      emoji: '🎃', seed: 45, sell: 102, time: 200000, lv: 6, xp: 26 },
+    potato:     { name: 'มันฝรั่ง',     emoji: '🥔', seed: 14,  sell: 35,  time: 90000,  lv: 2, xp: 10 },
+    chili:      { name: 'พริก',        emoji: '🌶️', seed: 21,  sell: 55,  time: 130000, lv: 3, xp: 14 },
+    broccoli:   { name: 'บรอกโคลี',     emoji: '🥦', seed: 28,  sell: 72,  time: 150000, lv: 4, xp: 18 },
+    cherry:     { name: 'เชอร์รี',      emoji: '🍒', seed: 41,  sell: 99, time: 180000, lv: 5, xp: 22 },
+    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 52,  sell: 116, time: 230000, lv: 6, xp: 28 },
+    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 64,  sell: 143, time: 270000, lv: 7, xp: 34 },
+    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 82, sell: 188, time: 320000, lv: 9, xp: 42 },
+    melon:      { name: 'แตงโม',       emoji: '🍉', seed: 68, sell: 150, time: 260000, lv: 8, xp: 38 },
   };
   // ปลา: lv = เลเวลชาวประมงที่เริ่มตกได้, w = น้ำหนักความน่าจะเป็น (หายาก = ราคาแพง: ราคาแปรผันตามความหายาก)
   // XP ปลา ≈ 6 × ราคา^0.36 (ปลาแพงให้ XP มากขึ้นแต่ไม่ตามราคา) ให้ XP/ชม. ใกล้ชาวนาที่เลเวลเดียวกัน ตรวจด้วย node tools/levelsim.js
@@ -284,7 +287,7 @@
   // ความทนทานเครื่องมือ: ใช้งานทุกครั้งสึกหรอ 1 หน่วย ใช้ครบแล้วใช้ไม่ได้จนกว่าจะซ่อมที่ร้านเสียเหรียญ (ค่าซ่อมคิดตามส่วนที่สึกหรอ) = รายจ่ายที่เกิดขึ้นสม่ำเสมอ
   const DURABILITY = {
     hoe:   { max: [0, 120, 120, 120], fix: [0, 24, 24, 24],  shop: 'farm',   name: 'จอบ' },
-    rod:   { max: [0, 100, 140, 200], fix: [0, 30, 72, 168], shop: 'fish',   name: 'เบ็ดตกปลา' },
+    rod:   { max: [0, 100, 140, 200, 280], fix: [0, 30, 72, 168, 400], shop: 'fish',   name: 'เบ็ดตกปลา' },
     axe:   { max: [0, 90, 140, 220],  fix: [0, 36, 96, 216], shop: 'wood',   name: 'ขวาน' },
   };
   // อัตราสึกหรอ: เกจเท่าเดิม แต่ใช้ 1 ครั้งสึก base หน่วย (เดิม 1) และ "ความร้อน" สะสมเมื่อใช้ถี่ๆ ต่อเนื่อง: ทุกครั้งที่ใช้ +1, เย็นลง cool ต่อวินาที
@@ -293,8 +296,8 @@
   // ซ่อมได้จำกัด: ซ่อมแต่ละครั้งความทนทานสูงสุดลดลง decay ของค่าเดิม ค่าซ่อมแพงขึ้น growth ต่อครั้ง ซ่อมครบ maxFixes ครั้งแล้วซ่อมไม่ได้อีก ต้องซื้อใหม่ (ราคา TOOL_PRICE)
   // สมดุล: ค่าซ่อมเต็ม = pct × ราคาซื้อ × (1 + growth × ครั้งที่ซ่อมมาแล้ว) แต่ได้ความทนทานน้อยลงเรื่อยๆ → ซ่อมครั้งที่ ~4 ขึ้นไปต่อหน่วยการใช้งานแพงกว่าซื้อใหม่
   const REPAIR = { decay: 0.15, maxFixes: 3, growth: 0.5, pct: 0.25 };
-  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900], axe: [0, 50, 220, 700] };
-  const tierN = t => Math.max(1, Math.min(3, t || 1));
+  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500], axe: [0, 50, 220, 700] };
+  const tierN = t => Math.max(1, Math.min(4, t || 1)); // ระดับ 4 มีเฉพาะคันเบ็ด
   const durMax = (tool, tier, fixes) => Math.max(1, Math.floor(DURABILITY[tool].max[tierN(tier)] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fixes || 0))));
   const toolPrice = (tool, tier) => TOOL_PRICE[tool][tierN(tier)];
   // ค่าซ่อมครั้งถัดไป (ซ่อมแล้วเต็มที่ความทนทานสูงสุดใหม่ที่ต่ำลง) เทียบกับความเสียหายของค่าสูงสุดปัจจุบัน
@@ -324,15 +327,18 @@
   // ความอิ่มตัวของตลาดต่อ "หมวด" (ต่อผู้เล่น): เดิมแต่ละชนิดอิ่มตัวแยกกัน คนขายเยอะจึงสลับชนิดหนีได้ (ข้อมูลจริง: ขายทีละ ~4 ชิ้น หลายสิบชนิด ได้ราคา ~100% ของราคาฐาน)
   // ตอนนี้ขายของหมวดเดียวกันต่อเนื่อง ต่อให้สลับชนิด ราคาทั้งหมวดก็ลดลงด้วย (การลดต่อชิ้นแบ่งครึ่ง: ครึ่งหนึ่งเข้าตลาดของชนิดนั้น อีกครึ่งเข้าตลาดของหมวด) และฟื้นช้าๆ ตามเวลา (recover ของช่องว่างต่อนาที แม้ออฟไลน์) • ไม่มีเพดาน/ลิมิตรายวัน
   // ความอิ่มตัวของหมวด: ขายหมวดไหนเยอะ หมวดนั้นตกเร็ว (ตามปริมาณ) แต่หมวดอื่นฟื้นเร็วขึ้น spread ต่อชิ้น สูงสุด spreadMax
-  const CATFAT = { min: 0.3, recover: 0.04, spread: 0.01, spreadMax: 0.25 };
+  // perCoin (B3 ใน ECONOMY-PLAN.md): ราคาต่อชิ้นในชุดลดลงตาม "มูลค่า" ของชิ้นนั้น = ราคาฐาน × perCoin (เดิมลดชิ้นละ MARKET.drop เท่ากันทุกชนิด) ของถูกลดน้อย ของแพงลดมาก ขายของแพงเป็นภูเขาโดนกดเร็วเท่าของถูกที่มูลค่าเท่ากัน
+  //   0.00015 = ของราคา 67 ลดชิ้นละ 1% (เท่าเดิม) • แครอท 20 ลด 0.3% • มะม่วง 188 ลด 2.8% • ชุดเลี้ยงฉลอง 330 ลด 5% (ไม่เกิน dropMax) เลือกจาก tools/econsim.js (G2 ผ่าน Gini 0.37 ชาวนายังมีกำไร)
+  const CATFAT = { min: 0.3, recover: 0.03, spread: 0.01, spreadMax: 0.25, perCoin: 0.00015, dropMax: 0.1 };
   const CAT_KEYS = ['fish', 'crop', 'animal', 'wood', 'dish', 'other'];
   const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'].includes(k) ? 'animal' : ['log', 'hardwood', 'plank'].includes(k) ? 'wood' : 'other';
   // ขายเป็นชุดใหญ่ (ถือของได้ไม่จำกัดจำนวน): คิดราคาทีละชิ้นตามชนิด ราคาต่อชิ้นลดลงเชิงเส้นชิ้นละ 1% ของราคาฐาน (MARKET.drop) จนถึงพื้น 20% แล้วคงที่
   // ตัวอย่างขาย 100 ชิ้นเมื่อราคาตั้งต้น 100%: ชิ้นที่ 1 = 100%, 2 = 99% … 80 = 21%, ชิ้นที่ 81-100 = 20% รวม 5,240 จากราคาฐาน 100/ชิ้น (กด "ขายทั้งหมด" คำนวณทั้งชุดให้เลย)
   // ตลาดจำการขายด้วยการลดเท่ากันทุกชิ้น (server แบ่งเข้าตลาดชนิด/ส่วนตัว/หมวด) ขายรวดหรือทยอยขายติดกันทีละชิ้นจึงได้เงินเท่ากัน ต่างกันเฉพาะ "รอให้ตลาดฟื้น" ที่ได้ราคาดีขึ้น
+  const sellDrop = base => CATFAT.perCoin ? Math.min(CATFAT.dropMax, base * CATFAT.perCoin) : MARKET.drop; // ตัวคูณราคาที่ลดต่อชิ้น (ตามมูลค่า)
   function sellQuote(base, m, q) { // ราคารวมเมื่อขาย q ชิ้นต่อเนื่อง และตัวคูณใหม่ • ราคาต่อชิ้นไม่ต่ำกว่า MARKET.min ของราคาฐาน
-    let total = 0;
-    for (let i = 0; i < q; i++) { total += Math.max(1, Math.round(base * Math.max(MARKET.min, m))); m = Math.max(MARKET.min, m - MARKET.drop); }
+    let total = 0; const drop = sellDrop(base);
+    for (let i = 0; i < q; i++) { total += Math.max(1, Math.round(base * Math.max(MARKET.min, m))); m = Math.max(MARKET.min, m - drop); }
     return { total, m };
   }
   // สัตว์ที่เลี้ยงได้ (ใช้ร่วมกันทั้งโลก): cap = จำนวนสูงสุด, feedItem = อาหารที่กิน
@@ -355,6 +361,9 @@
     capybara: { name: 'คาปิบาร่า', emoji: '🦫', price: 900, kind: 'capy', v: 0, say: 'ฟี้~ 🦫' },
   };
   const PETCARE = { food: 40, hungerTick: 1, sickBelow: 25, sickChance: 0.12, sickDieMs: DAY_MS }; // ป่วยแล้วไม่รักษาเกิน 1 วันในเกม (นับเฉพาะตอนมีคนออนไลน์) สัตว์เลี้ยงจะตาย ต้องซื้อใหม่ // อาหาร 1 ชิ้นเพิ่มความอิ่ม 40 • ความอิ่มลด 1 ทุก 15 วินาทีที่พาออกมา (เต็มอยู่ได้ ~25 นาที) ต่ำกว่า 25 มีโอกาสป่วยทุกรอบ
+  const ANIMAL_XP = { from: 5, perLv: 0.2 }; // XP เลี้ยงสัตว์ ×(1 + perLv × (เลเวล − from)) เมื่อเลเวลเกิน from (สัตว์ปลดครบที่ Lv5 แล้ว XP/ชม. ตันที่ 52% ของชาวนา ดู tools/levelsim.js)
+  const animalXp = (xp, lv) => Math.round(xp * (1 + ANIMAL_XP.perLv * Math.max(0, lv - ANIMAL_XP.from)));
+  const ANIMAL_BONUS = 0.25; // โอกาสได้ผลผลิต ×2 เมื่อเก็บจากสัตว์ที่ตัวเองเลี้ยง (เดิม 0.5 ลดเมื่อ 25 ต.ค. 2026: เลี้ยงสัตว์ได้มากกว่าอาชีพอื่นใน tools/econsim.js)
   const ANIMAL_GRACE_MS = 4 * 60 * 1000;   // สัตว์ที่หิวจนหมดแล้ว ถ้าไม่มีใครให้อาหารภายใน 4 นาทีจะตาย
   const PLAYER_HUNGER = { tickMs: 15000, start: 80, sitMs: 5000, sitGain: 1, workMul: 1.8, idleMul: 0.5, workMs: 20000 }; // ทำกิจกรรม (ตัดไม้/ตกปลา/ปลูก/ให้อาหารสัตว์ ฯลฯ ภายใน workMs) หิวเร็ว ×workMul • เดินเฉยๆ/ไม่ทำอะไร หิวช้า ×idleMul • // ผู้เล่นหิวลง 1 แต้มทุก 15 วินาที (เต็ม 100 อยู่ได้ ~25 นาที) ออฟไลน์ไม่ลด
   // บัวรดน้ำ 3 ระดับ: cap = ตักน้ำได้ครั้งละกี่ครั้งรด (หมดต้องกลับไปตักที่สระ), wet = ดินเปียกนานแค่ไหนหลังรด (ms), ต้องมีเลเวลชาวนาตามกำหนดถึงซื้อได้
@@ -368,14 +377,18 @@
   const FISH_GAUGE = { per: 1000, perRod: 70, half: 0.07, halfRod: 0.015, window: 4200, lag: 60,
     // สุ่มใหม่ทุกครั้งที่ปลากินเบ็ด: จุดกึ่งกลางโซน cMin–cMax, ความเร็วตัวชี้ ×perVar, ความกว้างโซน ×halfVar, จุดเริ่มของตัวชี้ (จับทางไม่ได้)
     // กดโดนกลางโซนจริงๆ (ในระยะ perfect × ครึ่งโซน) = ได้ปลาตามอัตราปกติเต็มที่ ถ้าโดนแค่ขอบโซนปลาแพงจะเจอยากลง (edgeMul ตามกลุ่มราคาปลา 0–3)
-    cMin: 0.2, cMax: 0.8, perVar: [0.75, 1.2], halfVar: [0.85, 1.1], perfect: 0.4, edgeMul: [1, 0.75, 0.45, 0.3] };
+    cMin: 0.2, cMax: 0.8, perVar: [0.75, 1.2], halfVar: [0.85, 1.1], perfect: 0.4, edgeMul: [1, 0.75, 0.45, 0] };
   const gaugePos = (f, t) => { const ph = ((t - f.gt0) / f.per) % 2; return ph < 1 ? ph : 2 - ph; };
   // lag: ชดเชยเวลาส่งข้อมูล (เช็คทั้งตอนกดจริงและย้อนหลังเล็กน้อย) ให้คนเน็ตช้าไม่เสียเปรียบ
   const gaugeDist = (f, t) => { const c = f.c === undefined ? 0.5 : f.c; return Math.min(Math.abs(gaugePos(f, t) - c), Math.abs(gaugePos(f, t - FISH_GAUGE.lag) - c)); };
   const gaugeHit = (f, t) => gaugeDist(f, t) <= f.half;
   // "เป๊ะ" = ตำแหน่งตัวชี้ (ชดเชยหน่วง lag แบบเดียวกันทุกครั้ง ไม่ขยายโซนข้างเดียว) อยู่ในแกนกลางโซน
   const gaugeCore = (f, t) => Math.abs(gaugePos(f, t - FISH_GAUGE.lag / 2) - (f.c === undefined ? 0.5 : f.c)) <= f.half * FISH_GAUGE.perfect; // ชดเชยหน่วงครึ่งเดียว: คนเน็ตเร็ว/ช้าผิดพลาดไม่เกินครึ่งหนึ่งของแกนกลาง
-  const RODS = { 1: { name: 'คันเบ็ดไม้ไผ่' }, 2: { name: 'คันเบ็ดไฟเบอร์', price: 250, lv: 3 }, 3: { name: 'คันเบ็ดคาร์บอน', price: 900, lv: 6 } };
+  const RODS = { 1: { name: 'คันเบ็ดไม้ไผ่' }, 2: { name: 'คันเบ็ดไฟเบอร์', price: 250, lv: 3 }, 3: { name: 'คันเบ็ดคาร์บอน', price: 900, lv: 6 }, 4: { name: 'คันเบ็ดไทเทเนียม', price: 2500, lv: 9 } };
+  // คันเบ็ดปลดความหายากเป็นขั้น (fishClass: 0 = ราคา < 20, 1 = < 60, 2 = < 120, 3 = 120+): ไม้ไผ่ตกได้ถึงกลุ่ม 1 • ไฟเบอร์ถึงกลุ่ม 2 • คาร์บอนขึ้นไปได้ทุกกลุ่ม
+  // ปลาราคา ≥ 100 เจอบ่อยขึ้นตามเลเวล (+12%/เลเวล) และคันเบ็ด (+35%/ระดับ) • ปลากลุ่ม 3 ต้องกด "เป๊ะ" (FISH_GAUGE.edgeMul[3] = 0) • ตกปลา ≥ 100 ได้แล้วพักรอบ RARE_CD_MS
+  const ROD_MAXCLASS = [0, 1, 2, 3, 3], RARE_CD_MS = 6 * 60 * 1000;
+  const fishWeight = (f, fl, rod, bait) => fishClass(f) > ROD_MAXCLASS[rod] ? 0 : f.w * (f.sell >= 100 ? 1 + 0.12 * (fl - 1) + 0.35 * (rod - 1) : 1) / (f.id === 'boot' ? 1 + rod : 1) * baitWeight(f, bait);
 
   // เสื้อผ้า: ซื้อแล้วสวมได้ (ราคา 0 = มีให้ฟรีตั้งแต่ต้น) สีของเสื้อ/กางเกง/หมวกเลือกเองได้ฟรีในแท็บ "ตัวละคร"
   const WEAR = {
@@ -418,7 +431,7 @@
   ];
   // ห้องครัวที่ร้านอาหาร: ทำอาหารจากวัตถุดิบข้ามสาย (ปลา + ผัก + ไข่/นม) ได้ราคาขายสูงกว่าขายของดิบแยกหลายเท่า
   // in: c = หมวด (fish = ปลาชนิดใดก็ได้ [ใช้ชนิดที่ถูกสุดก่อน], crop = ผัก, egg = ไข่ไก่/ไข่เป็ด) หรือ k = ไอเทมระบุชนิด
-  const COOK_FEE = 0.2; // ค่าเช่าเตา = สัดส่วนของราคาขายอาหาร จ่ายเป็นเหรียญทุกครั้งที่ทำ
+  const COOK_FEE = 0.3; // ค่าเช่าเตา = สัดส่วนของราคาขายอาหาร จ่ายเป็นเหรียญทุกครั้งที่ทำ (0.2 → 0.3 เมื่อ 25 ต.ค. 2026: เชฟได้มากกว่าอาชีพอื่นใน tools/econsim.js)
   const COOK_CATS = { fish: { name: 'ปลา/สัตว์น้ำ', emoji: '🐟' }, crop: { name: 'ผัก/ผลไม้', emoji: '🥕' }, egg: { name: 'ไข่', emoji: '🥚' } };
   // เชฟ (อาชีพที่ 5): แต่ละสูตรปลดล็อกตามเลเวลเชฟ (lv) ได้ XP เชฟ (xp) และใช้เวลาทำ (time มิลลิวินาที = เตาต้องพักก่อนทำจานถัดไป)
   // XP สูตร = XP เดิม × (2.3 − 0.08×เลเวลสูตร) (ปรับ 25 ต.ค. 2026) ให้ XP/ชม. ของเชฟรวมเวลาหาวัตถุดิบใกล้ชาวนา ตรวจด้วย node tools/levelsim.js
@@ -659,7 +672,7 @@
   // ร้านแต่ละสาย: buy = สินค้าที่ขาย, sell = คำนำหน้าไอเทมที่ร้านรับซื้อ
   const SHOPS = {
     farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: Object.keys(CROPS).map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
-    fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3'],                  sell: ['fish_'] },
+    fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3', 'rod_4'],                  sell: ['fish_'] },
     animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3'], sell: ['log', 'hardwood', 'plank'] },
@@ -855,8 +868,8 @@
   const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, woodXp, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
-    ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, CAT_KEYS, sellCat, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
+    ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);
