@@ -37,7 +37,7 @@ const sims = L.simulate();
 const agents = [];
 for (const mins of [30, 60, 120, 240]) for (const focus of [...SK, 'mix']) for (const start of [0, 14]) agents.push({ id: `${focus}-${mins}m-d${start}`, mins, focus, start, xp: Object.fromEntries(SK.map(k => [k, 0])), coin: 50, assets: 0, wish: wishlist(), took: {}, earned: 0, mkt: {} });
 
-const supplyPerMin = { wood: L.M.treeRegen * (2 + 0.16), animal: null }; // ของส่วนรวมต่อนาทีทั้งห้อง (หน่วย = ชิ้น) • สัตว์คิดจากเล้าเต็มของเลเวลสูงสุด
+const supplyPerMin = { wood: sims.wood[S.MAX_LV - 1].pieces / 60, animal: null }; // เพดานไม้ทั้งห้อง = ที่คนเลเวลสูงสุดฟันได้ทั้งหมด // ของส่วนรวมต่อนาทีทั้งห้อง (หน่วย = ชิ้น) • สัตว์คิดจากเล้าเต็มของเลเวลสูงสุด
 supplyPerMin.animal = sims.animal[S.MAX_LV - 1].pieces / 60;
 const share = { wood: {}, animal: {} };
 const perDay = [];

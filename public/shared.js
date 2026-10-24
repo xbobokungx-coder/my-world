@@ -263,8 +263,48 @@
   // ช่างไม้: ตัดต้นไม้ด้วยขวาน (ขวานแรงกว่าตัดเร็วกว่า) ได้ไม้ท่อน หายากได้ไม้เนื้อแข็งราคาแพง
   const AXES = { 1: { name: 'ขวานหิน', price: 50, power: 1 }, 2: { name: 'ขวานเหล็ก', price: 220, lv: 3, power: 2 }, 3: { name: 'ขวานเหล็กกล้า', price: 700, lv: 6, power: 3 } };
   const TREE_HP = 4;                       // ต้องฟันกี่แต้มถึงล้ม (ขวานหิน = 4 ครั้ง, เหล็ก 2, เหล็กกล้า 2)
-  const WOOD = { log: { sell: 16, xp: 5 }, hardwood: { sell: 66, xp: 14, chance: 0.16 }, xpPerLv: 0.15 }; // xpPerLv: XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
+  const WOOD = { log: { sell: 16, xp: 5 }, hardwood: { sell: 66, xp: 14, chance: 0.16 }, xpPerLv: 0.1 }; // xpPerLv (0.15 → 0.1 เมื่อมีต้นไม้หลายชนิด 25 ต.ค. 2026): XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
   const woodXp = (xp, lv) => Math.round(xp * (1 + WOOD.xpPerLv * (lv - 1)));
+  // ของที่ได้จากต้นไม้ (ขายที่ร้านช่างไม้ หมวด "ไม้" ไม่เสื่อม) • xp = XP ช่างไม้ต่อชิ้นก่อนคูณเลเวล (≈ 0.3 XP ต่อเหรียญเหมือนไม้ท่อน)
+  const WOOD_ITEMS = {
+    log:       { name: 'ไม้ท่อน',      emoji: '🪵', sell: WOOD.log.sell,      xp: WOOD.log.xp },
+    hardwood:  { name: 'ไม้เนื้อแข็ง',  emoji: '🟫', sell: WOOD.hardwood.sell, xp: WOOD.hardwood.xp },
+    bamboo:    { name: 'ไม้ไผ่',       emoji: '🎋', sell: 9,   xp: 3 },
+    shoot:     { name: 'หน่อไม้',      emoji: '🌱', sell: 12,  xp: 3 },
+    pinewood:  { name: 'ไม้สน',        emoji: '🌲', sell: 18,  xp: 7 },
+    resin:     { name: 'ยางสน',        emoji: '🍯', sell: 32,  xp: 10 },
+    palmwood:  { name: 'ไม้มะพร้าว',    emoji: '🌴', sell: 20,  xp: 8 },
+    coconut:   { name: 'ลูกมะพร้าว',    emoji: '🥥', sell: 30,  xp: 6 },
+    teak:      { name: 'ไม้สัก',        emoji: '🍂', sell: 36,  xp: 13 },
+    goldwood:  { name: 'ไม้ราชพฤกษ์',   emoji: '🌼', sell: 48,  xp: 16 },
+    kunflower: { name: 'ดอกคูน',        emoji: '💛', sell: 28,  xp: 8 },
+    rosewood:  { name: 'ไม้พะยูง',      emoji: '🟥', sell: 96, xp: 30 },
+  };
+  // ต้นไม้หลายชนิด (B5 ใน ECONOMY-PLAN.md): lv/axe = เลเวลช่างไม้และระดับขวานที่ต้องมี • hp = แต้มฟัน (ขวานหิน 1/ครั้ง เหล็ก 2 เหล็กกล้า 3)
+  // drop = ได้แน่ [ชิ้น, จำนวน] (ชิ้นแรกมีโอกาส +1 อีก 4%/เลเวล) • bonus = ลุ้น [ชิ้น, โอกาส] (+1%/เลเวล, +10% ช่วง Happy Village)
+  // w = น้ำหนักตอนงอกใหม่ • where = ที่เกิดได้ (water ใกล้น้ำ ≤ 4 ช่อง • sand ใกล้ทราย ≤ 3 ช่อง • north แถว y < 14 • deep ห่างทาง/อาคาร 4 ช่อง)
+  const TREE_KINDS = {
+    broad:   { name: 'ต้นไม้ใบกว้าง', emoji: '🌳', lv: 1, axe: 1, hp: 4,  w: 45, drop: [['log', 2]],                    bonus: [['hardwood', WOOD.hardwood.chance]] },
+    bamboo:  { name: 'กอไผ่',        emoji: '🎋', lv: 1, axe: 1, hp: 2,  w: 60, drop: [['bamboo', 2]],                 bonus: [['shoot', 0.15]], where: 'water' },
+    pine:    { name: 'ต้นสน',        emoji: '🌲', lv: 2, axe: 1, hp: 5,  w: 15, drop: [['pinewood', 2]],               bonus: [['resin', 0.12]], where: 'north' },
+    coconut: { name: 'ต้นมะพร้าว',    emoji: '🌴', lv: 3, axe: 1, hp: 5,  w: 40, drop: [['palmwood', 1], ['coconut', 1]], bonus: [['coconut', 0.5]], where: 'sand' },
+    teak:    { name: 'ต้นสัก',        emoji: '🍂', lv: 4, axe: 2, hp: 8,  w: 10, drop: [['teak', 1], ['log', 1]],       bonus: [['hardwood', 0.25]] },
+    gold:    { name: 'ต้นราชพฤกษ์',   emoji: '🌼', lv: 6, axe: 3, hp: 8,  w: 5,  drop: [['goldwood', 1]],               bonus: [['kunflower', 0.3]] },
+    rose:    { name: 'ต้นพะยูง',      emoji: '🟥', lv: 8, axe: 3, hp: 14, w: 2,  drop: [['rosewood', 1]],               bonus: [['rosewood', 0.1]], where: 'deep' },
+  };
+  const treeWhereOk = (m, x, y, where) => {
+    if (!where) return true;
+    if (where === 'north') return y < 14;
+    // ต้นไม้ต้องห่างของที่ไม่ใช่หญ้า 2 ช่องอยู่แล้ว (treeSpotOk) ระยะที่หาน้ำ/ทรายจึงต้องเกิน 2
+    const R = where === 'water' ? 4 : where === 'sand' ? 3 : 4, want = where === 'water' ? [T.WATER] : where === 'sand' ? [T.SAND] : null;
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const t = m[y + dy] && m[y + dy][x + dx]; if (t === undefined) continue;
+      if (want ? want.includes(t) : (t !== T.GRASS && t !== T.TREE)) return !!want; }
+    return !want;
+  };
+  const pickTreeKind = (m, x, y, rnd) => { // สุ่มชนิดต้นไม้ที่ช่องนี้ตามที่เกิดได้และน้ำหนัก
+    const ok = Object.entries(TREE_KINDS).filter(([, k]) => treeWhereOk(m, x, y, k.where)); let t = rnd() * ok.reduce((a, [, k]) => a + k.w, 0);
+    for (const [id, k] of ok) if ((t -= k.w) < 0) return id; return 'broad';
+  };
   // สัตว์ป่วย: ป่วยได้พร้อมกันไม่เกิน max ตัว (รวมทุกชนิด) รักษาด้วยยาตัวเดียวกัน ป่วยแล้วถ้าไม่รักษาจะตายเร็วกว่าหิวปกติ
   const SICK = { max: 1, graceMs: 150000, checkMs: DAY_MS, chance: 0.3 }; // สัตว์ป่วยทีละ 1 ตัวเท่านั้น สุ่มวันละครั้ง (1 วันในเกม = 12 นาทีที่มีคนออนไลน์) โอกาส 30% วันไหนไม่ป่วยก็ข้ามไปวันถัดไปเลย
   const SELLBACK = 0.7;                    // ขายของที่ซื้อมา (เสื้อผ้า คันเบ็ด ขวาน ตะเกียง) คืนร้านได้ 70% ของราคาซื้อ (หัก 30%)
@@ -331,7 +371,7 @@
   //   0.00015 = ของราคา 67 ลดชิ้นละ 1% (เท่าเดิม) • แครอท 20 ลด 0.3% • มะม่วง 188 ลด 2.8% • ชุดเลี้ยงฉลอง 330 ลด 5% (ไม่เกิน dropMax) เลือกจาก tools/econsim.js (G2 ผ่าน Gini 0.37 ชาวนายังมีกำไร)
   const CATFAT = { min: 0.3, recover: 0.03, spread: 0.01, spreadMax: 0.25, perCoin: 0.00015, dropMax: 0.1 };
   const CAT_KEYS = ['fish', 'crop', 'animal', 'wood', 'dish', 'other'];
-  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'].includes(k) ? 'animal' : ['log', 'hardwood', 'plank'].includes(k) ? 'wood' : 'other';
+  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'].includes(k) ? 'animal' : (k === 'plank' || Object.hasOwn(WOOD_ITEMS, k)) ? 'wood' : 'other';
   // ขายเป็นชุดใหญ่ (ถือของได้ไม่จำกัดจำนวน): คิดราคาทีละชิ้นตามชนิด ราคาต่อชิ้นลดลงเชิงเส้นชิ้นละ 1% ของราคาฐาน (MARKET.drop) จนถึงพื้น 20% แล้วคงที่
   // ตัวอย่างขาย 100 ชิ้นเมื่อราคาตั้งต้น 100%: ชิ้นที่ 1 = 100%, 2 = 99% … 80 = 21%, ชิ้นที่ 81-100 = 20% รวม 5,240 จากราคาฐาน 100/ชิ้น (กด "ขายทั้งหมด" คำนวณทั้งชุดให้เลย)
   // ตลาดจำการขายด้วยการลดเท่ากันทุกชิ้น (server แบ่งเข้าตลาดชนิด/ส่วนตัว/หมวด) ขายรวดหรือทยอยขายติดกันทีละชิ้นจึงได้เงินเท่ากัน ต่างกันเฉพาะ "รอให้ตลาดฟื้น" ที่ได้ราคาดีขึ้น
@@ -462,7 +502,7 @@
   const FOOD = {
     meal_bread: 15, meal_sandwich: 25, meal_soup: 32, meal_rice: 40, // อาหารร้าน ฟื้นความอิ่มน้อยกว่าเมนูที่ทำเองทุกสูตร (ต่ำสุดของเมนูทำเองคือ 45)
     crop_carrot: 6, crop_cabbage: 8, crop_corn: 12, crop_tomato: 8, crop_eggplant: 10, crop_strawberry: 10, crop_pumpkin: 15, crop_melon: 15,
-    crop_potato: 12, crop_chili: 6, crop_broccoli: 10, crop_cherry: 10, crop_grape: 12, crop_pineapple: 15, crop_mango: 18,
+    crop_potato: 12, crop_chili: 6, crop_broccoli: 10, crop_cherry: 10, crop_grape: 12, crop_pineapple: 15, crop_mango: 18, shoot: 6, coconut: 20,
     egg: 8, milk: 15, truffle: 5, duck_egg: 8,
     dish_grill: 45, dish_omelet: 55, dish_seafood: 70, dish_feast: 100,
     dish_fishsoup: 50, dish_sashimi: 55, dish_fishburger: 80, dish_fishpie: 90,
@@ -638,11 +678,13 @@
     crop: { name: 'พืชผล',      emoji: '🥬', ids: Object.keys(CROPS),                               coin: 250, rare: 'fountain' },
     furn: { name: 'เฟอร์นิเจอร์', emoji: '🛋️', ids: Object.keys(FURN).filter(k => !FURN[k].rare),      coin: 400, rare: 'cat' },
     meal: { name: 'อาหาร',      emoji: '🍜', ids: MEALS.map(m => m.id),                              coin: 100, rare: 'flag' },
+    wood: { name: 'ไม้และของจากป่า', emoji: '🌳', ids: Object.keys(WOOD_ITEMS),                       coin: 300 }, // ไม่มีของหายาก (rare) ได้แค่เหรียญ
   };
   const bookInfo = (cat, id) => {
     if (cat === 'fish') { const f = FISH.find(x => x.id === id); return { emoji: f.emoji, name: f.name }; }
     if (cat === 'crop') return { emoji: CROPS[id].emoji, name: CROPS[id].name };
     if (cat === 'furn') return { emoji: FURN[id].emoji, name: FURN[id].name };
+    if (cat === 'wood') return { emoji: WOOD_ITEMS[id].emoji, name: WOOD_ITEMS[id].name };
     const m = MEALS.find(x => x.id === id); return { emoji: m.emoji, name: m.name };
   };
   // เป้าหมายรายสัปดาห์ของเมือง: งานรวมของทุกคน (นับเหมือน Happy Village) ถึงเป้า base + per × จำนวนคนที่ลงมือสัปดาห์นี้ → คนที่มีส่วนร่วมอย่างน้อย minShare ครั้งรับรางวัลได้ (ไม่ให้รอรับฟรี)
@@ -662,6 +704,13 @@
     { id: 'furn_toolbox',  in: { plank: 8, hardwood: 2 },    lv: 4, xp: 46 },
     { id: 'furn_bed',      in: { log: 30, hardwood: 3 },     lv: 5, xp: 60 },
     { id: 'furn_hut',      in: { plank: 24, hardwood: 6 },   lv: 6, xp: 110 },
+    // จากไม้ชนิดใหม่ (B5): XP ≈ 0.27 ต่อเหรียญของวัตถุดิบ เท่ากับลังไม้
+    { id: 'furn_screen_bamboo', in: { bamboo: 8 },             lv: 1, xp: 20 },
+    { id: 'furn_stool',    in: { pinewood: 3 },               lv: 2, xp: 18 },
+    { id: 'furn_armchair', in: { palmwood: 4, plank: 2 },     lv: 3, xp: 45 },
+    { id: 'furn_wardrobe', in: { teak: 5, plank: 2 },         lv: 4, xp: 75 },
+    { id: 'furn_dresser',  in: { goldwood: 4 },               lv: 6, xp: 65 },
+    { id: 'furn_bedking',  in: { rosewood: 5, teak: 3 },      lv: 8, xp: 200 },
   ];
   const seatAt = (tx, ty) => SEATS.find(s => s.x === tx && s.y === ty) || null;
   const cinemaAt = (tx, ty) => tx >= 15 && tx <= 18 && ty >= 33 && ty <= 34;
@@ -675,7 +724,7 @@
     fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3', 'rod_4'],                  sell: ['fish_'] },
     animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
-    wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3'], sell: ['log', 'hardwood', 'plank'] },
+    wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3'], sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
     // ร้านยานพาหนะ: เตรียมไว้ก่อน ยังไม่เปิดขาย (soon = รายการที่จะมาในอนาคต)
     vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: [], sell: [], soon: [
       { emoji: '🚲', name: 'จักรยาน', price: 300 }, { emoji: '🛵', name: 'มอเตอร์ไซค์', price: 1500 }, { emoji: '🚗', name: 'รถยนต์', price: 6000 }, { emoji: '⛵', name: 'เรือ', price: 4000 },
@@ -694,9 +743,8 @@
     if (wm) { const ml = MEALS.find(x => x.id === wm[1]); return ml ? { name: ml.name, emoji: ml.emoji, buy: ml.price, cat: 'food' } : null; }
     wm = /^dish_(\w+)$/.exec(k);
     if (wm) { const d = COOK.find(x => x.id === k); return d ? { name: d.name, emoji: d.emoji, sell: d.sell, cat: 'food' } : null; }
-    if (k === 'log') return { name: 'ไม้ท่อน', emoji: '🪵', sell: WOOD.log.sell, cat: 'wood' };
+    if (WOOD_ITEMS[k]) { const w = WOOD_ITEMS[k]; return { name: w.name, emoji: w.emoji, sell: w.sell, cat: 'wood' }; }
     if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 58, cat: 'wood' };
-    if (k === 'hardwood') return { name: 'ไม้เนื้อแข็ง', emoji: '🟫', sell: WOOD.hardwood.sell, cat: 'wood' };
     if (k === 'lamp') return { name: 'ตะเกียง/ไฟฉาย (สว่างรอบตัว 5 ช่อง)', emoji: '🔦', cat: 'gear' }; // ไม่มีขายในร้านและขายต่อไม่ได้ ได้จากรางวัลคู่มือเริ่มต้น
     if (k === 'medicine') return { name: 'ยารักษาสัตว์', emoji: '💊', buy: 20, cat: 'feed' };
     const fm = /^furn_(\w+)$/.exec(k);
@@ -863,11 +911,11 @@
   }
   function inFarm(tx, ty) { return tx >= FARM.x0 && tx <= FARM.x1 && ty >= FARM.y0 && ty <= FARM.y1; }
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
-  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'log', 'hardwood', 'plank', ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
+  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
   const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    AXES, TREE_HP, WOOD, woodXp, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
+    AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };

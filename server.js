@@ -35,7 +35,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const PARTY = new Set(['pok', 'react', 'rps']); // เกมห้องหลายคน (ผู้เล่นหลายคน/บอท) — ดู partyHandle
 const TOOLS = new Set(['hand', 'hoe', 'water', 'rod', 'axe', 'medicine', ...Object.values(ANIMALS).map(a => a.feedItem), ...Object.keys(CROPS).map(c => 'seed_' + c)]);
 // ของที่ตลาดรับซื้อทั้งหมด (ราคาขึ้นลงตามอุปสงค์-อุปทาน)
-const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'log', 'hardwood', 'plank', ...S.COOK.map(c => c.id)];
+const SELLABLE = S.SELLABLE; // รายการเดียวกับ shared.js (เคยก๊อปไว้สองที่แล้วตกหล่น เช่น น้ำผึ้ง)
 const replacer = (k, v) => (k[0] === '_' ? undefined : v);
 const send = (p, o) => { if (p.ws.readyState === 1) p.ws.send(JSON.stringify(o)); };
 const rodOf = inv => (inv.rod_4 ? 4 : inv.rod_3 ? 3 : inv.rod_2 ? 2 : 1);
@@ -63,7 +63,7 @@ class World {
     this.farm = {};
     this.saved = Object.create(null);
     this.dirty = false;
-    let counts = {}, mk = {}, houseSaved = {}, townSaved = {};
+    let counts = {}, mk = {}, houseSaved = {}, townSaved = {}; const treeKinds = {};
     this.mktDay = -1;
     try {
       const d = JSON.parse(fs.readFileSync(this.file, 'utf8').replace(/^﻿/, '')); // ตัด BOM ที่โปรแกรมแก้ไขบางตัวเติมให้
@@ -77,7 +77,7 @@ class World {
       counts = d.animals || {};
       if (Array.isArray(d.trees)) { // คืนสภาพต้นไม้ที่ตัด/งอกใหม่ไว้ (ต้นไม้ขอบแมพไม่เปลี่ยน)
         for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) this.map[y][x] = T.GRASS;
-        for (const [x, y] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2) this.map[y][x] = T.TREE;
+        for (const [x, y, k] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2) { this.map[y][x] = T.TREE; if (Object.hasOwn(S.TREE_KINDS, k)) treeKinds[x + ',' + y] = k; }
       }
       mk = d.market || {}; this.mktDay = Number.isInteger(d.mktDay) ? d.mktDay : -1;
       houseSaved = d.house || {}; townSaved = { log: d.log, chest: d.chest, projects: d.projects, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
@@ -106,6 +106,8 @@ class World {
       this.tables['cab' + i] = c.game === 'uno' ? this.newUnoTable('cab' + i, c, i) : PARTY.has(c.game) ? this.newPartyTable('cab' + i, c, i) : (c.game === 'bacc' || c.game === 'bj') ? this.newCasinoTable('cab' + i, c, i) : this.newTable('cab' + i, c, i);
     });
     this.treeHp = new Map(); this.treeTimer = 0; this.sickTimer = 0;
+    this.treeKind = new Map(); // ชนิดต้นไม้ต่อช่อง 'x,y' (S.TREE_KINDS) ต้นที่ยังไม่มีชนิด (เซฟเก่า/แมพใหม่) สุ่มตามที่เกิดแบบคงที่จากตำแหน่ง
+    for (const [x, y] of this.treeList()) { const k = treeKinds[x + ',' + y]; this.treeKind.set(x + ',' + y, k || S.pickTreeKind(this.map, x, y, S.rng(x * 7919 + y * 104729))); }
     this.trades = new Map(); this.nextTrade = 1;
     this.cinema = { movie: null, yt: '', name: '', startedAt: 0, pos: 0, ref: 0, playing: false, emptyAt: 0, viewers: new Set(), paid: new Set() };
     this.treeCap = S.TREE.cap; // เพดานคงที่ (เดิมบวกเพิ่มทุกครั้งที่ restart ทำให้ต้นไม้แน่นขึ้นเรื่อยๆ)
@@ -807,9 +809,9 @@ class World {
     const n = Object.keys(b[cat]).length;
     this.toast(p, `📖 สมุดสะสม${def.name}: ${n}/${def.ids.length} (+🪙${S.BOOK_ENTRY_COIN})`);
     if (n === def.ids.length) {
-      const r = S.FURN[def.rare]; this.add(p, 'coin', def.coin, 'book'); this.add(p, 'furn_' + def.rare, 1);
+      const r = def.rare && S.FURN[def.rare]; this.add(p, 'coin', def.coin, 'book'); if (r) this.add(p, 'furn_' + def.rare, 1);
       this.addLog(`📖 ${p.name} สะสม${def.name}ครบทุกชนิด!`);
-      this.toast(p, `🏅 สมุดสะสม${def.name}ครบ! รับ 🪙${def.coin} + ${r.emoji} ${r.name}`); this.sfxTo(p, 'levelup');
+      this.toast(p, `🏅 สมุดสะสม${def.name}ครบ! รับ 🪙${def.coin}${r ? ` + ${r.emoji} ${r.name}` : ''}`); this.sfxTo(p, 'levelup');
     }
     this.questPush(p);
   }
@@ -1189,7 +1191,7 @@ class World {
     if (st.sick !== was) this.petPush(p); else send(p, { t: 'pst', pst: p.rec.pst, names: p.rec.pnames || {} });
   }
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); }
-  treeList() { const out = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) out.push([x, y]); return out; }
+  treeList() { const out = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) out.push([x, y, (this.treeKind && this.treeKind.get(x + ',' + y)) || 'broad']); return out; }
   // ---------- ความทนทานเครื่องมือ (รายจ่ายสม่ำเสมอ): ใช้ทุกครั้งสึก 1 หมดแล้วต้องซ่อมที่ร้านเสียเหรียญ ----------
   toolTier(p, tool) { const inv = p.rec.inv; return tool === 'rod' ? rodOf(inv) : tool === 'axe' ? (inv.axe_3 ? 3 : inv.axe_2 ? 2 : 1) : 1; }
   fixN(p, tool) { return (p.rec.fix && p.rec.fix[tool]) || 0; }
@@ -1605,17 +1607,22 @@ class World {
       const axe = inv.axe_3 ? 3 : inv.axe_2 ? 2 : inv.axe_1 ? 1 : 0;
       if (!axe) return this.toast(p, 'ต้องมีขวานก่อน ซื้อได้ที่ร้านช่างไม้ 🪓');
       if (!S.isChoppable(this.map, tx, ty)) return this.toast(p, 'ใช้ขวานฟันต้นไม้ 🌳 (ต้นไม้ขอบแมพตัดไม่ได้)');
-      const key = tx + ',' + ty; let h = this.treeHp.get(key);
-      if (!h || now - h.t > 20000) h = { hp: S.TREE_HP, t: now };
+      const key = tx + ',' + ty, kid = this.treeKind.get(key) || 'broad', K = S.TREE_KINDS[kid], wl = this.lv(p, 'wood');
+      if (wl < K.lv || axe < K.axe) return this.toast(p, `🔒 ${K.emoji} ${K.name}ต้องเป็นช่างไม้ Lv${K.lv} และใช้${S.AXES[K.axe].name}ขึ้นไป`);
+      let h = this.treeHp.get(key);
+      if (!h || now - h.t > 20000) h = { hp: K.hp, t: now };
       h.hp -= S.AXES[axe].power; h.t = now;
       this.sfx(p, 'chop'); this.durUse(p, 'axe');
-      if (h.hp > 0) { this.treeHp.set(key, h); return; }
-      this.treeHp.delete(key); this.map[ty][tx] = T.GRASS; this.dirty = true;
+      if (h.hp > 0) { this.treeHp.set(key, h); if (K.hp > 4) this.toast(p, `🪓 ${K.emoji} ${K.name} อีก ${Math.ceil(h.hp / S.AXES[axe].power)} ครั้ง`); return; }
+      this.treeHp.delete(key); this.treeKind.delete(key); this.map[ty][tx] = T.GRASS; this.dirty = true;
       this.broadcast({ t: 'tree', x: tx, y: ty, on: false });
-      const wl = this.lv(p, 'wood'), hard = Math.random() < S.WOOD.hardwood.chance + 0.01 * (wl - 1) + (this.happyOn() ? S.VILLAGE.hardBonus : 0), extra = Math.random() < 0.04 * (wl - 1) ? 1 : 0;
-      this.add(p, 'log', 2 + extra); if (hard) this.add(p, 'hardwood', 1); // (4C) ต้นละ 2 ไม้ท่อน ดันรายได้ช่างไม้
-      this.addXp(p, 'wood', S.woodXp(S.WOOD.log.xp * (2 + extra) + (hard ? S.WOOD.hardwood.xp : 0), wl)); this.tire(p, 'chop', (2 + extra) * S.WOOD.log.sell + (hard ? S.WOOD.hardwood.sell : 0));
-      this.toast(p, `🌳 ต้นไม้ล้ม! ได้ 🪵 ไม้ท่อน x${2 + extra}${hard ? ' และ 🟫 ไม้เนื้อแข็ง!' : ''}`); this.sfx(p, 'fell'); this.event(p, 'chop'); if (hard) this.event(p, 'hardwood');
+      const got = {}; for (const [it, n] of K.drop) got[it] = (got[it] || 0) + n;
+      if (Math.random() < 0.04 * (wl - 1)) got[K.drop[0][0]]++; // ฝีมือ: ได้ชิ้นหลักเพิ่ม
+      for (const [it, ch] of K.bonus || []) if (Math.random() < ch + 0.01 * (wl - 1) + (this.happyOn() ? S.VILLAGE.hardBonus : 0)) got[it] = (got[it] || 0) + 1;
+      let xp = 0, val = 0; for (const [it, n] of Object.entries(got)) { this.add(p, it, n); xp += S.WOOD_ITEMS[it].xp * n; val += S.WOOD_ITEMS[it].sell * n; this.bookAdd(p, 'wood', it); }
+      this.addXp(p, 'wood', S.woodXp(xp, wl)); this.tire(p, 'chop', val);
+      this.toast(p, `${K.emoji} ${K.name}ล้ม! ได้ ${Object.entries(got).map(([it, n]) => `${S.WOOD_ITEMS[it].emoji} ${S.WOOD_ITEMS[it].name} x${n}`).join(' ')}`); this.sfx(p, 'fell'); this.event(p, 'chop'); if (got.hardwood) this.event(p, 'hardwood');
+      if (kid === 'rose') this.addLog(`🟥 ${p.name} โค่นต้นพะยูงได้!`);
     } else if (tool === 'medicine') {
       const a = this.animals.filter(a => a.sick && (Math.hypot(a.x - tcx, a.y - tcy) < 52 || Math.hypot(a.x - p.x, a.y - p.y) < 52))
         .sort((a, b) => Math.hypot(a.x - tcx, a.y - tcy) - Math.hypot(b.x - tcx, b.y - tcy))[0];
@@ -2623,7 +2630,8 @@ class World {
             if (!S.treeSpotOk(this.map, x, y)) continue;
             if ([...this.players.values()].some(q => Math.hypot(q.x - (x + 0.5) * TS, q.y - (y + 0.5) * TS) < 4 * TS)) continue;
             if (this.animals.some(a => Math.hypot(a.x - (x + 0.5) * TS, a.y - (y + 0.5) * TS) < 3 * TS)) continue;
-            this.map[y][x] = T.TREE; this.dirty = true; this.broadcast({ t: 'tree', x, y, on: true });
+            const k = S.pickTreeKind(this.map, x, y, Math.random); this.treeKind.set(x + ',' + y, k);
+            this.map[y][x] = T.TREE; this.dirty = true; this.broadcast({ t: 'tree', x, y, on: true, k });
             break;
           }
         }

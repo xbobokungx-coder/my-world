@@ -91,9 +91,11 @@ const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 function mkPlayer(o) {
   return { id: o.id, held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', pm: o.pm || 'follow', pax: o.pax || o.x, pay: o.pay || o.y, psick: !!o.psick, pname: o.pname || '', x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
 }
+const treeKinds = new Map(); // 'x,y' → ชนิดต้นไม้ (Shared.TREE_KINDS) จากเซิร์ฟเวอร์ ใช้เลือกสไปรต์
 function applyTrees(list) { // ซิงก์ต้นไม้ที่ตัดได้ให้ตรงกับเซิร์ฟเวอร์ (ต้นไม้ขอบแมพไม่เปลี่ยน)
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (isChoppable(MAP, x, y)) MAP[y][x] = T.GRASS;
-  for (const [x, y] of list) if (MAP[y] && MAP[y][x] === T.GRASS) MAP[y][x] = T.TREE;
+  treeKinds.clear();
+  for (const [x, y, k] of list) if (MAP[y] && MAP[y][x] === T.GRASS) { MAP[y][x] = T.TREE; if (k) treeKinds.set(x + ',' + y, k); }
 }
 function handle(m) {
   switch (m.t) {
@@ -129,7 +131,7 @@ function handle(m) {
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
     case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.cp = null; if (p.id === myId) refreshOpen(); } break; }
     case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
-    case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; } else if (isChoppable(tm, m.x, m.y)) tm[m.y][m.x] = T.GRASS; } break; }
+    case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; if (m.k) treeKinds.set(m.x + ',' + m.y, m.k); } else if (isChoppable(tm, m.x, m.y)) { tm[m.y][m.x] = T.GRASS; treeKinds.delete(m.x + ',' + m.y); } } break; }
     case 'hun': setHunger(m.v); break;
     case 'rtc': onRtc(m.from, m.d); break;
     case 'pcall': onPcall(m.from, m.k); break;
@@ -386,8 +388,8 @@ function renderBookTab(el) {
   const b = questSt.book || {};
   let h = `<div class="tabs-note">เก็บของให้ครบทุกชนิดในแต่ละหมวด: ชนิดใหม่ได้ 🪙8 และครบหมวดได้รางวัลใหญ่ + ของตกแต่งหายาก (ที่ซื้อไม่ได้)</div>`;
   for (const [cat, def] of Object.entries(BOOK)) {
-    const got = b[cat] || [], full = got.length >= def.ids.length, r = FURN[def.rare];
-    h += `<div class="sec">${def.emoji} ${def.name} ${got.length}/${def.ids.length} ${full ? '✅ ครบแล้ว' : `<small>ครบหมวด: 🪙${def.coin} + ${r.emoji}${r.name}</small>`}</div><div class="grid">` + def.ids.map(id => { const i = bookInfo(cat, id), has = got.includes(id); return `<div class="card" style="${has ? '' : 'opacity:.35;filter:grayscale(1)'}"><b>${has ? i.emoji : '❔'}</b>${has ? i.name : '???'}</div>`; }).join('') + '</div>';
+    const got = b[cat] || [], full = got.length >= def.ids.length, r = def.rare && FURN[def.rare];
+    h += `<div class="sec">${def.emoji} ${def.name} ${got.length}/${def.ids.length} ${full ? '✅ ครบแล้ว' : `<small>ครบหมวด: 🪙${def.coin}${r ? ` + ${r.emoji}${r.name}` : ''}</small>`}</div><div class="grid">` + def.ids.map(id => { const i = bookInfo(cat, id), has = got.includes(id); return `<div class="card" style="${has ? '' : 'opacity:.35;filter:grayscale(1)'}"><b>${has ? i.emoji : '❔'}</b>${has ? i.name : '???'}</div>`; }).join('') + '</div>';
   }
   el.innerHTML = h;
 }
@@ -2478,7 +2480,7 @@ function drawFire(now) {
   ctx.globalAlpha = 1;
 }
 function drawTree(x, y) { // สไปรต์ต้นไม้พิกเซล (สุ่มแบบตามตำแหน่ง) โคนต้นอยู่กลางขอบล่างของช่อง
-  const s = PixelArt.tree(x, y);
+  const s = PixelArt.tree(x, y, treeKinds.get(x + ',' + y));
   ctx.drawImage(s, x * TS + 16 - 28, y * TS + 32 - 64, s.width * 2, s.height * 2);
 }
 // ร้านค้า: สไปรต์อาคาร + อีโมจิบนหลังคา + ป้ายชื่อกระดานไม้

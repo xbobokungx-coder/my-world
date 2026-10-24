@@ -163,15 +163,20 @@ const PixelArt = (() => {
   }
 
   // ---------- trees ----------
+  // kind: 0 ใบกลม • 1 ผลส้ม • 2 ใบเข้ม • 3 สน • 4 ดอกชมพู • 5 สัก (ใบใหญ่เขียวอมเหลือง) • 6 ราชพฤกษ์ (ช่อดอกเหลืองห้อย) • 7 พะยูง (เปลือกแดง ใบเข้มแน่น)
   function tree(seed, kind) {
     const c = mk(26, 32, (x) => {
-      const R = rng(seed);
-      r(x, '#5a371e', 10, 19, 6, 12); r(x, '#7d4f2a', 11, 19, 3, 12); r(x, '#9c6636', 11, 21, 1, 7);
-      r(x, '#5a371e', 8, 29, 10, 3); r(x, '#7d4f2a', 9, 29, 3, 1);
+      const R = rng(seed), bark = kind === 7 ? ['#4a1f16', '#6b2f22', '#8a3f2c'] : ['#5a371e', '#7d4f2a', '#9c6636'];
+      r(x, bark[0], 10, 19, 6, 12); r(x, bark[1], 11, 19, 3, 12); r(x, bark[2], 11, 21, 1, 7);
+      r(x, bark[0], 8, 29, 10, 3); r(x, bark[1], 9, 29, 3, 1);
       const blobs = kind === 1 ? [[13, 11, 9], [7, 15, 6], [19, 15, 6], [13, 17, 6]]
         : kind === 3 ? [[13, 6, 5], [13, 11, 7], [13, 16, 9]]
+        : kind === 5 ? [[13, 12, 10], [5, 14, 5], [21, 14, 5], [13, 5, 6]]
+        : kind === 7 ? [[13, 9, 8], [8, 14, 6], [18, 14, 6], [13, 4, 5]]
         : [[13, 13, 9], [6, 15, 6], [20, 15, 6], [13, 7, 7], [8, 10, 5], [18, 10, 5]];
-      const pal = kind === 2 || kind === 3 ? ['#2f6b3a', '#3f8a46', '#56a653', '#7cc76a'] : ['#3a7430', '#4f913b', '#68ad47', '#8ccc5e'];
+      if (kind !== 3) for (const b of blobs) { b[0] += Math.round(R() * 2 - 1); b[1] += Math.round(R() * 2 - 1); b[2] = Math.max(3, b[2] + Math.round(R() * 2 - 1)); } // แต่ละต้นทรงพุ่มต่างกันนิดหน่อย
+      const pal = kind === 2 || kind === 3 ? ['#2f6b3a', '#3f8a46', '#56a653', '#7cc76a'] : kind === 5 ? ['#5f7a26', '#7c9a32', '#9fbc44', '#c4dc6a']
+        : kind === 7 ? ['#1f4128', '#2d5a34', '#3d7442', '#578f52'] : ['#3a7430', '#4f913b', '#68ad47', '#8ccc5e'];
       for (const [bx, by, rd] of blobs) disc(x, bx, by, rd, pal[0]);
       for (const [bx, by, rd] of blobs) disc(x, bx - 1, by - 1, rd - 1, pal[1]);
       for (const [bx, by, rd] of blobs) disc(x, bx - 1, by - 3, Math.max(1, rd - 4), pal[2]);
@@ -180,13 +185,74 @@ const PixelArt = (() => {
       for (let i = 0; i < 55; i++) { const px = Math.floor(R() * 26), py = Math.floor(R() * 26); if (!inside(px, py)) continue; r(x, py > 15 ? pal[0] : pal[1], px, py, 2, 1); r(x, pal[py > 12 ? 1 : 3], px, py - 1, 1, 1); }
       if (kind === 1) for (let i = 0; i < 7; i++) { const px = 5 + Math.floor(R() * 16), py = 5 + Math.floor(R() * 14); if (!inside(px, py)) continue; r(x, '#e8862a', px, py, 2, 2); r(x, '#ffc06a', px, py, 1, 1); }
       if (kind === 4) for (let i = 0; i < 6; i++) { const px = 5 + Math.floor(R() * 16), py = 4 + Math.floor(R() * 14); if (!inside(px, py)) continue; r(x, '#ffc9de', px, py, 2, 1); r(x, '#ff9db0', px, py + 1, 1, 1); }
+      if (kind === 5) for (let i = 0; i < 5; i++) { const px = 4 + Math.floor(R() * 17), py = 6 + Math.floor(R() * 12); if (!inside(px, py)) continue; r(x, '#d8e98a', px, py, 3, 1); r(x, '#b0cc58', px, py + 1, 3, 1); } // ใบสักใบใหญ่
+      if (kind === 6) for (let i = 0; i < 7; i++) { const px = 4 + Math.floor(R() * 18), py = 12 + Math.floor(R() * 8); if (!inside(px, py - 2)) continue; const L = 3 + Math.floor(R() * 3); r(x, '#e0a81e', px, py, 2, L); r(x, '#ffe27a', px, py, 1, L - 1); } // ช่อดอกคูนห้อย
+      if (kind === 7) for (let i = 0; i < 8; i++) { const px = 6 + Math.floor(R() * 14), py = 3 + Math.floor(R() * 14); if (!inside(px, py)) continue; r(x, '#1a3522', px, py, 1, 1); } // ใบละเอียดแน่น
     });
     // เงาใต้ต้นไม้ (โปร่ง) ซ้อนไว้ข้างหลัง
     const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 14, 31, 9, 2, 'rgba(38,40,16,.32)'); x.globalCompositeOperation = 'source-over';
     return c;
   }
+  // กอไผ่: ลำเขียวหลายลำ ข้อปล้องเข้ม ใบเรียวที่ปลาย
+  function bamboo(seed) {
+    const c = mk(26, 32, (x) => {
+      const R = rng(seed), n = 5 + Math.floor(R() * 2);
+      for (let i = 0; i < n; i++) { // ลำชิดกันที่โคน แล้วค่อยๆ แผ่ออกด้านบน สูงต่ำไม่เท่ากัน
+        const k = i - (n - 1) / 2, top = 2 + Math.floor(R() * 12) + Math.round(Math.abs(k) * 2), lean = k * 0.35;
+        for (let y = top; y < 31; y++) { const sx = Math.round(12 + k * 2 + lean * (31 - y) / 6); r(x, i % 2 ? '#5f8f30' : '#6fa63a', sx, y, 2, 1); r(x, '#a6d860', sx, y, 1, 1); if ((y - top) % 4 === 3) r(x, '#3f6420', sx, y, 2, 1); }
+        const tx = Math.round(12 + k * 2 + lean * (31 - top) / 6), dir = k < 0 ? -1 : 1;
+        for (let l = 0; l < 3; l++) { const ly = top + 1 + l * 3; for (let q = 0; q < 4; q++) r(x, q < 2 ? '#4f913b' : '#68ad47', tx + 1 + dir * (q + 1), ly - Math.floor(q / 2), 1, 1); } // ใบเรียวแตกออกด้านข้าง
+        r(x, '#8ccc5e', tx, top - 1, 2, 1);
+      }
+    });
+    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 14, 31, 8, 2, 'rgba(38,40,16,.32)'); x.globalCompositeOperation = 'source-over';
+    return c;
+  }
+  // สน: ทรงกรวยซ้อน 4 ชั้น ปลายแหลม
+  function conifer(seed) {
+    const c = mk(26, 32, (x) => {
+      const R = rng(seed);
+      r(x, '#5a371e', 11, 24, 4, 7); r(x, '#7d4f2a', 12, 24, 2, 7); r(x, '#5a371e', 9, 29, 8, 2);
+      const tiers = 4, h0 = 1 + Math.floor(R() * 3);
+      for (let t = 0; t < tiers; t++) { // ชั้นล่างกว้างกว่า
+        const top = h0 + t * 5, hgt = 8, half = 4 + t * 2 + Math.round(R());
+        for (let y = 0; y < hgt; y++) { const w = Math.round(half * (y + 1) / hgt); r(x, '#2f6b3a', 13 - w, top + y, w * 2 + 1, 1); r(x, '#3f8a46', 13 - w, top + y, w, 1); r(x, '#56a653', 13 - Math.max(0, w - 1), top + y, Math.max(1, Math.floor(w / 2)), 1); }
+      }
+      r(x, '#7cc76a', 12, h0, 1, 2);
+      for (let i = 0; i < 6; i++) { const px = 8 + Math.floor(R() * 10), py = h0 + 4 + Math.floor(R() * 16); r(x, '#24542e', px, py, 2, 1); }
+    });
+    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 14, 31, 8, 2, 'rgba(38,40,16,.32)'); x.globalCompositeOperation = 'source-over';
+    return c;
+  }
+  // มะพร้าว: ลำต้นโค้งมีวงปล้อง ทางใบแผ่รอบยอด ลูกมะพร้าวใต้ยอด
+  function palm(seed) {
+    const c = mk(26, 32, (x) => {
+      const R = rng(seed), lean = R() < .5 ? -1 : 1;
+      for (let y = 9; y < 31; y++) { const off = Math.round(lean * Math.pow((31 - y) / 22, 2) * 3); r(x, '#7d5a2e', 11 + off, y, 4, 1); r(x, '#a8854a', 12 + off, y, 1, 1); if (y % 3 === 0) r(x, '#5e4220', 11 + off, y, 4, 1); }
+      const cx = 13 + lean * 3, cy = 8;
+      for (const [dx, dy] of [[-11, 3], [-8, -4], [-2, -7], [5, -6], [10, -2], [11, 4], [-6, 6], [6, 6]]) {
+        const n = 10; for (let k = 0; k <= n; k++) { const t = k / n, px = Math.round(cx + dx * t), py = Math.round(cy + dy * t + Math.sin(t * 3.1) * 2); r(x, '#3f8a46', px - 1, py, 3, 2); r(x, '#7cc76a', px, py, 1, 1); }
+      }
+      for (const [dx, dy] of [[-2, 2], [1, 3], [3, 1]]) { disc(x, cx + dx, cy + dy, 1, '#6b4a22'); r(x, '#9c7440', cx + dx - 1, cy + dy - 1, 1, 1); }
+    });
+    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 14, 31, 9, 2, 'rgba(38,40,16,.32)'); x.globalCompositeOperation = 'source-over';
+    return c;
+  }
   const TREES = [tree(3, 0), tree(9, 1), tree(17, 2), tree(25, 0), tree(31, 3), tree(44, 4), tree(52, 2), tree(60, 0)];
-  const treeFor = (tx, ty) => { const h = hash(tx, ty, 77); return TREES[h < .08 ? 1 : h < .14 ? 5 : Math.floor(hash(tx, ty, 78) * TREES.length)]; };
+  // สไปรต์ตามชนิดต้นไม้ของเซิร์ฟเวอร์ (Shared.TREE_KINDS) แต่ละชนิดมีหลายแบบ เลือกตามตำแหน่ง ป่าจึงไม่ซ้ำกัน • ไม่มีชนิด (ต้นไม้ขอบแมพ) = แบบสุ่มเดิม
+  const KIND_TREES = {
+    broad: [tree(3, 0), tree(25, 0), tree(60, 0), tree(17, 2), tree(52, 2), tree(44, 4)],
+    pine: [conifer(31), conifer(33), conifer(37)],
+    bamboo: [bamboo(5), bamboo(11), bamboo(23)],
+    coconut: [palm(7), palm(19)],
+    teak: [tree(41, 5), tree(47, 5)],
+    gold: [tree(13, 6), tree(29, 6)],
+    rose: [tree(71, 7), tree(83, 7)],
+  };
+  const treeFor = (tx, ty, kind) => {
+    const set = kind && KIND_TREES[kind]; if (set) return set[Math.floor(hash(tx, ty, 78) * set.length)];
+    const h = hash(tx, ty, 77); return TREES[h < .08 ? 1 : h < .14 ? 5 : Math.floor(hash(tx, ty, 78) * TREES.length)];
+  };
 
   // ---------- buildings ----------
   function win(x, X, Y, w, h, box) {

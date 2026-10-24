@@ -46,23 +46,26 @@ function fish(lv) {
   }
   return best;
 }
+// สัดส่วนชนิดต้นไม้ที่งอกใหม่ (สุ่มตามที่เกิดจริงบนแมพ) ใช้คิดว่าต้นที่งอกมีกี่ส่วนที่เลเวล/ขวานนี้ฟันได้
+const KIND_SHARE = (() => { if (!S.TREE_KINDS) return { broad: 1 }; const m = S.makeMap(), r = S.rng(5), d = {}; let n = 0;
+  for (let i = 0; i < 4000; i++) { const x = 2 + Math.floor(r() * (S.W - 4)), y = 2 + Math.floor(r() * (S.H - 4)); if (!S.treeSpotOk(m, x, y)) continue; const k = S.pickTreeKind(m, x, y, r); d[k] = (d[k] || 0) + 1; n++; }
+  for (const k of Object.keys(d)) d[k] /= n; return d; })();
 function wood(lv) {
-  const axe = lv >= 6 ? 3 : lv >= 3 ? 2 : 1, hits = Math.ceil(S.TREE_HP / S.AXES[axe].power);
-  const tpm = Math.min(60 / (hits * 0.7 + M.treeWalk), M.treeRegen);
-  const logs = 2 + 0.04 * (lv - 1), hard = Math.min(1, S.WOOD.hardwood.chance + 0.01 * (lv - 1));
-  const chopXp = S.WOOD.log.xp * logs + S.WOOD.hardwood.xp * hard;
-  // แปรรูป: สูตรที่ได้ XP ต่อต้นมากสุด (ไม้กระดาน = 2 ท่อน • ต้นที่ต้องโค่นต่อชิ้น = ตามไม้ท่อนหรือไม้เนื้อแข็ง แล้วแต่อย่างไหนขาดก่อน)
-  const wl = 1 + (S.WOOD.xpPerLv || 0) * (lv - 1); // ตัวคูณ XP ช่างไม้ตามเลเวล (โค่นและประดิษฐ์)
-  let best = { pick: 'ขายท่อน', perTree: 0 };
-  for (const r of S.CRAFT) {
-    if (r.lv > lv || r.id === 'plank') continue;
-    const pl = r.in.plank || 0, lg = (r.in.log || 0) + 2 * pl, hw = r.in.hardwood || 0;
-    const xp = r.xp + pl * S.CRAFT.find(c => c.id === 'plank').xp, trees = Math.max(lg / logs, hw / hard);
-    if (xp / trees > best.perTree) best = { pick: r.id.replace('furn_', ''), perTree: xp / trees };
+  const axe = lv >= 6 ? 3 : lv >= 3 ? 2 : 1, wl = 1 + (S.WOOD.xpPerLv || 0) * (lv - 1);
+  const kinds = S.TREE_KINDS || { broad: { lv: 1, axe: 1, hp: S.TREE_HP, drop: [['log', 2]], bonus: [['hardwood', S.WOOD.hardwood.chance]] } }, items = S.WOOD_ITEMS || { log: S.WOOD.log, hardwood: S.WOOD.hardwood };
+  let share = 0, val = 0, xp = 0, pcs = 0, secs = 0;
+  for (const [id, K] of Object.entries(kinds)) {
+    const sh = KIND_SHARE[id] || 0; if (!sh || K.lv > lv || K.axe > axe) continue; // ต้นที่ยังฟันไม่ได้ปล่อยไว้ให้คนเลเวลสูง
+    let v = 0, x = 0, n = 0;
+    K.drop.forEach(([it, q], i) => { const qq = q + (i === 0 ? 0.04 * (lv - 1) : 0); v += items[it].sell * qq; x += items[it].xp * qq; n += qq; });
+    for (const [it, ch] of K.bonus || []) { const c = Math.min(1, ch + 0.01 * (lv - 1)); v += items[it].sell * c; x += items[it].xp * c; n += c; }
+    share += sh; val += sh * v; xp += sh * x; pcs += sh * n; secs += sh * (Math.ceil(K.hp / S.AXES[axe].power) * 0.7 + M.treeWalk);
   }
-  const xp = tpm * (chopXp + best.perTree) * wl * 60;
-  const coin = tpm * (logs * S.WOOD.log.sell + hard * S.WOOD.hardwood.sell) * 60; // ขายดิบ (เงินไม่ใช่เป้าของเครื่องมือนี้)
-  return { pick: best.pick, coin, xp, gross: coin, cost: 0, pieces: tpm * (logs + hard) * 60, cat: 'wood' };
+  val /= share; xp /= share; pcs /= share; secs /= share;
+  const tpm = Math.min(60 / secs, M.treeRegen * share); // ต้นต่อนาที: ติดความเร็วฟันหรือจำนวนต้นที่งอกแล้วฟันได้
+  const craftXp = 0.27 * val; // แปรรูปเป็นเฟอร์นิเจอร์ ≈ 0.27 XP ต่อเหรียญของวัตถุดิบ (ลังไม้ = 34 XP จากไม้ท่อน 8 ท่อน)
+  const best = S.CRAFT.filter(r => r.lv <= lv).slice(-1)[0];
+  return { pick: best ? best.id.replace('furn_', '').slice(0, 6) : 'ขาย', coin: tpm * val * 60, xp: tpm * (xp + craftXp) * wl * 60, gross: tpm * val * 60, cost: 0, pieces: tpm * pcs * 60, cat: 'wood' };
 }
 function animal(lv) {
   const sp = Math.max(0.5, 1 - 0.05 * (lv - 1));
