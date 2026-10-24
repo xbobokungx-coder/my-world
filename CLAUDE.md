@@ -32,6 +32,7 @@
 | `tools/stats.js` | สรุปตัวชี้วัดจาก `data/events/*.jsonl` และไฟล์เซฟ: `node tools/stats.js` |
 | `tools/economy.js` | รายงานเศรษฐกิจรายวัน (เงินรวม Gini เข้า–ออก ราคาจริงต่อหมวด พลังงาน ตลาด คู่มือ): `node tools/economy.js 7` (นับเฉพาะผู้เล่นจริงที่ออนไลน์ ≥ 5 นาที ตาม `tools/realplayers.js` ใส่ `--all` เพื่อนับทุกบัญชี) |
 | `tools/levelsim.js` | จำลอง XP/ชม. และเหรียญ/ชม. ทุกอาชีพทุกเลเวล ใช้ก่อนปรับ XP หรือราคา: `node tools/levelsim.js` |
+| `tools/econsim.js` | จำลองเศรษฐกิจทั้งเมือง 35 วัน วัดเกณฑ์ความไม่เหลื่อมล้ำ G2–G8: `node tools/econsim.js` (ใช้คู่กับ levelsim ก่อนปรับตัวเลข) |
 | `tools/backup.sh` | สำรอง `data/` (cron ทุกชั่วโมง ดูหัวข้อสำรองข้อมูล) |
 | `*.ps1` `*.bat` | สคริปต์สำหรับ Windows (ใช้บนเครื่องที่บ้านได้ ไม่ใช้บน VPS) |
 
