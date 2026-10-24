@@ -525,9 +525,15 @@ class World {
   enJoin(p) { const e = this.enOf(p), now = Date.now(); e.v = Math.min(S.ENERGY.max, e.v + Math.max(0, now - e.at) / S.ENERGY.regenMs); e.at = now; if (e.ex && e.v >= S.ENERGY.resume) e.ex = false; } // ฟื้นระหว่างออฟไลน์ด้วย
   enPub(p, spent) { const e = this.enOf(p); return { t: 'en', spent: spent || 0, v: Math.round(e.v * 10) / 10, ex: e.ex, rate: (p.sit ? S.ENERGY.sitMul : 1) / S.ENERGY.regenMs, resume: S.ENERGY.resume, rareUntil: p.rec.rareAt || 0 }; }
   enPush(p, spent) { send(p, this.enPub(p, spent)); }
+  wkMult(p, kind, base) { // ตัวคูณต้นทุนพลังงานจากความล้างานกลุ่มเดิมซ้ำๆ (ดู ENERGY.var ใน shared.js) แล้วบวกความล้าของงานนี้เพิ่ม
+    const V = S.ENERGY.var, g = V && V.group[kind]; if (!g) return 1;
+    const w = p.rec.wk = p.rec.wk && typeof p.rec.wk === 'object' ? p.rec.wk : {}, now = Date.now(), f = Math.pow(0.5, Math.max(0, now - (p.rec.wkAt || now)) / V.halfLifeMs);
+    for (const k of Object.keys(w)) { w[k] = Number.isFinite(w[k]) ? w[k] * f : 0; if (w[k] < 0.5) delete w[k]; }
+    p.rec.wkAt = now; const m = 1 + Math.min(V.max, (w[g] || 0) / V.scale); w[g] = (w[g] || 0) + base; return m;
+  }
   tire(p, kind, value) { // งานหนักที่สำเร็จแล้ว หักพลังงานตามมูลค่างาน (S.energyCost) เกินที่มี = ติดลบ ต้องพักจนถึง resume
     if (!S.ENERGY.on) return this.telAdd(p, kind, 0); // ระบบพลังงานปิดอยู่: ไม่หักพลังงาน แต่ยังนับการกระทำ
-    const e = this.enOf(p), cost = S.energyCost(kind, value); e.v = Math.max(-S.ENERGY.max, e.v - cost); e.at = Date.now();
+    const e = this.enOf(p), cost = Math.round(S.energyCost(kind, value) * this.wkMult(p, kind, S.energyCost(kind, value)) * 10) / 10; e.v = Math.max(-S.ENERGY.max, e.v - cost); e.at = Date.now();
     if (e.v <= 0 && !e.ex) {
       e.ex = true; const sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000);
       this.toast(p, `😮‍💨 เหนื่อยแล้ว! ต้องพักราว ${sec >= 60 ? Math.ceil(sec / 60) + ' นาที' : sec + ' วินาที'} (นั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า) ระหว่างนี้ทำอาหาร เควส หรือลงขันเมืองได้`); logEv(this.room, 'tired', { p: p.key });

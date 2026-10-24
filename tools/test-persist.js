@@ -32,6 +32,7 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   assert.ok(S.energyCost('harvest', S.CROPS.mango.sell) > 5 * S.energyCost('harvest', S.CROPS.carrot.sell), 'มะม่วงกินพลังงานมากกว่าแครอทมาก');
   assert.strictEqual(S.energyCost('harvest', S.CROPS.carrot.sell) + fixed, 4, 'ผักถูกยังทำรอบละ 4 หน่วยขั้นต่ำ');
   // ตัดไม้ซ้ำจนเหนื่อย
+  const VAR = E.var; E.var = null; // เทสต์ต้นทุนตายตัวด้านล่างปิดความล้างานซ้ำ (ทดสอบแยกท้ายส่วนนี้)
   const chopVal = 2 * S.WOOD.log.sell, per = S.energyCost('chop', chopVal); let n = 0;
   while (!w.exhausted(p) && n < 200) { w.tire(p, 'chop', chopVal); n++; }
   assert.ok(w.exhausted(p) && n === Math.ceil(E.max / per), 'ตัดไม้ซ้ำต้องเหนื่อยตามต้นทุน');
@@ -47,6 +48,13 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   assert.ok(Math.abs(sitV - e.v * E.sitMul) < 1e-6, 'นั่งพักฟื้นเร็วขึ้นตาม sitMul');
   // ออฟไลน์ก็ฟื้น
   e.v = 0; e.ex = true; e.at = Date.now() - 60000; w.enJoin(p); assert.ok(Math.abs(e.v - 60000 / E.regenMs) < 0.2, 'ออฟไลน์ก็ฟื้น');
+  // ความล้างานซ้ำ: กลุ่มเดียวซ้ำแพงขึ้นไม่เกิน ×(1+max), สลับกลุ่มถูกกว่า, ฟื้นตามเวลา, ออฟไลน์ก็ฟื้น
+  E.var = VAR; p.rec.wk = {}; p.rec.wkAt = 0; e.v = E.max; e.ex = false;
+  const cv = S.energyCost('harvest', S.CROPS.mango.sell); let paid = 0;
+  for (let i = 0; i < 12; i++) { e.v = E.max; e.ex = false; const b = e.v; w.tire(p, 'harvest', S.CROPS.mango.sell); paid = b - e.v; }
+  assert.ok(paid > cv * 1.9 && paid <= cv * (1 + VAR.max) + 0.06, 'ทำกลุ่มเดียวซ้ำ ต้นทุนชนเพดาน ×' + (1 + VAR.max));
+  e.v = E.max; e.ex = false; const bf = e.v; w.tire(p, 'fish', 40); assert.ok(Math.abs((bf - e.v) - S.energyCost('fish', 40)) < 0.06, 'สลับไปกลุ่มอื่นยังจ่ายราคาปกติ');
+  p.rec.wkAt -= 10 * VAR.halfLifeMs; e.v = E.max; e.ex = false; const b2 = e.v; w.tire(p, 'harvest', S.CROPS.mango.sell); assert.ok(Math.abs((b2 - e.v) - cv) < 0.06, 'พักนานความล้าหาย กลับมาราคาปกติ');
   // กินอาหารฟื้นตาม eatMul
   e.v = 10; p.rec.hunger = 40; p.rec.inv.meal_bread = 1; w.eat(p, 'meal_bread'); const food = S.itemInfo('meal_bread').food;
   assert.ok(Math.abs(e.v - (10 + food * E.eatMul)) < 1e-6, 'กินอาหารฟื้นพลังงานตาม eatMul');
