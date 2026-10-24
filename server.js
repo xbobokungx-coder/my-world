@@ -1532,6 +1532,9 @@ class World {
       if (!tile) return this.toast(p, 'ต้องขุดดินก่อน');
       if (tile.c) return this.toast(p, 'มีพืชอยู่แล้ว');
       if (!inv[tool]) return this.toast(p, 'เมล็ดหมด ไปซื้อที่ร้านเมล็ดพันธุ์');
+      const cap = Math.min(S.FARM_CAP.max, S.FARM_CAP.base + S.FARM_CAP.perLv * (this.lv(p, 'farm') - 1));
+      let mine = 0; for (const q in this.farm) if (this.farm[q].c && this.farm[q].o === p.key) mine++;
+      if (mine >= cap) return this.toast(p, `🌱 ปลูกค้างอยู่ครบ ${cap} ต้นแล้ว เก็บเกี่ยวก่อน หรือแบ่งที่ให้คนอื่นปลูกบ้างนะ (เลเวลชาวนาสูงขึ้นปลูกได้มากขึ้น)`);
       this.add(p, tool, -1);
       tile.c = tool.slice(5); tile.o = p.key; tile.on = p.name; tile.rm = 0; tile.g = 0; tile.m = 1 + 0.04 * (this.lv(p, 'farm') - 1);
       this.tileUpdate(k, tile); this.addXp(p, 'farm', 2); this.tire(p, 'plant'); this.sfx(p, 'plant'); this.event(p, 'plant');
