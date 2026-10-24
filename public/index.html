@@ -341,6 +341,10 @@
   body.touch #hudMenu .btn { min-height:var(--mn-h); height:auto; font-size:14px; padding:2px 0; gap:0; border-bottom-width:3px; }
   body.touch #hudMenu .btn::after { font-size:var(--mn-txt); }
   body.touch.menu-open #mini, body.touch.menu-open #guide { display:none; }
+  /* มือถือ: แถวบนเหลือแค่ เมนู เหรียญ พลังงาน (+ความหิวตอนต่ำ) ที่เหลือย้ายไปอยู่ในเมนู */
+  body.touch #hudTop > #bagBtn, body.touch #hudTop > #chatBtn, body.touch #hudTop > #micBtn, body.touch #hudTop > #homeQuick { display:none !important; }
+  body.touch #hudTop > #online, body.touch #hudTop > #hungerChip:not(.low) { display:none !important; }
+  body:not(.touch) #hudMenu .mtouch { display:none !important; }
 </style>
 </head>
 <body>
@@ -376,6 +380,8 @@
     <div class="mtitle">🧍 ตัวละคร</div>
     <div class="mgrid">
       <button class="btn small" id="statBtn" data-lbl="ข้อมูลฉัน" title="สถานะ (C)" aria-label="ข้อมูลของฉัน">📊</button>
+      <button class="btn small mtouch" id="bagMenu" data-lbl="กระเป๋า" title="กระเป๋า" aria-label="กระเป๋า">🎒</button>
+      <button class="btn small mtouch" id="chatMenu" data-lbl="แชท" title="แชท" aria-label="แชท">💬</button>
       <button class="btn small" id="lookBtn" data-lbl="ตัวละคร" title="ตัวละคร" aria-label="ตัวละคร">👕</button>
       <button class="btn small" id="bookBtn" data-lbl="สมุด" title="สมุด" aria-label="สมุดรวบรวม">📖</button>
       <button class="btn small" id="achBtn" data-lbl="ฉายา" title="ฉายา &amp; ความสำเร็จ" aria-label="ฉายาและความสำเร็จ">🏅</button>
@@ -391,6 +397,8 @@
     </div>
     <div class="mtitle">👥 เพื่อน</div>
     <div class="mgrid">
+      <button class="btn small mic mtouch" id="micMenu" data-lbl="ไมค์" title="ไมค์" aria-label="เปิด/ปิดไมค์">🎤</button>
+      <button class="btn small mtouch" id="onlineMenu" data-lbl="ออนไลน์" title="ผู้เล่นออนไลน์" aria-label="ผู้เล่นออนไลน์">👥</button>
       <button class="btn small" id="invite" data-lbl="ชวนเพื่อน" title="คัดลอกลิงก์ชวนเพื่อน" aria-label="ชวนเพื่อน">🔗</button>
       <button class="btn small spk" id="spkBtn" data-lbl="เสียง" title="ลำโพง: เปิดอยู่" aria-label="เปิดหรือปิดลำโพง">🔊</button>
     </div>

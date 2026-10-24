@@ -660,6 +660,11 @@ $('askNo').onclick = () => { $('ask').classList.add('hidden'); askYes = null; };
 const menuShown = () => !$('hudMenu').classList.contains('hidden');
 function setMenu(on) { $('hudMenu').classList.toggle('hidden', !on); document.body.classList.toggle('menu-open', on); $('menuBtn').setAttribute('aria-expanded', on ? 'true' : 'false'); }
 $('menuBtn').onclick = () => setMenu(!menuShown());
+// ปุ่มในเมนูบนมือถือที่ย้ายมาจากแถบบน: กดแล้วทำงานเหมือนปุ่มต้นทาง (เมนูปิดให้อัตโนมัติจากตัวดักคลิกด้านบน)
+$('bagMenu').onclick = () => $('bagBtn').click();
+$('chatMenu').onclick = () => $('chatBtn').click();
+$('micMenu').onclick = () => $('micBtn').click();
+$('onlineMenu').onclick = () => $('online').click();
 $('hudMenu').addEventListener('click', e => { const b = e.target.closest('.btn'); if (b && !['zoomInBtn', 'zoomOutBtn', 'spkBtn'].includes(b.id)) setMenu(false); }); // เลือกแล้วปิดเมนู ยกเว้นปุ่มที่กดซ้ำได้
 addEventListener('pointerdown', e => { if (menuShown() && !e.target.closest('#hudMenu') && !e.target.closest('#menuBtn')) setMenu(false); });
 { // แสดงจุดแดงเควสที่ปุ่มเมนูด้วย (เควสอยู่ในเมนู จะได้ไม่พลาดเควสใหม่)
@@ -676,11 +681,12 @@ function setHunger(v) {
   el.textContent = (hunger <= 0 ? '😵 ' : hunger <= 20 ? '🍗 ' : '🍖 ') + hunger;
   el.style.color = hunger <= 5 ? '#c0392b' : hunger <= 20 ? '#c47a00' : '';
   el.classList.toggle('blink', hunger <= 5);
+  el.classList.toggle('low', hunger <= 40); // มือถือโชว์ความหิวตอนต่ำเท่านั้น (ดู index.html)
   el.title = 'ความอิ่ม (0 = หิวจนไม่มีแรง) กดเพื่อดูอาหารในตัวและกิน';
   if (bagShown() && bagTab === 'eat') renderBag();
   if (bagShown()) renderBag();
 }
-function updateOnline() { $('online').textContent = '👥 ' + roster.size + (mute.all ? ' 🔇' : ''); }
+function updateOnline() { $('online').textContent = '👥 ' + roster.size + (mute.all ? ' 🔇' : ''); $('onlineMenu').dataset.lbl = 'ออนไลน์ ' + roster.size; }
 const chatHist = []; // แชทผู้เล่นล่าสุด 10 ข้อความ (ไม่รวมข้อความระบบ) แสดงเป็นแผงโปร่งแสงตอนเปิดช่องแชท
 function renderChatHist() {
   const el = $('chatHist'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -1387,7 +1393,7 @@ function updateSpeaking(now) {
     p.speaking = p.voice && Math.sqrt(s / l.buf.length) > 4 && (!pe || pe.vol === undefined || pe.vol > 0.05);
   });
 }
-function setMicUi() { const b = $('micBtn'); b.classList.toggle('on', micOn); b.textContent = micOn ? '🎙️' : '🎤'; b.title = micOn ? 'ไมค์: เปิดอยู่ (กดเพื่อปิด)' : 'ไมค์: ปิดอยู่ (กดเพื่อเปิด)'; } // ไมค์ = 🎙️ เปิด / 🎤 ปิด • ลำโพง = 🔊 เปิด / 🔇 ปิด (ไอคอน 🔇 ข้างชื่อผู้เล่นหมายถึงปิดลำโพง)
+function setMicUi() { const m = $('micMenu'); m.classList.toggle('on', micOn); m.textContent = micOn ? '🎙️' : '🎤'; m.dataset.lbl = micOn ? 'ไมค์เปิด' : 'ไมค์'; const b = $('micBtn'); b.classList.toggle('on', micOn); b.textContent = micOn ? '🎙️' : '🎤'; b.title = micOn ? 'ไมค์: เปิดอยู่ (กดเพื่อปิด)' : 'ไมค์: ปิดอยู่ (กดเพื่อเปิด)'; } // ไมค์ = 🎙️ เปิด / 🎤 ปิด • ลำโพง = 🔊 เปิด / 🔇 ปิด (ไอคอน 🔇 ข้างชื่อผู้เล่นหมายถึงปิดลำโพง)
 $('micBtn').onclick = async () => {
   if (!micOn) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('เปิดไมค์ไม่ได้: ต้องเข้าผ่านลิงก์ https'); return; }
