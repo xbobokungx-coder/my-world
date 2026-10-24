@@ -89,7 +89,7 @@ const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 // ---------- messages ----------
 function mkPlayer(o) {
-  return { id: o.id, held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', pm: o.pm || 'follow', pax: o.pax || o.x, pay: o.pay || o.y, psick: !!o.psick, pname: o.pname || '', x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
+  return { id: o.id, veh: o.veh || '', held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', pm: o.pm || 'follow', pax: o.pax || o.x, pay: o.pay || o.y, psick: !!o.psick, pname: o.pname || '', x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
 }
 const treeKinds = new Map(); // 'x,y' → ชนิดต้นไม้ (Shared.TREE_KINDS) จากเซิร์ฟเวอร์ ใช้เลือกสไปรต์
 function applyTrees(list) { // ซิงก์ต้นไม้ที่ตัดได้ให้ตรงกับเซิร์ฟเวอร์ (ต้นไม้ขอบแมพไม่เปลี่ยน)
@@ -206,6 +206,10 @@ function handle(m) {
     case 'village': villageSt = m; villageEnd = m.left ? Date.now() + m.left : 0; updateHappyChip(); if (townShown()) renderTown(); break;
     case 'fame': fameSt = m.f; if (townShown()) renderTown(); break;
     case 'title': { const p = players.get(m.id); if (p) p.title = m.title; if (achShown()) renderAch(); break; }
+    case 'veh': { const p = players.get(m.id); if (p) p.veh = m.v || ''; if (m.id === myId && !$('shop').classList.contains('hidden')) renderShop(); break; }
+    case 'auc': aucSt = m.a; if (townShown()) renderTown(); break;
+    case 'fest': festSt = m.f; if (townShown()) renderTown(); break;
+    case 'rents': rentsSt = m.r || {}; if (!$('shop').classList.contains('hidden')) renderShop(); break;
     case 'arcpts': arcSt = m.arc; if (hubShown()) renderHub(); break;
     case 'lb': lbSt = m; if (hubShown()) renderHub(); break;
     case 'town': openTown(m.w === 'chest' ? 'chest' : m.w === 'atm' ? 'bank' : 'log'); break;
@@ -334,7 +338,7 @@ function renderEnergy() {
 $('enChip').onclick = () => toast($('enChip').title); $('cdChip').onclick = () => toast($('cdChip').title);
 setInterval(renderEnergy, 1000);
 // ความสดของสินค้า (Shared.FRESH): อายุของแต่ละกองในกระเป๋าจากเซิร์ฟเวอร์ คิดระดับสด/ค้าง/เก่าตามเวลาปัจจุบัน
-let freshSt = { l: {}, fz: false };
+let freshSt = { l: {}, fz: false }, rentsSt = {}, aucSt = null, festSt = null; // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
 const freshMulsOf = (k, q) => Shared.perishable(k) ? Shared.freshMuls(freshSt.l[k], q, Date.now() + timeOffset, freshSt.fz) : null;
 function freshBadge(k) { // 🟢12 🟡3 🔴1 (แสดงเมื่อมีของค้าง/เก่า) • ก่อนวันเริ่มระบบไม่แสดง
   if (!Shared.perishable(k) || !freshSt.l[k] || Date.now() + timeOffset < Shared.FRESH.startAt) return '';
@@ -534,12 +538,18 @@ function renderTown() {
     + `<p style="font-size:12px;opacity:.7;margin:4px 0 8px">ทุกคนลงขันได้ เงินนี้จะจ่ายค่ายาและอาหารให้สัตว์ที่ป่วย/หิวจัดนานเกิน 1 นาทีโดยอัตโนมัติ และใช้ชุบชีวิตสัตว์ที่ตายได้ในราคาครึ่งหนึ่งของการซื้อใหม่ (ถอนออกเป็นเหรียญไม่ได้)</p>`
     + `<div class="sec">🪙 ลงขัน (ต้องยืนใกล้ตู้เซฟ)</div><div class="center">` + TOWN.donate.map(a => `<button class="btn small" data-donate="${a}" ${coin < a ? 'disabled' : ''}>+${a}</button>`).join(' ') + '</div>'
     + projectSection(coin)
+    + (festSt && festSt.open ? `<div class="sec">🎪 เทศกาลประจำสัปดาห์</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">ลงขันครบเป้าแล้วทั้งเมืองได้บัฟ Happy Village 24 ชม. เป้าโตตามจำนวนคนที่ช่วยงานเมืองสัปดาห์นี้ เริ่มใหม่ทุกสัปดาห์</p>`
+      + `<div class="row"><span>${festSt.done ? '✅ สัปดาห์นี้จัดแล้ว' : `🪙 ${festSt.coin} / ${festSt.goal}`}</span><span>${festSt.done ? '' : PROJ_DONATE.map(a => `<button class="btn small" data-fest="${a}" ${coin < 1 ? 'disabled' : ''}>+${a}</button>`).join(' ')}</span></div>` : '')
+    + (aucSt ? (() => { const i = itemInfo(aucSt.item); return `<div class="sec">🔨 ประมูลประจำสัปดาห์</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">ของหายาก 1 ชิ้นต่อสัปดาห์ ใครประมูลสูงสุดตอนจบสัปดาห์ได้ไป เงินที่ชนะหายจากระบบ ถูกแซงได้เงินคืนทันที</p>`
+      + `<div class="row"><span>${i.emoji} ${i.name}<br><small>${aucSt.bid ? `สูงสุด 🪙${aucSt.bid} โดย ${esc(aucSt.name)}` : 'ยังไม่มีคนประมูล'}</small></span><span><button class="btn small" data-auc="${aucSt.min}" ${coin < aucSt.min ? 'disabled' : ''}>ประมูล 🪙${aucSt.min}</button></span></div>`; })() : '')
     + doleSection()
     + `<div class="sec">✨ ชุบชีวิตสัตว์</div>` + (dead.length ? dead.map(t => { const cost = reviveCost(t); return `<div class="row"><span>${ANIMALS[t].emoji} ${ANIMALS[t].name} ที่ตายไป ×${chestSt.dead[t]}</span><span><button class="btn small" data-revive="${t}" ${chestSt.coin < cost ? 'disabled' : ''}>ชุบ 🪙${cost}</button></span></div>`; }).join('') : '<p style="opacity:.7;margin:4px 0">ตอนนี้ไม่มีสัตว์ที่ต้องชุบ 🎉</p>');
   el.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'claim' }));
   el.querySelectorAll('[data-donate]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'donate', amt: +b.dataset.donate }));
   el.querySelectorAll('[data-revive]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'revive', type: b.dataset.revive }));
   el.querySelectorAll('[data-proj]').forEach(b => b.onclick = () => send({ t: 'proj', id: b.dataset.proj, amt: +b.dataset.amt }));
+  el.querySelectorAll('[data-fest]').forEach(b => b.onclick = () => send({ t: 'fest', amt: +b.dataset.fest }));
+  el.querySelectorAll('[data-auc]').forEach(b => b.onclick = () => ask(`ประมูล 🪙${b.dataset.auc}? (ถ้ามีคนแซงจะได้เงินคืน)`, () => send({ t: 'auc', amt: +b.dataset.auc })));
 }
 document.querySelectorAll('[data-ttab]').forEach(t => t.onclick = () => { townTab = t.dataset.ttab; if (townTab === 'log') send({ t: 'quest', a: 'fame' }); renderTown(); });
 $('townBtn').onclick = () => (townShown() ? closeTown() : openTown('log'));
@@ -1062,10 +1072,16 @@ function renderShop() {
   $('shopTitle').textContent = sh.name;
   $('shopInfo').textContent = (sh.skill ? `${SKILLS[sh.skill].emoji} ${SKILLS[sh.skill].name} เลเวล ${lvl(sh.skill)} • ` : '') + `🪙 ${inv.coin || 0}` + (shopKind === 'food' ? ` • 🍖 ความอิ่ม ${hunger}/100` : '');
   if (shopKind === 'cloth') return renderCloth();
-  if (sh.soon) { // ร้านยานพาหนะ: เตรียมไว้ก่อน ยังไม่เปิดขาย
-    $('shopBody').innerHTML = '<div class="banner" style="background:#e9e0ff">🚧 เร็วๆ นี้! ร้านกำลังเตรียมของ</div><div class="sec">สินค้าที่จะมาในอนาคต</div>'
+  if (sh.soon) { // ร้านยานพาหนะ: ซื้อแล้วขี่/ลงได้ที่นี่ (หรือกด V) • ของที่ยังไม่เปิดอยู่ท้ายรายการ
+    const vrows = sh.buy.map(k => { const i = itemInfo(k), v = k.slice(4), own = inv[k] > 0, riding = me && me.veh === v;
+      return `<div class="row"><span>${i.emoji} ${i.name}<br><small>${own ? (riding ? 'กำลังขี่อยู่ ✅' : 'มีแล้ว') : `🪙${i.buy}`}</small></span><span>`
+        + (own ? `<button class="btn small" data-veh="${riding ? '' : v}">${riding ? 'ลงเดิน' : 'ขี่'}</button> <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sellbackValue(k)}</button>` : `<button class="btn small" data-buy="${k}" data-n="1" ${(inv.coin || 0) < i.buy ? 'disabled' : ''}>ซื้อ</button>`) + '</span></div>'; }).join('');
+    $('shopBody').innerHTML = '<div class="sec">🚲 ยานพาหนะ (ขี่ได้ในเมือง เดินเร็วขึ้น • กด V ขี่/ลง)</div>' + vrows + '<div class="sec">เร็วๆ นี้</div>'
       + sh.soon.map(s => `<div class="row lock"><span>${s.emoji} ${s.name}<br><small>ราคาประมาณ 🪙${s.price}</small></span><span><button class="btn small" disabled>ยังไม่เปิดขาย</button></span></div>`).join('')
-      + '<p style="font-size:12px;opacity:.65">เมื่อเปิดขายแล้วจะใช้เดินทางได้เร็วขึ้น</p>';
+      + '';
+    $('shopBody').querySelectorAll('[data-veh]').forEach(b => b.onclick = () => send({ t: 'veh', v: b.dataset.veh }));
+    $('shopBody').querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: 1 }));
+    $('shopBody').querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask('ขายคืนร้าน (ได้ 70% ของราคาซื้อ)?', () => send({ t: 'sellback', item: b.dataset.sellback })));
     return;
   }
   const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'seed', tabs = SHOP_TABS[shopKind], sellTab = !!tabs && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'pets';
@@ -1087,6 +1103,14 @@ function renderShop() {
       + (i.once || i.animal ? '' : ` <button class="btn small" data-buy="${k}" data-n="5" ${off || coin < i.buy * 5 ? 'disabled' : ''}>×5</button>`)
       + (i.food && inv[k] ? ` <button class="btn small" data-eat="${k}" style="background:#2ecc71;border-bottom-color:#1e8f4e" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน</button>` : '')
       + (i.once && inv[k] ? ` <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sellbackValue(k)}</button>` : '') + `</span></div>`;
+  }
+  if (isFarm && farmTab === 'gear') { // แปลงเช่า
+    const R = Shared.FARM_RENT, now = Date.now() + timeOffset, myKey = me ? me.name.toLowerCase() : '';
+    h += `<div class="sec">🏡 แปลงเช่า (แปลงละ 12 ช่อง • 🪙${R.price} / ${R.days} วัน)</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">3 แถวบนของแปลงผัก แบ่ง 4 แปลง ขุด/ปลูกได้เฉพาะคนเช่า ต้นในแปลงตัวเองไม่นับเพดานปลูก เช่าได้คนละแปลง ต่อเวลาล่วงหน้าได้ ${R.maxAhead} วัน</p>`;
+    for (const P of R.plots) {
+      const r = rentsSt[P.id], active = r && r.until > now, mine = active && r.key === myKey, left = active ? fmtLeft(r.until - now) : '';
+      h += `<div class="row"><span>🏡 แปลง ${P.id}<br><small>${active ? (mine ? `ของคุณ • เหลือ ${left}` : `${r.name} เช่าอยู่ • เหลือ ${left}`) : 'ว่าง (ทุกคนใช้ได้)'}</small></span><span>${active && !mine ? '' : `<button class="btn small" data-rent="${P.id}" ${(inv.coin || 0) < R.price ? 'disabled' : ''}>${mine ? 'ต่อเวลา' : 'เช่า'} 🪙${R.price}</button>`}</span></div>`;
+    }
   }
   if (shopKind === 'pet') h += petPanelHtml();
   const tierOf = t => (t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : 1);
@@ -1140,6 +1164,7 @@ function renderShop() {
   const body = $('shopBody'); body.innerHTML = h;
   body.querySelectorAll('[data-ftab]').forEach(b => b.onclick = () => { farmTab = b.dataset.ftab; renderShop(); });
   body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft }));
+  body.querySelectorAll('[data-rent]').forEach(b => b.onclick = () => send({ t: 'rent', id: b.dataset.rent }));
   body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook }));
   bindPet(body);
   body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: +b.dataset.n }));
@@ -1194,6 +1219,7 @@ addEventListener('keydown', e => {
   if (build.on && c === 'KeyZ') { undoBuild(); return; }
   if (build.on && (c === 'Delete' || c === 'Backspace') && build.pick != null) { e.preventDefault(); send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; return; }
   if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'KeyV' && me && !scene) { const own = Object.keys(Shared.VEHICLES).filter(v => inv['veh_' + v] > 0); if (me.veh) send({ t: 'veh', v: '' }); else if (own.length) send({ t: 'veh', v: own[own.length - 1] }); else toast('ยังไม่มียานพาหนะ ซื้อได้ที่ร้านยานพาหนะ 🚲'); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (TOOL_LIST[n] === 'axe' && !axeLevel()); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
   if (c === 'KeyB' || c === 'KeyI') { $('bagBtn').onclick(); return; }
@@ -1986,7 +2012,11 @@ function renderHub() {
   let h = `<div class="banner" style="background:#fff3cf">🎮 แต้มตู้เกมของคุณ: <b>${arcSt.pts}</b> • สะสมตลอดกาล ${arcSt.total} • สัปดาห์นี้ ${arcSt.wk}</div>`;
   h += `<div class="chips" style="margin:8px 0"><button class="chip${hubTab === 'rank' ? ' sel' : ''}" data-htab="rank">🏆 อันดับ</button><button class="chip${hubTab === 'shop' ? ' sel' : ''}" data-htab="shop">🎁 ร้านรางวัล</button></div>`;
   if (hubTab === 'shop') {
-    h += '<p style="opacity:.75;text-align:center;margin:18px 0">🎁 ร้านแลกของรางวัล (ของโชว์เฉพาะแต้ม) กำลังมา เร็วๆ นี้!</p>';
+    h += '<p style="font-size:12px;opacity:.7;margin:4px 0 8px">ใช้แต้มตู้เกม (ไม่ใช่เหรียญ) แลกของหายากและฉายาเฉพาะ ที่หาซื้อด้วยเหรียญไม่ได้</p>';
+    for (const d of Shared.ARC_SHOP) {
+      const i = d.title ? { emoji: d.emoji, name: `ฉายา "${d.title}"` } : itemInfo(d.id), owned = d.title && (arcSt.tt || []).includes(d.id);
+      h += `<div class="qrow"><span>${i.emoji} <b>${esc(i.name)}</b></span><span>${owned ? `<button class="btn small" data-abuy="${d.id}">ใช้ฉายานี้</button>` : `<button class="btn small" data-abuy="${d.id}" ${arcSt.pts < d.pts ? 'disabled' : ''}>🎮 ${d.pts}</button>`}</span></div>`;
+    }
   } else {
     const list = (arr, unit) => (arr && arr.length) ? arr.map((x, i) => `<div class="qrow"><span>${medal[i] || ('#' + (i + 1))} <b>${esc(x.name)}</b>${x.name === (me && me.name) ? ' <small>(คุณ)</small>' : ''}</span><span><b>${x[unit]}</b> แต้ม</span></div>`).join('') : '<p style="opacity:.7">ยังไม่มีใครเล่น</p>';
     h += '<div class="sec">🏆 สะสมตลอดกาล (Top 10)</div>' + list(lbSt.total, 'total');
@@ -1995,6 +2025,7 @@ function renderHub() {
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-htab]').forEach(b => b.onclick = () => { hubTab = b.dataset.htab; renderHub(); });
+  el.querySelectorAll('[data-abuy]').forEach(b => b.onclick = () => send({ t: 'arcbuy', id: b.dataset.abuy }));
 }
 $('hubClose').onclick = closeHub;
 $('archub').addEventListener('pointerdown', e => { if (e.target === $('archub')) closeHub(); });
@@ -2615,6 +2646,7 @@ function drawFishing(p, t) {
 function drawPlayer(p, now, cx) {
   const ctx = cx || mainCtx, x = p.x, y = p.y;
   ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
+  if (p.veh && !p.sit && Shared.VEHICLES[p.veh]) PixelUI.world(ctx, Shared.VEHICLES[p.veh].emoji, x, y + 8, 26); // ยานพาหนะใต้ตัวละคร
   PixelChar.draw(ctx, p, now); // ตัวละครพิกเซล chibi (pixelchar.js)
   if (p.lamp) drawHeldLamp(p, now);
   if (p.held && !p.sit) drawHeldTool(p, now); // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง)
@@ -3470,7 +3502,7 @@ function step(now) {
   me.moving = mag > 0.1;
   if (me.moving) {
     if (mag > 1) { ix /= mag; iy /= mag; }
-    const sp = 110 * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
+    const sp = 110 * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1) * (me.veh && !scene && Shared.VEHICLES[me.veh] ? Shared.VEHICLES[me.veh].speed : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
     if (!blk(me.x + ix * sp, me.y, me.x, me.y)) me.x += ix * sp;
     if (!blk(me.x, me.y + iy * sp, me.x, me.y)) me.y += iy * sp;
     const dsx = scene ? ix - iy : ix, dsy = scene ? (ix + iy) / 2 : iy; // ทิศที่หันตามหน้าจอ
@@ -3605,6 +3637,14 @@ function step(now) {
     ctx.fillStyle = '#1f4f1f'; lilyPath(px, py, rx + 1, ry + 1, big); // ขอบเข้ม 1 px
     ctx.fillStyle = '#2d6e2a'; lilyPath(px, py, rx, ry, big); // ใบ
     ctx.fillStyle = '#4fa048'; ctx.beginPath(); ctx.ellipse(px - rx * 0.15, py - ry * 0.2, rx * 0.5, ry * 0.4, 0, 0, Math.PI * 2); ctx.fill(); // ไฮไลต์
+  }
+  // แปลงเช่า: เส้นขอบประ + ป้ายชื่อคนเช่า (แปลงว่างเส้นจาง)
+  if (!scene) for (const P of Shared.FARM_RENT.plots) {
+    if (P.x1 < x0 || P.x0 > x1 || P.y1 < y0 || P.y0 > y1) continue;
+    const r = rentsSt[P.id], active = r && r.until > Date.now() + timeOffset;
+    ctx.save(); ctx.setLineDash([6, 4]); ctx.lineWidth = 2; ctx.strokeStyle = active ? 'rgba(255,214,90,.9)' : 'rgba(255,255,255,.35)';
+    ctx.strokeRect(P.x0 * TS + 2, P.y0 * TS + 2, (P.x1 - P.x0 + 1) * TS - 4, (P.y1 - P.y0 + 1) * TS - 4); ctx.restore();
+    if (active) { ctx.font = 'bold 11px sans-serif'; const t = `🏡 ${r.name}`, w = ctx.measureText(t).width + 8; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(P.x0 * TS + 4, P.y0 * TS + 4, w, 15); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, P.x0 * TS + 8, P.y0 * TS + 15); }
   }
   // ช่องฟาร์ม
   if (!scene) for (const k in farm) {

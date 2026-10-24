@@ -188,6 +188,10 @@
   const START_SPAWN = { x: 14 * TS, y: 15 * TS + 16 }; // ผู้เล่นที่เข้าเกมครั้งแรกเกิดในแปลงผัก ถือจอบพร้อมขุด (ข้อแรกของคู่มือ) คนเก่าอยู่ตรงที่ออกไว้
   const DAY_MS = 12 * 60 * 1000;                       // หน่วย "วัน" ของเศรษฐกิจ (ดอกเบี้ย ผักสุกค้าง สัตว์ป่วย ตลาด) = 12 นาที
   const FARM_REGROW_MS = DAY_MS;                       // แปลงที่ถางแล้วแต่ไม่มีใครปลูกหรือถางต่อเกินเวลานี้ (นับเฉพาะตอนมีคนออนไลน์) หญ้าขึ้นกลับเป็นเหมือนเดิม ต้องถางใหม่
+  // แปลงเช่า (ขั้น 2 ใน ECONOMY-PLAN.md): 3 แถวบนของแปลงกลางแบ่งเป็น 4 แปลง แปลงละ 12 ช่อง เช่าได้คนละแปลง ราคา price ต่อ days วัน (ต่อเวลาล่วงหน้าได้ไม่เกิน maxAhead วัน)
+  // แปลงที่มีคนเช่า: ขุด/ปลูกได้เฉพาะคนเช่า และต้นในแปลงตัวเองไม่นับเพดาน FARM_CAP • แปลงว่าง = ทุกคนใช้ได้เหมือนแปลงกลาง
+  const FARM_RENT = { price: 500, days: 7, maxAhead: 14, plots: [{ id: 'A', x0: 6, y0: 8, x1: 9, y1: 10 }, { id: 'B', x0: 10, y0: 8, x1: 13, y1: 10 }, { id: 'C', x0: 14, y0: 8, x1: 17, y1: 10 }, { id: 'D', x0: 18, y0: 8, x1: 21, y1: 10 }] };
+  const rentPlotAt = (x, y) => FARM_RENT.plots.find(q => x >= q.x0 && x <= q.x1 && y >= q.y0 && y <= q.y1) || null;
   const FARM_CAP = { base: 20, perLv: 2, max: 40 };       // เพดานจำนวนต้นที่ผู้เล่นหนึ่งคนปลูกค้างในแปลงกลางได้พร้อมกัน (ฐาน + เลเวลชาวนา×perLv) กันคนเดียวปลูกเต็มจนคนอื่นไม่มีที่ ช่องว่างหลังเก็บเกี่ยวนับคืนทันที
   // พืชชั้นสูงต้องมีบัวรดน้ำระดับสูงถึงปลูกได้: Lv6–7 บัวทองแดง • Lv8+ บัวทอง (ใช้เงินระหว่างทาง) • ลองให้พืชใหญ่กินโควตาแปลงมากกว่าแล้ว XP/ชม. ของ Lv9–10 ตกต่ำกว่า Lv7 จึงไม่ใช้
   const cropCan = c => (c.lv >= 8 ? 3 : c.lv >= 6 ? 2 : 1);
@@ -507,6 +511,10 @@
     { id: 'festival', name: 'ลานเทศกาลกลางเมือง',   emoji: '🎪', goal: 40000 },
   ];
   const PROJ_DONATE = [100, 500, 2000];
+  // หลังสร้างโครงการครบ: เทศกาลประจำสัปดาห์ (ลงขันได้ไม่สิ้นสุด) เป้า = perPlayer × จำนวนคนที่ช่วยงานเมืองสัปดาห์นี้ (อย่างน้อย minPlayers) ครบแล้วทั้งเมืองได้บัฟ Happy Village buffMs
+  const FEST = { perPlayer: 1500, minPlayers: 3, minShare: 10, buffMs: 24 * 3600e3 }; // นับเฉพาะคนที่ช่วยงานเมือง ≥ minShare ครั้งในสัปดาห์
+  // ประมูลประจำสัปดาห์: ของหายากหมุนตามสัปดาห์ ราคาเริ่ม start ต้องสูงกว่าเดิม step (5%) เงินผู้ชนะหายจากระบบ คนที่ถูกประมูลแซงได้เงินคืนทันที
+  const AUCTION = { start: 2000, step: 0.05 };
   const FOOD = {
     meal_bread: 15, meal_sandwich: 25, meal_soup: 32, meal_rice: 40, // อาหารร้าน ฟื้นความอิ่มน้อยกว่าเมนูที่ทำเองทุกสูตร (ต่ำสุดของเมนูทำเองคือ 45)
     crop_carrot: 6, crop_cabbage: 8, crop_corn: 12, crop_tomato: 8, crop_eggplant: 10, crop_strawberry: 10, crop_pumpkin: 15, crop_melon: 15,
@@ -593,7 +601,12 @@
   const titleFor = n => { let t = ''; for (const [c, name] of TITLES) if ((n || 0) >= c) t = name; return t; };
   // แต้มความดี: ได้จากการช่วยงานที่จำเป็นจริง (ให้อาหารสัตว์ที่หิว รักษาสัตว์ป่วย รดน้ำพืชที่แห้ง ลงขันตู้เซฟ) จำกัดต่อวัน ใช้แลกบัฟส่วนตัวชั่วคราว
   const POINTS = { dailyCap: 30 };
-  const ARCPTS = { play: 2, win: 5 }; // แต้มตู้เกม: เล่นจบได้ +play, ชนะคนจริงได้ +win เพิ่ม (ไม่ได้จากบอท/คาสิโน) — ใช้แลกของโชว์ในร้านรางวัล + จัดอันดับ Leaderboard
+  const ARCPTS = { play: 2, win: 5, dailyCap: 60 }; // dailyCap: แต้มสูงสุดต่อวันต่อคน (กันจับคู่เล่นปั่นแต้ม)
+  // ร้านรางวัลแต้มตู้เกม (สกุลแยกจากเหรียญ แลกข้ามไม่ได้): ของหายาก + ฉายาเฉพาะ • title = ฉายาที่ได้ (เลือกใช้ได้ภายหลังในร้านเดียวกัน)
+  const ARC_SHOP = [
+    { id: 'furn_cat', pts: 300 }, { id: 'furn_flag', pts: 300 }, { id: 'furn_statue', pts: 450 }, { id: 'furn_fountain', pts: 450 },
+    { id: 't_lucky', pts: 150, title: 'มือขึ้นประจำลาน', emoji: '🍀' }, { id: 't_pro', pts: 350, title: 'นักกีฬาตู้เกม', emoji: '🕹️' }, { id: 't_king', pts: 800, title: 'ราชาตู้เกม', emoji: '👑' },
+  ]; // แต้มตู้เกม: เล่นจบได้ +play, ชนะคนจริงได้ +win เพิ่ม (ไม่ได้จากบอท/คาสิโน) — ใช้แลกของโชว์ในร้านรางวัล + จัดอันดับ Leaderboard
   const BUFFS = {
     speed:  { name: 'เท้าเบา',  emoji: '🏃', desc: 'เดินเร็วขึ้น 10%',             cost: 10, ms: 15 * 60000 },
     hunger: { name: 'อิ่มทน',   emoji: '🍖', desc: 'ความหิวลดช้าลงครึ่งหนึ่ง',      cost: 8,  ms: 15 * 60000 },
@@ -724,6 +737,9 @@
   const ARC_RANGE = 3.5;              // ระยะ (ช่อง) ที่ต้องอยู่ใกล้ตู้เกมถึงจะเปิด/นั่งเล่นได้ เดินห่างเกิน 3 ช่องจะถูกพาออกจากโต๊ะ
   const BETS = [0, 10, 50, 100, 500]; // ยอดเดิมพันที่เลือกได้ในตู้เกม
   const cabinetAt = (tx, ty) => { for (let i = 0; i < CABINETS.length; i++) if (CABINETS[i].x === tx && CABINETS[i].y === ty) return Object.assign({ idx: i }, CABINETS[i]); return null; };
+  // ยานพาหนะ: ซื้อครั้งเดียว ขี่/ลงได้ที่ร้านยานพาหนะหรือกด V • speed = ตัวคูณความเร็วเดิน (เฉพาะในเมือง ในบ้านลงเดิน) • ขายคืนได้ 70%
+  const VEHICLES = { bike: { name: 'จักรยาน', emoji: '🚲', price: 300, speed: 1.2 }, scooter: { name: 'มอเตอร์ไซค์', emoji: '🛵', price: 1500, speed: 1.4 }, car: { name: 'รถยนต์', emoji: '🚗', price: 6000, speed: 1.6 } };
+  const WISH_EXTRA = Object.values(VEHICLES).map(v => ({ k: 'veh', p: v.price })); // ที่ใช้เงินแบบซื้อครั้งเดียวที่เพิ่มในขั้น 2 (tools/econsim.js ใช้ทำรายการของที่อยากได้)
   // ร้านแต่ละสาย: buy = สินค้าที่ขาย, sell = คำนำหน้าไอเทมที่ร้านรับซื้อ
   const SHOPS = {
     farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: Object.keys(CROPS).map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
@@ -731,10 +747,8 @@
     animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3'], sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
-    // ร้านยานพาหนะ: เตรียมไว้ก่อน ยังไม่เปิดขาย (soon = รายการที่จะมาในอนาคต)
-    vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: [], sell: [], soon: [
-      { emoji: '🚲', name: 'จักรยาน', price: 300 }, { emoji: '🛵', name: 'มอเตอร์ไซค์', price: 1500 }, { emoji: '🚗', name: 'รถยนต์', price: 6000 }, { emoji: '⛵', name: 'เรือ', price: 4000 },
-    ] },
+    // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือยังไม่เปิด (soon)
+    vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v), sell: [], soon: [{ emoji: '⛵', name: 'เรือ (แล่นในสระ)', price: 4000 }] },
     cloth:  { name: '👕 ร้านเสื้อผ้า',    skill: null,     buy: Object.keys(WEAR).flatMap(c => WEAR[c].filter(i => i.price > 0).map(i => wearKey(c, i.id))), sell: [] },
     food:   { name: '🍜 ร้านอาหาร',      skill: null,     buy: MEALS.map(m => 'meal_' + m.id), sell: ['dish_'] },
     furn:   { name: '🛋️ ร้านเฟอร์นิเจอร์', skill: null,     buy: Object.keys(FURN).filter(f => !FURN[f].rare && !FURN[f].craft).map(f => 'furn_' + f), sell: ['furn_'] }, // รับซื้อเฟอร์นิเจอร์ในกระเป๋า (ที่ยังไม่ได้วาง) คืนที่ SELLBACK ของราคา
@@ -775,6 +789,8 @@
     let m = /^rod_(\d)$/.exec(k);
     if (m && RODS[m[1]] && RODS[m[1]].price) return { name: RODS[m[1]].name, emoji: '🎣', buy: RODS[m[1]].price, lv: RODS[m[1]].lv, skill: 'fish', once: true, cat: 'gear' };
     if (k === 'petfood') return { name: 'อาหารสัตว์เลี้ยง (+' + PETCARE.food + ' อิ่ม)', emoji: '🦴', buy: 8, cat: 'feed' };
+    m = /^veh_(\w+)$/.exec(k);
+    if (m && VEHICLES[m[1]]) { const v = VEHICLES[m[1]]; return { name: `${v.name} (เร็วขึ้น ${Math.round((v.speed - 1) * 100)}%)`, emoji: v.emoji, buy: v.price, once: true, cat: 'gear', veh: m[1] }; }
     m = /^pet_(\w+)$/.exec(k);
     if (m && COMPANIONS[m[1]]) { const c = COMPANIONS[m[1]]; return { name: c.name, emoji: c.emoji, buy: c.price, once: true, cat: 'pet', pet: m[1] }; }
     m = /^animal_(\w+)$/.exec(k);
@@ -919,11 +935,11 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, FEST, AUCTION, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);
