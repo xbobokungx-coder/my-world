@@ -81,7 +81,7 @@ class World {
         for (const [x, y, k] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2) { this.map[y][x] = T.TREE; if (Object.hasOwn(S.TREE_KINDS, k)) treeKinds[x + ',' + y] = k; }
       }
       mk = d.market || {}; this.mktDay = Number.isInteger(d.mktDay) ? d.mktDay : -1;
-      houseSaved = d.house || {}; townSaved = { rents: d.rents, log: d.log, chest: d.chest, projects: d.projects, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
+      houseSaved = d.house || {}; townSaved = { stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, chest: d.chest, projects: d.projects, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
     } catch (e) {
       // ไม่มีไฟล์ = โลกใหม่ แต่ถ้ามีไฟล์แต่อ่านไม่ได้ ให้สำรองไว้ก่อน ไม่งั้นการบันทึกครั้งต่อไปจะเขียนทับข้อมูลเดิมทิ้ง
       if (e.code !== 'ENOENT') { try { fs.copyFileSync(this.file, this.file + '.broken-' + Date.now()); console.error('อ่านไฟล์บันทึกไม่ได้ สำรองไว้แล้ว:', e.message); } catch (e2) { /* ไม่มีอะไรให้สำรอง */ } }
@@ -290,6 +290,8 @@ class World {
 
   // ----- เมือง: กระดานข่าว (log โลก 50 รายการล่าสุด) + ตู้เซฟกองกลาง (ทุกคนลงขันเหรียญ → จ่ายยา/อาหารสัตว์อัตโนมัติ และชุบสัตว์ที่ตาย) -----
   loadTown(d) {
+    this.stall = (Array.isArray(d.stall) ? d.stall : []).filter(x => x && typeof x.seller === 'string' && typeof x.item === 'string' && x.n > 0 && x.price > 0); this.stallNext = this.stall.reduce((a, x) => Math.max(a, x.id || 0), 0) + 1;
+    this.orders = d.orders && Array.isArray(d.orders.list) ? d.orders : { day: '', list: [], by: {} };
     this.rents = {}; for (const P of S.FARM_RENT.plots) { const r = d.rents && d.rents[P.id]; if (r && typeof r.key === 'string' && Number.isFinite(r.until)) this.rents[P.id] = { key: r.key, name: String(r.name || r.key).slice(0, 12), until: r.until }; } // แปลงเช่า
     this.log = (Array.isArray(d.log) ? d.log : []).filter(e => Array.isArray(e) && Number.isFinite(e[0]) && typeof e[1] === 'string').slice(-S.TOWN.logMax).map(e => [e[0], e[1].slice(0, 120)]);
     this.loadVillage(d.village); this.loadWeek(d.week); this.loadProjects(d.projects);
@@ -816,6 +818,77 @@ class World {
     this.addPts(p, S.NEWBIE.greetPts);
     logEv(this.room, 'welcome', { p: q.key, by: p.key, k: k === 'flower' ? 'flower' : 'wave', sec: Math.round((now - q.rec.firstSeen) / 1000), n: q.greeted.size });
   }
+  // ----- แผงฝากขาย (S.STALL): ผู้เล่นขายของให้กันด้วยเหรียญ -----
+  stallPub() { this.stallExpire(); return this.stall.map(x => ({ id: x.id, item: x.item, n: x.n, price: x.price, name: x.name, mine: x.seller })); }
+  stallPush() { this.dirty = true; this.broadcast({ t: 'stall', l: this.stallPub() }); }
+  stallExpire() { const now = Date.now(), keep = []; for (const x of this.stall) { if (now - x.t < S.STALL.days * 864e5) { keep.push(x); continue; } this.stallReturn(x); } if (keep.length !== this.stall.length) { this.stall = keep; this.dirty = true; } }
+  stallReturn(x) { // คืนของให้คนขาย (ออนไลน์/ออฟไลน์) พร้อมอายุของเดิม
+    const q = [...this.players.values()].find(o => o.key === x.seller);
+    if (q) { this.add(q, x.item, x.n, undefined, x.lots); this.toast(q, `🛒 ของบนแผง ${S.itemInfo(x.item).name} ×${x.n} คืนกระเป๋าแล้ว`); }
+    else { const rec = this.saved[x.seller]; if (rec) { rec.inv[x.item] = (rec.inv[x.item] || 0) + x.n; if (S.perishable(x.item) && x.lots) this.lotPut(rec, x.item, x.lots); this.dirty = true; } }
+  }
+  stallHandle(p, m) {
+    if (!p.rec.pin) return this.toast(p, '🔐 ต้องตั้ง PIN ก่อนถึงจะซื้อขายที่แผงได้ (📊 ข้อมูลฉัน → ตั้ง PIN)');
+    this.stallExpire();
+    if (m.a === 'post') {
+      const item = String(m.item || ''), n = Math.floor(+m.n), price = Math.floor(+m.price), base = S.tradeValue(item);
+      if (!S.isTradable(item) || !base) return this.toast(p, 'ของชิ้นนี้วางขายที่แผงไม่ได้');
+      if (!(n > 0) || n > S.STALL.maxN || (p.rec.inv[item] || 0) < n) return this.toast(p, 'จำนวนไม่ถูกต้อง');
+      const lo = Math.max(1, Math.ceil(base * S.STALL.min)), hi = Math.floor(base * S.STALL.max);
+      if (!(price >= lo && price <= hi)) return this.toast(p, `ราคาต่อชิ้นต้องอยู่ระหว่าง 🪙${lo}–${hi}`);
+      if (this.stall.filter(x => x.seller === p.key).length >= S.STALL.slots) return this.toast(p, `วางขายได้คนละไม่เกิน ${S.STALL.slots} รายการ`);
+      const lots = this.add(p, item, -n);
+      this.stall.push({ id: this.stallNext++, seller: p.key, name: p.name, item, n, price, lots, t: Date.now() });
+      const i = S.itemInfo(item); this.toast(p, `🛒 วาง ${i.emoji} ${i.name} ×${n} ชิ้นละ 🪙${price} แล้ว`); this.addLog(`🛒 ${p.name} วางขาย ${i.emoji} ${i.name} ×${n} ชิ้นละ 🪙${price}`);
+      return this.stallPush();
+    }
+    const x = this.stall.find(y => y.id === (m.id | 0)); if (!x) return this.toast(p, 'รายการนี้ขายไปแล้วหรือหมดเวลา');
+    if (m.a === 'cancel') { if (x.seller !== p.key) return; this.stall = this.stall.filter(y => y !== x); this.stallReturn(x); return this.stallPush(); }
+    if (m.a === 'buy') {
+      if (x.seller === p.key) return this.toast(p, 'ซื้อของตัวเองไม่ได้');
+      const q = Math.min(x.n, Math.max(1, Math.floor(+m.n) || 1)), cost = q * x.price;
+      if ((p.rec.inv.coin || 0) < cost) return this.toast(p, 'เหรียญไม่พอ');
+      const take = []; let need = q; // แบ่งกองอายุของตามจำนวนที่ซื้อ (ของเก่าออกก่อน)
+      for (const L of x.lots || []) { if (!need) break; const d = Math.min(L[1], need); take.push([L[0], d]); L[1] -= d; need -= d; }
+      if (x.lots) x.lots = x.lots.filter(L => L[1] > 0);
+      x.n -= q; if (!x.n) this.stall = this.stall.filter(y => y !== x);
+      const got = cost - Math.floor(cost * S.STALL.tax);
+      this.add(p, 'coin', -cost, 'stall_buy'); this.add(p, x.item, q, undefined, take.length ? take : undefined);
+      const s = [...this.players.values()].find(o => o.key === x.seller);
+      if (s) { this.add(s, 'coin', got, 'stall_sell'); this.toast(s, `🛒 ${p.name} ซื้อ ${S.itemInfo(x.item).name} ×${q} ได้ 🪙${got} (หักภาษี ${Math.round(S.STALL.tax * 100)}%)`); }
+      else { this.creditInv(x.seller, 'coin', got); logEv(this.room, 'coin', { p: x.seller, n: got, why: 'stall_sell' }); }
+      logEv(this.room, 'stall', { buyer: p.key, seller: x.seller, item: x.item, q, coin: cost, tax: cost - got });
+      const i = S.itemInfo(x.item); this.toast(p, `🛒 ซื้อ ${i.emoji} ${i.name} ×${q} จาก ${x.name} (🪙${cost})`); this.sfxTo(p, 'coin'); this.event(p, 'trade');
+      return this.stallPush();
+    }
+  }
+  // ----- ใบงาน NPC (S.ORDERS): ใบละ 2–3 หมวด จ่ายเกินราคามาตรฐานเล็กน้อย ทุกวันใหม่ จำนวนใบตามคนที่เข้าเกม -----
+  ordersRoll() {
+    const day = this.today(), o = this.orders; if (o.day === day) return o;
+    const today = new Set(Object.entries(this.saved).filter(([, r]) => r.lastSeen && this.dayOf(r.lastSeen) === day).map(([k]) => k));
+    const n = Math.max(S.ORDERS.minN, Math.min(S.ORDERS.maxN, Math.round(S.ORDERS.perPlayer * Math.max(1, today.size, this.players.size))));
+    const NPCN = NPC_DEFS.map(d => d.name), byCat = {}; for (const k of SELLABLE) { const c = S.sellCat(k), i = S.itemInfo(k); if (i && i.sell <= 90 && c !== 'dish') (byCat[c] = byCat[c] || []).push(k); }
+    const cats = Object.keys(byCat), list = [];
+    for (let i = 0; i < n; i++) {
+      const pick = cats.slice().sort(() => Math.random() - 0.5).slice(0, 2 + (Math.random() < 0.4 ? 1 : 0));
+      const need = pick.map(c => { const arr = byCat[c], k = arr[Math.floor(Math.random() * arr.length)], q = S.ORDERS.qty[0] + Math.floor(Math.random() * (S.ORDERS.qty[1] - S.ORDERS.qty[0] + 1)); return [k, q]; });
+      const pay = Math.round(need.reduce((a, [k, q]) => a + S.itemInfo(k).sell * q, 0) * S.ORDERS.pay);
+      list.push({ id: i + 1, npc: NPCN[i % NPCN.length], need, pay, done: '' });
+    }
+    this.orders = { day, list, by: {} }; this.dirty = true; return this.orders;
+  }
+  dayOf(t) { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
+  ordersPub(p) { const o = this.ordersRoll(); return { list: o.list.map(x => ({ id: x.id, npc: x.npc, need: x.need, pay: x.pay, done: x.done })), mine: (o.by[p.key] || 0), max: S.ORDERS.perDay }; }
+  orderFill(p, id) {
+    const o = this.ordersRoll(), x = o.list.find(y => y.id === (id | 0)); if (!x) return;
+    if (x.done) return this.toast(p, `ใบงานนี้ ${x.done} ส่งไปแล้ว`);
+    if ((o.by[p.key] || 0) >= S.ORDERS.perDay) return this.toast(p, `วันนี้ส่งใบงานครบ ${S.ORDERS.perDay} ใบแล้ว เหลือให้คนอื่นบ้างนะ`);
+    for (const [k, q] of x.need) if ((p.rec.inv[k] || 0) < q) return this.toast(p, `ของไม่พอ: ${S.itemInfo(k).name} ต้องการ ${q}`);
+    for (const [k, q] of x.need) this.add(p, k, -q);
+    this.add(p, 'coin', x.pay, 'order_fill'); x.done = p.name; o.by[p.key] = (o.by[p.key] || 0) + 1; this.dirty = true;
+    this.toast(p, `📋 ส่งใบงานของ${x.npc}สำเร็จ! ได้ 🪙${x.pay}`); this.addLog(`📋 ${p.name} ส่งใบงานของ${x.npc} ได้ 🪙${x.pay}`); this.sfxTo(p, 'levelup'); this.event(p, 'trade');
+    this.broadcast({ t: 'orders_upd' });
+  }
   // ----- แปลงเช่า (S.FARM_RENT) -----
   rentAt(x, y) { const P = S.rentPlotAt(x, y), r = P && this.rents[P.id]; return r && r.until > Date.now() ? r : null; }
   rentsPub() { const o = {}, now = Date.now(); for (const [id, r] of Object.entries(this.rents)) if (r.until > now) o[id] = { name: r.name, until: r.until, key: r.key }; return o; }
@@ -1223,6 +1296,8 @@ class World {
       case 'arcbuy': this.arcBuy(p, m.id); break;
       case 'rent': this.rentHandle(p, String(m.id || '')); break;
       case 'veh': this.setVeh(p, m.v); break;
+      case 'stall': if (m.a === 'list') send(p, { t: 'stall', l: this.stallPub() }); else this.stallHandle(p, m); break;
+      case 'orders': if (m.a === 'fill') this.orderFill(p, m.id); send(p, { t: 'orders', o: this.ordersPub(p) }); break;
       case 'auc': if (this.nearChest(p)) this.aucBid(p, +m.amt); else this.toast(p, 'ต้องอยู่ใกล้ตู้เซฟกองกลางที่ลานกองไฟ'); break;
       case 'fest': if (this.nearChest(p)) this.festDonate(p, m.amt | 0); else this.toast(p, 'ต้องอยู่ใกล้ตู้เซฟกองกลางที่ลานกองไฟ'); break;
       case 'buy': this.buy(p, m.item, Math.min(10, Math.max(1, m.n | 0))); break;
@@ -2799,7 +2874,7 @@ class World {
     this.dirty = false;
     for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; }
     const animals = {}; for (const t of Object.keys(ANIMALS)) animals[t] = this.count(t);
-    const data = JSON.stringify({ rents: this.rents, farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, banned: [...(this.banned || [])] }, replacer);
+    const data = JSON.stringify({ rents: this.rents, farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])] }, replacer);
     if (sync) { fs.writeFileSync(this.file, data); return; }
     fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
   }
@@ -2910,6 +2985,12 @@ if (!ADMIN_KEY) { ADMIN_KEY = crypto.randomBytes(9).toString('base64url'); try {
 const sha = x => crypto.createHash('sha256').update(String(x)).digest();
 const keyOk = x => crypto.timingSafeEqual(sha(x), sha(ADMIN_KEY));
 const normName = n => Array.from(String(n || '').replace(/\s+/g, ' ').trim()).slice(0, 12).join('');
+// PIN ของบัญชี (ต่อห้อง): เก็บเป็น scrypt + salt ไม่เก็บตัวเลขจริง • ผิดเกิน 5 ครั้งใน 1 นาทีต่อชื่อ ล็อก 1 นาที
+const PIN_RE = /^\d{4,6}$/;
+const pinMake = pin => { const s = crypto.randomBytes(8).toString('hex'); return { s, h: crypto.scryptSync(pin, s, 32).toString('hex') }; };
+const pinOk = (rec, pin) => { const p = rec && rec.pin; if (!p || typeof pin !== 'string' || !PIN_RE.test(pin)) return false; return crypto.timingSafeEqual(Buffer.from(p.h, 'hex'), crypto.scryptSync(pin, p.s, 32)); };
+const pinFails = new Map(); // 'ห้อง/ชื่อ' → [เวลาที่ใส่ผิด]
+const pinLocked = k => { const now = Date.now(), a = (pinFails.get(k) || []).filter(t => now - t < 60000); pinFails.set(k, a); return a.length >= 5; };
 const adminFails = []; // เวลาที่ใส่รหัสผิด (กันเดารหัส: ผิดเกิน 8 ครั้งใน 1 นาที ปฏิเสธทุกการเข้าผู้ดูแลชั่วคราว)
 const adminLocked = () => { const now = Date.now(); while (adminFails.length && now - adminFails[0] > 60000) adminFails.shift(); return adminFails.length >= 8; };
 const roomsPub = () => [...ROOMS.values()].map(r => ({ name: r.name, online: worlds.has(r.name) ? worlds.get(r.name).players.size : 0, main: r.name === DEFAULT_ROOM }));
@@ -2960,6 +3041,10 @@ function adminHandle(p, world, m) {
     }
     w.banned.delete(key); w.dirty = true;
     return reply({ unbanned: key, users: userList(), bans: banList() });
+  }
+  if (m.a === 'pinreset') { // ผู้ดูแลล้าง PIN ให้คนที่ลืม (ให้ตั้งใหม่ตอนเข้าเกม)
+    const w = ROOMS.has(String(m.room || '')) ? getWorld(String(m.room)) : world, key = normName(m.name).toLowerCase(), rec = w && w.saved[key]; if (!rec) return reply({ err: 'ไม่พบชื่อนี้ในห้อง' });
+    delete rec.pin; w.dirty = true; console.log('ล้าง PIN:', key, '(โดย ' + p.name + ')'); return reply({ err: `ล้าง PIN ของ ${rec.name || key} แล้ว ให้เขาตั้งใหม่ตอนเข้าเกม` });
   }
   if (m.a === 'kick') { // เตะผู้เล่นออกจากห้อง (เข้ามาใหม่ได้ทันที)
     const w = worlds.get(String(m.room || '')); let t = null;
@@ -3029,14 +3114,27 @@ wss.on('connection', (ws, req) => {
         }
         admin = true;
       }
+      const pkey = normName(m.name).toLowerCase(), prec = w.saved[pkey], pk = room + '/' + pkey, pin = typeof m.pin === 'string' ? m.pin.trim() : '';
+      if (!admin && prec && prec.pin) { // บัญชีที่ตั้ง PIN แล้ว ต้องใส่ PIN ถูก
+        if (pinLocked(pk)) return err('ใส่ PIN ผิดบ่อยเกินไป รอ 1 นาทีแล้วลองใหม่', { need: 'pin' });
+        if (!pinOk(prec, pin)) { pinFails.get(pk).push(Date.now()); if (++authFails > 8) { ws.close(); return; } return err(pin ? 'PIN ไม่ถูกต้อง' : 'ชื่อนี้ตั้ง PIN ไว้ กรุณาใส่ PIN', { need: 'pin' }); }
+      }
       const r = w.join(ws, m.name, m.color, admin);
+      if (!r.err && !prec && PIN_RE.test(pin)) { r.p.rec.pin = pinMake(pin); w.dirty = true; } // บัญชีใหม่ที่ใส่ PIN มาตั้งแต่สมัคร
       if (r.err) err(r.err);
       else {
         player = r.p; world = w; player.ip = ip;
         const rec = player.rec, now = Date.now(); rec.lastSeen = now; rec.ips = [{ ip, t: now }].concat((rec.ips || []).filter(x => x && x.ip !== ip)).slice(0, 5); w.dirty = true;
         console.log('เข้าเกม:', player.name, '←', ip, '(ห้อง ' + w.room + ')');
+        ws.send(JSON.stringify({ t: 'pinask', has: !!rec.pin, show: !rec.pin && !admin && (rec.joins || 1) > 1 })); // บัญชีเก่าที่ยังไม่มี PIN: ขอให้ตั้ง (คนใหม่ให้เล่นก่อน ค่อยถามครั้งถัดไป)
       }
       return;
+    }
+    if (m.t === 'pin') { // ตั้ง/เปลี่ยน PIN ในเกม (มี PIN อยู่แล้วต้องใส่ PIN เดิม)
+      const rec = player.rec, pin = String(m.pin || ''), k = world.room + '/' + player.key;
+      if (!PIN_RE.test(pin)) return world.toast(player, 'PIN ต้องเป็นตัวเลข 4–6 หลัก');
+      if (rec.pin) { if (pinLocked(k)) return world.toast(player, 'ใส่ PIN ผิดบ่อยเกินไป รอ 1 นาที'); if (!pinOk(rec, String(m.old || ''))) { pinFails.get(k).push(Date.now()); return world.toast(player, 'PIN เดิมไม่ถูกต้อง'); } }
+      rec.pin = pinMake(pin); world.dirty = true; ws.send(JSON.stringify({ t: 'pinask', has: true })); return world.toast(player, '🔐 ตั้ง PIN แล้ว ครั้งหน้าเข้าเกมใส่ PIN ด้วยนะ');
     }
     if (m.t === 'admin') { if (player.admin) { try { adminHandle(player, world, m); } catch (e) { console.error('admin error', e); } } return; }
     try { world.handle(player, m); } catch (e) { console.error('handle error', m.t, e); } // ข้อความแปลกๆ จากผู้เล่นคนเดียวต้องไม่ทำให้เซิร์ฟเวอร์ล้ม

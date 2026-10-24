@@ -75,10 +75,15 @@ const joinGame = () => {
 };
 $('go').onclick = joinGame;
 $('name').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
+$('pin').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
+// ตั้ง/เปลี่ยน PIN ในเกม (เซิร์ฟเวอร์ขอให้ตั้งถ้ายังไม่มี หรือกดจากแท็บข้อมูลฉัน)
+function showPinBox(has) { $('pinOld').classList.toggle('hidden', !has); $('pinOld').value = ''; $('pinNew').value = ''; $('pinBox').classList.remove('hidden'); setTimeout(() => (has ? $('pinOld') : $('pinNew')).focus(), 50); }
+$('pinLater').onclick = () => $('pinBox').classList.add('hidden');
+$('pinSave').onclick = () => { const p = $('pinNew').value.trim(); if (!/^\d{4,6}$/.test(p)) return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก'); send({ t: 'pin', pin: p, old: $('pinOld').value.trim() }); $('pinBox').classList.add('hidden'); };
 
 function connect(name) {
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
-  ws.onopen = () => ws.send(JSON.stringify({ t: 'join', name, color, room: roomParam(), akey: $('akey').value || ls.get('mw_akey') || '' }));
+  ws.onopen = () => ws.send(JSON.stringify({ t: 'join', name, color, room: roomParam(), pin: $('pin').value.trim(), akey: $('akey').value || ls.get('mw_akey') || '' }));
   ws.onmessage = e => handle(JSON.parse(e.data));
   ws.onclose = () => {
     if (joined) $('dc').classList.remove('hidden');
@@ -99,7 +104,7 @@ function applyTrees(list) { // ซิงก์ต้นไม้ที่ตั�
 }
 function handle(m) {
   switch (m.t) {
-    case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
+    case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'pin') $('pin').focus(); if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
     case 'w':
       resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; if (m.fr) freshSt = m.fr; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
       dur = m.dur || {}; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
@@ -165,6 +170,7 @@ function handle(m) {
     case 'skills': skills = m.skills; refreshOpen(); break;
     case 'msg': toast(m.text); break;
     case 'gift': showGift(m.item); break;
+    case 'pinask': pinSt = !!m.has; if (m.show) showPinBox(pinSt); break;
     case 'newbie': showGreet(m.id, m.name); break;
     case 'mkt': Object.assign(market, m.m); refreshOpen(); break;
     case 'sfx': {
@@ -208,6 +214,9 @@ function handle(m) {
     case 'title': { const p = players.get(m.id); if (p) p.title = m.title; if (achShown()) renderAch(); break; }
     case 'veh': { const p = players.get(m.id); if (p) p.veh = m.v || ''; if (m.id === myId && !$('shop').classList.contains('hidden')) renderShop(); break; }
     case 'auc': aucSt = m.a; if (townShown()) renderTown(); break;
+    case 'stall': stallSt = m.l || []; if (townShown() && townTab === 'stall') renderTown(); break;
+    case 'orders': ordersSt = m.o; if (townShown() && townTab === 'orders') renderTown(); break;
+    case 'orders_upd': if (townShown() && townTab === 'orders') send({ t: 'orders', a: 'list' }); break;
     case 'fest': festSt = m.f; if (townShown()) renderTown(); break;
     case 'rents': rentsSt = m.r || {}; if (!$('shop').classList.contains('hidden')) renderShop(); break;
     case 'arcpts': arcSt = m.arc; if (hubShown()) renderHub(); break;
@@ -269,7 +278,7 @@ function renderAdmin() {
     h += `<div class="sec">🪙 เหรียญของตัวเอง</div><div class="row"><span>${me ? esc(me.name) : ''}</span><span><button class="btn small" data-admcoin="100">➕ 100</button> <button class="btn small muted" data-admcoin="-100">➖ 100</button></span></div>`;
     h += '<div class="sec">👥 ผู้เล่นและ IP <button class="btn small" id="ipRefresh">🔄 รีเฟรช</button></div>';
     h += (adminSt.users || []).map(u => `<div class="arow"><span>${u.online ? '🟢' : '⚪'} <b>${esc(u.name)}</b> <small>ห้อง ${esc(u.room)}</small><br><small>${u.online ? 'IP ตอนนี้: <b>' + esc(u.ip) + '</b>' : 'เข้าล่าสุด ' + ago(u.last)}</small>`
-      + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
+      + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<button class="btn small muted" data-pinreset="${esc(u.name)}" data-proom="${esc(u.room)}">🔓 ล้าง PIN</button> <button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; renderAdmin(); });
@@ -278,6 +287,7 @@ function renderAdmin() {
   el.querySelectorAll('[data-bugfix]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'bugfix', id: b.dataset.bugfix }));
   el.querySelectorAll('[data-bugreopen]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'bugreopen', id: b.dataset.bugreopen }));
   const bR = $('bugRefresh'); if (bR) bR.onclick = () => send({ t: 'admin', a: 'bugs' });
+  el.querySelectorAll('[data-pinreset]').forEach(b => b.onclick = () => ask('ล้าง PIN ของ ' + b.dataset.pinreset + '? (ให้เขาตั้งใหม่ตอนเข้าเกม)', () => send({ t: 'admin', a: 'pinreset', name: b.dataset.pinreset, room: b.dataset.proom })));
   el.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => ask('เตะ ' + b.dataset.kick + ' ออกจากห้อง?\n(เขาเข้ามาใหม่ได้ทันที)', () => send({ t: 'admin', a: 'kick', room: b.dataset.kroom, name: b.dataset.kick })));
   el.querySelectorAll('[data-admcoin]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'coin', n: +b.dataset.admcoin }));
   el.querySelectorAll('[data-ban]').forEach(b => b.onclick = () => ask('แบน ' + b.dataset.ban + '?\n(เข้าเกมด้วยชื่อนี้ไม่ได้อีก จนกว่าจะใช้ชื่ออื่น • เตะออกทันทีถ้าออนไลน์)', () => send({ t: 'admin', a: 'ban', room: b.dataset.broom, name: b.dataset.ban })));
@@ -338,7 +348,7 @@ function renderEnergy() {
 $('enChip').onclick = () => toast($('enChip').title); $('cdChip').onclick = () => toast($('cdChip').title);
 setInterval(renderEnergy, 1000);
 // ความสดของสินค้า (Shared.FRESH): อายุของแต่ละกองในกระเป๋าจากเซิร์ฟเวอร์ คิดระดับสด/ค้าง/เก่าตามเวลาปัจจุบัน
-let freshSt = { l: {}, fz: false }, rentsSt = {}, aucSt = null, festSt = null; // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
+let freshSt = { l: {}, fz: false }, rentsSt = {}, aucSt = null, festSt = null, pinSt = false, stallSt = [], ordersSt = null; // pinSt = บัญชีนี้ตั้ง PIN แล้ว // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
 const freshMulsOf = (k, q) => Shared.perishable(k) ? Shared.freshMuls(freshSt.l[k], q, Date.now() + timeOffset, freshSt.fz) : null;
 function freshBadge(k) { // 🟢12 🟡3 🔴1 (แสดงเมื่อมีของค้าง/เก่า) • ก่อนวันเริ่มระบบไม่แสดง
   if (!Shared.perishable(k) || !freshSt.l[k] || Date.now() + timeOffset < Shared.FRESH.startAt) return '';
@@ -528,8 +538,40 @@ function renderTown() {
   const el = $('townBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   if (townTab === 'bank') return renderBankTab(el);
   if (townTab === 'fame') return renderFameTab(el);
+  const tabs = ['log', 'stall', 'orders'].includes(townTab) ? `<div class="chips" style="margin:0 0 8px">${[['log', '📰 ข่าว'], ['stall', '🛒 ตลาดนัด'], ['orders', '📋 ใบงาน']].map(([k, n]) => `<button class="chip${townTab === k ? ' sel' : ''}" data-ttab2="${k}">${n}</button>`).join('')}</div>` : '';
+  const bindTabs = () => el.querySelectorAll('[data-ttab2]').forEach(b => b.onclick = () => { townTab = b.dataset.ttab2; if (townTab === 'stall') send({ t: 'stall', a: 'list' }); if (townTab === 'orders') send({ t: 'orders', a: 'list' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); renderTown(); });
+  if (townTab === 'stall') { // แผงฝากขาย: ซื้อของจากผู้เล่น / วางขายของตัวเอง
+    const S0 = Shared.STALL, myKey = me ? me.name.toLowerCase() : '', coin = inv.coin || 0, tradable = Object.keys(inv).filter(k => Shared.isTradable(k) && inv[k] > 0);
+    let h = tabs + `<p style="font-size:12px;opacity:.7;margin:0 0 6px">ซื้อขายกับผู้เล่นด้วยเหรียญ ราคาต่อชิ้น ${Math.round(S0.min * 100)}–${Math.round(S0.max * 100)}% ของราคามาตรฐาน • คนขายได้เงินหักภาษี ${Math.round(S0.tax * 100)}% • ไม่มีคนซื้อใน ${S0.days} วันของคืน • ต้องตั้ง PIN ก่อน</p>`;
+    if (!pinSt) h += '<div class="banner" style="background:#ffe3d6">🔐 ตั้ง PIN ก่อนถึงจะซื้อขายที่แผงได้ <button class="btn small" data-pinset="1">ตั้ง PIN</button></div>';
+    const others = stallSt.filter(x => x.mine !== myKey), mine = stallSt.filter(x => x.mine === myKey);
+    h += '<div class="sec">🛒 ของบนแผง</div>' + (others.length ? others.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n}<br><small>ชิ้นละ 🪙${x.price} • โดย ${esc(x.name)}</small></span><span><button class="btn small" data-sbuy="${x.id}" data-sn="1" ${coin < x.price || !pinSt ? 'disabled' : ''}>ซื้อ 1</button>${x.n > 1 ? ` <button class="btn small" data-sbuy="${x.id}" data-sn="${x.n}" ${coin < x.price * x.n || !pinSt ? 'disabled' : ''}>ทั้งหมด 🪙${x.price * x.n}</button>` : ''}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีใครวางขาย</p>');
+    h += `<div class="sec">📦 ของที่ฉันวางขาย (${mine.length}/${S0.slots})</div>` + mine.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} • ชิ้นละ 🪙${x.price}</span><button class="btn small muted" data-scancel="${x.id}">เก็บคืน</button></div>`; }).join('');
+    if (tradable.length && pinSt && mine.length < S0.slots) {
+      h += `<div class="sec">➕ วางขาย</div><div class="row" style="flex-wrap:wrap;gap:6px"><select id="stItem">${tradable.map(k => { const i = itemInfo(k); return `<option value="${k}">${i.emoji} ${i.name} (มี ${inv[k]})</option>`; }).join('')}</select>`
+        + `<input id="stN" type="number" min="1" value="1" style="width:64px" title="จำนวน"> <input id="stPrice" type="number" min="1" style="width:84px" title="ราคาต่อชิ้น"> <button class="btn small" id="stPost">วางขาย</button></div><small id="stHint" style="opacity:.7"></small>`;
+    }
+    el.innerHTML = h; bindTabs();
+    const sel = $('stItem'), hint = () => { if (!sel) return; const b = Shared.tradeValue(sel.value); $('stPrice').value = $('stPrice').value || b; $('stHint').textContent = `ราคามาตรฐาน 🪙${b} • ตั้งได้ ${Math.max(1, Math.ceil(b * S0.min))}–${Math.floor(b * S0.max)} ต่อชิ้น`; };
+    if (sel) { sel.onchange = () => { $('stPrice').value = ''; hint(); }; hint(); $('stPost').onclick = () => send({ t: 'stall', a: 'post', item: sel.value, n: +$('stN').value, price: +$('stPrice').value }); }
+    el.querySelectorAll('[data-sbuy]').forEach(b => b.onclick = () => ask(`ซื้อ ${b.dataset.sn} ชิ้น?`, () => send({ t: 'stall', a: 'buy', id: +b.dataset.sbuy, n: +b.dataset.sn })));
+    el.querySelectorAll('[data-scancel]').forEach(b => b.onclick = () => send({ t: 'stall', a: 'cancel', id: +b.dataset.scancel }));
+    el.querySelectorAll('[data-pinset]').forEach(b => b.onclick = () => showPinBox(pinSt));
+    return;
+  }
+  if (townTab === 'orders') { // ใบงาน NPC: ส่งของหลายหมวดในใบเดียว
+    const o = ordersSt; let h = tabs + '<p style="font-size:12px;opacity:.7;margin:0 0 6px">ชาวเมืองต้องการของหลายอย่างในใบเดียว จ่ายมากกว่าขายที่ร้าน 20% ใบงานใหม่ทุกวัน (คนละไม่เกิน 2 ใบ/วัน) ชวนเพื่อนต่างอาชีพมาช่วยกันหาของ</p>';
+    if (!o) h += '<p style="opacity:.7">กำลังโหลด...</p>';
+    else h += `<div class="sec">📋 ใบงานวันนี้ (ส่งแล้ว ${o.mine}/${o.max})</div>` + o.list.map(x => { const ok = x.need.every(([k, q]) => (inv[k] || 0) >= q);
+      return `<div class="qrow${x.done ? ' done' : ''}"><div>🧑‍🌾 <b>${esc(x.npc)}</b> ต้องการ: ${x.need.map(([k, q]) => { const i = itemInfo(k); return `${i.emoji}${i.name} ×${q} <small>(มี ${inv[k] || 0})</small>`; }).join(' • ')}</div>`
+        + `<div class="row" style="margin-top:4px"><span>รางวัล 🪙<b>${x.pay}</b></span>${x.done ? `<span>✅ ${esc(x.done)} ส่งแล้ว</span>` : `<button class="btn small" data-ofill="${x.id}" ${ok && o.mine < o.max ? '' : 'disabled'}>ส่งของ</button>`}</div></div>`; }).join('');
+    el.innerHTML = h; bindTabs();
+    el.querySelectorAll('[data-ofill]').forEach(b => b.onclick = () => send({ t: 'orders', a: 'fill', id: +b.dataset.ofill }));
+    return;
+  }
   if (townTab === 'log') {
-    el.innerHTML = villageCard() + weeklyCard() + '<div class="sec">🏆 อันดับวันนี้</div>' + fameHTML() + '<div class="sec">📰 ข่าวล่าสุด (' + TOWN.logMax + ' ข่าว)</div>' + (townLog.length ? townLog.slice().reverse().map(([t, s]) => { const d = new Date(t); return `<div class="logrow"><time>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</time><span>${esc(s)}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีข่าว</p>');
+    el.innerHTML = tabs + villageCard() + weeklyCard() + '<div class="sec">🏆 อันดับวันนี้</div>' + fameHTML() + '<div class="sec">📰 ข่าวล่าสุด (' + TOWN.logMax + ' ข่าว)</div>' + (townLog.length ? townLog.slice().reverse().map(([t, s]) => { const d = new Date(t); return `<div class="logrow"><time>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</time><span>${esc(s)}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีข่าว</p>');
+    bindTabs();
     el.querySelectorAll('[data-wkclaim]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'weekly' }));
     return;
   }
@@ -915,6 +957,7 @@ $('bagClose').onclick = closeBag;
 $('bag').addEventListener('pointerdown', e => { if (e.target === $('bag')) closeBag(); });
 document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => { bagTab = t.dataset.tab; renderBag(); });
 $('bagBody').addEventListener('click', e => {
+  if (e.target.closest('[data-pinset]')) { showPinBox(pinSt); return; }
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
   const sb = e.target.closest('[data-sub]'); if (sb) { bagSub = sb.dataset.sub; renderBag(); return; }
   const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); return; }
@@ -956,6 +999,7 @@ function renderBag() {
     el.innerHTML = `<div class="row"><b style="font-size:17px">👤 ${me.name.replace(/</g, '&lt;')}</b><span><span class="sw" style="display:inline-block;width:18px;height:18px;vertical-align:middle;background:${me.color}"></span> <span class="sw" style="display:inline-block;width:18px;height:18px;vertical-align:middle;background:${me.hat}"></span></span></div>`
       + `<div class="sec">🍖 ความอิ่ม — ${hl} (${hunger}/100)</div><div class="hbar"><i style="width:${hunger}%;${hunger <= 20 ? 'background:#e74c3c' : ''}"></i></div><small style="opacity:.7;font-size:12px">ลดลงเรื่อยๆ ขณะออนไลน์ • ต่ำกว่า 15 เดินช้าลง • ถึง 0 ใช้เครื่องมือไม่ได้ • กินอาหารที่ร้านอาหารหรือกินผลผลิตของตัวเองได้</small>`
       + `<div class="stat">${cards.map(c => `<div>${c[0]}<b>${c[1]}</b></div>`).join('')}</div>`
+      + `<button class="btn small" data-pinset="1" style="margin:4px 6px 6px 0">🔐 ${pinSt ? 'เปลี่ยน PIN' : 'ตั้ง PIN'}</button>`
       + `<button class="btn small" data-sfx="1" style="margin:4px 0 6px">${sfxOn ? '🔊 เอฟเฟกต์เสียง: เปิด' : '🔇 เอฟเฟกต์เสียง: ปิด'}</button><div class="sec">เลเวลอาชีพ</div>`
       + Object.keys(SKILLS).map(k => {
         const L = lvl(k), xp = skills[k] || 0, base = xpFor(L), need = L >= MAX_LV ? 0 : xpFor(L + 1) - base;
