@@ -202,8 +202,16 @@
     wood:   { name: 'ช่างไม้',    emoji: '🪵' },
     cook:   { name: 'เชฟ',       emoji: '👨‍🍳' },
   };
-  const xpFor = lv => 30 * (lv - 1) * (lv - 1);        // XP สะสมที่ต้องใช้ถึงเลเวลนั้น
-  const levelOf = xp => Math.min(MAX_LV, Math.floor(Math.sqrt((xp || 0) / 30)) + 1);
+  // XP สะสมที่ต้องใช้ถึงเลเวลนั้น (ช่อง = เลเวล) ตั้งตามเวลาเล่นเป้าหมายต่ออาชีพ: Lv2 ~5 นาที • Lv4 ~45 นาที • Lv5 ~1.5 ชม. • Lv7 ~5 ชม. • Lv10 ~18 ชม. (ดู ECONOMY-PLAN.md ขั้น 1B)
+  const XP_TABLE = [0, 0, 150, 600, 1500, 3500, 8000, 14500, 24000, 36000, 64000];
+  const xpFor = lv => XP_TABLE[Math.max(1, Math.min(MAX_LV, lv))];
+  const levelOf = xp => { let lv = 1; while (lv < MAX_LV && (xp || 0) >= XP_TABLE[lv + 1]) lv++; return lv; };
+  // ย้าย XP ตามสูตรเดิม (30×(lv−1)², ใช้ถึง ต.ค. 2026) มาตารางใหม่: เลเวลเท่าเดิม และความคืบหน้าในเลเวลนั้นเป็นสัดส่วนเท่าเดิม
+  const xpFromV1 = xp => {
+    xp = Math.max(0, xp || 0); const old = lv => 30 * (lv - 1) * (lv - 1), L = Math.min(MAX_LV, Math.floor(Math.sqrt(xp / 30)) + 1);
+    if (L >= MAX_LV) return XP_TABLE[MAX_LV] + Math.floor(xp - old(MAX_LV));
+    return XP_TABLE[L] + Math.floor((xp - old(L)) / (old(L + 1) - old(L)) * (XP_TABLE[L + 1] - XP_TABLE[L]));
+  };
 
   // เมล็ดพืช: lv = เลเวลชาวนาที่ปลดล็อก, time = เวลาโต (ms) เมื่อรดน้ำต่อเนื่อง, xp = XP ตอนเก็บเกี่ยว
   // หลักการตั้งราคา: ใช้เวลาโตนานราคาสูง • กำไรต่อวินาทีต่อแปลง ≈ 0.20-0.25 (ต่ำกว่าสายอื่น เพราะปลูกได้ทีละหลายสิบแปลง)
@@ -853,7 +861,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_GRACE_MS, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, CAT_KEYS, sellCat, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, xpFor, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, CAT_KEYS, sellCat, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

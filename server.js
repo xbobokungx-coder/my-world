@@ -69,6 +69,11 @@ class World {
       const d = JSON.parse(fs.readFileSync(this.file, 'utf8').replace(/^﻿/, '')); // ตัด BOM ที่โปรแกรมแก้ไขบางตัวเติมให้
       this.farm = d.farm || {};
       this.saved = Object.assign(Object.create(null), d.players); // ไม่มี prototype: ชื่อผู้เล่นอย่าง "__proto__" จะได้ไม่ไปชนของในระบบ
+      for (const rec of Object.values(this.saved)) { // ย้าย XP มาตาราง XP_TABLE (ครั้งเดียวต่อบัญชี) เลเวลเท่าเดิม
+        if (!rec || rec.xpv === 2) continue;
+        if (rec.skills) for (const k of Object.keys(rec.skills)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = S.xpFromV1(rec.skills[k]);
+        rec.xpv = 2; this.dirty = true;
+      }
       counts = d.animals || {};
       if (Array.isArray(d.trees)) { // คืนสภาพต้นไม้ที่ตัด/งอกใหม่ไว้ (ต้นไม้ขอบแมพไม่เปลี่ยน)
         for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) this.map[y][x] = T.GRASS;
@@ -940,7 +945,7 @@ class World {
     if (!admin && this.banned && this.banned.has(key)) return { err: 'ชื่อนี้ถูกระงับโดยผู้ดูแล 🚫 กรุณาใช้ชื่ออื่น' };
     for (const q of this.players.values()) if (q.key === key) return { err: 'ชื่อนี้กำลังเล่นอยู่ ลองใช้ชื่ออื่น' };
     let rec = this.saved[key];
-    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10 }, mig2: true, x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
+    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10 }, mig2: true, xpv: 2, x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
     if (!rec.mig2) { rec.mig2 = true; rec.inv.bait = (rec.inv.bait || 0) + 10; } // แจกเหยื่อตกปลาชุดแรกให้ผู้เล่นเดิม (ระบบเหยื่อเพิ่งเพิ่ม)
     rec.name = name;
     if (!rec.firstSeen) rec.firstSeen = rec.lastSeen || Date.now(); // บัญชีเก่าก่อนมีตัวนับ: ใช้เวลาเข้าล่าสุดแทน (ใกล้เคียงเท่านั้น)
