@@ -248,7 +248,7 @@ class World {
           if (!S.FURN[f].wall && (!Number.isFinite(x) || !Number.isFinite(y))) return;
           const res = S.houseCheck(h.items, f, x, y, r, { wl: m.wl, u: S.snapQ(+m.u), mates });
           if (!res.ok) return this.toast(p, res.why);
-          this.add(p, 'furn_' + f, -1);
+          this.add(p, 'furn_' + f, -1); this.event(p, 'hplace');
           this.setItem(key, h.next++, { f, x: res.x !== undefined ? res.x : x, y: res.y !== undefined ? res.y : y, r, z: res.z, on: res.on, wl: res.wl, u: res.u });
           this.sfx(p, 'plant');
           return;
@@ -345,7 +345,7 @@ class World {
     const a = this.arcOf(rec), day = this.today(); if (a.day !== day) { a.day = day; a.dayPts = 0; }
     const gain = Math.min(play + (won ? S.ARCPTS.win : 0), Math.max(0, S.ARCPTS.dailyCap - a.dayPts)); a.dayPts += gain;
     a.pts += gain; a.total += gain; a.wk += gain; this.dirty = true;
-    this.achAdd(rec, 'arcplay'); if (won) this.achAdd(rec, 'arcwin');
+    this.achAdd(rec, 'arcplay'); if (won) this.achAdd(rec, 'arcwin'); if (p) this.wk1Step(p, 'arcplay');
     if (p) { send(p, { t: 'arcpts', arc: this.arcPub(rec) }); this.toast(p, gain ? `🎮 +${gain} แต้มตู้เกม${won ? ' (ชนะ!)' : ''} • มีอยู่ ${a.pts}` : `🎮 วันนี้ได้แต้มตู้เกมครบ ${S.ARCPTS.dailyCap} แล้ว พรุ่งนี้มาใหม่นะ`); }
   }
   sendLeaderboard(p) { // อันดับแต้มตู้เกมในห้องนี้ (สะสมตลอดกาล + สัปดาห์นี้) Top 10
@@ -455,7 +455,7 @@ class World {
   questPush(p) {
     const q = this.questsOf(p), pts = this.ptsOf(p), now = Date.now(), buffs = {};
     for (const id of Object.keys(S.BUFFS)) if (this.buffOn(p, id)) buffs[id] = p.rec.buffs[id] - now;
-    send(p, { t: 'quests', list: q.list.map(it => [it.id, it.n, it.done ? 1 : 0]), total: p.rec.qtotal || 0, title: this.titleOf(p.rec), dole: p.rec.dole === this.today(),
+    send(p, { t: 'quests', wk1: this.wk1Pub(p.rec), list: q.list.map(it => [it.id, it.n, it.done ? 1 : 0]), total: p.rec.qtotal || 0, title: this.titleOf(p.rec), dole: p.rec.dole === this.today(),
       starter: { done: Object.keys(this.starterOf(p).done), final: !!this.starterOf(p).final }, streak: { n: (p.rec.streak || {}).n || 0 },
       book: Object.fromEntries(Object.keys(S.BOOK).map(c => [c, Object.keys(this.bookOf(p)[c])])),
       wk: (this.wkRoll(), { mine: this.week.by[p.name] || 0, claimed: !!this.week.claimed[p.key] }), pts: { bal: pts.bal, earned: pts.earned }, buffs });
@@ -463,7 +463,7 @@ class World {
   addPts(p, n) {
     const o = this.ptsOf(p); n = Math.min(n, S.POINTS.dailyCap - o.earned);
     if (n <= 0) return;
-    o.bal += n; o.earned += n; this.dirty = true; this.questPush(p); this.toast(p, `💛 แต้มความดี +${n}`);
+    o.bal += n; o.earned += n; this.dirty = true; this.wk1Step(p, 'help'); this.questPush(p); this.toast(p, `💛 แต้มความดี +${n}`);
   }
   statDay() { // วันใหม่: ประกาศผู้นำของเมื่อวานลงข่าวเมือง แล้วเริ่มนับใหม่
     const day = this.today();
@@ -477,7 +477,8 @@ class World {
   famePub() { const o = {}; for (const ev of Object.keys(S.FAME)) o[ev] = Object.entries(this.stats.ev[ev] || {}).sort((a, b) => b[1] - a[1]).slice(0, 3); return o; }
   event(p, ev, arg) { // เหตุการณ์ที่นับทั้งเควสและสถิติประจำวัน
     this.statDay(); this.starterStep(p, ev);
-    if (ev === 'feed' || ev === 'collect' || ev === 'cook' || ev === 'craft') this.telAdd(p, ev, 0); // งานเบาที่ไม่ผ่าน tire()
+    if (ev === 'feed' || ev === 'collect' || ev === 'cook' || ev === 'craft') this.telAdd(p, ev, 0);
+    if (ev === 'harvest' || ev === 'collect' || ev === 'chop' || ev === 'cook' || ev === 'hplace') this.wk1Step(p, ev); // งานเบาที่ไม่ผ่าน tire()
     { const c = this.achOf(p.rec).cnt; c[ev] = (c[ev] || 0) + 1; if (ev === 'fish' && arg >= 55) c.fishbig = (c.fishbig || 0) + 1; } // ตัวนับสะสมสำหรับ Achievement
     if (S.FAME[ev]) { this.villageBump(p); }
     if (S.FAME[ev]) { const m = this.stats.ev[ev] || (this.stats.ev[ev] = Object.create(null)); m[p.name] = (m[p.name] || 0) + 1; this.dirty = true; }
@@ -507,6 +508,7 @@ class World {
   // ----- ความสำเร็จ (Achievement) + ฉายา: ตัวนับสะสมเก็บใน rec.ach.cnt (นับจาก event ในเกม) • ครบเป้า = ได้เหรียญ + (บางข้อ) ปลดล็อกฉายาให้เลือกใช้ (rec.ttl) -----
   achOf(rec) { const a = rec.ach = rec.ach && typeof rec.ach === 'object' ? rec.ach : {}; if (!a.cnt || typeof a.cnt !== 'object') a.cnt = {}; if (!a.got || typeof a.got !== 'object') a.got = {}; return a; }
   titleOf(rec) { // ฉายาที่แสดงเหนือหัว: ที่เลือกไว้ (ต้องปลดล็อกแล้ว) ไม่งั้นใช้ฉายาตามจำนวนเควสสะสม
+    if (rec.ttl === 'wk1' && rec.wk1 && rec.wk1.final) return S.WEEK1.final.title;
     if (typeof rec.ttl === 'string' && rec.ttl.startsWith('arc:')) { const x = S.ARC_SHOP.find(y => 'arc:' + y.id === rec.ttl); if (x && rec.arc && (rec.arc.tt || []).includes(x.id)) return x.title; } // ฉายาจากร้านแต้มตู้เกม
     const d = rec.ttl && S.ACH.find(x => x.id === rec.ttl), a = rec.ach;
     return d && d.title && a && a.got && a.got[d.id] ? d.title : S.titleFor(rec.qtotal);
@@ -794,11 +796,37 @@ class World {
     if (S.STARTER.every(s => st.done[s.id])) {
       st.final = true; this.add(p, 'coin', S.STARTER_FINAL.coin, 'starter'); for (const it of S.STARTER_FINAL.items) this.add(p, it, 1);
       this.addLog(`🎓 ${p.name} ผ่านคู่มือเริ่มต้นครบแล้ว!`);
+      for (const g of p.rec.greetedBy || []) { const rg = this.saved[g]; if (!rg) continue; this.achAdd(rg, 'mentor'); const q = [...this.players.values()].find(x => x.key === g); if (q) { this.addPts(q, 5); this.toast(q, `🤗 ${p.name} ที่คุณทักต้อนรับ ผ่านคู่มือเริ่มต้นแล้ว! (+แต้มความดี)`); } }
       this.toast(p, `🎓 ผ่านคู่มือเริ่มต้นครบ! รับ 🪙${S.STARTER_FINAL.coin} + 🪑 เก้าอี้ + 🪴 ต้นไม้ + 🔦 ตะเกียง (เปิดโหมดตกแต่งบ้านด้วยปุ่ม 🏠)`); this.sfxTo(p, 'levelup');
     }
     this.dirty = true; this.questPush(p);
   }
 
+  // ----- ภารกิจสัปดาห์แรก (S.WEEK1) -----
+  wk1Of(rec) { if (!rec.firstSeen || rec.firstSeen < S.WEEK1.since) return null; return rec.wk1 || (rec.wk1 = { n: {}, done: {}, final: false }); }
+  wk1Day(rec) { const a = new Date(rec.firstSeen), b = new Date(); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0); return Math.round((b - a) / 864e5) + 1; }
+  wk1Pub(rec) { const w = this.wk1Of(rec); return w && !w.final ? { day: this.wk1Day(rec), n: w.n, done: Object.keys(w.done).map(Number) } : null; }
+  wk1Step(p, ev) {
+    const rec = p.rec, w = this.wk1Of(rec); if (!w || w.final) return;
+    const day = this.wk1Day(rec); let ch = false;
+    for (const m of S.WEEK1.list) {
+      if (m.ev !== ev || m.d > day || w.done[m.d]) continue;
+      w.n[m.d] = (w.n[m.d] || 0) + 1; ch = true;
+      if (w.n[m.d] >= m.goal) { w.done[m.d] = 1; this.add(p, 'coin', S.WEEK1.coin, 'week1'); this.toast(p, `🗓️ ภารกิจวันที่ ${m.d} สำเร็จ: ${m.text} (+🪙${S.WEEK1.coin})`); this.sfxTo(p, 'levelup'); }
+    }
+    if (S.WEEK1.list.every(m => w.done[m.d])) {
+      w.final = true; const F = S.WEEK1.final; this.add(p, 'coin', F.coin, 'week1'); this.add(p, F.item, 1); rec.ttl = 'wk1'; p.title = this.titleOf(rec); this.broadcast({ t: 'title', id: p.id, title: p.title });
+      this.toast(p, `🏅 ภารกิจสัปดาห์แรกครบ! ได้ฉายา "${F.title}" + 🪙${F.coin} + ${S.itemInfo(F.item).emoji} ${S.itemInfo(F.item).name}`); this.addLog(`🏅 ${p.name} ผ่านภารกิจสัปดาห์แรกครบ ได้ฉายา "${F.title}"`);
+    }
+    if (ch) { this.dirty = true; this.questPush(p); }
+  }
+  awaySummary(p, last) { // กลับมาหลังหายไป ≥ 30 นาที: สรุปสิ่งที่รออยู่
+    if (!last || Date.now() - last < 30 * 60000) return;
+    let ripe = 0; for (const t of Object.values(this.farm)) if (t.c && t.o === p.key && S.cropStage(t) === 3) ripe++;
+    const prod = this.animals.filter(a => a.prod && a.feeder === p.key).length, news = this.log.filter(e => e[0] > last).length;
+    const parts = []; if (ripe) parts.push(`🌾 ผักสุกรอเก็บ ${ripe} ต้น`); if (prod) parts.push(`🥚 ผลผลิตสัตว์ของคุณรอเก็บ ${prod}`); if (news) parts.push(`📰 ข่าวเมืองใหม่ ${news} เรื่อง`);
+    if (parts.length) setTimeout(() => { if (p.ws.readyState === 1) this.toast(p, '👋 ระหว่างที่คุณไม่อยู่: ' + parts.join(' • ')); }, 7000);
+  }
   giftOpen(p) { // เปิดกล่องของขวัญต้อนรับ: ได้ของแต่งตัว 1 ชิ้นและสวมให้เลย
     const item = p.rec.gift; if (!item) return; delete p.rec.gift; p.rec.giftItem = item; // ของขวัญขายคืนร้านไม่ได้ (กันสร้างบัญชีปลอมมาเอาเงิน)
     const info = S.itemInfo(item); if (!info || !info.wear) return;
@@ -811,6 +839,7 @@ class World {
   greet(p, id, k) { // ทักคนใหม่: โบกมือ/ส่งดอกไม้ ขึ้นเป็นข้อความแชทของผู้ทัก (ทุกคนเห็น) ทักคนเดิมได้ครั้งเดียว
     const q = this.players.get(id | 0); if (!q || q === p || Date.now() - (q.rec.firstSeen || 0) > S.NEWBIE.greetMs) return;
     q.greeted = q.greeted || new Set(); if (q.greeted.has(p.key)) return; q.greeted.add(p.key);
+    q.rec.greetedBy = (q.rec.greetedBy || []).concat(p.key).slice(0, 3); // พี่เลี้ยง: ได้เครดิตเมื่อคนใหม่ผ่านคู่มือ
     const text = k === 'flower' ? `🌸 ส่งดอกไม้ต้อนรับ ${q.name} สู่เมืองนะ!` : `👋 ยินดีต้อนรับ ${q.name}!`, now = Date.now();
     this.chatLog.push({ name: p.name, text, t: now }); if (this.chatLog.length > 10) this.chatLog.shift();
     this.broadcast({ t: 'chat', id: p.id, name: p.name, text });
@@ -1162,6 +1191,7 @@ class World {
     send(p, { t: 'proj', p: this.projPub() }); this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
     send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub()); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
     if (rec.gift) send(p, { t: 'gift', item: rec.gift });
+    this.awaySummary(p, rec.leftAt || rec.lastSeen);
     if (Date.now() < S.FRESH.startAt && rec.freshNote !== 1) { rec.freshNote = 1; setTimeout(() => { if (p.ws.readyState === 1) this.toast(p, `📢 ตั้งแต่ ${new Date(S.FRESH.startAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ผัก ปลา ไข่ นม อาหาร จะค่อยๆ เสื่อมราคาถ้าเก็บไว้นาน (สด 1 วัน = 100% • 1–3 วัน 70% • เกิน 40%) ของที่มีตอนนี้นับเป็นของสดวันนั้น • มีตู้เย็นในบ้านช่วยชะลอ`); }, 5000); }
     if (rec.joins === 1) this.broadcast({ t: 'newbie', id: p.id, name }, p); // ให้คนที่ออนไลน์ทักคนใหม่ (GROWTH-PLAN N1)
     this.starterStep(p, '');
@@ -1177,7 +1207,7 @@ class World {
     if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
     this.telFlush(p); this.wealthLog(p);
     logEv(this.room, 'leave', { p: p.key, sec: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000) });
-    p.rec.catAt = Date.now();
+    p.rec.catAt = p.rec.leftAt = Date.now(); // leftAt = เวลาออกจากเกมล่าสุด (สรุประหว่างที่ไม่อยู่)
     this.players.delete(p.id); this.addLog(`🚪 ${p.name} ออกไปแล้ว`);
     { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; }
     this.sceneBroadcast(p.scene, { t: 'p-', id: p.id }, p);

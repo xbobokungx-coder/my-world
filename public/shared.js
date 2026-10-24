@@ -684,6 +684,7 @@
     { id: 'arcplay5',   e: '🎮', name: 'นักเล่นตู้เกม',      desc: 'เล่นตู้เกมกับคนจริงจบ 5 เกม',          stat: 'arcplay', goal: 5,   coin: 40 },
     { id: 'arcwin5',    e: '🏆', name: 'เซียนตู้เกม',        desc: 'ชนะตู้เกมกับคนจริง 5 ครั้ง',           stat: 'arcwin',  goal: 5,   coin: 100,  title: 'เซียนตู้เกม' },
     { id: 'arcwin30',   e: '👑', name: 'แชมป์อาร์เคด',       desc: 'ชนะตู้เกมกับคนจริง 30 ครั้ง',          stat: 'arcwin',  goal: 30,  coin: 500,  title: 'แชมป์อาร์เคด' },
+    { id: 'mentor3',    e: '🤗', name: 'พี่เลี้ยงใจดี',       desc: 'ทักคนใหม่แล้วเขาผ่านคู่มือเริ่มต้น 3 คน',  stat: 'mentor',  goal: 3,   coin: 100,  title: 'พี่เลี้ยงใจดี' },
     { id: 'trade1',     e: '🤝', name: 'พ่อค้าแลกเปลี่ยน',   desc: 'เทรดของกับผู้เล่นอื่นสำเร็จ',          stat: 'trade',   goal: 1,   coin: 30 },
     { id: 'sit1',       e: '🪑', name: 'พักผ่อนบ้าง',        desc: 'นั่งพักที่ลานกองไฟ',                  stat: 'sit',     goal: 1,   coin: 10 },
     { id: 'streak3',    e: '🔥', name: 'มาทุกวัน',          desc: 'เข้าเกมติดต่อกัน 3 วัน',               stat: 'streak',  goal: 3,   coin: 50 },
@@ -691,6 +692,17 @@
     { id: 'rich1k',     e: '💵', name: 'เศรษฐีน้อย',         desc: 'มีเหรียญในกระเป๋าถึง 1,000',          stat: 'wealth',  goal: 1000, coin: 50 },
     { id: 'rich10k',    e: '💎', name: 'เศรษฐีเมือง',        desc: 'มีเหรียญในกระเป๋าถึง 10,000',         stat: 'wealth',  goal: 10000, coin: 500, title: 'เศรษฐีเมือง' },
   ];
+  // ภารกิจสัปดาห์แรก (GROWTH-PLAN N2): ข้อที่ d ปลดล็อกในวันที่ d นับจากวันแรกที่เข้าเกม (ทำย้อนหลังได้) • ข้อละ coin • ครบ 7 ข้อได้ฉายา + ของหายาก
+  // ใช้กับบัญชีที่สร้างตั้งแต่ since เท่านั้น (คนเก่าเล่นผ่านมาแล้ว)
+  const WEEK1 = { since: Date.parse('2026-10-25T00:00:00+07:00'), coin: 40, final: { coin: 150, item: 'furn_flag', title: 'ชาวเมืองรุ่นบุกเบิก' }, list: [
+    { d: 1, ev: 'harvest', goal: 3, emoji: '🌾', text: 'เก็บเกี่ยวผัก 3 ครั้ง' },
+    { d: 2, ev: 'collect', goal: 2, emoji: '🐔', text: 'ให้อาหารสัตว์แล้วเก็บไข่/นม 2 ครั้ง (อาหารสัตว์ที่ร้านปศุสัตว์)' },
+    { d: 3, ev: 'chop', goal: 2, emoji: '🪓', text: 'โค่นต้นไม้ 2 ต้น (ขวานที่ร้านช่างไม้)' },
+    { d: 4, ev: 'cook', goal: 1, emoji: '🍳', text: 'ทำอาหารที่ร้านอาหาร 1 จาน' },
+    { d: 5, ev: 'hplace', goal: 3, emoji: '🏠', text: 'วางของแต่งบ้าน 3 ชิ้น (ปุ่ม 🏠 บ้านฉัน)' },
+    { d: 6, ev: 'arcplay', goal: 1, emoji: '🎮', text: 'เล่นตู้เกมกับคนจริงจนจบ 1 ตา' },
+    { d: 7, ev: 'help', goal: 3, emoji: '💛', text: 'ช่วยงานเมือง 3 ครั้ง (รดน้ำพืชที่แห้ง ให้อาหารสัตว์ที่หิว ลงขัน)' },
+  ] };
   const STARTER_FINAL = { coin: 150, items: ['furn_chair', 'furn_plant', 'lamp'] }; // 150 (เดิม 100 ตอนคู่มือมี 12 ข้อ) เงินช่วงแรกรวมใกล้เดิม
   // 60 วินาทีแรกของคนใหม่ (GROWTH-PLAN.md N1): กล่องของขวัญสุ่มของแต่งตัว 1 ชิ้น • เมล็ดเร่งโตสำหรับการปลูก quickSeeds ครั้งแรก (โตเร็ว ×quickMul) • ปลาตัวแรกในชีวิตเป็น firstFish
   // ต้อนรับจากเมือง: คนที่ออนไลน์ทักคนใหม่ได้ภายใน greetMs หลังเข้าเกมครั้งแรก (ไม่มีของ/เงิน ผู้ทักได้แต้มความดี greetPts)
@@ -940,7 +952,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

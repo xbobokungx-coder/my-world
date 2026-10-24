@@ -202,7 +202,7 @@ function handle(m) {
     case 'cat': catSt = Object.assign(m, { at: Date.now() }); renderSat(); break;
     case 'proj': projSt = m.p; checkProjects(); if (townShown()) renderTown(); break;
     case 'quests': {
-      questSt = { list: m.list, total: m.total, title: m.title, pts: m.pts, dole: m.dole, starter: m.starter, streak: m.streak, book: m.book, wk: m.wk };
+      questSt = { list: m.list, total: m.total, title: m.title, pts: m.pts, dole: m.dole, starter: m.starter, streak: m.streak, book: m.book, wk: m.wk, wk1: m.wk1 };
       updateGuide(); updateQuestBadge(); if (questShown()) renderQuestPanel(); if (bagShown() && bagTab === 'book') renderBag();
       for (const id of Object.keys(BUFFS)) buffExp[id] = m.buffs[id] ? Date.now() + m.buffs[id] : 0;
       if (me) me.title = m.title;
@@ -460,12 +460,17 @@ $('questClose').onclick = closeQuest;
 $('quest').addEventListener('pointerdown', e => { if (e.target === $('quest')) closeQuest(); });
 function renderQuestPanel() {
   const st = questSt.starter, showStart = !!(st && !st.final);
-  const tabs = (showStart ? [['start', '🌱 เริ่มต้น']] : []).concat([['daily', '📋 เควสวันนี้'], ['pts', '💛 แต้ม/บัฟ']]);
+  const tabs = (showStart ? [['start', '🌱 เริ่มต้น']] : []).concat(questSt.wk1 ? [['wk1', '🗓️ สัปดาห์แรก']] : []).concat([['daily', '📋 เควสวันนี้'], ['pts', '💛 แต้ม/บัฟ']]);
   if (!tabs.some(t => t[0] === questTab)) questTab = 'daily';
   $('questTabs').innerHTML = tabs.map(([c, n]) => `<button class="tab${questTab === c ? ' on' : ''}" data-qtab="${c}">${n}</button>`).join('');
   $('questTabs').querySelectorAll('[data-qtab]').forEach(b => b.onclick = () => { questTab = b.dataset.qtab; renderQuestPanel(); });
   const el = $('questBody');
-  if (questTab === 'start') {
+  if (questTab === 'wk1') { // ภารกิจสัปดาห์แรก: ข้อที่ d ปลดล็อกวันที่ d
+    const w = questSt.wk1, W1 = Shared.WEEK1;
+    el.innerHTML = `<div class="tabs-note">ภารกิจวันละข้อใน 7 วันแรก (ข้อใหม่ปลดล็อกทุกวัน ทำย้อนหลังได้) ข้อละ 🪙${W1.coin} • ครบ 7 ข้อได้ฉายา "${W1.final.title}" + 🪙${W1.final.coin} + ${itemInfo(W1.final.item).emoji} ${itemInfo(W1.final.item).name}</div>`
+      + W1.list.map(m => { const done = w.done.includes(m.d), open = m.d <= w.day, n = Math.min(m.goal, w.n[m.d] || 0);
+        return `<div class="qrow${done ? ' done' : ''}" style="${open ? '' : 'opacity:.5'}"><div>${done ? '✅' : open ? m.emoji : '🔒'} <b>วันที่ ${m.d}</b> ${m.text}</div><small>${open ? `${n}/${m.goal}` : `ปลดล็อกในอีก ${m.d - w.day} วัน`}</small></div>`; }).join('');
+  } else if (questTab === 'start') {
     const next = STARTER.find(s => !st.done.includes(s.id));
     const steps = STARTER.map(s => {
       const d = st.done.includes(s.id), cur = next === s;
