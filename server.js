@@ -1021,6 +1021,12 @@ class World {
   }
   // ----- แปลงเช่า (S.FARM_RENT) -----
   rentAt(x, y) { const P = S.rentPlotAt(x, y), r = P && this.rents[P.id]; return r && r.until > Date.now() ? r : null; }
+  rentBlock(x, y, p) { // แปลงเช่าใช้ได้เฉพาะคนที่เช่าอยู่ แปลงว่างล็อกไว้ (คืนข้อความที่ต้องบล็อก หรือ null)
+    if (!S.rentPlotAt(x, y)) return null;
+    const r = this.rentAt(x, y);
+    if (r && r.key === p.key) return null;
+    return r ? `🔒 แปลงนี้ ${r.name} เช่าอยู่` : '🔒 แปลงนี้ยังไม่มีคนเช่า ล็อกไว้ก่อน (เช่าได้ที่ร้านเมล็ดพันธุ์)';
+  }
   rentsPub() { const o = {}, now = Date.now(); for (const [id, r] of Object.entries(this.rents)) if (r.until > now) o[id] = { name: r.name, until: r.until, key: r.key }; return o; }
   rentHandle(p, id) { // เช่า/ต่อเวลาแปลง ที่ร้านเมล็ดพันธุ์ • คนละแปลง • จ่ายเหรียญ (หายจากระบบ)
     if (this.nearShopKind(p) !== 'farm') return this.toast(p, 'เช่าแปลงได้ที่ร้านเมล็ดพันธุ์');
@@ -1863,11 +1869,11 @@ class World {
     const feedTypes = Object.keys(ANIMALS).filter(k => ANIMALS[k].feedItem === tool); // อาหารชนิดเดียวใช้ได้หลายสัตว์ (ไก่+เป็ด, วัว+แกะ)
     if ((tool === 'hoe' || tool === 'rod' || tool === 'axe') && !this.durOk(p, tool)) return;
     if (tool === 'hoe') {
+      { const rb = this.rentBlock(tx, ty, p); if (rb) return this.toast(p, rb); }
       if (tile) {
         if (tile.c) return this.toast(p, 'มีพืชอยู่ ขุดไม่ได้');
         delete this.farm[k]; this.tileUpdate(k, null); this.sfx(p, 'hoe'); this.durUse(p, 'hoe');
       } else if (tt === T.GRASS && S.inFarm(tx, ty)) {
-        { const rr = this.rentAt(tx, ty); if (rr && rr.key !== p.key) return this.toast(p, `🔒 แปลงนี้ ${rr.name} เช่าอยู่ ขุดไม่ได้`); }
         this.farm[k] = {}; this.tileUpdate(k, this.farm[k]); this.addXp(p, 'farm', 1); this.tire(p, 'dig'); this.sfx(p, 'hoe'); this.durUse(p, 'hoe'); this.event(p, 'dig');
       } else this.toast(p, 'ขุดได้เฉพาะในแปลงผัก');
     } else if (tool === 'water') {
@@ -1878,6 +1884,7 @@ class World {
         this.waterSet(p, cap); this.sfx(p, 'water'); return this.toast(p, `💧 ตักน้ำเต็มบัว (${cap}/${cap}) ไปรดน้ำได้เลย`);
       }
       if (!tile) return this.toast(p, 'ต้องขุดดินก่อน (หรือแตะสระน้ำเพื่อตักน้ำ)');
+      { const rb = this.rentBlock(tx, ty, p); if (rb && tile.o !== p.key) return this.toast(p, rb); } // รดน้ำต้นของตัวเองในแปลงที่หมดสัญญาได้
       const wl = this.waterCur(p);
       if (wl <= 0) return this.toast(p, '💧 น้ำหมดแล้ว! ไปตักน้ำที่สระ (กดช่อง 1 เลือกบัวรดน้ำ แล้วแตะน้ำ)');
       const dry = !(tile.wu > now);
@@ -1891,7 +1898,8 @@ class World {
       if (!tile) return this.toast(p, 'ต้องขุดดินก่อน');
       if (tile.c) return this.toast(p, 'มีพืชอยู่แล้ว');
       if (!inv[tool]) return this.toast(p, 'เมล็ดหมด ไปซื้อที่ร้านเมล็ดพันธุ์');
-      const rr = this.rentAt(tx, ty); if (rr && rr.key !== p.key) return this.toast(p, `🔒 แปลงนี้ ${rr.name} เช่าอยู่ ปลูกไม่ได้`);
+      { const rb = this.rentBlock(tx, ty, p); if (rb) return this.toast(p, rb); }
+      const rr = this.rentAt(tx, ty);
       const C0 = CROPS[tool.slice(5)], need = S.cropCan(C0);
       if (S.canTier(inv) < need) return this.toast(p, `${C0.emoji} ${C0.name}ต้องใช้${S.CANS[need].name}ดูแล ซื้อได้ที่ร้านเมล็ดพันธุ์ (🪙 ${S.CANS[need].price})`);
       const cap = Math.min(S.FARM_CAP.max, S.FARM_CAP.base + S.FARM_CAP.perLv * (this.lv(p, 'farm') - 1));
