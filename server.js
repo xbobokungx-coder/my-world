@@ -2940,10 +2940,15 @@ class World {
         }
       }
       // ต้นไม้งอกใหม่ในที่โล่งสีเขียวที่ห่างจากสิ่งปลูกสร้าง
+      if (this.treeTimer < 0) this.treeTimer = 0; // กันค่าติดลบจากนาฬิกาย้อน (ก่อนแก้ dt)
       this.treeTimer += dt;
       if (this.treeTimer >= S.TREE.growMs / 1000) { // ต้นไม้งอกใหม่ (เพดานตาม S.TREE.cap)
         this.treeTimer = 0;
-        if (this.treeList().length < this.treeCap) {
+        let n = this.treeList().length;
+        // ถ้าน้อยกว่าครึ่งเพดาน งอกทีละหลายต้น (ไล่ทันหลังถูกตัดเกลี้ยง/นาฬิกาพัง) ไม่เกิน 8 ต้น/รอบ
+        const want = n >= this.treeCap ? 0 : Math.min(n * 2 < this.treeCap ? 8 : 1, this.treeCap - n);
+        for (let spawned = 0; spawned < want; spawned++) {
+          let placed = false;
           for (let i = 0; i < 40; i++) {
             const x = 2 + Math.floor(Math.random() * (S.W - 4)), y = 2 + Math.floor(Math.random() * (S.H - 4));
             if (!S.treeSpotOk(this.map, x, y)) continue;
@@ -2951,8 +2956,9 @@ class World {
             if (this.animals.some(a => Math.hypot(a.x - (x + 0.5) * TS, a.y - (y + 0.5) * TS) < 3 * TS)) continue;
             const k = S.pickTreeKind(this.map, x, y, Math.random); this.treeKind.set(x + ',' + y, k);
             this.map[y][x] = T.TREE; this.dirty = true; this.broadcast({ t: 'tree', x, y, on: true, k });
-            break;
+            placed = true; n++; break;
           }
+          if (!placed) break;
         }
       }
       const died = this.animals.filter(a => a.dead);
@@ -3006,7 +3012,8 @@ class World {
   }
 
   cropTick(now) {
-    const dt = now - this.lastCrop; this.lastCrop = now;
+    let dt = now - this.lastCrop; this.lastCrop = now;
+    if (!Number.isFinite(dt) || dt < 0 || dt > 120000) return; // นาฬิกากระโดด — ไม่โต/ไม่ถอย
     if (!this.players.size) return; // โลกจำศีล: ไม่มีคนออนไลน์ พืชไม่โต
     for (const k in this.farm) {
       const t = this.farm[k];
@@ -3298,7 +3305,11 @@ wss.on('connection', (ws, req) => {
 const guard = fn => { try { fn(); } catch (e) { console.error('loop error', e); } }; // ลูปหลักพลาดครั้งเดียวไม่ควรทำให้ทั้งเกมดับ
 let last = Date.now();
 setInterval(() => {
-  const now = Date.now(), dt = Math.min(0.5, (now - last) / 1000); last = now;
+  const now = Date.now();
+  let dt = (now - last) / 1000; last = now;
+  // นาฬิกาเครื่องกระโดด (NTP/VM): dt ติดลบจะทำให้ treeTimer/ความหิวย้อนหลัง ต้นไม้ไม่งอกเป็นชั่วโมง — ข้ามเฟรมนั้น
+  if (!Number.isFinite(dt) || dt < 0 || dt > 5) dt = 0;
+  else dt = Math.min(0.5, dt);
   for (const w of worlds.values()) guard(() => w.tick(dt, now));
 }, 100);
 setInterval(() => { const now = Date.now(); for (const w of worlds.values()) guard(() => w.cropTick(now)); }, 1000);
