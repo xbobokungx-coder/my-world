@@ -1210,7 +1210,7 @@ function renderShop() {
   }
   if (isFarm && farmTab === 'gear') { // แปลงเช่า
     const R = Shared.FARM_RENT, now = Date.now() + timeOffset, myKey = me ? me.name.toLowerCase() : '';
-    h += `<div class="sec">🏡 แปลงเช่า (แปลงละ 12 ช่อง • 🪙${R.price} / ${R.days} วัน)</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">3 แถวบนของแปลงผัก แบ่ง 4 แปลง ขุด/ปลูกได้เฉพาะคนเช่า ต้นในแปลงตัวเองไม่นับเพดานปลูก เช่าได้คนละแปลง ต่อเวลาล่วงหน้าได้ ${R.maxAhead} วัน</p>`;
+    h += `<div class="sec">🏡 แปลงเช่า (แปลงละ 12 ช่อง • 🪙${R.price} / ${R.days} วันในเกม)</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">3 แถวบนของแปลงผัก แบ่ง 4 แปลง ขุด/ปลูกได้เฉพาะคนเช่า ต้นในแปลงตัวเองไม่นับเพดานปลูก เช่าได้คนละแปลง สูงสุด ${R.maxAhead} วันในเกม (วันในเกม = 12 นาทีจริง)</p>`;
     for (const P of R.plots) {
       const r = rentsSt[P.id], active = r && r.until > now, mine = active && r.key === myKey, left = active ? fmtLeft(r.until - now) : '';
       h += `<div class="row"><span>🏡 แปลง ${P.id}<br><small>${active ? (mine ? `ของคุณ • เหลือ ${left}` : `${r.name} เช่าอยู่ • เหลือ ${left}`) : 'ว่าง (ล็อกไว้ ยังไม่มีคนเช่า)'}</small></span><span>${active && !mine ? '' : `<button class="btn small" data-rent="${P.id}" ${(inv.coin || 0) < R.price ? 'disabled' : ''}>${mine ? 'ต่อเวลา' : 'เช่า'} 🪙${R.price}</button>`}</span></div>`;

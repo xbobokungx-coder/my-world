@@ -1012,8 +1012,8 @@ class World {
     const now = Date.now(), cur = this.rents[id], mine = Object.entries(this.rents).find(([k, r]) => r.key === p.key && r.until > now);
     if (cur && cur.until > now && cur.key !== p.key) return this.toast(p, `แปลง ${id} มีคนเช่าอยู่แล้ว (${cur.name})`);
     if (mine && mine[0] !== id) return this.toast(p, `คุณเช่าแปลง ${mine[0]} อยู่แล้ว เช่าได้คนละแปลง`);
-    const base = cur && cur.key === p.key && cur.until > now ? cur.until : now, until = base + S.FARM_RENT.days * 864e5;
-    if (until - now > S.FARM_RENT.maxAhead * 864e5) return this.toast(p, `ต่อเวลาล่วงหน้าได้ไม่เกิน ${S.FARM_RENT.maxAhead} วัน`);
+    const day = S.DAY_MS, base = cur && cur.key === p.key && cur.until > now ? cur.until : now, until = base + S.FARM_RENT.days * day;
+    if (until - now > S.FARM_RENT.maxAhead * day) return this.toast(p, `เช่าได้ไม่เกิน ${S.FARM_RENT.maxAhead} วันในเกม`);
     if ((p.rec.inv.coin || 0) < S.FARM_RENT.price) return this.toast(p, `เหรียญไม่พอ ค่าเช่า 🪙 ${S.FARM_RENT.price}`);
     this.add(p, 'coin', -S.FARM_RENT.price, 'rent'); this.rents[id] = { key: p.key, name: p.name, until }; this.dirty = true;
     this.broadcast({ t: 'rents', r: this.rentsPub() }); this.sfxTo(p, 'coin');
