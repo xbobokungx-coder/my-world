@@ -155,12 +155,12 @@ function handle(m) {
       for (const [id, x, y, d] of (m.n || [])) { const n = npcs.get(id); if (n) { n.tx = x; n.ty = y; n.dir = d; } }
       for (const [id, x, y, d, mv] of (m.pt || [])) { const q = pets.get(id); if (q) { q.tx = x; q.ty = y; q.dir = d; q.srvMoving = !!mv; if (d === 2) q.dx = -1; else if (d === 3) q.dx = 1; } }
       const alive = new Set();
-      for (const [id, type, x, y, prod, fed, dx, hg, sick, lock, fn] of m.c) {
+      for (const [id, type, x, y, prod, fed, dx, hg, sick, lock, fn, on] of m.c) {
         alive.add(id);
         let a = animals.get(id);
         if (!a) { a = { x, y, anim: Math.random() * 6, id }; animals.set(id, a); }
         const oldH = a.h;
-        a.type = type; a.tx = x; a.ty = y; a.prod = prod; a.fed = fed; a.dx = dx; a.h = hg === undefined ? 100 : hg; a.sick = !!sick; a.lock = !!lock; a.fn = fn || ''; if (oldH !== undefined && a.h > oldH + 15) a.happyAt = performance.now(); // เพิ่งได้กิน = ดีใจ
+        a.type = type; a.tx = x; a.ty = y; a.prod = prod; a.fed = fed; a.dx = dx; a.h = hg === undefined ? 100 : hg; a.sick = !!sick; a.lock = !!lock; a.fn = fn || ''; a.on = on || ''; if (oldH !== undefined && a.h > oldH + 15) a.happyAt = performance.now(); // เพิ่งได้กิน = ดีใจ
       }
       for (const id of animals.keys()) if (!alive.has(id)) animals.delete(id);
       break;
@@ -619,20 +619,18 @@ function renderTown() {
     el.querySelectorAll('[data-wkclaim]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'weekly' }));
     return;
   }
-  const dead = Object.keys(ANIMALS).filter(t => chestSt.dead[t] > 0), coin = inv.coin || 0;
+  const coin = inv.coin || 0;
   el.innerHTML = `<div class="row"><span>🏦 เงินกองกลาง</span><b>🪙 ${chestSt.coin}</b></div>`
-    + `<p style="font-size:12px;opacity:.7;margin:4px 0 8px">ทุกคนลงขันได้ เงินนี้จะจ่ายค่ายาและอาหารให้สัตว์ที่ป่วย/หิวจัดนานเกิน 1 นาทีโดยอัตโนมัติ และใช้ชุบชีวิตสัตว์ที่ตายได้ในราคาครึ่งหนึ่งของการซื้อใหม่ (ถอนออกเป็นเหรียญไม่ได้)</p>`
+    + `<p style="font-size:12px;opacity:.7;margin:4px 0 8px">ทุกคนลงขันได้ ใช้กับของแจกและเทศกาลเมือง (ถอนออกเป็นเหรียญไม่ได้) • สัตว์เป็นของคนซื้อ ตายแล้วต้องซื้อใหม่เอง ไม่มีชุบจากกองกลาง</p>`
     + `<div class="sec">🪙 ลงขัน (ต้องยืนใกล้ตู้เซฟ)</div><div class="center">` + TOWN.donate.map(a => `<button class="btn small" data-donate="${a}" ${coin < a ? 'disabled' : ''}>+${a}</button>`).join(' ') + '</div>'
     + projectSection(coin)
     + (festSt && festSt.open ? `<div class="sec">🎪 เทศกาลประจำสัปดาห์</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">ลงขันครบเป้าแล้วทั้งเมืองได้บัฟ Happy Village 24 ชม. เป้าโตตามจำนวนคนที่ช่วยงานเมืองสัปดาห์นี้ เริ่มใหม่ทุกสัปดาห์</p>`
       + `<div class="row"><span>${festSt.done ? '✅ สัปดาห์นี้จัดแล้ว' : `🪙 ${festSt.coin} / ${festSt.goal}`}</span><span>${festSt.done ? '' : PROJ_DONATE.map(a => `<button class="btn small" data-fest="${a}" ${coin < 1 ? 'disabled' : ''}>+${a}</button>`).join(' ')}</span></div>` : '')
     + (aucSt ? (() => { const i = itemInfo(aucSt.item); return `<div class="sec">🔨 ประมูลประจำสัปดาห์</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">ของหายาก 1 ชิ้นต่อสัปดาห์ ใครประมูลสูงสุดตอนจบสัปดาห์ได้ไป เงินที่ชนะหายจากระบบ ถูกแซงได้เงินคืนทันที</p>`
       + `<div class="row"><span>${i.emoji} ${i.name}<br><small>${aucSt.bid ? `สูงสุด 🪙${aucSt.bid} โดย ${esc(aucSt.name)}` : 'ยังไม่มีคนประมูล'}</small></span><span><button class="btn small" data-auc="${aucSt.min}" ${coin < aucSt.min ? 'disabled' : ''}>ประมูล 🪙${aucSt.min}</button></span></div>`; })() : '')
-    + doleSection()
-    + `<div class="sec">✨ ชุบชีวิตสัตว์</div>` + (dead.length ? dead.map(t => { const cost = reviveCost(t); return `<div class="row"><span>${ANIMALS[t].emoji} ${ANIMALS[t].name} ที่ตายไป ×${chestSt.dead[t]}</span><span><button class="btn small" data-revive="${t}" ${chestSt.coin < cost ? 'disabled' : ''}>ชุบ 🪙${cost}</button></span></div>`; }).join('') : '<p style="opacity:.7;margin:4px 0">ตอนนี้ไม่มีสัตว์ที่ต้องชุบ 🎉</p>');
+    + doleSection();
   el.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'claim' }));
   el.querySelectorAll('[data-donate]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'donate', amt: +b.dataset.donate }));
-  el.querySelectorAll('[data-revive]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'revive', type: b.dataset.revive }));
   el.querySelectorAll('[data-proj]').forEach(b => b.onclick = () => send({ t: 'proj', id: b.dataset.proj, amt: +b.dataset.amt }));
   el.querySelectorAll('[data-fest]').forEach(b => b.onclick = () => send({ t: 'fest', amt: +b.dataset.fest }));
   el.querySelectorAll('[data-auc]').forEach(b => b.onclick = () => ask(`ประมูล 🪙${b.dataset.auc}? (ถ้ามีคนแซงจะได้เงินคืน)`, () => send({ t: 'auc', amt: +b.dataset.auc })));
@@ -1135,7 +1133,7 @@ function openShop(kind) { shopKind = kind; farmTab = SHOP_TABS[kind] ? SHOP_TABS
 function closeShop() { shopKind = null; $('shop').classList.add('hidden'); }
 $('shopClose').onclick = closeShop;
 $('shop').addEventListener('pointerdown', e => { if (e.target === $('shop')) closeShop(); });
-const animalCount = type => { let n = 0; animals.forEach(a => { if (a.type === type) n++; }); return n; };
+const animalCount = type => { let n = 0; const my = me && me.name; animals.forEach(a => { if (a.type === type && (!a.on || a.on === my)) n++; }); return n; }; // นับเฉพาะสัตว์ของฉัน (cap ต่อคน)
 let farmTab = 'gear';
 // ทุกร้านที่รับซื้อมีแท็บ 💰 ขาย ไว้ท้ายสุด (แท็บซื้อของร้านที่ไม่มีแท็บเดิม)
 const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '🌱 เมล็ดพันธุ์'], ['sell', '💰 ขายผลผลิต']], fish: [['gear', '🎣 อุปกรณ์ตกปลา'], ['sell', '🐟 ขายปลา']],
@@ -2811,9 +2809,11 @@ function animalFx(c, now, top) { // หัวใจลอยตอนเพิ�
   if (c.happyAt && now - c.happyAt < 1800) { const k = (now - c.happyAt) / 1800; ctx.globalAlpha = 1 - k; for (let i = 0; i < 3; i++) PixelUI.world(ctx, '💗', c.x + (i - 1) * 9, c.y - top - k * 26 - i * 4 - 3, 11); ctx.globalAlpha = 1; }
   else if (!c.sick && h >= 80 && !c.prod && ph < 1.3) { const k = ph / 1.3; ctx.globalAlpha = 1 - k; PixelUI.world(ctx, '💕', c.x + Math.sin(t * 3) * 3, c.y - top - k * 14 - 3, 10); ctx.globalAlpha = 1; }
   if (c.prod) { const a = t * 2 + (c.id || 0); PixelUI.world(ctx, '✨', c.x + Math.cos(a) * 13, c.y - top * 0.5 + Math.sin(a) * 5, 11); }
-  if (c.prod && c.lock && me && c.fn !== me.name) { // ผลผลิตของคนอื่น ยังเก็บไม่ได้ (เหมือนผัก): 🔒 + ชื่อเจ้าของ
+  if (c.prod && c.lock && me && c.fn !== me.name) { // ผลผลิตของคนอื่น ยังเก็บไม่ได้ (เหมือนผัก): 🔒 + ชื่อคนเลี้ยง
     PixelUI.world(ctx, '🔒', c.x + 12, c.y - top - 6, 11);
     ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = '#3d2a1a'; ctx.strokeText(c.fn, c.x, c.y + 18); ctx.fillStyle = '#ffe9a8'; ctx.fillText(c.fn, c.x, c.y + 18);
+  } else if (c.on && (!me || c.on !== me.name)) { // สัตว์ของคนอื่น: แสดงชื่อเจ้าของใต้ตัว
+    ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'center'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.strokeStyle = '#2a2218'; ctx.strokeText(c.on, c.x, c.y + 16); ctx.fillStyle = '#d8c8a8'; ctx.fillText(c.on, c.x, c.y + 16);
   }
 }
 function drawChicken(c, now) { drawAnimalPx('chicken', c, now, 14, '🥚'); }

@@ -221,23 +221,23 @@
 
   // เมล็ดพืช: lv = เลเวลชาวนาที่ปลดล็อก, time = เวลาโต (ms) เมื่อรดน้ำต่อเนื่อง, xp = XP ตอนเก็บเกี่ยว
   // ราคาเมล็ดลด 25% (25 ต.ค. 2026) ชาวนาเคยได้กำไรน้อยสุดในทุกอาชีพ (tools/econsim.js) เมล็ด ≈ 38–45% ของราคาขาย
-  // หลักการตั้งราคา: ใช้เวลาโตนานราคาสูง • กำไรต่อวินาทีต่อแปลง ≈ 0.20-0.25 (ต่ำกว่าสายอื่น เพราะปลูกได้ทีละหลายสิบแปลง)
+  // เวลาโตผูกกำไร (sell−seed) ≈ 0.22 เหรียญ/วิ (ขั้นต่ำ 60 วิ สูงสุด 480 วิ) ให้พืชแพงไม่คุ้มเวลากว่าพืชกลาง — สลับชนิดแทนจ้องแต่ของแพง (พลังงานปิด)
   const CROPS = {
     carrot:     { name: 'แครอท',      emoji: '🥕', seed: 8, sell: 20,  time: 60000,  lv: 1, xp: 5 },
-    cabbage:    { name: 'กะหล่ำปลี',   emoji: '🥬', seed: 11, sell: 28,  time: 80000,  lv: 1, xp: 7 },
-    corn:       { name: 'ข้าวโพด',     emoji: '🌽', seed: 15, sell: 39,  time: 100000, lv: 2, xp: 9 },
-    tomato:     { name: 'มะเขือเทศ',   emoji: '🍅', seed: 19, sell: 50,  time: 120000, lv: 3, xp: 12 },
-    eggplant:   { name: 'มะเขือม่วง',  emoji: '🍆', seed: 26, sell: 67,  time: 140000, lv: 4, xp: 16 },
-    strawberry: { name: 'สตรอว์เบอร์รี', emoji: '🍓', seed: 34, sell: 84,  time: 160000, lv: 5, xp: 20 },
-    pumpkin:    { name: 'ฟักทอง',      emoji: '🎃', seed: 45, sell: 102, time: 200000, lv: 6, xp: 26 },
-    potato:     { name: 'มันฝรั่ง',     emoji: '🥔', seed: 14,  sell: 35,  time: 90000,  lv: 2, xp: 10 },
-    chili:      { name: 'พริก',        emoji: '🌶️', seed: 21,  sell: 55,  time: 130000, lv: 3, xp: 14 },
-    broccoli:   { name: 'บรอกโคลี',     emoji: '🥦', seed: 28,  sell: 72,  time: 150000, lv: 4, xp: 18 },
-    cherry:     { name: 'เชอร์รี',      emoji: '🍒', seed: 41,  sell: 99, time: 180000, lv: 5, xp: 22 },
-    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 52,  sell: 116, time: 230000, lv: 6, xp: 28 },
-    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 64,  sell: 143, time: 270000, lv: 7, xp: 34 },
-    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 82, sell: 188, time: 320000, lv: 9, xp: 42 },
-    melon:      { name: 'แตงโม',       emoji: '🍉', seed: 68, sell: 150, time: 260000, lv: 8, xp: 38 },
+    cabbage:    { name: 'กะหล่ำปลี',   emoji: '🥬', seed: 11, sell: 28,  time: 77000,  lv: 1, xp: 7 },
+    corn:       { name: 'ข้าวโพด',     emoji: '🌽', seed: 15, sell: 39,  time: 109000, lv: 2, xp: 9 },
+    tomato:     { name: 'มะเขือเทศ',   emoji: '🍅', seed: 19, sell: 50,  time: 141000, lv: 3, xp: 12 },
+    eggplant:   { name: 'มะเขือม่วง',  emoji: '🍆', seed: 26, sell: 67,  time: 186000, lv: 4, xp: 16 },
+    strawberry: { name: 'สตรอว์เบอร์รี', emoji: '🍓', seed: 34, sell: 84,  time: 227000, lv: 5, xp: 20 },
+    pumpkin:    { name: 'ฟักทอง',      emoji: '🎃', seed: 45, sell: 102, time: 259000, lv: 6, xp: 26 },
+    potato:     { name: 'มันฝรั่ง',     emoji: '🥔', seed: 14,  sell: 35,  time: 95000,  lv: 2, xp: 10 },
+    chili:      { name: 'พริก',        emoji: '🌶️', seed: 21,  sell: 55,  time: 155000, lv: 3, xp: 14 },
+    broccoli:   { name: 'บรอกโคลี',     emoji: '🥦', seed: 28,  sell: 72,  time: 200000, lv: 4, xp: 18 },
+    cherry:     { name: 'เชอร์รี',      emoji: '🍒', seed: 41,  sell: 99, time: 264000, lv: 5, xp: 22 },
+    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 52,  sell: 116, time: 291000, lv: 6, xp: 28 },
+    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 64,  sell: 143, time: 359000, lv: 7, xp: 34 },
+    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 82, sell: 188, time: 480000, lv: 9, xp: 42 },
+    melon:      { name: 'แตงโม',       emoji: '🍉', seed: 68, sell: 150, time: 373000, lv: 8, xp: 38 },
   };
   // ฤดูกาล (ขั้น 4 ใน ECONOMY-PLAN.md): ร้อน → ฝน → หนาว วนทุก days วันจริง นับจาก epoch • พืชในฤดู: ราคาเป้าตลาด ×inMul • นอกฤดู: โตช้าลง (เวลา ×outGrow) และราคา ×outMul
   // พืชเลเวล 1 (แครอท กะหล่ำ) โตปกติทุกฤดู คนใหม่ไม่โดน
@@ -409,16 +409,16 @@
   const freshTier = (t, now, fridge) => { if (now < FRESH.startAt) return 0; const age = (now - Math.max(t, FRESH.startAt)) * (fridge ? FRESH.fridgeMul : 1); return age < FRESH.freshMs ? 0 : age < FRESH.staleMs ? 1 : 2; };
   const freshMuls = (lots, q, now, fridge) => { const out = []; for (const [t, n] of lots || []) for (let i = 0; i < n && out.length < q; i++) out.push(FRESH.mul[freshTier(t, now, fridge)]); while (out.length < q) out.push(1); return out; }; // ตัวคูณต่อชิ้น เรียงของเก่าก่อน
   const freshCount = (lots, now, fridge) => { const c = [0, 0, 0]; for (const [t, n] of lots || []) c[freshTier(t, now, fridge)] += n; return c; };
-  // สัตว์ที่เลี้ยงได้ (ใช้ร่วมกันทั้งโลก): cap = จำนวนสูงสุด, feedItem = อาหารที่กิน
+  // สัตว์ฟาร์ม: เป็นของคนซื้อ (owner) • cap = สูงสุดต่อชนิดต่อคน • โผล่ในเล้าเฉพาะตอนเจ้าของออนไลน์ (ออฟ = หายจากเล้า + แช่แข็งไม่หิว/ไม่ผลิต)
+  // init ไม่ใช้แล้ว (เคยเป็นฝูงกลาง) • มือใหม่ได้ไก่ตัวแรกใน rec.herd • ตายแล้วจบ ไม่มีชุบจากกองกลาง
   const ANIMALS = {
-    // starveMin = กี่นาที (ที่มีผู้เล่นออนไลน์) ที่สัตว์หิวจากอิ่มเต็มจนหมด, หลังหมดแล้วเหลือเวลาอีก graceMs ก่อนจะตาย
-    // cap = จำนวนสูงสุดต่อเล้า (ทุกชนิด 6 ตัว) • แต่ละชนิดอยู่คนละเล้า (PENS)
-    chicken: { name: 'ไก่', emoji: '🐔', product: 'egg',  feedItem: 'feed', price: 120, lv: 1, cap: 6, init: 4, time: [25000, 45000], xp: 4, starveMin: 25 },
-    cow:     { name: 'วัว', emoji: '🐄', product: 'milk', feedItem: 'hay',  price: 600, lv: 3, cap: 6, init: 1, time: [45000, 75000], xp: 8, starveMin: 35 },
-    duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 6, init: 0, time: [30000, 50000], xp: 5, starveMin: 25 },
-    sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 850, lv: 4, cap: 6, init: 0, time: [50000, 80000], xp: 10, starveMin: 35 },
-    pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1100, lv: 5, cap: 6, init: 0, time: [60000, 90000], xp: 12, starveMin: 35 },
-    bee:     { name: 'ผึ้ง', emoji: '🐝', product: 'honey', feedItem: 'nectar', price: 360, lv: 2, cap: 6, init: 0, time: [40000, 60000], xp: 6, starveMin: 30 },
+    // starveMin = กี่นาที (เจ้าของออนไลน์) ที่สัตว์หิวจากอิ่มเต็มจนหมด, หลังหมดแล้วเหลือเวลาอีก ANIMAL_GRACE_MS ก่อนจะตาย
+    chicken: { name: 'ไก่', emoji: '🐔', product: 'egg',  feedItem: 'feed', price: 120, lv: 1, cap: 4, init: 0, time: [25000, 45000], xp: 4, starveMin: 25 },
+    cow:     { name: 'วัว', emoji: '🐄', product: 'milk', feedItem: 'hay',  price: 600, lv: 3, cap: 4, init: 0, time: [45000, 75000], xp: 8, starveMin: 35 },
+    duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 4, init: 0, time: [30000, 50000], xp: 5, starveMin: 25 },
+    sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 850, lv: 4, cap: 4, init: 0, time: [50000, 80000], xp: 10, starveMin: 35 },
+    pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1100, lv: 5, cap: 4, init: 0, time: [60000, 90000], xp: 12, starveMin: 35 },
+    bee:     { name: 'ผึ้ง', emoji: '🐝', product: 'honey', feedItem: 'nectar', price: 360, lv: 2, cap: 4, init: 0, time: [40000, 60000], xp: 6, starveMin: 30 },
   };
   // สัตว์เลี้ยงคู่ใจ (ซื้อที่ร้านสัตว์เลี้ยง): เดินตามเจ้าของ ทุกคนเห็น ไม่ต้องให้อาหาร • ซื้อได้หลายตัว แต่พาไปได้ทีละตัว (เลือกในร้าน)
   const COMPANIONS = {
@@ -588,9 +588,10 @@
   for (const x of [15, 16, 17, 18]) SEATS.push({ x, y: 36, kind: 'chair', face: 1 }); // เก้าอี้ 4 ตัวแถวเดียวติดกัน ตรงใต้จอ
   // กระดานข่าว (log ของโลก) และตู้เซฟกองกลาง อยู่ขอบเหนือของลานกองไฟ (ช่องเดินผ่านไม่ได้ กดจากช่องติดกัน)
   const BOARD = { x: 26, y: 24 }, ATM = { x: 29, y: 24 }, CHEST = { x: 32, y: 24 };
-  const TOWN = { logMax: 15, donate: [10, 50, 100], autoAfterMs: 60000, revive: 0.5, respawnMs: 5 * 60 * 1000, feeShare: 0.5 }; // autoAfterMs = สัตว์ป่วย/หิวจัดนานเท่าไรก่อนเงินกองกลางจ่ายให้เอง, revive = ค่าชุบชีวิตเป็นสัดส่วนของราคาซื้อ, respawnMs = สัตว์ชนิดที่เหลือน้อยกว่าจำนวนเริ่มต้น (ANIMALS.init) เกิดใหม่ฟรีทีละตัวทุกเท่านี้ (นับเฉพาะตอนมีคนออนไลน์) กันฝูงหมด, feeShare = สัดส่วนค่าเตาครัว/ค่าบริการตู้เกมที่เข้าเงินกองกลาง (ที่เหลือหายจากระบบ)
+  // feeShare = สัดส่วนค่าเตา/ตู้เกมเข้ากองกลาง • autoAfterMs/revive/respawnMs เลิกใช้ (สัตว์ของคนซื้อ ตายแล้วจบ ไม่ชุบ) คงค่าไว้กันโค้ดเก่า
+  const TOWN = { logMax: 15, donate: [10, 50, 100], autoAfterMs: 60000, revive: 0.5, respawnMs: 5 * 60 * 1000, feeShare: 0.5 };
   const townAt = (tx, ty) => (tx === BOARD.x && ty === BOARD.y ? 'board' : tx === CHEST.x && ty === CHEST.y ? 'chest' : tx === ATM.x && ty === ATM.y ? 'atm' : null);
-  const reviveCost = type => Math.round(ANIMALS[type].price * TOWN.revive);
+  const reviveCost = type => Math.round(ANIMALS[type].price * TOWN.revive); // เลิกใช้ใน UI แล้ว
   // เควสประจำวัน (วันตามปฏิทินของเซิร์ฟเวอร์): แต่ละคนได้ 3 เควสจาก 3 สายอาชีพที่ต่างกัน ทำเสร็จได้ XP + เหรียญทันที ยิ่งทำสะสมยิ่งได้ฉายา
   // ev = เหตุการณ์ที่นับ, distinct = นับเฉพาะชนิดที่ยังไม่เคยทำวันนี้, min = เฉพาะปลาที่ราคาขายตั้งแต่นี้ขึ้นไป
   const QUESTS = { // cat = หมวดสำหรับสุ่มให้ครบหลายสาย • adv = ข้อที่ยากกว่า/ต้องลุ้น (ผู้เล่นใหม่ยังไม่โดนสุ่มให้) • emoji = ไอคอนเฉพาะข้อ (ไม่ใส่ = ใช้ของสาย skill) • เป้าหมายตั้งให้ทำจบได้ใน 5–10 นาที
@@ -642,7 +643,7 @@
   // เดิมพันกับบอท: เงินเดิมพันฝั่งบอทมาจากบ้าน (สร้างเหรียญใหม่) จึงจำกัดวงเงินต่อครั้ง และกำไรสุทธิจากบอทต่อวันไม่เกิน dailyWinCap (ขาดทุนไม่จำกัด)
   const BOTBET = { bets: [0], dailyWinCap: 0 }; // ปิดการจ่ายเหรียญจากบอท (ซ้อมฟรีเท่านั้น) จนกว่าจะมีแต้มตู้เกม เดิมคือ bets [0,10,50,100,200,300] และ dailyWinCap 500
   // ของแจกจากกองกลาง: รับได้วันละ 1 ครั้ง ต้อง "เล่นจริง" = ระดับการเล่น (ผลรวมเลเวลทุกอาชีพ) ถึงเกณฑ์ และทำเควสประจำวันสำเร็จอย่างน้อย needQuests ข้อวันนี้
-  // ยิ่งเงินกองกลางเยอะยิ่งปลดล็อกชุดแจกที่ใหญ่ขึ้น (ต้องผ่านทั้ง chest และ lv) ต้นทุนทั้งหมดจ่ายจากเงินกองกลาง และต้องเหลือสำรอง reserve ไว้ดูแลสัตว์
+  // ยิ่งเงินกองกลางเยอะยิ่งปลดล็อกชุดแจกที่ใหญ่ขึ้น (ต้องผ่านทั้ง chest และ lv) ต้นทุนจ่ายจากกองกลาง ต้องเหลือสำรอง reserve
   const DOLE = {
     reserve: 60, needQuests: 1,
     tiers: [

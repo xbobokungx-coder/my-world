@@ -97,10 +97,7 @@ class World {
     }
     this.animals = [];
     this.nextAid = 1;
-    for (const type of Object.keys(ANIMALS)) {
-      const n = Number.isInteger(counts[type]) ? Math.min(counts[type], ANIMALS[type].cap) : ANIMALS[type].init;
-      for (let i = 0; i < n; i++) this.spawnAnimal(type);
-    }
+    // สัตว์เป็นของแต่ละคน (rec.herd) โผล่เล้าเฉพาะตอนเจ้าของออน — ไม่โหลดฝูงกลางเก่าจาก counts
     this.lastCrop = Date.now();
     this.tables = {};
     S.CABINETS.forEach((c, i) => {
@@ -302,8 +299,7 @@ class World {
     const st = d.stats || {}; this.stats = { day: typeof st.day === 'string' ? st.day : '', ev: {} };
     for (const ev of Object.keys(S.FAME)) { const m = Object.create(null), o = st.ev && st.ev[ev]; if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) if (Number.isFinite(v)) m[k] = v; this.stats.ev[ev] = m; }
     const c = d.chest || {};
-    this.chest = { coin: Number.isFinite(c.coin) && c.coin > 0 ? Math.floor(c.coin) : 0, dead: {} };
-    for (const t of Object.keys(ANIMALS)) { const n = c.dead && c.dead[t]; this.chest.dead[t] = Number.isInteger(n) ? Math.max(0, Math.min(n, ANIMALS[t].cap)) : 0; }
+    this.chest = { coin: Number.isFinite(c.coin) && c.coin > 0 ? Math.floor(c.coin) : 0, dead: {} }; // dead เลิกใช้ (ตายแล้วจบ ไม่ชุบจากกองกลาง) เก็บคีย์ว่างไว้กัน client เก่า
   }
   addLog(text) { const e = [Date.now(), text]; this.log.push(e); if (this.log.length > S.TOWN.logMax) this.log.shift(); this.dirty = true; this.broadcast({ t: 'log', e }); }
   loadProjects(d) { // โครงการพัฒนาเมือง: เก็บเงินที่ลงขันและชื่อผู้ร่วมสร้าง (ชื่อ → ยอดรวม)
@@ -384,7 +380,7 @@ class World {
     this.projPush();
   }
   chestPush() { this.dirty = true; this.broadcast({ t: 'chest', c: this.chest }); }
-  toChest(fee) { const n = Math.floor(fee * S.TOWN.feeShare); if (n > 0) { this.chest.coin += n; this.chestPush(); } } // แบ่งค่าเตา/ค่าบริการตู้เกมเข้ากองกลาง (ไว้ดูแล/ชุบชีวิตสัตว์)
+  toChest(fee) { const n = Math.floor(fee * S.TOWN.feeShare); if (n > 0) { this.chest.coin += n; this.chestPush(); } } // แบ่งค่าเตา/ค่าบริการตู้เกมเข้ากองกลาง
   nearChest(p) { return Math.hypot(p.x - (S.CHEST.x + 0.5) * TS, p.y - (S.CHEST.y + 0.5) * TS) < 4.5 * TS; }
   chestHandle(p, m) {
     if (!this.nearChest(p)) return this.toast(p, 'ต้องอยู่ใกล้ตู้เซฟกองกลางที่ลานกองไฟ');
@@ -400,31 +396,13 @@ class World {
       const tier = S.dolePackage(this.chest.coin, level);
       if (!tier) return this.toast(p, `ยังรับไม่ได้: ต้องมีเงินกองกลางพอและระดับการเล่นถึงเกณฑ์ (ตอนนี้ Lv ${level})`);
       const cost = S.doleCost(tier);
-      if (this.chest.coin - cost < S.DOLE.reserve) return this.toast(p, 'เงินกองกลางเหลือน้อยเกินไป ขอเก็บไว้ดูแลสัตว์ก่อน รอเพื่อนๆ ลงขันเพิ่มนะ');
+      if (this.chest.coin - cost < S.DOLE.reserve) return this.toast(p, 'เงินกองกลางเหลือน้อยเกินไป รอเพื่อนๆ ลงขันเพิ่มก่อนนะ');
       this.chest.coin -= cost; rec.dole = day;
       this.add(p, 'coin', tier.coin, 'dole'); for (const id of tier.meals) this.add(p, 'meal_' + id, 1);
       this.chestPush(); this.dirty = true; this.questPush(p);
       const names = tier.meals.map(id => { const i = S.itemInfo('meal_' + id); return i.emoji + i.name; }).join(' ');
       this.addLog(`🎁 ${p.name} (Lv ${level}) รับของแจกจากกองกลาง 🪙${tier.coin} + ${names}`);
       this.toast(p, `🎁 ได้รับของแจก: 🪙${tier.coin} + ${names}`); this.sfxTo(p, 'levelup');
-    } else if (m.a === 'revive') {
-      const type = typeof m.type === 'string' && Object.hasOwn(ANIMALS, m.type) ? m.type : null, A = type && ANIMALS[type];
-      if (!A || !(this.chest.dead[type] > 0)) return;
-      if (this.count(type) >= A.cap) return this.toast(p, `${A.name}เต็มทุ่งแล้ว`);
-      const cost = S.reviveCost(type);
-      if (this.chest.coin < cost) return this.toast(p, `เงินกองกลางไม่พอ (ต้องใช้ 🪙 ${cost})`);
-      this.chest.coin -= cost; this.chest.dead[type]--; this.spawnAnimal(type); this.chestPush();
-      this.addLog(`✨ ${p.name} ใช้เงินกองกลางชุบชีวิต${A.emoji} ${A.name}กลับมา`); this.sfx(p, 'heal');
-    }
-  }
-  careTick(a, A) { // เงินกองกลางดูแลสัตว์ให้อัตโนมัติ เมื่อป่วย/หิวจัดนานพอที่ผู้เล่นยังไม่ได้ช่วย
-    const med = S.itemInfo('medicine').buy, food = S.itemInfo(A.feedItem).buy;
-    if (a.sick && a.sickMs > S.TOWN.autoAfterMs && this.chest.coin >= med) {
-      this.chest.coin -= med; a.sick = false; a.sickMs = 0; this.chestPush();
-      this.addLog(`💊 ตู้เซฟกองกลางจ่ายค่ายารักษา${A.emoji} ${A.name}ที่ป่วย (-${med})`);
-    } else if (a.hunger <= 0 && a.zero > S.TOWN.autoAfterMs && this.chest.coin >= food) {
-      this.chest.coin -= food; a.hunger = 100; a.zero = 0; this.chestPush();
-      this.addLog(`🌾 ตู้เซฟกองกลางจ่ายค่าอาหารให้${A.emoji} ${A.name}ที่หิวจัด (-${food})`);
     }
   }
 
@@ -1201,13 +1179,48 @@ class World {
 
   zone(type) { const z = S.PENS[type] || S.PENS.chicken; return { x0: (z.x0 + 0.4) * TS, x1: (z.x1 + 0.6) * TS, y0: (z.y0 + 0.5) * TS, y1: (z.y1 + 0.5) * TS }; }
   hiveBox(i) { const [hx, hy] = S.BEE.hives[i]; return { x0: (hx - 0.6) * TS, x1: (hx + 1.6) * TS, y0: (hy - 0.6) * TS, y1: (hy + 1.6) * TS }; } // ผึ้งบินวนอยู่รอบรังของตัวเอง (ไม่ไกลเกิน 1 ช่อง)
-  spawnAnimal(type) {
-    const hive = type === 'bee' ? this.animals.filter(a => a.type === 'bee').length % S.BEE.hives.length : 0; // ผึ้งแต่ละตัวผูกกับรังหนึ่งลัง กระจายตามลำดับ
-    const z = type === 'bee' ? this.hiveBox(hive) : this.zone(type), x = rand(z.x0, z.x1), y = rand(z.y0, z.y1);
-    this.animals.push({ id: this.nextAid++, type, hive, x, y, tx: x, ty: y, wait: rand(0, 3), prod: false, fed: false, feeder: '', layAt: 0, dx: 1, hunger: 90, zero: 0 });
+  // ----- สัตว์ฟาร์มของใครของมัน: เก็บใน rec.herd • โผล่เล้าเฉพาะตอนเจ้าของออน • ออฟ = หายจากเล้า + แช่แข็ง -----
+  herdOf(rec) { if (!Array.isArray(rec.herd)) rec.herd = []; return rec.herd; }
+  packAnimal(a, now) {
+    return { type: a.type, hunger: Math.round(a.hunger), zero: a.zero || 0, sick: !!a.sick, sickMs: a.sickMs || 0,
+      fed: !!a.fed, prod: !!a.prod, feeder: a.feeder || '', fn: a.fn || '', pm: a.pm || 0,
+      layLeft: a.fed && a.layAt ? Math.max(0, a.layAt - now) : 0, warned: !!a.warned };
+  }
+  syncHerd(p) { const now = Date.now(); p.rec.herd = this.animals.filter(a => a.owner === p.key && !a.dead).map(a => this.packAnimal(a, now)); this.dirty = true; }
+  ownerCount(key, type) { return this.animals.filter(a => a.owner === key && a.type === type && !a.dead).length; }
+  count(type) { return this.animals.filter(a => a.type === type && !a.dead).length; }
+  spawnAnimal(type, p, st) {
+    if (!p || !ANIMALS[type]) return null;
+    const hive = type === 'bee' ? this.animals.filter(a => a.type === 'bee' && a.owner === p.key).length % S.BEE.hives.length : 0;
+    const z = type === 'bee' ? this.hiveBox(hive) : this.zone(type), x = rand(z.x0, z.x1), y = rand(z.y0, z.y1), now = Date.now();
+    const a = { id: this.nextAid++, type, hive, owner: p.key, on: p.name, x, y, tx: x, ty: y, wait: rand(0, 3),
+      prod: !!(st && st.prod), fed: !!(st && st.fed), feeder: (st && st.feeder) || '', fn: (st && st.fn) || '', pm: (st && st.pm) || 0,
+      layAt: (st && st.fed) ? now + Math.max(0, st.layLeft || 0) : 0, dx: 1,
+      hunger: Number.isFinite(st && st.hunger) ? Math.max(0, Math.min(100, st.hunger)) : 90,
+      zero: (st && st.zero) || 0, sick: !!(st && st.sick), sickMs: (st && st.sickMs) || 0, warned: !!(st && st.warned) };
+    this.animals.push(a); this.dirty = true; return a;
+  }
+  ensureGiftChicken(p) { // มือใหม่ (และผู้เล่นเก่ายังไม่ได้รับ): ได้ไก่ตัวแรก 1 ตัว
+    if (p.rec.herdGift) return;
+    p.rec.herdGift = 1; const herd = this.herdOf(p.rec);
+    if (!herd.some(a => a.type === 'chicken')) {
+      herd.push({ type: 'chicken', hunger: 90, zero: 0, sick: false, sickMs: 0, fed: false, prod: false, feeder: '', fn: '', pm: 0, layLeft: 0 });
+      setTimeout(() => { if (p.ws.readyState === 1) this.toast(p, '🐔 เมืองมอบไก่ตัวแรกให้คุณแล้ว! ซื้ออาหารไก่แล้วไปให้อาหารที่เล้า — ไข่เป็นของคุณ'); }, 4500);
+    }
     this.dirty = true;
   }
-  count(type) { return this.animals.filter(a => a.type === type).length; }
+  loadHerd(p) {
+    this.ensureGiftChicken(p);
+    const herd = this.herdOf(p.rec), kept = [], nBy = {};
+    for (const st of herd) {
+      if (!st || !ANIMALS[st.type]) continue;
+      nBy[st.type] = (nBy[st.type] || 0) + 1;
+      if (nBy[st.type] > ANIMALS[st.type].cap) continue;
+      kept.push(st); this.spawnAnimal(st.type, p, st);
+    }
+    p.rec.herd = kept; this.dirty = true;
+  }
+  unloadHerd(p) { this.syncHerd(p); this.animals = this.animals.filter(a => a.owner !== p.key); }
 
   // พืชเป็นของคนปลูก (t.o = key, t.on = ชื่อ): เก็บได้เฉพาะเจ้าของ แต่ถ้าสุกแล้วไม่มีใครมาเก็บครบ 1 วันในเกม (t.rm = เวลาที่สุกค้างอยู่ นับเฉพาะตอนมีคนออนไลน์) คนอื่นก็มาเก็บได้ ต้นเก่าที่ไม่มีเจ้าของ = ใครเก็บก็ได้
   cropLocked(t, p) { return !!(t.o && p.key !== t.o && (t.rm || 0) < S.DAY_MS); }
@@ -1284,6 +1297,7 @@ class World {
     if (S.blockedAt(this.map, rec.x, rec.y)) { rec.x = SPAWN.x; rec.y = SPAWN.y; }
     const p = { id: this.nextId++, ws, key, name, admin: !!admin, color: rec.color, hat: rec.hat, pc: rec.pc, wear: rec.wear, lamp: !!rec.lamp, pet: rec.pet, veh: rec.veh || '', pm: rec.pmode, pax: rec.x, pay: rec.y, sit: null, title: this.titleOf(rec), rec, x: rec.x, y: rec.y, dir: 0, fish: null, lastChat: 0, lastAct: 0, activeAt: Date.now(), voice: false };
     this.players.set(p.id, p); p.joinedAt = Date.now(); rec.joins = (rec.joins || 0) + 1;
+    this.loadHerd(p); // สัตว์ของบัญชีนี้โผล่ในเล้าตอนเข้าเกม
     logEv(this.room, 'join', { p: key, first: rec.joins === 1, joins: rec.joins, since: rec.firstSeen || null });
     const now = Date.now(), farm = {};
     for (const k in this.farm) farm[k] = this.pub(this.farm[k], now);
@@ -1314,6 +1328,7 @@ class World {
     this.tradeCancel(p, 'ผู้เล่นออกจากเกม');
     if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
     this.telFlush(p); this.wealthLog(p);
+    this.unloadHerd(p); // สัตว์หายจากเล้า + เซฟสถานะแช่แข็งใน rec.herd
     logEv(this.room, 'leave', { p: p.key, sec: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000) });
     p.rec.catAt = p.rec.leftAt = Date.now(); // leftAt = เวลาออกจากเกมล่าสุด (สรุประหว่างที่ไม่อยู่)
     this.players.delete(p.id); this.addLog(`🚪 ${p.name} ออกไปแล้ว`);
@@ -1719,12 +1734,12 @@ class World {
     if (info.once) { if (p.rec.inv[item]) return this.toast(p, 'คุณมีของชิ้นนี้อยู่แล้ว'); n = 1; }
     if (info.animal) {
       n = 1;
-      if (this.count(info.animal) >= ANIMALS[info.animal].cap) return this.toast(p, `${ANIMALS[info.animal].name}เต็มทุ่งแล้ว`);
+      if (this.ownerCount(p.key, info.animal) >= ANIMALS[info.animal].cap) return this.toast(p, `คุณเลี้ยง${ANIMALS[info.animal].name}ครบ ${ANIMALS[info.animal].cap} ตัวแล้ว`);
     }
     const cost = info.buy * n;
     if ((p.rec.inv.coin || 0) < cost) return this.toast(p, 'เหรียญไม่พอ');
     this.add(p, 'coin', -cost, 'buy'); logEv(this.room, 'buy', { p: p.key, item, q: n, coin: cost, cat: info.cat || 'other' }); // ซื้ออะไร: แยกต้นทุนผลิต (เมล็ด อาหารสัตว์ เหยื่อ) กับของสะสม/ความสะดวก
-    if (info.animal) { this.spawnAnimal(info.animal); this.toast(p, `ซื้อ${info.emoji} ${ANIMALS[info.animal].name}ตัวใหม่แล้ว!`); return; }
+    if (info.animal) { this.spawnAnimal(info.animal, p); this.syncHerd(p); this.toast(p, `ซื้อ${info.emoji} ${ANIMALS[info.animal].name}ตัวใหม่แล้ว! (ของคุณ ${this.ownerCount(p.key, info.animal)}/${ANIMALS[info.animal].cap})`); return; }
     this.add(p, item, n); if (info.furn) this.bookAdd(p, 'furn', info.furn);
     if (item === 'feed' || item === 'hay' || item === 'slop') this.event(p, 'buyfeed');
     if (info.can) this.waterSet(p, S.CANS[info.can].cap); // ซื้อบัวใหม่ได้น้ำเต็มให้เลย
@@ -2900,41 +2915,28 @@ class World {
         a.hunger = Math.max(0, a.hunger - dt * HFAST * 100 / (A.starveMin * 60));
         if (a.hunger <= 0) {
           a.zero = (a.zero || 0) + dt * 1000;
-          if (!a.warned && a.zero > 1000) { a.warned = true; this.broadcast({ t: 'msg', text: `⚠️ ${A.emoji} ${A.name}หิวจนไม่มีแรงแล้ว! รีบให้อาหารก่อนจะตาย` }); }
+          if (!a.warned && a.zero > 1000) { a.warned = true; this.broadcast({ t: 'msg', text: `⚠️ ${A.emoji} ${A.name}ของ ${a.on || 'ใครบางคน'} หิวจนไม่มีแรงแล้ว! รีบให้อาหารก่อนจะตาย` }); }
           if (a.zero > S.ANIMAL_GRACE_MS / HFAST) {
             a.dead = true;
-            this.broadcast({ t: 'msg', text: `💀 ${A.emoji} ${A.name}ตัวหนึ่งหิวตายแล้ว... ช่วยกันดูแลสัตว์ให้ดีนะ (ชุบชีวิตได้ที่ตู้เซฟกองกลาง)` }); this.addLog(`💀 ${A.emoji} ${A.name}ตัวหนึ่งหิวตาย`);
+            this.broadcast({ t: 'msg', text: `💀 ${A.emoji} ${A.name}ของ ${a.on || 'ใครบางคน'} หิวตายแล้ว (ต้องซื้อใหม่ที่ร้านปศุสัตว์)` }); this.addLog(`💀 ${A.emoji} ${A.name}ของ ${a.on || '?'} หิวตาย`);
             this.broadcast({ t: 'sfx', k: 'die', id: 0, x: Math.round(a.x), y: Math.round(a.y) });
           }
         } else { a.zero = 0; a.warned = false; }
-        if (a.sick && (a.sickMs = (a.sickMs || 0) + dt * 1000 * HFAST) > SICK_GRACE) { // ป่วยแล้วไม่รักษา ตายเร็วกว่าหิวปกติ (นับเฉพาะตอนมีคนออนไลน์)
+        if (a.sick && (a.sickMs = (a.sickMs || 0) + dt * 1000 * HFAST) > SICK_GRACE) {
           a.dead = true;
-          this.broadcast({ t: 'msg', text: `💀 ${A.emoji} ${A.name}ตัวหนึ่งป่วยตายแล้ว... ครั้งหน้ารีบรักษาด้วยยา 💊 นะ (ชุบชีวิตได้ที่ตู้เซฟกองกลาง)` }); this.addLog(`💀 ${A.emoji} ${A.name}ตัวหนึ่งป่วยตาย`);
+          this.broadcast({ t: 'msg', text: `💀 ${A.emoji} ${A.name}ของ ${a.on || 'ใครบางคน'} ป่วยตายแล้ว ครั้งหน้ารีบรักษาด้วยยา 💊 นะ` }); this.addLog(`💀 ${A.emoji} ${A.name}ของ ${a.on || '?'} ป่วยตาย`);
           this.broadcast({ t: 'sfx', k: 'die', id: 0, x: Math.round(a.x), y: Math.round(a.y) });
         }
-        if (!a.dead) this.careTick(a, A);
       }
-      // ฝูงขั้นต่ำ: ชนิดที่เหลือน้อยกว่าจำนวนเริ่มต้น เกิดใหม่ฟรีทีละตัว (ผู้เล่นใหม่ต้องมีสัตว์ให้ทำคู่มือเสมอ แม้เงินกองกลางหมด)
-      this.respawnTimer = (this.respawnTimer || 0) + dt * 1000 * HFAST;
-      if (this.respawnTimer >= S.TOWN.respawnMs) {
-        this.respawnTimer = 0;
-        const type = Object.keys(ANIMALS).find(t => this.animals.filter(a => a.type === t && !a.dead).length < ANIMALS[t].init);
-        if (type) {
-          const A = ANIMALS[type];
-          if (this.chest.dead[type] > 0) this.chest.dead[type]--;
-          this.spawnAnimal(type); this.chestPush(); this.addLog(`🐣 ${A.emoji} ${A.name}ตัวใหม่มาอยู่ที่ทุ่ง`);
-          this.broadcast({ t: 'msg', text: `🐣 ${A.emoji} ${A.name}ตัวใหม่มาอยู่ที่ทุ่งแล้ว ช่วยกันให้อาหารด้วยนะ` });
-        }
-      }
-      // สุ่มสัตว์ป่วย: เช็กทุก 1 นาที ป่วยพร้อมกันได้ไม่เกิน 3 ตัวรวมทุกชนิด
+      // สุ่มสัตว์ป่วย: เฉพาะตัวที่เจ้าของออน (อยู่ในเล้า) • ป่วยพร้อมกันได้ไม่เกิน SICK.max
       this.sickTimer += dt * 1000 * HFAST;
       if (this.sickTimer >= SICK_CHECK) {
         this.sickTimer = 0;
         const healthy = this.animals.filter(a => !a.sick && !a.dead);
         if (this.animals.filter(a => a.sick).length < S.SICK.max && healthy.length && Math.random() < S.SICK.chance) {
           const a = healthy[Math.floor(Math.random() * healthy.length)], A = ANIMALS[a.type];
-          a.sick = true; a.sickMs = 0; this.addLog(`🤒 ${A.emoji} ${A.name}ตัวหนึ่งป่วย`);
-          this.broadcast({ t: 'msg', text: `🤒 ${A.emoji} ${A.name}ตัวหนึ่งป่วยแล้ว! รีบรักษาด้วยยา 💊 (ซื้อที่ร้านปศุสัตว์) ก่อนจะตาย` });
+          a.sick = true; a.sickMs = 0; this.addLog(`🤒 ${A.emoji} ${A.name}ของ ${a.on || '?'} ป่วย`);
+          this.broadcast({ t: 'msg', text: `🤒 ${A.emoji} ${A.name}ของ ${a.on || 'ใครบางคน'} ป่วยแล้ว! รีบรักษาด้วยยา 💊 (ซื้อที่ร้านปศุสัตว์)` });
         }
       }
       // ต้นไม้งอกใหม่ในที่โล่งสีเขียวที่ห่างจากสิ่งปลูกสร้าง
@@ -2953,10 +2955,17 @@ class World {
           }
         }
       }
-      const before = this.animals.length;
-      for (const a of this.animals) if (a.dead) this.chest.dead[a.type] = Math.min(ANIMALS[a.type].cap, this.chest.dead[a.type] + 1);
-      this.animals = this.animals.filter(a => !a.dead);
-      if (this.animals.length !== before) { this.dirty = true; this.chestPush(); }
+      const died = this.animals.filter(a => a.dead);
+      if (died.length) {
+        const keys = new Set(died.map(a => a.owner).filter(Boolean));
+        for (const a of died) {
+          const op = [...this.players.values()].find(q => q.key === a.owner);
+          if (op) this.toast(op, `💀 ${ANIMALS[a.type].emoji} ${ANIMALS[a.type].name}ของคุณตายแล้ว ต้องซื้อใหม่ที่ร้านปศุสัตว์`);
+        }
+        this.animals = this.animals.filter(a => !a.dead);
+        for (const key of keys) { const op = [...this.players.values()].find(q => q.key === key); if (op) this.syncHerd(op); }
+        this.dirty = true;
+      }
     }
     for (const a of this.animals) {
       if (a.fed && now >= a.layAt && a.hunger > 0 && !a.sick) { a.fed = false; a.prod = true; a.pm = 0; }
@@ -2990,7 +2999,7 @@ class World {
       if (!k) {
         msg.n = this.npcs.map(n => [n.id, Math.round(n.x), Math.round(n.y), n.dir]);
         msg.pt = this.pets.map(q => [q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? 1 : 0]);
-        msg.c = this.animals.map(a => [a.id, a.type, Math.round(a.x), Math.round(a.y), a.prod ? 1 : 0, a.fed ? 1 : 0, a.dx, Math.round(a.hunger), a.sick ? 1 : 0, a.prod && a.feeder && (a.pm || 0) < S.DAY_MS ? 1 : 0, a.prod ? a.fn || '' : '']);
+        msg.c = this.animals.map(a => [a.id, a.type, Math.round(a.x), Math.round(a.y), a.prod ? 1 : 0, a.fed ? 1 : 0, a.dx, Math.round(a.hunger), a.sick ? 1 : 0, a.prod && a.feeder && (a.pm || 0) < S.DAY_MS ? 1 : 0, a.prod ? a.fn || '' : '', a.on || '']);
       }
       const str = JSON.stringify(msg); for (const q of ps) if (q.ws.readyState === 1) q.ws.send(str);
     }
@@ -3014,9 +3023,8 @@ class World {
   save(sync) {
     if (!this.dirty) return;
     this.dirty = false;
-    for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; }
-    const animals = {}; for (const t of Object.keys(ANIMALS)) animals[t] = this.count(t);
-    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, rents: this.rents, farm: this.farm, players: this.saved, animals, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])] }, replacer);
+    for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; this.syncHerd(p); } // เซฟฝูงลง rec.herd ก่อนเขียนไฟล์
+    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])] }, replacer);
     if (sync) { fs.writeFileSync(this.file, data); return; }
     fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
   }
@@ -3103,7 +3111,8 @@ const server = http.createServer((req, res) => {
   if (u === '/healthz') { res.writeHead(200); return res.end('ok'); }
   if (u === '/api/bug') { if (req.method !== 'POST') { res.writeHead(405, { Allow: 'POST' }); return res.end(); } return handleBug(req, res); }
   if (u === '/') u = '/index.html';
-  const f = path.join(PUB, u);
+  if (u.includes('\0') || u.includes('%00')) { res.writeHead(400); return res.end(); } // กัน path แปลกที่เคยทำให้เซิร์ฟล่ม
+  const f = path.normalize(path.join(PUB, u));
   if (!f.startsWith(PUB + path.sep)) { res.writeHead(403); return res.end(); }
   fs.readFile(f, (e, d) => {
     if (e) { res.writeHead(404); return res.end('Not found'); }
