@@ -5,7 +5,7 @@
 branch: `backup/theme-before-20261027-0137`  
 tag: `backup-theme-20261027-0137`  
 ไฟล์ภาพ: `public-visual-20261027-0137.tar.gz`  
-ภาพอ้างอิง: `refs/plaza-ref.png`
+ภาพอ้างอิง: `mockup/theme-ref-plaza.png` (และ `backup/theme/refs/plaza-ref.png`)
 
 ## วิธีย้อน (เลือกอย่างใดอย่างหนึ่ง)
 
