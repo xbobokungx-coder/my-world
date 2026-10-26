@@ -2906,12 +2906,29 @@ function hungerMark(c, now) { // สัตว์ที่หิว: แถบค
   ctx.fillStyle = h <= 0 ? '#e74c3c' : h < 35 ? '#e67e22' : '#f1c40f'; ctx.fillRect(x - 10, y + 1, 20 * Math.max(0.06, h / 100), 2);
   if (h < 35) { PixelUI.world(ctx, h <= 0 ? (Math.sin(now / 200) > 0 ? '💀' : '😢') : '🥺', x + 15, y + 1, 13); }
 }
-const BFLY = Array.from({ length: 8 }, (_, i) => ({ cx: 47 + (i * 7) % 13, cy: 10 + (i * 5) % 15, ph: i * 1.7, col: ['#ff8fc7', '#ffd24a', '#8fd0ff', '#c79bff'][i % 4] }));
-function drawButterflies(now) { // ผีเสื้อบินวนแถวคอกสัตว์ ให้ฟาร์มดูมีชีวิต
+// ผีเสื้อ/แมลงเบาๆ กระจายหลายโซน (ลานกลาง คอก แปลง ย่านบ้าน) ไม่รกตา
+const BFLY = [
+  ...Array.from({ length: 6 }, (_, i) => ({ cx: 47 + (i * 7) % 13, cy: 10 + (i * 5) % 15, ph: i * 1.7, col: ['#ff8fc7', '#ffd24a', '#8fd0ff', '#c79bff'][i % 4] })),
+  ...Array.from({ length: 4 }, (_, i) => ({ cx: 22 + (i * 5) % 12, cy: 26 + (i * 3) % 8, ph: i * 2.1 + 3, col: ['#ffd24a', '#ff8fc7', '#9fd4ff', '#ffe37a'][i % 4] })),
+  ...Array.from({ length: 3 }, (_, i) => ({ cx: 8 + (i * 6) % 14, cy: 18 + (i * 4) % 10, ph: i * 1.4 + 7, col: ['#8fd0ff', '#ffc9de', '#ffd24a'][i % 3] })),
+];
+function drawButterflies(now) {
   for (const b of BFLY) {
     const t = now / 1000 + b.ph, bx = (b.cx + Math.sin(t * 0.7) * 3.2) * TS, by = (b.cy + Math.sin(t * 0.9 + 1) * 2.2) * TS - 10 + Math.sin(t * 5) * 2;
     if (bx < camX - 20 || bx > camX + vw + 20 || by < camY - 20 || by > camY + vh + 20) continue;
     const w = Math.abs(Math.sin(t * 14)) * 4 + 1; ctx.fillStyle = b.col; ctx.beginPath(); ctx.ellipse(bx - 2, by, w, 3, -0.3, 0, 7); ctx.ellipse(bx + 2, by, w, 3, 0.3, 0, 7); ctx.fill(); ctx.fillStyle = '#4a3a2a'; ctx.fillRect(bx - 0.6, by - 2, 1.2, 4);
+  }
+}
+// จุดละอองแดดอุ่นลอยเบาๆ (กลางวันเท่านั้น วาดหลังพื้น ก่อนตัวละคร)
+function drawSunMotes(now, dark) {
+  if (dark > 0.15) return;
+  const n = 18;
+  for (let i = 0; i < n; i++) {
+    const ph = i * 2.17, t = now / 7000 + ph;
+    const bx = ((Math.sin(t * 0.9 + i) * 0.5 + 0.5) * W) * TS, by = ((Math.cos(t * 0.7 + i * 1.3) * 0.5 + 0.5) * H) * TS;
+    if (bx < camX - 8 || bx > camX + vw + 8 || by < camY - 8 || by > camY + vh + 8) continue;
+    const a = 0.18 + 0.22 * (0.5 + 0.5 * Math.sin(now / 900 + ph));
+    ctx.fillStyle = `rgba(255,236,160,${a})`; ctx.fillRect(Math.round(bx), Math.round(by), 2, 2);
   }
 }
 function drawCrop(tile, px, py, now) {
@@ -3705,12 +3722,19 @@ function step(now) {
 
   const x0 = Math.max(0, Math.floor(camX / TS)), x1 = Math.min(W - 1, Math.ceil((camX + vw) / TS));
   const y0 = Math.max(0, Math.floor(camY / TS)), y1 = Math.min(H - 1, Math.ceil((camY + vh) / TS));
-  // น้ำเคลื่อนไหว: ประกายแสงเป็นขีดพิกเซล (ตรงกับตาราง 2 px) กะพริบไม่พร้อมกัน
-  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (MAP[y][x] === T.WATER) for (let i = 0; i < 2; i++) {
-    const v = Math.sin(now / 520 + hash(x, y, i) * 40);
-    if (v < 0.5) continue;
-    ctx.fillStyle = v > 0.85 ? '#f2feff' : '#b6ecf2';
-    ctx.fillRect(x * TS + 2 + Math.floor(hash(x, y, i + 3) * 11) * 2, y * TS + 4 + Math.floor(hash(x, y, i + 6) * 12) * 2, 4 + (i ? 2 : 0), 2);
+  // น้ำเคลื่อนไหว: ริ้วคลื่นช้า + ประกายพิกเซล (ตรงตาราง 2 px) กะพริบไม่พร้อมกัน
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (MAP[y][x] === T.WATER) {
+    const band = Math.sin(now / 700 + y * 0.55 + hash(x, y, 2) * 3);
+    if (band > 0.72) {
+      ctx.fillStyle = 'rgba(232,253,255,.35)';
+      ctx.fillRect(x * TS + 2, y * TS + 8 + Math.floor((band - 0.72) * 20), TS - 4, 2);
+    }
+    for (let i = 0; i < 2; i++) {
+      const v = Math.sin(now / 620 + hash(x, y, i) * 40);
+      if (v < 0.55) continue;
+      ctx.fillStyle = v > 0.88 ? '#f2feff' : '#b6ecf2';
+      ctx.fillRect(x * TS + 2 + Math.floor(hash(x, y, i + 3) * 11) * 2, y * TS + 4 + Math.floor(hash(x, y, i + 6) * 12) * 2, 4 + (i ? 2 : 0), 2);
+    }
   }
   // สระใหญ่ด้านล่าง (ตรงกับ shared.js: วงรีศูนย์กลาง (43,38) รัศมี 12×5 ช่อง): ปลา 6 ตัว ว่ายแยกกันคนละความเร็วและทิศ
   // ว่ายใต้สะพานได้ แต่สะพานกับเกาะทรายวาดทับ (ตัดตรงนี้ออกจากการวาดปลา)
@@ -3772,7 +3796,7 @@ function step(now) {
   // ไม่วาดกรอบสี่เหลี่ยมบนพื้นแล้ว (ช่องที่ชี้/ช่องที่คลิก) — ใช้เคอร์เซอร์เมาส์เปลี่ยนเป็นรูปมือเมื่อชี้ของที่กดได้แทน
   { let cur = ''; if (mouse.active && !isTouch && mouse.tx >= 0 && mouse.ty >= 0 && mouse.tx < W && mouse.ty < H && (interactive(mouse.tx, mouse.ty) || hubSignAt(mouse.tx, mouse.ty))) cur = 'pointer'; if (canvas.style.cursor !== cur) canvas.style.cursor = cur; }
 
-  if (!scene) drawButterflies(now);
+  if (!scene) { const hourNow = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24; drawSunMotes(now, daylight(hourNow)); drawButterflies(now); }
   // วาดตามลำดับ y
   const list = [];
   for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) list.push({ y: y * TS + 30, f: () => drawTree(x, y) });

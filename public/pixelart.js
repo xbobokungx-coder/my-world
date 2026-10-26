@@ -42,11 +42,12 @@ const PixelArt = (() => {
   const G = 0, P = 1, SA = 2, WA = 3, FL = 4;
   const gtype = t => (t === T.WATER || t === T.BRIDGE ? WA : t === T.LANDMARK ? P : t === T.SAND ? SA : t === T.FLOOR || t === T.FURN ? FL : t === T.PATH || t === T.BUILD || t === T.SHOP ? P : G);
   const BLEND = [true, true, true, true, false];
-  const GRASS = ['#558f3a', '#64a344', '#73b44d', '#84c458', '#9ad46a'].map(rgb);
-  const PATH = ['#c08f59', '#c99c66', '#d2a873'].map(rgb);
+  // หญ้าเขียวอิ่มแบบ cozy village (ตรง STYLE_GUIDE + ภาพอ้างอิงลานกองไฟ)
+  const GRASS = ['#5fa844', '#6eb850', '#7bc65a', '#8cd468', '#a0e078'].map(rgb);
+  const PATH = ['#c9a869', '#d4b478', '#dcbf82'].map(rgb);
   // น้ำใส โทนเทอร์ควอยส์: ลึกกลางสระเข้ม ริมฝั่งอ่อนลง (ไล่ตามระยะจากฝั่ง)
-  const WATERC = ['#1d7b9e', '#2a8fb3', '#44a9c6', '#6cc6d6'].map(rgb);
-  const SHALLOW = rgb('#a8e4e0'), SANDBED = rgb('#d9c48a'); // ริมฝั่งน้ำตื้นเห็นพื้นทรายใต้น้ำ
+  const WATERC = ['#1a7398', '#2a96b8', '#4ab8cc', '#7ad4e0'].map(rgb);
+  const SHALLOW = rgb('#b8efe8'), SANDBED = rgb('#e2cf90'); // ริมฝั่งน้ำตื้นเห็นพื้นทรายใต้น้ำ
   const mixc = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
 
   function ground(MAP) {
@@ -73,30 +74,34 @@ const PixelArt = (() => {
     for (let py = 0; py < PH; py++) for (let px = 0; px < PW; px++) {
       const t = types[py * PW + px], h = hash(px, py, 3); let col;
       if (t === G) {
-        const v = vnoise(px, py, 56, 1) * .65 + vnoise(px, py, 14, 2) * .35;
-        col = GRASS[clamp(Math.floor(v * 4.2 + dith(px, py) - 1.1), 0, 3)];
+        const v = vnoise(px, py, 56, 1) * .6 + vnoise(px, py, 14, 2) * .28 + vnoise(px, py, 5, 7) * .12;
+        col = GRASS[clamp(Math.floor(v * 4.4 + dith(px, py) - 1.05), 0, 4)];
+        // จุดไฮไลต์แดดบางๆ บนหญ้า (ไม่แฟลร์)
+        if (h > .992 && v > .55) col = mixc(col, rgb('#fff3b0'), .22);
       } else if (t === P && pv(px >> 4, py >> 4)) { // ปูหินก้อนสี่เหลี่ยมสลับแถว มีรอยต่อ ขอบนอกเข้ม
         const row = py >> 3, bx = (px + (row & 1) * 4) >> 3, lx = (px + (row & 1) * 4) & 7, ly = py & 7, bh = hash(bx, row, 31);
-        col = hx(bh < .33 ? '#cfc4aa' : bh < .66 ? '#c4b99e' : '#d6ccb4');
-        if (lx === 0 || ly === 0) col = hx('#a79c80'); else if (ly === 1) col = hx('#e2d9c2'); else if (lx === 7 && ly > 4) col = hx('#b8ad92');
+        col = hx(bh < .33 ? '#d2c8b0' : bh < .66 ? '#c9bea4' : '#dbd1ba');
+        if (lx === 0 || ly === 0) col = hx('#a79c80'); else if (ly === 1) col = hx('#e8e0cc'); else if (lx === 7 && ly > 4) col = hx('#b8ad92');
         if (h < .02) col = hx('#8f8468');
         if (!pv((px - 1) >> 4, py >> 4) && (px & 15) === 0 || !pv((px + 1) >> 4, py >> 4) && (px & 15) === 15 || !pv(px >> 4, (py - 1) >> 4) && (py & 15) === 0 || !pv(px >> 4, (py + 1) >> 4) && (py & 15) === 15) col = hx('#7d7258'); // ขอบลาน
       } else if (t === P) {
         col = PATH[clamp(Math.floor(vnoise(px, py, 18, 4) * 3 + dith(px, py) * .6 - .3), 0, 2)];
-        if (h < .025) col = hx('#e2c08d'); else if (h > .985) col = hx('#a77a4a');
-        if (Tp(px, py - 2) === G || Tp(px, py + 2) === G || Tp(px - 2, py) === G || Tp(px + 2, py) === G) col = hx(h < .5 ? '#a9794a' : '#b4844f');
+        if (h < .04) col = hx('#e8c896'); else if (h > .97) col = hx('#a77a4a');
+        else if (h > .86 && h < .88) col = hx('#b88958'); // จุดดิน/กรวดเล็กบนทาง
+        if (Tp(px, py - 2) === G || Tp(px, py + 2) === G || Tp(px - 2, py) === G || Tp(px + 2, py) === G) col = hx(h < .5 ? '#b4844f' : '#c09458');
       } else if (t === SA) {
-        col = hx(vnoise(px, py, 6, 8) + dith(px, py) * .3 > .75 ? '#d6b97c' : '#e2c890');
+        const sv = vnoise(px, py, 6, 8) + dith(px, py) * .3;
+        col = hx(sv > .78 ? '#d6b97c' : sv > .4 ? '#e2c890' : '#efdfa4');
         if (Tp(px, py - 2) === WA || Tp(px, py + 2) === WA || Tp(px - 2, py) === WA || Tp(px + 2, py) === WA) col = hx('#c5a46a');
-        if (h < .04) col = hx('#f0dcab');
+        if (h < .05) col = hx('#f5e4b8'); else if (h > .97) col = hx('#c9a869');
       } else if (t === WA) {
         const tx = px / U - .5, ty = py / U - .5, ix = clamp(Math.floor(tx), 0, W - 1), iy = clamp(Math.floor(ty), 0, H - 1);
         const fx = tx - ix, fy = ty - iy, dv = (k, l) => Math.min(4, depth[clamp(iy + l, 0, H - 1)][clamp(ix + k, 0, W - 1)]);
         const d = (dv(0, 0) * (1 - fx) + dv(1, 0) * fx) * (1 - fy) + (dv(0, 1) * (1 - fx) + dv(1, 1) * fx) * fy;
         col = WATERC[3 - clamp(Math.floor(d * .9 + dith(px, py) * .8 - .4), 0, 3)];
-        const sh = clamp((2.4 - d) / 1.4, 0, 1); // ใกล้ฝั่งน้ำใสขึ้น เห็นทรายข้างล่าง
-        col = mixc(mixc(col, SHALLOW, sh * .45), SANDBED, sh * sh * .18);
-        if (Tp(px, py - 1) !== WA || Tp(px - 1, py) !== WA) col = hx('#e4fbfb'); // ฟองริมตลิ่ง
+        const sh = clamp((2.6 - d) / 1.5, 0, 1); // ใกล้ฝั่งน้ำใสขึ้น เห็นทรายข้างล่าง
+        col = mixc(mixc(col, SHALLOW, sh * .5), SANDBED, sh * sh * .22);
+        if (Tp(px, py - 1) !== WA || Tp(px - 1, py) !== WA) col = hx('#eafdfd'); // ฟองริมตลิ่ง
       } else { // พื้นไม้ของที่ดิน
         const pid = Math.floor(py / 5), ix = (px + pid * 11) % 26, iy = py % 5;
         col = hx(hash(pid, Math.floor((px + pid * 11) / 26), 5) < .5 ? '#b67d45' : '#c08a50');
@@ -111,31 +116,38 @@ const PixelArt = (() => {
       if (types[py * PW + px] !== SA) continue;
       if (!(Tp(px, py - 2) === WA || Tp(px, py + 2) === WA || Tp(px - 2, py) === WA || Tp(px + 2, py) === WA)) continue;
       const r = hash(px, py, 21);
-      if (r < .012) { set(px, py, hx('#4f8a3a')); set(px, py - 1, hx('#6fa84f')); set(px, py - 2, hx('#8cc463')); set(px - 1, py - 1, hx('#4f8a3a')); }
-      else if (r < .03) { set(px, py, hx('#8f9aa1')); set(px + 1, py, hx('#8f9aa1')); set(px, py - 1, hx('#c4ccd0')); }
+      if (r < .018) { set(px, py, hx('#4f8a3a')); set(px, py - 1, hx('#6fa84f')); set(px, py - 2, hx('#8cc463')); set(px - 1, py - 1, hx('#4f8a3a')); }
+      else if (r < .045) { set(px, py, hx('#8f9aa1')); set(px + 1, py, hx('#8f9aa1')); set(px, py - 1, hx('#c4ccd0')); }
     }
-    // ใบหญ้า กอหญ้า ดอกไม้ป่า กรวด
-    for (let py = 1; py < PH - 1; py++) for (let px = 0; px < PW; px++) if (types[py * PW + px] === G && hash(px, py, 13) < .03) { set(px, py, GRASS[4]); set(px, py + 1, GRASS[0]); }
+    // ใบหญ้า กอหญ้า ดอกไม้ป่า กรวด — หนาขึ้นทั้งแมพให้โซนโล่งใกล้ลานกลาง
+    for (let py = 1; py < PH - 1; py++) for (let px = 0; px < PW; px++) if (types[py * PW + px] === G && hash(px, py, 13) < .045) { set(px, py, GRASS[4]); set(px, py + 1, GRASS[0]); }
     const R = rng(42), area = W * H;
-    for (let i = 0; i < area * .55; i++) {
+    for (let i = 0; i < area * .78; i++) {
       const px = Math.floor(R() * PW), py = Math.floor(R() * PH);
       if (Tp(px, py) !== G || Tp(px - 3, py) !== G || Tp(px + 3, py) !== G) continue;
       const dk = GRASS[0], lt = GRASS[3];
       set(px, py, dk); set(px, py - 1, lt); set(px, py - 2, lt); set(px - 1, py, dk); set(px - 2, py - 1, lt); set(px + 1, py, dk); set(px + 2, py - 1, lt);
     }
-    const FLC = ['#fff6e0', '#ffc9de', '#ffe37a', '#c9b6ff', '#ff9db0', '#9fd4ff'].map(rgb);
-    for (let i = 0; i < area * .28; i++) {
+    // ดอกจุดเล็ก: เหลือง/ชมพู/ฟ้าเป็นหลัก (ตามภาพอ้างอิง) + ขาวอ่อน
+    const FLC = ['#ffe37a', '#ffc9de', '#9fd4ff', '#fff6e0', '#ff9db0', '#c9b6ff'].map(rgb);
+    for (let i = 0; i < area * .42; i++) {
       const px = 2 + Math.floor(R() * (PW - 4)), py = 2 + Math.floor(R() * (PH - 4));
       let ok = true; for (let dy = -2; dy <= 2 && ok; dy++) for (let dx = -2; dx <= 2; dx++) if (Tp(px + dx, py + dy) !== G) { ok = false; break; }
       if (!ok) continue;
-      const pc = FLC[Math.floor(R() * FLC.length)], cc = hx(R() < .5 ? '#ffcf3d' : '#e8743f');
+      const pc = FLC[Math.floor(R() * FLC.length)], cc = hx(R() < .55 ? '#ffcf3d' : '#e8743f');
       set(px, py + 2, GRASS[0]); set(px - 1, py, pc); set(px + 1, py, pc); set(px, py - 1, pc); set(px, py + 1, pc); set(px, py, cc);
-      if (R() < .4) { set(px + 3, py + 1, pc); set(px + 3, py + 2, GRASS[0]); }
+      if (R() < .45) { set(px + 3, py + 1, pc); set(px + 3, py + 2, GRASS[0]); }
     }
-    for (let i = 0; i < area * .1; i++) {
+    // กรวดบนทางดิน + จุดเปียกบางๆ ให้ทางไมเรียบทึบ
+    for (let i = 0; i < area * .16; i++) {
       const px = Math.floor(R() * PW), py = Math.floor(R() * PH);
-      if (Tp(px, py) !== P || Tp(px + 1, py + 1) !== P) continue;
-      set(px, py, hx('#d9cbb6')); set(px + 1, py, hx('#9c8a78')); set(px, py + 1, hx('#9c8a78')); set(px + 1, py + 1, hx('#6e5f52'));
+      if (Tp(px, py) !== P || Tp(px + 1, py + 1) !== P || pv(px >> 4, py >> 4)) continue;
+      set(px, py, hx('#e2d4b8')); set(px + 1, py, hx('#a89070')); set(px, py + 1, hx('#a89070')); set(px + 1, py + 1, hx('#6e5f52'));
+    }
+    for (let i = 0; i < area * .06; i++) {
+      const px = Math.floor(R() * PW), py = Math.floor(R() * PH);
+      if (Tp(px, py) !== SA) continue;
+      set(px, py, hx('#f0dcab')); if (Tp(px + 1, py) === SA) set(px + 1, py, hx('#c9a869'));
     }
     x.putImageData(img, 0, 0);
     // กรอบที่ดิน (ช่องขอบของแต่ละแปลง) แบบเดิม
@@ -150,21 +162,22 @@ const PixelArt = (() => {
     return c;
   }
 
-  // ---------- fences (วาดลงพื้น ต่อกันตามช่องข้างเคียง) ----------
+  // ---------- fences (วาดลงพื้น ต่อกันตามช่องข้างเคียง) — ไม้โทนอุ่นตาม STYLE_GUIDE ----------
   function fences(x, MAP) {
     const isF = (tx, ty) => MAP[ty] && MAP[ty][tx] === T.FENCE;
+    const W0 = '#8b5a2b', W1 = '#a0692f', W2 = '#c98b4a', W3 = '#6a4220';
     for (let y = 0; y < H; y++) for (let x2 = 0; x2 < W; x2++) {
       if (!isF(x2, y)) continue;
       const px = x2 * U, py = y * U, L = isF(x2 - 1, y), Rr = isF(x2 + 1, y), Up = isF(x2, y - 1), Dn = isF(x2, y + 1);
-      x.fillStyle = 'rgba(38,40,16,.25)'; x.fillRect(px + 2, py + 13, 12, 2);
+      x.fillStyle = 'rgba(38,40,16,.22)'; x.fillRect(px + 2, py + 13, 12, 2);
       if (L || Rr || !(Up || Dn)) { // ราวแนวนอน
         const x0 = L ? px : px + 6, x1 = Rr ? px + U : px + 10;
-        for (const ry of [py + 5, py + 9]) { r(x, OUT, x0, ry - 1, x1 - x0, 4); r(x, '#8f7e65', x0, ry, x1 - x0, 2); r(x, '#b4a387', x0, ry, x1 - x0, 1); }
+        for (const ry of [py + 5, py + 9]) { r(x, OUT, x0, ry - 1, x1 - x0, 4); r(x, W0, x0, ry, x1 - x0, 2); r(x, W2, x0, ry, x1 - x0, 1); }
       }
-      if (Dn) { r(x, OUT, px + 6, py + 8, 4, 8); r(x, '#8f7e65', px + 7, py + 8, 2, 8); r(x, '#b4a387', px + 7, py + 8, 1, 8); }
-      if (Up) { r(x, OUT, px + 6, py, 4, 8); r(x, '#8f7e65', px + 7, py, 2, 8); r(x, '#b4a387', px + 7, py, 1, 8); }
+      if (Dn) { r(x, OUT, px + 6, py + 8, 4, 8); r(x, W0, px + 7, py + 8, 2, 8); r(x, W2, px + 7, py + 8, 1, 8); }
+      if (Up) { r(x, OUT, px + 6, py, 4, 8); r(x, W0, px + 7, py, 2, 8); r(x, W2, px + 7, py, 1, 8); }
       // เสา
-      r(x, OUT, px + 5, py + 1, 6, 14); r(x, '#7a6a55', px + 6, py + 2, 4, 12); r(x, '#a8977c', px + 6, py + 2, 2, 11); r(x, '#5a4a3a', px + 6, py + 2, 4, 1);
+      r(x, OUT, px + 5, py + 1, 6, 14); r(x, W1, px + 6, py + 2, 4, 12); r(x, W2, px + 6, py + 2, 2, 11); r(x, W3, px + 6, py + 2, 4, 1);
       r(x, '#6b8f45', px + 5, py + 14, 2, 1); r(x, '#6b8f45', px + 10, py + 14, 1, 1);
     }
   }
@@ -183,7 +196,7 @@ const PixelArt = (() => {
         : [[13, 13, 9], [6, 15, 6], [20, 15, 6], [13, 7, 7], [8, 10, 5], [18, 10, 5]];
       if (kind !== 3) for (const b of blobs) { b[0] += Math.round(R() * 2 - 1); b[1] += Math.round(R() * 2 - 1); b[2] = Math.max(3, b[2] + Math.round(R() * 2 - 1)); } // แต่ละต้นทรงพุ่มต่างกันนิดหน่อย
       const pal = kind === 2 || kind === 3 ? ['#2f6b3a', '#3f8a46', '#56a653', '#7cc76a'] : kind === 5 ? ['#5f7a26', '#7c9a32', '#9fbc44', '#c4dc6a']
-        : kind === 7 ? ['#1f4128', '#2d5a34', '#3d7442', '#578f52'] : ['#3a7430', '#4f913b', '#68ad47', '#8ccc5e'];
+        : kind === 7 ? ['#1f4128', '#2d5a34', '#3d7442', '#578f52'] : ['#3a7a2e', '#4f913b', '#68ad47', '#8ccc5e'];
       for (const [bx, by, rd] of blobs) disc(x, bx, by, rd, pal[0]);
       for (const [bx, by, rd] of blobs) disc(x, bx - 1, by - 1, rd - 1, pal[1]);
       for (const [bx, by, rd] of blobs) disc(x, bx - 1, by - 3, Math.max(1, rd - 4), pal[2]);
@@ -368,12 +381,12 @@ const PixelArt = (() => {
     });
     CCACHE.set(b.roof, s); return s;
   }
-  // ดินแปลงผัก 1 ช่อง (แห้ง/รดน้ำแล้ว)
+  // ดินแปลงผัก 1 ช่อง (แห้ง/รดน้ำแล้ว) — โทนอุ่นตาม STYLE_GUIDE
   const SOIL = [false, true].map(wet => { const c = cv(U, U), x = c.getContext('2d');
     for (let py = 0; py < U; py++) for (let px = 0; px < U; px++) {
       const iy = py % 5, h = hash(px, py, wet ? 31 : 30);
-      let col = iy < 1 ? (wet ? '#45291a' : '#6a4428') : iy < 4 ? (wet ? '#5c3b22' : '#8a5a34') : (wet ? '#50331d' : '#7a4f2e');
-      if (iy >= 1 && iy < 4 && h < .12) col = wet ? '#6b4728' : '#9e6b3e';
+      let col = iy < 1 ? (wet ? '#45291a' : '#6b4423') : iy < 4 ? (wet ? '#5c3b22' : '#9a6b3c') : (wet ? '#50331d' : '#7a4f2e');
+      if (iy >= 1 && iy < 4 && h < .14) col = wet ? '#6b4728' : '#b07a48';
       if (px === 0 || py === 0) col = wet ? '#3c2416' : '#5b3a22';
       if (px === U - 1 || py === U - 1) col = wet ? '#6b4728' : '#a07040';
       r(x, col, px, py, 1, 1);
