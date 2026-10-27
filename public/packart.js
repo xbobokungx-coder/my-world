@@ -27,6 +27,8 @@ const PackArt = (() => {
   const stampImgs = Object.create(null);
   let loaded = 0, total = 0, ready = false, tilesReady = false;
   const waiters = [];
+  const mapWaiters = [];
+  let mapBg = null, mapBgReady = false;
   let groundCache = null, groundKey = '';
 
   function bump() {
@@ -44,6 +46,18 @@ const PackArt = (() => {
     im.src = src + '?v=pack3';
   }
 
+  function loadMapBg() {
+    const im = new Image();
+    im.decoding = 'async';
+    im.onload = () => {
+      if (!im.naturalWidth) return;
+      mapBg = im; mapBgReady = true;
+      mapWaiters.splice(0).forEach(fn => fn());
+    };
+    im.onerror = () => { mapBgReady = false; };
+    im.src = '/pack/map-bg.png?v=bg1';
+  }
+
   function load() {
     const bKeys = Object.keys(BUILD), tKeys = Object.keys(TILES), sKeys = Object.keys(STAMPS);
     total = bKeys.length + tKeys.length + sKeys.length; loaded = 0; ready = false; tilesReady = false;
@@ -51,9 +65,22 @@ const PackArt = (() => {
     bKeys.forEach(k => loadOne(BUILD[k].src, imgs, k));
     tKeys.forEach(k => loadOne(TILES[k].atlas, tileImgs, k));
     sKeys.forEach(k => loadOne(STAMPS[k], stampImgs, k));
+    loadMapBg();
   }
 
   function whenReady(fn) { if (ready) fn(); else waiters.push(fn); }
+  function whenMapReady(fn) { if (mapBgReady) fn(); else mapWaiters.push(fn); }
+
+  // วาดพื้นแมพทั้งใบจากภาพ bg (ขนาด W*U × H*U) หรือ null ถ้ายังไม่พร้อม
+  function mapBackground() {
+    if (!mapBgReady || !mapBg) return null;
+    const U = PixelArt.U, w = Shared.W * U, h = Shared.H * U;
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = true;
+    g.drawImage(mapBg, 0, 0, w, h);
+    return c;
+  }
 
   function building(b) {
     const conf = BUILD[b.kind], im = imgs[b.kind];
@@ -192,8 +219,9 @@ const PackArt = (() => {
   function has(kind) { return !!imgs[kind]; }
   function isReady() { return ready; }
   function groundReady() { return tilesReady; }
+  function mapReady() { return mapBgReady; }
   function invalidate() { groundCache = null; groundKey = ''; }
 
   load();
-  return { load, whenReady, building, ground, has, isReady, groundReady, invalidate, BUILD };
+  return { load, whenReady, whenMapReady, building, ground, mapBackground, mapReady, has, isReady, groundReady, invalidate, BUILD };
 })();

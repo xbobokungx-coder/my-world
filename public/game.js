@@ -2423,8 +2423,10 @@ function buildHouseBase() {
 function buildBase() {
   const U = PixelArt.U, oc = document.createElement('canvas'); oc.width = W * U; oc.height = H * U;
   const g = oc.getContext('2d');
-  // พื้นใช้ PixelArt (สมบูรณ์: หญ้า/ทาง/น้ำ/ลานปูหิน) — PackArt.ground ปิดไว้ก่อนจนกว่าจะเสถียร
-  g.drawImage(PixelArt.ground(MAP), 0, 0);
+  // พื้นแมพ: ใช้ภาพ bg ชุดใหม่ ถ้าโหลดแล้ว ไม่งั้น PixelArt ชั่วคราว
+  const mapBg = typeof PackArt !== 'undefined' && PackArt.mapReady() && PackArt.mapBackground();
+  if (mapBg) { g.imageSmoothingEnabled = true; g.drawImage(mapBg, 0, 0); g.imageSmoothingEnabled = false; }
+  else g.drawImage(PixelArt.ground(MAP), 0, 0);
   PixelArt.fences(g, MAP);
   for (const b of BUILDINGS) for (const [cx, cy] of b.counter) g.drawImage(PixelArt.counter(b), cx * U - 1, cy * U + 2);
   baseHi = document.createElement('canvas'); baseHi.width = W * TS; baseHi.height = H * TS;
@@ -2562,10 +2564,12 @@ function buildBase() {
 const builtProj = new Set(); // โครงการที่ครบเป้าและแปลงลง MAP ของหน้านี้แล้ว
 const DEMO_STRUCTS = (new URLSearchParams(location.search).get('demo') || '').split(','); // ?demo=lighthouse,island,festival = ดูภาพสิ่งก่อสร้างบนเครื่องตัวเองก่อนยอดครบ (อ่านตอนโหลดหน้า เพราะ URL ถูกเขียนทับหลังเข้าห้อง • ไม่กระทบคนอื่น/เซิร์ฟเวอร์ เดินจริงอาจสะดุด)
 let base = buildBase();
-// ร้านจากแพ็กโหลดเสร็จแล้วแค่รีเฟรชชั้นอาคาร (พื้นยังเป็น PixelArt)
-if (typeof PackArt !== 'undefined') PackArt.whenReady(() => {
-  if (scene) townDirty = true; else { base = buildBase(); if (typeof makeMiniBase === 'function') miniBase = makeMiniBase(); }
-});
+const rebuildTownBase = () => { if (scene) townDirty = true; else { base = buildBase(); if (typeof makeMiniBase === 'function') miniBase = makeMiniBase(); } };
+// เมื่อภาพพื้นแมพ / สไปรต์ร้านโหลดครบ วาดฐานแมพใหม่
+if (typeof PackArt !== 'undefined') {
+  PackArt.whenMapReady(rebuildTownBase);
+  PackArt.whenReady(rebuildTownBase);
+}
 function checkProjects() { // โครงการไหนครบเป้า: แปลงช่องบน MAP แล้ววาดพื้นและแผนที่ย่อใหม่ครั้งเดียว (ไม่ว่าจะครบทีละโครงการหรือพร้อมกันตอนเข้าเกม)
   let changed = false;
   for (const P of Shared.PROJECTS) {
