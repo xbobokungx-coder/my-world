@@ -521,7 +521,7 @@ function renderQuestPanel() {
       + '<li><b>เดิน:</b> คลิก/แตะที่พื้น หรือกด WASD / ลูกศร (มือถือใช้จอยสติ๊กมุมซ้ายล่าง)</li>'
       + '<li><b>เลือกเครื่องมือ:</b> กดเลข 1–3 หรือแตะช่องแถบด้านล่างจอ • ช่อง 1 = เครื่องมือ (จอบ บัวรดน้ำ เบ็ด ขวาน มือเปล่า เลือกจากเมนู หรือกด Q สลับ) • ช่อง 2 = เมล็ด • ช่อง 3 = อาหารสัตว์/ยา</li>'
       + '<li><b>ใช้งาน:</b> คลิก/แตะที่ต้นพืช สัตว์ น้ำ หรือร้านค้า ตัวละครจะเดินไปทำให้เอง (หรือกด Space / ปุ่ม A ใช้กับช่องที่หันหน้าไป)</li>'
-      + '<li><b>ร้านค้า:</b> คลิก/แตะที่เคาน์เตอร์ร้านใต้หลังคา แล้วเลือกซื้อ/ขายในหน้าต่างที่เปิดขึ้น</li>'
+      + '<li><b>ร้านค้า:</b> คลิก/แตะที่ประตูหรือตัวร้าน (ยืนใกล้ๆ ประตู) แล้วเลือกซื้อ/ขายในหน้าต่างที่เปิดขึ้น</li>'
       + '<li><b>เมนูด้านบน:</b> 🎒 กระเป๋า • 📋 เควส • 🏅 ฉายา/ความสำเร็จ • 💬 แชท • 💭 สถานะ</li></ul></details>'
       + (next ? `<div class="banner" style="background:#fff3cf">👉 ข้อต่อไป: <b>${next.hint}</b></div>` : '')
       + (questSt.streak && questSt.streak.n ? `<div class="vcard on"><b>🔥 เข้าเกมติดต่อกัน ${questSt.streak.n} วัน</b> <small>ได้เหรียญทุกวัน • ครบ 7 วันได้ของตกแต่งหายาก</small></div>` : '')
@@ -1379,7 +1379,7 @@ function act(tx, ty) {
 const solidTile = (tx, ty) => {
   if (tx < 0 || ty < 0 || tx >= W || ty >= H) return true;
   const t = MAP[ty][tx];
-  return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN || t === T.LANDMARK || t === T.WALL || t === T.VOID;
+  return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN || t === T.LANDMARK || t === T.WALL || t === T.VOID || t === T.CLIFF;
 };
 function findPath(sx, sy, goal) { // BFS แบบ 4 ทิศ คืนรายการช่องที่ต้องเดิน (ไม่รวมช่องเริ่ม)
   const prev = new Map(), q = [[sx, sy]], key = (x, y) => y * W + x;
@@ -1402,7 +1402,7 @@ function findPath(sx, sy, goal) { // BFS แบบ 4 ทิศ คืนรา�
 const animalAt = (tx, ty) => { for (const a of animals.values()) if (Math.hypot(a.x - (tx + 0.5) * TS, a.y - (ty + 0.5) * TS) < 40) return a; return null; };
 function interactive(tx, ty) { // ช่องนี้มีอะไรให้ทำด้วยเครื่องมือที่ถืออยู่ไหม
   const id = toolId(), t = MAP[ty][tx], f = farm[tx + ',' + ty];
-  if (t === T.SHOP || animalAt(tx, ty) || cinemaAt(tx, ty)) return true;
+  if (t === T.SHOP || (t === T.BUILD && shopAt(tx, ty)) || animalAt(tx, ty) || cinemaAt(tx, ty)) return true;
   if (seatAt(tx, ty)) return true;
   if (f && f.c && f.s === 3) return true;
   if (id === 'hoe') return !!f || (t === T.GRASS && inFarm(tx, ty));
@@ -2420,17 +2420,35 @@ function buildHouseBase() {
   PixelUI.world(gh, '🚪', (HS.door[0] + 1) * TS, HS.y1 * TS + 16, 15); // ป้ายประตูทางออก
   return oc;
 }
+// หน้าผา/บันได (ผังเมืองใหม่): วาดทับพื้นทางหลังสร้างพื้นโลก ใช้พาเลตดินหิน-น้ำตาลตาม STYLE_GUIDE
+function drawCliffs(gx) {
+  const rock = ['#a89478', '#8f7e68', '#7a6a58', '#665848', '#4a3d30'];
+  for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) {
+    const t = MAP[ty][tx]; if (t !== T.CLIFF && t !== T.STAIR) continue;
+    const X = tx * TS, Y = ty * TS;
+    if (t === T.CLIFF) {
+      gx.fillStyle = rock[2]; gx.fillRect(X, Y, TS, TS);
+      gx.fillStyle = rock[0]; gx.fillRect(X, Y, TS, 5); gx.fillStyle = rock[1]; gx.fillRect(X, Y + 5, TS, 3);
+      for (let i = 0; i < 4; i++) { const h = PixelArt.hash(tx * 7 + i, ty * 13, 5); gx.fillStyle = rock[3]; gx.fillRect(X + ((h * 24) | 0), Y + 10 + i * 5, 6 + (i & 1) * 4, 2); }
+      gx.fillStyle = rock[4]; gx.fillRect(X, Y + TS - 7, TS, 7); gx.fillStyle = 'rgba(0,0,0,.18)'; gx.fillRect(X, Y + TS - 9, TS, 2);
+    } else {
+      gx.fillStyle = '#c9a56a'; gx.fillRect(X, Y, TS, TS);
+      for (let i = 0; i < 4; i++) { gx.fillStyle = '#ddbe86'; gx.fillRect(X + 2, Y + i * 8, TS - 4, 3); gx.fillStyle = '#9a7a4a'; gx.fillRect(X + 2, Y + i * 8 + 3, TS - 4, 2); }
+      gx.fillStyle = '#7a5a30'; gx.fillRect(X, Y, 2, TS); gx.fillRect(X + TS - 2, Y, 2, TS);
+    }
+  }
+}
 function buildBase() {
   const U = PixelArt.U, K = PixelArt.GK, GU = U * K, oc = document.createElement('canvas'); oc.width = W * GU; oc.height = H * GU; // พื้นโลกละเอียด K เท่า (GU = 32 px ต่อช่อง = พิกเซลเกม)
   const g = oc.getContext('2d');
   g.drawImage(PixelArt.ground(MAP, K), 0, 0);
   g.save(); g.scale(K, K); g.imageSmoothingEnabled = false; // รั้ว/เคาน์เตอร์ยังเป็นสไปรต์ 16 px ต่อช่อง ขยายเท่าตัวตามพื้น
   PixelArt.fences(g, MAP);
-  for (const b of BUILDINGS) for (const [cx, cy] of b.counter) g.drawImage(PixelArt.counter(b), cx * U - 1, cy * U + 2);
   g.restore();
   baseHi = document.createElement('canvas'); baseHi.width = W * TS; baseHi.height = H * TS;
   const gh = baseHi.getContext('2d');
   gh.textAlign = 'center'; gh.textBaseline = 'middle';
+  drawCliffs(gh);
   g.scale(GU / TS, GU / TS); // = 1 เมื่อ K = 2 (พื้นอยู่ในหน่วยพิกเซลเกมแล้ว)
   // อาคาร: ร้านค้าทั่วไปวาดเป็นสไปรต์เรียงตามแกน y ใน step() ส่วนป้ายลานตู้เกมกับจอหนังยังวาดลงพื้นแบบเดิม
   g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -2454,7 +2472,6 @@ function buildBase() {
       gh.font = `bold 13px ${FONT}`; gh.fillStyle = '#2b2f55'; gh.fillText(`${b.sign} ${b.name} ${b.sign}`, bx + bw / 2, by + (bh - 16) / 2 - 1);
       continue;
     }
-    b.counter.forEach(([cx, cy], i) => { PixelUI.world(gh, GOODS[b.kind][i % 2], cx * TS + 16, cy * TS + 22, 15); });
   }
   { // บ้านหลังใหญ่: สไปรต์พิกเซล (PixelArt.bigHouse) · ประตูตรง HOUSE_DOOR
     const B = Shared.HOUSE_BLD, bx = B.x0 * TS, by = B.y0 * TS, bw = (B.x1 - B.x0 + 1) * TS, bh = (B.y1 - B.y0 + 1) * TS, dx = Shared.HOUSE_DOOR.x * TS;
@@ -2545,8 +2562,8 @@ function buildBase() {
       g.fillStyle = '#6b4423'; g.fillRect(px, py + 8, 16, 10); g.fillStyle = '#a0692f'; g.fillRect(px, py + 8, 16, 3);
       g.fillStyle = '#3f9a3a'; g.fillRect(px + 4, py + 2, 8, 7); g.fillStyle = col; g.fillRect(px + 2, py, 4, 4); g.fillRect(px + 10, py, 4, 4); g.fillStyle = '#ffe37a'; g.fillRect(px + 6, py - 1, 3, 3);
     };
-    for (const [x, y] of [[24, 25], [33, 25], [24, 30], [33, 30], [27, 23], [30, 23]]) lamp(x, y);
-    for (const [x, y, c] of [[19, 29, '#ff8fc7'], [23, 29, '#9fd4ff'], [36, 29, '#ffd24a'], [39, 29, '#ff8fc7'], [25, 32, '#fff6e0'], [32, 32, '#ffc9de']]) pot(x, y, c);
+    for (const [x, y] of [[26, 22], [38, 22], [26, 30], [38, 30], [30, 22], [34, 22]]) lamp(x, y);
+    for (const [x, y, c] of [[26, 21, '#ff8fc7'], [38, 21, '#9fd4ff'], [26, 31, '#ffd24a'], [38, 31, '#ff8fc7'], [28, 31, '#fff6e0'], [36, 31, '#ffc9de']]) pot(x, y, c);
   }
   // สิ่งก่อสร้างจากโครงการพัฒนาเมือง (วาดเมื่อครบเป้า) • ฟังก์ชันใน drawStructures ด้านล่าง
   drawStructures(g, gh);
@@ -2637,7 +2654,7 @@ function drawFire(now) {
   ctx.globalAlpha = 1;
 }
 function drawChainTree(now) { // โตตามจำนวนชาเลนจ์ที่สำเร็จทั้งเมือง: <5 ต้นกล้า • <20 ต้นกลาง • ≥20 ต้นใหญ่ มีป้ายจำนวนใบ
-  const n = chSt.chain, k = n < 5 ? 1.2 : n < 20 ? 1.6 : 2.1, s = PixelArt.tree(3, 5, 'broad'), w = s.width * k, h = s.height * k, cx = 24 * TS + 16, by = 31 * TS + 32;
+  const n = chSt.chain, k = n < 5 ? 1.2 : n < 20 ? 1.6 : 2.1, s = PixelArt.tree(3, 5, 'broad'), w = s.width * k, h = s.height * k, cx = 32 * TS + 16, by = 30 * TS + 32;
   ctx.drawImage(s, cx - w / 2, by - h, w, h); PixelUI.world(ctx, '🪣', cx + w / 4, by - h * 0.55 + Math.sin(now / 500) * 2, 14);
   ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(42,27,20,.8)'; ctx.fillRect(cx - 26, by + 2, 52, 13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`🌳 ${n} ใบ`, cx, by + 12);
 }
@@ -3003,7 +3020,7 @@ let miniBase = makeMiniBase();
 function makeMiniBase() {
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
-  const col = { [T.GRASS]: '#7bc65a', [T.WATER]: '#4aa3df', [T.TREE]: '#3f9a3a', [T.BUILD]: '#c9a86a', [T.PATH]: '#dcbf82', [T.FENCE]: '#8b5a2b', [T.SAND]: '#efdfa4', [T.SHOP]: '#a0692f', [T.FLOOR]: '#c99a5b', [T.FURN]: '#c99a5b', [T.BRIDGE]: '#a8703a', [T.LANDMARK]: '#b0453a', [T.WALL]: '#8b5a2b', [T.VOID]: '#17110d' };
+  const col = { [T.GRASS]: '#7bc65a', [T.WATER]: '#4aa3df', [T.TREE]: '#3f9a3a', [T.BUILD]: '#c9a86a', [T.PATH]: '#dcbf82', [T.FENCE]: '#8b5a2b', [T.SAND]: '#efdfa4', [T.SHOP]: '#a0692f', [T.FLOOR]: '#c99a5b', [T.FURN]: '#c99a5b', [T.BRIDGE]: '#a8703a', [T.LANDMARK]: '#b0453a', [T.WALL]: '#8b5a2b', [T.VOID]: '#17110d', [T.CLIFF]: '#7a6a58', [T.STAIR]: '#d2b07a' };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { g.fillStyle = (MAP[y][x] === T.GRASS && inFarm(x, y)) ? '#8bbf5a' : col[MAP[y][x]]; g.fillRect(x, y, 1, 1); }
   if (!scene) for (const b of BUILDINGS) { g.fillStyle = b.roof; g.fillRect(b.x0, b.y0, b.x1 - b.x0 + 1, 1); }
   return c;
@@ -3055,7 +3072,7 @@ function drawMini(now) {
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = `${Math.round((big ? 15 : 11) * k)}px sans-serif`;
   if (!scene) for (const b of BUILDINGS) g.fillText(b.sign, (b.x0 + b.x1 + 1) / 2 * sx, (b.y0 + b.y1 + 1) / 2 * sy + 2 * k);
-  if (!scene) { g.fillText('🏠', (Shared.HOUSE_DOOR.x + 0.5) * sx, (Shared.HOUSE_BLD.y0 + 1.5) * sy); g.fillText('🌾', 14 * sx, 12.5 * sy); g.fillText('🐄', 54 * sx, 21 * sy); g.fillText('🌊', 43 * sx, 38 * sy); g.fillText('🐖', 59.5 * sx, 11.5 * sy); g.fillText('🔥', FIRE.x * sx + sx / 2, FIRE.y * sy + sy / 2); }
+  if (!scene) { g.fillText('🏠', (Shared.HOUSE_DOOR.x + 0.5) * sx, (Shared.HOUSE_BLD.y0 + 1.5) * sy); g.fillText('🌾', 10.5 * sx, 15.5 * sy); g.fillText('🐄', 54 * sx, 21 * sy); g.fillText('🌊', 43 * sx, 38 * sy); g.fillText('🐖', 59.5 * sx, 11.5 * sy); g.fillText('🔥', FIRE.x * sx + sx / 2, FIRE.y * sy + sy / 2); }
   g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 1.5 * k; g.strokeRect(camX / TS * sx, camY / TS * sy, vw / TS * sx, vh / TS * sy);
   const list = [...players.values()].sort((a, b) => (a === me) - (b === me));
   g.font = `bold ${Math.round((big ? 11 : 9) * k)}px ${FONT}`;
@@ -3797,7 +3814,7 @@ function step(now) {
   // วาดตามลำดับ y
   const list = [];
   for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) list.push({ y: y * TS + 30, f: () => drawTree(x, y) });
-  if (!scene && chSt.chain > 0 && x0 <= 25 && x1 >= 23 && y0 <= 32 && y1 >= 30) list.push({ y: 31 * TS + 30, f: () => drawChainTree(now) }); // ต้นไม้แห่งการส่งต่อ (ชาเลนจ์ถังน้ำ)
+  if (!scene && chSt.chain > 0 && x0 <= 33 && x1 >= 31 && y0 <= 31 && y1 >= 29) list.push({ y: 30 * TS + 30, f: () => drawChainTree(now) }); // ต้นไม้แห่งการส่งต่อ (ชาเลนจ์ถังน้ำ)
   if (!scene) for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
   // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
   if (!scene) for (const s of SEATS) if (s.x >= x0 - 1 && s.x <= x1 + 1 && s.y >= y0 - 1 && s.y <= y1 + 1) list.push({ y: s.y * TS + 12, f: () => drawSeat(s) });

@@ -70,6 +70,11 @@ class World {
     try {
       const d = JSON.parse(fs.readFileSync(this.file, 'utf8').replace(/^﻿/, '')); // ตัด BOM ที่โปรแกรมแก้ไขบางตัวเติมให้
       this.farm = d.farm || {};
+      if ((d.layout | 0) < 2) { // ผังเมืองใหม่ (v2): แปลงผักย้ายจาก x6–21,y8–17 ไป x3–18,y11–20 (ขนาดเท่าเดิม แค่เลื่อน −3,+3) ย้ายข้อมูลแปลงเดิมตามไปด้วย
+        const moved = {};
+        for (const [k, v] of Object.entries(this.farm)) { const [x, y] = k.split(',').map(Number); if (x >= 6 && x <= 21 && y >= 8 && y <= 17) moved[(x - 3) + ',' + (y + 3)] = v; }
+        this.farm = moved; this.dirty = true;
+      }
       this.saved = Object.assign(Object.create(null), d.players); // ไม่มี prototype: ชื่อผู้เล่นอย่าง "__proto__" จะได้ไม่ไปชนของในระบบ
       for (const rec of Object.values(this.saved)) { // ย้าย XP มาตาราง XP_TABLE (ครั้งเดียวต่อบัญชี) เลเวลเท่าเดิม
         if (!rec || rec.xpv === 2) continue;
@@ -1116,7 +1121,7 @@ class World {
 
   cook(p, id) { // เชฟ (อาชีพที่ 5): ใช้วัตถุดิบข้ามสาย (ชนิดที่ถูกที่สุดก่อน) ทำอาหารขายได้แพงกว่าของดิบ ปลดสูตรตามเลเวลเชฟ ได้ XP เชฟ เตาต้องพักระหว่างจาน
     const r = typeof id === 'string' ? S.COOK.find(x => x.id === id) : null; if (!r) return;
-    if (this.nearShopKind(p) !== 'food') return this.toast(p, 'ต้องยืนใกล้เคาน์เตอร์ร้านอาหารถึงจะทำอาหารได้');
+    if (this.nearShopKind(p) !== 'food') return this.toast(p, 'ต้องยืนใกล้ประตูร้านอาหารถึงจะทำอาหารได้');
     if (this.lv(p, 'cook') < r.lv) return this.toast(p, `สูตรนี้ปลดล็อกที่เชฟเลเวล ${r.lv} (ตอนนี้ ${this.lv(p, 'cook')}) — ทำเมนูง่ายขึ้นก่อนเพื่อเก็บเลเวล`);
     const now = Date.now();
     if (now < (p.cookReady || 0)) return this.toast(p, `เตายังร้อนอยู่ รออีก ${Math.ceil((p.cookReady - now) / 1000)} วินาที`);
@@ -1142,9 +1147,9 @@ class World {
     this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name} สำเร็จ! (+${r.xp} XP เชฟ • ค่าเตา -🪙${fee} • ขายได้ราว 🪙${r.sell})`); this.sfx(p, 'collect');
     this.event(p, 'cook');
   }
-  craft(p, id) { // ประดิษฐ์ที่เคาน์เตอร์ร้านช่างไม้: ใช้ไม้ที่หามาได้ ได้ของ + XP ช่างไม้
+  craft(p, id) { // ประดิษฐ์ที่ร้านช่างไม้: ใช้ไม้ที่หามาได้ ได้ของ + XP ช่างไม้
     const r = typeof id === 'string' ? S.CRAFT.find(x => x.id === id) : null; if (!r) return;
-    if (this.nearShopKind(p) !== 'wood') return this.toast(p, 'ต้องยืนใกล้เคาน์เตอร์ร้านช่างไม้ถึงจะประดิษฐ์ได้');
+    if (this.nearShopKind(p) !== 'wood') return this.toast(p, 'ต้องยืนใกล้ประตูร้านช่างไม้ถึงจะประดิษฐ์ได้');
     if (this.lv(p, 'wood') < r.lv) return this.toast(p, `ต้องเป็นช่างไม้เลเวล ${r.lv} ก่อน`);
     for (const [k, n] of Object.entries(r.in)) if ((p.rec.inv[k] || 0) < n) return this.toast(p, 'วัตถุดิบไม่พอ');
     for (const [k, n] of Object.entries(r.in)) this.add(p, k, -n);
@@ -1721,7 +1726,7 @@ class World {
     return false;
   }
 
-  // ร้านที่ผู้เล่นยืนอยู่ใกล้เคาน์เตอร์ (หรือ null)
+  // ร้านที่ผู้เล่นยืนอยู่ใกล้ประตู (หรือ null)
   nearShopKind(p) { // ร้านที่ใกล้ที่สุดในระยะ (เดิมคืนร้านแรกที่เจอ ร้านที่อยู่ติดกันจึงเปิดผิดร้าน เช่น ร้านยานพาหนะได้ร้านตกปลา)
     let best = null, bd = 110;
     for (const b of S.BUILDINGS) for (const [cx, cy] of b.counter) {
@@ -1883,9 +1888,9 @@ class World {
     const cab = tt === T.SHOP ? S.cabinetAt(tx, ty) : null;
     if (cab) { this.arcOpen(p, cab); return; }
     // 4) ร้านค้า
-    const shop = tt === T.SHOP ? S.shopAt(tx, ty) : null;
+    const shop = (tt === T.SHOP || tt === T.BUILD) ? S.shopAt(tx, ty) : null; // ประตูร้าน (SHOP) หรือตัวอาคารร้าน (BUILD)
     if (shop && !S.SHOPS[shop]) return;
-    if (shop) { if (this.nearShopKind(p) === shop) send(p, { t: 'shop', kind: shop }); else this.toast(p, 'เดินเข้าไปใกล้เคาน์เตอร์อีกนิด'); return; }
+    if (shop) { if (this.nearShopKind(p) === shop) send(p, { t: 'shop', kind: shop }); else this.toast(p, 'เดินเข้าไปใกล้ประตูร้านอีกนิด'); return; }
     // 5) ใช้เครื่องมือ
     const feedTypes = Object.keys(ANIMALS).filter(k => ANIMALS[k].feedItem === tool); // อาหารชนิดเดียวใช้ได้หลายสัตว์ (ไก่+เป็ด, วัว+แกะ)
     if ((tool === 'hoe' || tool === 'rod' || tool === 'axe') && !this.durOk(p, tool)) return;
@@ -3037,7 +3042,7 @@ class World {
     if (!this.dirty) return;
     this.dirty = false;
     for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; this.syncHerd(p); } // เซฟฝูงลง rec.herd ก่อนเขียนไฟล์
-    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])] }, replacer);
+    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])] }, replacer);
     if (sync) { fs.writeFileSync(this.file, data); return; }
     fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
   }
