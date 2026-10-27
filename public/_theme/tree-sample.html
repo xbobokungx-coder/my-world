@@ -3,109 +3,38 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ตัวอย่างต้นไม้ v2 — ตามภาพคลอสอัป</title>
+<title>ต้นไม้ในเกม — พุ่มเมฆ + ขอบพื้น organic</title>
 <style>
-  :root{--bg:#1c140f;--panel:#2a1e16;--ink:#f5e6c6;--muted:#c4a982;--gold:#f2c14e;--out:#2a1b14;--ok:#6bc24e;--bad:#e0745a}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:"Noto Sans Thai",system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:16px 16px 48px}
-  h1{font-size:22px;margin:0 0 6px}
-  .lede{color:var(--muted);margin:0 0 14px;max-width:72ch;line-height:1.5;font-size:14px}
-  .diff{background:#3a2218;border:2px solid var(--bad);padding:10px 12px;margin:0 0 16px;font-size:13px;line-height:1.5;color:#f0d0c0}
-  .diff b{color:#ffb0a0}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media(max-width:800px){.grid{grid-template-columns:1fr}}
-  .card{background:var(--panel);border:3px solid var(--out);padding:12px}
+  :root{--bg:#1c140f;--panel:#2a1e16;--ink:#f5e6c6;--muted:#c4a982;--gold:#f2c14e;--out:#2a1b14}
+  body{margin:0;font-family:"Noto Sans Thai",system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:16px 16px 40px}
+  h1{font-size:20px;margin:0 0 6px}
+  p{color:var(--muted);font-size:14px;line-height:1.5;max-width:70ch}
+  .card{background:var(--panel);border:3px solid var(--out);padding:12px;margin:12px 0}
   .card h2{margin:0 0 8px;font-size:15px;color:var(--gold)}
-  .card p{margin:0 0 10px;font-size:13px;color:var(--muted);line-height:1.45}
-  img.ref{width:100%;max-height:420px;object-fit:contain;display:block;border:2px solid var(--out);background:#4a8a3a;image-rendering:pixelated}
-  .stage{background:#5fa844;border:2px solid var(--out);padding:16px;overflow:auto}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
-  .row{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end}
-  .item{text-align:center}
-  .item span{display:block;font-size:12px;color:var(--muted);margin-top:6px}
-  .zoom{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px}
-  .zoom .box{background:#4f913b;border:2px solid var(--out);padding:8px}
-  .zoom label{display:block;font-size:12px;color:var(--gold);margin-bottom:4px}
-  .note{margin-top:14px;padding:10px 12px;border:2px dashed #6b4423;color:var(--muted);font-size:13px;line-height:1.5}
-  .note b{color:var(--ok)}
-  a{color:var(--gold)}
+  .stage{background:#5fa844;border:2px solid var(--out);padding:12px;overflow:auto}
+  canvas{image-rendering:pixelated;display:block}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+  .ok{color:#8cdc66}
 </style>
 </head>
 <body>
-  <h1>ตัวอย่างต้นไม้ v2 (แก้ทรงใหม่)</h1>
-  <p class="lede">รอบก่อนทำพุ่มกลมฟูผิดแบบ — รอบนี้วาดตามภาพคลอสอัป: <b style="color:#c8e86a">3 ชั้นซ้อน</b> · ขอบหยัก · เงาเข้มใต้แต่ละชั้น · ไฮไลต์ยอด</p>
-  <div class="diff">
-    <b>ต่างจากรอบก่อน:</b> ไม่ใช้ก้อนเมฆกลมซ้อนกันแล้ว · ใช้โครง “ชั้นพุ่มซ้อนแนวตั้ง” ตามภาพที่คุณส่ง · มิติมาจากแถบเงาเข้มใต้แต่ละชั้น ไม่ใช่แค่ dither
+  <h1>อัปเดตในเกมแล้ว: พุ่มเมฆ + ขอบดิน organic</h1>
+  <p>รีเฟรชเกมแรงๆ แล้วเดินดูลาน/ขอบทาง/ต้นไม้ · หน้านี้โชว์สไปรต์จริงจาก <code>PixelArt.tree</code></p>
+  <div class="card">
+    <h2>ต้นไม้ในเกมตอนนี้ (พุ่มเมฆซ้อน)</h2>
+    <div class="stage"><canvas id="cv" width="720" height="160"></canvas></div>
+    <p class="ok" style="margin:8px 0 0">ใส่แมพจริงแล้ว · ไม่ใช่แค่ตัวอย่าง</p>
   </div>
-
-  <div class="grid">
-    <div class="card">
-      <h2>1) ภาพที่คุณส่ง (ต้นแบบ)</h2>
-      <p>สังเกต: 3 ชั้น · ยอดสว่าง · ใต้ชั้นมืด · ขอบหยัก · ลำต้นสั้น</p>
-      <img class="ref" src="ref-tree-closeup.png" alt="ต้นไม้ต้นแบบ">
-    </div>
-    <div class="card">
-      <h2>2) ตัวอย่างใหม่ที่วาดตามแบบ</h2>
-      <p>สเกล ×3 ดูคมพิกเซล · รีเฟรชแรงถ้ายังเห็นของเก่า</p>
-      <div class="stage"><div class="row" id="main"></div></div>
-      <div class="zoom">
-        <div class="box"><label>ซูม ×6 ต้นหลัก (ดูขอบหยัก + เงาใต้ชั้น)</label><canvas id="z6" width="230" height="280"></canvas></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card" style="margin-top:14px">
-    <h2>3) ชุดตัวแปร + เทียบของเกมปัจจุบัน</h2>
-    <p>แถวบน = ตัวอย่างใหม่ · แถวล่าง = ต้นไม้ในเกมตอนนี้ (ยังเป็นแบบเก่า)</p>
-    <div class="stage"><canvas id="cmp" width="760" height="210"></canvas></div>
-  </div>
-
-  <div class="note">
-    ยัง<b>ไม่ใส่เกม</b> — ดูหน้านี้แล้วบอกได้เลย<br>
-    · <b>ใส่เกมเลย</b> = เอาทรงชั้นนี้ลงแมพ<br>
-    · หรือบอกจุดที่ยังไม่คล้าย เช่น “ชั้นล่างใหญ่กว่า” “เงาเข้มกว่า” “ยอดแหลมกว่า”<br>
-    ลิงก์: <a href="/_theme/tree-sample.html">/_theme/tree-sample.html</a>
-  </div>
-
   <script src="/shared.js"></script>
   <script src="/pixelart.js"></script>
-  <script src="/_theme/tree-sample.js"></script>
   <script>
-    function blit(parent, spr, scale, label) {
-      const wrap = document.createElement('div'); wrap.className = 'item';
-      const c = document.createElement('canvas');
-      c.width = spr.width * scale; c.height = spr.height * scale;
-      const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
-      g.drawImage(spr, 0, 0, c.width, c.height);
-      wrap.appendChild(c);
-      const s = document.createElement('span'); s.textContent = label; wrap.appendChild(s);
-      parent.appendChild(wrap);
-    }
-    const main = document.getElementById('main');
-    blit(main, TreeSample.variants[0].make(), 3, 'ตามแบบคลอสอัป ×3');
-
-    (function () {
-      const spr = TreeSample.variants[0].make();
-      const c = document.getElementById('z6'), g = c.getContext('2d');
-      g.imageSmoothingEnabled = false; g.fillStyle = '#5fa844'; g.fillRect(0, 0, c.width, c.height);
-      g.drawImage(spr, 8, 8, spr.width * 6, spr.height * 6);
-    })();
-
-    const cmp = document.getElementById('cmp'), g = cmp.getContext('2d');
-    g.imageSmoothingEnabled = false; g.fillStyle = '#5fa844'; g.fillRect(0, 0, cmp.width, cmp.height);
-    g.fillStyle = '#1a2a14'; g.font = 'bold 13px sans-serif';
-    g.fillText('ใหม่ v2 (ชั้นซ้อน)', 10, 16); g.fillText('ของเกมปัจจุบัน', 10, 118);
-    TreeSample.variants.forEach((v, i) => {
-      const s = v.make(); g.drawImage(s, 16 + i * 120, 24, s.width * 2, s.height * 2);
+    const cv = document.getElementById('cv'), g = cv.getContext('2d');
+    g.imageSmoothingEnabled = false; g.fillStyle = '#5fa844'; g.fillRect(0, 0, cv.width, cv.height);
+    const kinds = ['broad', 'broad', null, null, 'pine', 'teak', 'gold', 'rose'];
+    kinds.forEach((k, i) => {
+      const s = PixelArt.tree(3 + i * 5, 4, k);
+      g.drawImage(s, 10 + i * 88, 20, s.width * 2, s.height * 2);
     });
-    [
-      PixelArt.tree(3, 4, 'broad'),
-      PixelArt.tree(10, 4, 'broad'),
-      PixelArt.tree(17, 4, null),
-      PixelArt.tree(25, 4, null),
-      PixelArt.tree(31, 4, 'pine'),
-      PixelArt.tree(40, 4, 'teak'),
-    ].forEach((s, i) => g.drawImage(s, 16 + i * 120, 128, s.width * 2, s.height * 2));
   </script>
 </body>
 </html>
