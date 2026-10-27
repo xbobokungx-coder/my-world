@@ -2537,6 +2537,23 @@ function buildBase() {
     g.fillStyle = '#5a3a1c'; g.fillRect(cx + 15, cy + 17, 2, 3); PixelUI.world(gh, '🪙', cx + 16, cy + 2, 14); }
   { const tag = (txt, cx, y) => { gh.font = 'bold 8px sans-serif'; const w = gh.measureText(txt).width + 8; g.fillStyle = 'rgba(40,28,14,.85)'; g.fillRect(cx - w / 2, y, w, 11); gh.fillStyle = '#fff'; gh.textAlign = 'center'; gh.textBaseline = 'middle'; gh.fillText(txt, cx, y + 5.5); }; // ป้ายชื่อเหนือกระดานข่าว ATM และตู้กองกลาง
     tag('ข่าวเมือง', BOARD.x * TS + 16, BOARD.y * TS - 22); tag('ATM', ATM.x * TS + 16, ATM.y * TS - 22); tag('กองกลาง', CHEST.x * TS + 16, CHEST.y * TS - 14); }
+  // เสาไฟ + กระถางดอกไม้รอบลาน (ภาพพื้นอย่างเดียว ไม่ชนการเดิน/เคาน์เตอร์) ให้หนาแน่นใกล้ภาพอ้างอิง
+  { const lamp = (tx, ty) => {
+      const px = tx * TS, py = ty * TS;
+      g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(px + 10, py + 28, 12, 4);
+      g.fillStyle = '#2a1b14'; g.fillRect(px + 14, py + 2, 4, 28); g.fillStyle = '#4a3a2a'; g.fillRect(px + 14, py + 2, 2, 26);
+      g.fillStyle = '#2a1b14'; g.fillRect(px + 10, py - 2, 12, 8); g.fillStyle = '#f2c14e'; g.fillRect(px + 12, py, 8, 5);
+      g.fillStyle = '#ffe9a0'; g.fillRect(px + 13, py + 1, 3, 2);
+    };
+    const pot = (tx, ty, col) => {
+      const px = tx * TS + 8, py = ty * TS + 14;
+      g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(px + 1, py + 14, 14, 3);
+      g.fillStyle = '#6b4423'; g.fillRect(px, py + 8, 16, 10); g.fillStyle = '#a0692f'; g.fillRect(px, py + 8, 16, 3);
+      g.fillStyle = '#3f9a3a'; g.fillRect(px + 4, py + 2, 8, 7); g.fillStyle = col; g.fillRect(px + 2, py, 4, 4); g.fillRect(px + 10, py, 4, 4); g.fillStyle = '#ffe37a'; g.fillRect(px + 6, py - 1, 3, 3);
+    };
+    for (const [x, y] of [[24, 25], [33, 25], [24, 30], [33, 30], [27, 23], [30, 23]]) lamp(x, y);
+    for (const [x, y, c] of [[19, 29, '#ff8fc7'], [23, 29, '#9fd4ff'], [36, 29, '#ffd24a'], [39, 29, '#ff8fc7'], [25, 32, '#fff6e0'], [32, 32, '#ffc9de']]) pot(x, y, c);
+  }
   // สิ่งก่อสร้างจากโครงการพัฒนาเมือง (วาดเมื่อครบเป้า) • ฟังก์ชันใน drawStructures ด้านล่าง
   drawStructures(g, gh);
   return oc;
@@ -2558,10 +2575,13 @@ function darken(hex, a) { const n = parseInt(hex.slice(1), 16); const f = c => M
 function drawSeat(s) {
   const px = s.x * TS, py = s.y * TS;
   ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(px + 3, py + 24, 26, 5);
-  if (s.kind === 'bench') {
-    ctx.fillStyle = '#7a4a24'; ctx.fillRect(px + 2, py + 18, 4, 9); ctx.fillRect(px + 26, py + 18, 4, 9);
-    ctx.fillStyle = '#a8703a'; ctx.fillRect(px, py + 12, 32, 8); ctx.fillStyle = '#c98b4a'; ctx.fillRect(px, py + 12, 32, 3);
-    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(px + 1, py + (s.face === 1 ? 20 : 4), 30, 5); // พนักพิงอยู่ด้านหลัง
+  if (s.kind === 'bench') { // ม้านั่งไม้พิกเซล (3 โทน + ขอบ) ให้ใกล้ภาพอ้างอิง
+    ctx.fillStyle = '#5a371e'; ctx.fillRect(px + 1, py + 17, 5, 10); ctx.fillRect(px + 26, py + 17, 5, 10);
+    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(px + 2, py + 18, 3, 8); ctx.fillRect(px + 27, py + 18, 3, 8);
+    ctx.fillStyle = '#a0692f'; ctx.fillRect(px, py + 12, 32, 8); ctx.fillStyle = '#c98b4a'; ctx.fillRect(px, py + 12, 32, 3);
+    ctx.fillStyle = '#6a4220'; ctx.fillRect(px, py + 19, 32, 1); for (const lx of [8, 16, 24]) ctx.fillRect(px + lx, py + 13, 1, 6);
+    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(px + 1, py + (s.face === 1 ? 20 : 4), 30, 5);
+    ctx.fillStyle = '#c98b4a'; ctx.fillRect(px + 1, py + (s.face === 1 ? 20 : 4), 30, 2);
   } else if (s.kind === 'hay') {
     ctx.fillStyle = '#d9b44a'; ctx.beginPath(); ctx.ellipse(px + 16, py + 20, 14, 10, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#c29a32'; for (let i = -10; i <= 10; i += 5) ctx.fillRect(px + 16 + i, py + 12, 1.5, 15);
@@ -2629,7 +2649,7 @@ function drawChainTree(now) { // โตตามจำนวนชาเลน�
 }
 function drawTree(x, y) { // สไปรต์ต้นไม้พิกเซล (สุ่มแบบตามตำแหน่ง) โคนต้นอยู่กลางขอบล่างของช่อง
   const s = PixelArt.tree(x, y, treeKinds.get(x + ',' + y));
-  ctx.drawImage(s, x * TS + 16 - 28, y * TS + 32 - 64, s.width * 2, s.height * 2);
+  ctx.drawImage(s, x * TS + 16 - s.width, y * TS + 32 - s.height * 2, s.width * 2, s.height * 2);
 }
 // ร้านค้า: สไปรต์อาคาร + อีโมจิบนหลังคา + ป้ายชื่อกระดานไม้
 function drawBuilding(b) {

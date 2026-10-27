@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>เทียบธีม — ภาพอ้างอิง vs ต้นไม้ใหม่</title>
+<style>
+  body{margin:0;font-family:"Noto Sans Thai",sans-serif;background:#1c140f;color:#f5e6c6;padding:16px}
+  h1{font-size:20px;margin:0 0 8px}
+  p{opacity:.8;margin:0 0 16px;font-size:14px}
+  .row{display:flex;flex-wrap:wrap;gap:16px}
+  .card{background:#2a1e16;border:3px solid #2a1b14;padding:10px;flex:1 1 320px}
+  .card h2{font-size:15px;margin:0 0 8px;color:#f2c14e}
+  img,canvas{image-rendering:pixelated;width:100%;max-width:100%;background:#5d9c3f;border:2px solid #2a1b14}
+  #trees{display:block;width:560px;max-width:100%;height:auto}
+</style>
+</head>
+<body>
+  <h1>เทียบธีมลานกลาง</h1>
+  <p>ซ้าย = ภาพอ้างอิง · ขวา = สไปรต์ต้นไม้หลังปรับ (รีเฟรชแรงถ้ายังเห็นของเก่า)</p>
+  <div class="row">
+    <div class="card"><h2>ภาพอ้างอิง</h2><img src="ref.png" alt="theme ref plaza"></div>
+    <div class="card"><h2>ต้นไม้ใหม่ (ทุกชนิด)</h2><canvas id="trees" width="280" height="160"></canvas></div>
+  </div>
+  <script src="/shared.js"></script>
+  <script src="/pixelart.js"></script>
+  <script>
+    const cv = document.getElementById('trees'), x = cv.getContext('2d');
+    x.imageSmoothingEnabled = false; x.fillStyle = '#6eb850'; x.fillRect(0, 0, cv.width, cv.height);
+    const kinds = [null, 'broad', 'pine', 'bamboo', 'coconut', 'teak', 'gold', 'rose'];
+    kinds.forEach((k, i) => {
+      const s = PixelArt.tree(i * 3 + 2, 4, k);
+      const dx = 8 + (i % 4) * 68, dy = (i < 4 ? 8 : 78);
+      x.drawImage(s, dx, dy, s.width * 2, s.height * 2);
+    });
+  </script>
+</body>
+</html>
