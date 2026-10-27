@@ -2767,13 +2767,15 @@ function drawFishing(p, t) {
   if (bite) { ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3d2a1a'; ctx.lineWidth = 3; ctx.strokeText('❗', p.fx, p.fy - 14); ctx.fillText('❗', p.fx, p.fy - 14 + Math.sin(t / 60) * 1.5); }
 }
 function drawPlayer(p, now, cx) {
-  const ctx = cx || mainCtx, x = p.x, y = p.y;
-  ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
-  if (p.veh && !p.sit && Shared.VEHICLES[p.veh]) PixelUI.world(ctx, Shared.VEHICLES[p.veh].emoji, x, y + 8, 26); // ยานพาหนะใต้ตัวละคร
-  PixelChar.draw(ctx, p, now); // ตัวละครพิกเซล chibi (pixelchar.js)
+  const ctx = cx || mainCtx, x = p.x, riding = !!(p.veh && !p.sit && Shared.VEHICLES[p.veh] && PixelVehicle.sprite);
+  let y = p.y;
+  if (riding) PixelVehicle.draw(ctx, p, now, PixelChar); // ผู้ขี่นั่งบนยานพาหนะพิกเซล (ล้อหมุน 4 ทิศ ขาปั่น ควันท่อ) ใน pixelchar.js
+  else { ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
+    PixelChar.draw(ctx, p, now); } // ตัวละครพิกเซล chibi (pixelchar.js)
+  if (riding) y -= PixelVehicle.lift(p.veh); // ผู้ขี่ตัวสูงขึ้น ป้ายชื่อ/ฟองแชท/ไอคอนเลื่อนตาม
   if (p.wet) { PixelUI.world(ctx, '🪣', x, y - 20, 16); ctx.fillStyle = 'rgba(120,190,255,.85)'; for (let i = 0; i < 4; i++) { const t = (now / 600 + i / 4) % 1; ctx.fillRect(x - 10 + i * 7, y - 14 + t * 24, 2, 4); } } // โดนราดน้ำจากชาเลนจ์
   if (p.lamp) drawHeldLamp(p, now);
-  if (p.held && !p.sit) drawHeldTool(p, now); // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง)
+  if (p.held && !p.sit && !riding) drawHeldTool(p, now); // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง)
   if (!p.name) return; // ตัวอย่างในตู้เสื้อผ้า ไม่ต้องวาดชื่อ
   // ป้ายชื่อ: กล่องกระดาษขอบเข้ม (สูงกว่าหัวตัวละครใหม่ ~9 px)
   const OUT = PixelArt.OUT, sp = !!p.speaking;

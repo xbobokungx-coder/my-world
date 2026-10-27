@@ -150,3 +150,204 @@ const PixelChar = (() => {
   }
   return { draw, CW, CH };
 })();
+
+// ยานพาหนะของตัวละคร (จักรยาน มอเตอร์ไซค์ รถเปิดประทุน): สไปรต์ 4 ทิศ × 4 เฟรมล้อหมุน ซ้ายคือภาพขวาพลิกกลับ
+// ชั้นวาด: หลัง (ตัวถัง/ล้อหลัง) → ตัวละครนั่งท่านั่ง → หน้า (ขาปั่น/แฮนด์/มือจับ/กระโปรงรถ) • ควัน/ฝุ่นวาดแบบเลื่อนตามเวลา (ไม่เก็บสถานะ)
+const PixelVehicle = (() => {
+  const { mk, r, ell, shade, ramp, hue } = PixelArt;
+  const INK = ['#2a1b14', '#5a4a3a'], TIRE = '#262a33', RIM = '#c9d3dc', RIM2 = '#8d99a6';
+  const SC = 2; // 1 พิกเซลศิลป์ = 2 พิกเซลเกม
+  function line(x, c, x0, y0, x1, y1) { // Bresenham 1 px
+    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1; let e = dx + dy;
+    x.fillStyle = c;
+    for (let n = 0; n < 200; n++) { x.fillRect(x0, y0, 1, 1); if (x0 === x1 && y0 === y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } }
+  }
+  function wheel(x, cx, cy, rad, fr, hub = '#e8c04a') { // ล้อมองข้าง: ยาง → ขอบ → ซี่ 2 ก้านหมุนตามเฟรม (22.5° ต่อเฟรม)
+    for (let dy = -rad - 1; dy <= rad + 1; dy++) for (let dx = -rad - 1; dx <= rad + 1; dx++) { const d = Math.hypot(dx, dy); if (d <= rad + .35) r(x, d > rad - 1 ? TIRE : RIM2, Math.round(cx + dx), Math.round(cy + dy), 1, 1); }
+    for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) if (Math.hypot(dx, dy) <= rad - 1.1) r(x, '#9aa5ad', Math.round(cx + dx), Math.round(cy + dy), 1, 1);
+    const a = fr * Math.PI / 8; for (const k of [0, 1]) { const ax = Math.cos(a + k * Math.PI / 2) * (rad - 1.2), ay = Math.sin(a + k * Math.PI / 2) * (rad - 1.2); line(x, '#e8eef2', cx - ax, cy - ay, cx + ax, cy + ay); }
+    r(x, hub, Math.round(cx), Math.round(cy), 1, 1);
+  }
+  const soft = { soft: INK };
+  // ---- จักรยาน ----
+  function bikeSide(fr, pc, idle, sc) { // หันขวา กว้าง 30 สูง 16 พื้นอยู่แถว 15 • ที่นั่งสะโพก (10,5)
+    const F = ramp('#d94a3a', .3, .22), W = 30, H = 16;
+    const back = mk(W, H, (x) => {
+      wheel(x, 6, 12, 3.5, fr); wheel(x, 23, 12, 3.5, fr);
+      r(x, 'rgba(26,28,44,.22)', 5, 15, 20, 1);
+      // เฟรม: ท่อนั่ง/ท่อบน/ท่อล่าง/โซ่สเตย์/ขาตะเกียบ
+      line(x, F[2], 13, 12, 10, 5); line(x, F[2], 10, 5, 20, 5); line(x, F[2], 20, 5, 21, 8); line(x, F[1], 13, 12, 20, 8); line(x, F[3], 13, 12, 6, 12); line(x, F[2], 10, 5, 6, 12); line(x, F[2], 21, 8, 23, 12);
+      r(x, F[4], 11, 5, 8, 1);
+      r(x, '#8a8f99', 12, 12, 3, 1); r(x, '#c9d3dc', 12, 12, 1, 1); // ศูนย์กลางแป้นเหยียบ + โซ่
+      line(x, '#6a6f7a', 13, 13, 6, 13);
+      r(x, '#3a2418', 7, 4, 5, 1); r(x, '#6e4524', 7, 3, 5, 1); r(x, '#a8703a', 8, 3, 2, 1); // เบาะ
+      // ตะกร้าหน้า
+      r(x, '#7a4a22', 24, 2, 6, 5); r(x, '#d9a441', 24, 2, 6, 1); r(x, '#e8c066', 25, 3, 5, 1); r(x, '#b8832e', 24, 4, 6, 1); r(x, '#b8832e', 24, 6, 6, 1);
+      for (let xx = 25; xx < 30; xx += 2) r(x, '#9a6a24', xx, 3, 1, 4);
+      r(x, '#5fa844', 25, 1, 2, 1); r(x, '#ff8fc7', 26, 0, 1, 1); r(x, '#ffd23f', 28, 1, 1, 1);
+      r(x, '#4a4f5a', 20, 1, 1, 4); r(x, '#4a4f5a', 19, 1, 4, 1); r(x, '#e8c04a', 22, 1, 1, 1); // แฮนด์ + กริ่งเล็ก
+    }, soft);
+    const ang = idle ? 0 : fr * Math.PI / 2 * .5; // แป้นเหยียบหมุนตามเฟรม (ครึ่งรอบต่อ 4 เฟรม ล้อเลยหมุนช้ากว่าขา ดูปั่นเป็นจังหวะ)
+    const front = mk(W, H, (x) => {
+      const px1 = 13 + Math.cos(ang) * 3, py1 = 12 + Math.sin(ang) * 2.6, px2 = 13 - Math.cos(ang) * 3, py2 = 12 - Math.sin(ang) * 2.6;
+      const leg = (px, py, far) => { const c = far ? shade(pc, -.3) : pc; line(x, c, 10, 6, px, py - 1); line(x, c, 11, 6, px + 1, py - 1); r(x, '#3a2a1e', Math.round(px), Math.round(py), 3, 1); r(x, '#6a4a3a', Math.round(px) + 1, Math.round(py) - 1, 1, 1); };
+      if (idle) { line(x, pc, 10, 6, 12, 11); line(x, pc, 11, 6, 13, 11); r(x, '#3a2a1e', 12, 12, 3, 1); } else { leg(px2, py2, true); leg(px1, py1, false); }
+      line(x, sc, 11, 2, 18, 2); line(x, shade(sc, -.2), 11, 3, 18, 3); r(x, '#f5cfa0', 19, 2, 2, 2); r(x, '#dca878', 19, 3, 2, 1); // แขนเสื้อยื่นไปจับแฮนด์ + มือ
+    }, soft);
+    return { back, front, seat: { x: 11, y: 6 }, ax: 15, ay: 16, lift: 6 };
+  }
+  function bikeFront(fr, pc, idle, rear) { // ล้อหน้า/หลังตั้งตรง กว้าง 12 สูง 16 พื้น 15 • ที่นั่ง (6,5)
+    const F = ramp('#d94a3a', .3, .22), W = 12, H = 16;
+    const back = mk(W, H, (x) => { r(x, 'rgba(26,28,44,.22)', 3, 15, 7, 1); if (rear) { r(x, F[1], 5, 3, 2, 7); } }, soft);
+    const front = mk(W, H, (x) => {
+      // ล้อมองตรง: ยางสูง 8 กว้าง 3 มีซี่ไล่ขึ้นลงตามเฟรม
+      r(x, TIRE, 5, 8, 3, 8); r(x, RIM2, 6, 9, 1, 6); r(x, '#e8eef2', 6, 9 + (fr % 4) * 2 % 6, 1, 1); r(x, '#e8eef2', 6, 12 + (fr % 3), 1, 1);
+      r(x, F[2], 5, 6, 3, 2); r(x, F[4], 5, 6, 1, 1); // ตะเกียบ/บังโคลน
+      if (!rear) { r(x, F[2], 5, 3, 3, 4); r(x, F[1], 7, 3, 1, 4); r(x, '#4a4f5a', 0, 2, 12, 1); r(x, '#2a2d36', 0, 1, 2, 2); r(x, '#2a2d36', 10, 1, 2, 2); // แฮนด์ + กริป
+        r(x, '#d9a441', 3, 4, 6, 4); r(x, '#e8c066', 3, 4, 6, 1); r(x, '#9a6a24', 3, 7, 6, 1); r(x, '#ffe08a', 5, 3, 2, 1); // ตะกร้าหน้า + ไฟ
+      } else { r(x, '#c0392b', 5, 7, 3, 1); r(x, '#ff6b5a', 6, 7, 1, 1); r(x, '#7a4a22', 3, 4, 6, 3); r(x, '#d9a441', 3, 4, 6, 1); }
+      if (!idle) { const k = fr % 2; r(x, pc, 2, 5 + k, 3, 2); r(x, pc, 7, 6 - k, 3, 2); r(x, '#3a2a1e', 2, 7 + k, 3, 1); r(x, '#3a2a1e', 7, 8 - k, 3, 1); }
+      else { r(x, pc, 3, 5, 2, 4); r(x, pc, 7, 5, 2, 4); r(x, '#3a2a1e', 3, 9, 2, 1); r(x, '#3a2a1e', 7, 9, 2, 1); }
+    }, soft);
+    return { back, front, seat: { x: 6, y: 5 }, ax: 7, ay: 16, lift: 6 };
+  }
+  // ---- มอเตอร์ไซค์สกูตเตอร์ ----
+  function scooterSide(fr, pc, idle, sc) { // หันขวา กว้าง 32 สูง 18 พื้น 17 • ที่นั่ง (10,6)
+    const B = ramp('#3fbf9f', .3, .22), W = 32, H = 18;
+    const back = mk(W, H, (x) => {
+      wheel(x, 6, 14, 3, fr, '#c9d3dc'); wheel(x, 25, 14, 3, fr, '#c9d3dc');
+      r(x, 'rgba(26,28,44,.22)', 4, 17, 24, 1);
+      // ท่อไอเสีย
+      r(x, '#6a6f7a', 1, 12, 5, 2); r(x, '#a3a8b2', 1, 12, 5, 1); r(x, '#3a3f4a', 1, 13, 1, 1);
+      // ตัวถังท้าย (โค้งมน) + ฝาข้าง
+      r(x, B[2], 4, 8, 11, 6); r(x, B[2], 5, 7, 9, 1); r(x, B[3], 5, 8, 9, 1); r(x, B[4], 6, 7, 4, 1); r(x, B[1], 4, 13, 11, 1); r(x, B[0], 4, 14, 11, 1); r(x, B[1], 13, 8, 2, 5);
+      r(x, B[3], 6, 10, 5, 1); r(x, '#e8eef2', 7, 11, 3, 1); // แผ่นโลโก้
+      // พื้นวางเท้า + กันชนใต้
+      r(x, B[1], 14, 13, 6, 2); r(x, B[0], 14, 15, 6, 1); r(x, '#4a4f5a', 15, 12, 5, 1);
+      // เบาะ
+      r(x, '#2a2d36', 6, 5, 8, 2); r(x, '#4a4f5a', 6, 5, 8, 1); r(x, '#6a6f7a', 7, 5, 3, 1);
+      // บังโคลนหน้า + คอแฮนด์ + หน้ากาก
+      r(x, B[2], 21, 6, 4, 8); r(x, B[3], 21, 6, 1, 8); r(x, B[1], 24, 6, 1, 8); r(x, B[2], 22, 4, 3, 2); r(x, B[3], 22, 4, 1, 2);
+      r(x, B[1], 24, 12, 4, 2); r(x, B[3], 24, 12, 4, 1);
+      r(x, '#fff3b0', 25, 8, 3, 2); r(x, '#ffffff', 25, 8, 1, 1); r(x, '#ffd23f', 27, 8, 1, 2); // ไฟหน้า
+      r(x, '#e74c3c', 4, 9, 1, 2); // ไฟท้าย
+      line(x, '#4a4f5a', 23, 4, 23, 1); r(x, '#2a2d36', 20, 1, 5, 1); r(x, '#e8eef2', 24, 0, 2, 1); r(x, '#8fd0f0', 25, 0, 1, 1); // แฮนด์ + กระจกมองข้าง
+    }, soft);
+    const front = mk(W, H, (x) => { // ขาพับวางบนพื้นวางเท้า
+      line(x, pc, 11, 7, 17, 7); line(x, pc, 11, 8, 17, 8); line(x, pc, 17, 8, 18, 12); line(x, pc, 18, 8, 19, 12); r(x, '#3a2a1e', 17, 13, 4, 1); r(x, '#6a4a3a', 18, 12, 1, 1);
+      line(x, sc, 13, 3, 20, 2); line(x, shade(sc, -.2), 13, 4, 20, 3); r(x, '#f5cfa0', 21, 1, 2, 3); r(x, '#dca878', 21, 3, 2, 1); // แขนเสื้อจับแฮนด์ + มือ
+    }, soft);
+    return { back, front, seat: { x: 11, y: 7 }, ax: 16, ay: 18, lift: 5, puff: [2, 13] };
+  }
+  function scooterFront(fr, pc, idle, rear) { // กว้าง 14 สูง 18 พื้น 17 • ที่นั่ง (7,6)
+    const B = ramp('#3fbf9f', .3, .22), W = 14, H = 18;
+    const back = mk(W, H, (x) => { r(x, 'rgba(26,28,44,.22)', 3, 17, 8, 1); if (rear) { r(x, B[2], 3, 8, 8, 6); r(x, B[3], 3, 8, 2, 6); r(x, B[1], 9, 8, 2, 6); r(x, '#e74c3c', 4, 10, 2, 1); r(x, '#e74c3c', 8, 10, 2, 1); r(x, '#ff6b5a', 4, 10, 1, 1); } }, soft);
+    const front = mk(W, H, (x) => {
+      r(x, TIRE, 6, 11, 3, 7); r(x, '#c9d3dc', 7, 12, 1, 5); r(x, '#ffffff', 7, 12 + (fr % 3) * 2 % 4, 1, 1);
+      if (rear) { r(x, TIRE, 6, 12, 3, 6); r(x, '#6a6f7a', 5, 13, 1, 3); r(x, '#a3a8b2', 5, 13, 1, 1); r(x, '#2a2d36', 5, 6, 5, 1); r(x, '#4a4f5a', 5, 6, 5, 1); }
+      else { r(x, B[2], 3, 6, 8, 7); r(x, B[3], 3, 6, 2, 7); r(x, B[1], 9, 6, 2, 7); r(x, B[0], 3, 12, 8, 1); r(x, '#fff3b0', 5, 8, 4, 3); r(x, '#ffffff', 5, 8, 1, 1); r(x, '#ffd23f', 8, 9, 1, 2);
+        r(x, '#2a2d36', 0, 4, 14, 1); r(x, '#4a4f5a', 0, 3, 3, 2); r(x, '#4a4f5a', 11, 3, 3, 2); r(x, '#8fd0f0', 0, 1, 2, 2); r(x, '#8fd0f0', 12, 1, 2, 2); r(x, '#e8eef2', 0, 1, 1, 1); } // แฮนด์ + กระจกข้าง
+      if (idle) { r(x, pc, 3, 7, 3, 5); r(x, pc, 8, 7, 3, 5); r(x, '#3a2a1e', 3, 12, 3, 1); r(x, '#3a2a1e', 8, 12, 3, 1); }
+      else { r(x, pc, 3, 6, 3, 6); r(x, pc, 8, 6, 3, 6); r(x, '#3a2a1e', 3, 12, 3, 1); r(x, '#3a2a1e', 8, 12, 3, 1); }
+    }, soft);
+    return { back, front, seat: { x: 7, y: 6 }, ax: 7, ay: 18, lift: 5, puff: [7, 14] };
+  }
+  // ---- รถยนต์เปิดประทุนสีแดง ----
+  function carSide(fr, pc, idle) { // หันขวา กว้าง 38 สูง 20 พื้น 19 • ที่นั่ง (16,9)
+    const B = ramp('#d8402f', .3, .22), W = 38, H = 20;
+    const back = mk(W, H, (x) => {
+      r(x, 'rgba(26,28,44,.25)', 3, 19, 32, 1);
+      // ตัวถัง: ใต้ท้อง → ข้างรถ → ฝากระโปรง/ท้าย
+      r(x, '#2a2d36', 5, 15, 28, 2);
+      r(x, B[2], 2, 8, 34, 8); r(x, B[3], 3, 8, 32, 1); r(x, B[4], 5, 8, 10, 1); r(x, B[1], 2, 13, 34, 2); r(x, B[0], 2, 15, 34, 1);
+      r(x, B[3], 24, 7, 11, 1); r(x, B[2], 25, 6, 9, 1); r(x, B[3], 25, 6, 3, 1); // ฝากระโปรงหน้าสูง
+      r(x, B[1], 2, 8, 2, 8); r(x, B[3], 35, 9, 1, 6); // ขอบท้าย/หน้า
+      r(x, '#f1c40f', 31, 10, 4, 2); r(x, '#fff3b0', 32, 10, 3, 1); r(x, '#ffffff', 34, 10, 1, 1); // ไฟหน้า
+      r(x, '#a82f23', 2, 10, 2, 2); r(x, '#ff6b5a', 2, 10, 1, 1); // ไฟท้าย
+      r(x, '#c9d3dc', 36, 13, 2, 3); r(x, '#8d99a6', 36, 15, 2, 1); r(x, '#c9d3dc', 1, 14, 2, 2); // กันชน
+      r(x, '#e8eef2', 11, 12, 12, 1); r(x, B[0], 11, 13, 12, 1); // เส้นข้างรถ
+      r(x, '#2a1b14', 17, 9, 1, 5); r(x, '#fff3b0', 16, 10, 1, 1); // รอยประตู + มือจับ
+      r(x, '#4a4f5a', 1, 16, 3, 1); // ท่อไอเสียท้าย
+      wheel(x, 9, 16, 3.5, fr, '#e8c04a'); wheel(x, 29, 16, 3.5, fr, '#e8c04a'); // ล้อ (ทับขอบตัวถัง)
+      // เบาะหลังใน cockpit
+      r(x, '#6e2f22', 5, 5, 8, 3); r(x, '#9a4a38', 5, 5, 8, 1); r(x, '#6e2f22', 14, 7, 9, 1);
+    }, soft);
+    const front = mk(W, H, (x) => {
+      // กระจกบังลมเอียง + เบาะหน้าด้านใน (ทับตัวละครช่วงล่าง) ขอบประตูตัดกับสะโพก
+      r(x, B[2], 14, 8, 10, 3); r(x, B[3], 14, 8, 10, 1); r(x, B[1], 14, 10, 10, 1);
+      r(x, '#8fd0f0', 24, 3, 1, 4); r(x, '#cfeeff', 24, 3, 1, 2); line(x, '#c9d3dc', 23, 7, 26, 3); r(x, '#6a6f7a', 23, 7, 1, 1);
+      r(x, '#cfeeff', 25, 3, 2, 1);
+    }, soft);
+    return { back, front, seat: { x: 17, y: 8 }, ax: 19, ay: 20, lift: 6, puff: [2, 16], hands: { x: 21, y: 4 } };
+  }
+  function carFront(fr, pc, idle, rear) { // กว้าง 24 สูง 22 พื้น 21 • ที่นั่ง (12,8)
+    const B = ramp('#d8402f', .3, .22), W = 24, H = 22;
+    const back = mk(W, H, (x) => { r(x, 'rgba(26,28,44,.25)', 3, 21, 18, 1);
+      if (!rear) { r(x, '#6e2f22', 6, 6, 12, 5); r(x, '#9a4a38', 6, 6, 12, 1); } // เบาะ/ห้องโดยสารข้างหลังคนขับ
+    }, soft);
+    const front = mk(W, H, (x) => {
+      // ล้อมองตรง (2 ข้าง) + ตัวถังหน้า/หลัง + กันชน
+      r(x, TIRE, 1, 13, 4, 8); r(x, TIRE, 19, 13, 4, 8); r(x, RIM2, 2, 14, 2, 6); r(x, RIM2, 20, 14, 2, 6); r(x, '#e8eef2', 2, 14 + (fr % 3) * 2, 2, 1); r(x, '#e8eef2', 20, 14 + (fr % 3) * 2, 2, 1);
+      if (!rear) {
+        r(x, B[2], 3, 7, 18, 12); r(x, B[3], 3, 7, 18, 1); r(x, B[4], 5, 7, 5, 1); r(x, B[1], 17, 8, 4, 11); r(x, B[0], 3, 18, 18, 1); r(x, B[3], 3, 8, 2, 10); // ฝากระโปรง + ข้าง
+        r(x, '#2a2d36', 8, 13, 8, 4); r(x, '#4a4f5a', 8, 13, 8, 1); for (let xx = 9; xx < 16; xx += 2) r(x, '#6a6f7a', xx, 14, 1, 3); // กระจังหน้า
+        r(x, '#fff3b0', 4, 11, 4, 3); r(x, '#ffffff', 4, 11, 1, 1); r(x, '#ffd23f', 7, 12, 1, 2); r(x, '#fff3b0', 16, 11, 4, 3); r(x, '#ffd23f', 19, 12, 1, 2); // ไฟหน้า
+        r(x, '#c9d3dc', 4, 19, 16, 2); r(x, '#8d99a6', 4, 20, 16, 1); r(x, '#ffffff', 5, 19, 4, 1); // กันชนหน้า
+        r(x, '#8fd0f0', 4, 4, 16, 3); r(x, '#cfeeff', 5, 4, 7, 1); r(x, '#c9d3dc', 3, 4, 1, 4); r(x, '#c9d3dc', 20, 4, 1, 4); r(x, '#6a6f7a', 3, 7, 18, 1); // กระจกบังลม
+      } else {
+        r(x, B[2], 3, 7, 18, 12); r(x, B[3], 3, 7, 18, 1); r(x, B[1], 17, 8, 4, 11); r(x, B[0], 3, 18, 18, 1);
+        r(x, '#a82f23', 4, 11, 4, 3); r(x, '#ff6b5a', 4, 11, 2, 1); r(x, '#a82f23', 16, 11, 4, 3); r(x, '#ff6b5a', 16, 11, 2, 1); // ไฟท้าย
+        r(x, '#e8eef2', 9, 12, 6, 3); r(x, '#6a6f7a', 9, 12, 6, 1); r(x, '#4a4f5a', 10, 13, 4, 1); // ป้ายทะเบียน
+        r(x, '#c9d3dc', 4, 19, 16, 2); r(x, '#8d99a6', 4, 20, 16, 1);
+        r(x, '#4a4f5a', 17, 20, 2, 1); // ท่อไอเสีย
+      }
+    }, soft);
+    return { back, front, seat: { x: 12, y: 8 }, ax: 12, ay: 22, lift: 6, puff: [18, 21], steer: !rear };
+  }
+  const BUILD = {
+    bike: (d, fr, pc, idle, sc) => d >= 2 ? bikeSide(fr, pc, idle, sc) : bikeFront(fr, pc, idle, d === 1),
+    scooter: (d, fr, pc, idle, sc) => d >= 2 ? scooterSide(fr, pc, idle, sc) : scooterFront(fr, pc, idle, d === 1),
+    car: (d, fr, pc, idle) => d >= 2 ? carSide(fr, pc, idle) : carFront(fr, pc, idle, d === 1),
+  };
+  const cache = new Map();
+  function sprite(kind, dir, fr, pc, idle, sc) {
+    const d = dir === 2 ? 3 : dir, key = [kind, d, fr, kind === 'car' ? '' : pc + sc, idle ? 1 : 0].join('|');
+    let s = cache.get(key); if (!s) { if (cache.size > 300) cache.clear(); s = BUILD[kind](d, fr, pc, idle, sc); cache.set(key, s); }
+    return s;
+  }
+  const lift = kind => ({ bike: 6, scooter: 5, car: 6 }[kind] || 0) * SC; // ความสูงที่ตัวละครยกขึ้นจากพื้น (พิกเซลเกม) ไว้เลื่อนป้ายชื่อ/ฟองแชทตาม
+  // วาดผู้ขี่ + ยานพาหนะ: p.veh = bike|scooter|car, p.moving/p.anim ใช้เป็นจังหวะล้อ
+  function draw(ctx, p, now, PC) {
+    const kind = p.veh, dir = p.dir || 0, moving = !!p.moving, anim = p.anim || 0;
+    const wr = Object.assign({}, Shared.WEAR_DEFAULT, p.wear), pc = (p.pc || Shared.PANTS_COLOR);
+    const fr = moving ? Math.floor(anim * (kind === 'car' ? 14 : kind === 'scooter' ? 12 : 9)) & 3 : 0;
+    const v = sprite(kind, dir, fr, pc, !moving, p.color || '#3498db'), sgn = dir === 2 ? -1 : 1;
+    const shake = moving ? (kind === 'bike' ? Math.round(Math.sin(anim * 20) * 0.6) : kind === 'scooter' ? Math.round(Math.sin(anim * 60) * 0.5) : Math.round(Math.sin(anim * 26) * 0.5)) : (kind === 'scooter' ? ((now / 90 | 0) & 1 ? 0 : 0) : 0); // ตัวรถสั่น/โยกเล็กน้อย
+    const idleBob = !moving && kind !== 'bike' ? ((now / 380 + (p.id || 0)) % 2 < 1 ? 0 : -1) * 0 : 0;
+    const gx = p.x, gy = p.y + 12; // จุดสัมผัสพื้นกลางตัวรถ
+    const oy = gy - v.ay * SC - SC + shake * SC, ox = Math.round(gx - v.ax * SC);
+    // เงาใหญ่ตามขนาดรถ
+    const sh = { bike: [13, 4], scooter: [15, 4.5], car: [20, 5.5] }[kind] || [10, 4];
+    ctx.fillStyle = 'rgba(24,34,52,.3)'; ctx.beginPath(); ctx.ellipse(gx + (dir >= 2 ? sgn * 2 : 0), gy + 1, dir >= 2 ? sh[0] : sh[0] * .55, sh[1], 0, 0, 7); ctx.fill();
+    ctx.imageSmoothingEnabled = false;
+    const blit = (spr) => { const w = spr.width * SC, h = spr.height * SC; if (dir === 2) { ctx.save(); ctx.translate(gx, 0); ctx.scale(-1, 1); ctx.drawImage(spr, -(v.ax * SC), oy, w, h); ctx.restore(); } else ctx.drawImage(spr, ox, oy, w, h); };
+    blit(v.back);
+    // ตัวละครนั่ง: สะโพกอยู่ที่ที่นั่ง (ชดเชยจากตำแหน่งสะโพกเดิม x=p.x, y=p.y+8)
+    const hipX = gx + sgn * (v.seat.x - v.ax) * SC, hipY = oy + v.seat.y * SC + (kind === 'bike' ? -2 : 0) * 0;
+    const q = Object.assign({}, p, { x: hipX, y: hipY - 8 + 0, sit: true, moving: false });
+    PC.draw(ctx, q, now);
+    blit(v.front);
+    // ท่าทางเพิ่ม: ควันท่อไอเสีย (รถ/สกูตเตอร์) ลอยตามเวลา
+    if (v.puff && kind !== 'bike') {
+      const back = dir === 3 ? -1 : dir === 2 ? 1 : 0, n = moving ? 3 : 1;
+      for (let i = 0; i < n; i++) {
+        const t = ((now / (moving ? 420 : 900) + i / n + (p.id || 0) * .13) % 1), px = gx + (dir >= 2 ? sgn * (v.puff[0] - v.ax) * SC : (v.puff[0] - v.ax) * SC) + back * t * 14, py = gy - (v.ay - v.puff[1]) * SC - 2 - t * (dir >= 2 ? 6 : 4) + (dir === 0 ? t * 8 : 0);
+        ctx.fillStyle = `rgba(214,214,222,${(1 - t) * (moving ? .5 : .28)})`; const rr = 1.5 + t * 2.5; ctx.beginPath(); ctx.arc(Math.round(px), Math.round(py), rr, 0, 7); ctx.fill();
+      }
+    }
+    if (moving && kind === 'car' && fr % 2 === 0) { ctx.fillStyle = 'rgba(190,160,110,.35)'; ctx.fillRect(Math.round(gx - sgn * (dir >= 2 ? 18 : 0)) - 2, gy - 1, 3, 2); } // ฝุ่นเบาๆ จากล้อ
+  }
+  return { draw, lift, sprite };
+})();
+

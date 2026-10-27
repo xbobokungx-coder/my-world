@@ -792,5 +792,5 @@ const PixelArt = (() => {
     }
   }
 
-  return { mk, r, ell, disc, shade, fish, lily, duckPond, lighthouse,  hash, rng, addOutline, cv, U, OUT, ground, fences, tree: treeFor, building, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
+  return { mk, r, ell, disc, shade, ramp, hue, fish, lily, duckPond, lighthouse,  hash, rng, addOutline, cv, U, OUT, ground, fences, tree: treeFor, building, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
 })();
