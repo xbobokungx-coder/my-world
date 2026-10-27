@@ -1,0 +1,210 @@
+{
+  "buildings": [
+    {
+      "kind": "farm",
+      "name": "ร้านเมล็ดพันธุ์",
+      "file": "farm.png",
+      "note": "กันสาดเขียว มีป้ายไทยตรงชื่อ",
+      "w": 143,
+      "h": 147
+    },
+    {
+      "kind": "fish",
+      "name": "ร้านตกปลา",
+      "file": "fish.png",
+      "note": "หลังคาโค้งฟ้า ปลาแขวน ล้อเกวียน",
+      "w": 168,
+      "h": 159
+    },
+    {
+      "kind": "animal",
+      "name": "ร้านปศุสัตว์",
+      "file": "animal.png",
+      "note": "โรงนาหลังคาส้ม หินฐาน ป้ายสัตว์",
+      "w": 205,
+      "h": 169
+    },
+    {
+      "kind": "pet",
+      "name": "ร้านสัตว์เลี้ยง",
+      "file": "pet.png",
+      "note": "หลังคาส้มแดง ป้ายแมว + ข้อความไทย",
+      "w": 155,
+      "h": 160
+    },
+    {
+      "kind": "cloth",
+      "name": "ร้านเสื้อผ้า",
+      "file": "cloth.png",
+      "note": "หลังคาม่วง กันสาดชมพู แขวนเสื้อ",
+      "w": 188,
+      "h": 193
+    },
+    {
+      "kind": "food",
+      "name": "ร้านอาหาร",
+      "file": "food.png",
+      "note": "หลังคาสลับแดงส้ม กันสาด+โต๊ะเก้าอี้",
+      "w": 287,
+      "h": 184
+    },
+    {
+      "kind": "wood",
+      "name": "ร้านช่างไม้",
+      "file": "wood.png",
+      "note": "ท่อนไม้ ขวานปักตอ ระเบียงเปิด",
+      "w": 223,
+      "h": 175
+    },
+    {
+      "kind": "furn",
+      "name": "ร้านเฟอร์นิเจอร์",
+      "file": "shop_pink.png",
+      "note": "ร้านหมีชมพู (ใกล้เคียงที่สุดในแพ็ก)",
+      "w": 134,
+      "h": 151
+    },
+    {
+      "kind": "vehicle",
+      "name": "ร้านยานพาหนะ",
+      "file": "fish.png",
+      "note": "ยังไม่มีในแพ็ก — ใช้สไตล์เดียวกับร้านปลาชั่วคราว",
+      "w": 168,
+      "h": 159
+    },
+    {
+      "kind": "sign",
+      "name": "Arcade Hub",
+      "file": "arcade.png",
+      "note": "ตู้เกมสีสดบนพื้นหิน",
+      "w": 188,
+      "h": 167
+    }
+  ],
+  "env": [
+    {
+      "id": "grass",
+      "file": "grass.png",
+      "note": "หญ้ามีดอก",
+      "w": 178,
+      "h": 179
+    },
+    {
+      "id": "path",
+      "file": "path_dirt.png",
+      "note": "ทางดินขอบหยัก + ก้อนหิน",
+      "w": 102,
+      "h": 223
+    },
+    {
+      "id": "water",
+      "file": "water.png",
+      "note": "น้ำเทอร์ควอยส์ บัว โฟม",
+      "w": 167,
+      "h": 115
+    },
+    {
+      "id": "tree_broad",
+      "file": "tree_broad_a.png",
+      "note": "ต้นไม้พุ่มเมฆ",
+      "w": 167,
+      "h": 191
+    },
+    {
+      "id": "tree_broad2",
+      "file": "tree_broad_b.png",
+      "note": "พุ่มเล็ก",
+      "w": 103,
+      "h": 147
+    },
+    {
+      "id": "tree_pine",
+      "file": "tree_pine.png",
+      "note": "สน",
+      "w": 95,
+      "h": 151
+    },
+    {
+      "id": "crops",
+      "file": "crops.png",
+      "note": "แปลงผัก",
+      "w": 144,
+      "h": 150
+    },
+    {
+      "id": "pen",
+      "file": "pen_hay.png",
+      "note": "คอกมีฟาง",
+      "w": 170,
+      "h": 177
+    },
+    {
+      "id": "fence",
+      "file": "fence_bird.png",
+      "note": "รั้วไม้นก",
+      "w": 89,
+      "h": 74
+    },
+    {
+      "id": "lamp",
+      "file": "lamp.png",
+      "note": "เสาไฟ",
+      "w": 26,
+      "h": 83
+    },
+    {
+      "id": "atm",
+      "file": "atm.png",
+      "note": "ตู้ ATM",
+      "w": 50,
+      "h": 75
+    },
+    {
+      "id": "barrel",
+      "file": "barrel.png",
+      "note": "ถังไม้",
+      "w": 48,
+      "h": 56
+    },
+    {
+      "id": "chest",
+      "file": "chest.png",
+      "note": "หีบ",
+      "w": 45,
+      "h": 50
+    },
+    {
+      "id": "house",
+      "file": "house_big.png",
+      "note": "บ้านพักผู้เล่น",
+      "w": 258,
+      "h": 204
+    }
+  ],
+  "chars": [
+    {
+      "id": "fisher",
+      "file": "char_fisher.png",
+      "w": 63,
+      "h": 96
+    },
+    {
+      "id": "fox",
+      "file": "char_fox.png",
+      "w": 79,
+      "h": 72
+    },
+    {
+      "id": "boy",
+      "file": "char_boy.png",
+      "w": 54,
+      "h": 70
+    },
+    {
+      "id": "dog",
+      "file": "dog.png",
+      "w": 60,
+      "h": 54
+    }
+  ]
+}

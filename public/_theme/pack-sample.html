@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Asset Pack → ของในเกม</title>
+<style>
+  :root{--bg:#1c140f;--panel:#2a1e16;--ink:#f5e6c6;--muted:#c4a982;--gold:#f2c14e;--out:#2a1b14}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Sans Thai",system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:16px 16px 48px}
+  h1{font-size:22px;margin:0 0 6px}
+  .lede{color:var(--muted);font-size:14px;line-height:1.5;max-width:72ch;margin:0 0 16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+  .card{background:var(--panel);border:3px solid var(--out);padding:10px}
+  .card h2{margin:0 0 4px;font-size:14px;color:var(--gold)}
+  .card .kind{font-size:12px;color:var(--muted);margin:0 0 8px}
+  .stage{background:#5fa844;border:2px solid var(--out);padding:10px;min-height:140px;display:flex;align-items:flex-end;justify-content:center}
+  .stage.dirt{background:#c9a46a}
+  .stage img{image-rendering:auto;max-width:100%;max-height:160px;display:block}
+  .note{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.4}
+  h3{margin:24px 0 10px;font-size:16px;color:var(--gold)}
+  a{color:var(--gold)}
+  .banner{background:#3a2a1a;border:2px solid var(--out);padding:10px 12px;margin-bottom:16px;font-size:13px;color:var(--muted);line-height:1.5}
+</style>
+</head>
+<body>
+  <h1>Asset Pack → จับคู่ของในเกม</h1>
+  <p class="lede">แผ่น asset ที่ส่งมา ตัดแยกแล้วแมปกับร้าน / พื้น / ของเมืองที่มีอยู่แล้ว · ยังไม่ใส่ในเกม · กด Ctrl+Shift+R ถ้าเห็นของเก่า</p>
+  <div class="banner">สไตล์นี้เป็นภาพวาด HD (ขอบหนา โค้งมน ไล่สี) ไม่ใช่พิกเซล 16px แบบเกมเดิม — เหมาะเอารูป PNG มาวางในเกมโดยตรง ดีกว่าวาดด้วยโค้ดทีละพิกเซล</div>
+
+  <h3>ร้านค้า (BUILDINGS)</h3>
+  <div class="grid" id="bld"></div>
+
+  <h3>พื้น / ต้นไม้ / ของเมือง</h3>
+  <div class="grid" id="env"></div>
+
+  <h3>ตัวละครในแพ็ก</h3>
+  <div class="grid" id="chars"></div>
+
+  <p class="note" style="margin-top:18px">แผ่นเต็ม: <a href="ref-assetpack.jpg">ref-assetpack.jpg</a> · ไฟล์ย่อย: <a href="pack/">/_theme/pack/</a> · กลับเกม: <a href="/">เปิดแมพ</a></p>
+
+  <script>
+    async function main() {
+      const map = await (await fetch('pack/map.json')).json();
+      function card(parent, title, sub, file, note, dirt) {
+        const el = document.createElement('div'); el.className = 'card';
+        el.innerHTML = `<h2>${title}</h2><p class="kind">${sub || ''}</p>
+          <div class="stage ${dirt ? 'dirt' : ''}"><img src="pack/${file}" alt="${title}"></div>
+          <p class="note">${note || ''}</p>`;
+        parent.appendChild(el);
+      }
+      const bld = document.getElementById('bld');
+      map.buildings.forEach(b => card(bld, b.name, `kind: ${b.kind} · ${b.w}×${b.h}`, b.file, b.note, true));
+      const env = document.getElementById('env');
+      map.env.forEach(e => card(env, e.id, `${e.w}×${e.h}`, e.file, e.note, e.id === 'path' || e.id === 'water'));
+      const ch = document.getElementById('chars');
+      map.chars.forEach(c => card(ch, c.id, `${c.w}×${c.h}`, c.file, '', true));
+    }
+    main();
+  </script>
+</body>
+</html>
