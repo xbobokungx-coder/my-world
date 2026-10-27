@@ -539,5 +539,69 @@ const PixelArt = (() => {
     if (wet) { r(x, 'rgba(160,200,255,.25)', 3, 6, 3, 1); r(x, 'rgba(160,200,255,.25)', 10, 11, 2, 1); }
     return c; });
 
-  return { mk, r, ell, disc, shade, hash, rng, addOutline, cv, U, OUT, ground, fences, tree: treeFor, building, counter, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
+  // บ้านหลังใหญ่ในเมือง (HOUSE_BLD = 7×4 ช่อง): พิกเซลแบบร้าน · หลังคาจั่ว · ประตูตรงกลาง (ช่องประตูเมือง)
+  let BIG_HOUSE = null;
+  function bigHouse() {
+    if (BIG_HOUSE) return BIG_HOUSE;
+    const tw = 7 * U, th = 4 * U, OVERH = 8, ROOFH = 24; // 112×64 + ยื่นหลังคา
+    const SW = tw + OVERH * 2, SH = th + ROOFH;
+    const wall = ['#c4a574', '#f0e0bc', '#fff6e0'], roof = ['#6e1f16', '#a82f23', '#c0392b', '#e25c4d'];
+    const wood = ['#5a371e', '#8f5a2e', '#c9984f'];
+    const s = mk(SW, SH, (x) => {
+      const wx = OVERH, wy = ROOFH - 2, ww = tw, wb = SH, cx = wx + (ww >> 1);
+      // เงาพื้น
+      r(x, 'rgba(30,18,8,.25)', wx + 3, wb - 1, ww - 2, 3);
+      // ผนังครีม + ลายไม้แนวตั้งบางๆ
+      r(x, wall[1], wx, wy + 10, ww, wb - wy - 10);
+      for (let yy = wy + 12; yy < wb - 4; yy += 4) r(x, wall[0], wx + 1, yy, ww - 2, 1);
+      for (let xx = wx + 6; xx < wx + ww - 4; xx += 14) r(x, wall[0], xx, wy + 12, 1, wb - wy - 16);
+      r(x, wall[2], wx, wy + 11, ww, 1);
+      r(x, wall[0], wx, wy + 10, 2, wb - wy - 10); r(x, wall[0], wx + ww - 2, wy + 10, 2, wb - wy - 10);
+      // ฐานอิฐล่าง
+      r(x, '#7a4a24', wx - 1, wb - 6, ww + 2, 6);
+      for (let xx = wx; xx < wx + ww; xx += 5) { r(x, '#a8703a', xx, wb - 6, 4, 2); r(x, '#5a371e', xx, wb - 6, 1, 6); }
+      r(x, '#c98b4a', wx, wb - 6, ww, 1);
+      // หลังคาจั่วพิกเซล (แถวสั้นลงทีละขั้น)
+      const peak = wy + 2;
+      for (let row = 0; row < 18; row++) {
+        const half = 4 + row * 3, y = peak + row, x0 = cx - half, w = half * 2 + 1;
+        if (x0 < 1 || x0 + w > SW - 1) continue;
+        r(x, roof[0], x0, y, w, 1);
+        r(x, row < 3 ? roof[3] : row < 8 ? roof[2] : roof[1], x0 + 1, y, Math.max(1, w - 2), 1);
+        if (row % 3 === 1) for (let xx = x0 + 3; xx < x0 + w - 2; xx += 4) r(x, roof[0], xx, y, 1, 1);
+      }
+      // ชายคา
+      r(x, roof[0], wx - 3, wy + 18, ww + 6, 3);
+      for (let xx = wx - 3; xx < wx + ww + 3; xx++) {
+        const dip = (xx % 4 === 0 || xx % 4 === 3) ? 1 : 0;
+        r(x, roof[1], xx, wy + 20 + dip, 1, 1 + dip);
+      }
+      r(x, 'rgba(40,22,10,.4)', wx - 1, wy + 21, ww + 2, 3);
+      // ปล่องไฟขวา
+      r(x, '#5a3a1c', wx + ww - 18, peak + 2, 10, 16); r(x, '#8d8a94', wx + ww - 20, peak, 14, 4);
+      r(x, '#b9b6bf', wx + ww - 18, peak + 1, 10, 1); r(x, 'rgba(180,190,200,.35)', wx + ww - 16, peak - 3, 3, 3);
+      // หน้าต่างซ้าย–ขวา (ไม่ทับประตูกลาง)
+      win(x, wx + 8, wy + 28, 14, 11, '#7fbcef');
+      win(x, wx + ww - 22, wy + 28, 14, 11, '#7fbcef');
+      // กรอบหน้าต่างดอกไม้เล็กใต้ขอบ
+      for (const ox of [wx + 8, wx + ww - 22]) {
+        r(x, wood[0], ox - 1, wy + 40, 16, 2);
+        for (let i = 0; i < 5; i++) r(x, ['#ff8fc7', '#ffe37a', '#9fd4ff', '#ff8fc7', '#7ed06a'][i], ox + 1 + i * 3, wy + 39, 2, 1);
+      }
+      // ประตูไม้กลาง (ตรงช่อง HOUSE_DOOR ในแมพ)
+      door(x, cx - 8, wb - 28, 16, 22, wood);
+      r(x, wood[0], cx - 10, wb - 30, 20, 3); // ชายคาเล็กเหนือประตู
+      r(x, wood[2], cx - 9, wb - 29, 18, 1);
+      // ป้ายไม้เหนือประตู (ข้อความวาดที่ baseHi)
+      r(x, wood[0], cx - 22, wy + 22, 44, 10);
+      r(x, '#e8c66a', cx - 20, wy + 24, 40, 6);
+      r(x, wood[2], cx - 20, wy + 24, 40, 1);
+      // ก้าวหินหน้าประตู
+      r(x, '#a89a80', cx - 10, wb - 3, 20, 2); r(x, '#c9bea4', cx - 8, wb - 4, 16, 1);
+    }, { soft: ['#3d2a1a', '#7a5a3a'] });
+    BIG_HOUSE = { spr: s, ox: -(OVERH + 1), oy: -(ROOFH + 1), w: s.width, h: s.height };
+    return BIG_HOUSE;
+  }
+
+  return { mk, r, ell, disc, shade, hash, rng, addOutline, cv, U, OUT, ground, fences, tree: treeFor, building, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
 })();

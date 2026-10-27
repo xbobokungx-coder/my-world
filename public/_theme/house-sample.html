@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ตัวอย่างบ้านหลังใหญ่</title>
+<style>
+  body{margin:0;font-family:"Noto Sans Thai",system-ui,sans-serif;background:#1c140f;color:#f5e6c6;padding:16px}
+  h1{font-size:20px;margin:0 0 8px}
+  .lede{color:#c4a982;font-size:14px;margin:0 0 14px;line-height:1.45}
+  .stage{background:#5fa844;border:3px solid #2a1b14;padding:16px;display:inline-block}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+</style>
+</head>
+<body>
+  <h1>บ้านหลังใหญ่ (PixelArt.bigHouse)</h1>
+  <p class="lede">สไปรต์พิกเซลใหม่ ×3 · เทียบกับร้านค้าในเกม · รีเฟรชแรงถ้ายังเห็นของเก่า</p>
+  <div class="stage"><canvas id="c" width="420" height="280"></canvas></div>
+  <script src="/shared.js"></script>
+  <script src="/pixelart.js"></script>
+  <script>
+    const c = document.getElementById('c'), g = c.getContext('2d');
+    g.fillStyle = '#5fa844'; g.fillRect(0, 0, c.width, c.height);
+    g.imageSmoothingEnabled = false;
+    const H = PixelArt.bigHouse(), s = 3;
+    g.drawImage(H.spr, 40, 30, H.spr.width * s, H.spr.height * s);
+    g.fillStyle = '#3d2a1a'; g.font = 'bold 14px sans-serif';
+    g.fillText(H.spr.width + '×' + H.spr.height + ' px art', 40, 260);
+  </script>
+</body>
+</html>

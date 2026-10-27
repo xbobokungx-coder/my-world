@@ -2454,22 +2454,14 @@ function buildBase() {
     }
     b.counter.forEach(([cx, cy], i) => { PixelUI.world(gh, GOODS[b.kind][i % 2], cx * TS + 16, cy * TS + 22, 15); });
   }
-  { // บ้านหลังใหญ่: หน้าบ้านเหนือประตู HOUSE_DOOR (27,5) เดินเข้าประตูแล้วเลือกเข้าบ้านตัวเอง/บ้านเพื่อน
+  { // บ้านหลังใหญ่: สไปรต์พิกเซล (PixelArt.bigHouse) · ประตูตรง HOUSE_DOOR
     const B = Shared.HOUSE_BLD, bx = B.x0 * TS, by = B.y0 * TS, bw = (B.x1 - B.x0 + 1) * TS, bh = (B.y1 - B.y0 + 1) * TS, dx = Shared.HOUSE_DOOR.x * TS;
-    g.drawImage(oc, (B.x0 - 7) * U, B.y0 * U, (B.x1 - B.x0 + 1) * U, (B.y1 - B.y0 + 1) * U, bx, by, bw, bh); // พื้นหญ้าใต้ตัวบ้าน (ช่องตัน) คัดลอกลายหญ้าข้างๆ มาปิดสีทางเดิน
-    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(bx + 6, by + bh - 6, bw - 8, 10);
-    g.fillStyle = '#7a4a24'; g.fillRect(bx + 8, by + 48, bw - 16, bh - 48); g.fillStyle = '#f0e0bc'; g.fillRect(bx + 11, by + 51, bw - 22, bh - 54);
-    for (let x = bx + 11; x < bx + bw - 11; x += 14) { g.fillStyle = '#e2cf9e'; g.fillRect(x, by + 51, 2, bh - 54); }
-    g.fillStyle = '#b9602f'; g.fillRect(bx + 11, by + bh - 20, bw - 22, 14); g.fillStyle = '#7a3f1d'; g.fillRect(bx + 11, by + bh - 8, bw - 22, 2);
-    g.fillStyle = '#a82f23'; g.beginPath(); g.moveTo(bx - 4, by + 54); g.lineTo(bx + bw / 2, by + 2); g.lineTo(bx + bw + 4, by + 54); g.closePath(); g.fill();
-    g.fillStyle = '#c0392b'; g.beginPath(); g.moveTo(bx + 6, by + 50); g.lineTo(bx + bw / 2, by + 8); g.lineTo(bx + bw - 6, by + 50); g.closePath(); g.fill();
-    for (let i = 0; i < 6; i++) { g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(bx + bw / 2 - 2 + i * 18, by + 14 + i * 6, 2, 34 - i * 6); }
-    g.fillStyle = '#5a3a1c'; g.fillRect(bx + bw - 50, by + 16, 14, 24); g.fillStyle = '#8d8a94'; g.fillRect(bx + bw - 52, by + 13, 18, 5); // ปล่องไฟ
-    g.fillStyle = '#5a3a1c'; g.fillRect(dx - 3, by + bh - 52, 38, 52); g.fillStyle = '#9a5a2a'; g.fillRect(dx, by + bh - 49, 32, 49); g.fillStyle = '#b87a3d'; g.fillRect(dx + 3, by + bh - 46, 12, 22); g.fillRect(dx + 17, by + bh - 46, 12, 22);
-    g.fillStyle = '#f1c40f'; g.fillRect(dx + 25, by + bh - 24, 3, 3);
-    for (const wx of [bx + 24, bx + bw - 68]) { g.fillStyle = '#5a3a1c'; g.fillRect(wx, by + 74, 44, 32); g.fillStyle = '#a8dcf2'; g.fillRect(wx + 3, by + 77, 38, 26); g.fillStyle = '#d6f0fb'; g.fillRect(wx + 3, by + 77, 38, 8); g.fillStyle = '#5a3a1c'; g.fillRect(wx + 20, by + 77, 3, 26); g.fillRect(wx, by + 105, 44, 4); }
-    g.fillStyle = '#5a3a1c'; g.fillRect(dx - 24, by + 56, 80, 16); g.fillStyle = '#e8c66a'; g.fillRect(dx - 22, by + 58, 76, 12); // ป้ายเหนือประตู
-    gh.font = `bold 11px ${FONT}`; gh.fillStyle = '#3d2a1a'; gh.fillText('🏠 บ้านหลังใหญ่', dx + 16, by + 64.5);
+    g.drawImage(oc, (B.x0 - 7) * U, B.y0 * U, (B.x1 - B.x0 + 1) * U, (B.y1 - B.y0 + 1) * U, bx, by, bw, bh); // พื้นหญ้าใต้ตัวบ้าน (ช่องตัน)
+    const H = PixelArt.bigHouse();
+    g.imageSmoothingEnabled = false;
+    g.drawImage(H.spr, bx + H.ox * 2, by + H.oy * 2, H.w * 2, H.h * 2); // ×2 ชดเชย g.scale(U/TS)
+    PixelUI.world(gh, '🏠', dx + 16, by + 36, 14);
+    gh.font = `bold 11px ${FONT}`; gh.fillStyle = '#3d2a1a'; gh.fillText('บ้านหลังใหญ่', dx + 16, by + 52);
   }
   // ตู้เกม (เรียงเป็นรูปตัว U) + พื้นลานตู้เกมมีลวดลาย
   // ตู้เกม: สีไม่ซ้ำกันแต่กลมกลืนกับธีม และมี 3 ทรงหน้าตา (สลับตามลำดับตู้) • ตู้ว่างเป็นสีเทา
