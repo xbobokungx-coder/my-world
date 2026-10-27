@@ -1,22 +1,11 @@
-// ตัวอย่างต้นไม้แนวภาพอ้างอิง (ยังไม่ใส่เกม) — พุ่มฟู dither + เงาชั้น + ลายใบรูป U
-// วาดพิกเซลคม imageSmoothingEnabled = false · ขอบ 1 px #2a1b14 · แสงซ้ายบน
+// ตัวอย่างต้นไม้ v2 — ตามภาพคลอสอัปที่ส่งมา (พุ่ม 3 ชั้นซ้อน · ขอบหยัก · เงาเข้มใต้ชั้น · ไฮไลต์บน)
+// ยังไม่ใส่เกม · ขอบ 1 px · ไม่เบลอ
 (() => {
-  const OUT = '#2a1b14';
-  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + .5) / 16);
-  const dith = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
+  const OUT = '#1a2a14';
   const rgb = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
-  const toHex = a => '#' + a.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
-  const mix = (a, b, t) => { const A = rgb(a), B = rgb(b); return toHex(A.map((v, i) => v + (B[i] - v) * t)); };
   function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   const cv = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
-  const fill = (x, c, X, Y, w, h) => { x.fillStyle = c; x.fillRect(X, Y, w, h); };
-  function disc(x, cx, cy, rad, c) {
-    x.fillStyle = c;
-    for (let dy = -rad; dy <= rad; dy++) {
-      const w = Math.floor(Math.sqrt(rad * rad - dy * dy) + .5);
-      x.fillRect(cx - w, cy + dy, w * 2 + 1, 1);
-    }
-  }
+  const fill = (x, c, X, Y, w, h) => { x.fillStyle = c; x.fillRect(X | 0, Y | 0, w, h); };
   function ell(x, cx, cy, rx, ry, c) {
     x.fillStyle = c;
     for (let dy = -ry; dy <= ry; dy++) {
@@ -43,145 +32,159 @@
     x.translate(1, 1); fn(x, w, h); x.setTransform(1, 0, 0, 1, 0, 0); addOutline(c); return c;
   }
 
-  // พาเลตจากภาพอ้างอิง: เข้มล่าง → กลาง → ไฮไลต์บน (เขียวสด cozy)
-  const PAL = {
-    broad: ['#1f5a28', '#2f7a34', '#4a9e42', '#6bc24e', '#9ee06a', '#c8f090'],
-    dark: ['#1a4a28', '#275e34', '#3a7a42', '#549a52', '#7aba68', '#a8d888'],
-    pine: ['#1a3f32', '#245848', '#357060', '#4a9078', '#6ab090', '#98d0b0'],
-    fruit: ['#1f5a28', '#2f7a34', '#4a9e42', '#6bc24e', '#9ee06a', '#c8f090'],
-    blossom: ['#1f5a28', '#2f7a34', '#4a9e42', '#6bc24e', '#9ee06a', '#c8f090'],
+  // พาเลตจากภาพคลอสอัป: ไฮไลต์เหลืองเขียว → กลาง → เงาเขียวอมฟ้าเข้มใต้ชั้น
+  const C = {
+    hi: '#c8e86a',   // ยอดสว่าง
+    lit: '#7cbc42',  // ใบสว่าง
+    mid: '#4a9a38',  // กลาง
+    deep: '#2f6e30', // เข้ม
+    shade: '#1a4a38', // เงาใต้ชั้น (เขียวอมฟ้าเข้ม = มิติ)
+    ink: '#14281c',  // ขอบในพุ่ม
+    bark0: '#3d2814',
+    bark1: '#6b4423',
+    bark2: '#8b5a2b',
   };
 
-  // วาดพุ่มก้อนเดียว: ชั้นสี + dither ขอบ + ลายใบรูป U
-  function puff(x, cx, cy, rx, ry, pal, R, opts = {}) {
-    const cells = [];
-    for (let dy = -ry - 1; dy <= ry + 1; dy++) for (let dx = -rx - 1; dx <= rx + 1; dx++) {
-      const nx = dx / (rx + 0.01), ny = dy / (ry + 0.01), d2 = nx * nx + ny * ny;
-      if (d2 > 1.05) continue;
-      // ความสูงในพุ่ม: 0 ล่างเงา → 1 บนไฮไลต์ + เยื้องแสงซ้ายบน
-      const lit = Math.max(0, Math.min(1, 0.55 - ny * 0.45 - nx * 0.18 + (1 - d2) * 0.25));
-      let band = lit * (pal.length - 1.01);
-      // dither ระหว่างชั้นให้ฟู ไม่แบน
-      const frac = band - Math.floor(band);
-      let i = Math.floor(band);
-      if (frac > dith(cx + dx, cy + dy)) i += 1;
-      i = Math.max(0, Math.min(pal.length - 1, i));
-      // ขอบนอกเข้มขึ้นนิด
-      if (d2 > 0.82) i = Math.max(0, i - 1);
-      cells.push([cx + dx, cy + dy, i]);
+  // ความกว้างของชั้นที่แถว y (ทรงกรวย: แคบบน กว้างล่าง) + ขอบหยักฟันเลื่อย
+  function tierHalf(y, y0, y1, halfTop, halfBot, R, seed) {
+    const t = (y - y0) / Math.max(1, y1 - y0);
+    let half = Math.round(halfTop + (halfBot - halfTop) * t);
+    // หยักขอบล่างของชั้น (jagged scallops)
+    const jag = Math.round(Math.sin(y * 1.7 + seed) * 1.2 + Math.sin(y * 0.9 + seed * 2) * 0.8);
+    if (t > 0.55) half += jag;
+    // ฟันเลื่อยที่ขอบล่างสุด
+    if (y >= y1 - 1) half -= (Math.abs((y + seed) % 3) === 0 ? 2 : 0);
+    return Math.max(2, half);
+  }
+
+  // วาด 1 ชั้นพุ่ม: ไฮไลต์บน · กลาง · เงาเข้มแถบล่าง · ขอบหยัก
+  function drawTier(x, cx, y0, y1, halfTop, halfBot, R, seed) {
+    const hgt = y1 - y0 + 1;
+    for (let y = y0; y <= y1; y++) {
+      const t = (y - y0) / Math.max(1, hgt - 1);
+      const half = tierHalf(y, y0, y1, halfTop, halfBot, R, seed);
+      // แถบบนสุด = ไฮไลต์ · กลาง = mid/lit · แถบล่างสุด = เงาเข้ม (สร้างมิติ)
+      let col = C.mid;
+      if (t < 0.18) col = C.hi;
+      else if (t < 0.38) col = C.lit;
+      else if (t < 0.72) col = C.mid;
+      else if (t < 0.88) col = C.deep;
+      else col = C.shade;
+      fill(x, col, cx - half, y, half * 2 + 1, 1);
+      // ไฮไลต์ซ้ายบนของชั้น
+      if (t < 0.35) {
+        const hw = Math.max(1, Math.floor(half * (0.35 - t)));
+        fill(x, t < 0.12 ? C.hi : C.lit, cx - half + 1, y, hw, 1);
+      }
+      // เงาขวาล่าง
+      if (t > 0.55) {
+        const sw = Math.max(1, Math.floor(half * (t - 0.45)));
+        fill(x, t > 0.85 ? C.shade : C.deep, cx + half - sw, y, sw + 1, 1);
+      }
+      // ขอบซ้าย-ขวาเข้ม
+      fill(x, C.ink, cx - half, y, 1, 1);
+      fill(x, C.ink, cx + half, y, 1, 1);
     }
-    for (const [px, py, i] of cells) fill(x, pal[i], px, py, 1, 1);
-    // ลายใบ/เงาก้อนรูป U กระจายในพุ่ม (ตามภาพอ้างอิง)
-    const nMark = opts.marks == null ? 10 : opts.marks;
-    for (let k = 0; k < nMark; k++) {
-      const a = R() * Math.PI * 2, rr = R() * 0.55;
-      const mx = Math.round(cx + Math.cos(a) * rx * rr), my = Math.round(cy + Math.sin(a) * ry * rr * 0.9);
-      if ((mx - cx) ** 2 / (rx * rx) + (my - cy) ** 2 / (ry * ry) > 0.7) continue;
-      const c = pal[Math.max(0, Math.min(2, Math.floor(R() * 2)))];
-      fill(x, c, mx - 1, my, 3, 1); fill(x, c, mx - 1, my - 1, 1, 1); fill(x, c, mx + 1, my - 1, 1, 1);
+    // แถบเงาใต้ชั้น (เส้นเข้มชัด = มิติแบบภาพอ้างอิง)
+    {
+      const y = y1;
+      const half = tierHalf(y, y0, y1, halfTop, halfBot, R, seed);
+      fill(x, C.shade, cx - half, y, half * 2 + 1, 1);
+      fill(x, C.ink, cx - half, y, half * 2 + 1, 1);
+      // หยักฟันเลื่อยใต้ชั้น
+      for (let dx = -half; dx <= half; dx++) {
+        if (((dx + seed * 3) % 4 + 4) % 4 === 0) fill(x, C.shade, cx + dx, y + 1, 1, 1);
+        if (((dx + seed) % 5 + 5) % 5 === 0) fill(x, C.ink, cx + dx, y + 1, 2, 1);
+      }
     }
   }
 
-  // ต้นใบกลมฟู (แบบลานกลางในภาพอ้างอิง)
-  function broadTree(seed, variant = 0) {
-    return mk(40, 48, (x) => {
-      const R = rng(seed + variant * 17);
-      const pal = variant === 1 ? PAL.dark : PAL.broad;
-      const bark = ['#4a2e18', '#6b4423', '#8b5a2b'];
+  // ต้นไม้หลักตามภาพคลอสอัป: 3 ชั้นซ้อน ทรงแคบบน-กว้างล่าง
+  function layeredTree(seed, variant = 0) {
+    return mk(36, 44, (x) => {
+      const R = rng(seed + variant * 13);
+      const cx = 18;
       // เงาพื้น
-      ell(x, 20, 46, 12, 3, 'rgba(38,40,16,.28)');
-      // โคนหญ้า
-      ell(x, 11, 45, 5, 2, '#3f8a46'); ell(x, 29, 45, 5, 2, '#4f913b');
-      fill(x, '#8ccc5e', 10, 44, 2, 1); fill(x, '#8ccc5e', 28, 44, 2, 1);
-      // ลำต้นสั้นโผล่ใต้พุ่ม
-      fill(x, bark[0], 17, 30, 6, 16); fill(x, bark[1], 18, 30, 3, 16); fill(x, bark[2], 18, 32, 1, 10);
-      for (let yy = 32; yy < 44; yy += 3) fill(x, bark[0], 17, yy, 6, 1);
-      fill(x, bark[0], 14, 44, 12, 3); fill(x, bark[1], 15, 44, 4, 1);
-      // พุ่มเมฆซ้อนหลายก้อน (ใหญ่กลาง + ข้าง + บน)
-      const blobs = [
-        [20, 18, 14, 11],
-        [9, 20, 9, 8],
-        [31, 20, 9, 8],
-        [20, 9, 10, 8],
-        [13, 12, 7, 6],
-        [27, 12, 7, 6],
-        [15, 24, 7, 5],
-        [25, 24, 7, 5],
+      ell(x, cx, 42, 10, 2, 'rgba(20,30,16,.3)');
+      // ลำต้นสั้น + รากแผ่
+      fill(x, C.bark0, cx - 2, 32, 5, 10);
+      fill(x, C.bark1, cx - 1, 32, 2, 10);
+      fill(x, C.bark2, cx - 1, 34, 1, 5);
+      fill(x, C.bark0, cx - 5, 40, 11, 3);
+      fill(x, C.bark1, cx - 4, 40, 3, 1);
+      fill(x, C.bark0, cx - 6, 41, 2, 2); // รากซ้าย
+      fill(x, C.bark0, cx + 4, 41, 2, 2); // รากขวา
+      // หญ้าโคน
+      fill(x, '#3f8a46', cx - 7, 41, 2, 1); fill(x, '#5fa844', cx + 6, 41, 2, 1);
+
+      // 3 ชั้น: บนเล็ก · กลาง · ล่างใหญ่ (เหลื่อมกันเล็กน้อย)
+      // variant ปรับสัดส่วนเล็กน้อยให้ไม่ซ้ำ
+      const lean = variant === 1 ? 1 : variant === 2 ? -1 : 0;
+      const tiers = [
+        { y0: 2, y1: 12, ht: 4 + (variant === 1 ? 1 : 0), hb: 8 },
+        { y0: 11, y1: 23, ht: 7, hb: 12 + (variant === 2 ? 1 : 0) },
+        { y0: 21, y1: 34, ht: 10, hb: 15 },
       ];
-      for (const b of blobs) {
-        b[0] += Math.round(R() * 2 - 1);
-        b[1] += Math.round(R() * 2 - 1);
-        b[2] = Math.max(5, b[2] + Math.round(R() * 2 - 1));
-        b[3] = Math.max(4, b[3] + Math.round(R() * 2 - 1));
+      // วาดจากล่างขึ้นบน เพื่อให้ชั้นบนทับ
+      for (let i = tiers.length - 1; i >= 0; i--) {
+        const T = tiers[i];
+        drawTier(x, cx + lean * (i === 0 ? 0 : 0), T.y0, T.y1, T.ht, T.hb, R, seed + i * 9);
       }
-      // วาดเงาก้อนใหญ่ก่อน แล้วไฮไลต์
-      for (const [bx, by, rx, ry] of blobs) puff(x, bx, by, rx, ry, pal, R, { marks: 7 + Math.floor(R() * 5) });
-      // จุดไฮไลต์แดดซ้ายบนคมๆ
-      for (let i = 0; i < 22; i++) {
-        const px = 6 + Math.floor(R() * 14), py = 4 + Math.floor(R() * 10);
-        if ((px - 14) ** 2 / 120 + (py - 12) ** 2 / 80 > 1) continue;
-        fill(x, pal[5], px, py, 2, 1);
+      // จุดไฮไลต์ยอด
+      fill(x, C.hi, cx - 1, 3, 3, 2);
+      fill(x, '#e8f8a0', cx, 2, 1, 1);
+
+      // บาง variant: จุดดอก/ผล
+      if (variant === 3) {
+        for (let i = 0; i < 5; i++) {
+          const px = 8 + Math.floor(R() * 20), py = 8 + Math.floor(R() * 22);
+          fill(x, '#e8862a', px, py, 2, 2); fill(x, '#ffc06a', px, py, 1, 1);
+        }
       }
-      // ดอกจุดเล็ก (บางต้น)
-      if (variant === 2) for (let i = 0; i < 8; i++) {
-        const px = 8 + Math.floor(R() * 24), py = 6 + Math.floor(R() * 18);
-        const fc = R() < .5 ? '#ffc9de' : '#ffe37a';
-        fill(x, fc, px, py, 2, 1); fill(x, '#fff6e0', px, py, 1, 1);
-      }
-      if (variant === 3) for (let i = 0; i < 7; i++) {
-        const px = 10 + Math.floor(R() * 20), py = 10 + Math.floor(R() * 14);
-        fill(x, '#e8862a', px, py, 2, 2); fill(x, '#ffc06a', px, py, 1, 1);
+      if (variant === 4) {
+        for (let i = 0; i < 6; i++) {
+          const px = 8 + Math.floor(R() * 20), py = 6 + Math.floor(R() * 20);
+          fill(x, '#ffc9de', px, py, 2, 1); fill(x, '#fff6e0', px, py, 1, 1);
+        }
       }
     });
   }
 
-  // สนทรงขั้นบันได โทนเขียวอมฟ้า (มุมล่างซ้ายในภาพอ้างอิง)
+  // สนโทนเย็น — ยังใช้โครงชั้นเดียวกัน แต่แคบสูงกว่า
   function pineTree(seed) {
-    return mk(36, 48, (x) => {
-      const R = rng(seed), pal = PAL.pine;
-      const bark = ['#4a2e18', '#6b4423', '#8b5a2b'];
-      ell(x, 18, 46, 10, 3, 'rgba(38,40,16,.28)');
-      fill(x, bark[0], 16, 34, 4, 12); fill(x, bark[1], 17, 34, 2, 12);
-      fill(x, bark[0], 13, 44, 10, 3);
+    return mk(32, 46, (x) => {
+      const R = rng(seed), cx = 16;
+      const pine = { hi: '#a8d8b0', lit: '#5aaa78', mid: '#3a8060', deep: '#2a5848', shade: '#1a3840', ink: '#102028' };
+      ell(x, cx, 44, 8, 2, 'rgba(20,30,16,.3)');
+      fill(x, C.bark0, cx - 1, 36, 3, 8); fill(x, C.bark1, cx, 36, 1, 8);
+      fill(x, C.bark0, cx - 4, 42, 9, 3);
+      const old = { ...C };
+      Object.assign(C, pine);
       const tiers = [
-        [18, 6, 4, 5],
-        [18, 12, 7, 6],
-        [18, 19, 10, 7],
-        [18, 27, 13, 7],
+        { y0: 2, y1: 12, ht: 2, hb: 5 },
+        { y0: 10, y1: 22, ht: 4, hb: 8 },
+        { y0: 20, y1: 32, ht: 6, hb: 11 },
+        { y0: 30, y1: 38, ht: 8, hb: 12 },
       ];
-      for (const [cx, top, half, hgt] of tiers) {
-        for (let y = 0; y < hgt; y++) {
-          const t = y / (hgt - 1 || 1);
-          const w = Math.max(1, Math.round(half * (0.35 + t * 0.75)));
-          const lit = 1 - t * 0.55;
-          let i = Math.floor(lit * (pal.length - 1.2));
-          if (dith(cx, top + y) > 0.5) i = Math.min(pal.length - 1, i + 1);
-          fill(x, pal[Math.max(0, i)], cx - w, top + y, w * 2 + 1, 1);
-          fill(x, pal[Math.min(pal.length - 1, i + 1)], cx - Math.floor(w * 0.45), top + y, Math.max(1, Math.floor(w * 0.5)), 1);
-          // ขอบขั้นเข้ม
-          fill(x, pal[0], cx - w, top + y, 1, 1); fill(x, pal[0], cx + w, top + y, 1, 1);
-        }
-        // เงาใต้แต่ละชั้น
-        fill(x, pal[0], cx - half, top + hgt - 1, half * 2 + 1, 1);
+      for (let i = tiers.length - 1; i >= 0; i--) {
+        const T = tiers[i];
+        drawTier(x, cx, T.y0, T.y1, T.ht, T.hb, R, seed + i * 7);
       }
-      fill(x, pal[5], 17, 5, 2, 2);
-      for (let i = 0; i < 10; i++) {
-        const px = 8 + Math.floor(R() * 20), py = 10 + Math.floor(R() * 22);
-        fill(x, pal[1], px, py, 2, 1);
-      }
+      Object.assign(C, old);
+      fill(x, pine.hi, cx, 2, 1, 2);
     });
   }
 
   window.TreeSample = {
-    broad: (seed, v) => broadTree(seed, v),
+    layered: (seed, v) => layeredTree(seed, v),
     pine: (seed) => pineTree(seed),
     variants: [
-      { name: 'พุ่มกลม (หลัก)', make: () => broadTree(3, 0) },
-      { name: 'พุ่มเข้ม', make: () => broadTree(11, 1) },
-      { name: 'พุ่มดอกชมพู', make: () => broadTree(19, 2) },
-      { name: 'พุ่มผลส้ม', make: () => broadTree(29, 3) },
+      { name: 'ชั้น 3 (หลัก)', make: () => layeredTree(3, 0) },
+      { name: 'ชั้น 3 B', make: () => layeredTree(11, 1) },
+      { name: 'ชั้น 3 C', make: () => layeredTree(19, 2) },
+      { name: 'มีผลส้ม', make: () => layeredTree(29, 3) },
+      { name: 'มีดอก', make: () => layeredTree(37, 4) },
       { name: 'สนขั้น', make: () => pineTree(41) },
-      { name: 'พุ่มกลม B', make: () => broadTree(47, 0) },
     ],
   };
 })();
