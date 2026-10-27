@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ตัวอย่างแมพ My World</title>
+<style>
+  :root{--bg:#1c140f;--panel:#2a1e16;--ink:#f5e6c6;--muted:#c4a982;--gold:#f2c14e;--out:#2a1b14}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Sans Thai",system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:16px 16px 48px}
+  h1{font-size:22px;margin:0 0 6px}
+  .lede{color:var(--muted);font-size:14px;line-height:1.5;max-width:70ch;margin:0 0 14px}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+  .card{background:var(--panel);border:3px solid var(--out);padding:12px}
+  .card h2{margin:0 0 8px;font-size:15px;color:var(--gold)}
+  .stage{background:#1a2218;border:2px solid var(--out);overflow:auto;max-width:min(96vw,1100px)}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;max-width:100%;height:auto}
+  .legend{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px;color:var(--muted)}
+  .sw{width:14px;height:14px;border:1px solid #000;display:inline-block;vertical-align:middle;margin-right:4px}
+  a{color:var(--gold)}
+  .note{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.45}
+</style>
+</head>
+<body>
+  <h1>แมพเมือง My World</h1>
+  <p class="lede">ขนาด <b>64 × 46 ช่อง</b> · 1 ช่อง = 32 px ในเกม · ภาพด้านล่างคือพื้นพิกเซลจริงจาก <code>PixelArt.ground</code> + ป้ายจุดสำคัญ</p>
+
+  <div class="row">
+    <div class="card">
+      <h2>แมพทั้งใบ</h2>
+      <div class="stage"><canvas id="full" width="1024" height="736"></canvas></div>
+      <p class="note">สีป้ายเป็นแค่คำอธิบาย ไม่ได้อยู่ในเกม · <a href="/">กลับเข้าเกม</a></p>
+    </div>
+    <div class="card" style="min-width:220px">
+      <h2>สัญลักษณ์พื้น</h2>
+      <div class="legend" id="leg"></div>
+      <h2 style="margin-top:16px">จุดสำคัญ</h2>
+      <div class="legend" id="spots"></div>
+    </div>
+  </div>
+
+  <script src="/shared.js"></script>
+  <script src="/pixelart.js"></script>
+  <script>
+    const { W, H, T, BUILDINGS, HOUSE_BLD, HOUSE_DOOR, FIRE, BOARD, ATM, CHEST, FARM, PENS, SPAWN, PLAZA } = Shared;
+    const MAP = Shared.makeMap();
+    const U = PixelArt.U;
+    const c = document.getElementById('full'), g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    g.drawImage(PixelArt.ground(MAP), 0, 0);
+    PixelArt.fences(g, MAP);
+    // ต้นไม้จุดเล็ก
+    g.fillStyle = 'rgba(30,100,40,.85)';
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (MAP[y][x] === T.TREE) {
+      g.fillRect(x * U + 5, y * U + 4, 6, 8);
+    }
+    // ร้าน + บ้าน
+    for (const b of BUILDINGS) {
+      if (b.kind === 'sign' || b.kind === 'cinema') continue;
+      const a = PixelArt.building(b);
+      g.drawImage(a.spr, b.x0 * U + a.ox, b.y0 * U + a.oy);
+    }
+    const hh = PixelArt.bigHouse();
+    g.drawImage(hh.spr, HOUSE_BLD.x0 * U + hh.ox, HOUSE_BLD.y0 * U + hh.oy);
+
+    function mark(tx, ty, label, col) {
+      const px = (tx + 0.5) * U, py = (ty + 0.5) * U;
+      g.fillStyle = col || '#fff';
+      g.beginPath(); g.arc(px, py, 3, 0, 7); g.fill();
+      g.strokeStyle = '#2a1b14'; g.lineWidth = 1; g.stroke();
+      g.font = 'bold 11px sans-serif'; g.fillStyle = '#fff3d6';
+      g.strokeStyle = 'rgba(0,0,0,.75)'; g.lineWidth = 3;
+      g.strokeText(label, px + 6, py - 4); g.fillText(label, px + 6, py - 4);
+    }
+    mark(FIRE.x, FIRE.y, 'กองไฟ', '#ff9a2e');
+    mark(HOUSE_DOOR.x, HOUSE_DOOR.y, 'บ้านใหญ่', '#ffe08a');
+    mark(ATM.x, ATM.y, 'ATM', '#7dffb0');
+    mark(BOARD.x, BOARD.y, 'ข่าว', '#fff');
+    mark(CHEST.x, CHEST.y, 'กองกลาง', '#f1c40f');
+    mark(Math.floor(SPAWN.x / Shared.TS), Math.floor(SPAWN.y / Shared.TS), 'เกิด', '#9fd4ff');
+    mark(26, 11, 'เมล็ด', '#8cdc66');
+    mark(37, 27, 'ตกปลา', '#7ec8ff');
+    mark(21, 27, 'อาหาร', '#ffb86b');
+    mark(7, 27, 'ช่างไม้', '#c9a869');
+    mark((FARM.x0 + FARM.x1) / 2, (FARM.y0 + FARM.y1) / 2, 'แปลงผัก', '#b8f090');
+
+    const leg = [
+      ['#7bc65a', 'หญ้า'], ['#dcbf82', 'ทางเดิน'], ['#4ab8cc', 'น้ำ'],
+      ['#efdfa4', 'ทราย'], ['#3f9a3a', 'ต้นไม้'], ['#a0692f', 'ร้าน/สิ่งก่อสร้าง'],
+      ['#8b5a2b', 'รั้ว'],
+    ];
+    document.getElementById('leg').innerHTML = leg.map(([c, n]) =>
+      `<span class="sw" style="background:${c}"></span><span>${n}</span>`).join('');
+    document.getElementById('spots').innerHTML = [
+      'บ้านหลังใหญ่ — แถวบนกลาง (ประตูเข้าบ้าน)',
+      'ลานกองไฟ — กลางเมือง',
+      'แปลงผัก — ซ้ายบน',
+      'คอกสัตว์ — ขวาบน',
+      'สระน้ำ / ตกปลา — ล่าง',
+      'โรงหนัง + ตู้เกม — ล่างกลาง',
+    ].map(t => `<span>•</span><span>${t}</span>`).join('');
+  </script>
+</body>
+</html>
