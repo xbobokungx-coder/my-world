@@ -1,0 +1,58 @@
+{
+  "grass": {
+    "fill": "#9bd646",
+    "size": 48,
+    "n": 8,
+    "atlas": "tiles/grass_atlas.png",
+    "files": [
+      "tiles/grass_0.png",
+      "tiles/grass_1.png",
+      "tiles/grass_2.png",
+      "tiles/grass_3.png",
+      "tiles/grass_4.png",
+      "tiles/grass_5.png",
+      "tiles/grass_6.png",
+      "tiles/grass_7.png"
+    ]
+  },
+  "path": {
+    "fill": "#e0a86a",
+    "size": 48,
+    "n": 6,
+    "atlas": "tiles/path_atlas.png",
+    "files": [
+      "tiles/path_0.png",
+      "tiles/path_1.png",
+      "tiles/path_2.png",
+      "tiles/path_3.png",
+      "tiles/path_4.png",
+      "tiles/path_5.png"
+    ]
+  },
+  "water": {
+    "fill": "#4cc9b6",
+    "size": 48,
+    "n": 6,
+    "atlas": "tiles/water_atlas.png",
+    "files": [
+      "tiles/water_0.png",
+      "tiles/water_1.png",
+      "tiles/water_2.png",
+      "tiles/water_3.png",
+      "tiles/water_4.png",
+      "tiles/water_5.png"
+    ]
+  },
+  "sand": {
+    "fill": "#d2af78",
+    "size": 48,
+    "n": 4,
+    "atlas": "tiles/sand_atlas.png",
+    "files": [
+      "tiles/sand_0.png",
+      "tiles/sand_1.png",
+      "tiles/sand_2.png",
+      "tiles/sand_3.png"
+    ]
+  }
+}

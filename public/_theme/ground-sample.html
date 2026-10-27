@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>พื้นหลังจาก Asset Pack</title>
+<style>
+  :root{--bg:#1c140f;--panel:#2a1e16;--ink:#f5e6c6;--muted:#c4a982;--gold:#f2c14e;--out:#2a1b14}
+  body{margin:0;font-family:"Noto Sans Thai",system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:16px}
+  h1{font-size:20px;margin:0 0 6px}
+  .lede{color:var(--muted);font-size:14px;margin:0 0 14px;max-width:70ch;line-height:1.45}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:3px solid var(--out);padding:10px}
+  .card h2{margin:0 0 8px;font-size:14px;color:var(--gold)}
+  canvas{image-rendering:pixelated;width:100%;background:#000;display:block;border:2px solid var(--out)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .row img{width:48px;height:48px;image-rendering:pixelated;border:2px solid var(--out)}
+  a{color:var(--gold)}
+  #status{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+  <h1>พื้นหลังจาก Asset Pack</h1>
+  <p class="lede">ซ้าย = พิกเซลวาดโค้ดเดิม · ขวา = กระเบื้องจากแพ็ก (หญ้า/ทาง/น้ำ/ทราย) · แมพจริง 64×46 ย่อแสดง · <span id="status">กำลังโหลด…</span></p>
+  <div class="grid">
+    <div class="card"><h2>ของเดิม (PixelArt.ground)</h2><canvas id="old"></canvas></div>
+    <div class="card"><h2>ใหม่จากแพ็ก (PackArt.ground)</h2><canvas id="neu"></canvas></div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <h2>กระเบื้องที่ใช้</h2>
+    <div class="row" id="tiles"></div>
+    <p style="margin:10px 0 0;font-size:13px;color:var(--muted)">กลับเกม: <a href="/">เปิดแมพ</a> · รีเฟรชแรง Ctrl+Shift+R</p>
+  </div>
+  <script src="/shared.js"></script>
+  <script src="/pixelart.js"></script>
+  <script src="/packart.js"></script>
+  <script>
+    const MAP = Shared.makeMap();
+    const U = PixelArt.U, W = Shared.W, H = Shared.H;
+    function blit(id, src) {
+      const c = document.getElementById(id);
+      c.width = W * U; c.height = H * U;
+      const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+      g.drawImage(src, 0, 0);
+    }
+    blit('old', PixelArt.ground(MAP));
+    function showPack() {
+      const g = PackArt.ground(MAP);
+      if (!g) { document.getElementById('status').textContent = 'รอโหลดกระเบื้อง…'; return; }
+      blit('neu', g);
+      document.getElementById('status').textContent = 'โหลดแล้ว · ขนาด ' + g.width + '×' + g.height + ' (ขยาย ×2 ในเกม = ' + (g.width*2) + '×' + (g.height*2) + ')';
+    }
+    PackArt.whenReady(showPack); showPack();
+    ['grass','path','water','sand'].forEach(k => {
+      const img = document.createElement('img'); img.src = '/pack/tiles/' + k + '_0.png'; img.title = k;
+      document.getElementById('tiles').appendChild(img);
+    });
+  </script>
+</body>
+</html>
