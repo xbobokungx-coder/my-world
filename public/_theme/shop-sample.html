@@ -34,19 +34,19 @@
       <img class="ref" src="ref-food.png" alt="restaurant reference">
     </div>
     <div class="card">
-      <h2>ตัวอย่างใหม่ ×3</h2>
-      <p>วาดที่ 16 px ต่อช่องแบบเดียวกับเกม</p>
+      <h2>ตัวอย่างใหม่ ×2</h2>
+      <p>ความละเอียด HD: 1 พิกเซลอาร์ต = 1 พิกเซลจอในเกม (ละเอียดกว่าของเดิม 2 เท่า)</p>
       <div class="stage"><div class="row" id="x3"></div></div>
     </div>
   </div>
 
   <div class="card">
-    <h2>ขนาดจริงในเกม ×2 (บนลานดิน) เทียบกับร้านตอนนี้</h2>
+    <h2>ขนาดจริงในเกม (บนลานดิน) เทียบกับร้านตอนนี้</h2>
     <div class="stage" style="background:#c9a46a"><div class="row" id="x2"></div></div>
   </div>
 
   <div class="card">
-    <h2>ซูม ×5 ดูรายละเอียด</h2>
+    <h2>ซูม ×4 ดูรายละเอียด</h2>
     <div class="stage"><div class="row" id="x5"></div></div>
     <p style="margin-top:10px">หน้านี้: <a href="/_theme/shop-sample.html">/_theme/shop-sample.html</a> · กลับไปเกม: <a href="/">เปิดแมพ</a></p>
   </div>
@@ -62,7 +62,7 @@
       const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
       g.drawImage(spr, 0, 0, c.width, c.height);
       if (sign) {
-        g.font = `bold ${Math.round(5 * scale)}px "Noto Sans Thai",system-ui,sans-serif`;
+        g.font = `bold ${Math.round(ShopSample.label.size * scale)}px "Noto Sans Thai",system-ui,sans-serif`;
         g.textAlign = 'center'; g.textBaseline = 'middle';
         const lx = ShopSample.label.x * scale, ly = ShopSample.label.y * scale;
         g.fillStyle = '#2a1608'; g.fillText(sign, lx + scale * .5, ly + scale * .5);
@@ -73,11 +73,11 @@
       parent.appendChild(wrap);
     }
     const shop = ShopSample.food();
-    blit(document.getElementById('x3'), shop, 3, 'ร้านอาหาร ใหม่', 'ร้านอาหาร');
-    blit(document.getElementById('x2'), shop, 2, 'ใหม่ ×2', 'ร้านอาหาร');
+    blit(document.getElementById('x3'), shop, 2, 'ร้านอาหาร ใหม่', 'ร้านอาหาร');
+    blit(document.getElementById('x2'), shop, 1, 'ใหม่ (HD)', 'ร้านอาหาร');
     const food = Shared.BUILDINGS.find(b => b.kind === 'food');
-    if (food) blit(document.getElementById('x2'), PixelArt.building(food), 2, 'ในเกมตอนนี้ ×2');
-    blit(document.getElementById('x5'), shop, 5, 'ซูม ×5', 'ร้านอาหาร');
+    if (food) blit(document.getElementById('x2'), PixelArt.building(food), 2, 'ในเกมตอนนี้');
+    blit(document.getElementById('x5'), shop, 4, 'ซูม ×4', 'ร้านอาหาร');
   </script>
 </body>
 </html>
