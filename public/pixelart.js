@@ -35,8 +35,54 @@ const PixelArt = (() => {
     }
     x.putImageData(d, 0, 0);
   }
-  // สไปรต์มีขอบว่าง 1 px ไว้ให้เส้นขอบ: วาดที่ (x-1, y-1)
-  function mk(w, h, fn, outline = true) { const c = cv(w + 2, h + 2), x = c.getContext('2d'); x.translate(1, 1); fn(x, w, h); x.setTransform(1, 0, 0, 1, 0, 0); if (outline) addOutline(c); return c; }
+  // ขอบละมุน: เส้นข้าง = สี ink อ่อน · มุมเฉียง = สี mid (pixel AA) ลดความรู้สึกคมเหลี่ยมดำ
+  function addSoftOutline(c, ink, mid) {
+    const x = c.getContext('2d'), w = c.width, h = c.height, d = x.getImageData(0, 0, w, h), a = d.data;
+    const o = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) o[i] = a[i * 4 + 3] > 90 ? 1 : 0;
+    const I = rgb(ink), M = rgb(mid);
+    for (let y = 0; y < h; y++) for (let x2 = 0; x2 < w; x2++) {
+      const i = y * w + x2; if (o[i]) { a[i * 4 + 3] = 255; continue; }
+      const n = (x2 > 0 && o[i - 1]) || (x2 < w - 1 && o[i + 1]) || (y > 0 && o[i - w]) || (y < h - 1 && o[i + w]);
+      const dgn = (x2 > 0 && y > 0 && o[i - w - 1]) || (x2 < w - 1 && y > 0 && o[i - w + 1])
+        || (x2 > 0 && y < h - 1 && o[i + w - 1]) || (x2 < w - 1 && y < h - 1 && o[i + w + 1]);
+      if (n) { a[i * 4] = I[0]; a[i * 4 + 1] = I[1]; a[i * 4 + 2] = I[2]; a[i * 4 + 3] = 255; }
+      else if (dgn) { a[i * 4] = M[0]; a[i * 4 + 1] = M[1]; a[i * 4 + 2] = M[2]; a[i * 4 + 3] = 200; }
+      else a[i * 4 + 3] = 0;
+    }
+    x.putImageData(d, 0, 0);
+  }
+  // สไปรต์มีขอบว่าง 1 px ไว้ให้เส้นขอบ: วาดที่ (x-1, y-1) · outline เป็นสีหรือ { soft:[ink,mid] }
+  function mk(w, h, fn, outline = true) {
+    const c = cv(w + 2, h + 2), x = c.getContext('2d');
+    x.translate(1, 1); fn(x, w, h); x.setTransform(1, 0, 0, 1, 0, 0);
+    if (outline && outline.soft) addSoftOutline(c, outline.soft[0], outline.soft[1]);
+    else if (outline) addOutline(c, outline === true ? OUT : outline);
+    return c;
+  }
+  // วงรีขอบ dither — ทรงมนกว่า disc ตัดเหลี่ยม
+  function softPuff(x, cx, cy, rx, ry, pal, R) {
+    for (let dy = -ry - 2; dy <= ry + 2; dy++) for (let dx = -rx - 2; dx <= rx + 2; dx++) {
+      const nx = dx / (rx + 0.2), ny = dy / (ry + 0.2), d2 = nx * nx + ny * ny;
+      if (d2 > 1.15) continue;
+      // ขอบนอก dither ให้ไม่ตัดวงกลมเป๊ะ
+      if (d2 > 0.92 && dith(cx + dx, cy + dy) > 0.55) continue;
+      if (d2 > 1.02 && dith(cx + dx + 1, cy + dy) > 0.35) continue;
+      const lit = clamp(0.52 - ny * 0.42 - nx * 0.16 + (1 - Math.min(1, d2)) * 0.3, 0, 1);
+      let i = Math.floor(lit * (pal.length - 1.05));
+      if (lit * (pal.length - 1) - i > dith(cx + dx, cy + dy)) i++;
+      i = clamp(i, 0, pal.length - 1);
+      if (d2 > 0.78) i = Math.max(0, i - 1);
+      if (ny > 0.35 && d2 < 0.85) i = Math.max(0, i - 1); // เงาใต้ก้อน
+      r(x, pal[i], cx + dx, cy + dy, 1, 1);
+    }
+    // จุดยื่นนอกพุ่ม (ทำลายขอบเรขา)
+    for (let k = 0; k < 5 + Math.floor(R() * 6); k++) {
+      const a = R() * Math.PI * 2, rr = Math.max(rx, ry) * (0.85 + R() * 0.35);
+      const px = Math.round(cx + Math.cos(a) * rr), py = Math.round(cy + Math.sin(a) * rr * 0.9);
+      r(x, pal[Math.min(pal.length - 1, 3)], px, py, 2, 1);
+      r(x, pal[Math.min(pal.length - 1, 2)], px + (R() < .5 ? 1 : -1), py - 1, 1, 1);
+    }
+  }
 
   // ---------- ground ----------
   const G = 0, P = 1, SA = 2, WA = 3, FL = 4;
@@ -59,14 +105,24 @@ const PixelArt = (() => {
       while (q.length) { const [qx, qy] = q.shift(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = qx + dx, ny = qy + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; if (depth[ny][nx] > depth[qy][qx] + 1) { depth[ny][nx] = depth[qy][qx] + 1; q.push([nx, ny]); } } } }
     const types = new Uint8Array(PW * PH);
     const pv = (tx, ty) => tx >= 0 && ty >= 0 && tx < W && ty < H && tileT(tx, ty) === P && isPaved(tx, ty); // ลานปูหิน: ขอบคมตามช่อง ไม่ให้หญ้า/ดินรุกเข้ามา
-    // ขอบ organic: หญ้า↔ดินสั่นแรงขึ้น + มุมโค้ง (เหมือน transition tile) — ลานปูหินยังคมตามช่อง
+    // ขอบ organic ละมุน: สั่นหลายสเกล + dither มุม ลดเส้นตรงกริด (ลานปูหินยังคม)
     for (let py = 0; py < PH; py++) for (let px = 0; px < PW; px++) {
       const t0 = tileT(px >> 4, py >> 4); let t = t0;
       if (BLEND[t0] && !pv(px >> 4, py >> 4)) {
-        const jx = (vnoise(px, py, 6, 11) - .5) * 9 + (vnoise(px, py, 3, 21) - .5) * 3;
-        const jy = (vnoise(px, py, 6, 12) - .5) * 9 + (vnoise(px, py, 3, 22) - .5) * 3;
+        const jx = (vnoise(px, py, 8, 11) - .5) * 11 + (vnoise(px, py, 3, 21) - .5) * 5 + (vnoise(px, py, 2, 31) - .5) * 2;
+        const jy = (vnoise(px, py, 8, 12) - .5) * 11 + (vnoise(px, py, 3, 22) - .5) * 5 + (vnoise(px, py, 2, 32) - .5) * 2;
         const tx1 = Math.floor((px + jx) / U), ty1 = Math.floor((py + jy) / U), t1 = tileT(tx1, ty1);
         if (BLEND[t1] && !pv(tx1, ty1)) t = t1;
+        // มุมช่อง: สลับชนิดตาม dither ให้ขอบโค้งขึ้นอีก
+        else if (BLEND[t0]) {
+          const lx = px & 15, ly = py & 15, corner = (lx < 3 || lx > 12) && (ly < 3 || ly > 12);
+          if (corner && dith(px, py) > 0.55) {
+            for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+              const t2 = tileT((px >> 4) + dx, (py >> 4) + dy);
+              if (BLEND[t2] && t2 !== t0 && !pv((px >> 4) + dx, (py >> 4) + dy)) { t = t2; break; }
+            }
+          }
+        }
       }
       types[py * PW + px] = t;
     }
@@ -205,61 +261,49 @@ const PixelArt = (() => {
 
   // ---------- trees ----------
   // kind: 0 ใบกลม • 1 ผลส้ม • 2 ใบเข้ม • 3 สน • 4 ดอกชมพู • 5 สัก • 6 ราชพฤกษ์ • 7 พะยูง
-  // พุ่มเมฆ (puffy cloud clusters) ตามภาพลานตัวอย่างแรก: ก้อนซ้อน · เงาใต้ก้อน · ใบยื่นนอกขอบ · ไฮไลต์ซ้ายบน
-  function puffBlob(x, bx, by, rd, pal, R) {
-    // เงาใต้ก้อน (มิติ) → กลาง → ไฮไลต์บนซ้าย
-    disc(x, bx, by + 1, rd, pal[0]);
-    disc(x, bx, by, rd, pal[1]);
-    disc(x, bx - 1, by - 1, Math.max(2, rd - 1), pal[2]);
-    disc(x, bx - 2, by - 2, Math.max(1, rd - 3), pal[3]);
-    disc(x, bx - 2, by - Math.max(3, rd - 2), Math.max(1, rd - 5), pal[4] || pal[3]);
-    // ใบ/ดอกยื่นนอกขอบแบบไม่เป็นระเบียบ ลบเส้นวงกลมแข็ง
-    for (let i = 0; i < 6 + Math.floor(R() * 5); i++) {
-      const a = R() * Math.PI * 2, rr = rd + 1 + Math.floor(R() * 2);
-      const px = Math.round(bx + Math.cos(a) * rr), py = Math.round(by + Math.sin(a) * rr * 0.85);
-      r(x, pal[R() < .4 ? 2 : 3], px, py, 2, 1); r(x, pal[3], px, py - 1, 1, 1);
-    }
-  }
+  // พุ่มเมฆละมุน: วงรี dither + ขอบเขียวอ่อน (ไม่ใช่ดำคม) + ก้อนซ้อนหลายชั้น
   function tree(seed, kind) {
-    const c = mk(32, 38, (x) => {
+    const softOut = { soft: ['#2a5a30', '#4a8a48'] }; // ขอบเขียวอุ่น + AA mid
+    const c = mk(34, 40, (x) => {
       const R = rng(seed), bark = kind === 7 ? ['#4a1f16', '#6b2f22', '#8a3f2c'] : ['#5a371e', '#7d4f2a', '#a07040'];
-      r(x, bark[0], 13, 24, 6, 13); r(x, bark[1], 14, 24, 3, 13); r(x, bark[2], 14, 26, 1, 8);
-      for (let yy = 26; yy < 36; yy += 3) r(x, bark[0], 13, yy, 6, 1);
-      r(x, bark[0], 10, 35, 12, 3); r(x, bark[1], 11, 35, 4, 1);
-      ell(x, 9, 36, 4, 2, '#3f8a46'); ell(x, 23, 36, 4, 2, '#4f913b');
-      r(x, '#8ccc5e', 8, 35, 2, 1); r(x, '#8ccc5e', 22, 35, 2, 1);
-      // ก้อนเมฆซ้อน (ตำแหน่งไม่สมมาตร)
-      let blobs = kind === 1 ? [[16, 12, 9], [7, 15, 7], [24, 15, 7], [16, 18, 7], [11, 9, 6], [21, 9, 6], [12, 20, 5], [20, 20, 5]]
-        : kind === 3 ? [[16, 6, 5], [16, 11, 7], [16, 16, 9], [16, 21, 6]]
-        : kind === 5 ? [[16, 13, 10], [6, 15, 7], [25, 15, 7], [16, 6, 7], [10, 9, 6], [22, 9, 6], [12, 19, 5], [20, 19, 5]]
-        : kind === 7 ? [[16, 10, 9], [7, 14, 7], [24, 14, 7], [16, 5, 6], [11, 8, 5], [21, 8, 5], [12, 18, 5], [20, 18, 5]]
-        : [[16, 13, 10], [6, 15, 8], [25, 15, 8], [16, 6, 8], [9, 9, 6], [23, 9, 6], [11, 19, 6], [21, 19, 6], [16, 20, 5]];
+      r(x, bark[0], 14, 26, 6, 12); r(x, bark[1], 15, 26, 3, 12); r(x, bark[2], 15, 28, 1, 7);
+      for (let yy = 28; yy < 37; yy += 3) r(x, bark[0], 14, yy, 6, 1);
+      r(x, bark[0], 11, 36, 12, 3); r(x, bark[1], 12, 36, 4, 1);
+      ell(x, 10, 37, 5, 2, '#3f8a46'); ell(x, 24, 37, 5, 2, '#4f913b');
+      // ก้อนเมฆ: [cx, cy, rx, ry] วงรีไม่เท่ากัน = มนกว่าวงกลม
+      let blobs = kind === 1 ? [[17, 13, 10, 8], [7, 16, 8, 6], [26, 16, 8, 6], [17, 19, 8, 6], [11, 9, 6, 5], [23, 9, 6, 5], [12, 21, 6, 4], [22, 21, 6, 4]]
+        : kind === 3 ? [[17, 7, 5, 4], [17, 12, 7, 5], [17, 17, 9, 6], [17, 22, 7, 5]]
+        : kind === 5 ? [[17, 14, 11, 8], [6, 16, 8, 6], [27, 16, 8, 6], [17, 7, 7, 6], [10, 10, 6, 5], [24, 10, 6, 5], [12, 20, 6, 4], [22, 20, 6, 4]]
+        : kind === 7 ? [[17, 11, 10, 8], [7, 15, 8, 6], [26, 15, 8, 6], [17, 6, 6, 5], [11, 9, 5, 4], [23, 9, 5, 4], [12, 19, 6, 4], [22, 19, 6, 4]]
+        : [[17, 14, 11, 9], [6, 16, 9, 7], [27, 16, 9, 7], [17, 6, 8, 7], [9, 10, 7, 5], [25, 10, 7, 5], [11, 20, 7, 5], [23, 20, 7, 5], [17, 21, 6, 4], [14, 8, 5, 4], [20, 8, 5, 4]];
       if (kind !== 3) for (const b of blobs) {
         b[0] += Math.round(R() * 3 - 1.5); b[1] += Math.round(R() * 3 - 1.5);
-        b[2] = Math.max(4, b[2] + Math.round(R() * 3 - 1));
+        b[2] = Math.max(4, b[2] + Math.round(R() * 2 - 0.5));
+        b[3] = Math.max(3, b[3] + Math.round(R() * 2 - 0.5));
       }
-      const pal = kind === 2 || kind === 3 ? ['#1e4e28', '#2a6a36', '#3d8f44', '#58b054', '#7ed06a']
-        : kind === 5 ? ['#3a5018', '#5a7820', '#7a9a2e', '#a0c044', '#c8e06a']
-        : kind === 7 ? ['#142818', '#1c3e26', '#2c5a32', '#3f7844', '#5a9858']
-        : ['#1e5a24', '#2f7a2c', '#4a9a3a', '#68bc4e', '#9ee06a'];
-      // วาดก้อนล่างก่อน แล้วก้อนบนทับ
-      const order = blobs.map((b, i) => [b[1] + b[2], i]).sort((a, b) => b[0] - a[0]).map(p => p[1]);
-      for (const i of order) puffBlob(x, blobs[i][0], blobs[i][1], blobs[i][2], pal, R);
-      const inside = (px, py) => blobs.some(([bx, by, rd]) => (px - bx) ** 2 + (py - by) ** 2 < (rd + 1) ** 2);
-      for (let i = 0; i < 40; i++) {
-        const px = 4 + Math.floor(R() * 12), py = 3 + Math.floor(R() * 10); if (!inside(px, py)) continue;
-        r(x, '#c8f090', px, py, 2, 1);
+      const pal = kind === 2 || kind === 3 ? ['#1e4e28', '#2a6a36', '#3d8f44', '#58b054', '#7ed06a', '#a8e888']
+        : kind === 5 ? ['#3a5018', '#5a7820', '#7a9a2e', '#a0c044', '#c8e06a', '#e0f0a0']
+        : kind === 7 ? ['#142818', '#1c3e26', '#2c5a32', '#3f7844', '#5a9858', '#78b070']
+        : ['#1e5a24', '#2f7a2c', '#4a9a3a', '#68bc4e', '#8cdc66', '#b8f090'];
+      const order = blobs.map((b, i) => [b[1] + b[3], i]).sort((a, b) => b[0] - a[0]).map(p => p[1]);
+      for (const i of order) softPuff(x, blobs[i][0], blobs[i][1], blobs[i][2], blobs[i][3], pal, R);
+      const inside = (px, py) => blobs.some(([bx, by, rx, ry]) => {
+        const nx = (px - bx) / (rx + 1), ny = (py - by) / (ry + 1); return nx * nx + ny * ny < 1.1;
+      });
+      for (let i = 0; i < 50; i++) {
+        const px = 5 + Math.floor(R() * 14), py = 3 + Math.floor(R() * 12); if (!inside(px, py)) continue;
+        r(x, '#d0f8a8', px, py, 2, 1);
       }
-      if (kind === 1) for (let i = 0; i < 9; i++) { const px = 6 + Math.floor(R() * 20), py = 6 + Math.floor(R() * 16); if (!inside(px, py)) continue; r(x, '#e8862a', px, py, 2, 2); r(x, '#ffc06a', px, py, 1, 1); }
-      if (kind === 4 || kind === 0) for (let i = 0; i < (kind === 4 ? 12 : 5); i++) {
-        const px = 6 + Math.floor(R() * 20), py = 5 + Math.floor(R() * 16); if (!inside(px, py)) continue;
+      if (kind === 1) for (let i = 0; i < 9; i++) { const px = 6 + Math.floor(R() * 22), py = 6 + Math.floor(R() * 18); if (!inside(px, py)) continue; r(x, '#e8862a', px, py, 2, 2); r(x, '#ffc06a', px, py, 1, 1); }
+      if (kind === 4 || kind === 0) for (let i = 0; i < (kind === 4 ? 12 : 6); i++) {
+        const px = 6 + Math.floor(R() * 22), py = 5 + Math.floor(R() * 18); if (!inside(px, py)) continue;
         const fc = R() < .5 ? '#ffc9de' : '#ffe37a'; r(x, fc, px, py, 2, 1); r(x, '#fff6e0', px, py, 1, 1);
       }
-      if (kind === 5) for (let i = 0; i < 6; i++) { const px = 5 + Math.floor(R() * 20), py = 6 + Math.floor(R() * 14); if (!inside(px, py)) continue; r(x, '#d8e98a', px, py, 3, 1); }
-      if (kind === 6) for (let i = 0; i < 8; i++) { const px = 5 + Math.floor(R() * 20), py = 14 + Math.floor(R() * 8); if (!inside(px, py - 2)) continue; const L = 3 + Math.floor(R() * 3); r(x, '#e0a81e', px, py, 2, L); r(x, '#ffe27a', px, py, 1, L - 1); }
-      if (kind === 7) for (let i = 0; i < 10; i++) { const px = 7 + Math.floor(R() * 16), py = 4 + Math.floor(R() * 16); if (!inside(px, py)) continue; r(x, '#1a3522', px, py, 1, 1); }
-    });
-    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 17, 37, 11, 2, 'rgba(38,40,16,.26)'); x.globalCompositeOperation = 'source-over';
+      if (kind === 5) for (let i = 0; i < 6; i++) { const px = 5 + Math.floor(R() * 22), py = 6 + Math.floor(R() * 16); if (!inside(px, py)) continue; r(x, '#d8e98a', px, py, 3, 1); }
+      if (kind === 6) for (let i = 0; i < 8; i++) { const px = 5 + Math.floor(R() * 22), py = 14 + Math.floor(R() * 10); if (!inside(px, py - 2)) continue; const L = 3 + Math.floor(R() * 3); r(x, '#e0a81e', px, py, 2, L); r(x, '#ffe27a', px, py, 1, L - 1); }
+      if (kind === 7) for (let i = 0; i < 10; i++) { const px = 7 + Math.floor(R() * 18), py = 4 + Math.floor(R() * 18); if (!inside(px, py)) continue; r(x, '#1a3522', px, py, 1, 1); }
+    }, softOut);
+    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 18, 39, 12, 2, 'rgba(38,40,16,.22)'); x.globalCompositeOperation = 'source-over';
     return c;
   }
   // กอไผ่: ลำเขียวหลายลำ ข้อปล้องเข้ม ใบเรียวที่ปลาย
@@ -274,40 +318,46 @@ const PixelArt = (() => {
         for (let l = 0; l < 4; l++) { const ly = top + 1 + l * 3; for (let q = 0; q < 5; q++) r(x, q < 2 ? '#4f913b' : '#7cc76a', tx + 1 + dir * (q + 1), ly - Math.floor(q / 2), 1, 1); }
         r(x, '#a0e078', tx, top - 1, 2, 1);
       }
-    });
-    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 15, 33, 9, 2, 'rgba(38,40,16,.28)'); x.globalCompositeOperation = 'source-over';
+    }, { soft: ['#2a5a30', '#4a8a48'] });
+    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 15, 33, 9, 2, 'rgba(38,40,16,.22)'); x.globalCompositeOperation = 'source-over';
     return c;
   }
-  // สน: ทรงกรวยซ้อน 4 ชั้น ปลายแหลม
+  // สน: ทรงกรวยซ้อน ชั้นขอบ dither ละมุน
   function conifer(seed) {
-    const c = mk(28, 34, (x) => {
+    const c = mk(30, 36, (x) => {
       const R = rng(seed);
-      r(x, '#5a371e', 12, 25, 4, 8); r(x, '#7d4f2a', 13, 25, 2, 8); r(x, '#5a371e', 9, 31, 10, 2);
-      ell(x, 8, 32, 3, 2, '#3f8a46'); ell(x, 20, 32, 3, 2, '#4f913b');
-      const tiers = 4, h0 = 1 + Math.floor(R() * 3);
+      r(x, '#5a371e', 13, 26, 4, 8); r(x, '#7d4f2a', 14, 26, 2, 8); r(x, '#5a371e', 10, 33, 10, 2);
+      ell(x, 9, 34, 3, 2, '#3f8a46'); ell(x, 21, 34, 3, 2, '#4f913b');
+      const tiers = 4, h0 = 2 + Math.floor(R() * 2);
       for (let t = 0; t < tiers; t++) {
         const top = h0 + t * 5, hgt = 8, half = 4 + t * 2 + Math.round(R());
-        for (let y = 0; y < hgt; y++) { const w = Math.round(half * (y + 1) / hgt); r(x, '#2a6a36', 14 - w, top + y, w * 2 + 1, 1); r(x, '#3d8f44', 14 - w, top + y, w, 1); r(x, '#58b054', 14 - Math.max(0, w - 1), top + y, Math.max(1, Math.floor(w / 2)), 1); }
+        for (let y = 0; y < hgt; y++) {
+          let w = Math.round(half * (y + 1) / hgt);
+          if (dith(14 + y, top + y) > 0.6) w += (y > hgt / 2 ? 1 : 0); // ขอบหยัก
+          r(x, '#2a6a36', 15 - w, top + y, w * 2 + 1, 1);
+          r(x, '#3d8f44', 15 - w, top + y, Math.max(1, w), 1);
+          r(x, '#58b054', 15 - Math.max(0, w - 1), top + y, Math.max(1, Math.floor(w / 2)), 1);
+          if (y < 2) r(x, '#7ed06a', 14, top + y, 2, 1);
+        }
       }
-      r(x, '#7ed06a', 13, h0, 1, 2);
-      for (let i = 0; i < 8; i++) { const px = 8 + Math.floor(R() * 12), py = h0 + 4 + Math.floor(R() * 16); r(x, '#24542e', px, py, 2, 1); }
-    });
-    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 15, 33, 9, 2, 'rgba(38,40,16,.28)'); x.globalCompositeOperation = 'source-over';
+      r(x, '#a8e888', 14, h0, 2, 2);
+    }, { soft: ['#2a5a30', '#4a8a48'] });
+    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 16, 35, 9, 2, 'rgba(38,40,16,.22)'); x.globalCompositeOperation = 'source-over';
     return c;
   }
   // มะพร้าว: ลำต้นโค้งมีวงปล้อง ทางใบแผ่รอบยอด ลูกมะพร้าวใต้ยอด
   function palm(seed) {
-    const c = mk(28, 34, (x) => {
+    const c = mk(30, 36, (x) => {
       const R = rng(seed), lean = R() < .5 ? -1 : 1;
-      ell(x, 8, 32, 3, 2, '#3f8a46'); ell(x, 20, 32, 3, 2, '#4f913b');
-      for (let y = 10; y < 33; y++) { const off = Math.round(lean * Math.pow((33 - y) / 22, 2) * 3); r(x, '#7d5a2e', 12 + off, y, 4, 1); r(x, '#a8854a', 13 + off, y, 1, 1); if (y % 3 === 0) r(x, '#5e4220', 12 + off, y, 4, 1); }
-      const cx = 14 + lean * 3, cy = 8;
+      ell(x, 9, 34, 3, 2, '#3f8a46'); ell(x, 21, 34, 3, 2, '#4f913b');
+      for (let y = 10; y < 35; y++) { const off = Math.round(lean * Math.pow((35 - y) / 24, 2) * 3); r(x, '#7d5a2e', 13 + off, y, 4, 1); r(x, '#a8854a', 14 + off, y, 1, 1); if (y % 3 === 0) r(x, '#5e4220', 13 + off, y, 4, 1); }
+      const cx = 15 + lean * 3, cy = 9;
       for (const [dx, dy] of [[-12, 3], [-9, -4], [-2, -8], [5, -7], [11, -2], [12, 4], [-7, 6], [7, 6]]) {
         const n = 11; for (let k = 0; k <= n; k++) { const t = k / n, px = Math.round(cx + dx * t), py = Math.round(cy + dy * t + Math.sin(t * 3.1) * 2); r(x, '#3d8f44', px - 1, py, 3, 2); r(x, '#7ed06a', px, py, 1, 1); }
       }
       for (const [dx, dy] of [[-2, 2], [1, 3], [3, 1]]) { disc(x, cx + dx, cy + dy, 1, '#6b4a22'); r(x, '#9c7440', cx + dx - 1, cy + dy - 1, 1, 1); }
-    });
-    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 15, 33, 10, 2, 'rgba(38,40,16,.28)'); x.globalCompositeOperation = 'source-over';
+    }, { soft: ['#2a5a30', '#4a8a48'] });
+    const x = c.getContext('2d'); x.globalCompositeOperation = 'destination-over'; ell(x, 16, 35, 10, 2, 'rgba(38,40,16,.22)'); x.globalCompositeOperation = 'source-over';
     return c;
   }
   const TREES = [tree(3, 0), tree(9, 1), tree(17, 2), tree(25, 0), tree(31, 3), tree(44, 4), tree(52, 2), tree(60, 0)];
@@ -427,7 +477,7 @@ const PixelArt = (() => {
           r(x, '#d9b44a', wx + ww - 9, wb - 8, 8, 5); r(x, '#e8cd72', wx + ww - 9, wb - 8, 8, 1); r(x, '#c29a32', wx + ww - 6, wb - 8, 1, 5);
         }
       }
-    });
+    }, { soft: ['#3d2a1a', '#7a5a3a'] }); // ขอบน้ำตาลอุ่น + AA ลดคมดำ
     const out = { spr: s, ox: -(OVER + 1), oy: -(ROOF_UP + 1), w: s.width, h: s.height };
     BCACHE.set(b, out); return out;
   }
