@@ -2504,7 +2504,7 @@ function buildBase() {
   // ตกแต่งคอกสัตว์ให้ดูสดใส (ภาพพื้นล้วนๆ ไม่ขวางทาง): บ่อเป็ด รังฟาง รางน้ำ กองฟาง แอ่งโคลนหมู ดอกไม้
   { const bale = (px, py) => { g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(px + 2, py + 23, 28, 5); g.fillStyle = '#d9b44a'; g.fillRect(px + 3, py + 10, 26, 15); g.fillStyle = '#e8cd72'; g.fillRect(px + 3, py + 10, 26, 4); g.fillStyle = '#c29a32'; for (const dx of [9, 16, 23]) g.fillRect(px + dx, py + 10, 1.5, 15); };
     const trough = (px, py) => { g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(px + 1, py + 24, 30, 4); g.fillStyle = '#8b5a2b'; g.fillRect(px + 1, py + 13, 30, 12); g.fillStyle = '#59b6ec'; g.fillRect(px + 4, py + 15, 24, 6); g.fillStyle = 'rgba(255,255,255,.5)'; g.fillRect(px + 7, py + 16, 8, 1.5); };
-    const pond = (cx, cy, rx, ry) => { g.fillStyle = '#c9a869'; g.beginPath(); g.ellipse(cx, cy, rx + 3, ry + 3, 0, 0, 7); g.fill(); g.fillStyle = '#4aa3df'; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = '#7cc4f0'; g.beginPath(); g.ellipse(cx - rx * 0.25, cy - ry * 0.25, rx * 0.5, ry * 0.3, 0, 0, 7); g.fill(); g.fillStyle = '#3f9a3a'; g.beginPath(); g.ellipse(cx + rx * 0.45, cy + ry * 0.2, 5, 3, 0, 0, 7); g.fill(); g.fillStyle = '#ff8fc7'; g.fillRect(cx + rx * 0.45 - 1, cy + ry * 0.2 - 2, 2.5, 2.5); };
+    const pond = (cx, cy) => { const D = PixelArt.duckPond(); g.imageSmoothingEnabled = false; g.drawImage(D.spr, Math.round(cx - D.w), Math.round(cy - D.h), D.w * 2, D.h * 2); }; // บ่อเป็ดพิกเซล (ขอบดิน หิน กอกก ใบบัว)
     const nest = (px, py) => { g.fillStyle = '#e0bd5a'; g.beginPath(); g.ellipse(px + 16, py + 20, 14, 8, 0, 0, 7); g.fill(); g.fillStyle = '#c9a143'; g.beginPath(); g.ellipse(px + 16, py + 22, 10, 4, 0, 0, 7); g.fill(); g.fillStyle = '#fff'; for (const ex of [-5, 1, 6]) { g.beginPath(); g.ellipse(px + 16 + ex, py + 19, 2.2, 3, 0, 0, 7); g.fill(); } };
     const CH = Shared.PENS.chicken, DK = Shared.PENS.duck, PA = Shared.PENS.cow, SH = Shared.PENS.sheep, PG = Shared.PENS.pig;
     pond((DK.x1 - 1) * TS, (DK.y1 - 0.4) * TS, TS * 0.9, TS * 0.7); nest(CH.x0 * TS, CH.y0 * TS); bale(CH.x1 * TS, CH.y0 * TS);
@@ -3070,26 +3070,14 @@ let last = performance.now();
 function drawLighthouse(g, now) {
   if (!builtProj.has('lighthouse')) return;
   const L = Shared.LIGHTHOUSE, bx = L.x0 * TS, by = L.y0 * TS, w = (L.x1 - L.x0 + 1) * TS, h = (L.y1 - L.y0 + 1) * TS, cx = bx + w / 2;
-  g.save(); g.translate(cx, by + h); g.scale(0.8, 0.8); g.translate(-cx, -(by + h)); // ย่อ 80% จากฐาน (ตัวตันยังเท่าเดิม แค่ภาพเล็กลง)
-  // ฐานเป็นเกาะทรายเล็กๆ รอบตัวหอ (ขอบเข้มก่อน แล้วทรายทับ)
-  g.fillStyle = '#d9c383'; g.beginPath(); g.ellipse(cx, by + h - 6, 42, 20, 0, 0, 7); g.fill();
-  g.fillStyle = '#efdfa4'; g.beginPath(); g.ellipse(cx, by + h - 8, 40, 18, 0, 0, 7); g.fill();
-  g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(bx + 2, by + h - 8, w - 4, 9);
-  g.fillStyle = '#7d828c'; g.fillRect(bx + 4, by + h - 22, w - 8, 18); g.fillStyle = '#a3a8b2'; g.fillRect(bx + 4, by + h - 22, w - 8, 4);
-  const top = by + 30, bottom = by + h - 22;
-  for (let y = top; y < bottom; y += 4) {
-    const t = (y - top) / (bottom - top), half = 13 + t * 9, stripe = Math.floor((y - top) / 18) % 2;
-    g.fillStyle = stripe ? '#c0392b' : '#eee8da'; g.fillRect(cx - half, y, half * 2, 4);
-    g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(cx + half - 5, y, 5, 4); g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(cx - half, y, 3, 4);
-  }
-  g.fillStyle = '#3a3f4a'; g.fillRect(cx - 19, by + 24, 38, 6); g.fillRect(cx - 17, by + 30, 3, 5); g.fillRect(cx + 14, by + 30, 3, 5);
-  g.fillStyle = '#ffe08a'; g.fillRect(cx - 11, by + 10, 22, 14); g.fillStyle = '#fff6cf'; g.fillRect(cx - 8, by + 12, 8, 9);
-  g.fillStyle = '#3a3f4a'; g.fillRect(cx - 12, by + 9, 24, 2); g.fillRect(cx - 12, by + 23, 24, 2); g.fillRect(cx - 1, by + 10, 2, 14);
-  for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#a82f23' : '#c0392b'; g.fillRect(cx - 14 + i * 2, by + 9 - i * 2, 28 - i * 4, 2); }
-  g.fillStyle = '#f1c40f'; g.fillRect(cx - 1, by - 5, 2, 4);
+  const LHS = PixelArt.lighthouse(), sx = Math.round(cx - LHS.cx * 2), sy = Math.round(by + 39 - LHS.lampY * 2); // ตะเกียงอยู่ที่ by+39 ตรงกับจุดกำเนิดลำแสงตอนกลางคืน
+  g.imageSmoothingEnabled = false; g.drawImage(LHS.spr, sx, sy, LHS.w * 2, LHS.h * 2);
+  { const pulse = 0.5 + 0.5 * Math.sin(now / 420), lx = cx, ly = by + 39; // ตะเกียงกะพริบนุ่มๆ: วงแสงอุ่นบนกระจกห้องตะเกียง (กลางคืนเข้มขึ้นผ่านชั้นความมืดอยู่แล้ว)
+    g.fillStyle = `rgba(255,236,150,${0.22 + pulse * 0.2})`; g.fillRect(lx - 10, ly - 10, 20, 14); g.fillStyle = `rgba(255,255,230,${0.3 + pulse * 0.3})`; g.fillRect(lx - 4, ly - 6, 8, 8); }
+  g.save(); g.translate(cx + 14, by + 42); g.scale(0.8, 0.8); g.translate(-(cx + 14), -(by + 42)); // นกนางนวลเกาะราวระเบียง
   // นกนางนวลเกาะอยู่บนยอดหอ ขยับตัวเบาๆ (แกว่งหัว กระพือปีกเล็กน้อย) กะพริบตานานๆ
-  const gx = cx + 6, bob = Math.sin(now / 700) * 0.5, sway = Math.sin(now / 1300) * 0.6, flap = Math.sin(now / 260) * 0.35;
-  const gy = by - 2 + bob, blink = now % 4200 < 130;
+  const gx = cx + 14, bob = Math.sin(now / 700) * 0.5, sway = Math.sin(now / 1300) * 0.6, flap = Math.sin(now / 260) * 0.35;
+  const gy = by + 42 + bob, blink = now % 4200 < 130;
   g.fillStyle = '#3a3f4a'; g.beginPath(); g.ellipse(gx, gy, 5.5, 3.8, -0.1, 0, 7); g.fill(); // ขอบลำตัว
   g.fillStyle = '#f4f4f4'; g.beginPath(); g.ellipse(gx, gy, 4.5, 2.8, -0.1, 0, 7); g.fill();
   g.fillStyle = '#b8c4cc'; g.beginPath(); g.ellipse(gx - 1.5, gy - 0.5 - flap, 3.6, 1.8 + flap * 0.4, -0.25, 0, 7); g.fill(); // ปีก
@@ -3763,30 +3751,21 @@ function step(now) {
     // ใช้ 0.7·rx กับ 0.6·ry ทำให้ทุกจุดอยู่ในสระแน่นอน (0.7² + 0.6² < 1)
     const fx = (POND.cx + 0.7 * POND.rx * Math.sin(fa) + 0.5) * TS, fy = (POND.cy + 0.6 * POND.ry * Math.sin(fb) + 0.5) * TS;
     if (fx < camX - TS || fx > camX + vw + TS || fy < camY - TS || fy > camY + vh + TS) continue;
-    ctx.save(); ctx.translate(fx, fy); ctx.scale(ahead, 1);
-    ctx.globalAlpha = 0.6; // อยู่ใต้น้ำ สีจึงจางและอมฟ้าตามน้ำ
-    ctx.fillStyle = '#1d5a78'; ctx.fillRect(-7, -3 + wag, 3, 6); ctx.fillRect(-4, -4, 9, 8); // ขอบเข้ม 1 px
-    ctx.fillStyle = ['#ff9a3c', '#f4f4f4', '#ffd23f', '#ff7a45', '#ffb347', '#f4f4f4'][i]; ctx.fillRect(-6, -2 + wag, 1, 4); ctx.fillRect(-3, -3, 7, 6);
-    ctx.fillStyle = '#1d5a78'; ctx.fillRect(2, -2, 1, 1); // ตา
+    const fs = PixelArt.fish(i, wag), bob = Math.round(Math.sin(now / 520 + i * 1.7)); // ว่ายขึ้นลงเล็กน้อย
+    ctx.save(); ctx.translate(Math.round(fx), Math.round(fy) + bob); ctx.scale(ahead, 1);
+    ctx.fillStyle = 'rgba(8,60,86,.22)'; ctx.fillRect(-12, 6, 24, 3); // เงาปลาบนพื้นสระ
+    ctx.globalAlpha = 0.78; ctx.drawImage(fs, -9 * 2, -5 * 2, fs.width * 2, fs.height * 2); // อยู่ใต้น้ำ สีจางอมฟ้า
     ctx.globalAlpha = 1;
     ctx.restore();
   }
   ctx.restore();
   // ใบบัวกระจายทั่วสระ มีทั้งใบใหญ่และเล็ก (วางตายตัวตามพิกัดช่อง ไม่ขยับ) อยู่เหนือปลา
   // ใบใหญ่มีแฉกเว้าเป็นรูปตัววี (ตัดออกจากขอบด้านขวา) ส่วนใบเล็กเป็นวงรีเต็ม
-  const lilyPath = (px, py, rx, ry, notch) => {
-    ctx.beginPath();
-    if (notch) { ctx.moveTo(px, py); ctx.ellipse(px, py, rx, ry, 0, 0.4, Math.PI * 2 - 0.4); ctx.closePath(); }
-    else ctx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-  };
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     if (MAP[y][x] !== T.WATER || hash(x, y, 9) > 0.09) continue;
-    const px = (x + 0.5) * TS, py = (y + 0.5) * TS, big = hash(x, y, 11) < 0.5;
-    const rx = big ? 11 : 5, ry = big ? 8 : 3.6; // ใบใหญ่ 22×16 px • ใบเล็ก 10×7 px
-    ctx.fillStyle = '#1f4f1f'; lilyPath(px, py, rx + 1, ry + 1, big); // ขอบเข้ม 1 px
-    ctx.fillStyle = '#2d6e2a'; lilyPath(px, py, rx, ry, big); // ใบ
-    ctx.fillStyle = '#4fa048'; ctx.beginPath(); ctx.ellipse(px - rx * 0.15, py - ry * 0.2, rx * 0.5, ry * 0.4, 0, 0, Math.PI * 2); ctx.fill(); // ไฮไลต์
+    const big = hash(x, y, 11) < 0.5, fl = hash(x, y, 13), kind = big ? (fl < .22 ? 3 : fl < .36 ? 4 : fl < .5 ? 5 : 0) : (hash(x, y, 15) < .5 ? 1 : 2);
+    const ls = PixelArt.lily(kind), px = Math.round((x + 0.5) * TS), py = Math.round((y + 0.5) * TS);
+    ctx.drawImage(ls, px - ls.width, py - ls.height, ls.width * 2, ls.height * 2); // ใบบัวพิกเซล (ใบใหญ่/เล็ก/มีดอกบัว) วางตายตัวตามช่อง
   }
   // แปลงเช่า: เส้นขอบประ + ป้ายชื่อคนเช่า (แปลงว่างเส้นจาง)
   if (!scene) for (const P of Shared.FARM_RENT.plots) {

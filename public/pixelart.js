@@ -237,6 +237,7 @@ const PixelArt = (() => {
       else if (u < .22 && !og) { set(px, py, GRASS[2]); } // หญ้ารุกบนดิน
     }
     x.putImageData(img, 0, 0);
+    shoreProps(x, tileT, W, H, hash);
     // กรอบที่ดิน (ช่องขอบของแต่ละแปลง) แบบเดิม
     for (let y = 0; y < H; y++) for (let x2 = 0; x2 < W; x2++) {
       if (gtype(MAP[y][x2]) !== FL) continue;
@@ -632,5 +633,164 @@ const PixelArt = (() => {
     return BIG_HOUSE;
   }
 
-  return { mk, r, ell, disc, shade, hash, rng, addOutline, cv, U, OUT, ground, fences, tree: treeFor, building, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
+
+  // ---------- น้ำ: ปลา ใบบัว บ่อเป็ด พืชริมน้ำ ประภาคาร ----------
+  // ปลา (มองข้าง หันขวา) 6 สายพันธุ์ × 2 เฟรมหาง: ลำตัวไล่แสงบน→เงาล่างแบบ hue shift ท้องอ่อน ครีบหลัง/อก ตามีประกาย
+  // pat: 'koi' ลายแต้มขาว • 'plain' สีเดียว • 'stripe' แถบข้าง
+  const FISH_KINDS = [
+    { c: '#f0762e', pat: 'koi', patC: '#fff3e0' }, { c: '#e8eef2', pat: 'plain' }, { c: '#ffc83a', pat: 'plain' },
+    { c: '#e4482f', pat: 'koi', patC: '#fff3e0' }, { c: '#5a86b0', pat: 'stripe', patC: '#b8dcf0' }, { c: '#f4f4ec', pat: 'koi', patC: '#e4482f' },
+  ];
+  const FCACHE = new Map();
+  function fish(kind, frame) {
+    const key = kind + ':' + frame; if (FCACHE.has(key)) return FCACHE.get(key);
+    const F = FISH_KINDS[kind % FISH_KINDS.length], C = ramp(F.c, .3, .2), BELLY = hue(F.c, .45), FIN = hue(F.c, -.18);
+    const BODY = [[2, 6], [1, 8], [0, 9], [0, 9], [1, 8], [3, 6]]; // [x เริ่ม, x จบ] ต่อแถว (6 แถว)
+    const s = mk(16, 9, (x) => {
+      const ox = 4, oy = 1;
+      // หาง: ก้านหางกว้างขึ้นเป็นง่ามสองแฉก ปลายแกว่งตามเฟรม
+      const t = frame ? 1 : -1;
+      r(x, FIN, ox - 1, oy + 2, 1, 2); r(x, FIN, ox - 2, oy + 1, 1, 4); r(x, hue(F.c, .2), ox - 2, oy + 1, 1, 1);
+      r(x, FIN, ox - 3, oy + (t > 0 ? 0 : 1), 1, 2); r(x, FIN, ox - 3, oy + (t > 0 ? 4 : 3), 1, 2); r(x, C[0], ox - 3, oy + (t > 0 ? 0 : 5), 1, 1);
+      // ครีบหลัง
+      r(x, FIN, ox + 2, oy - 1, 4, 1); r(x, hue(F.c, .25), ox + 2, oy - 1, 1, 1);
+      // ลำตัว
+      BODY.forEach(([a, b], y) => {
+        const col = y === 0 ? C[3] : y === 1 ? C[2] : y === 2 ? C[2] : y === 3 ? C[1] : y === 4 ? BELLY : BELLY;
+        r(x, col, ox + a, oy + y, b - a + 1, 1);
+      });
+      r(x, C[4], ox + 3, oy + 1, 4, 1); r(x, C[3], ox + 2, oy + 2, 2, 1); // แสงสะท้อนบนหลัง (ซ้ายบน)
+      r(x, C[1], ox + 1, oy + 4, 2, 1); r(x, C[0], ox + 3, oy + 5, 3, 1); // เงาท้องลึก
+      // ลวดลาย
+      if (F.pat === 'koi') { r(x, F.patC, ox + 2, oy + 1, 3, 2); r(x, F.patC, ox + 6, oy + 2, 2, 2); r(x, F.patC, ox + 4, oy + 3, 1, 1); }
+      if (F.pat === 'stripe') { r(x, F.patC, ox + 1, oy + 3, 8, 1); r(x, C[0], ox + 1, oy + 4, 7, 1); }
+      // ครีบอก + เหงือก + ตา
+      r(x, FIN, ox + 5, oy + 3, 2, 2); r(x, C[0], ox + 6, oy + 4, 1, 1); r(x, C[1], ox + 6, oy + 1, 1, 4);
+      r(x, '#1a2a3a', ox + 8, oy + 2, 1, 1); r(x, '#ffffff', ox + 8, oy + 1, 1, 1);
+    }, { soft: ['#12445e', '#2a6f8a'] });
+    FCACHE.set(key, s); return s;
+  }
+  // ใบบัว: 'big' มีแฉกเว้า (วีด้านขวา) เส้นใบแผ่ • 'small' วงรี • flower = ดอกบัวสีชมพู/ขาว • แต่ละใบมีเงาตกใต้ใบบนน้ำ
+  const LCACHE = new Map();
+  function lily(kind) { // 0 ใหญ่ 1 เล็ก 2 เล็กอีกแบบ 3 ใหญ่+บัวชมพู 4 ใหญ่+บัวขาว 5 ใหญ่ครึ่งใบ
+    if (LCACHE.has(kind)) return LCACHE.get(kind);
+    const G3 = ramp('#3f9a46', .3, .22), big = kind === 0 || kind >= 3, rx = big ? 5.5 : 3, ry = big ? 4 : 2.2, W2 = big ? 14 : 8, H2 = big ? 12 : 7;
+    const s = mk(W2, H2, (x) => {
+      const cx = W2 / 2 - 0.5, cy = H2 / 2 - 0.5 + (kind >= 3 ? 1 : 0);
+      // เงาบนน้ำใต้ใบ (โปร่ง อมน้ำเงิน)
+      for (let dy = -ry; dy <= ry; dy++) for (let dx = -rx; dx <= rx; dx++) if ((dx / rx) ** 2 + (dy / ry) ** 2 <= 1.05) r(x, 'rgba(12,70,90,.28)', Math.round(cx + dx + 1), Math.round(cy + dy + 1), 1, 1);
+      for (let dy = -ry; dy <= ry; dy++) for (let dx = -rx; dx <= rx; dx++) {
+        const d = (dx / rx) ** 2 + (dy / ry) ** 2; if (d > 1) continue;
+        const ang = Math.atan2(dy, dx); if (big && kind !== 5 && Math.abs(ang) < 0.42 && dx > 0) continue; // แฉกเว้าด้านขวา
+        const lit = clamp(.55 - (dx / rx) * .28 - (dy / ry) * .34 + (1 - d) * .12, 0, 1);
+        r(x, d > .72 ? G3[1] : lit > .66 ? G3[3] : lit > .42 ? G3[2] : G3[1], Math.round(cx + dx), Math.round(cy + dy), 1, 1);
+      }
+      if (big) { for (const a of [0.9, 1.7, 2.5, 3.3, 4.2, 5.2]) { const e = Math.round(rx * .8 * Math.cos(a)), f = Math.round(ry * .8 * Math.sin(a)); r(x, G3[1], Math.round(cx + e / 2), Math.round(cy + f / 2), 1, 1); r(x, G3[1], Math.round(cx + e), Math.round(cy + f), 1, 1); } r(x, G3[0], Math.round(cx), Math.round(cy), 1, 1); }
+      r(x, G3[4], Math.round(cx - rx * .45), Math.round(cy - ry * .55), 2, 1); // ประกายแสงบนใบ
+      if (kind === 3 || kind === 4) { // ดอกบัว: กลีบ 5 กลีบ + เกสรเหลือง
+        const P = kind === 3 ? ['#e0568e', '#ff8cb8', '#ffd0e4'] : ['#b8c6d6', '#f2f6fa', '#ffffff'], fx = Math.round(cx), fy = Math.round(cy - 1);
+        r(x, P[0], fx - 2, fy, 5, 2); r(x, P[1], fx - 1, fy - 1, 3, 2); r(x, P[1], fx - 2, fy - 1, 1, 2); r(x, P[1], fx + 2, fy - 1, 1, 2); r(x, P[2], fx - 1, fy - 2, 3, 1); r(x, '#ffd23f', fx, fy - 1, 1, 1);
+      }
+    }, { soft: ['#14452a', '#2a6a3a'] });
+    LCACHE.set(kind, s); return s;
+  }
+  // พืชริมน้ำ (วาดลงพื้น): กอกกหางกระรอก + ก้อนหินริมตลิ่ง
+  function cattail(seed) {
+    const R = rng(seed), n = 2 + Math.floor(R() * 2), H2 = 12;
+    return mk(10, H2, (x) => {
+      r(x, 'rgba(12,70,60,.28)', 1, H2 - 2, 8, 2);
+      for (let i = 0; i < n; i++) {
+        const bx = 2 + i * 3 + Math.floor(R() * 2), top = 2 + Math.floor(R() * 4), lean = i === 0 ? -1 : i === n - 1 ? 1 : 0;
+        for (let y = top; y < H2 - 1; y++) { const xx = bx + Math.round(lean * (H2 - y) / 8); r(x, y > H2 - 4 ? '#4f913b' : '#6cbf55', xx, y, 1, 1); r(x, '#2f6b3a', xx + 1, y, 1, 1); }
+        r(x, '#7a4a22', bx + lean * -0, top - 1, 2, 3); r(x, '#b8793c', bx, top - 1, 1, 2); r(x, '#3a2418', bx + 1, top + 1, 1, 1); // รวงสีน้ำตาล
+        const lx = bx + (lean ? lean * 2 : 2); r(x, '#8cd468', lx, H2 - 5, 2, 1); r(x, '#8cd468', lx + (lean >= 0 ? 1 : -1), H2 - 6, 1, 1);
+      }
+    }, { soft: ['#1f4a2a', '#3a6a3a'] });
+  }
+  function stone(seed) {
+    const R = rng(seed), w = 4 + Math.floor(R() * 3), h = 3 + Math.floor(R() * 2), C = ramp('#9a9fa8', .28, .22);
+    return mk(w, h, (x) => {
+      r(x, 'rgba(12,40,60,.25)', 1, h - 1, w, 1);
+      r(x, C[2], 0, 1, w, h - 1); r(x, C[3], 0, 0, w - 1, 2); r(x, C[4], 0, 0, 2, 1); r(x, C[1], w - 2, h - 2, 2, 1); r(x, C[0], 1, h - 1, w - 1, 1);
+    }, { soft: ['#3a3f4a', '#6a6f7a'] });
+  }
+  const SPROP = { cat: [cattail(3), cattail(11), cattail(19), cattail(27)], stone: [stone(1), stone(2), stone(3), stone(4)] };
+  // บ่อเป็ดในคอก (ใต้ g ที่สเกลเป็นพิกเซลเกม): ขอบดิน+หิน น้ำไล่เฉด ประกายแสง ใบบัวบัว กอกก ระลอก
+  let DPOND = null;
+  function duckPond() {
+    if (DPOND) return DPOND;
+    const w = 34, h = 26, cx = 17, cy = 13, WC = ramp('#3a9fd0', .3, .22), MD = ramp('#b99a5c', .22, .25);
+    const s = mk(w, h, (x) => {
+      const inE = (px, py, rx, ry) => ((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2 <= 1;
+      for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
+        const wob = vnoise(px, py, 5, 61) * .12;
+        if (inE(px, py, 16.5 + wob * 6, 12 + wob * 4)) r(x, (px - cx) * .4 + (py - cy) < -3 ? MD[3] : (px - cx) * .4 + (py - cy) > 4 ? MD[1] : MD[2], px, py, 1, 1); // ขอบดินชื้น: ซ้ายบนสว่าง ขวาล่างเข้ม
+      }
+      for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
+        const wob = vnoise(px, py, 5, 62) * .1;
+        if (!inE(px, py, 15 + wob * 5, 10.5 + wob * 4)) continue;
+        const d = ((px - cx) / 15) ** 2 + ((py - cy) / 10.5) ** 2, v = clamp(Math.floor((1 - d) * 3.4 + dith(px, py) * .9 - .3), 0, 3);
+        r(x, WC[clamp(3 - v, 0, 3) ? 3 - v : 0], px, py, 1, 1);
+        if (py < cy - 2 && px < cx && dith(px, py) > .6) r(x, WC[4], px, py, 1, 1);
+      }
+      for (let px = 6; px < 12; px++) r(x, '#eafdfd', px, 5 + Math.round((px - 6) * .3), 1, 1); // แสงสะท้อนขอบบน
+      r(x, '#cdf4f8', 9, 9, 3, 1); r(x, '#cdf4f8', 21, 15, 2, 1); r(x, '#ffffff', 12, 7, 1, 1); // ประกาย
+      ell(x, 22, 13, 5, 2, 'rgba(255,255,255,.18)'); r(x, '#eafdfd', 17, 11, 6, 1); r(x, '#eafdfd', 16, 15, 8, 1); // ระลอกวง
+      r(x, 'rgba(12,70,90,.3)', 13, 9, 7, 4);
+    }, { soft: ['#4a3a22', '#8a7040'] });
+    const g = s.getContext('2d'); // หินริมตลิ่ง + กอกก + ใบบัว วาดทับ (ผ่านขอบ)
+    for (const [sx, sy, k] of [[2, 10, 0], [30, 8, 1], [27, 21, 3], [13, 25, 1]]) g.drawImage(SPROP.stone[k], sx, sy);
+    g.drawImage(SPROP.cat[0], 25, 1); // กอกกมุมขวาบนกอเดียว ไม่ให้บังน้ำ
+    g.drawImage(lily(1), 22, 13); g.drawImage(lily(4), 8, 15);
+    DPOND = { spr: s, w: s.width, h: s.height }; return DPOND;
+  }
+
+  // ประภาคาร (กลางสระ): เกาะทราย + ฐานหิน + หอลายแดงขาวเรียวขึ้น + ระเบียงราว + ห้องตะเกียงกระจก + โดมแดง • lampY = แถวกลางห้องตะเกียง (ใช้จัดแนวลำแสง) • cx = แกนกลาง
+  let LH = null;
+  function lighthouse() {
+    if (LH) return LH;
+    const w = 40, h = 64, cx = 20, RFd = ramp('#c0392b', .3, .22), WH = ramp('#eee8da', .14, .3), ST = ramp('#8e939e', .28, .22), DK = ramp('#3a3f4a', .3, .2), SD = ramp('#e8d49a', .25, .2);
+    const s = mk(w, h, (x) => {
+      // เกาะทราย: ขอบเปียกเข้ม → ทรายกลาง → แสงซ้ายบน + กรวด + กอหญ้า
+      ell(x, cx, 58, 19, 6, SD[0]); ell(x, cx, 57, 18, 5, SD[1]); ell(x, cx, 57, 16, 4, SD[2]); ell(x, cx - 3, 56, 11, 3, SD[3]);
+      for (let k = 0; k < 28; k++) { const a = hash(k, 3, 91), b = hash(k, 5, 92); const px = Math.round(cx - 15 + a * 30), py = Math.round(55 + b * 5); if ((px - cx) ** 2 / 17 ** 2 + (py - 57) ** 2 / 4.5 ** 2 < 1) r(x, k % 3 ? SD[4] : SD[0], px, py, 1, 1); }
+      for (const [rx2, ry2] of [[6, 59], [32, 58], [10, 56]]) { r(x, ST[3], rx2, ry2, 3, 2); r(x, ST[4], rx2, ry2, 1, 1); r(x, ST[0], rx2 + 1, ry2 + 2, 2, 1); }
+      r(x, '#4f913b', 30, 55, 1, 2); r(x, '#7cc76a', 31, 54, 1, 3); r(x, '#4f913b', 32, 55, 1, 2);
+      // ฐานหินกลม + ก้อนหินสลับแถว
+      for (let y = 48; y < 57; y++) { const hw = 9 + (y - 48) * .25 | 0; r(x, ST[2], cx - hw, y, hw * 2 + 1, 1); r(x, ST[3], cx - hw, y, 3, 1); r(x, ST[1], cx + hw - 2, y, 3, 1); if ((y - 48) % 3 === 2) r(x, ST[0], cx - hw, y, hw * 2 + 1, 1); else for (let xx = cx - hw + ((y - 48) % 2) * 3; xx < cx + hw; xx += 6) r(x, ST[0], xx, y, 1, 1); }
+      r(x, ST[4], cx - 8, 48, 6, 1);
+      // ตัวหอ: ลอนแคบลงขึ้นบน แถบสีแดง/ขาวสลับทุก 7 แถว ซ้ายรับแสงขวาเงา + หน้าต่างเรืองแสง + ประตู
+      const yT = 23, yB = 48;
+      for (let y = yT; y < yB; y++) {
+        const t = (y - yT) / (yB - yT), hw = Math.round(5.5 + t * 3.5), band = Math.floor((y - yT) / 7) % 2, P = band ? WH : RFd;
+        r(x, P[2], cx - hw, y, hw * 2 + 1, 1); r(x, P[3], cx - hw, y, 2, 1); r(x, P[4], cx - hw, y, 1, 1); r(x, P[1], cx + hw - 3, y, 2, 1); r(x, P[0], cx + hw - 1, y, 2, 1);
+        if ((y - yT) % 7 === 0) r(x, band ? RFd[0] : WH[1], cx - hw, y, hw * 2 + 1, 1); // รอยต่อแถบ
+      }
+      for (const [wy, wh] of [[30, 4], [39, 4]]) { r(x, '#2a1b14', cx - 2, wy, 4, wh); r(x, '#ffe08a', cx - 1, wy + 1, 2, wh - 2); r(x, '#fff6cf', cx - 1, wy + 1, 1, 1); r(x, DK[3], cx - 3, wy + wh, 6, 1); }
+      r(x, '#3a2418', cx - 2, 43, 4, 5); r(x, '#6e4524', cx - 1, 43, 2, 5); r(x, '#c9962a', cx + 1, 45, 1, 1);
+      // ระเบียง: แผ่นพื้นเหล็ก + เสาราว + ราวบน + ร่มเงาใต้ระเบียงบนตัวหอ
+      r(x, 'rgba(26,28,44,.35)', cx - 6, 24, 12, 2);
+      r(x, DK[1], cx - 9, 21, 19, 2); r(x, DK[3], cx - 9, 21, 19, 1); r(x, DK[0], cx - 8, 23, 17, 1);
+      for (let xx = cx - 8; xx <= cx + 8; xx += 2) r(x, DK[2], xx, 18, 1, 3); r(x, DK[3], cx - 9, 17, 19, 1); r(x, DK[4], cx - 9, 17, 6, 1);
+      // ห้องตะเกียง: กรอบโลหะ + กระจกเรืองแสง + เสากลาง + ฐาน/หลังคา
+      r(x, DK[1], cx - 6, 9, 13, 8); r(x, '#ffe08a', cx - 5, 10, 11, 6); r(x, '#fff6cf', cx - 3, 11, 5, 4); r(x, '#ffffff', cx - 1, 12, 2, 2); r(x, '#ffd166', cx + 3, 10, 3, 6);
+      r(x, DK[0], cx - 6, 9, 1, 8); r(x, DK[0], cx + 6, 9, 1, 8); r(x, DK[2], cx - 1, 10, 1, 6); r(x, DK[3], cx - 6, 16, 13, 1); r(x, DK[1], cx - 6, 8, 13, 1);
+      // โดมแดง: ซ้ายสว่างขวาเงา + ปลายทอง
+      for (let y = 2; y < 8; y++) { const hw = 1 + (y - 2); r(x, RFd[2], cx - hw, y, hw * 2 + 1, 1); r(x, RFd[3], cx - hw, y, Math.max(1, hw >> 1), 1); r(x, RFd[0], cx + hw - Math.max(1, hw >> 1), y, Math.max(1, hw >> 1) + 0, 1); }
+      r(x, RFd[4], cx - 1, 2, 1, 1); r(x, '#f1c40f', cx, 0, 1, 2); r(x, '#fff3a0', cx, 0, 1, 1);
+    }, { soft: ['#2a1b14', '#5a4a3a'] });
+    LH = { spr: s, w: s.width, h: s.height, cx: cx + 1, lampY: 13 + 1, baseY: 57 + 1 }; return LH;
+  }
+  // ตกแต่งริมน้ำบนพื้น: กอกก/หินวางบนทรายที่ติดน้ำ (เรียกหลัง putImageData ใน ground)
+  function shoreProps(x, tileT, W2, H2, hashf) {
+    for (let ty = 1; ty < H2 - 1; ty++) for (let tx = 1; tx < W2 - 1; tx++) {
+      if (tileT(tx, ty) !== SA) continue;
+      const nearW = tileT(tx, ty - 1) === WA || tileT(tx - 1, ty) === WA || tileT(tx + 1, ty) === WA || tileT(tx, ty + 1) === WA; if (!nearW) continue;
+      const h1 = hashf(tx, ty, 301);
+      if (h1 < .13) x.drawImage(SPROP.cat[Math.floor(hashf(tx, ty, 302) * 4)], tx * U + 3, ty * U - 2);
+      else if (h1 < .24) x.drawImage(SPROP.stone[Math.floor(hashf(tx, ty, 303) * 4)], tx * U + 4 + Math.floor(hashf(tx, ty, 304) * 6), ty * U + 5 + Math.floor(hashf(tx, ty, 305) * 5));
+    }
+  }
+
+  return { mk, r, ell, disc, shade, fish, lily, duckPond, lighthouse,  hash, rng, addOutline, cv, U, OUT, ground, fences, tree: treeFor, building, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
 })();
