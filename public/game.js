@@ -728,7 +728,7 @@ function renderBuild() {
   const hint = build.erase ? '🧹 แตะของที่จะเก็บคืนเข้ากระเป๋า'
     : fd ? `${fd.emoji} ${fd.name}: ${isTouch ? 'ลากลงห้อง (ปล่อยนิ้วเพื่อวาง) หรือแตะที่' : 'คลิกที่'}${fd.wall ? 'ผนัง' : 'พื้น'}เพื่อวาง${fd.small ? ' • ของเล็กวางบนโต๊ะ/เตียงได้' : ''}`
     : pd ? `${pd.emoji} ${pd.name}: ${isTouch ? 'ลากไปปล่อย หรือแตะที่ใหม่เพื่อวาง' : 'ขยับเมาส์จัดตำแหน่ง แล้วคลิกอีกครั้งเพื่อวาง'} • หมุน/เก็บคืนได้ที่ปุ่ม`
-    : ks.length ? (isTouch ? 'ลากของในห้องเพื่อย้าย • ลากของจากรายการลงห้อง' : 'คลิกของในห้องเพื่อหยิบ แล้วคลิกอีกครั้งเพื่อวาง • หรือเลือกของจากรายการ') : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (ขวามือของตัวบ้านหลังใหญ่)';
+    : ks.length ? (isTouch ? 'ลากของในห้องเพื่อย้าย • ลากของจากรายการลงห้อง' : 'คลิกของในห้องเพื่อหยิบ แล้วคลิกอีกครั้งเพื่อวาง • หรือเลือกของจากรายการ') : 'ยังไม่มีเฟอร์นิเจอร์ ไปซื้อที่ 🛋️ ร้านเฟอร์นิเจอร์ (แถวบนสุด ขวามือของลานตู้เกม)';
   const cats = [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['divider', '🪟 ฉากกั้น'], ['craft', '🔨 ประดิษฐ์'], ['rare', '⭐ พิเศษ']];
   const styleTabs = [['floor', '🟫 พื้นบ้าน'], ['wall', '🧱 วอลเปเปอร์']], isStyle = build.tab === 'floor' || build.tab === 'wall';
   const tab = isStyle || (build.tab && cats.some(c => c[0] === build.tab)) ? build.tab : 'living';
@@ -2421,15 +2421,17 @@ function buildHouseBase() {
   return oc;
 }
 function buildBase() {
-  const U = PixelArt.U, oc = document.createElement('canvas'); oc.width = W * U; oc.height = H * U;
+  const U = PixelArt.U, K = PixelArt.GK, GU = U * K, oc = document.createElement('canvas'); oc.width = W * GU; oc.height = H * GU; // พื้นโลกละเอียด K เท่า (GU = 32 px ต่อช่อง = พิกเซลเกม)
   const g = oc.getContext('2d');
-  g.drawImage(PixelArt.ground(MAP), 0, 0);
+  g.drawImage(PixelArt.ground(MAP, K), 0, 0);
+  g.save(); g.scale(K, K); g.imageSmoothingEnabled = false; // รั้ว/เคาน์เตอร์ยังเป็นสไปรต์ 16 px ต่อช่อง ขยายเท่าตัวตามพื้น
   PixelArt.fences(g, MAP);
   for (const b of BUILDINGS) for (const [cx, cy] of b.counter) g.drawImage(PixelArt.counter(b), cx * U - 1, cy * U + 2);
+  g.restore();
   baseHi = document.createElement('canvas'); baseHi.width = W * TS; baseHi.height = H * TS;
   const gh = baseHi.getContext('2d');
   gh.textAlign = 'center'; gh.textBaseline = 'middle';
-  g.scale(U / TS, U / TS);
+  g.scale(GU / TS, GU / TS); // = 1 เมื่อ K = 2 (พื้นอยู่ในหน่วยพิกเซลเกมแล้ว)
   // อาคาร: ร้านค้าทั่วไปวาดเป็นสไปรต์เรียงตามแกน y ใน step() ส่วนป้ายลานตู้เกมกับจอหนังยังวาดลงพื้นแบบเดิม
   g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const b of BUILDINGS) {
@@ -2456,7 +2458,7 @@ function buildBase() {
   }
   { // บ้านหลังใหญ่: สไปรต์พิกเซล (PixelArt.bigHouse) · ประตูตรง HOUSE_DOOR
     const B = Shared.HOUSE_BLD, bx = B.x0 * TS, by = B.y0 * TS, bw = (B.x1 - B.x0 + 1) * TS, bh = (B.y1 - B.y0 + 1) * TS, dx = Shared.HOUSE_DOOR.x * TS;
-    g.drawImage(oc, (B.x0 - 7) * U, B.y0 * U, (B.x1 - B.x0 + 1) * U, (B.y1 - B.y0 + 1) * U, bx, by, bw, bh); // พื้นหญ้าใต้ตัวบ้าน (ช่องตัน)
+    g.drawImage(oc, 44 * GU, 2 * GU, (B.x1 - B.x0 + 1) * GU, (B.y1 - B.y0 + 1) * GU, bx, by, bw, bh); // พื้นหญ้าใต้ตัวบ้าน (ช่องตัน)
     const H = PixelArt.bigHouse();
     g.imageSmoothingEnabled = false;
     g.drawImage(H.spr, bx + H.ox * 2, by + H.oy * 2, H.w * 2, H.h * 2); // ×2 ชดเชย g.scale(U/TS)
@@ -3053,7 +3055,7 @@ function drawMini(now) {
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = `${Math.round((big ? 15 : 11) * k)}px sans-serif`;
   if (!scene) for (const b of BUILDINGS) g.fillText(b.sign, (b.x0 + b.x1 + 1) / 2 * sx, (b.y0 + b.y1 + 1) / 2 * sy + 2 * k);
-  if (!scene) { g.fillText('🏠', (Shared.HOUSE_DOOR.x + 0.5) * sx, 3 * sy); g.fillText('🌾', 14 * sx, 12.5 * sy); g.fillText('🐄', 54 * sx, 21 * sy); g.fillText('🌊', 43 * sx, 38 * sy); g.fillText('🐖', 59.5 * sx, 11.5 * sy); g.fillText('🔥', FIRE.x * sx + sx / 2, FIRE.y * sy + sy / 2); }
+  if (!scene) { g.fillText('🏠', (Shared.HOUSE_DOOR.x + 0.5) * sx, (Shared.HOUSE_BLD.y0 + 1.5) * sy); g.fillText('🌾', 14 * sx, 12.5 * sy); g.fillText('🐄', 54 * sx, 21 * sy); g.fillText('🌊', 43 * sx, 38 * sy); g.fillText('🐖', 59.5 * sx, 11.5 * sy); g.fillText('🔥', FIRE.x * sx + sx / 2, FIRE.y * sy + sy / 2); }
   g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 1.5 * k; g.strokeRect(camX / TS * sx, camY / TS * sy, vw / TS * sx, vh / TS * sy);
   const list = [...players.values()].sort((a, b) => (a === me) - (b === me));
   g.font = `bold ${Math.round((big ? 11 : 9) * k)}px ${FONT}`;
