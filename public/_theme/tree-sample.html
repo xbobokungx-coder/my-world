@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ตัวอย่างต้นไม้ — เทียบภาพอ้างอิง</title>
+<style>
+  :root{--bg:#1c140f;--panel:#2a1e16;--ink:#f5e6c6;--muted:#c4a982;--gold:#f2c14e;--out:#2a1b14;--ok:#6bc24e}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Sans Thai",system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:16px 16px 48px}
+  h1{font-size:22px;margin:0 0 6px}
+  .lede{color:var(--muted);margin:0 0 18px;max-width:70ch;line-height:1.5;font-size:14px}
+  .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:14px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:3px solid var(--out);padding:12px}
+  .card h2{margin:0 0 8px;font-size:15px;color:var(--gold)}
+  .card p{margin:0 0 10px;font-size:13px;color:var(--muted);line-height:1.45}
+  img.ref{width:100%;display:block;border:2px solid var(--out);image-rendering:auto}
+  .stage{background:#6eb850;border:2px solid var(--out);padding:12px;overflow:auto}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;background:transparent}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+  .item{text-align:center}
+  .item span{display:block;font-size:12px;color:var(--muted);margin-top:6px}
+  .zoom{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px}
+  .zoom .box{background:#5fa844;border:2px solid var(--out);padding:8px}
+  .zoom label{display:block;font-size:12px;color:var(--gold);margin-bottom:4px}
+  .note{margin-top:14px;padding:10px 12px;border:2px dashed #6b4423;color:var(--muted);font-size:13px;line-height:1.5}
+  .note b{color:var(--ok)}
+  a{color:var(--gold)}
+</style>
+</head>
+<body>
+  <h1>ตัวอย่างต้นไม้ใหม่ (ยังไม่ใส่เกม)</h1>
+  <p class="lede">เทียบกับภาพอ้างอิงที่คุณส่ง — เน้นพุ่มฟูแบบเมฆ เงาชั้น dither ลายใบรูป U และขอบพิกเซลคม ไม่เบลอ ดูแล้วบอกได้เลยว่าจะให้ใส่เกมจริงหรือปรับต่อ</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>1) ภาพอ้างอิง</h2>
+      <p>ดูทรงต้นไม้มุมบนซ้าย / บนขวา / ล่างขวา (พุ่มกลม) และสนมุมล่างซ้าย</p>
+      <img class="ref" src="ref-trees.jpg" alt="ภาพอ้างอิงต้นไม้">
+    </div>
+    <div class="card">
+      <h2>2) ตัวอย่างใหม่ ×2 (ขนาดใกล้ในเกม)</h2>
+      <p>พื้นหญ้าจำลอง · สเกล ×2 แบบเกม · <code>imageSmoothingEnabled = false</code></p>
+      <div class="stage"><div class="row" id="x2"></div></div>
+      <div class="zoom">
+        <div class="box"><label>ซูม ×4 ดูคมพิกเซล (พุ่มหลัก)</label><canvas id="z4" width="168" height="200"></canvas></div>
+        <div class="box"><label>ซูม ×4 (สน)</label><canvas id="z4p" width="152" height="200"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>3) เทียบกับต้นไม้ปัจจุบันในเกม (ของเดิม)</h2>
+    <p>แถวบน = ใหม่ · แถวล่าง = ของในเกมตอนนี้ (PixelArt.tree)</p>
+    <div class="stage"><canvas id="cmp" width="720" height="220"></canvas></div>
+  </div>
+
+  <div class="note">
+    <b>สถานะ:</b> นี่เป็นไฟล์ตัวอย่างใน <code>/_theme/</code> ยังไม่แทนที่ต้นไม้ในแมพ<br>
+    ถ้าโอเค ตอบว่า <b>ใส่เกมเลย</b> · ถ้าอยากแก้อะไร บอกจุด เช่น “พุ่มใหญ่ขึ้น” “เขียวเข้มกว่านี้” “ลำต้นสั้นกว่า”<br>
+    หน้านี้: <a href="/_theme/tree-sample.html">/_theme/tree-sample.html</a>
+  </div>
+
+  <script src="/shared.js"></script>
+  <script src="/pixelart.js"></script>
+  <script src="/_theme/tree-sample.js"></script>
+  <script>
+    function blit(parent, spr, scale, label) {
+      const wrap = document.createElement('div'); wrap.className = 'item';
+      const c = document.createElement('canvas');
+      c.width = spr.width * scale; c.height = spr.height * scale;
+      const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+      g.drawImage(spr, 0, 0, c.width, c.height);
+      wrap.appendChild(c);
+      const s = document.createElement('span'); s.textContent = label; wrap.appendChild(s);
+      parent.appendChild(wrap);
+    }
+    const x2 = document.getElementById('x2');
+    TreeSample.variants.forEach(v => blit(x2, v.make(), 2, v.name));
+
+    function zoomInto(id, spr) {
+      const c = document.getElementById(id), g = c.getContext('2d');
+      g.imageSmoothingEnabled = false; g.fillStyle = '#5fa844'; g.fillRect(0, 0, c.width, c.height);
+      const s = 4; g.drawImage(spr, 8, 8, spr.width * s, spr.height * s);
+    }
+    zoomInto('z4', TreeSample.variants[0].make());
+    zoomInto('z4p', TreeSample.variants[4].make());
+
+    // เทียบใหม่ vs ของเกม
+    const cmp = document.getElementById('cmp'), g = cmp.getContext('2d');
+    g.imageSmoothingEnabled = false; g.fillStyle = '#6eb850'; g.fillRect(0, 0, cmp.width, cmp.height);
+    g.fillStyle = '#2a1b14'; g.font = 'bold 13px sans-serif';
+    g.fillText('ใหม่ (ตัวอย่าง)', 12, 18); g.fillText('ของเกมปัจจุบัน', 12, 128);
+    const news = TreeSample.variants.slice(0, 5).map(v => v.make());
+    news.forEach((s, i) => g.drawImage(s, 20 + i * 140, 28, s.width * 2, s.height * 2));
+    const olds = [
+      PixelArt.tree(3, 4, 'broad'),
+      PixelArt.tree(10, 4, 'broad'),
+      PixelArt.tree(17, 4, null),
+      PixelArt.tree(25, 4, null),
+      PixelArt.tree(31, 4, 'pine'),
+    ];
+    olds.forEach((s, i) => g.drawImage(s, 20 + i * 140, 138, s.width * 2, s.height * 2));
+  </script>
+</body>
+</html>
