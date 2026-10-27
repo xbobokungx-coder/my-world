@@ -143,11 +143,10 @@ const PixelChar = (() => {
     let spr = cache.get(key);
     if (!spr) { if (cache.size > 400) cache.clear(); spr = build({ dir: dir === 2 ? 3 : dir, f, sit, wr, col, hat, pc, wing }); cache.set(key, spr); }
     ctx.imageSmoothingEnabled = false;
-    const AS = Shared.ART_SCALE || 2;
-    const w = spr.width * AS, h = spr.height * AS, y0 = p.y + 6 * AS - (FB + 1) * AS, x0 = (CX + 1) * AS;
+    const w = spr.width * 2, h = spr.height * 2, y0 = p.y + 12 - (FB + 1) * 2, x0 = (CX + 1) * 2;
     if (dir === 2) { ctx.save(); ctx.translate(p.x, 0); ctx.scale(-1, 1); ctx.drawImage(spr, -x0, y0, w, h); ctx.restore(); }
     else ctx.drawImage(spr, p.x - x0, y0, w, h);
-    if (wr.hat === 'miner') { ctx.fillStyle = 'rgba(255,240,150,.28)'; const hx = p.x + (dir === 2 ? -AS : dir === 3 ? AS : 0), hy2 = y0 + (HY - 3 + 1) * AS + AS + (sit ? AS : 0); ctx.fillRect(hx - 3 * AS, hy2 - 4 * AS, 6 * AS, 6 * AS); ctx.fillRect(hx - 4 * AS, hy2 - 2 * AS, 8 * AS, 2 * AS); }
+    if (wr.hat === 'miner') { ctx.fillStyle = 'rgba(255,240,150,.28)'; const hx = p.x + (dir === 2 ? -2 : dir === 3 ? 2 : 0), hy2 = y0 + (HY - 3 + 1) * 2 + 2 + (sit ? 2 : 0); ctx.fillRect(hx - 6, hy2 - 8, 12, 12); ctx.fillRect(hx - 8, hy2 - 4, 16, 4); }
   }
   return { draw, CW, CH };
 })();
