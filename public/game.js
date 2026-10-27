@@ -2647,9 +2647,11 @@ function drawChainTree(now) { // โตตามจำนวนชาเลน�
   ctx.drawImage(s, cx - w / 2, by - h, w, h); PixelUI.world(ctx, '🪣', cx + w / 4, by - h * 0.55 + Math.sin(now / 500) * 2, 14);
   ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(42,27,20,.8)'; ctx.fillRect(cx - 26, by + 2, 52, 13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`🌳 ${n} ใบ`, cx, by + 12);
 }
-function drawTree(x, y) { // สไปรต์ต้นไม้พิกเซล (สุ่มแบบตามตำแหน่ง) โคนต้นอยู่กลางขอบล่างของช่อง
+function drawTree(x, y) { // สไปรต์ต้นไม้พิกเซล · โคนต้นกลางขอบล่างช่อง · ไม่เบลอตอนขยาย
   const s = PixelArt.tree(x, y, treeKinds.get(x + ',' + y));
-  ctx.drawImage(s, x * TS + 16 - s.width, y * TS + 32 - s.height * 2, s.width * 2, s.height * 2);
+  ctx.imageSmoothingEnabled = false;
+  const dw = s.width * 2, dh = s.height * 2;
+  ctx.drawImage(s, Math.round(x * TS + TS / 2 - dw / 2), Math.round(y * TS + TS - dh), dw, dh);
 }
 // ร้านค้า: สไปรต์อาคาร + อีโมจิบนหลังคา + ป้ายชื่อกระดานไม้
 function drawBuilding(b) {
