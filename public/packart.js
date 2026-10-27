@@ -77,7 +77,7 @@ const PackArt = (() => {
     const U = PixelArt.U, w = Shared.W * U, h = Shared.H * U;
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     const g = c.getContext('2d');
-    g.imageSmoothingEnabled = true;
+    g.imageSmoothingEnabled = false; // ไม่เบลอตอนย่อลง U=16 จะได้พิกเซลคมตอนขยาย ×ART_SCALE
     g.drawImage(mapBg, 0, 0, w, h);
     return c;
   }

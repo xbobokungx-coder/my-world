@@ -1,9 +1,10 @@
 (() => {
 'use strict';
-const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
+const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, ART_SCALE, WALK_SPEED, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
   GAME_TITLES, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, woodXp, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, SELLABLE } = Shared;
+const PX = TS / 32, HT = TS / 2; // PX = สเกลออฟเซ็ตสมัย TS=32 · HT = กลางช่อง
 const MAP = makeMap();
 const $ = id => document.getElementById(id);
 const canvas = $('c'), ctx = canvas.getContext('2d'), mainCtx = ctx;
@@ -116,7 +117,7 @@ function handle(m) {
       npcs.clear(); (m.npcs || []).forEach(n => npcs.set(n.id, mkPlayer(n)));
       pets.clear(); (m.pets || []).forEach(q => pets.set(q.id, { id: q.id, kind: q.kind, v: q.v, x: q.x, y: q.y, tx: q.x, ty: q.y, dir: q.dir, dx: q.dir === 2 ? -1 : 1, anim: Math.random() * 6, moving: false }));
       if (m.first) { slot = 0; selTool = 'hoe'; ls.set('mw_tool', 'hoe'); } // เข้าเกมครั้งแรก: ถือจอบพร้อมขุด (คู่มือข้อแรก)
-      me = players.get(myId); updateLampBtn(); updatePetBtn(); syncDeaf();
+      me = players.get(myId); updateLampBtn(); updatePetBtn(); updateVehBtn(); syncDeaf();
       $('login').classList.add('hidden');
       ['hudTop', 'hotbar', 'chat', 'mini'].forEach(i => $(i).classList.remove('hidden'));
       layoutHud(); setMini(miniState);
@@ -166,7 +167,7 @@ function handle(m) {
       break;
     }
     case 'tile': if (m.v) farm[m.k] = m.v; else delete farm[m.k]; break;
-    case 'inv': inv = m.inv; if (m.fr) freshSt = m.fr; renderHud(); refreshOpen(); updateLampBtn(); updatePetBtn(); break;
+    case 'inv': inv = m.inv; if (m.fr) freshSt = m.fr; renderHud(); refreshOpen(); updateLampBtn(); updatePetBtn(); updateVehBtn(); break;
     case 'skills': skills = m.skills; refreshOpen(); break;
     case 'msg': toast(m.text); break;
     case 'gift': showGift(m.item); break;
@@ -212,7 +213,7 @@ function handle(m) {
     case 'village': villageSt = m; villageEnd = m.left ? Date.now() + m.left : 0; updateHappyChip(); if (townShown()) renderTown(); break;
     case 'fame': fameSt = m.f; if (townShown()) renderTown(); break;
     case 'title': { const p = players.get(m.id); if (p) p.title = m.title; if (achShown()) renderAch(); break; }
-    case 'veh': { const p = players.get(m.id); if (p) p.veh = m.v || ''; if (m.id === myId && !$('shop').classList.contains('hidden')) renderShop(); break; }
+    case 'veh': { const p = players.get(m.id); if (p) p.veh = m.v || ''; if (m.id === myId) { updateVehBtn(); if (!$('shop').classList.contains('hidden')) renderShop(); } break; }
     case 'auc': aucSt = m.a; if (townShown()) renderTown(); break;
     case 'ch': chSt = { ch: m.ch, wet: m.wet, chain: m.chain }; if (questShown()) renderQuestPanel(); break;
     case 'chain': chSt.chain = m.n; break;
@@ -1031,6 +1032,11 @@ function updateLampBtn() {
 }
 $('petBtn').onclick = () => { if (me) { openPetMenu(); playSfx('click'); } };
 $('lampBtn').onclick = () => { if (me) { send({ t: 'lamp', on: !me.lamp }); playSfx('click'); } };
+function updateVehBtn() { // ปุ่มยานพาหนะ: โชว์เมื่อมียานในกระเป๋าหรือกำลังขี่อยู่
+  const riding = !!(me && me.veh), own = Object.keys(Shared.VEHICLES).some(v => inv['veh_' + v] > 0);
+  for (const b of [$('vehBtn'), $('vehMenu')]) { if (!b) continue; b.classList.toggle('hidden', !own && !riding); b.classList.toggle('on', riding); b.setAttribute('aria-pressed', riding ? 'true' : 'false'); }
+}
+for (const b of [$('vehBtn'), $('vehMenu')]) if (b) b.onclick = () => { if (me) { send({ t: 'veh', v: me.veh ? '' : Object.keys(Shared.VEHICLES).filter(v => inv['veh_' + v] > 0).pop() || '' }); playSfx('click'); } };
 
 const CATS = [['furn', '🛋️ เฟอร์นิเจอร์ (วางในบ้านด้วยปุ่ม 🏠)'], ['food', '🍽️ อาหารสำเร็จรูป (กินแล้วหายหิว)'], ['seed', '🌱 เมล็ดพันธุ์'], ['crop', '🥬 พืชผล'], ['fish', '🐟 ปลาที่ตกได้'], ['animal', '🥚 ผลผลิตจากสัตว์'], ['feed', '🌾 อาหารสัตว์ / ยา'], ['tool', '🪱 เหยื่อตกปลา'], ['wood', '🪵 ไม้'], ['gear', '🎒 อุปกรณ์ที่ซื้อ']];
 // แท็บย่อยในกระเป๋า: ชื่อ, ป้าย, หมวดของที่รวมอยู่ (เหยื่อตกปลาอยู่กับปลา)
@@ -2296,9 +2302,10 @@ let userZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, +ls.get('mw_zoom') || 1)); 
 function resize() {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
-  baseZoom = Math.max(isTouch ? 1.35 : 1.2, Math.min(innerWidth / 720, innerHeight / 450)) * dpr; // auto-fit ตามขนาดจอ/ความละเอียด
+  // คูณ 32/TS ให้เห็นจำนวนช่องใกล้เดิมเมื่อ TS โต · ปัดใกล้จำนวนเต็มเพื่อพิกเซลคม
+  baseZoom = Math.max(isTouch ? 1.35 : 1.2, Math.min(innerWidth / 720, innerHeight / 450)) * dpr * (32 / TS);
   document.documentElement.style.setProperty('--ui', isTouch ? 1 : Math.max(1, Math.min(1.8, Math.min(innerWidth / 1280, innerHeight / 720))).toFixed(2)); // UI คอมจอใหญ่ขยายตามสเกลจอ
-  zoom = baseZoom * userZoom;
+  { const z = baseZoom * userZoom; zoom = Math.abs(z - Math.round(z)) < 0.06 * Math.max(1, baseZoom) ? Math.round(z) : z; }
   if (scene && build.on) { // ตกแต่งบ้าน: ซูมให้เห็นทั้งห้องในพื้นที่ที่ไม่ถูกแถบบน/เมนูตกแต่งบัง
     const tr = $('build').getBoundingClientRect(), hb = $('hudTop').getBoundingClientRect(), tray = tr.width > innerWidth * 0.7;
     const x0 = 8, x1 = tray ? innerWidth - 8 : tr.left - 8, y0 = Math.max(hb.bottom + 4, 0), y1 = tray ? tr.top - 4 : innerHeight - 8;
@@ -2348,7 +2355,7 @@ function drawStructures(g, gh) {
   }
   // เกาะตกปลาลับ: ต้นมะพร้าวบนเกาะทราย + ลังเหยื่อ (ตัวเกาะเป็นช่องทราย พื้นวาดจาก ground)
   if (builtProj.has('island')) {
-    const I = Shared.ISLAND, px = (I.x0 + 1) * TS + 16, py = (I.y0 + 1) * TS + 22;
+    const I = Shared.ISLAND, px = (I.x0 + 1) * TS + HT, py = (I.y0 + 1) * TS + 22 * PX;
     g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(px - 10, py + 2, 24, 5);
     g.fillStyle = '#7a4a24'; g.fillRect(px - 2, py - 34, 5, 38); g.fillRect(px - 4, py - 30, 4, 4); g.fillRect(px + 1, py - 18, 4, 4); g.fillStyle = '#a8703a'; g.fillRect(px - 2, py - 34, 2, 38);
     for (const [dx, dy, ww] of [[-22, -34, 22], [0, -38, 22], [-14, -42, 18], [-24, -28, 16], [8, -32, 16]]) { g.fillStyle = '#2f7d32'; g.fillRect(px + dx, py + dy, ww, 5); g.fillStyle = '#58b04a'; g.fillRect(px + dx + 2, py + dy, ww - 6, 2); }
@@ -2417,7 +2424,7 @@ function buildHouseBase() {
   R('#8c2a22', HS.door[0] * U + 2, (HS.y1 - 1) * U + 2, HS.door.length * U - 4, U - 4); R('#e8c66a', HS.door[0] * U + 4, (HS.y1 - 1) * U + 4, HS.door.length * U - 8, 2); R('#e8c66a', HS.door[0] * U + 4, (HS.y1 - 1) * U + U - 6, HS.door.length * U - 8, 2);
   baseHi = document.createElement('canvas'); baseHi.width = W * TS; baseHi.height = H * TS;
   const gh = baseHi.getContext('2d'); gh.textAlign = 'center'; gh.textBaseline = 'middle';
-  PixelUI.world(gh, '🚪', (HS.door[0] + 1) * TS, HS.y1 * TS + 16, 15); // ป้ายประตูทางออก
+  PixelUI.world(gh, '🚪', (HS.door[0] + 1) * TS, HS.y1 * TS + HT, 15); // ป้ายประตูทางออก
   return oc;
 }
 function buildBase() {
@@ -2425,7 +2432,8 @@ function buildBase() {
   const g = oc.getContext('2d');
   // พื้นแมพ: ใช้ภาพ bg ชุดใหม่ ถ้าโหลดแล้ว ไม่งั้น PixelArt ชั่วคราว
   const mapBg = typeof PackArt !== 'undefined' && PackArt.mapReady() && PackArt.mapBackground();
-  if (mapBg) { g.imageSmoothingEnabled = true; g.drawImage(mapBg, 0, 0); g.imageSmoothingEnabled = false; }
+  // ไม่เบลอตอนขยายพื้น → พิกเซลต่อช่องเท่าชั้นอื่น (TS=64 = ขยายจาก 16×4)
+  if (mapBg) { g.imageSmoothingEnabled = false; g.drawImage(mapBg, 0, 0); }
   else g.drawImage(PixelArt.ground(MAP), 0, 0);
   PixelArt.fences(g, MAP);
   for (const b of BUILDINGS) for (const [cx, cy] of b.counter) g.drawImage(PixelArt.counter(b), cx * U - 1, cy * U + 2);
@@ -2455,24 +2463,24 @@ function buildBase() {
       gh.font = `bold 13px ${FONT}`; gh.fillStyle = '#2b2f55'; gh.fillText(`${b.sign} ${b.name} ${b.sign}`, bx + bw / 2, by + (bh - 16) / 2 - 1);
       continue;
     }
-    b.counter.forEach(([cx, cy], i) => { PixelUI.world(gh, GOODS[b.kind][i % 2], cx * TS + 16, cy * TS + 22, 15); });
+    b.counter.forEach(([cx, cy], i) => { PixelUI.world(gh, GOODS[b.kind][i % 2], cx * TS + HT, cy * TS + 22 * PX, 15); });
   }
-  { // บ้านหลังใหญ่: หน้าบ้านเหนือประตู HOUSE_DOOR (27,5) เดินเข้าประตูแล้วเลือกเข้าบ้านตัวเอง/บ้านเพื่อน
-    const B = Shared.HOUSE_BLD, bx = B.x0 * TS, by = B.y0 * TS, bw = (B.x1 - B.x0 + 1) * TS, bh = (B.y1 - B.y0 + 1) * TS, dx = Shared.HOUSE_DOOR.x * TS;
+  { // บ้านหลังใหญ่: หน้าบ้านเหนือประตู HOUSE_DOOR (27,5) เดินเข้าประตูแล้วเลือกเข้าบ้านตัวเอง/บ้านเพื่อน · ออฟเซ็ต ×PX ตาม TS
+    const B = Shared.HOUSE_BLD, bx = B.x0 * TS, by = B.y0 * TS, bw = (B.x1 - B.x0 + 1) * TS, bh = (B.y1 - B.y0 + 1) * TS, dx = Shared.HOUSE_DOOR.x * TS, Z = PX;
     g.drawImage(oc, (B.x0 - 7) * U, B.y0 * U, (B.x1 - B.x0 + 1) * U, (B.y1 - B.y0 + 1) * U, bx, by, bw, bh); // พื้นหญ้าใต้ตัวบ้าน (ช่องตัน) คัดลอกลายหญ้าข้างๆ มาปิดสีทางเดิน
-    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(bx + 6, by + bh - 6, bw - 8, 10);
-    g.fillStyle = '#7a4a24'; g.fillRect(bx + 8, by + 48, bw - 16, bh - 48); g.fillStyle = '#f0e0bc'; g.fillRect(bx + 11, by + 51, bw - 22, bh - 54);
-    for (let x = bx + 11; x < bx + bw - 11; x += 14) { g.fillStyle = '#e2cf9e'; g.fillRect(x, by + 51, 2, bh - 54); }
-    g.fillStyle = '#b9602f'; g.fillRect(bx + 11, by + bh - 20, bw - 22, 14); g.fillStyle = '#7a3f1d'; g.fillRect(bx + 11, by + bh - 8, bw - 22, 2);
-    g.fillStyle = '#a82f23'; g.beginPath(); g.moveTo(bx - 4, by + 54); g.lineTo(bx + bw / 2, by + 2); g.lineTo(bx + bw + 4, by + 54); g.closePath(); g.fill();
-    g.fillStyle = '#c0392b'; g.beginPath(); g.moveTo(bx + 6, by + 50); g.lineTo(bx + bw / 2, by + 8); g.lineTo(bx + bw - 6, by + 50); g.closePath(); g.fill();
-    for (let i = 0; i < 6; i++) { g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(bx + bw / 2 - 2 + i * 18, by + 14 + i * 6, 2, 34 - i * 6); }
-    g.fillStyle = '#5a3a1c'; g.fillRect(bx + bw - 50, by + 16, 14, 24); g.fillStyle = '#8d8a94'; g.fillRect(bx + bw - 52, by + 13, 18, 5); // ปล่องไฟ
-    g.fillStyle = '#5a3a1c'; g.fillRect(dx - 3, by + bh - 52, 38, 52); g.fillStyle = '#9a5a2a'; g.fillRect(dx, by + bh - 49, 32, 49); g.fillStyle = '#b87a3d'; g.fillRect(dx + 3, by + bh - 46, 12, 22); g.fillRect(dx + 17, by + bh - 46, 12, 22);
-    g.fillStyle = '#f1c40f'; g.fillRect(dx + 25, by + bh - 24, 3, 3);
-    for (const wx of [bx + 24, bx + bw - 68]) { g.fillStyle = '#5a3a1c'; g.fillRect(wx, by + 74, 44, 32); g.fillStyle = '#a8dcf2'; g.fillRect(wx + 3, by + 77, 38, 26); g.fillStyle = '#d6f0fb'; g.fillRect(wx + 3, by + 77, 38, 8); g.fillStyle = '#5a3a1c'; g.fillRect(wx + 20, by + 77, 3, 26); g.fillRect(wx, by + 105, 44, 4); }
-    g.fillStyle = '#5a3a1c'; g.fillRect(dx - 24, by + 56, 80, 16); g.fillStyle = '#e8c66a'; g.fillRect(dx - 22, by + 58, 76, 12); // ป้ายเหนือประตู
-    gh.font = `bold 11px ${FONT}`; gh.fillStyle = '#3d2a1a'; gh.fillText('🏠 บ้านหลังใหญ่', dx + 16, by + 64.5);
+    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(bx + 6 * Z, by + bh - 6 * Z, bw - 8 * Z, 10 * Z);
+    g.fillStyle = '#7a4a24'; g.fillRect(bx + 8 * Z, by + 48 * Z, bw - 16 * Z, bh - 48 * Z); g.fillStyle = '#f0e0bc'; g.fillRect(bx + 11 * Z, by + 51 * Z, bw - 22 * Z, bh - 54 * Z);
+    for (let x = bx + 11 * Z; x < bx + bw - 11 * Z; x += 14 * Z) { g.fillStyle = '#e2cf9e'; g.fillRect(x, by + 51 * Z, 2 * Z, bh - 54 * Z); }
+    g.fillStyle = '#b9602f'; g.fillRect(bx + 11 * Z, by + bh - 20 * Z, bw - 22 * Z, 14 * Z); g.fillStyle = '#7a3f1d'; g.fillRect(bx + 11 * Z, by + bh - 8 * Z, bw - 22 * Z, 2 * Z);
+    g.fillStyle = '#a82f23'; g.beginPath(); g.moveTo(bx - 4 * Z, by + 54 * Z); g.lineTo(bx + bw / 2, by + 2 * Z); g.lineTo(bx + bw + 4 * Z, by + 54 * Z); g.closePath(); g.fill();
+    g.fillStyle = '#c0392b'; g.beginPath(); g.moveTo(bx + 6 * Z, by + 50 * Z); g.lineTo(bx + bw / 2, by + 8 * Z); g.lineTo(bx + bw - 6 * Z, by + 50 * Z); g.closePath(); g.fill();
+    for (let i = 0; i < 6; i++) { g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(bx + bw / 2 - 2 * Z + i * 18 * Z, by + 14 * Z + i * 6 * Z, 2 * Z, 34 * Z - i * 6 * Z); }
+    g.fillStyle = '#5a3a1c'; g.fillRect(bx + bw - 50 * Z, by + 16 * Z, 14 * Z, 24 * Z); g.fillStyle = '#8d8a94'; g.fillRect(bx + bw - 52 * Z, by + 13 * Z, 18 * Z, 5 * Z); // ปล่องไฟ
+    g.fillStyle = '#5a3a1c'; g.fillRect(dx - 3 * Z, by + bh - 52 * Z, 38 * Z, 52 * Z); g.fillStyle = '#9a5a2a'; g.fillRect(dx, by + bh - 49 * Z, 32 * Z, 49 * Z); g.fillStyle = '#b87a3d'; g.fillRect(dx + 3 * Z, by + bh - 46 * Z, 12 * Z, 22 * Z); g.fillRect(dx + 17 * Z, by + bh - 46 * Z, 12 * Z, 22 * Z);
+    g.fillStyle = '#f1c40f'; g.fillRect(dx + 25 * Z, by + bh - 24 * Z, 3 * Z, 3 * Z);
+    for (const wx of [bx + 24 * Z, bx + bw - 68 * Z]) { g.fillStyle = '#5a3a1c'; g.fillRect(wx, by + 74 * Z, 44 * Z, 32 * Z); g.fillStyle = '#a8dcf2'; g.fillRect(wx + 3 * Z, by + 77 * Z, 38 * Z, 26 * Z); g.fillStyle = '#d6f0fb'; g.fillRect(wx + 3 * Z, by + 77 * Z, 38 * Z, 8 * Z); g.fillStyle = '#5a3a1c'; g.fillRect(wx + 20 * Z, by + 77 * Z, 3 * Z, 26 * Z); g.fillRect(wx, by + 105 * Z, 44 * Z, 4 * Z); }
+    g.fillStyle = '#5a3a1c'; g.fillRect(dx - 24 * Z, by + 56 * Z, 80 * Z, 16 * Z); g.fillStyle = '#e8c66a'; g.fillRect(dx - 22 * Z, by + 58 * Z, 76 * Z, 12 * Z); // ป้ายเหนือประตู
+    gh.font = `bold 11px ${FONT}`; gh.fillStyle = '#3d2a1a'; gh.fillText('🏠 บ้านหลังใหญ่', dx + HT, by + 64.5 * Z);
   }
   // ตู้เกม (เรียงเป็นรูปตัว U) + พื้นลานตู้เกมมีลวดลาย
   // ตู้เกม: สีไม่ซ้ำกันแต่กลมกลืนกับธีม และมี 3 ทรงหน้าตา (สลับตามลำดับตู้) • ตู้ว่างเป็นสีเทา
@@ -2539,7 +2547,7 @@ function buildBase() {
     g.fillStyle = '#c98b4a'; g.fillRect(cx + 3, cy + 8, 26, 3); g.fillStyle = '#f1c40f'; g.fillRect(cx + 3, cy + 16, 26, 2); g.fillRect(cx + 13, cy + 14, 6, 7);
     g.fillStyle = '#5a3a1c'; g.fillRect(cx + 15, cy + 17, 2, 3); PixelUI.world(gh, '🪙', cx + 16, cy + 2, 14); }
   { const tag = (txt, cx, y) => { gh.font = 'bold 8px sans-serif'; const w = gh.measureText(txt).width + 8; g.fillStyle = 'rgba(40,28,14,.85)'; g.fillRect(cx - w / 2, y, w, 11); gh.fillStyle = '#fff'; gh.textAlign = 'center'; gh.textBaseline = 'middle'; gh.fillText(txt, cx, y + 5.5); }; // ป้ายชื่อเหนือกระดานข่าว ATM และตู้กองกลาง
-    tag('ข่าวเมือง', BOARD.x * TS + 16, BOARD.y * TS - 22); tag('ATM', ATM.x * TS + 16, ATM.y * TS - 22); tag('กองกลาง', CHEST.x * TS + 16, CHEST.y * TS - 14); }
+    tag('ข่าวเมือง', BOARD.x * TS + HT, BOARD.y * TS - 22 * PX); tag('ATM', ATM.x * TS + HT, ATM.y * TS - 22 * PX); tag('กองกลาง', CHEST.x * TS + HT, CHEST.y * TS - 14 * PX); }
   // เสาไฟ + กระถางดอกไม้รอบลาน (ภาพพื้นอย่างเดียว ไม่ชนการเดิน/เคาน์เตอร์) ให้หนาแน่นใกล้ภาพอ้างอิง
   { const lamp = (tx, ty) => {
       const px = tx * TS, py = ty * TS;
@@ -2582,28 +2590,28 @@ function checkProjects() { // โครงการไหนครบเป้�
 // ---------- drawing helpers ----------
 function darken(hex, a) { const n = parseInt(hex.slice(1), 16); const f = c => Math.max(0, Math.round(c * (1 - a))); return `rgb(${f(n >> 16)},${f(n >> 8 & 255)},${f(n & 255)})`; }
 function drawSeat(s) {
-  const px = s.x * TS, py = s.y * TS;
-  ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(px + 3, py + 24, 26, 5);
+  const px = s.x * TS, py = s.y * TS, Z = PX;
+  ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(px + 3 * Z, py + 24 * Z, 26 * Z, 5 * Z);
   if (s.kind === 'bench') { // ม้านั่งไม้พิกเซล (3 โทน + ขอบ) ให้ใกล้ภาพอ้างอิง
-    ctx.fillStyle = '#5a371e'; ctx.fillRect(px + 1, py + 17, 5, 10); ctx.fillRect(px + 26, py + 17, 5, 10);
-    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(px + 2, py + 18, 3, 8); ctx.fillRect(px + 27, py + 18, 3, 8);
-    ctx.fillStyle = '#a0692f'; ctx.fillRect(px, py + 12, 32, 8); ctx.fillStyle = '#c98b4a'; ctx.fillRect(px, py + 12, 32, 3);
-    ctx.fillStyle = '#6a4220'; ctx.fillRect(px, py + 19, 32, 1); for (const lx of [8, 16, 24]) ctx.fillRect(px + lx, py + 13, 1, 6);
-    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(px + 1, py + (s.face === 1 ? 20 : 4), 30, 5);
-    ctx.fillStyle = '#c98b4a'; ctx.fillRect(px + 1, py + (s.face === 1 ? 20 : 4), 30, 2);
+    ctx.fillStyle = '#5a371e'; ctx.fillRect(px + 1 * Z, py + 17 * Z, 5 * Z, 10 * Z); ctx.fillRect(px + 26 * Z, py + 17 * Z, 5 * Z, 10 * Z);
+    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(px + 2 * Z, py + 18 * Z, 3 * Z, 8 * Z); ctx.fillRect(px + 27 * Z, py + 18 * Z, 3 * Z, 8 * Z);
+    ctx.fillStyle = '#a0692f'; ctx.fillRect(px, py + 12 * Z, 32 * Z, 8 * Z); ctx.fillStyle = '#c98b4a'; ctx.fillRect(px, py + 12 * Z, 32 * Z, 3 * Z);
+    ctx.fillStyle = '#6a4220'; ctx.fillRect(px, py + 19 * Z, 32 * Z, 1 * Z); for (const lx of [8, 16, 24]) ctx.fillRect(px + lx * Z, py + 13 * Z, 1 * Z, 6 * Z);
+    ctx.fillStyle = '#8b5a2b'; ctx.fillRect(px + 1 * Z, py + (s.face === 1 ? 20 : 4) * Z, 30 * Z, 5 * Z);
+    ctx.fillStyle = '#c98b4a'; ctx.fillRect(px + 1 * Z, py + (s.face === 1 ? 20 : 4) * Z, 30 * Z, 2 * Z);
   } else if (s.kind === 'hay') {
-    ctx.fillStyle = '#d9b44a'; ctx.beginPath(); ctx.ellipse(px + 16, py + 20, 14, 10, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = '#c29a32'; for (let i = -10; i <= 10; i += 5) ctx.fillRect(px + 16 + i, py + 12, 1.5, 15);
-    ctx.fillStyle = '#e8cd72'; ctx.beginPath(); ctx.ellipse(px + 16, py + 14, 12, 5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#d9b44a'; ctx.beginPath(); ctx.ellipse(px + HT, py + 20 * Z, 14 * Z, 10 * Z, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#c29a32'; for (let i = -10; i <= 10; i += 5) ctx.fillRect(px + HT + i * Z, py + 12 * Z, 1.5 * Z, 15 * Z);
+    ctx.fillStyle = '#e8cd72'; ctx.beginPath(); ctx.ellipse(px + HT, py + 14 * Z, 12 * Z, 5 * Z, 0, 0, 7); ctx.fill();
   } else if (s.face === 0 || s.face === 1) { // เก้าอี้หันหน้าขึ้น/ลง (แถวโรงหนัง): พนักพิงเป็นแถบยาวด้านหลัง เบาะสีแดง
-    ctx.fillStyle = '#6b4423'; ctx.fillRect(px + 6, py + 20, 3, 8); ctx.fillRect(px + 23, py + 20, 3, 8);
-    ctx.fillStyle = '#b5793a'; ctx.fillRect(px + 3, py + 11, 26, 10);
-    ctx.fillStyle = '#c0453a'; ctx.fillRect(px + 5, py + 12, 22, 7);
-    ctx.fillStyle = '#9a6430'; ctx.fillRect(px + 3, py + (s.face === 1 ? 19 : 4), 26, 6);
+    ctx.fillStyle = '#6b4423'; ctx.fillRect(px + 6 * Z, py + 20 * Z, 3 * Z, 8 * Z); ctx.fillRect(px + 23 * Z, py + 20 * Z, 3 * Z, 8 * Z);
+    ctx.fillStyle = '#b5793a'; ctx.fillRect(px + 3 * Z, py + 11 * Z, 26 * Z, 10 * Z);
+    ctx.fillStyle = '#c0453a'; ctx.fillRect(px + 5 * Z, py + 12 * Z, 22 * Z, 7 * Z);
+    ctx.fillStyle = '#9a6430'; ctx.fillRect(px + 3 * Z, py + (s.face === 1 ? 19 : 4) * Z, 26 * Z, 6 * Z);
   } else { // เก้าอี้
-    ctx.fillStyle = '#6b4423'; ctx.fillRect(px + 7, py + 20, 3, 8); ctx.fillRect(px + 22, py + 20, 3, 8);
-    ctx.fillStyle = '#b5793a'; ctx.fillRect(px + 6, py + 14, 20, 7);
-    ctx.fillStyle = '#9a6430'; ctx.fillRect(px + (s.face === 2 ? 20 : 6), py + 2, 6, 14);
+    ctx.fillStyle = '#6b4423'; ctx.fillRect(px + 7 * Z, py + 20 * Z, 3 * Z, 8 * Z); ctx.fillRect(px + 22 * Z, py + 20 * Z, 3 * Z, 8 * Z);
+    ctx.fillStyle = '#b5793a'; ctx.fillRect(px + 6 * Z, py + 14 * Z, 20 * Z, 7 * Z);
+    ctx.fillStyle = '#9a6430'; ctx.fillRect(px + (s.face === 2 ? 20 : 6) * Z, py + 2 * Z, 6 * Z, 14 * Z);
   }
 }
 // กองไฟพิกเซล: วงหิน + ฟืนไขว้ + ถ่านแดง (สไปรต์เดียว) แล้วซ้อนเปลวไฟ 4 เฟรม (ขอบส้มเข้ม) + ประกายไฟลอยขึ้น
@@ -2636,47 +2644,47 @@ const FIRE_ART = (() => {
   return { base, flames };
 })();
 function drawFire(now) {
-  const px = FIRE.x * TS + 16, py = FIRE.y * TS + 22, A = FIRE_ART;
+  const px = FIRE.x * TS + HT, py = FIRE.y * TS + 22 * PX, A = FIRE_ART, AS = ART_SCALE;
   ctx.imageSmoothingEnabled = false;
   const f = 1 + Math.sin(now / 90) * 0.12 + Math.sin(now / 53) * 0.08;
-  const g = ctx.createRadialGradient(px, py, 2, px, py, 34 * f); g.addColorStop(0, 'rgba(255,170,70,.32)'); g.addColorStop(1, 'rgba(255,150,50,0)');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(px, py + 2, 34 * f, 16 * f, 0, 0, 7); ctx.fill(); // แสงอุ่นบนพื้นรอบกองไฟ
-  ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px, py + 6, 26, 8, 0, 0, 7); ctx.fill();
-  ctx.drawImage(A.base, px - 28, py - 12, A.base.width * 2, A.base.height * 2);
-  const fl = A.flames[Math.floor(now / 160) % 4], fh = Math.round(fl.height * 2 * (0.94 + (f - 1) * 0.4)); // 4 เฟรม ~6 ภาพ/วิ + ยืดหดเบาๆ ตามจังหวะกะพริบ
-  ctx.drawImage(fl, px - fl.width, py - 1 - fh, fl.width * 2, fh); // ฐานเปลวอยู่เหนือจุดไขว้ฟืน ให้ยังเห็นฟืน
+  const g = ctx.createRadialGradient(px, py, 2 * PX, px, py, 34 * PX * f); g.addColorStop(0, 'rgba(255,170,70,.32)'); g.addColorStop(1, 'rgba(255,150,50,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(px, py + 2 * PX, 34 * PX * f, 16 * PX * f, 0, 0, 7); ctx.fill(); // แสงอุ่นบนพื้นรอบกองไฟ
+  ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px, py + 6 * PX, 26 * PX, 8 * PX, 0, 0, 7); ctx.fill();
+  ctx.drawImage(A.base, px - 14 * AS, py - 6 * AS, A.base.width * AS, A.base.height * AS);
+  const fl = A.flames[Math.floor(now / 160) % 4], fh = Math.round(fl.height * AS * (0.94 + (f - 1) * 0.4)); // 4 เฟรม ~6 ภาพ/วิ + ยืดหดเบาๆ ตามจังหวะกะพริบ
+  ctx.drawImage(fl, px - fl.width * (AS / 2), py - 1 * PX - fh, fl.width * AS, fh); // ฐานเปลวอยู่เหนือจุดไขว้ฟืน ให้ยังเห็นฟืน
   for (let i = 0; i < 5; i++) { // ประกายไฟลอยขึ้นแล้วจาง
-    const t = ((now / 1000) * 0.6 + i * 0.37) % 1, sx = Math.round(px + Math.sin(i * 2.3 + t * 5) * (4 + t * 8)), sy = Math.round(py - 22 - t * 30);
-    ctx.globalAlpha = 1 - t; ctx.fillStyle = t < 0.5 ? '#ffd36a' : '#ff8a2a'; ctx.fillRect(sx, sy, 2, 2);
+    const t = ((now / 1000) * 0.6 + i * 0.37) % 1, sx = Math.round(px + Math.sin(i * 2.3 + t * 5) * (4 + t * 8) * PX), sy = Math.round(py - (22 + t * 30) * PX);
+    ctx.globalAlpha = 1 - t; ctx.fillStyle = t < 0.5 ? '#ffd36a' : '#ff8a2a'; ctx.fillRect(sx, sy, 2 * PX, 2 * PX);
   }
   ctx.globalAlpha = 1;
 }
 function drawChainTree(now) { // โตตามจำนวนชาเลนจ์ที่สำเร็จทั้งเมือง: <5 ต้นกล้า • <20 ต้นกลาง • ≥20 ต้นใหญ่ มีป้ายจำนวนใบ
-  const n = chSt.chain, k = n < 5 ? 1.2 : n < 20 ? 1.6 : 2.1, s = PixelArt.tree(3, 5, 'broad'), w = s.width * k, h = s.height * k, cx = 24 * TS + 16, by = 31 * TS + 32;
+  const n = chSt.chain, k = (n < 5 ? 1.2 : n < 20 ? 1.6 : 2.1) * (ART_SCALE / 2), s = PixelArt.tree(3, 5, 'broad'), w = s.width * k, h = s.height * k, cx = 24 * TS + HT, by = 31 * TS + TS;
   ctx.drawImage(s, cx - w / 2, by - h, w, h); PixelUI.world(ctx, '🪣', cx + w / 4, by - h * 0.55 + Math.sin(now / 500) * 2, 14);
   ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(42,27,20,.8)'; ctx.fillRect(cx - 26, by + 2, 52, 13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`🌳 ${n} ใบ`, cx, by + 12);
 }
-function drawTree(x, y) { // สไปรต์ต้นไม้พิกเซล (สุ่มแบบตามตำแหน่ง) โคนต้นอยู่กลางขอบล่างของช่อง
-  const s = PixelArt.tree(x, y, treeKinds.get(x + ',' + y));
-  ctx.drawImage(s, x * TS + 16 - s.width, y * TS + 32 - s.height * 2, s.width * 2, s.height * 2);
+function drawTree(x, y) { // สไปรต์ต้นไม้พิกเซล (สุ่มแบบตามตำแหน่ง) โคนต้นอยู่กลางขอบล่างของช่อง · ART_SCALE ให้เท่า TS
+  const s = PixelArt.tree(x, y, treeKinds.get(x + ',' + y)), AS = ART_SCALE;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(s, x * TS + TS / 2 - s.width * (AS / 2), y * TS + TS - s.height * AS, s.width * AS, s.height * AS);
 }
 // ร้านค้า: ใช้ asset pack ถ้ามี ไม่งั้นพิกเซลวาดโค้ด · อีโมจิบนหลังคา + ป้ายชื่อกระดานไม้
 function drawBuilding(b) {
-  const bx = b.x0 * TS, by = b.y0 * TS, bw = (b.x1 - b.x0 + 1) * TS;
+  const bx = b.x0 * TS, by = b.y0 * TS, bw = (b.x1 - b.x0 + 1) * TS, AS = ART_SCALE;
   const pack = typeof PackArt !== 'undefined' && PackArt.building(b);
   if (pack) {
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(pack.img, pack.x, pack.y, pack.w, pack.h);
     ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(pack.img, pack.x, pack.y, pack.w, pack.h);
   } else {
     const a = PixelArt.building(b);
-    ctx.drawImage(a.spr, bx + a.ox * 2, by + a.oy * 2, a.w * 2, a.h * 2);
+    ctx.drawImage(a.spr, bx + a.ox * AS, by + a.oy * AS, a.w * AS, a.h * AS);
   }
-  const cx = bx + bw / 2, signY = pack ? pack.y + 8 : by - 10;
+  const cx = bx + bw / 2, signY = pack ? pack.y + 8 * PX : by - 10 * PX;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   PixelUI.world(ctx, b.sign, cx, signY, 18);
-  ctx.font = `bold 11px ${FONT}`;
-  const tw = Math.ceil(ctx.measureText(b.name).width) + 12, ty = Math.round((pack ? pack.y : by) + 6), th = 16, x0 = Math.round(cx - tw / 2);
+  ctx.font = `bold ${Math.round(11 * Math.min(1.25, PX))}px ${FONT}`;
+  const tw = Math.ceil(ctx.measureText(b.name).width) + 12, ty = Math.round((pack ? pack.y : by) + 6 * PX), th = 16, x0 = Math.round(cx - tw / 2);
   ctx.fillStyle = PixelArt.OUT; ctx.fillRect(x0 - 2, ty, tw + 4, th); ctx.fillRect(x0, ty - 2, tw, th + 4);
   ctx.fillStyle = '#8f5a2e'; ctx.fillRect(x0, ty, tw, th);
   ctx.fillStyle = '#b67d45'; ctx.fillRect(x0, ty, tw, 2); ctx.fillStyle = '#6e4524'; ctx.fillRect(x0, ty + th - 2, tw, 2);
@@ -2688,32 +2696,32 @@ const SKIN = '#f5cfa0', GOLD = '#e8c04a';
 // ตะเกียงที่ตัวละครถือไว้ตอนเปิดไฟ: ถือข้างตัว (หันซ้าย/ขึ้น = มือซ้าย นอกนั้นมือขวา) แสงกะพริบเบาๆ
 // ---------- อุปกรณ์ในมือ: วาดเป็นพิกเซลอาร์ตขนาดพอดีมือ (มือหน้า/หลัง = ขวา x+8, ด้านข้าง = กลางลำตัว) มีท่าแกว่งตอนใช้งาน ----------
 const WATER_EMOJIS = new Set(Object.values(CANS).map(c => c.emoji.replace(/️/g, '')));
-function heldHand(p) { // ตำแหน่งมือที่ถืออุปกรณ์ [x, y, ทิศออกด้านนอก/ข้างหน้า ±1]
+function heldHand(p) { // ตำแหน่งมือที่ถืออุปกรณ์ [x, y, ทิศออกด้านนอก/ข้างหน้า ±1] · สเกลตาม PX
   const dir = p.dir || 0, sn = p.moving && !p.sit ? Math.sin((p.anim || 0) * 14) : 0, f = sn > .35 ? 1 : sn < -.35 ? 2 : 0;
   const lampSide = dir === 2 || dir === 1 ? -1 : 1, hs = p.lamp ? -lampSide : lampSide;
-  if (dir < 2) return [p.x + hs * 8, p.y + 3 + (f === (hs > 0 ? 2 : 1) ? 2 : 0), hs];
-  const fx = dir === 3 ? 1 : -1; return [p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)), p.y + 3, fx];
+  if (dir < 2) return [p.x + hs * 8 * PX, p.y + 3 * PX + (f === (hs > 0 ? 2 : 1) ? 2 * PX : 0), hs];
+  const fx = dir === 3 ? 1 : -1; return [p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)) * PX, p.y + 3 * PX, fx];
 }
 const rodAngle = p => { const k = p.useAt ? (performance.now() - p.useAt) / 260 : 2; return ((p.dir || 0) >= 2 ? 0.8 : 0.15) - 0.72 * Math.sin(k < 1 ? k * Math.PI * 2 : 0); };
 const isRodHeld = p => !!p.held && p.held.replace(/\uFE0F/g, '') === '🎣' && !p.sit;
-function rodTip(p) { // ปลายคันเบ็ด (ตรงกับที่ drawHeldTool วาด: จุดปลาย 12,-19 หมุนตามมุมคัน)
+function rodTip(p) { // ปลายคันเบ็ด (ตรงกับที่ drawHeldTool วาด: จุดปลาย 12,-19 หมุนตามมุมคัน · ×PX)
   const [hx, hy, fx] = heldHand(p), a = rodAngle(p);
-  return [hx + fx * (12 * Math.cos(a) + 19 * Math.sin(a)), hy + 12 * Math.sin(a) - 19 * Math.cos(a)];
+  return [hx + fx * PX * (12 * Math.cos(a) + 19 * Math.sin(a)), hy + PX * (12 * Math.sin(a) - 19 * Math.cos(a))];
 }
 function drawHeldTool(p, now) {
   const e = p.held.replace(/️/g, ''), OUT = PixelArt.OUT, dir = p.dir || 0;
   const sn = p.moving && !p.sit ? Math.sin((p.anim || 0) * 14) : 0, f = sn > .35 ? 1 : sn < -.35 ? 2 : 0;
   const lampSide = dir === 2 || dir === 1 ? -1 : 1, hs = p.lamp ? -lampSide : lampSide;
-  let hx, fx, hy = p.y + 3;
-  if (dir < 2) { fx = hs; hx = p.x + hs * 8; if (f === (hs > 0 ? 2 : 1)) hy += 2; }                      // หน้า/หลัง: มือซ้าย/ขวา (แขนที่ก้าวลงต่ำกว่า)
-  else { fx = dir === 3 ? 1 : -1; hx = p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)); }          // ข้าง: แขนอยู่กลางลำตัว
+  let hx, fx, hy = p.y + 3 * PX;
+  if (dir < 2) { fx = hs; hx = p.x + hs * 8 * PX; if (f === (hs > 0 ? 2 : 1)) hy += 2 * PX; }                      // หน้า/หลัง: มือซ้าย/ขวา (แขนที่ก้าวลงต่ำกว่า)
+  else { fx = dir === 3 ? 1 : -1; hx = p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)) * PX; }          // ข้าง: แขนอยู่กลางลำตัว
   const k = p.useAt ? (performance.now() - p.useAt) / 260 : 2, sw = k < 1 ? Math.sin(k * Math.PI) : 0; // ท่าใช้งาน 0→1→0
   const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
   const WOOD = '#9c6a35', WD = '#6b4423', STEEL = '#b9c2cc', STH = '#e8eef3';
   const a0 = dir >= 2 ? 0.95 : 0.3, a1 = dir >= 2 ? 1.5 : 1.25; // มุมจอบ/ขวาน: ด้านข้างถือเอียงไปข้างหน้ามากกว่า (ไม่พาดหน้า)
   const isHoe = e === '⛏', isAxe = e === '🪓', isRod = e === '🎣', isCan = WATER_EMOJIS.has(e);
   if (isHoe || isAxe || isRod || isCan) {
-    ctx.save(); ctx.translate(hx, hy); ctx.scale(fx, 1);
+    ctx.save(); ctx.translate(hx, hy); ctx.scale(fx * PX, PX); // สเกลอุปกรณ์ตาม TS
     if (isHoe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(-6, -14, 13, 5, OUT); R(-5, -13, 11, 3, STEEL); R(-5, -13, 11, 1, STH); R(-5, -11, 2, 2, STEEL); R(4, -11, 2, 2, STEEL); }
     else if (isAxe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, STEEL); R(1, -13, 6, 1, STH); R(6, -13, 2, 6, STH); }
     else if (isCan) { // บัวรดน้ำตามระดับที่ซื้อ: 1 สังกะสี (เทาเงิน) • 2 ทองแดง • 3 ทองคำ (ประกาย) ใหญ่ขึ้นตามความจุ
@@ -2740,15 +2748,16 @@ function drawHeldTool(p, now) {
   }
 }
 function drawHeldLamp(p, now) {
-  const side = p.dir === 2 || p.dir === 1 ? -1 : 1, hx = Math.round(p.x + side * 11), hy = Math.round(p.y + 1 + (p.moving ? Math.round(Math.sin(p.anim * 8)) : 0));
+  const side = p.dir === 2 || p.dir === 1 ? -1 : 1, Z = PX;
+  const hx = Math.round(p.x + side * 11 * Z), hy = Math.round(p.y + 1 * Z + (p.moving ? Math.round(Math.sin(p.anim * 8)) * Z : 0));
   const fl = 0.85 + Math.sin(now / 130 + (p.id || 0)) * 0.1;
-  const g = ctx.createRadialGradient(hx, hy - 2, 1, hx, hy - 2, 16); g.addColorStop(0, `rgba(255,214,110,${0.55 * fl})`); g.addColorStop(1, 'rgba(255,214,110,0)');
-  ctx.fillStyle = g; ctx.fillRect(hx - 16, hy - 18, 32, 32);
-  ctx.fillStyle = '#3d2a1a'; ctx.fillRect(hx, hy - 9, 1, 3); ctx.fillRect(hx - 3, hy - 7, 7, 1); // หูหิ้ว + ฝาบน
-  ctx.fillRect(hx - 3, hy - 1, 7, 2);                                                           // ฐาน
-  ctx.fillRect(hx - 3, hy - 6, 1, 5); ctx.fillRect(hx + 3, hy - 6, 1, 5);                      // เสากรอบ
-  ctx.fillStyle = fl > 0.9 ? '#ffe08a' : '#ffc94d'; ctx.fillRect(hx - 2, hy - 6, 5, 5);        // แก้วเรืองแสง
-  ctx.fillStyle = '#fff6c8'; ctx.fillRect(hx - 1, hy - 5, 2, 3);
+  const g = ctx.createRadialGradient(hx, hy - 2 * Z, 1 * Z, hx, hy - 2 * Z, 16 * Z); g.addColorStop(0, `rgba(255,214,110,${0.55 * fl})`); g.addColorStop(1, 'rgba(255,214,110,0)');
+  ctx.fillStyle = g; ctx.fillRect(hx - 16 * Z, hy - 18 * Z, 32 * Z, 32 * Z);
+  ctx.fillStyle = '#3d2a1a'; ctx.fillRect(hx, hy - 9 * Z, 1 * Z, 3 * Z); ctx.fillRect(hx - 3 * Z, hy - 7 * Z, 7 * Z, 1 * Z); // หูหิ้ว + ฝาบน
+  ctx.fillRect(hx - 3 * Z, hy - 1 * Z, 7 * Z, 2 * Z);                                                           // ฐาน
+  ctx.fillRect(hx - 3 * Z, hy - 6 * Z, 1 * Z, 5 * Z); ctx.fillRect(hx + 3 * Z, hy - 6 * Z, 1 * Z, 5 * Z);                      // เสากรอบ
+  ctx.fillStyle = fl > 0.9 ? '#ffe08a' : '#ffc94d'; ctx.fillRect(hx - 2 * Z, hy - 6 * Z, 5 * Z, 5 * Z);        // แก้วเรืองแสง
+  ctx.fillStyle = '#fff6c8'; ctx.fillRect(hx - 1 * Z, hy - 5 * Z, 2 * Z, 3 * Z);
 }
 // เบ็ดตกปลา: เหวี่ยงทุ่นเป็นวงโค้ง สายเอ็นห้อยโค้งตามแรงตึง/ลมพัด ทุ่นลอยตามคลื่น มีระลอกน้ำ และกระตุกแรงตอนปลากินเบ็ด
 function drawFishing(p, t) {
@@ -2791,51 +2800,51 @@ function drawFishing(p, t) {
 }
 function drawPlayer(p, now, cx) {
   const ctx = cx || mainCtx, x = p.x, y = p.y;
-  ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
-  if (p.veh && !p.sit && Shared.VEHICLES[p.veh]) PixelUI.world(ctx, Shared.VEHICLES[p.veh].emoji, x, y + 8, 26); // ยานพาหนะใต้ตัวละคร
+  ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12 * PX, 9 * PX, 3.5 * PX, 0, 0, 7); ctx.fill();
+  if (p.veh && !p.sit && Shared.VEHICLES[p.veh]) PixelUI.world(ctx, Shared.VEHICLES[p.veh].emoji, x, y + 8 * PX, 26); // ยานพาหนะใต้ตัวละคร
   PixelChar.draw(ctx, p, now); // ตัวละครพิกเซล chibi (pixelchar.js)
-  if (p.wet) { PixelUI.world(ctx, '🪣', x, y - 20, 16); ctx.fillStyle = 'rgba(120,190,255,.85)'; for (let i = 0; i < 4; i++) { const t = (now / 600 + i / 4) % 1; ctx.fillRect(x - 10 + i * 7, y - 14 + t * 24, 2, 4); } } // โดนราดน้ำจากชาเลนจ์
+  if (p.wet) { PixelUI.world(ctx, '🪣', x, y - 20 * PX, 16); ctx.fillStyle = 'rgba(120,190,255,.85)'; for (let i = 0; i < 4; i++) { const t = (now / 600 + i / 4) % 1; ctx.fillRect(x - 10 * PX + i * 7 * PX, y - 14 * PX + t * 24 * PX, 2 * PX, 4 * PX); } } // โดนราดน้ำจากชาเลนจ์
   if (p.lamp) drawHeldLamp(p, now);
   if (p.held && !p.sit) drawHeldTool(p, now); // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง)
   if (!p.name) return; // ตัวอย่างในตู้เสื้อผ้า ไม่ต้องวาดชื่อ
-  // ป้ายชื่อ: กล่องกระดาษขอบเข้ม (สูงกว่าหัวตัวละครใหม่ ~9 px)
-  const OUT = PixelArt.OUT, sp = !!p.speaking;
+  // ป้ายชื่อ: กล่องกระดาษขอบเข้ม (สูงกว่าหัวตัวละครตาม ART_SCALE)
+  const OUT = PixelArt.OUT, sp = !!p.speaking, ny0 = 40 * PX, nameY = 29 * PX;
   ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-  const w = Math.ceil(ctx.measureText(p.name).width) + 10, nx = Math.round(x - w / 2), ny = y - 40;
+  const w = Math.ceil(ctx.measureText(p.name).width) + 10, nx = Math.round(x - w / 2), ny = y - ny0;
   ctx.fillStyle = OUT; ctx.fillRect(nx - 1, ny, w + 2, 14); ctx.fillRect(nx, ny - 1, w, 16);
   ctx.fillStyle = sp ? '#8fe6ac' : '#fff3d6'; ctx.fillRect(nx, ny, w, 14);
   ctx.fillStyle = sp ? '#4ab36e' : '#e2c896'; ctx.fillRect(nx, ny + 12, w, 2);
-  ctx.fillStyle = '#3d2a1a'; ctx.fillText(p.name, x, y - 29);
-  if (p.deaf) { const dt = '🔇'; ctx.font = `bold 10px ${FONT}`; const dw = Math.ceil(ctx.measureText(dt).width) + 8, dx = nx - dw - 3; ctx.fillStyle = OUT; ctx.fillRect(dx - 1, ny, dw + 2, 14); ctx.fillStyle = '#e07a66'; ctx.fillRect(dx, ny, dw, 14); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(dt, dx + 4, y - 28.5); ctx.textAlign = 'center'; ctx.font = `bold 11px ${FONT}`; }
-  if (p.status) { ctx.font = `bold 10px ${FONT}`; const st = p.status, sw = Math.ceil(Math.min(150, ctx.measureText(st).width)) + 10; ctx.textAlign = 'center'; ctx.fillStyle = OUT; ctx.fillRect(Math.round(x - sw / 2) - 1, y + 15, sw + 2, 14); ctx.fillStyle = '#fff3d6'; ctx.fillRect(Math.round(x - sw / 2), y + 16, sw, 12); ctx.fillStyle = '#3d2a1a'; ctx.textBaseline = 'alphabetic'; ctx.fillText(st, x, y + 26, 140); }
-  if (p.title) { ctx.font = `bold 9px ${FONT}`; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = OUT; ctx.strokeText(p.title, x, y - 43); ctx.fillStyle = '#ffd966'; ctx.fillText(p.title, x, y - 43); }
+  ctx.fillStyle = '#3d2a1a'; ctx.fillText(p.name, x, y - nameY);
+  if (p.deaf) { const dt = '🔇'; ctx.font = `bold 10px ${FONT}`; const dw = Math.ceil(ctx.measureText(dt).width) + 8, dx = nx - dw - 3; ctx.fillStyle = OUT; ctx.fillRect(dx - 1, ny, dw + 2, 14); ctx.fillStyle = '#e07a66'; ctx.fillRect(dx, ny, dw, 14); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(dt, dx + 4, y - nameY + 0.5); ctx.textAlign = 'center'; ctx.font = `bold 11px ${FONT}`; }
+  if (p.status) { ctx.font = `bold 10px ${FONT}`; const st = p.status, sw = Math.ceil(Math.min(150, ctx.measureText(st).width)) + 10; ctx.textAlign = 'center'; ctx.fillStyle = OUT; ctx.fillRect(Math.round(x - sw / 2) - 1, y + 15 * PX, sw + 2, 14); ctx.fillStyle = '#fff3d6'; ctx.fillRect(Math.round(x - sw / 2), y + 16 * PX, sw, 12); ctx.fillStyle = '#3d2a1a'; ctx.textBaseline = 'alphabetic'; ctx.fillText(st, x, y + 26 * PX, 140); }
+  if (p.title) { ctx.font = `bold 9px ${FONT}`; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = OUT; ctx.strokeText(p.title, x, y - 43 * PX); ctx.fillStyle = '#ffd966'; ctx.fillText(p.title, x, y - 43 * PX); }
   if (p.voice) {
-    ctx.font = '11px sans-serif'; ctx.fillText('🎙️', x + w / 2 + 8, y - 29);
-    if (sp) { ctx.strokeStyle = 'rgba(46,204,113,.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y + 12, 12 + Math.sin(now / 120) * 2, 0, 7); ctx.stroke(); }
+    ctx.font = '11px sans-serif'; ctx.fillText('🎙️', x + w / 2 + 8, y - nameY);
+    if (sp) { ctx.strokeStyle = 'rgba(46,204,113,.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y + 12 * PX, 12 * PX + Math.sin(now / 120) * 2, 0, 7); ctx.stroke(); }
   }
   // ฟองแชท
   if (p.chat && performance.now() - p.chatAt < 5000) {
     ctx.font = `12px ${FONT}`;
-    const tw = Math.ceil(Math.min(160, ctx.measureText(p.chat).width)) + 14, bx = Math.round(x - tw / 2), by = y - 65;
+    const tw = Math.ceil(Math.min(160, ctx.measureText(p.chat).width)) + 14, bx = Math.round(x - tw / 2), by = y - 65 * PX;
     ctx.fillStyle = OUT; ctx.fillRect(bx - 1, by, tw + 2, 20); ctx.fillRect(bx, by - 1, tw, 22); ctx.fillRect(x - 5, by + 21, 10, 4);
     ctx.fillStyle = '#fff'; ctx.fillRect(bx, by, tw, 20); ctx.fillRect(x - 4, by + 20, 8, 4);
-    ctx.fillStyle = '#333'; ctx.fillText(p.chat, x, y - 50, 150);
+    ctx.fillStyle = '#333'; ctx.fillText(p.chat, x, y - 50 * PX, 150);
   }
 }
 const blinkOf = (c, now) => ((now / 1000 + (c.id || 0) * 1.3) % 4) < 0.14;
 const blush = (bx, by, r) => { ctx.fillStyle = 'rgba(255,120,145,.55)'; ctx.beginPath(); ctx.arc(bx, by, r, 0, 7); ctx.fill(); };
 // สัตว์: สไปรต์พิกเซลจาก pixelui.js (หันขวา ซ้ายพลิกกลับ) ส่วนอีโมจิผลผลิต/หัวใจลอยเหนือหัววาดแบบพิกเซลเช่นกัน
-const ANIMAL_SHADOW = { chicken: [7, 3, 7], duck: [7, 3, 7], sheep: [13, 4, 10], cow: [15, 5, 11], pig: [12, 4, 9] };
+const ANIMAL_SHADOW = { chicken: [7, 3, 7], duck: [7, 3, 7], sheep: [13, 4, 10], cow: [15, 5, 11], pig: [12, 4, 9] }; // ค่าสมัย TS=32 → คูณ PX ตอนวาด
 const ANIMAL_STEP = { chicken: 5, duck: 4.5, pig: 4, sheep: 3.5, cow: 3 }; // เฟรมเดินต่อวินาที (ตัวใหญ่ก้าวช้ากว่า)
 function drawAnimalPx(type, c, now, top, prodE) {
-  const x = c.x, y = c.y, moving = !!c.moving, sh = ANIMAL_SHADOW[type];
+  const x = c.x, y = c.y, moving = !!c.moving, sh = ANIMAL_SHADOW[type], topPx = top * PX;
   const eat = !moving && (c.still || 0) > 0.8 && !c.sick && !c.prod && ((c.happyAt && now - c.happyAt < 1800) || ((now / 1000 + (c.id || 0) * 2.7) % 11) < 3); // หยุดนิ่งสักพักแล้วค่อยก้มกิน ไม่ก้มทันทีที่หยุด
-  ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + sh[2], sh[0], sh[1], 0, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + sh[2] * PX, sh[0] * PX, sh[1] * PX, 0, 0, 7); ctx.fill();
   const step = eat ? (((now / (type === 'chicken' ? 900 : 1500) + (c.id || 0) * 0.37) % 1) > 0.8 ? 1 : 0) : moving ? Math.floor(c.anim * (ANIMAL_STEP[type] || 4)) % 2 : 0;
-  const hop = moving && (type === 'chicken' || type === 'duck') ? step : 0; // ไก่/เป็ดเด้งตัว 1 px ตามจังหวะก้าว
+  const hop = moving && (type === 'chicken' || type === 'duck') ? step * PX : 0; // ไก่/เป็ดเด้งตัวตามจังหวะก้าว
   PixelUI.animal(ctx, type, c, { f: c.lr || c.dx || 1, v: eat ? 's' : c.face || 's', eat, step, blink: blinkOf(c, now), prod: !!c.prod, hop });
-  if (c.prod) PixelUI.world(ctx, prodE, x, y - top - 3 + Math.sin(now / 250) * 2, 14);
-  else if (c.fed) PixelUI.world(ctx, '💗', x, y - top - 3, 14);
+  if (c.prod) PixelUI.world(ctx, prodE, x, y - topPx - 3 * PX + Math.sin(now / 250) * 2, 14);
+  else if (c.fed) PixelUI.world(ctx, '💗', x, y - topPx - 3 * PX, 14);
 }
 function drawDuck(c, now) { drawAnimalPx('duck', c, now, 14, '🥚'); }
 function drawSheep(c, now) { drawAnimalPx('sheep', c, now, 22, '🧶'); }
@@ -2857,10 +2866,10 @@ function drawChicken(c, now) { drawAnimalPx('chicken', c, now, 14, '🥚'); }
 function drawCow(c, now) { drawAnimalPx('cow', c, now, 20, '🥛'); }
 function drawPig(c, now) { drawAnimalPx('pig', c, now, 18, '🍄'); }
 function drawBee(c, now) { // ผึ้ง: บินวนรอบรังเล็กๆ ปีกกระพือเร็ว ลอยเหนือพื้นนิดหน่อย • มีน้ำผึ้งพร้อมเก็บให้เห็นเป็น 🍯 เหนือหัว
-  const hov = 9 + Math.sin(now / 180 + (c.id || 0)) * 1.5;
-  ctx.fillStyle = 'rgba(38,40,16,.22)'; ctx.beginPath(); ctx.ellipse(c.x, c.y + 6, 4, 1.4, 0, 0, 7); ctx.fill();
+  const hov = (9 + Math.sin(now / 180 + (c.id || 0)) * 1.5) * PX;
+  ctx.fillStyle = 'rgba(38,40,16,.22)'; ctx.beginPath(); ctx.ellipse(c.x, c.y + 6 * PX, 4 * PX, 1.4 * PX, 0, 0, 7); ctx.fill();
   PixelUI.animal(ctx, 'bee', c, { f: c.lr || c.dx || 1, step: Math.floor(now / 90) % 2, hop: hov });
-  if (c.prod) PixelUI.world(ctx, '🍯', c.x, c.y - hov - 14 + Math.sin(now / 250) * 2, 12);
+  if (c.prod) PixelUI.world(ctx, '🍯', c.x, c.y - hov - 14 * PX + Math.sin(now / 250) * 2, 12);
 }
 // รังผึ้ง (ลัง) ตั้งข้างต้นไม้ถาวร • ขึ้นไอคอนน้ำผึ้งเมื่อมีผึ้งที่รังนี้ผลิตน้ำผึ้งเสร็จแล้ว
 function drawHive(hx, hy, now) {
@@ -2930,9 +2939,9 @@ function drawCompanion(q, now) { // สัตว์เลี้ยงคู่�
   } else {
     drawPet(q, now);
   }
-  if (q.name) { ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; const ny = q.y - (PET_TOP[q.kind] || 12), nw = Math.ceil(ctx.measureText(q.name).width) + 6; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(Math.round(q.x - nw / 2), ny - 10, nw, 11); ctx.fillStyle = '#fff3d6'; ctx.fillText(q.name, q.x, ny - 1); }
-  if (q.sick) PixelUI.world(ctx, '🤒', q.x, q.y - (PET_TOP[q.kind] || 12) - 4 + Math.sin(now / 200), 13);
-  else if (q.sayAt && now - q.sayAt < 1800) { const t = (now - q.sayAt) / 1800; PixelUI.world(ctx, '💕', q.x + 6, q.y - (PET_TOP[q.kind] || 12) - 2 - t * 12, 11); }
+  if (q.name) { ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; const ny = q.y - (PET_TOP[q.kind] || 12) * PX, nw = Math.ceil(ctx.measureText(q.name).width) + 6; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(Math.round(q.x - nw / 2), ny - 10, nw, 11); ctx.fillStyle = '#fff3d6'; ctx.fillText(q.name, q.x, ny - 1); }
+  if (q.sick) PixelUI.world(ctx, '🤒', q.x, q.y - (PET_TOP[q.kind] || 12) * PX - 4 * PX + Math.sin(now / 200), 13);
+  else if (q.sayAt && now - q.sayAt < 1800) { const t = (now - q.sayAt) / 1800; PixelUI.world(ctx, '💕', q.x + 6 * PX, q.y - (PET_TOP[q.kind] || 12) * PX - 2 * PX - t * 12 * PX, 11); }
 }
 function hungerMark(c, now) { // สัตว์ที่หิว: แถบความอิ่มเล็กๆ + หน้าตาเศร้า (หิวจนหมดแล้วจะตายถ้าไม่มีใครให้อาหาร) / สัตว์ป่วยมี 🤒
   const h = c.h === undefined ? 100 : c.h;
@@ -2971,12 +2980,12 @@ function drawSunMotes(now, dark) {
 function drawCrop(tile, px, py, now) {
   ctx.drawImage(PixelArt.soil(tile.w), px, py, TS, TS);
   if (!tile.c) return;
-  const cx = px + 16, cy = py + 27, s = tile.s, sp = PixelUI.crop(s);
+  const cx = px + HT, cy = py + 27 * PX, s = tile.s, sp = PixelUI.crop(s), AS = ART_SCALE;
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(sp, cx - sp.width, cy - sp.height * 2, sp.width * 2, sp.height * 2);
+  ctx.drawImage(sp, cx - sp.width * (AS / 2), cy - sp.height * AS, sp.width * AS, sp.height * AS);
   if (s >= 3) {
-    PixelUI.world(ctx, CROPS[tile.c].emoji, cx, cy - 14 + Math.sin(now / 400 + px) * 1, 22);
-    if (tile.o && me && tile.o !== me.name) PixelUI.world(ctx, tile.l ? '🔒' : '✨', px + 25, py + 8, 12); // ผักของคนอื่น: 🔒 ยังเก็บไม่ได้ / ✨ เจ้าของไม่มาเก็บเกิน 1 วัน คนอื่นเก็บได้แล้ว
+    PixelUI.world(ctx, CROPS[tile.c].emoji, cx, cy - 14 * PX + Math.sin(now / 400 + px) * PX, 22);
+    if (tile.o && me && tile.o !== me.name) PixelUI.world(ctx, tile.l ? '🔒' : '✨', px + 25 * PX, py + 8 * PX, 12); // ผักของคนอื่น: 🔒 ยังเก็บไม่ได้ / ✨ เจ้าของไม่มาเก็บเกิน 1 วัน คนอื่นเก็บได้แล้ว
   }
 }
 function daylight(h) { // ความมืด 0..0.75 (กลางคืนยังพอเห็นทาง สว่างที่กองไฟ/ตะเกียงชัดกว่า) สว่างนาน มืดสั้น
@@ -2996,7 +3005,7 @@ function drawNight(dark, now) {
   lctx.fillStyle = `rgba(5,9,32,${dark})`; lctx.fillRect(0, 0, lightCv.width, lightCv.height);
   lctx.globalCompositeOperation = 'destination-out'; lctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
   const hole = (x, y, r, inner) => { const g = lctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(inner, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, r, 0, 7); lctx.fill(); };
-  const fx = FIRE.x * TS + 16, fy = FIRE.y * TS + 12, fr = TS * 10.5 * (1 + Math.sin(now / 130) * 0.02 + Math.sin(now / 71) * 0.015);
+  const fx = FIRE.x * TS + HT, fy = FIRE.y * TS + 12 * PX, fr = TS * 10.5 * (1 + Math.sin(now / 130) * 0.02 + Math.sin(now / 71) * 0.015);
   if (!scene) hole(fx, fy, fr, 0.3);
   const LH = !scene && builtProj.has('lighthouse') && Shared.LIGHTHOUSE, lx = LH ? (LH.x0 + (LH.x1 - LH.x0 + 1) / 2) * TS : 0, ly = LH ? LH.y0 * TS + 39 : 0, lAng = now / 1800; // ประภาคาร: ห้องตะเกียงอยู่ใกล้ยอดหอ ลำแสงหมุนรอบ ~11 วินาที
   const beam = (r, half, ang, a0) => { const g = lctx.createRadialGradient(lx, ly, 0, lx, ly, r); g.addColorStop(0, `rgba(0,0,0,${a0})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(lx, ly); lctx.arc(lx, ly, r, ang - half, ang + half); lctx.closePath(); lctx.fill(); };
@@ -3661,14 +3670,14 @@ function step(now) {
     const wp = walk.pts[0];
     if (!wp) { const a = walk.act; walk = null; if (a && a.sit !== undefined) send({ t: 'act', tool: '', i: a.sit }); else if (a) act(a.tx, a.ty); }
     else {
-      const dx = (walk.px ? wp[0] : wp[0] * TS + 16) - me.x, dy = (walk.px ? wp[1] : wp[1] * TS + 16) - me.y, d = Math.hypot(dx, dy);
+      const dx = (walk.px ? wp[0] : wp[0] * TS + HT) - me.x, dy = (walk.px ? wp[1] : wp[1] * TS + HT) - me.y, d = Math.hypot(dx, dy);
       if (d < 3) walk.pts.shift(); else { ix = dx / d; iy = dy / d; mag = 1; }
     }
   }
   me.moving = mag > 0.1;
   if (me.moving) {
     if (mag > 1) { ix /= mag; iy /= mag; }
-    const sp = 110 * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1) * (me.veh && !scene && Shared.VEHICLES[me.veh] ? Shared.VEHICLES[me.veh].speed : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
+    const sp = WALK_SPEED * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1) * (me.veh && !scene && Shared.VEHICLES[me.veh] ? Shared.VEHICLES[me.veh].speed : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
     if (!blk(me.x + ix * sp, me.y, me.x, me.y)) me.x += ix * sp;
     if (!blk(me.x, me.y + iy * sp, me.x, me.y)) me.y += iy * sp;
     const dsx = scene ? ix - iy : ix, dsy = scene ? (ix + iy) / 2 : iy; // ทิศที่หันตามหน้าจอ
@@ -3828,7 +3837,7 @@ function step(now) {
   // จุดหมายที่คลิกให้เดิน
   if (walk && walk.dest) {
     ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(walk.dest[0] * TS + 16, walk.dest[1] * TS + 16, 6 + Math.sin(now / 150) * 2, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(walk.dest[0] * TS + HT, walk.dest[1] * TS + HT, 6 * PX + Math.sin(now / 150) * 2 * PX, 0, 7); ctx.stroke();
   }
   // ไม่วาดกรอบสี่เหลี่ยมบนพื้นแล้ว (ช่องที่ชี้/ช่องที่คลิก) — ใช้เคอร์เซอร์เมาส์เปลี่ยนเป็นรูปมือเมื่อชี้ของที่กดได้แทน
   { let cur = ''; if (mouse.active && !isTouch && mouse.tx >= 0 && mouse.ty >= 0 && mouse.tx < W && mouse.ty < H && (interactive(mouse.tx, mouse.ty) || hubSignAt(mouse.tx, mouse.ty))) cur = 'pointer'; if (canvas.style.cursor !== cur) canvas.style.cursor = cur; }
@@ -3844,7 +3853,7 @@ function step(now) {
   if (!scene) if (FIRE.x >= x0 - 1 && FIRE.x <= x1 + 1 && FIRE.y >= y0 - 1 && FIRE.y <= y1 + 1) list.push({ y: FIRE.y * TS + 28, f: () => drawFire(now) });
   if (!scene) for (const [hx, hy] of Shared.BEE.hives) list.push({ y: (hy + 1) * TS - 2, f: () => drawHive(hx, hy, now) });
   if (!scene) for (const key of Object.keys(Shared.PENS)) list.push({ y: (Shared.PENS[key].sign[1] + 1) * TS, f: () => drawPenSign(key) });
-  if (!scene) for (const c of animals.values()) list.push({ y: c.y + 8, f: () => { (c.type === 'cow' ? drawCow : c.type === 'pig' ? drawPig : ANIMAL_DRAW[c.type] || drawChicken)(c, now); animalFx(c, now, ANIMAL_TOP[c.type] || 14); hungerMark(c, now); } });
+  if (!scene) for (const c of animals.values()) list.push({ y: c.y + 8 * PX, f: () => { (c.type === 'cow' ? drawCow : c.type === 'pig' ? drawPig : ANIMAL_DRAW[c.type] || drawChicken)(c, now); animalFx(c, now, (ANIMAL_TOP[c.type] || 14) * PX); hungerMark(c, now); } });
   if (!scene) for (const q of pets.values()) list.push({ y: q.y + 8, f: () => drawPet(q, now) });
   for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
   for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
@@ -3880,7 +3889,7 @@ function step(now) {
       ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.arc(c.x * TS + 24, c.y * TS - 8, 2.4, 0, 7); ctx.fill();
       return;
     }
-    const w = ctx.measureText(txt).width + 10, cx = c.x * TS + 16, cy = c.y * TS - 16;
+    const w = ctx.measureText(txt).width + 10, cx = c.x * TS + HT, cy = c.y * TS - HT;
     ctx.fillStyle = 'rgba(138,111,209,.92)'; ctx.fillRect(cx - w / 2, cy - 7, w, 14);
     ctx.fillStyle = '#fff'; ctx.fillText(txt, cx, cy);
   });

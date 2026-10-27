@@ -30,7 +30,7 @@ const logEv = (room, e, o, sync) => { // sync = เขียนทันที (
     if (sync) fs.appendFileSync(path.join(EVENT_DIR, day + '.jsonl'), ln); else fs.appendFile(path.join(EVENT_DIR, day + '.jsonl'), ln, () => {});
   } catch (err) { /* ข้าม */ }
 };
-const PET_DEFS = [{ kind: 'cat', v: 0, max: 15, speed: 36 }, { kind: 'dog', v: 0, max: 20, speed: 54 }, { kind: 'dog', v: 1, max: 20, speed: 50 }]; // max = รัศมีสูงสุดจากกองไฟ (ช่อง)
+const PET_DEFS = [{ kind: 'cat', v: 0, max: 15, speed: 36 * (TS / 32) }, { kind: 'dog', v: 0, max: 20, speed: 54 * (TS / 32) }, { kind: 'dog', v: 1, max: 20, speed: 50 * (TS / 32) }]; // max = รัศมีสูงสุดจากกองไฟ (ช่อง) · speed สเกลตาม TS
 const HEX = /^#[0-9a-f]{6}$/i;
 const DEFAULT_HAT = '#e8c66a';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
@@ -75,6 +75,12 @@ class World {
         if (!rec || rec.xpv === 2) continue;
         if (rec.skills) for (const k of Object.keys(rec.skills)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = S.xpFromV1(rec.skills[k]);
         rec.xpv = 2; this.dirty = true;
+      }
+      for (const rec of Object.values(this.saved)) { // ย้ายพิกัดโลกจาก TS=32 → TS=64 (ครั้งเดียว)
+        if (!rec || rec.px64) continue;
+        if (Number.isFinite(rec.x)) rec.x *= 2;
+        if (Number.isFinite(rec.y)) rec.y *= 2;
+        rec.px64 = 1; this.dirty = true;
       }
       counts = d.animals || {};
       if (Array.isArray(d.trees)) { // คืนสภาพต้นไม้ที่ตัด/งอกใหม่ไว้ (ต้นไม้ขอบแมพไม่เปลี่ยน)
@@ -702,7 +708,7 @@ class World {
         continue;
       }
       const [wx, wy] = n.path[0], tx = (wx + 0.5) * TS, ty = (wy + 0.5) * TS, d = Math.hypot(tx - n.x, ty - n.y);
-      if (d < 2) { n.path.shift(); continue; }
+      if (d < TS / 16) { n.path.shift(); continue; }
       const sp = Math.min(d, S.NPC.speed * dt), nx = n.x + (tx - n.x) / d * sp, ny = n.y + (ty - n.y) / d * sp;
       if (S.blockedAt(this.map, nx, ny)) { n.path = []; n.wait = 1; continue; } // มีของมาขวาง (เช่น เฟอร์นิเจอร์/ต้นไม้งอก) = หยุดแล้วหาทางใหม่
       n.dir = Math.abs(tx - n.x) > Math.abs(ty - n.y) ? (tx < n.x ? 2 : 3) : (ty < n.y ? 1 : 0);
@@ -751,7 +757,7 @@ class World {
         continue;
       }
       const [wx, wy] = p.path[0], tx = (wx + 0.5) * TS, ty = (wy + 0.5) * TS, d = Math.hypot(tx - p.x, ty - p.y);
-      if (d < 2) { p.path.shift(); continue; }
+      if (d < TS / 16) { p.path.shift(); continue; }
       const sp = Math.min(d, p.speed * dt), nx = p.x + (tx - p.x) / d * sp, ny = p.y + (ty - p.y) / d * sp;
       if (S.blockedAt(this.map, nx, ny)) { p.path = []; p.wait = 1; p.moving = false; continue; }
       p.dir = Math.abs(tx - p.x) > Math.abs(ty - p.y) ? (tx < p.x ? 2 : 3) : (ty < p.y ? 1 : 0);
@@ -3320,4 +3326,8 @@ function shutdown() { for (const w of worlds.values()) { for (const p of w.playe
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-server.listen(PORT, () => console.log(`My World รันอยู่ที่ http://localhost:${PORT}`));
+server.listen(PORT, () => {
+  const w = getWorld(DEFAULT_ROOM); // โหลดห้องหลักตอนสตาร์ท เพื่อรัน migrate (เช่น px64) แล้วเซฟทันที ไม่รอคนเข้า
+  if (w && w.dirty) w.save(true);
+  console.log(`My World รันอยู่ที่ http://localhost:${PORT}`);
+});

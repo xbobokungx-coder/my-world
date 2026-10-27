@@ -53,11 +53,12 @@ const PixelUI = (() => {
   }
   const url = new Map();
   const dataUrl = e => { const k = norm(e); let u = url.get(k); if (!u) { u = pix(e, 14).toDataURL(); url.set(k, u); } return u; };
-  // ในโลกเกม: gamePx = ขนาดเดิมของอีโมจิ (px เกม) → เลือกความละเอียดพิกเซลศิลป์ให้ตรง แล้วขยาย 2 เท่า
+  // ในโลกเกม: gamePx = ขนาดอีโมจิที่ออกแบบสมัย TS=32 → คูณ ART_SCALE/2 ให้เท่าช่องปัจจุบัน
   function world(ctx, e, cx, cy, gamePx) {
+    const AS = (typeof Shared !== 'undefined' && Shared.ART_SCALE) || 2;
     const s = pix(e, Math.max(6, Math.round(gamePx / 2)));
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(s, Math.round(cx - s.width), Math.round(cy - s.height), s.width * 2, s.height * 2);
+    ctx.drawImage(s, Math.round(cx - s.width * (AS / 2)), Math.round(cy - s.height * (AS / 2)), s.width * AS, s.height * AS);
   }
 
   // ---------- DOM: อีโมจิในข้อความ → <img> พิกเซล ----------
@@ -290,9 +291,10 @@ const PixelUI = (() => {
     let s = acache.get(key);
     if (!s) { s = mk(d.w, d.h, x => d.fn(x, { f: o.step, blink: o.blink, prod: o.prod, idle: !!o.idle, v: o.v, eat: !!o.eat })); acache.set(key, s); }
     ctx.imageSmoothingEnabled = false;
-    const w = s.width * 2, h = s.height * 2, top = Math.round(c.y + d.ground - (d.h + 1) * 2 - (o.hop || 0));
-    if (o.f < 0 && (!o.v || o.v === 's')) { ctx.save(); ctx.translate(Math.round(c.x), 0); ctx.scale(-1, 1); ctx.drawImage(s, -(d.cx + 1) * 2, top, w, h); ctx.restore(); }
-    else ctx.drawImage(s, Math.round(c.x) - (d.cx + 1) * 2, top, w, h);
+    const AS = (typeof Shared !== 'undefined' && Shared.ART_SCALE) || 2;
+    const w = s.width * AS, h = s.height * AS, top = Math.round(c.y + d.ground * (AS / 2) - (d.h + 1) * AS - (o.hop || 0)); // hop เป็น px โลกแล้ว
+    if (o.f < 0 && (!o.v || o.v === 's')) { ctx.save(); ctx.translate(Math.round(c.x), 0); ctx.scale(-1, 1); ctx.drawImage(s, -(d.cx + 1) * AS, top, w, h); ctx.restore(); }
+    else ctx.drawImage(s, Math.round(c.x) - (d.cx + 1) * AS, top, w, h);
   }
 
   // ---------- พืชในแปลง (ระยะ 0–3; ระยะ 3 ใบล่างเท่านั้น ผลวาดด้วย world()) ----------

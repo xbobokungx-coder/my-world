@@ -1,6 +1,8 @@
 // โค้ดที่ใช้ร่วมกันระหว่างเซิร์ฟเวอร์และเบราว์เซอร์ (แมพ, ข้อมูลพืช/ปลา/สัตว์/ร้าน, เลเวล, การชน)
 (function (root) {
-  const TS = 32, W = 64, H = 46;
+  // TS = พิกเซลต่อช่องบนโลก (เดิม 32 → 64 เพื่อให้ความละเอียดเท่าแพ็ก/พื้น HD)
+  // ART_SCALE = ตัวคูณสไปรต์ที่วาดที่ 16 px (เดิม ×2 → ×4)
+  const TS = 64, ART_SCALE = TS / 16, W = 64, H = 46;
   const T = { GRASS: 0, WATER: 1, TREE: 2, BUILD: 3, PATH: 4, FENCE: 5, SAND: 6, SHOP: 7, FLOOR: 8, FURN: 9, BRIDGE: 10, LANDMARK: 11, WALL: 12, VOID: 13 };
   // บ้าน (ระบบเดิม): ที่ดิน 6 แปลงแถวบนสุดของแมพ ตอนนี้เลิกใช้แล้ว เหลือไว้ให้ server ย้ายข้อมูลเก่าเข้าบ้านหลังใหญ่ (ดู HOUSE ด้านล่าง)
   const HOUSING = { price: 400, refund: 0.7, y0: 2, y1: 5, w: 6, plots: [2, 9, 16, 23, 30, 37] };
@@ -15,7 +17,7 @@
   const HOUSE = { x0: 20, y0: 14, x1: 43, y1: 31, door: [31, 32] };
   const houseInside = (x, y) => x > HOUSE.x0 && x < HOUSE.x1 && y >= HOUSE.y0 + 2 && y < HOUSE.y1; // ช่องพื้นที่วางของได้
   const houseKeep = (x, y) => y === HOUSE.y1 - 1 && HOUSE.door.includes(x); // ช่องหน้าประตู เว้นว่างไว้ ไม่ให้วางของปิดทางออก
-  const HOUSE_SPAWN = { x: HOUSE.door[1] * 32, y: (HOUSE.y1 - 0.5) * 32 };  // จุดเกิดตอนเข้าบ้าน (กลางประตู ด้านใน)
+  const HOUSE_SPAWN = { x: HOUSE.door[1] * TS, y: (HOUSE.y1 - 0.5) * TS };  // จุดเกิดตอนเข้าบ้าน (กลางประตู ด้านใน)
   function makeHouseMap() {
     const m = Array.from({ length: H }, () => new Array(W).fill(T.VOID));
     for (let y = HOUSE.y0; y <= HOUSE.y1; y++) for (let x = HOUSE.x0; x <= HOUSE.x1; x++) m[y][x] = houseInside(x, y) ? T.FLOOR : T.WALL;
@@ -184,8 +186,8 @@
   };
   // เล้าผึ้ง: ต้นไม้ถาวร 1 ต้น (ตัดไม่ได้) และรังผึ้ง (ลัง) 2 ลังวางในเล้า • ผึ้งบินวนรอบรัง
   const BEE = { trees: [[61, 18]], hives: [[59, 20], [61, 21]] };
-  const SPAWN = { x: 31 * TS + 16, y: 22 * TS + 16 };
-  const START_SPAWN = { x: 14 * TS, y: 15 * TS + 16 }; // ผู้เล่นที่เข้าเกมครั้งแรกเกิดในแปลงผัก ถือจอบพร้อมขุด (ข้อแรกของคู่มือ) คนเก่าอยู่ตรงที่ออกไว้
+  const SPAWN = { x: 31 * TS + TS / 2, y: 22 * TS + TS / 2 };
+  const START_SPAWN = { x: 14 * TS, y: 15 * TS + TS / 2 }; // ผู้เล่นที่เข้าเกมครั้งแรกเกิดในแปลงผัก ถือจอบพร้อมขุด (ข้อแรกของคู่มือ) คนเก่าอยู่ตรงที่ออกไว้
   const DAY_MS = 12 * 60 * 1000;                       // หน่วย "วัน" ของเศรษฐกิจ (ดอกเบี้ย ผักสุกค้าง สัตว์ป่วย ตลาด) = 12 นาที
   const FARM_REGROW_MS = DAY_MS;                       // แปลงที่ถางแล้วแต่ไม่มีใครปลูกหรือถางต่อเกินเวลานี้ (นับเฉพาะตอนมีคนออนไลน์) หญ้าขึ้นกลับเป็นเหมือนเดิม ต้องถางใหม่
   // แปลงเช่า (ขั้น 2 ใน ECONOMY-PLAN.md): 3 แถวบนของแปลงกลางแบ่งเป็น 4 แปลง แปลงละ 12 ช่อง เช่าได้คนละแปลง ราคา price ต่อ days วันในเกม (DAY_MS) ต่อเวลาล่วงหน้าได้ไม่เกิน maxAhead วันในเกม
@@ -657,7 +659,8 @@
   const playLevel = skills => Object.keys(SKILLS).reduce((n, k) => n + levelOf(skills && skills[k]), 0);
   const doleCost = t => t.coin + t.meals.reduce((n, id) => n + MEALS.find(m => m.id === id).price, 0);
   const dolePackage = (chestCoin, level) => { for (let i = DOLE.tiers.length - 1; i >= 0; i--) { const t = DOLE.tiers[i]; if (chestCoin >= t.chest && level >= t.lv) return t; } return null; };
-  const NPC = { sayMin: 45000, sayMax: 110000, gap: 12000, speed: 50 }; // ชาวเมือง NPC: พิมพ์ข้อความทุก sayMin-sayMax ms, เดินด้วยความเร็ว speed px/วินาที
+  const NPC = { sayMin: 45000, sayMax: 110000, gap: 12000, speed: 50 * (TS / 32) }; // ชาวเมือง NPC: พิมพ์ข้อความทุก sayMin-sayMax ms, เดินด้วยความเร็ว speed px/วินาที (สเกลตาม TS)
+  const WALK_SPEED = 110 * (TS / 32); // ความเร็วเดินผู้เล่น px/วินาที (สเกลตาม TS ให้ก้าวต่อช่องเท่าเดิม)
   // คู่มือเริ่มต้น 6 ข้อ (เดิม 12: ข้อสัตว์/เควส/นั่ง ผ่านแค่ 13–25% ตัดออก 25 ต.ค. 2026 จะย้ายไปภารกิจวันที่ 2 ใน GROWTH-PLAN N2): ทำครบทุกข้อ (ลำดับไหนก็ได้) ได้ของรางวัลเล็กทีละข้อ + รางวัลใหญ่ตอนจบ ปุ่มช่วยบนจอบอก "ข้อถัดไป" ให้เสมอ
   // how = วิธีกดทีละขั้น (แสดงในเมนู 📋 เควส → เริ่มต้น) • ตัวเลข 1–7 = ช่องเครื่องมือด้านล่างจอ (กดเลขบนคีย์บอร์ด หรือแตะที่ช่องบนมือถือ)
   const STARTER = [
@@ -991,7 +994,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, ART_SCALE, WALK_SPEED, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
