@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ตัวอย่างร้านอาหาร (ยังไม่ใส่เกม)</title>
+<style>
+  :root{--bg:#1c140f;--panel:#2a1e16;--ink:#f5e6c6;--muted:#c4a982;--gold:#f2c14e;--out:#2a1b14}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Sans Thai",system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:16px 16px 48px}
+  h1{font-size:22px;margin:0 0 6px}
+  .lede{color:var(--muted);font-size:14px;line-height:1.5;max-width:72ch;margin:0 0 16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:3px solid var(--out);padding:12px;margin-bottom:14px}
+  .card h2{margin:0 0 8px;font-size:15px;color:var(--gold)}
+  .card p{margin:0 0 10px;font-size:13px;color:var(--muted);line-height:1.45}
+  img.ref{width:100%;display:block;border:2px solid var(--out);background:#4a8a3a;max-height:420px;object-fit:contain}
+  .stage{background:#5fa844;border:2px solid var(--out);padding:14px;overflow:auto}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
+  .item{text-align:center}
+  .item span{display:block;font-size:12px;color:var(--muted);margin-top:6px}
+  a{color:var(--gold)}
+</style>
+</head>
+<body>
+  <h1>ตัวอย่างร้านอาหาร (ยังไม่ใส่เกม)</h1>
+  <p class="lede">หลังคาจั่วกระเบื้อง + ปล่องไฟมีควัน · ป้ายถ้วยบนหน้าจั่ว · กันสาดลายทางขอบหยัก · ประตูเขียวหน้าต่างไฟอุ่น · ตะกร้าดอกไม้ กระดานเมนู โต๊ะ ถังไม้ · ขอบน้ำตาลนุ่ม</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>ภาพอ้างอิง</h2>
+      <img class="ref" src="ref-food.png" alt="restaurant reference">
+    </div>
+    <div class="card">
+      <h2>ตัวอย่างใหม่ ×3</h2>
+      <p>วาดที่ 16 px ต่อช่องแบบเดียวกับเกม</p>
+      <div class="stage"><div class="row" id="x3"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>ขนาดจริงในเกม ×2 (บนลานดิน) เทียบกับร้านตอนนี้</h2>
+    <div class="stage" style="background:#c9a46a"><div class="row" id="x2"></div></div>
+  </div>
+
+  <div class="card">
+    <h2>ซูม ×5 ดูรายละเอียด</h2>
+    <div class="stage"><div class="row" id="x5"></div></div>
+    <p style="margin-top:10px">หน้านี้: <a href="/_theme/shop-sample.html">/_theme/shop-sample.html</a> · กลับไปเกม: <a href="/">เปิดแมพ</a></p>
+  </div>
+
+  <script src="/shared.js"></script>
+  <script src="/pixelart.js"></script>
+  <script src="shop-sample.js"></script>
+  <script>
+    function blit(parent, spr, scale, label, sign) {
+      const wrap = document.createElement('div'); wrap.className = 'item';
+      const c = document.createElement('canvas');
+      c.width = spr.width * scale; c.height = spr.height * scale;
+      const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+      g.drawImage(spr, 0, 0, c.width, c.height);
+      if (sign) {
+        g.font = `bold ${Math.round(5 * scale)}px "Noto Sans Thai",system-ui,sans-serif`;
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        const lx = ShopSample.label.x * scale, ly = ShopSample.label.y * scale;
+        g.fillStyle = '#2a1608'; g.fillText(sign, lx + scale * .5, ly + scale * .5);
+        g.fillStyle = '#fbeac0'; g.fillText(sign, lx, ly);
+      }
+      wrap.appendChild(c);
+      const s = document.createElement('span'); s.textContent = label; wrap.appendChild(s);
+      parent.appendChild(wrap);
+    }
+    const shop = ShopSample.food();
+    blit(document.getElementById('x3'), shop, 3, 'ร้านอาหาร ใหม่', 'ร้านอาหาร');
+    blit(document.getElementById('x2'), shop, 2, 'ใหม่ ×2', 'ร้านอาหาร');
+    const food = Shared.BUILDINGS.find(b => b.kind === 'food');
+    if (food) blit(document.getElementById('x2'), PixelArt.building(food), 2, 'ในเกมตอนนี้ ×2');
+    blit(document.getElementById('x5'), shop, 5, 'ซูม ×5', 'ร้านอาหาร');
+  </script>
+</body>
+</html>
