@@ -34,50 +34,53 @@
       <img class="ref" src="ref-food.png" alt="restaurant reference">
     </div>
     <div class="card">
-      <h2>ตัวอย่างใหม่ ×2</h2>
-      <p>ความละเอียด HD: 1 พิกเซลอาร์ต = 1 พิกเซลจอในเกม (ละเอียดกว่าของเดิม 2 เท่า)</p>
-      <div class="stage"><div class="row" id="x3"></div></div>
+      <h2>ใหม่ 64 px ต่อช่อง</h2>
+      <p>วาดทีละพิกเซล มีลายไม้ กระเบื้อง ผ้า ปูน และแสงไฟจากหน้าต่าง</p>
+      <div class="stage"><div class="row" id="top"></div></div>
     </div>
   </div>
 
   <div class="card">
-    <h2>ขนาดจริงในเกม (บนลานดิน) เทียบกับร้านตอนนี้</h2>
-    <div class="stage" style="background:#c9a46a"><div class="row" id="x2"></div></div>
+    <h2>เทียบ 3 ความละเอียด (ขนาดบนจอเท่ากัน)</h2>
+    <p>ซ้าย: ในเกมตอนนี้ 16 px/ช่อง · กลาง: HD 32 px/ช่อง · ขวา: 64 px/ช่อง</p>
+    <div class="stage" style="background:#c9a46a"><div class="row" id="cmp"></div></div>
   </div>
 
   <div class="card">
-    <h2>ซูม ×4 ดูรายละเอียด</h2>
-    <div class="stage"><div class="row" id="x5"></div></div>
+    <h2>ซูม ×3 ดูรายละเอียด 64 px</h2>
+    <div class="stage"><div class="row" id="zoom"></div></div>
     <p style="margin-top:10px">หน้านี้: <a href="/_theme/shop-sample.html">/_theme/shop-sample.html</a> · กลับไปเกม: <a href="/">เปิดแมพ</a></p>
   </div>
 
   <script src="/shared.js"></script>
   <script src="/pixelart.js"></script>
   <script src="shop-sample.js"></script>
+  <script src="shop64.js"></script>
   <script>
-    function blit(parent, spr, scale, label, sign) {
+    function blit(parent, spr, scale, label, meta) {
       const wrap = document.createElement('div'); wrap.className = 'item';
       const c = document.createElement('canvas');
       c.width = spr.width * scale; c.height = spr.height * scale;
       const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
       g.drawImage(spr, 0, 0, c.width, c.height);
-      if (sign) {
-        g.font = `bold ${Math.round(ShopSample.label.size * scale)}px "Noto Sans Thai",system-ui,sans-serif`;
+      if (meta) {
+        g.font = `bold ${Math.round(meta.size * scale)}px "Noto Sans Thai",system-ui,sans-serif`;
         g.textAlign = 'center'; g.textBaseline = 'middle';
-        const lx = ShopSample.label.x * scale, ly = ShopSample.label.y * scale;
-        g.fillStyle = '#2a1608'; g.fillText(sign, lx + scale * .5, ly + scale * .5);
-        g.fillStyle = '#fbeac0'; g.fillText(sign, lx, ly);
+        const lx = meta.x * scale, ly = meta.y * scale, o = Math.max(1, meta.size * scale / 12);
+        g.fillStyle = '#2a1608'; g.fillText('ร้านอาหาร', lx + o, ly + o);
+        g.fillStyle = '#fbeac0'; g.fillText('ร้านอาหาร', lx, ly);
       }
       wrap.appendChild(c);
       const s = document.createElement('span'); s.textContent = label; wrap.appendChild(s);
       parent.appendChild(wrap);
     }
-    const shop = ShopSample.food();
-    blit(document.getElementById('x3'), shop, 2, 'ร้านอาหาร ใหม่', 'ร้านอาหาร');
-    blit(document.getElementById('x2'), shop, 1, 'ใหม่ (HD)', 'ร้านอาหาร');
+    const s64 = ShopSample64.food(), hd = ShopSample.food(), $ = id => document.getElementById(id);
+    blit($('top'), s64, 1, '64 px/ช่อง ×1', ShopSample64.label);
     const food = Shared.BUILDINGS.find(b => b.kind === 'food');
-    if (food) blit(document.getElementById('x2'), PixelArt.building(food), 2, 'ในเกมตอนนี้');
-    blit(document.getElementById('x5'), shop, 4, 'ซูม ×4', 'ร้านอาหาร');
+    if (food) blit($('cmp'), PixelArt.building(food), 4, 'ในเกมตอนนี้');
+    blit($('cmp'), hd, 2, 'HD 32 px', ShopSample.label);
+    blit($('cmp'), s64, 1, '64 px', ShopSample64.label);
+    blit($('zoom'), s64, 3, 'ซูม ×3', ShopSample64.label);
   </script>
 </body>
 </html>
