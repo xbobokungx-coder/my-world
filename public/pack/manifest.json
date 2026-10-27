@@ -1,0 +1,37 @@
+{
+  "buildings": {
+    "farm": {
+      "file": "farm.png",
+      "fit": "width"
+    },
+    "fish": {
+      "file": "fish.png",
+      "fit": "width"
+    },
+    "animal": {
+      "file": "animal.png",
+      "fit": "width"
+    },
+    "pet": {
+      "file": "pet.png",
+      "fit": "width"
+    },
+    "cloth": {
+      "file": "cloth.png",
+      "fit": "width"
+    },
+    "food": {
+      "file": "food.png",
+      "fit": "width",
+      "scale": 1.45
+    },
+    "wood": {
+      "file": "wood.png",
+      "fit": "width"
+    },
+    "furn": {
+      "file": "furn.png",
+      "fit": "width"
+    }
+  }
+}

@@ -2651,15 +2651,23 @@ function drawTree(x, y) { // สไปรต์ต้นไม้พิกเซ
   const s = PixelArt.tree(x, y, treeKinds.get(x + ',' + y));
   ctx.drawImage(s, x * TS + 16 - s.width, y * TS + 32 - s.height * 2, s.width * 2, s.height * 2);
 }
-// ร้านค้า: สไปรต์อาคาร + อีโมจิบนหลังคา + ป้ายชื่อกระดานไม้
+// ร้านค้า: ใช้ asset pack ถ้ามี ไม่งั้นพิกเซลวาดโค้ด · อีโมจิบนหลังคา + ป้ายชื่อกระดานไม้
 function drawBuilding(b) {
-  const a = PixelArt.building(b), bx = b.x0 * TS, by = b.y0 * TS, bw = (b.x1 - b.x0 + 1) * TS;
-  ctx.drawImage(a.spr, bx + a.ox * 2, by + a.oy * 2, a.w * 2, a.h * 2);
-  const cx = bx + bw / 2;
+  const bx = b.x0 * TS, by = b.y0 * TS, bw = (b.x1 - b.x0 + 1) * TS;
+  const pack = typeof PackArt !== 'undefined' && PackArt.building(b);
+  if (pack) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(pack.img, pack.x, pack.y, pack.w, pack.h);
+    ctx.imageSmoothingEnabled = false;
+  } else {
+    const a = PixelArt.building(b);
+    ctx.drawImage(a.spr, bx + a.ox * 2, by + a.oy * 2, a.w * 2, a.h * 2);
+  }
+  const cx = bx + bw / 2, signY = pack ? pack.y + 8 : by - 10;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  PixelUI.world(ctx, b.sign, cx, by - 10, 18);
+  PixelUI.world(ctx, b.sign, cx, signY, 18);
   ctx.font = `bold 11px ${FONT}`;
-  const tw = Math.ceil(ctx.measureText(b.name).width) + 12, ty = by + 6, th = 16, x0 = Math.round(cx - tw / 2);
+  const tw = Math.ceil(ctx.measureText(b.name).width) + 12, ty = Math.round((pack ? pack.y : by) + 6), th = 16, x0 = Math.round(cx - tw / 2);
   ctx.fillStyle = PixelArt.OUT; ctx.fillRect(x0 - 2, ty, tw + 4, th); ctx.fillRect(x0, ty - 2, tw, th + 4);
   ctx.fillStyle = '#8f5a2e'; ctx.fillRect(x0, ty, tw, th);
   ctx.fillStyle = '#b67d45'; ctx.fillRect(x0, ty, tw, 2); ctx.fillStyle = '#6e4524'; ctx.fillRect(x0, ty + th - 2, tw, 2);
