@@ -1,25 +1,25 @@
 // โหลดสไปรต์จาก asset pack (PNG) — ร้านค้า + พื้นหลังแมพ
 const PackArt = (() => {
   const BUILD = {
-    farm:   { src: 'pack/farm.png',   scale: 1.28 },
-    fish:   { src: 'pack/fish.png',   scale: 1.28 },
-    animal: { src: 'pack/animal.png', scale: 1.32 },
-    pet:    { src: 'pack/pet.png',    scale: 1.28 },
-    cloth:  { src: 'pack/cloth.png',  scale: 1.30 },
-    food:   { src: 'pack/food.png',   scale: 1.42 },
-    wood:   { src: 'pack/wood.png',   scale: 1.35 },
-    furn:   { src: 'pack/furn.png',   scale: 1.28 },
+    farm:   { src: '/pack/farm.png',   scale: 1.28 },
+    fish:   { src: '/pack/fish.png',   scale: 1.28 },
+    animal: { src: '/pack/animal.png', scale: 1.32 },
+    pet:    { src: '/pack/pet.png',    scale: 1.28 },
+    cloth:  { src: '/pack/cloth.png',  scale: 1.30 },
+    food:   { src: '/pack/food.png',   scale: 1.42 },
+    wood:   { src: '/pack/wood.png',   scale: 1.35 },
+    furn:   { src: '/pack/furn.png',   scale: 1.28 },
   };
-  // กระเบื้องพื้นจากแพ็ก (ตัดไว้ที่ pack/tiles/)
+  // กระเบื้องพื้นจากแพ็ก (ยังไม่เปิดใช้ในเกม — รอทำลานปูหิน/ขอบให้ครบ)
   const TILES = {
-    grass: { atlas: 'pack/tiles/grass_atlas.png', n: 8, fill: '#9bd646' },
-    path:  { atlas: 'pack/tiles/path_atlas.png',  n: 6, fill: '#e0a86a' },
-    water: { atlas: 'pack/tiles/water_atlas.png', n: 6, fill: '#4cc9b6' },
-    sand:  { atlas: 'pack/tiles/sand_atlas.png',  n: 4, fill: '#d2af78' },
+    grass: { atlas: '/pack/tiles/grass_atlas.png', n: 8, fill: '#9bd646' },
+    path:  { atlas: '/pack/tiles/path_atlas.png',  n: 6, fill: '#e0a86a' },
+    water: { atlas: '/pack/tiles/water_atlas.png', n: 6, fill: '#4cc9b6' },
+    sand:  { atlas: '/pack/tiles/sand_atlas.png',  n: 4, fill: '#d2af78' },
   };
   const STAMPS = {
-    bush:  'pack/tiles/stamp_bush.png',
-    rocks: 'pack/tiles/stamp_rocks.png',
+    bush:  '/pack/tiles/stamp_bush.png',
+    rocks: '/pack/tiles/stamp_rocks.png',
   };
 
   const imgs = Object.create(null);
@@ -41,7 +41,7 @@ const PackArt = (() => {
     const im = new Image();
     im.decoding = 'async';
     im.onload = im.onerror = () => { if (im.naturalWidth) into[key] = im; bump(); };
-    im.src = src + '?v=pack2';
+    im.src = src + '?v=pack3';
   }
 
   function load() {

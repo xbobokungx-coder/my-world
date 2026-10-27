@@ -2423,9 +2423,8 @@ function buildHouseBase() {
 function buildBase() {
   const U = PixelArt.U, oc = document.createElement('canvas'); oc.width = W * U; oc.height = H * U;
   const g = oc.getContext('2d');
-  // พื้นจาก asset pack ถ้าโหลดแล้ว ไม่งั้นใช้พิกเซลวาดโค้ดเดิม
-  const packG = typeof PackArt !== 'undefined' && PackArt.groundReady() && PackArt.ground(MAP);
-  g.drawImage(packG || PixelArt.ground(MAP), 0, 0);
+  // พื้นใช้ PixelArt (สมบูรณ์: หญ้า/ทาง/น้ำ/ลานปูหิน) — PackArt.ground ปิดไว้ก่อนจนกว่าจะเสถียร
+  g.drawImage(PixelArt.ground(MAP), 0, 0);
   PixelArt.fences(g, MAP);
   for (const b of BUILDINGS) for (const [cx, cy] of b.counter) g.drawImage(PixelArt.counter(b), cx * U - 1, cy * U + 2);
   baseHi = document.createElement('canvas'); baseHi.width = W * TS; baseHi.height = H * TS;
@@ -2563,7 +2562,7 @@ function buildBase() {
 const builtProj = new Set(); // โครงการที่ครบเป้าและแปลงลง MAP ของหน้านี้แล้ว
 const DEMO_STRUCTS = (new URLSearchParams(location.search).get('demo') || '').split(','); // ?demo=lighthouse,island,festival = ดูภาพสิ่งก่อสร้างบนเครื่องตัวเองก่อนยอดครบ (อ่านตอนโหลดหน้า เพราะ URL ถูกเขียนทับหลังเข้าห้อง • ไม่กระทบคนอื่น/เซิร์ฟเวอร์ เดินจริงอาจสะดุด)
 let base = buildBase();
-// เมื่อกระเบื้องแพ็กโหลดครบ วาดพื้นใหม่ทั้งแมพให้เป็นโทน asset pack
+// ร้านจากแพ็กโหลดเสร็จแล้วแค่รีเฟรชชั้นอาคาร (พื้นยังเป็น PixelArt)
 if (typeof PackArt !== 'undefined') PackArt.whenReady(() => {
   if (scene) townDirty = true; else { base = buildBase(); if (typeof makeMiniBase === 'function') miniBase = makeMiniBase(); }
 });
