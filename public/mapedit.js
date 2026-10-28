@@ -26,6 +26,10 @@
     return sanitizeMocks(out);
   }
 
+  const MOVABLE = /^(b_[a-z]+|cab[0-9]|fire|atm|board|chest)$/;
+  // กล่องที่ลากไปตำแหน่งต่างจากร้าน/ตู้ในเกมจริง (บันทึก Mock อย่างเดียวยังไม่ย้ายของจริง ต้องกด 🚀)
+  function pending() { const live = new Map(seedMocks().map(m => [m.id, m])); return mocks.filter(m => MOVABLE.test(m.id) && live.has(m.id) && (live.get(m.id).x !== m.x || live.get(m.id).y !== m.y)).map(m => ({ m, o: live.get(m.id) })); }
+
   function setMocks(list, opts) {
     if (opts && opts.fromServer && (dirty || Date.now() < ignoreServerMocksUntil)) return;
     mocks = sanitizeMocks(list);
@@ -73,7 +77,8 @@
         mode === "paint" ? "🖌️ วาดพื้น — เลือกสีด้านบน แล้วลากบนแมพ (แนะนำลอง「น้ำ」จะเห็นชัด)"
         : mode === "add" ? "➕ คลิกบนแมพเพื่อวาง Mock ใหม่"
         : "✋ คลิกกล่องแล้วลากเพื่อขยับ · [ ] กว้าง · ; ' สูง · Delete ลบ"
-      } · ${mocks.length} Mock${dirty ? " · ยังไม่บันทึก" : ""}</p>`;
+      } · ${mocks.length} Mock${dirty ? " · ยังไม่บันทึก" : ""}</p>`
+      + (pending().length ? `<p style="font-size:13px;margin:4px 0 0;font-weight:700;color:#d62828">⚠️ ${pending().length} กล่องยังไม่ตรงกับเกมจริง (กรอบเส้นประแดง = ตำแหน่งในเกมตอนนี้) — ต้องกด 🚀 ใช้ผังนี้กับเกม ร้านถึงจะย้ายจริง การบันทึก Mock อย่างเดียวไม่ย้ายของจริง</p>` : "");
     bar.querySelectorAll("[data-mode]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); mode = b.dataset.mode; renderToolbar(); });
     bar.querySelectorAll("[data-brush]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); mode = "paint"; brush = +b.dataset.brush; renderToolbar(); });
     bar.querySelectorAll("[data-act]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); act(b.dataset.act); });
@@ -108,7 +113,7 @@
     }
     if (a === "save") {
       ignoreServerMocksUntil = 0;
-      sendFn({ t: "admin", a: "mocks", mocks }); dirty = false; toastFn("กำลังบันทึก Mock…"); renderToolbar(); return;
+      sendFn({ t: "admin", a: "mocks", mocks }); dirty = false; toastFn(pending().length ? "บันทึก Mock แล้ว แต่ร้าน/ตู้ในเกมจริงยังไม่ย้าย — กด 🚀 ใช้ผังนี้กับเกม" : "กำลังบันทึก Mock…"); renderToolbar(); return;
     }
     if (a === "seed") {
       mocks = seedMocks(); dirty = true; sel = null; mode = "move"; renderToolbar(); draw(); toastFn("โหลดจุดสำคัญแล้ว — ลากกล่องได้"); return;
@@ -174,6 +179,13 @@
       g.fillStyle = "#111"; g.font = `bold ${Math.max(10, Math.floor(cell * 0.7))}px sans-serif`;
       g.textAlign = "center"; g.textBaseline = "middle";
       g.fillText(m.label, (m.x + m.w / 2) * cell, (m.y + m.h / 2) * cell);
+    }
+    for (const { m, o } of pending()) { // ตำแหน่งจริงในเกม (ยังไม่ย้าย) วาดเป็นเส้นประแดง + กรอบแดงที่กล่องที่ลากมา
+      g.save(); g.setLineDash([5, 4]); g.strokeStyle = "#d62828"; g.lineWidth = 2;
+      g.strokeRect(o.x * cell + 1, o.y * cell + 1, o.w * cell - 2, o.h * cell - 2);
+      g.setLineDash([]); g.strokeRect(m.x * cell + 1, m.y * cell + 1, m.w * cell - 2, m.h * cell - 2);
+      g.fillStyle = "#d62828"; g.font = `bold ${Math.max(9, Math.floor(cell * 0.55))}px sans-serif`; g.textAlign = "center"; g.textBaseline = "bottom";
+      g.fillText("ในเกมตอนนี้", (o.x + o.w / 2) * cell, o.y * cell - 1); g.restore();
     }
     const tip = mode === "paint" ? "ลากเพื่อทาสี" : mode === "add" ? "คลิกเพื่อวาง Mock" : (sel ? "ลากเพื่อขยับ · Delete ลบ" : "คลิกกล่องเหลืองเพื่อเลือก/ลาก");
     if ($("mapEditMeta")) $("mapEditMeta").textContent = tip + (dirty ? " · ยังไม่บันทึก Mock" : "");
