@@ -102,6 +102,29 @@ function applyTrees(list) { // ซิงก์ต้นไม้ที่ตั�
   treeKinds.clear();
   for (const [x, y, k] of list) if (MAP[y] && MAP[y][x] === T.GRASS) { MAP[y][x] = T.TREE; if (k) treeKinds.set(x + ',' + y, k); }
 }
+function applyMapOv(ov) { // ช่องที่ผู้ดูแลวาดทับ (หลังต้นไม้)
+  if (!ov) return;
+  for (const [k, t] of Object.entries(ov)) {
+    const [x, y] = k.split(',').map(Number);
+    if (!MAP[y] || x < 1 || y < 1 || x > W - 2 || y > H - 2) continue;
+    MAP[y][x] = t;
+    if (t === T.TREE) treeKinds.set(x + ',' + y, treeKinds.get(x + ',' + y) || 'broad');
+    else treeKinds.delete(x + ',' + y);
+  }
+  townDirty = true;
+}
+function applyMapCells(cells) {
+  if (!Array.isArray(cells)) return;
+  for (const c of cells) {
+    const x = c[0], y = c[1], t = c[2];
+    if (!MAP[y] || x < 1 || y < 1 || x > W - 2 || y > H - 2) continue;
+    MAP[y][x] = t;
+    if (t === T.TREE) treeKinds.set(x + ',' + y, treeKinds.get(x + ',' + y) || 'broad');
+    else treeKinds.delete(x + ',' + y);
+  }
+  townDirty = true;
+  if (typeof MapEdit !== 'undefined' && MapEdit.shown()) MapEdit.draw();
+}
 function handle(m) {
   switch (m.t) {
     case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'pin') $('pin').focus(); if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
@@ -109,6 +132,8 @@ function handle(m) {
       resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; if (m.fr) freshSt = m.fr; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
       dur = m.dur || {}; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
       if (m.trees) applyTrees(m.trees);
+      if (m.mapOv) applyMapOv(m.mapOv);
+      if (m.mocks && typeof MapEdit !== 'undefined') MapEdit.setMocks(m.mocks);
       furn.clear();
       players.clear();
       m.players.forEach(p => players.set(p.id, mkPlayer(p)));
@@ -137,6 +162,15 @@ function handle(m) {
     case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.cp = null; if (p.id === myId) refreshOpen(); } break; }
     case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
     case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; if (m.k) treeKinds.set(m.x + ',' + m.y, m.k); } else if (isChoppable(tm, m.x, m.y)) { tm[m.y][m.x] = T.GRASS; treeKinds.delete(m.x + ',' + m.y); } } break; }
+    case 'mapcell': applyMapCells(m.cells); break;
+    case 'mapreset': {
+      const fresh = makeMap(); for (let y = 0; y < H; y++) MAP[y] = fresh[y];
+      if (m.trees) applyTrees(m.trees);
+      builtProj.clear(); checkProjects(); townDirty = true;
+      if (typeof MapEdit !== 'undefined' && MapEdit.shown()) MapEdit.draw();
+      break;
+    }
+    case 'mocks': if (typeof MapEdit !== 'undefined') { MapEdit.setMocks(m.mocks || []); if (MapEdit.shown()) MapEdit.draw(); } break;
     case 'hun': setHunger(m.v); break;
     case 'rtc': onRtc(m.from, m.d); break;
     case 'pcall': onPcall(m.from, m.k); break;
@@ -249,7 +283,18 @@ function onAdmin(m) {
   if (m.banned) toast('🚫 แบน ' + m.banned + ' แล้ว (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)');
   if (m.unbanned) toast('✅ ปลดแบน ' + m.unbanned + ' แล้ว');
   if (m.removed) toast('เลิกใช้ห้อง ' + m.removed + ' แล้ว');
+  if (m.mapedit && typeof MapEdit !== 'undefined') {
+    if (m.mocks) MapEdit.setMocks(m.mocks);
+    if (m.ok) toast(m.ok);
+    if (MapEdit.shown()) MapEdit.draw();
+  }
   if (adminShown()) renderAdmin();
+}
+function openMapEdit() {
+  if (!isAdmin) return;
+  closeAdmin();
+  MapEdit.open({ send, toast, getMap: () => MAP, mocks: MapEdit.getMocks() });
+  send({ t: 'admin', a: 'mapget' });
 }
 function renderAdmin() {
   const el = $('adminBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -257,8 +302,11 @@ function renderAdmin() {
   const banN = (adminSt.bans || []).length;
   const bugAll = adminSt.bugs || [], bugOpen = bugAll.filter(b => !b.fixed), bugFixed = bugAll.filter(b => b.fixed), bugN = bugOpen.length;
   let h = adminSt.err ? `<div class="banner" style="background:#fde0dc">${esc(adminSt.err)}</div>` : '';
-  h += `<div class="chips" style="margin-bottom:10px"><button class="chip${adminTab === 'manage' ? ' sel' : ''}" data-atab="manage">🏠 ห้อง & ผู้เล่น</button><button class="chip${adminTab === 'blacklist' ? ' sel' : ''}" data-atab="blacklist">🚫 Blacklist${banN ? ' (' + banN + ')' : ''}</button><button class="chip${adminTab === 'bugs' ? ' sel' : ''}" data-atab="bugs">🐞 บั๊ก${bugN ? ' (' + bugN + ')' : ''}</button></div>`;
-  if (adminTab === 'bugs') {
+  h += `<div class="chips" style="margin-bottom:10px"><button class="chip${adminTab === 'manage' ? ' sel' : ''}" data-atab="manage">🏠 ห้อง & ผู้เล่น</button><button class="chip${adminTab === 'map' ? ' sel' : ''}" data-atab="map">🗺️ แมพ</button><button class="chip${adminTab === 'blacklist' ? ' sel' : ''}" data-atab="blacklist">🚫 Blacklist${banN ? ' (' + banN + ')' : ''}</button><button class="chip${adminTab === 'bugs' ? ' sel' : ''}" data-atab="bugs">🐞 บั๊ก${bugN ? ' (' + bugN + ')' : ''}</button></div>`;
+  if (adminTab === 'map') {
+    h += `<p style="font-size:13px;line-height:1.45;margin:0 0 10px">แก้แมพห้องนี้แบบอิสระ: <b>Mock</b> (กล่องวางแผน ขยับ/เพิ่ม/ลบ ได้ — เห็นเฉพาะผู้ดูแล) และ <b>วาดพื้น</b> (เปลี่ยนหญ้า/ทาง/น้ำ/ต้นไม้ ฯลฯ ให้ทุกคนในห้องทันที)</p>`;
+    h += `<button class="btn" id="openMapEdit">🗺️ เปิดตัวแก้แมพ</button>`;
+  } else if (adminTab === 'bugs') {
     const list = bugView === 'fixed' ? bugFixed : bugOpen;
     h += `<div class="chips" style="margin-bottom:8px"><button class="chip${bugView === 'open' ? ' sel' : ''}" data-bview="open">🔴 ยังไม่แก้ (${bugOpen.length})</button><button class="chip${bugView === 'fixed' ? ' sel' : ''}" data-bview="fixed">✅ แก้แล้ว (${bugFixed.length})</button> <button class="btn small" id="bugRefresh">🔄 รีเฟรช</button></div>`;
     h += list.length ? list.map(b => {
@@ -287,6 +335,7 @@ function renderAdmin() {
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; renderAdmin(); });
+  const ome = $('openMapEdit'); if (ome) ome.onclick = openMapEdit;
   el.querySelectorAll('[data-bugimg]').forEach(b => b.onclick = () => { b.disabled = true; send({ t: 'admin', a: 'bugimg', id: b.dataset.bugimg }); });
   el.querySelectorAll('[data-bview]').forEach(b => b.onclick = () => { bugView = b.dataset.bview; renderAdmin(); });
   el.querySelectorAll('[data-bugfix]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'bugfix', id: b.dataset.bugfix }));
@@ -307,6 +356,7 @@ function renderAdmin() {
 $('adminBtn').onclick = () => (adminShown() ? closeAdmin() : openAdmin());
 $('adminClose').onclick = closeAdmin;
 $('admin').addEventListener('pointerdown', e => { if (e.target === $('admin')) closeAdmin(); });
+if (typeof MapEdit !== 'undefined') MapEdit.bind();
 
 // ---------- เมือง: ข่าว + ตู้เซฟกองกลาง ----------
 const townShown = () => !$('town').classList.contains('hidden');
@@ -1000,7 +1050,7 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
 } else $('fsBtn').remove();
 
 // ---------- กระเป๋า / อาชีพ / ตัวละคร ----------
-const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'plots', 'homeChoice', 'ask'].some(id => !$(id).classList.contains('hidden'));
+const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'ask'].some(id => !$(id).classList.contains('hidden'));
 function openBag(tab) { if (tab) bagTab = tab; $('bag').classList.remove('hidden'); renderBag(); }
 function closeBag() { $('bag').classList.add('hidden'); }
 const bagShown = () => !$('bag').classList.contains('hidden');

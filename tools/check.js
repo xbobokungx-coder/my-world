@@ -7,7 +7,7 @@ const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 let bad = 0;
 const fail = m => { console.error('✗ ' + m); bad++; };
 
-for (const f of ['server.js', 'public/game.js', 'public/shared.js', 'public/pixelart.js', 'public/pixelchar.js', 'public/pixelui.js']) {
+for (const f of ['server.js', 'public/game.js', 'public/shared.js', 'public/pixelart.js', 'public/pixelchar.js', 'public/pixelui.js', 'public/mapedit.js']) {
   try { new vm.Script('(function(exports,require,module,__filename,__dirname){' + read(f).replace(/^#!.*/, '') + '\n})', { filename: f }); } catch (e) { fail(`syntax ${f}: ${e.message}`); }
 }
 
