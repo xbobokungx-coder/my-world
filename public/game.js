@@ -163,6 +163,7 @@ function handle(m) {
     case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
     case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; if (m.k) treeKinds.set(m.x + ',' + m.y, m.k); } else if (isChoppable(tm, m.x, m.y)) { tm[m.y][m.x] = T.GRASS; treeKinds.delete(m.x + ',' + m.y); } } break; }
     case 'mapcell': applyMapCells(m.cells); break;
+    case 'reload': { toast('🗺️ ผู้ดูแลเปลี่ยนผังเมือง กำลังรีเฟรช…'); const tryReload = n => fetch('/healthz', { cache: 'no-store' }).then(r => { if (r.ok) location.reload(); else throw 0; }).catch(() => { if (n < 40) setTimeout(() => tryReload(n + 1), 1000); }); setTimeout(() => tryReload(0), 3000); break; }
     case 'mapreset': {
       const fresh = makeMap(); for (let y = 0; y < H; y++) MAP[y] = fresh[y];
       if (m.trees) applyTrees(m.trees);
@@ -278,6 +279,7 @@ function onAdmin(m) {
   if (m.bugimg) bugImgs[m.bugimg.id] = m.bugimg.uri;
   if (m.bugmark) toast(m.bugmark === 'fixed' ? '✅ ย้ายไปส่วน「แก้แล้ว」' : '↩️ เปิดรายงานใหม่ (กลับไป「ยังไม่แก้」)');
   if (m.created) { const url = roomLink(m.created); try { navigator.clipboard.writeText(url).catch(() => {}); } catch (e) { /* ไม่ได้ก็ไม่เป็นไร */ } toast('สร้างห้อง ' + m.created + ' แล้ว คัดลอกลิงก์ให้แล้ว 🔗'); }
+  if (m.err && m.mapedit) toast('⚠️ ' + m.err);
   if (m.coinmsg) toast(m.coinmsg);
   if (m.kicked) { toast('เตะ ' + m.kicked + ' ออกแล้ว'); setTimeout(() => send({ t: 'admin', a: 'users' }), 700); }
   if (m.banned) toast('🚫 แบน ' + m.banned + ' แล้ว (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)');
@@ -2613,8 +2615,9 @@ function buildBase() {
       g.fillStyle = '#6b4423'; g.fillRect(px, py + 8, 16, 10); g.fillStyle = '#a0692f'; g.fillRect(px, py + 8, 16, 3);
       g.fillStyle = '#3f9a3a'; g.fillRect(px + 4, py + 2, 8, 7); g.fillStyle = col; g.fillRect(px + 2, py, 4, 4); g.fillRect(px + 10, py, 4, 4); g.fillStyle = '#ffe37a'; g.fillRect(px + 6, py - 1, 3, 3);
     };
-    for (const [x, y] of [[26, 22], [38, 22], [26, 30], [38, 30], [30, 22], [34, 22]]) lamp(x, y);
-    for (const [x, y, c] of [[26, 21, '#ff8fc7'], [38, 21, '#9fd4ff'], [26, 31, '#ffd24a'], [38, 31, '#ff8fc7'], [28, 31, '#fff6e0'], [36, 31, '#ffc9de']]) pot(x, y, c);
+    const LS = Shared.LAYOUT_SHIFT; // กองไฟถูกย้าย: เสาไฟ/กระถางรอบลานย้ายตามลาน
+    for (const [x, y] of [[26, 22], [38, 22], [26, 30], [38, 30], [30, 22], [34, 22]]) lamp(x + LS.x, y + LS.y);
+    for (const [x, y, c] of [[26, 21, '#ff8fc7'], [38, 21, '#9fd4ff'], [26, 31, '#ffd24a'], [38, 31, '#ff8fc7'], [28, 31, '#fff6e0'], [36, 31, '#ffc9de']]) pot(x + LS.x, y + LS.y, c);
   }
   // สิ่งก่อสร้างจากโครงการพัฒนาเมือง (วาดเมื่อครบเป้า) • ฟังก์ชันใน drawStructures ด้านล่าง
   drawStructures(g, gh);
@@ -2705,7 +2708,7 @@ function drawFire(now) {
   ctx.globalAlpha = 1;
 }
 function drawChainTree(now) { // โตตามจำนวนชาเลนจ์ที่สำเร็จทั้งเมือง: <5 ต้นกล้า • <20 ต้นกลาง • ≥20 ต้นใหญ่ มีป้ายจำนวนใบ
-  const n = chSt.chain, k = n < 5 ? 1.2 : n < 20 ? 1.6 : 2.1, s = PixelArt.tree(3, 5, 'broad'), w = s.width * k, h = s.height * k, cx = 32 * TS + 16, by = 30 * TS + 32;
+  const n = chSt.chain, k = n < 5 ? 1.2 : n < 20 ? 1.6 : 2.1, s = PixelArt.tree(3, 5, 'broad'), w = s.width * k, h = s.height * k, cx = (32 + Shared.LAYOUT_SHIFT.x) * TS + 16, by = (30 + Shared.LAYOUT_SHIFT.y) * TS + 32;
   ctx.drawImage(s, cx - w / 2, by - h, w, h); PixelUI.world(ctx, '🪣', cx + w / 4, by - h * 0.55 + Math.sin(now / 500) * 2, 14);
   ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(42,27,20,.8)'; ctx.fillRect(cx - 26, by + 2, 52, 13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`🌳 ${n} ใบ`, cx, by + 12);
 }
@@ -3865,7 +3868,7 @@ function step(now) {
   // วาดตามลำดับ y
   const list = [];
   for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) list.push({ y: y * TS + 30, f: () => drawTree(x, y) });
-  if (!scene && chSt.chain > 0 && x0 <= 33 && x1 >= 31 && y0 <= 31 && y1 >= 29) list.push({ y: 30 * TS + 30, f: () => drawChainTree(now) }); // ต้นไม้แห่งการส่งต่อ (ชาเลนจ์ถังน้ำ)
+  if (!scene && chSt.chain > 0 && x0 <= 33 + Shared.LAYOUT_SHIFT.x && x1 >= 31 + Shared.LAYOUT_SHIFT.x && y0 <= 31 + Shared.LAYOUT_SHIFT.y && y1 >= 29 + Shared.LAYOUT_SHIFT.y) list.push({ y: (30 + Shared.LAYOUT_SHIFT.y) * TS + 30, f: () => drawChainTree(now) }); // ต้นไม้แห่งการส่งต่อ (ชาเลนจ์ถังน้ำ)
   if (!scene) for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
   // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
   if (!scene) for (const s of SEATS) if (s.x >= x0 - 1 && s.x <= x1 + 1 && s.y >= y0 - 1 && s.y <= y1 + 1) list.push({ y: s.y * TS + 12, f: () => drawSeat(s) });

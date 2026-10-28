@@ -595,9 +595,11 @@
   // พื้นปูหิน (ลานหน้าร้าน ลานกองไฟ ลานตู้เกม ลานหนัง ทางเข้าบ้าน) ต่างจากถนนดิน ให้ผังเมืองอ่านง่าย: ถนน = ดิน • ลาน = ปูหิน (ใช้ตอนวาดพื้นใน pixelart.js)
   const PAVED_RECTS = [{ x0: 24, y0: 1, x1: 41, y1: 7 }, { x0: 21, y0: 15, x1: 32, y1: 18 }, { x0: 35, y0: 15, x1: 38, y1: 15 }, { x0: 25, y0: 21, x1: 39, y1: 31 }];
   const pavedSet = new Set();
-  { const add = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) pavedSet.add(y * 1000 + x); };
+  const rebuildPaved = () => { pavedSet.clear();
+    const add = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) pavedSet.add(y * 1000 + x); };
     for (const r of PAVED_RECTS) add(r.x0, r.y0, r.x1, r.y1);
-    for (const b of BUILDINGS) if (b.counter.length) add(b.x0, b.y1 + 1, b.x1, b.y1 + 1); } // แถวยืนหน้าประตูทุกร้าน
+    for (const b of BUILDINGS) if (b.counter.length) add(b.x0, b.y1 + 1, b.x1, b.y1 + 1); }; // แถวยืนหน้าประตูทุกร้าน
+  rebuildPaved();
   const isPaved = (x, y) => pavedSet.has(y * 1000 + x);
   // ตู้เกม 2 แถว แถวละ 4 ตู้ วางสลับฟันปลาเว้นห่างตู้ละ 1 ช่อง (ไม่ชิดกัน) เดินในแถวกลาง (y=16) ใช้ได้ทั้งสองแถว
   // game = null คือยังไม่เปิด เพิ่มเกมใหม่โดยใส่ game และเขียนกติกาฝั่งเซิร์ฟเวอร์
@@ -911,7 +913,8 @@
     };
   }
 
-  function makeMap() {
+  function makeMap(opts) { // opts.bare = ภูมิประเทศล้วน ไม่วางร้าน/ตู้/กองไฟ (ใช้ตรวจว่าตำแหน่งใหม่ซ้อนน้ำ รั้ว ผา ฯลฯ ไหม)
+    const bare = !!(opts && opts.bare);
     const m = Array.from({ length: H }, () => new Array(W).fill(T.GRASS));
     const set = (x, y, v) => { if (x >= 0 && y >= 0 && x < W && y < H) m[y][x] = v; };
     const setIfGrass = (x, y, v) => { if (m[y] && m[y][x] === T.GRASS) m[y][x] = v; };
@@ -953,15 +956,15 @@
     for (let y = HOUSE_BLD.y0; y <= HOUSE_BLD.y1; y++) for (let x = HOUSE_BLD.x0; x <= HOUSE_BLD.x1; x++) set(x, y, T.BUILD); // บ้านหลังใหญ่ + ขั้นหน้าประตู
     for (const x of [HOUSE_DOOR.x - 1, HOUSE_DOOR.x, HOUSE_DOOR.x + 1]) set(x, HOUSE_DOOR.y, T.PATH);
     // อาคารและเคาน์เตอร์
-    for (const b of BUILDINGS) {
+    if (!bare) for (const b of BUILDINGS) {
       if (b.kind !== 'sign') for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) set(x, y, T.BUILD); // ป้าย Arcade เป็นป้ายลอย เดินผ่านได้ (แตะได้จากพื้นที่ป้าย)
       for (const [x, y] of b.counter) set(x, y, T.SHOP);
     }
     // แถวยืนหน้าประตูปูทางทุกร้าน ให้ต่อกับถนน ร้านจะได้ไม่ลอยอยู่กลางหญ้า
-    for (const b of BUILDINGS) if (b.counter.length) for (let x = b.x0; x <= b.x1; x++) setIfGrass(x, b.y1 + 1, T.PATH);
-    for (const c of CABINETS) set(c.x, c.y, T.SHOP); // ตู้เกมเป็นช่องที่เดินผ่านไม่ได้ แต่ใช้งานได้จากช่องติดกัน
-    set(ATM.x, ATM.y, T.SHOP); set(BOARD.x, BOARD.y, T.SHOP); set(CHEST.x, CHEST.y, T.SHOP); // กระดานข่าว + ตู้เซฟกองกลาง
-    set(FIRE.x, FIRE.y, T.BUILD);                    // กองไฟ (เดินผ่านไม่ได้)
+    if (!bare) for (const b of BUILDINGS) if (b.counter.length) for (let x = b.x0; x <= b.x1; x++) setIfGrass(x, b.y1 + 1, T.PATH);
+    if (!bare) for (const c of CABINETS) set(c.x, c.y, T.SHOP); // ตู้เกมเป็นช่องที่เดินผ่านไม่ได้ แต่ใช้งานได้จากช่องติดกัน
+    if (!bare) { set(ATM.x, ATM.y, T.SHOP); set(BOARD.x, BOARD.y, T.SHOP); set(CHEST.x, CHEST.y, T.SHOP); } // กระดานข่าว + ตู้เซฟกองกลาง
+    if (!bare) set(FIRE.x, FIRE.y, T.BUILD);                    // กองไฟ (เดินผ่านไม่ได้)
     // ต้นไม้ขอบแมพ + กระจายในที่ว่าง
     for (let x = 0; x < W; x++) { set(x, 0, T.TREE); set(x, H - 1, T.TREE); }
     for (let y = 0; y < H; y++) { set(0, y, T.TREE); set(W - 1, y, T.TREE); }
@@ -993,6 +996,38 @@
   const applyProject = (m, id) => { if (STRUCTS[id]) STRUCTS[id](m); };
 
   // ต้นไม้: ตัดได้ทุกต้นที่ไม่ใช่แนวต้นไม้ขอบแมพ • ต้นไม้ใหม่จะงอกเฉพาะที่สนามหญ้าเขียวที่ห่างจากสิ่งปลูกสร้าง/ถนน/รั้ว/น้ำ อย่างน้อย 3 ช่อง
+  // ===== ผังที่ผู้ดูแลตั้งเอง: data/layout.json (เซิร์ฟเวอร์ส่งเป็น /layout.js → globalThis.__LAYOUT) =====
+  // รูปแบบ { items: { id: {x,y} } } id = b_<kind> (ร้าน/ป้าย Arcade) • cab0..cab5 (ตู้เกม) • fire (กองไฟ+ลาน+ที่นั่งย้ายตามกัน) • atm • board • chest
+  // x,y = มุมซ้ายบนของกล่อง ขนาดร้านคงเดิม แก้ค่าในที่เดิม (อ้างอิงเดิมใน server/client ยังชี้ถูก) ต้องเรียกก่อนสร้างแมพ
+  const LAYOUT_SHIFT = { x: 0, y: 0 }; // กองไฟถูกย้ายไปกี่ช่อง (ใช้ขยับเสาไฟ/กระถางรอบลานฝั่งหน้าเว็บ)
+  function applyLayout(lay) {
+    const it = lay && lay.items; if (!it || typeof it !== 'object') return;
+    const num = v => Number.isFinite(+v) ? Math.trunc(+v) : null;
+    const shiftRect = (r, dx, dy) => { r.x0 += dx; r.x1 += dx; r.y0 += dy; r.y1 += dy; };
+    const furnOld = BUILDINGS.find(b => b.kind === 'furn');
+    const furnPrev = { x: furnOld.x0, y: furnOld.y0 };
+    const f = it.fire;
+    if (f && num(f.x) !== null && num(f.y) !== null) {
+      const dx = num(f.x) - FIRE.x, dy = num(f.y) - FIRE.y;
+      FIRE.x += dx; FIRE.y += dy; shiftRect(PLAZA, dx, dy); shiftRect(PAVED_RECTS[3], dx, dy);
+      for (const q of SEATS) { q.x += dx; q.y += dy; }
+      for (const o of [BOARD, ATM, CHEST]) { o.x += dx; o.y += dy; }
+      SPAWN.x += dx * TS; SPAWN.y += dy * TS; STARTER_GO.sit = [STARTER_GO.sit[0] + dx, STARTER_GO.sit[1] + dy];
+      LAYOUT_SHIFT.x = dx; LAYOUT_SHIFT.y = dy;
+    }
+    for (const [id, o] of [['board', BOARD], ['atm', ATM], ['chest', CHEST]]) { const v = it[id]; if (v && num(v.x) !== null && num(v.y) !== null) { o.x = num(v.x); o.y = num(v.y); } }
+    CABINETS.forEach((c, i) => { const v = it['cab' + i]; if (v && num(v.x) !== null && num(v.y) !== null) { c.x = num(v.x); c.y = num(v.y); } });
+    for (const b of BUILDINGS) {
+      const v = it['b_' + b.kind]; if (!v || num(v.x) === null || num(v.y) === null) continue;
+      const dx = num(v.x) - b.x0, dy = num(v.y) - b.y0;
+      b.x0 += dx; b.x1 += dx; b.y0 += dy; b.y1 += dy; b.counter = b.counter.map(([x, y]) => [x + dx, y + dy]);
+    }
+    const fb = BUILDINGS.find(b => b.kind === 'furn'); shiftRect(PAVED_RECTS[2], fb.x0 - furnPrev.x, fb.y0 - furnPrev.y); // ลานหน้าร้านเฟอร์นิเจอร์ตามร้าน
+    const door = k => { const b = BUILDINGS.find(q => q.kind === k); return b && b.counter[0] ? [b.counter[0][0], b.counter[0][1] + 1] : null; };
+    STARTER_GO.sell = door('farm') || STARTER_GO.sell; STARTER_GO.buyfeed = STARTER_GO.sellprod = door('animal') || STARTER_GO.buyfeed; // จุดนำทางมือใหม่ตามประตูร้าน
+    rebuildPaved();
+  }
+  applyLayout(typeof globalThis !== 'undefined' ? globalThis.__LAYOUT : null);
   const NO_TREE = [FARM, ...Object.values(PENS), PLAZA, { x0: 24, y0: 1, x1: 41, y1: 7 }].map(z => ({ x0: z.x0 - 2, y0: z.y0 - 2, x1: z.x1 + 2, y1: z.y1 + 2 }));
   const PERM_TREE = new Set(BEE.trees.map(([x, y]) => x + ',' + y)); // ต้นไม้ถาวรของเล้าผึ้ง ตัดไม่ได้
   const isChoppable = (m, x, y) => !!(m[y] && m[y][x] === T.TREE && x >= 1 && y >= 1 && x <= W - 2 && y <= H - 2 && !PERM_TREE.has(x + ',' + y));
@@ -1024,7 +1059,7 @@
 
   const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
+    AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, FEST, AUCTION, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };

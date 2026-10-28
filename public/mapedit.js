@@ -64,6 +64,9 @@
       + `<button type="button" class="chip" data-act="save">💾 บันทึก Mock</button>`
       + `<button type="button" class="chip" data-act="seed">📦 โหลดจุดสำคัญ</button>`
       + `<button type="button" class="chip" data-act="ovclear">↩️ ล้างพื้นที่วาด</button>`
+      + `<button type="button" class="chip" data-act="apply" style="background:#2e9e4f;color:#fff;font-weight:700">🚀 ใช้ผังนี้กับเกม</button>`
+      + `<button type="button" class="chip" data-act="undo">⏪ ย้อนผังก่อนหน้า</button>`
+      + `<button type="button" class="chip" data-act="lreset">♻️ คืนผังตั้งต้น</button>`
       + `</div>`
       + `<div class="chips" style="margin:6px 0 0">${paint}</div>`
       + `<p style="font-size:13px;opacity:.9;margin:6px 0 0;font-weight:700">ตอนนี้: ${
@@ -110,6 +113,15 @@
     if (a === "seed") {
       mocks = seedMocks(); dirty = true; sel = null; mode = "move"; renderToolbar(); draw(); toastFn("โหลดจุดสำคัญแล้ว — ลากกล่องได้"); return;
     }
+    if (a === "apply") {
+      const live = seedMocks(), liveById = new Map(live.map(m => [m.id, m])), items = {}, moved = [];
+      for (const m of mocks) { if (!/^(b_[a-z]+|cab[0-9]|fire|atm|board|chest)$/.test(m.id)) continue; items[m.id] = { x: m.x, y: m.y }; const o = liveById.get(m.id); if (o && (o.x !== m.x || o.y !== m.y)) moved.push(m.label || m.id); }
+      if (!moved.length) return toastFn("ยังไม่ได้ขยับร้าน/ตู้/กองไฟ (ตำแหน่งตรงกับเกมอยู่แล้ว)");
+      if (!confirm("ใช้ผังนี้กับเกมจริง?\n\nจะย้าย: " + moved.join(", ") + "\n\nเกมจะรีสตาร์ท 3–5 วินาที ผู้เล่นทุกคนหลุดชั่วครู่แล้วหน้าเว็บรีเฟรชเอง\n(ขนาดร้านคงเดิม ใช้ตำแหน่งมุมซ้ายบนของกล่อง • ย้อนกลับได้ด้วย ⏪)")) return;
+      sendFn({ t: "admin", a: "layoutapply", items }); toastFn("กำลังตรวจผัง…"); return;
+    }
+    if (a === "undo") { if (confirm("ย้อนกลับไปผังก่อนหน้า? เกมจะรีสตาร์ท")) sendFn({ t: "admin", a: "layoutundo" }); return; }
+    if (a === "lreset") { if (confirm("คืนผังตั้งต้นของโค้ด (ทิ้งการย้ายที่ใช้ไว้)? เกมจะรีสตาร์ท")) sendFn({ t: "admin", a: "layoutreset" }); return; }
     if (a === "ovclear") {
       if (!confirm("ล้างทุกช่องที่วาดทับ คืนพื้นแมพเดิมของห้องนี้?\n(Mock ไม่ถูกลบ)")) return;
       sendFn({ t: "admin", a: "mapovclear" });

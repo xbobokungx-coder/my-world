@@ -4,6 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
+// ผังที่ผู้ดูแลตั้งเอง (ย้ายร้าน/ตู้เกม/กองไฟ) อ่านก่อนโหลด shared.js เพื่อให้ทั้งเซิร์ฟเวอร์และเบราว์เซอร์สร้างแมพจากตำแหน่งเดียวกัน
+const LAYOUT_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'layout.json');
+const LAYOUT_HIST = path.join(path.dirname(LAYOUT_FILE), 'layout-history');
+const readLayoutFile = f => { try { const d = JSON.parse(fs.readFileSync(f, 'utf8')); return d && typeof d.items === 'object' && d.items ? d : null; } catch (e) { return null; } };
+globalThis.__LAYOUT = readLayoutFile(LAYOUT_FILE);
 const S = require('./public/shared.js');
 const { TS, T, CROPS, FISH, ANIMALS, SPAWN } = S;
 
@@ -3165,6 +3170,7 @@ const server = http.createServer((req, res) => {
   let u;
   try { u = decodeURIComponent(req.url.split('?')[0]); } catch (e) { res.writeHead(400); return res.end(); }
   if (u === '/healthz') { res.writeHead(200); return res.end('ok'); }
+  if (u === '/layout.js') { res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }); return res.end('window.__LAYOUT=' + JSON.stringify(globalThis.__LAYOUT || null) + ';'); }
   if (u === '/api/bug') { if (req.method !== 'POST') { res.writeHead(405, { Allow: 'POST' }); return res.end(); } return handleBug(req, res); }
   if (u === '/') u = '/index.html';
   if (u.includes('\0') || u.includes('%00')) { res.writeHead(400); return res.end(); } // กัน path แปลกที่เคยทำให้เซิร์ฟล่ม
@@ -3215,6 +3221,65 @@ function banList() { // รายชื่อที่ถูกแบนทุ�
   const out = [];
   for (const r of ROOMS.values()) { const w = worlds.get(r.name); if (!w || !w.banned) continue; for (const key of w.banned) out.push({ room: r.name, name: key }); }
   return out;
+}
+// ----- ผังเมืองที่ผู้ดูแลย้ายได้ (ร้าน/ป้าย Arcade/ตู้เกม/กองไฟ+ลาน/ATM/กระดานข่าว/ตู้เซฟ) -----
+const LAYOUT_IDS = /^(b_[a-z]+|cab[0-9]|fire|atm|board|chest)$/;
+const cleanLayoutItems = raw => { const out = {}; if (raw && typeof raw === 'object') for (const [id, v] of Object.entries(raw)) { if (!LAYOUT_IDS.test(id) || !v) continue; const x = Math.trunc(+v.x), y = Math.trunc(+v.y); if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < S.W && y < S.H) out[id] = { x, y }; } return out; };
+const liveLayoutItems = (Sx) => { const o = {}; for (const b of Sx.BUILDINGS) o['b_' + b.kind] = { x: b.x0, y: b.y0 }; Sx.CABINETS.forEach((c, i) => { o['cab' + i] = { x: c.x, y: c.y }; }); o.fire = { x: Sx.FIRE.x, y: Sx.FIRE.y }; o.atm = { x: Sx.ATM.x, y: Sx.ATM.y }; o.board = { x: Sx.BOARD.x, y: Sx.BOARD.y }; o.chest = { x: Sx.CHEST.x, y: Sx.CHEST.y }; return o; };
+const LAYOUT_NAMES = { fire: 'กองไฟ', atm: 'ATM', board: 'กระดานข่าว', chest: 'ตู้เซฟกองกลาง' };
+const layoutName = id => LAYOUT_NAMES[id] || (/^cab/.test(id) ? 'ตู้เกม ' + (+id.slice(3) + 1) : (S.BUILDINGS.find(b => 'b_' + b.kind === id) || {}).name || id);
+function loadSharedWith(lay) { // สร้างสำเนา shared.js ที่ใช้ผังทดลอง โดยไม่แตะตัวที่เกมใช้อยู่
+  const key = require.resolve('./public/shared.js'), cached = require.cache[key], prev = globalThis.__LAYOUT;
+  delete require.cache[key]; globalThis.__LAYOUT = lay;
+  try { return require('./public/shared.js'); } finally { globalThis.__LAYOUT = prev; delete require.cache[key]; if (cached) require.cache[key] = cached; }
+}
+function unreachableCount(Sx, m) { // ช่องเดินได้ที่เดินไปไม่ถึงจากจุดเกิด + ตัวช่วยดูว่าช่องไหนไปถึง
+  const { W, H, TS } = Sx, walk = (x, y) => x >= 0 && y >= 0 && x < W && y < H && !Sx.blockedAt(m, x * TS + 16, y * TS + 16);
+  const sx = Math.floor(Sx.SPAWN.x / TS), sy = Math.floor(Sx.SPAWN.y / TS), seen = new Set([sy * 1000 + sx]), q = [[sx, sy]];
+  while (q.length) { const [x, y] = q.pop(); for (const [dx, dy] of Sx.DIRS) { const nx = x + dx, ny = y + dy; if (walk(nx, ny) && !seen.has(ny * 1000 + nx)) { seen.add(ny * 1000 + nx); q.push([nx, ny]); } } }
+  let n = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (walk(x, y) && !seen.has(y * 1000 + x)) n++;
+  return { n, seen, walk };
+}
+function validateLayout(items) { // คืนรายการข้อผิดพลาด (ว่าง = ใช้ได้)
+  const errs = [], Sx = loadSharedWith({ items }), { W, H, T } = Sx, m = Sx.makeMap(), bare = Sx.makeMap({ bare: true });
+  const occ = new Map(), okTerrain = new Set([T.GRASS, T.PATH, T.SAND, T.TREE]);
+  const inRect = (x, y, r, pad) => x >= r.x0 - pad && x <= r.x1 + pad && y >= r.y0 - pad && y <= r.y1 + pad;
+  const claim = (name, x, y, floating) => {
+    if (x < 1 || y < 1 || x > W - 2 || y > H - 2) { errs.push(name + ' อยู่นอกแมพ'); return; }
+    if (!okTerrain.has(bare[y][x])) errs.push(`${name} ทับน้ำ/รั้ว/หน้าผา/ถนนไม่ได้ที่ช่อง (${x},${y})`);
+    if (inRect(x, y, Sx.FARM, 1)) errs.push(`${name} ทับแปลงผักที่ช่อง (${x},${y})`);
+    for (const P of Object.values(Sx.PENS)) if (inRect(x, y, P, 1)) errs.push(`${name} ทับคอกสัตว์ที่ช่อง (${x},${y})`);
+    if (inRect(x, y, Sx.HOUSE_BLD, 0)) errs.push(`${name} ทับบ้านหลังใหญ่ที่ช่อง (${x},${y})`);
+    if (floating) return;
+    const k = y * 1000 + x; if (occ.has(k)) errs.push(`${name} ซ้อนกับ ${occ.get(k)} ที่ช่อง (${x},${y})`); else occ.set(k, name);
+  };
+  for (const b of Sx.BUILDINGS) {
+    const nm = b.name || b.kind;
+    for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) claim(nm, x, y, b.kind === 'sign');
+    if (b.counter.length) { const [cx, cy] = b.counter[0]; claim(nm + ' (ช่องยืนหน้าประตู)', cx, cy + 1, true); }
+  }
+  Sx.CABINETS.forEach((c, i) => claim('ตู้เกม ' + (i + 1), c.x, c.y));
+  claim('กองไฟ', Sx.FIRE.x, Sx.FIRE.y); claim('ATM', Sx.ATM.x, Sx.ATM.y); claim('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); claim('ตู้เซฟกองกลาง', Sx.CHEST.x, Sx.CHEST.y);
+  for (const q of Sx.SEATS) claim('ที่นั่งลานกองไฟ', q.x, q.y);
+  if (errs.length) return [...new Set(errs)];
+  const now = unreachableCount(S, S.makeMap()), nw = unreachableCount(Sx, m);
+  if (nw.n > now.n) errs.push(`มีช่องเดินได้ ${nw.n - now.n} ช่องที่เดินไปไม่ถึง (ร้าน/ตู้อาจล้อมช่องว่างไว้)`);
+  for (const b of Sx.BUILDINGS) if (b.counter.length) { const [cx, cy] = b.counter[0]; if (!nw.walk(cx, cy + 1) || !nw.seen.has((cy + 1) * 1000 + cx)) errs.push(`เดินไปหน้าประตู ${b.name} ไม่ถึง`); }
+  const adj = (nm, x, y) => { if (!Sx.DIRS.some(([dx, dy]) => nw.seen.has((y + dy) * 1000 + (x + dx)))) errs.push(nm + ' ไม่มีช่องเดินติดอยู่เลย (ใช้งานไม่ได้)'); };
+  Sx.CABINETS.forEach((c, i) => adj('ตู้เกม ' + (i + 1), c.x, c.y)); adj('ATM', Sx.ATM.x, Sx.ATM.y); adj('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); adj('ตู้เซฟกองกลาง', Sx.CHEST.x, Sx.CHEST.y);
+  return [...new Set(errs)];
+}
+function layoutHistory() { try { return fs.readdirSync(LAYOUT_HIST).filter(f => f.endsWith('.json')).sort(); } catch (e) { return []; } }
+function commitLayout(world, p, items, how) { // เก็บของเดิมเข้าประวัติ → เขียนไฟล์ใหม่ → เซฟโลก → สั่งทุกเครื่องรีเฟรช → รีสตาร์ท (systemd เปิดให้ใหม่)
+  fs.mkdirSync(LAYOUT_HIST, { recursive: true });
+  const cur = readLayoutFile(LAYOUT_FILE);
+  fs.writeFileSync(path.join(LAYOUT_HIST, 'layout-' + Date.now() + '.json'), JSON.stringify(cur || { items: {} }));
+  const old = layoutHistory(); for (const f of old.slice(0, Math.max(0, old.length - 30))) { try { fs.unlinkSync(path.join(LAYOUT_HIST, f)); } catch (e) { /* ลบไม่ได้ก็ข้าม */ } }
+  if (items) { fs.writeFileSync(LAYOUT_FILE + '.tmp', JSON.stringify({ v: 1, items, by: p.name, at: Date.now() })); fs.renameSync(LAYOUT_FILE + '.tmp', LAYOUT_FILE); } else { try { fs.unlinkSync(LAYOUT_FILE); } catch (e) { /* ไม่มีไฟล์ก็คือค่าเดิมอยู่แล้ว */ } }
+  console.log('ผู้ดูแลเปลี่ยนผังเมือง (' + how + '):', p.name, '→ รีสตาร์ทเพื่อใช้ผังใหม่');
+  for (const w of worlds.values()) { try { w.save(true); } catch (e) { console.error('เซฟก่อนรีสตาร์ทไม่ได้:', e.message); } }
+  world.broadcast({ t: 'reload', why: 'layout' });
+  if (!process.env.LAYOUT_NO_EXIT) setTimeout(() => process.exit(0), 1500);
 }
 function adminHandle(p, world, m) {
   const reply = o => send(p, Object.assign({ t: 'admin', rooms: roomsPub(), current: world.room }, o));
@@ -3292,6 +3357,27 @@ function adminHandle(p, world, m) {
     return reply({ removed: name });
   }
   // ----- แก้แมพ (ผู้ดูแล): Mock วางแผนอิสระ + วาดพื้นห้องนี้ -----
+  if (m.a === 'layoutapply') {
+    const want = cleanLayoutItems(m.items), live = liveLayoutItems(S), changed = Object.keys(want).filter(id => live[id] && (live[id].x !== want[id].x || live[id].y !== want[id].y));
+    if (!changed.length) return reply({ mapedit: true, ok: 'ตำแหน่งตรงกับผังที่ใช้อยู่แล้ว ไม่มีอะไรต้องเปลี่ยน' });
+    const items = Object.assign({}, (globalThis.__LAYOUT && globalThis.__LAYOUT.items) || {}, want), errs = validateLayout(items);
+    if (errs.length) return reply({ mapedit: true, err: 'ใช้ผังนี้ไม่ได้ — ' + errs.slice(0, 5).join(' • ') });
+    reply({ mapedit: true, ok: 'ย้าย ' + changed.map(layoutName).join(', ') + ' แล้ว กำลังรีสตาร์ทเกม…' });
+    return commitLayout(world, p, items, 'ใช้ผังใหม่ ' + changed.length + ' รายการ');
+  }
+  if (m.a === 'layoutundo') {
+    const hist = layoutHistory(); if (!hist.length) return reply({ mapedit: true, err: 'ยังไม่มีผังเก่าให้ย้อนกลับ' });
+    const last = path.join(LAYOUT_HIST, hist[hist.length - 1]), prev = readLayoutFile(last);
+    const items = prev ? prev.items : null, errs = items && Object.keys(items).length ? validateLayout(items) : [];
+    if (errs.length) return reply({ mapedit: true, err: 'ย้อนกลับไม่ได้ — ' + errs.slice(0, 3).join(' • ') });
+    try { fs.unlinkSync(last); } catch (e) { /* ลบไม่ได้ก็ไม่เป็นไร */ }
+    reply({ mapedit: true, ok: 'ย้อนกลับไปผังก่อนหน้า กำลังรีสตาร์ทเกม…' });
+    return commitLayout(world, p, items && Object.keys(items).length ? items : null, 'ย้อนกลับ');
+  }
+  if (m.a === 'layoutreset') {
+    reply({ mapedit: true, ok: 'คืนผังตั้งต้นของโค้ด กำลังรีสตาร์ทเกม…' });
+    return commitLayout(world, p, null, 'คืนผังตั้งต้น');
+  }
   if (m.a === 'mapget') return reply({ mapedit: true, mocks: world.mocks || [], mapOv: world.mapOv || {}, paint: S.MAP_PAINT });
   if (m.a === 'mocks') {
     const mocks = S.sanitizeMocks(m.mocks);
