@@ -212,10 +212,11 @@
     c.addEventListener("pointercancel", onUp);
     c.addEventListener("lostpointercapture", () => { drag = null; });
     $("mapEditClose").onclick = close;
-    $("mapEdit").addEventListener("pointerdown", e => { if (e.target === $("mapEdit")) close(); });
     window.addEventListener("keydown", e => {
-      if (!shown() || !sel) return;
+      if (!shown()) return;
       if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      if (e.key === "Escape") { close(); e.preventDefault(); return; }
+      if (!sel) return;
       const m = mocks.find(x => x.id === sel); if (!m) return;
       if (e.key === "Delete" || e.key === "Backspace") { act("del"); e.preventDefault(); }
       if (e.key === "]") { m.w = Math.min(16, m.w + 1); if (m.x + m.w > W) m.x = W - m.w; dirty = true; draw(); }
@@ -223,6 +224,7 @@
       if (e.key === "'") { m.h = Math.min(16, m.h + 1); if (m.y + m.h > H) m.y = H - m.h; dirty = true; draw(); }
       if (e.key === ";") { m.h = Math.max(1, m.h - 1); dirty = true; draw(); }
     });
+    window.addEventListener("resize", () => { if (shown()) draw(); });
   }
 
   root.MapEdit = { open, close, shown, setMocks, getMocks, draw, bind };

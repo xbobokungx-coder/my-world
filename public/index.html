@@ -70,12 +70,17 @@
   #fgauge .mk { position:absolute; top:-2px; bottom:-2px; width:6px; margin-left:-3px; background:#fff; border:2px solid #3d2a1a; box-sizing:border-box; }
   #fgauge.hit .mk { background:#ffe06a; }
   body.touch #fgauge { bottom:calc(86px + var(--sab)); }
-  #shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#mapEdit { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
+  #shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
   #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; max-height:92dvh; overflow:auto; }
   #shop h2,#bag h2,#people h2,#archub h2,#status h2,#bug h2,#quest h2,#ach h2,#arcade h2,#trade h2,#cinema h2,#town h2,#admin h2,#plots h2,#mapEdit h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
-  #mapEdit .panel { width:min(96vw,980px); padding:14px; max-height:96vh; max-height:96dvh; overflow:auto; zoom:1 !important; }
-  #mapEditCv { display:block; width:100%; max-height:min(70vh,640px); height:auto; image-rendering:pixelated; image-rendering:crisp-edges; border:2px solid var(--edge); background:#1a2218; cursor:crosshair; touch-action:none; user-select:none; }
-  #mapEditMeta { font-size:12px; opacity:.75; margin:6px 0 0; }
+  /* ตัวแก้แมพเต็มจอ */
+  #mapEdit { position:fixed; inset:0; z-index:20; background:#1c140f; display:flex; padding:0; margin:0; }
+  #mapEdit .panel { width:100%; height:100%; max-width:none; max-height:none; border-radius:0; border:none; box-shadow:none; padding:10px 12px 8px; display:flex; flex-direction:column; gap:6px; overflow:hidden; zoom:1 !important; background:var(--panel,#f5e6c6); }
+  #mapEdit h2 { flex:0 0 auto; margin:0; }
+  #mapEditBar { flex:0 0 auto; }
+  #mapEditStage { flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; background:#1a2218; border:2px solid var(--edge,#2a1b14); border-radius:8px; overflow:hidden; }
+  #mapEditCv { display:block; width:auto; height:auto; max-width:100%; max-height:100%; image-rendering:pixelated; image-rendering:crisp-edges; cursor:crosshair; touch-action:none; user-select:none; }
+  #mapEditMeta, #mapEditHint { flex:0 0 auto; font-size:12px; opacity:.75; margin:0; }
   #mapEdit .chip.me-brush { min-width:52px; text-align:center; }
   #bugText { width:100%; box-sizing:border-box; padding:8px 10px; border:2px solid var(--edge); border-radius:10px; font:inherit; font-size:15px; resize:vertical; min-height:96px; background:#fffdf6; }
   #bug .bugfile { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:10px 0 6px; font-size:12px; opacity:.9; }
@@ -390,8 +395,8 @@
   #hudMenu .spk { margin-left:0; color:inherit; }
   /* คอมจอใหญ่: ขยาย UI ตามสเกลจอ (--ui คำนวณใน game.js resize) ให้สัดส่วนกับโลกในเกมเท่ากับจอเล็ก */
   body:not(.touch) :is(#hudTop,#hotbar,#inv,#chat,#mini,#guide,#toast,#picker,#build,#fgauge,#callBox) { zoom:var(--ui,1); }
-  body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#mapEdit,#ask,#homeChoice) > .panel { zoom:var(--ui,1); }
-  body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#mapEdit) > .panel { max-height:calc(92dvh / var(--ui,1)); }
+  body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#ask,#homeChoice) > .panel { zoom:var(--ui,1); }
+  body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots) > .panel { max-height:calc(92dvh / var(--ui,1)); }
   body:not(.touch) #hudMenu { max-height:calc((100dvh - 90px) / var(--ui,1)); }
   body:not(.touch) #build { max-height:calc((100dvh - 24px) / var(--ui,1)); }
   body:not(.touch) :is(#townBody,#tradeBody) { max-height:calc(68vh / var(--ui,1)); }
@@ -550,11 +555,11 @@
   <div id="adminBody"></div>
 </div></div>
 <div id="mapEdit" class="hidden"><div class="panel">
-  <h2><span>🗺️ แก้แมพ (ผู้ดูแล)</span> <button class="btn small" id="mapEditClose">ปิด</button></h2>
+  <h2><span>🗺️ แก้แมพ (ผู้ดูแล) — เต็มจอ</span> <button class="btn small" id="mapEditClose">ปิด</button></h2>
   <div id="mapEditBar"></div>
-  <canvas id="mapEditCv" width="896" height="644"></canvas>
+  <div id="mapEditStage"><canvas id="mapEditCv" width="896" height="644"></canvas></div>
   <div id="mapEditMeta"></div>
-  <p style="font-size:12px;opacity:.65;margin:8px 0 0">คีย์ลัดตอนเลือก Mock: <b>Delete</b> ลบ · <b>[ ]</b> ปรับกว้าง · <b>; '</b> ปรับสูง</p>
+  <p id="mapEditHint">คีย์ลัดตอนเลือก Mock: <b>Delete</b> ลบ · <b>[ ]</b> ปรับกว้าง · <b>; '</b> ปรับสูง · <b>Esc</b> ปิด</p>
 </div></div>
 <div id="plots" class="hidden"><div class="panel">
   <h2><span>🏘️ บ้านเพื่อน • อันดับตกแต่ง</span> <button class="btn small" id="plotsClose">ปิด</button></h2>
