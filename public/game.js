@@ -284,8 +284,9 @@ function onAdmin(m) {
   if (m.unbanned) toast('✅ ปลดแบน ' + m.unbanned + ' แล้ว');
   if (m.removed) toast('เลิกใช้ห้อง ' + m.removed + ' แล้ว');
   if (m.mapedit && typeof MapEdit !== 'undefined') {
-    if (m.mocks) MapEdit.setMocks(m.mocks);
-    if (m.ok) toast(m.ok);
+    // อัปเดต Mock จากเซิร์ฟเวอร์เฉพาะตอน mapget / บันทึก mocks — ไม่ทับตอนวาดพื้น
+    if (m.mocks && !m.painted) MapEdit.setMocks(m.mocks, { fromServer: true });
+    if (m.ok && !m.painted) toast(m.ok);
     if (MapEdit.shown()) MapEdit.draw();
   }
   if (adminShown()) renderAdmin();

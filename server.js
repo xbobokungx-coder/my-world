@@ -3297,8 +3297,8 @@ function adminHandle(p, world, m) {
   }
   if (m.a === 'mappaint') {
     const cells = world.paintCells(m.cells);
-    if (!cells) return reply({ err: 'วาดแมพไม่สำเร็จ (ช่องไม่ถูกต้องหรือว่าง)', mapedit: true, mocks: world.mocks || [] });
-    return reply({ mapedit: true, mocks: world.mocks || [], painted: cells.length, ok: 'วาดแล้ว ' + cells.length + ' ช่อง' });
+    if (!cells) return reply({ err: 'วาดแมพไม่สำเร็จ (ช่องไม่ถูกต้องหรือว่าง)', mapedit: true });
+    return reply({ mapedit: true, painted: cells.length }); // ไม่ส่ง mocks/ok ทุกครั้ง — กันทับของที่กำลังแก้และสแปม toast
   }
   if (m.a === 'mapovclear') { // ล้างเฉพาะช่องที่วาดทับ คืนพื้นจาก makeMap + ต้นไม้ที่ยังอยู่ใน treeKind + โครงการ
     const keep = world.treeList();
