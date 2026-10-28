@@ -1,15 +1,13 @@
 // แก้แมพสำหรับผู้ดูแล: ขยับ/เพิ่ม/ลบ Mock วางแผน + วาดพื้นห้อง (server-authoritative)
 (function (root) {
   const { W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, BUILDINGS, FIRE, ATM, BOARD, CHEST, CABINETS, HOUSE_BLD, FARM, PENS } = Shared;
-  const CELL = 14;
-  let mocks = [], sel = null, mode = 'paint', brush = T.PATH, drag = null, dirty = false;
+  let mocks = [], sel = null, mode = 'move', brush = T.WATER, drag = null, dirty = false, cell = 14;
   let sendFn = () => {}, toastFn = () => {}, onClose = () => {}, getMap = () => null;
   let paintQ = [], paintTimer = null, ignoreServerMocksUntil = 0;
 
   const $ = id => document.getElementById(id);
   const shown = () => $("mapEdit") && !$("mapEdit").classList.contains("hidden");
 
-  // Mock เริ่มต้นจากจุดสำคัญในเกม — มีของให้ลากทันทีตอนเปิดครั้งแรก
   function seedMocks() {
     const out = [];
     const add = (id, x, y, w, h, label, color) => out.push({ id, x, y, w, h, label, color: color || '#ffd24a' });
@@ -29,7 +27,6 @@
   }
 
   function setMocks(list, opts) {
-    // อย่าให้คำตอบจากเซิร์ฟเวอร์ทับของที่กำลังแก้ (เช่น mapget ช้า / mappaint ตอบกลับ)
     if (opts && opts.fromServer && (dirty || Date.now() < ignoreServerMocksUntil)) return;
     mocks = sanitizeMocks(list);
     if (!(opts && opts.keepDirty)) dirty = false;
@@ -41,12 +38,11 @@
     sendFn = opts.send; toastFn = opts.toast; onClose = opts.onClose || (() => {}); getMap = opts.getMap;
     const incoming = Array.isArray(opts.mocks) ? sanitizeMocks(opts.mocks) : [];
     mocks = incoming.length ? incoming : seedMocks();
-    dirty = !incoming.length; // ถ้าเพิ่ง seed ยังไม่เคยเซฟ ให้ขึ้นว่ายังไม่บันทึก
-    mode = "paint"; brush = T.PATH; sel = null; ignoreServerMocksUntil = Date.now() + 800;
+    dirty = !incoming.length;
+    mode = "move"; brush = T.WATER; sel = null; ignoreServerMocksUntil = Date.now() + 800;
     $("mapEdit").classList.remove("hidden");
     renderToolbar();
-    draw();
-    toastFn("🖌️ โหมดวาดพื้น — ลากบนแมพเพื่อทาสี · กด「เพิ่ม Mock」เพื่อวางกล่อง");
+    requestAnimationFrame(() => { draw(); toastFn("✋ ลากกล่องเหลืองเพื่อขยับ · กด「วาดพื้น」แล้วเลือกสีเพื่อทาสี"); });
   }
   function close() {
     if (dirty && !confirm("มี Mock ที่ยังไม่บันทึก ปิดเลยไหม?")) return;
@@ -55,13 +51,14 @@
   }
 
   function renderToolbar() {
-    const paint = MAP_PAINT.map(p =>
+    const bar = $("mapEditBar"); if (!bar) return;
+    const paint = (MAP_PAINT || []).map(p =>
       `<button type="button" class="chip me-brush${brush === p.t && mode === "paint" ? " sel" : ""}" data-brush="${p.t}" title="${p.name}" style="background:${p.col};color:#111;font-weight:700">${p.name}</button>`
     ).join("");
-    $("mapEditBar").innerHTML =
+    bar.innerHTML =
       `<div class="chips" style="margin:0">`
-      + `<button type="button" class="chip${mode === "paint" ? " sel" : ""}" data-mode="paint">🖌️ วาดพื้น</button>`
       + `<button type="button" class="chip${mode === "move" ? " sel" : ""}" data-mode="move">✋ ขยับ Mock</button>`
+      + `<button type="button" class="chip${mode === "paint" ? " sel" : ""}" data-mode="paint">🖌️ วาดพื้น</button>`
       + `<button type="button" class="chip${mode === "add" ? " sel" : ""}" data-mode="add">➕ เพิ่ม Mock</button>`
       + `<button type="button" class="chip" data-act="del">🗑️ ลบที่เลือก</button>`
       + `<button type="button" class="chip" data-act="save">💾 บันทึก Mock</button>`
@@ -69,10 +66,14 @@
       + `<button type="button" class="chip" data-act="ovclear">↩️ ล้างพื้นที่วาด</button>`
       + `</div>`
       + `<div class="chips" style="margin:6px 0 0">${paint}</div>`
-      + `<p style="font-size:12px;opacity:.8;margin:6px 0 0">ตอนนี้: <b>${mode === "paint" ? "วาดพื้น (" + (MAP_PAINT.find(p => p.t === brush) || {}).name + ")" : mode === "add" ? "คลิกแมพเพื่อวาง Mock" : "ลากกล่องเหลืองเพื่อขยับ"}</b> · Mock ${mocks.length}/${MOCK_MAX}${dirty ? " · ยังไม่บันทึก" : ""}</p>`;
-    $("mapEditBar").querySelectorAll("[data-mode]").forEach(b => b.onclick = e => { e.preventDefault(); mode = b.dataset.mode; renderToolbar(); });
-    $("mapEditBar").querySelectorAll("[data-brush]").forEach(b => b.onclick = e => { e.preventDefault(); mode = "paint"; brush = +b.dataset.brush; renderToolbar(); });
-    $("mapEditBar").querySelectorAll("[data-act]").forEach(b => b.onclick = e => { e.preventDefault(); act(b.dataset.act); });
+      + `<p style="font-size:13px;opacity:.9;margin:6px 0 0;font-weight:700">ตอนนี้: ${
+        mode === "paint" ? "🖌️ วาดพื้น — เลือกสีด้านบน แล้วลากบนแมพ (แนะนำลอง「น้ำ」จะเห็นชัด)"
+        : mode === "add" ? "➕ คลิกบนแมพเพื่อวาง Mock ใหม่"
+        : "✋ คลิกกล่องแล้วลากเพื่อขยับ · [ ] กว้าง · ; ' สูง · Delete ลบ"
+      } · ${mocks.length} Mock${dirty ? " · ยังไม่บันทึก" : ""}</p>`;
+    bar.querySelectorAll("[data-mode]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); mode = b.dataset.mode; renderToolbar(); });
+    bar.querySelectorAll("[data-brush]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); mode = "paint"; brush = +b.dataset.brush; renderToolbar(); });
+    bar.querySelectorAll("[data-act]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); act(b.dataset.act); });
   }
 
   function flushPaint() {
@@ -89,9 +90,8 @@
     draw();
   }
   function queuePaint(x, y) {
-    if (x < 1 || y < 1 || x > W - 2 || y > H - 2) return; // ขอบแมพแก้ไม่ได้
+    if (x < 1 || y < 1 || x > W - 2 || y > H - 2) return;
     paintQ.push([x, y, brush]);
-    // อัปเดตทันทีบนจอ
     const MAP = getMap();
     if (MAP && MAP[y]) MAP[y][x] = brush;
     draw();
@@ -108,7 +108,7 @@
       sendFn({ t: "admin", a: "mocks", mocks }); dirty = false; toastFn("กำลังบันทึก Mock…"); renderToolbar(); return;
     }
     if (a === "seed") {
-      mocks = seedMocks(); dirty = true; sel = null; mode = "move"; renderToolbar(); draw(); toastFn("โหลดจุดสำคัญแล้ว — ลากกล่องได้ · กดบันทึก Mock เพื่อเก็บ"); return;
+      mocks = seedMocks(); dirty = true; sel = null; mode = "move"; renderToolbar(); draw(); toastFn("โหลดจุดสำคัญแล้ว — ลากกล่องได้"); return;
     }
     if (a === "ovclear") {
       if (!confirm("ล้างทุกช่องที่วาดทับ คืนพื้นแมพเดิมของห้องนี้?\n(Mock ไม่ถูกลบ)")) return;
@@ -116,14 +116,13 @@
     }
   }
 
-  // พิกัดช่องจากเมาส์ — ใช้สัดส่วนของ canvas บนจอ (กันเพี้ยนจาก zoom/scale)
   function tileAt(ev) {
     const c = $("mapEditCv"); if (!c) return null;
     const r = c.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) return null;
     const px = (ev.clientX - r.left) / r.width;
     const py = (ev.clientY - r.top) / r.height;
-    if (px < 0 || py < 0 || px >= 1 || py >= 1) return null;
+    if (px < 0 || py < 0 || px > 1 || py > 1) return null;
     const x = Math.min(W - 1, Math.max(0, Math.floor(px * W)));
     const y = Math.min(H - 1, Math.max(0, Math.floor(py * H)));
     return { x, y };
@@ -138,30 +137,34 @@
   }
 
   function draw() {
-    const c = $("mapEditCv"); if (!c) return;
+    const c = $("mapEditCv"), stage = $("mapEditStage"); if (!c || !stage) return;
+    const sw = Math.max(64, stage.clientWidth), sh = Math.max(64, stage.clientHeight);
+    cell = Math.max(6, Math.floor(Math.min(sw / W, sh / H)));
+    const bw = W * cell, bh = H * cell;
+    if (c.width !== bw || c.height !== bh) { c.width = bw; c.height = bh; }
     const g = c.getContext("2d");
-    c.width = W * CELL; c.height = H * CELL;
     g.imageSmoothingEnabled = false;
     const MAP = getMap();
     const col = { [T.GRASS]: "#7bc65a", [T.WATER]: "#4ab8cc", [T.TREE]: "#3f9a3a", [T.BUILD]: "#a0692f", [T.PATH]: "#dcbf82", [T.FENCE]: "#8b5a2b", [T.SAND]: "#efdfa4", [T.SHOP]: "#c9894a", [T.BRIDGE]: "#b8956a", [T.LANDMARK]: "#9b7bb8" };
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       g.fillStyle = (MAP && MAP[y] && col[MAP[y][x]] != null) ? col[MAP[y][x]] : "#7bc65a";
-      g.fillRect(x * CELL, y * CELL, CELL, CELL);
+      g.fillRect(x * cell, y * cell, cell, cell);
     }
-    g.strokeStyle = "rgba(0,0,0,.08)"; g.lineWidth = 1;
-    for (let x = 0; x <= W; x++) { g.beginPath(); g.moveTo(x * CELL, 0); g.lineTo(x * CELL, H * CELL); g.stroke(); }
-    for (let y = 0; y <= H; y++) { g.beginPath(); g.moveTo(0, y * CELL); g.lineTo(W * CELL, y * CELL); g.stroke(); }
+    g.strokeStyle = "rgba(0,0,0,.12)"; g.lineWidth = 1;
+    for (let x = 0; x <= W; x++) { g.beginPath(); g.moveTo(x * cell + 0.5, 0); g.lineTo(x * cell + 0.5, bh); g.stroke(); }
+    for (let y = 0; y <= H; y++) { g.beginPath(); g.moveTo(0, y * cell + 0.5); g.lineTo(bw, y * cell + 0.5); g.stroke(); }
     for (const m of mocks) {
-      g.fillStyle = (m.color || "#ffd24a") + "aa";
+      g.fillStyle = (m.color || "#ffd24a") + "bb";
       g.strokeStyle = m.id === sel ? "#fff" : "#5a3a00";
       g.lineWidth = m.id === sel ? 3 : 2;
-      g.fillRect(m.x * CELL, m.y * CELL, m.w * CELL, m.h * CELL);
-      g.strokeRect(m.x * CELL + 0.5, m.y * CELL + 0.5, m.w * CELL - 1, m.h * CELL - 1);
-      g.fillStyle = "#111"; g.font = "bold 10px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
-      g.fillText(m.label, (m.x + m.w / 2) * CELL, (m.y + m.h / 2) * CELL);
+      g.fillRect(m.x * cell, m.y * cell, m.w * cell, m.h * cell);
+      g.strokeRect(m.x * cell + 1, m.y * cell + 1, m.w * cell - 2, m.h * cell - 2);
+      g.fillStyle = "#111"; g.font = `bold ${Math.max(10, Math.floor(cell * 0.7))}px sans-serif`;
+      g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(m.label, (m.x + m.w / 2) * cell, (m.y + m.h / 2) * cell);
     }
-    const tip = mode === "paint" ? "ลากเพื่อทาสี" : mode === "add" ? "คลิกเพื่อวาง Mock" : (sel ? "ลากเพื่อขยับ · Delete ลบ" : "คลิกกล่องเพื่อเลือก");
-    $("mapEditMeta").textContent = tip + (dirty ? " · ยังไม่บันทึก Mock" : "");
+    const tip = mode === "paint" ? "ลากเพื่อทาสี" : mode === "add" ? "คลิกเพื่อวาง Mock" : (sel ? "ลากเพื่อขยับ · Delete ลบ" : "คลิกกล่องเหลืองเพื่อเลือก/ลาก");
+    if ($("mapEditMeta")) $("mapEditMeta").textContent = tip + (dirty ? " · ยังไม่บันทึก Mock" : "");
   }
 
   function onDown(ev) {
@@ -169,17 +172,13 @@
     if (ev.target !== $("mapEditCv")) return;
     const t = tileAt(ev); if (!t) return;
     ev.preventDefault();
-    try { $("mapEditCv").setPointerCapture(ev.pointerId); } catch (e) { /* บางเบราว์เซอร์ไม่รองรับ */ }
-    if (mode === "paint") {
-      drag = { paint: true };
-      queuePaint(t.x, t.y);
-      return;
-    }
+    try { $("mapEditCv").setPointerCapture(ev.pointerId); } catch (e) { /* */ }
+    if (mode === "paint") { drag = { paint: true }; queuePaint(t.x, t.y); return; }
     if (mode === "add") {
       if (mocks.length >= MOCK_MAX) return toastFn("Mock เต็มแล้ว");
       const id = "m" + Date.now().toString(36);
       let label = "จุดใหม่";
-      try { label = window.prompt("ชื่อ Mock", "จุดใหม่") || "จุดใหม่"; } catch (e) { /* prompt ถูกบล็อก */ }
+      try { label = window.prompt("ชื่อ Mock", "จุดใหม่") || "จุดใหม่"; } catch (e) { /* */ }
       mocks.push({ id, x: Math.min(t.x, W - 3), y: Math.min(t.y, H - 2), w: 3, h: 2, label: String(label).slice(0, 24), color: "#ffd24a" });
       sel = id; dirty = true; mode = "move"; renderToolbar(); draw(); return;
     }
