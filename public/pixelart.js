@@ -512,20 +512,8 @@ const PixelArt = (() => {
         r(x, '#4a2e1b', wx + 4, dy - 1, 22, 17); r(x, '#2a2420', wx + 5, dy + 6, 20, 10);
         for (let yy = dy; yy < dy + 6; yy += 2) { r(x, '#9aa5ad', wx + 5, yy, 20, 1); r(x, '#c9d3dc', wx + 5, yy, 20, 1); r(x, '#6c7782', wx + 5, yy + 1, 20, 1); }
         disc(x, wx + 14, dy + 12, 2, '#3a3a3a'); r(x, '#9aa5ad', wx + 20, dy + 9, 1, 7);
-        win(x, wx + ww - 14, dy + 1, 9, 7, '#7fbcef');
-      } else if (k === 'furn' || k === 'cloth') { // หน้าร้านกระจกเห็นของข้างใน
-        const X = wx + 3, Y = dy - 1, Wd = 24, Hd = 13;
-        r(x, '#4a2e1b', X - 1, Y - 1, Wd + 2, Hd + 2); r(x, '#e9c58f', X, Y, Wd, Hd); r(x, '#d9ae72', X, Y + 9, Wd, 4);
-        for (let i = 0; i < Wd; i += 4) r(x, '#dcb87e', X + i, Y, 2, 9);
-        if (k === 'furn') {
-          r(x, '#8e2a24', X + 3, Y + 5, 9, 7); r(x, '#c8423a', X + 4, Y + 5, 7, 3); r(x, '#e05a4a', X + 4, Y + 5, 3, 1); r(x, '#d9473c', X + 5, Y + 8, 5, 2);
-          r(x, '#5a371e', X + 18, Y + 4, 1, 8); r(x, '#f2c14e', X + 15, Y + 1, 7, 4); r(x, '#ffe7a0', X + 16, Y + 1, 3, 1);
-        } else {
-          r(x, '#5a371e', X + 2, Y + 1, 20, 1);
-          [['#3498db', 3], ['#e74c3c', 9], ['#2ecc71', 15]].forEach(([cc, ox]) => { r(x, '#5a371e', X + ox + 2, Y + 1, 1, 2); r(x, cc, X + ox, Y + 3, 5, 5); r(x, cc, X + ox - 1, Y + 3, 1, 3); r(x, cc, X + ox + 5, Y + 3, 1, 3); r(x, shade(cc, .4), X + ox, Y + 3, 2, 1); });
-        }
-        r(x, 'rgba(255,255,255,.45)', X + 1, Y + 1, 1, 4); r(x, '#5a371e', X + (Wd >> 1), Y, 1, Hd);
-        door(x, wx + ww - 13, dy + 1, 8, 15, D);
+      } else if (k === 'furn' || k === 'cloth') { // ประตูกลางหน้าร้าน (ไม่มีตู้โชว์/หน้าต่างแล้ว เข้าซื้อทางประตูอย่างเดียว)
+        door(x, cx - 4, dy + 1, 8, 15, D);
         if (k === 'cloth') for (let i = 0; i < ww; i += 6) { r(x, '#d6559a', wx + i, wy + 2, 3, 4); r(x, '#f7e1ee', wx + i + 3, wy + 2, 3, 4); r(x, '#d6559a', wx + i + 1, wy + 6, 1, 1); r(x, '#f7e1ee', wx + i + 4, wy + 6, 1, 1); }
       } else if (k === 'coop') { // เล้าไก่ทรงยุ้งฉางสีแดง ประตูกากบาท
         r(x, '#f6efe2', cx - 7, dy - 1, 14, 17); r(x, '#8c2f27', cx - 6, dy, 12, 16);
@@ -534,14 +522,10 @@ const PixelArt = (() => {
         r(x, '#f6efe2', wx, wy, ww, 1); r(x, '#f6efe2', wx, wy, 1, wb - wy); r(x, '#f6efe2', wx + ww - 1, wy, 1, wb - wy);
       } else {
         door(x, cx - 4, dy + 1, 8, 15, ['#6e4524', '#8f5a2e', '#b67d45']);
-        const boxC = { food: '#ff6f6f', farm: '#ffd34d', animal: '#ffffff', wood: '#ff9db0', fish: '#9fd4ff' }[k] || '#ff9db0';
         if (k === 'fish') { // ห่วงชูชีพ + ปลาตาก
           disc(x, wx + ww - 9, dy + 5, 4, '#f6efe2'); r(x, '#d9473c', wx + ww - 13, dy + 4, 2, 2); r(x, '#d9473c', wx + ww - 7, dy + 4, 2, 2); r(x, '#d9473c', wx + ww - 10, dy + 1, 2, 2); r(x, '#d9473c', wx + ww - 10, dy + 7, 2, 2); disc(x, wx + ww - 9, dy + 5, 1, wall[1]);
           r(x, '#5a371e', wx + 2, wy + 3, 14, 1);
           for (let i = 0; i < 3; i++) { const fx = wx + 3 + i * 5, cl = i % 2 ? ['#d07a3a', '#f2a865'] : ['#7f97a8', '#c9d8e2']; r(x, cl[0], fx, wy + 4, 3, 5); r(x, cl[1], fx, wy + 4, 1, 4); r(x, cl[0], fx - 1, wy + 9, 5, 1); }
-          win(x, wx + 4, dy + 3, 8, 6, boxC);
-        } else {
-          win(x, wx + 4, dy + 1, 9, 7, boxC); win(x, wx + ww - 13, dy + 1, 9, 7, boxC);
         }
         if (k === 'food') { // กันสาดลายทาง
           for (let i = 0; i < ww; i += 4) { r(x, '#c8423a', wx + i, wy + 1, 2, 5); r(x, '#f6e7c8', wx + i + 2, wy + 1, 2, 5); r(x, '#9e2f29', wx + i, wy + 6, 2, 1); }

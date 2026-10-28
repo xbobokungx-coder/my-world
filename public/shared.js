@@ -547,11 +547,11 @@
     { kind: 'fish',   x0: 40, y0: 27, x1: 42, y1: 28, counter: [[41, 28]], name: 'ร้านตกปลา',      sign: '🎣', roof: '#2e7bb5', wall: '#e6d9b5' },
     { kind: 'animal', x0: 40, y0: 13, x1: 42, y1: 14, counter: [[41, 14]], name: 'ร้านปศุสัตว์',    sign: '🐄', roof: '#a8552f', wall: '#f0dcae' },
     { kind: 'pet',    x0: 40, y0: 17, x1: 42, y1: 18, counter: [[41, 18]], name: 'ร้านสัตว์เลี้ยง',  sign: '🐾', roof: '#e0748a', wall: '#fdeef0' },
-    { kind: 'cloth',  x0: 21, y0: 13, x1: 23, y1: 14, counter: [[23, 14]], name: 'ร้านเสื้อผ้า',    sign: '👕', roof: '#d6559a', wall: '#f7e1ee' },
+    { kind: 'cloth',  x0: 21, y0: 13, x1: 23, y1: 14, counter: [[22, 14]], name: 'ร้านเสื้อผ้า',    sign: '👕', roof: '#d6559a', wall: '#f7e1ee' },
     { kind: 'food',   x0: 21, y0: 23, x1: 23, y1: 24, counter: [[22, 24]], name: 'ร้านอาหาร',      sign: '🍜', roof: '#e08a1e', wall: '#fdeccb' },
     { kind: 'wood',   x0: 3,  y0: 25, x1: 5,  y1: 26, counter: [[4, 26]],  name: 'ร้านช่างไม้',     sign: '🪓', roof: '#8a5a2b', wall: '#f3e2c3' },
     { kind: 'vehicle', x0: 40, y0: 23, x1: 42, y1: 24, counter: [[41, 24]], name: 'ร้านยานพาหนะ',   sign: '🚲', roof: '#3b6ea5', wall: '#e4ecf5' },
-    { kind: 'furn',   x0: 36, y0: 13, x1: 38, y1: 14, counter: [[38, 14]], name: 'ร้านเฟอร์นิเจอร์', sign: '🛋️', roof: '#7b4fa3', wall: '#efe4f7' },
+    { kind: 'furn',   x0: 36, y0: 13, x1: 38, y1: 14, counter: [[37, 14]], name: 'ร้านเฟอร์นิเจอร์', sign: '🛋️', roof: '#7b4fa3', wall: '#efe4f7' },
     // ป้ายลานตู้เกม (ไม่ใช่อาคาร): ตู้เกมวางอยู่ด้านล่างป้าย
     { kind: 'sign',   x0: 30, y0: 1, x1: 33, y1: 1, counter: [],                  name: 'Arcade Hub',     sign: '🎮', roof: '#6a3fb5', wall: '#8b5a2b' },
   ];
