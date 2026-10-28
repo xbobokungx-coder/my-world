@@ -303,7 +303,7 @@ class World {
     this.chain = Number.isFinite(d.chain) ? d.chain : 0; this.invites = d.invites && typeof d.invites === 'object' ? d.invites : {}; // ชาเลนจ์ถังน้ำ: จำนวนที่ทำสำเร็จทั้งเมือง + รหัสลิงก์ท้า
     this.stall = (Array.isArray(d.stall) ? d.stall : []).filter(x => x && typeof x.seller === 'string' && typeof x.item === 'string' && x.n > 0 && x.price > 0); this.stallNext = this.stall.reduce((a, x) => Math.max(a, x.id || 0), 0) + 1;
     this.orders = d.orders && Array.isArray(d.orders.list) ? d.orders : { day: '', list: [], by: {} };
-    this.rents = {}; for (const P of S.FARM_RENT.plots) { const r = d.rents && d.rents[P.id]; if (r && typeof r.key === 'string' && Number.isFinite(r.until)) { if (r.until - Date.now() > S.FARM_RENT.maxAhead * S.DAY_MS) { this.dirty = true; continue; } /* เช่าเกิน 1 วัน (สัญญาเก่า) ตัดออกเลย */ this.rents[P.id] = { key: r.key, name: String(r.name || r.key).slice(0, 12), until: r.until }; } } // แปลงเช่า
+    this.rents = {}; for (const P of S.FARM_RENT.plots) { const r = d.rents && d.rents[P.id]; if (r && typeof r.key === 'string' && Number.isFinite(r.until)) { if (r.until - Date.now() > S.FARM_RENT.ms) { this.dirty = true; continue; } /* เช่าเกิน 1 วันจริง (สัญญาเก่า) ตัดออกเลย */ this.rents[P.id] = { key: r.key, name: String(r.name || r.key).slice(0, 12), until: r.until }; } } // แปลงเช่า
     this.log = (Array.isArray(d.log) ? d.log : []).filter(e => Array.isArray(e) && Number.isFinite(e[0]) && typeof e[1] === 'string').slice(-S.TOWN.logMax).map(e => [e[0], e[1].slice(0, 120)]);
     this.loadVillage(d.village); this.loadWeek(d.week); this.loadProjects(d.projects);
     this.banned = new Set(Array.isArray(d.banned) ? d.banned.filter(x => typeof x === 'string').map(x => x.toLowerCase().slice(0, 24)) : []); // ชื่อ (key) ที่ผู้ดูแลแบน: เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น
@@ -1023,8 +1023,8 @@ class World {
     const now = Date.now(), cur = this.rents[id], mine = Object.entries(this.rents).find(([k, r]) => r.key === p.key && r.until > now);
     if (cur && cur.until > now && cur.key !== p.key) return this.toast(p, `แปลง ${id} มีคนเช่าอยู่แล้ว (${cur.name})`);
     if (mine && mine[0] !== id) return this.toast(p, `คุณเช่าแปลง ${mine[0]} อยู่แล้ว เช่าได้คนละแปลง`);
-    const day = S.DAY_MS, base = cur && cur.key === p.key && cur.until > now ? cur.until : now, until = base + S.FARM_RENT.days * day;
-    if (until - now > S.FARM_RENT.maxAhead * day) return this.toast(p, `เช่าได้รอบละ ${S.FARM_RENT.maxAhead} วันในเกม รอให้หมดรอบก่อนแล้วค่อยเช่าใหม่`);
+    if (cur && cur.key === p.key && cur.until > now) return this.toast(p, 'เช่าได้รอบละ 1 วัน รอให้หมดรอบก่อนแล้วค่อยเช่าใหม่');
+    const until = now + S.FARM_RENT.ms;
     if ((p.rec.inv.coin || 0) < S.FARM_RENT.price) return this.toast(p, `เหรียญไม่พอ ค่าเช่า 🪙 ${S.FARM_RENT.price}`);
     this.add(p, 'coin', -S.FARM_RENT.price, 'rent'); this.rents[id] = { key: p.key, name: p.name, until }; this.dirty = true;
     this.broadcast({ t: 'rents', r: this.rentsPub() }); this.sfxTo(p, 'coin');
