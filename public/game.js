@@ -3811,8 +3811,8 @@ function step(now) {
   if (!scene) for (const n of npcs.values()) if (n.x > camX - 40 && n.x < camX + vw + 40 && n.y > camY - 60 && n.y < camY + vh + 60) list.push({ y: n.y + 12, f: () => drawPlayer(n, now) });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
 
-  // โรงหนัง: ป้ายสถานะใต้จอ + 🍿 เหนือหัวคนที่กำลังดู
-  if (cin && !scene) {
+  // โรงหนัง: ป้ายสถานะใต้จอ + 🍿 เหนือหัวคนที่กำลังดู (เลิกมีอาคารจอแล้ว)
+  if (cin && !scene && BUILDINGS.some(b => b.kind === 'cinema')) {
     const mv = cin.movie ? { name: cin.name } : null, txt = mv ? `▶ ${mv.name} • 🍿 ${cin.viewers.length} คน` : '🎬 ว่าง กดที่จอเพื่อฉายหนัง';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `bold 11px ${FONT}`;
     const w = ctx.measureText(txt).width + 12, cx = 17 * TS, cy = 35 * TS - 4;
