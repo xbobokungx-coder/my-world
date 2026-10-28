@@ -1,7 +1,7 @@
 // โค้ดที่ใช้ร่วมกันระหว่างเซิร์ฟเวอร์และเบราว์เซอร์ (แมพ, ข้อมูลพืช/ปลา/สัตว์/ร้าน, เลเวล, การชน)
 (function (root) {
   const TS = 32, W = 64, H = 46;
-  const T = { GRASS: 0, WATER: 1, TREE: 2, BUILD: 3, PATH: 4, FENCE: 5, SAND: 6, SHOP: 7, FLOOR: 8, FURN: 9, BRIDGE: 10, LANDMARK: 11, WALL: 12, VOID: 13, CLIFF: 14, STAIR: 15 };
+  const T = { GRASS: 0, WATER: 1, TREE: 2, BUILD: 3, PATH: 4, FENCE: 5, SAND: 6, SHOP: 7, FLOOR: 8, FURN: 9, BRIDGE: 10, LANDMARK: 11, WALL: 12, VOID: 13, CLIFF: 14, STAIR: 15, CAVE: 16, ROCK: 17, ORE: 18, MOUTH: 19 };
   // ชนิดพื้นที่ผู้ดูแลวาดแก้แมพได้ (ไม่รวม FLOOR/FURN/WALL/VOID ของบ้าน)
   const MAP_PAINT = [
     { t: T.GRASS, name: 'หญ้า', col: '#7bc65a' }, { t: T.PATH, name: 'ทาง', col: '#dcbf82' },
@@ -244,6 +244,7 @@
     animal: { name: 'คนเลี้ยงสัตว์', emoji: '🐄' },
     wood:   { name: 'ช่างไม้',    emoji: '🪵' },
     cook:   { name: 'เชฟ',       emoji: '👨‍🍳' },
+    mine:   { name: 'นักขุดแร่',   emoji: '⚒️' },
   };
   // XP สะสมที่ต้องใช้ถึงเลเวลนั้น (ช่อง = เลเวล) ตั้งตามเวลาเล่นเป้าหมายต่ออาชีพ: Lv2 ~5 นาที • Lv4 ~45 นาที • Lv5 ~1.5 ชม. • Lv7 ~5 ชม. • Lv10 ~18 ชม. (ดู ECONOMY-PLAN.md ขั้น 1B)
   const XP_TABLE = [0, 0, 150, 600, 1500, 3500, 8000, 14500, 24000, 36000, 64000];
@@ -344,6 +345,68 @@
     gold:    { name: 'ต้นราชพฤกษ์',   emoji: '🌼', lv: 6, axe: 3, hp: 8,  w: 5,  drop: [['goldwood', 1]],               bonus: [['kunflower', 0.3]] },
     rose:    { name: 'ต้นพะยูง',      emoji: '🟥', lv: 8, axe: 3, hp: 14, w: 2,  drop: [['rosewood', 1]],               bonus: [['rosewood', 0.1]], where: 'deep' },
   };
+  // ขุดเหมือง (ถ้ำ): เดินเข้าปากถ้ำบนหน้าผาเหนือ ใช้อีเต้อขุดก้อนแร่ ยิ่งลึกแร่ยิ่งแพง (ถ้ำเป็นฉากร่วมของทั้งห้อง เห็นกันและแย่งแร่กัน)
+  // อีเต้อ: ระดับแรงกว่าขุดเร็วกว่าและขุดแร่ลึกได้ (power = แต้มต่อครั้ง) lv = เลเวลนักขุดแร่ที่ซื้อได้
+  const PICKS = { 1: { name: 'อีเต้อหิน', price: 60, power: 1 }, 2: { name: 'อีเต้อเหล็ก', price: 260, lv: 3, power: 2 }, 3: { name: 'อีเต้อเหล็กกล้า', price: 800, lv: 6, power: 3 } };
+  const MINE = {
+    xpPerLv: 0.1,                                  // XP นักขุดแร่ ×(1 + xpPerLv×(เลเวล−1)) เหมือนช่างไม้ (ก้อนแร่มีจำกัด จึงโตตามเลเวลด้วยตัวคูณ)
+    respawn: { 1: 150000, 2: 200000, 3: 280000, 4: 400000 }, // ก้อนแร่ที่ขุดหมดเกิดใหม่ในที่เดิมหลังกี่ ms (ตามชั้นความลึก ลึกยิ่งนาน)
+    door: [25, 26, 27], y: 8,                       // ปากถ้ำบนหน้าผา (แถว y=8) เดินเข้าจากด้านล่าง (y=9)
+    maxOres: 70,                                    // ก้อนแร่ในถ้ำสูงสุดพร้อมกัน
+  };
+  // ก้อนแร่/ของที่ได้ (ขายที่ร้านช่างเหมือง หมวด "แร่" ไม่เสื่อม) • lv/pick = เลเวลนักขุดแร่และระดับอีเต้อที่ต้องมี • hp = แต้มที่ต้องขุด • drop = ชิ้นที่ได้ต่อก้อน
+  // tiers = ชั้นความลึกที่เกิดได้ (1 ตื้นสุดใกล้ทางออก … 4 ลึกสุด) • w = น้ำหนักตอนสุ่มเกิด • bonus = ลุ้น [ชิ้นถัดไป, โอกาส] (+1%/เลเวล)
+  const ORES = {
+    stone:   { name: 'หิน',       emoji: '🪨', lv: 1, pick: 1, hp: 3,  drop: 2, sell: 6,   xp: 5,  w: 50, tiers: [1, 2],    bonus: ['coal', 0.08] },
+    coal:    { name: 'ถ่านหิน',    emoji: '⚫', lv: 2, pick: 1, hp: 4,  drop: 2, sell: 11,  xp: 3,  w: 30, tiers: [1, 2],    bonus: ['copper', 0.06] },
+    copper:  { name: 'ทองแดง',    emoji: '🟠', lv: 3, pick: 2, hp: 6,  drop: 1, sell: 26,  xp: 8, w: 28, tiers: [2, 3],    bonus: ['iron', 0.06] },
+    iron:    { name: 'เหล็ก',      emoji: '🔩', lv: 4, pick: 2, hp: 8,  drop: 1, sell: 40,  xp: 11, w: 22, tiers: [2, 3],    bonus: ['silver', 0.05] },
+    silver:  { name: 'เงิน',       emoji: '🥈', lv: 6, pick: 3, hp: 10, drop: 1, sell: 80,  xp: 22, w: 16, tiers: [3, 4],    bonus: ['gold', 0.05] },
+    gold:    { name: 'ทองคำ',     emoji: '🥇', lv: 8, pick: 3, hp: 13, drop: 1, sell: 130, xp: 28, w: 10, tiers: [3, 4],    bonus: ['crystal', 0.04] },
+    crystal: { name: 'คริสตัล',    emoji: '💎', lv: 9, pick: 3, hp: 17, drop: 1, sell: 210, xp: 42, w: 6,  tiers: [4],       bonus: ['crystal', 0.1] },
+  };
+  const oreXp = (xp, lv) => Math.round(xp * (1 + MINE.xpPerLv * (lv - 1)));
+  // แผนที่ถ้ำ: ตารางขนาดเท่าแมพเมือง (นอกถ้ำเป็น VOID) ห้องโถง 10 ห้องต่อกันด้วยทางเดินกว้าง 2 ช่อง ทางออกอยู่ล่างกลาง • ทุกอย่างคำนวณแบบตายตัว (เซิร์ฟเวอร์กับหน้าเว็บได้ผังเดียวกัน)
+  const CAVE = { x0: 8, y0: 5, x1: 55, y1: 36, exit: [30, 31, 32], spawn: { x: 31.5 * TS, y: 34.5 * TS },
+    rooms: [[26, 32, 37, 35], [12, 28, 24, 34], [40, 27, 53, 34], [28, 21, 40, 28], [10, 19, 22, 25], [42, 18, 53, 24], [24, 12, 38, 19], [11, 8, 21, 16], [43, 8, 53, 15], [28, 6, 40, 10]],
+    links: [[0, 1], [0, 2], [0, 3], [1, 4], [2, 5], [3, 6], [4, 7], [5, 8], [6, 9], [6, 7], [6, 8]] };
+  const caveTier = ty => ty >= 29 ? 1 : ty >= 21 ? 2 : ty >= 13 ? 3 : 4; // ชั้นความลึกตามแถว (ยิ่งขึ้นไปทางเหนือยิ่งลึก)
+  function makeCaveMap() {
+    const m = Array.from({ length: H }, () => new Array(W).fill(T.VOID));
+    for (let y = CAVE.y0; y <= CAVE.y1; y++) for (let x = CAVE.x0; x <= CAVE.x1; x++) m[y][x] = T.ROCK;
+    const room = r => { for (let y = r[1]; y <= r[3]; y++) for (let x = r[0]; x <= r[2]; x++) m[y][x] = T.CAVE; };
+    const mid = r => [(r[0] + r[2]) >> 1, (r[1] + r[3]) >> 1];
+    CAVE.rooms.forEach(room);
+    for (const [a, b] of CAVE.links) { // ทางเดินรูปตัว L กว้าง 2 ช่อง: เดินแนวนอนจากห้อง a ไปแนวตั้งของห้อง b แล้วเดินแนวตั้งต่อ
+      const [ax, ay] = mid(CAVE.rooms[a]), [bx, by] = mid(CAVE.rooms[b]);
+      for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++) for (let d = 0; d < 2; d++) m[ay + d][x] = T.CAVE;
+      for (let y = Math.min(ay, by); y <= Math.max(ay, by) + 1; y++) for (let d = 0; d < 2; d++) m[y][bx + d] = T.CAVE;
+    }
+    const R = rng(20261028); // เสาหินกลางห้อง: วางเมื่อรอบตัว 3×3 เป็นพื้นถ้ำหมด (ไม่ปิดทาง)
+    for (let i = 0; i < 90; i++) { const x = CAVE.x0 + 2 + Math.floor(R() * (CAVE.x1 - CAVE.x0 - 3)), y = CAVE.y0 + 2 + Math.floor(R() * (CAVE.y1 - CAVE.y0 - 3)); let ok = true;
+      for (let dy = -2; dy <= 2 && ok; dy++) for (let dx = -2; dx <= 2; dx++) if (m[y + dy][x + dx] !== T.CAVE) { ok = false; break; }
+      if (ok) m[y][x] = T.ROCK; }
+    for (const x of CAVE.exit) m[CAVE.y1][x] = T.MOUTH; // ทางออกกลางผนังล่าง
+    return m;
+  }
+  // ตำแหน่งก้อนแร่ในถ้ำ (ตายตัว): ช่องที่ 4 ทิศรอบตัวเป็นพื้นถ้ำ ห่างกันอย่างน้อย 3 ช่อง ไม่ใกล้ทางออก (ทางเดินยังกว้างพอ ไม่ปิดทาง) • คืน [{x,y,k}]
+  function caveOreSpots(m) {
+    const R = rng(777), cand = [];
+    for (let y = CAVE.y0 + 1; y < CAVE.y1; y++) for (let x = CAVE.x0 + 1; x < CAVE.x1; x++) {
+      if (m[y][x] !== T.CAVE || Math.hypot(x - 31, y - 34) < 5) continue;
+      if (m[y - 1][x] === T.CAVE && m[y + 1][x] === T.CAVE && m[y][x - 1] === T.CAVE && m[y][x + 1] === T.CAVE) cand.push([x, y]);
+    }
+    for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
+    const out = [];
+    for (const [x, y] of cand) {
+      if (out.length >= MINE.maxOres) break;
+      if (out.some(o => Math.max(Math.abs(o.x - x), Math.abs(o.y - y)) < 3)) continue;
+      const tier = caveTier(y), ok = Object.entries(ORES).filter(([, o]) => o.tiers.includes(tier)); let t = R() * ok.reduce((a, [, o]) => a + o.w, 0), k = ok[0][0];
+      for (const [id, o] of ok) { if ((t -= o.w) < 0) { k = id; break; } }
+      out.push({ x, y, k });
+    }
+    return out;
+  }
   const treeWhereOk = (m, x, y, where) => {
     if (!where) return true;
     if (where === 'north') return y < 14;
@@ -381,6 +444,7 @@
     hoe:   { max: [0, 120, 120, 120], fix: [0, 24, 24, 24],  shop: 'farm',   name: 'จอบ' },
     rod:   { max: [0, 100, 140, 200, 280], fix: [0, 30, 72, 168, 400], shop: 'fish',   name: 'เบ็ดตกปลา' },
     axe:   { max: [0, 90, 140, 220],  fix: [0, 36, 96, 216], shop: 'wood',   name: 'ขวาน' },
+    pick:  { max: [0, 90, 140, 220],  fix: [0, 40, 110, 240], shop: 'mine',  name: 'อีเต้อ' },
   };
   // อัตราสึกหรอ: เกจเท่าเดิม แต่ใช้ 1 ครั้งสึก base หน่วย (เดิม 1) และ "ความร้อน" สะสมเมื่อใช้ถี่ๆ ต่อเนื่อง: ทุกครั้งที่ใช้ +1, เย็นลง cool ต่อวินาที
   // ตัวคูณการสึก = 1 + min(maxBonus, ความร้อน × perHeat) → ใช้ถี่และนานได้สูงสุด 2 เท่า (พักสักครู่ก็เย็นลง) เตือนเมื่อความร้อนถึง warnHeat
@@ -388,7 +452,7 @@
   // ซ่อมได้จำกัด: ซ่อมแต่ละครั้งความทนทานสูงสุดลดลง decay ของค่าเดิม ค่าซ่อมแพงขึ้น growth ต่อครั้ง ซ่อมครบ maxFixes ครั้งแล้วซ่อมไม่ได้อีก ต้องซื้อใหม่ (ราคา TOOL_PRICE)
   // สมดุล: ค่าซ่อมเต็ม = pct × ราคาซื้อ × (1 + growth × ครั้งที่ซ่อมมาแล้ว) แต่ได้ความทนทานน้อยลงเรื่อยๆ → ซ่อมครั้งที่ ~4 ขึ้นไปต่อหน่วยการใช้งานแพงกว่าซื้อใหม่
   const REPAIR = { decay: 0.15, maxFixes: 3, growth: 0.5, pct: 0.25 };
-  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500], axe: [0, 50, 220, 700] };
+  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500], axe: [0, 50, 220, 700], pick: [0, 60, 260, 800] };
   const tierN = t => Math.max(1, Math.min(4, t || 1)); // ระดับ 4 มีเฉพาะคันเบ็ด
   const durMax = (tool, tier, fixes) => Math.max(1, Math.floor(DURABILITY[tool].max[tierN(tier)] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fixes || 0))));
   const toolPrice = (tool, tier) => TOOL_PRICE[tool][tierN(tier)];
@@ -427,8 +491,8 @@
   // perCoin (B3 ใน ECONOMY-PLAN.md): ราคาต่อชิ้นในชุดลดลงตาม "มูลค่า" ของชิ้นนั้น = ราคาฐาน × perCoin (เดิมลดชิ้นละ MARKET.drop เท่ากันทุกชนิด) ของถูกลดน้อย ของแพงลดมาก ขายของแพงเป็นภูเขาโดนกดเร็วเท่าของถูกที่มูลค่าเท่ากัน
   //   0.00015 = ของราคา 67 ลดชิ้นละ 1% (เท่าเดิม) • แครอท 20 ลด 0.3% • มะม่วง 188 ลด 2.8% • ชุดเลี้ยงฉลอง 330 ลด 5% (ไม่เกิน dropMax) เลือกจาก tools/econsim.js (G2 ผ่าน Gini 0.37 ชาวนายังมีกำไร)
   const CATFAT = { min: 0.3, recover: 0.03, spread: 0.01, spreadMax: 0.25, perCoin: 0.00015, dropMax: 0.1 };
-  const CAT_KEYS = ['fish', 'crop', 'animal', 'wood', 'dish', 'other'];
-  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'].includes(k) ? 'animal' : (k === 'plank' || Object.hasOwn(WOOD_ITEMS, k)) ? 'wood' : 'other';
+  const CAT_KEYS = ['fish', 'crop', 'animal', 'wood', 'ore', 'dish', 'other'];
+  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'].includes(k) ? 'animal' : (k === 'plank' || Object.hasOwn(WOOD_ITEMS, k)) ? 'wood' : Object.hasOwn(ORES, k) ? 'ore' : 'other';
   // ขายเป็นชุดใหญ่ (ถือของได้ไม่จำกัดจำนวน): คิดราคาทีละชิ้นตามชนิด ราคาต่อชิ้นลดลงเชิงเส้นชิ้นละ 1% ของราคาฐาน (MARKET.drop) จนถึงพื้น 20% แล้วคงที่
   // ตัวอย่างขาย 100 ชิ้นเมื่อราคาตั้งต้น 100%: ชิ้นที่ 1 = 100%, 2 = 99% … 80 = 21%, ชิ้นที่ 81-100 = 20% รวม 5,240 จากราคาฐาน 100/ชิ้น (กด "ขายทั้งหมด" คำนวณทั้งชุดให้เลย)
   // ตลาดจำการขายด้วยการลดเท่ากันทุกชิ้น (server แบ่งเข้าตลาดชนิด/ส่วนตัว/หมวด) ขายรวดหรือทยอยขายติดกันทีละชิ้นจึงได้เงินเท่ากัน ต่างกันเฉพาะ "รอให้ตลาดฟื้น" ที่ได้ราคาดีขึ้น
@@ -589,6 +653,7 @@
     { kind: 'wood',   x0: 3,  y0: 25, x1: 5,  y1: 26, counter: [[4, 26]],  name: 'ร้านช่างไม้',     sign: '🪓', roof: '#8a5a2b', wall: '#f3e2c3' },
     { kind: 'vehicle', x0: 40, y0: 23, x1: 42, y1: 24, counter: [[41, 24]], name: 'ร้านยานพาหนะ',   sign: '🚲', roof: '#3b6ea5', wall: '#e4ecf5' },
     { kind: 'furn',   x0: 36, y0: 13, x1: 38, y1: 14, counter: [[37, 14]], name: 'ร้านเฟอร์นิเจอร์', sign: '🛋️', roof: '#7b4fa3', wall: '#efe4f7' },
+    { kind: 'mine',   x0: 21, y0: 10, x1: 23, y1: 11, counter: [[22, 11]], name: 'ร้านช่างเหมือง',  sign: '⚒️', roof: '#5a6470', wall: '#e2dcd0' },
     // ป้ายลานตู้เกม (ไม่ใช่อาคาร): ตู้เกมวางอยู่ด้านล่างป้าย
     { kind: 'sign',   x0: 30, y0: 1, x1: 33, y1: 1, counter: [],                  name: 'Arcade Hub',     sign: '🎮', roof: '#6a3fb5', wall: '#8b5a2b' },
   ];
@@ -670,7 +735,7 @@
     speed:  { name: 'เท้าเบา',  emoji: '🏃', desc: 'เดินเร็วขึ้น 10%',             cost: 10, ms: 15 * 60000 },
     hunger: { name: 'อิ่มทน',   emoji: '🍖', desc: 'ความหิวลดช้าลงครึ่งหนึ่ง',      cost: 8,  ms: 15 * 60000 },
   };
-  const FAME = { harvest: ['🌾', 'นักเก็บเกี่ยว'], water: ['💧', 'ผู้ขยันรดน้ำ'], feed: ['🥣', 'พ่อบ้านใส่ใจสัตว์'], fish: ['🎣', 'เซียนตกปลา'], chop: ['🪓', 'นักโค่นไม้'], collect: ['🥚', 'ผู้เก็บผลผลิต'], craft: ['🔨', 'ช่างฝีมือ'] };
+  const FAME = { harvest: ['🌾', 'นักเก็บเกี่ยว'], water: ['💧', 'ผู้ขยันรดน้ำ'], feed: ['🥣', 'พ่อบ้านใส่ใจสัตว์'], fish: ['🎣', 'เซียนตกปลา'], chop: ['🪓', 'นักโค่นไม้'], collect: ['🥚', 'ผู้เก็บผลผลิต'], craft: ['🔨', 'ช่างฝีมือ'], mine: ['⚒️', 'นักขุดเหมือง'] };
   // ตู้ ATM: ที่เก็บเหรียญอย่างเดียว (ไม่มีดอกเบี้ย: คนมีเงินต้องไม่ได้เงินเพิ่มจากการฝากเฉยๆ เราอยากให้ออกมาเล่น) มีเพดานเงินฝาก
   const BANK = { cap: 100000, amts: [100, 1000, 10000] };
   // Happy Village: ทั้งเมืองช่วยกันทำงานสะสมครบเป้าของวัน (เป้า = base + per × จำนวนคนออนไลน์สูงสุดของวัน) → ทุกคนได้บัฟร่วม ms มิลลิวินาที
@@ -689,7 +754,8 @@
       { chest: 2000, lv: 22, coin: 150, meals: ['rice', 'soup', 'sandwich'] },
     ],
   };
-  const playLevel = skills => Object.keys(SKILLS).reduce((n, k) => n + levelOf(skills && skills[k]), 0);
+  const LEGACY_SKILLS = 5; // อาชีพที่มีมาตั้งแต่ต้น (นักขุดแร่เพิ่มทีหลัง): หักเลเวลตั้งต้นของอาชีพใหม่ออก เกณฑ์มือใหม่/เงินช่วยเหลือที่ตั้งไว้ตามช่วง 5–50 จะได้ไม่เลื่อน
+  const playLevel = skills => Object.keys(SKILLS).reduce((n, k) => n + levelOf(skills && skills[k]), 0) - (Object.keys(SKILLS).length - LEGACY_SKILLS);
   const doleCost = t => t.coin + t.meals.reduce((n, id) => n + MEALS.find(m => m.id === id).price, 0);
   const dolePackage = (chestCoin, level) => { for (let i = DOLE.tiers.length - 1; i >= 0; i--) { const t = DOLE.tiers[i]; if (chestCoin >= t.chest && level >= t.lv) return t; } return null; };
   const NPC = { sayMin: 45000, sayMax: 110000, gap: 12000, speed: 50 }; // ชาวเมือง NPC: พิมพ์ข้อความทุก sayMin-sayMax ms, เดินด้วยความเร็ว speed px/วินาที
@@ -723,6 +789,9 @@
     { id: 'fishbig20',  e: '🐬', name: 'นักล่าปลายักษ์',    desc: 'ตกปลามีค่า 20 ตัว',                   stat: 'fishbig', goal: 20,  coin: 250,  title: 'นักล่าปลายักษ์' },
     { id: 'chop1',      e: '🪓', name: 'ขวานเล่มแรก',      desc: 'โค่นต้นไม้ครั้งแรก',                  stat: 'chop',    goal: 1,   coin: 10 },
     { id: 'chop40',     e: '🪵', name: 'ช่างตัดไม้',        desc: 'โค่นต้นไม้ 40 ต้น',                   stat: 'chop',    goal: 40,  coin: 80,   title: 'ช่างตัดไม้' },
+    { id: 'mine1',      e: '⚒️', name: 'ก้าวแรกในถ้ำ',     desc: 'ขุดก้อนแร่ครั้งแรก',                  stat: 'mine',    goal: 1,   coin: 10 },
+    { id: 'mine50',     e: '⛏️', name: 'นักขุดมือใหม่',    desc: 'ขุดก้อนแร่ 50 ก้อน',                  stat: 'mine',    goal: 50,  coin: 90,   title: 'นักขุดมือใหม่' },
+    { id: 'mine300',    e: '💎', name: 'จอมเหมือง',        desc: 'ขุดก้อนแร่ 300 ก้อน',                 stat: 'mine',    goal: 300, coin: 400,  title: 'จอมเหมือง' },
     { id: 'chop200',    e: '🌲', name: 'จอมขวานแห่งป่า',    desc: 'โค่นต้นไม้ 200 ต้น',                  stat: 'chop',    goal: 200, coin: 350,  title: 'จอมขวานแห่งป่า' },
     { id: 'hard1',      e: '🟫', name: 'ไม้เนื้อแข็ง',       desc: 'หาไม้เนื้อแข็งได้ครั้งแรก',            stat: 'hardwood', goal: 1,  coin: 40 },
     { id: 'collect1',   e: '🥚', name: 'ไข่ใบแรก',          desc: 'เก็บผลผลิตจากสัตว์ครั้งแรก',           stat: 'collect', goal: 1,   coin: 10 },
@@ -836,6 +905,7 @@
     fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3', 'rod_4'],                  sell: ['fish_'] },
     animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
+    mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3'], sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
     // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือยังไม่เปิด (soon)
     vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v), sell: [], soon: [{ emoji: '⛵', name: 'เรือ (แล่นในสระ)', price: 4000 }] },
@@ -854,8 +924,11 @@
     wm = /^dish_(\w+)$/.exec(k);
     if (wm) { const d = COOK.find(x => x.id === k); return d ? { name: d.name, emoji: d.emoji, sell: d.sell, cat: 'food' } : null; }
     if (WOOD_ITEMS[k]) { const w = WOOD_ITEMS[k]; return { name: w.name, emoji: w.emoji, sell: w.sell, cat: 'wood' }; }
+    if (ORES[k]) { const o = ORES[k]; return { name: o.name, emoji: o.emoji, sell: o.sell, cat: 'ore' }; }
+    const pm = /^pick_(\d)$/.exec(k);
+    if (pm && PICKS[pm[1]]) return { name: PICKS[pm[1]].name, emoji: '⚒️', buy: PICKS[pm[1]].price, lv: PICKS[pm[1]].lv, skill: 'mine', once: true, cat: 'gear', pick: +pm[1] };
     if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 58, cat: 'wood' };
-    if (k === 'lamp') return { name: 'ตะเกียง/ไฟฉาย (สว่างรอบตัว 5 ช่อง)', emoji: '🔦', cat: 'gear' }; // ไม่มีขายในร้านและขายต่อไม่ได้ ได้จากรางวัลคู่มือเริ่มต้น
+    if (k === 'lamp') return { name: 'ตะเกียง/ไฟฉาย (สว่างรอบตัว 5 ช่อง)', emoji: '🔦', buy: 120, once: true, cat: 'gear' }; // ซื้อได้ที่ร้านช่างเหมือง (ใช้ส่องถ้ำ) หรือได้จากรางวัลคู่มือเริ่มต้น • ขายต่อไม่ได้
     if (k === 'medicine') return { name: 'ยารักษาสัตว์', emoji: '💊', buy: 20, cat: 'feed' };
     const fm = /^furn_(\w+)$/.exec(k);
     if (fm) return FURN[fm[1]] ? { name: FURN[fm[1]].name, emoji: FURN[fm[1]].emoji, buy: FURN[fm[1]].price, sell: FURN[fm[1]].rare ? undefined : Math.floor(FURN[fm[1]].price * FURN_SELL), cat: 'furn', furn: fm[1] } : null;
@@ -948,6 +1021,8 @@
     // หน้าผา 2 ชั้น: ขอบลานตู้เกมด้านใต้ (บันได x32–35) และขอบที่ราบสูงเล้าสัตว์ด้านตะวันตก (บันไดที่ถนนหลัก)
     for (let x = 0; x < W; x++) set(x, 8, (x >= 32 && x <= 35) ? T.STAIR : T.CLIFF);
     for (let y = 9; y <= 23; y++) set(43, y, (y === 19 || y === 20) ? T.STAIR : T.CLIFF);
+    for (const x of MINE.door) set(x, MINE.y, T.MOUTH);       // ปากถ้ำเหมืองบนหน้าผาเหนือ (เดินเข้า = เข้าถ้ำ)
+    for (let x = 22; x <= 28; x++) set(x, MINE.y + 1, T.PATH); set(22, 12, T.PATH); // ทางหน้าปากถ้ำ + หน้าร้านช่างเหมือง
     // รั้ว + ประตู
     fence(FARM.x0 - 1, FARM.y0 - 1, FARM.x1 + 1, FARM.y1 + 1); set(10, FARM.y1 + 1, T.PATH); set(11, FARM.y1 + 1, T.PATH); set(FARM.x1 + 1, 19, T.PATH); set(FARM.x1 + 1, 20, T.PATH); // ประตูสวน: กลางล่าง (ไปบ่อน้ำ) + ขวาล่าง (ไปถนนหลัก)
     for (const P of Object.values(PENS)) { fence(P.x0 - 1, P.y0 - 1, P.x1 + 1, P.y1 + 1); for (const [x, y] of P.gate) set(x, y, T.PATH); }
@@ -1040,7 +1115,7 @@
   function solid(m, tx, ty) {
     if (tx < 0 || ty < 0 || tx >= W || ty >= H) return true;
     const t = m[ty][tx];
-    return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN || t === T.LANDMARK || t === T.WALL || t === T.VOID || t === T.CLIFF;
+    return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN || t === T.LANDMARK || t === T.WALL || t === T.VOID || t === T.CLIFF || t === T.ROCK || t === T.ORE;
   }
   function blockedAt(m, x, y) {
     const r = 8;
@@ -1055,11 +1130,11 @@
   }
   function inFarm(tx, ty) { return tx >= FARM.x0 && tx <= FARM.x1 && ty >= FARM.y0 && ty <= FARM.y1; }
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
-  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
+  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
   const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
+    AXES, PICKS, MINE, ORES, oreXp, CAVE, caveTier, makeCaveMap, caveOreSpots, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, FEST, AUCTION, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };

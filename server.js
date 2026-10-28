@@ -40,7 +40,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const DEFAULT_HAT = '#e8c66a';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 const PARTY = new Set(['pok', 'react', 'rps']); // เกมห้องหลายคน (ผู้เล่นหลายคน/บอท) — ดู partyHandle
-const TOOLS = new Set(['hand', 'hoe', 'water', 'rod', 'axe', 'medicine', ...Object.values(ANIMALS).map(a => a.feedItem), ...Object.keys(CROPS).map(c => 'seed_' + c)]);
+const TOOLS = new Set(['hand', 'hoe', 'water', 'rod', 'axe', 'pick', 'medicine', ...Object.values(ANIMALS).map(a => a.feedItem), ...Object.keys(CROPS).map(c => 'seed_' + c)]);
 // ของที่ตลาดรับซื้อทั้งหมด (ราคาขึ้นลงตามอุปสงค์-อุปทาน)
 const SELLABLE = S.SELLABLE; // รายการเดียวกับ shared.js (เคยก๊อปไว้สองที่แล้วตกหล่น เช่น น้ำผึ้ง)
 const replacer = (k, v) => (k[0] === '_' ? undefined : v);
@@ -57,7 +57,8 @@ const NPC_DEFS = [
     lines: ['ตู้เกมเล่นกับบอทได้ 🤖', 'ท้าเพื่อนเล่น XO ไหม ❌⭕', 'ชวนเพื่อนกด 🔗 มาเล่น', 'ช่วยกันทำงาน ติดบัฟ 🎉', 'กด 📰 ดูข่าวเมืองนะ', 'รับของแจกกองกลางวันละครั้ง 🎁', 'กด H ตกแต่งบ้านได้ 🛋️']},
 ];
 
-const CAT_NAME = { fish: 'ปลา', crop: 'ผัก/ผลไม้', animal: 'ผลผลิตสัตว์', wood: 'ไม้', dish: 'อาหาร' }; // ชื่อหมวดในข้อความแจ้งผู้เล่น
+const CAT_NAME = { fish: 'ปลา', crop: 'ผัก/ผลไม้', animal: 'ผลผลิตสัตว์', wood: 'ไม้', ore: 'แร่', dish: 'อาหาร' }; // ชื่อหมวดในข้อความแจ้งผู้เล่น
+const CAVE = '@cave'; // ฉากถ้ำเหมือง (p.scene) ร่วมกันทั้งห้อง: ชื่อผู้เล่นไม่มี @ จึงไม่ชนกับคีย์บ้าน
 const HOUSE_MSG = new Set(['m', 'act', 'held', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'house', 'gift', 'greet']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
 class World {
   constructor(room) {
@@ -136,6 +137,7 @@ class World {
   // ตกแต่งอิสระ: houses[key] = { items: { <id>: { f, x, y, r, z, on, wl, u } }, next } พิกัดเป็นหน่วยช่อง ดูกติกาที่ houseCheck ใน shared.js
   loadHouse(d) {
     this.houses = Object.create(null); this.hrects = new Map(); this.hmap = S.makeHouseMap();
+    this.initCave();
     const refund = (key, f) => { const inv = this.saved[key].inv || (this.saved[key].inv = {}); inv['furn_' + f] = (inv['furn_' + f] || 0) + 1; this.dirty = true; }; // ของที่โหลดแล้ววางไม่ได้ (ข้อมูลเก่า/ผิดพลาด) คืนเข้ากระเป๋าเจ้าของ ไม่ให้หาย
     const build = (key, list) => { // list = [{f,x,y,r,z,on,wl,u}] → ใส่เข้าบ้านพร้อมตรวจกติกา
       const h = { items: {}, next: 1 };
@@ -179,10 +181,40 @@ class World {
     }
     if (d.houses || d.owners) this.dirty = true;
   }
+  // ----- ถ้ำเหมือง: ฉากร่วมของทั้งห้อง (p.scene = CAVE) ผังตายตัวจาก S.makeCaveMap ก้อนแร่ขุดแล้วเกิดใหม่ตามเวลา (ไม่เก็บลงไฟล์ เริ่มเซิร์ฟเวอร์ใหม่ = แร่เต็ม)
+  initCave() {
+    this.cmap = S.makeCaveMap(); this.ores = new Map(); this.oreHp = new Map(); this.oreWait = [];
+    for (const o of S.caveOreSpots(this.cmap)) { this.ores.set(o.x + ',' + o.y, o.k); this.cmap[o.y][o.x] = T.ORE; }
+  }
+  oresPub() { return [...this.ores].map(([k, kind]) => { const [x, y] = k.split(',').map(Number); return [x, y, kind]; }); }
+  oreTick(now) { // ก้อนแร่ที่ขุดไปครบเวลา เกิดใหม่ที่เดิม (ถ้ามีคนยืนทับอยู่ รอรอบหน้า)
+    if (!this.oreWait.length) return;
+    const rest = [];
+    for (const w of this.oreWait) {
+      if (now < w.at) { rest.push(w); continue; }
+      if (this.sceneMates(CAVE).some(q => Math.abs(q.x - (w.x + 0.5) * TS) < TS && Math.abs(q.y - (w.y + 0.5) * TS) < TS)) { w.at = now + 5000; rest.push(w); continue; }
+      this.ores.set(w.x + ',' + w.y, w.k); this.cmap[w.y][w.x] = T.ORE;
+      this.sceneBroadcast(CAVE, { t: 'ore', x: w.x, y: w.y, k: w.k });
+    }
+    this.oreWait = rest;
+  }
+  enterCave(p) {
+    if (p.scene) return;
+    if (p.veh) this.setVeh(p, '');
+    this.arcLeave(p); this.tradeCancel(p, 'ผู้เล่นเข้าถ้ำ'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
+    p.ret = { x: (Math.floor(p.x / TS) + 0.5) * TS, y: (S.MINE.y + 1.5) * TS }; // ออกมายืนหน้าปากถ้ำ (ไม่ทับช่องปากถ้ำ ไม่งั้นเข้าซ้ำ)
+    this.changeScene(p, CAVE, S.CAVE.spawn.x, S.CAVE.spawn.y);
+    this.toast(p, '⛏️ เข้าถ้ำเหมือง! ใช้อีเต้อ ⚒️ (ร้านช่างเหมือง) ขุดก้อนแร่ ยิ่งลึกยิ่งแพง • พกตะเกียง 🔦 จะเห็นไกลขึ้น • เดินลงทางออกกลางผนังล่างเพื่อกลับ');
+  }
+  leaveCave(p) {
+    if (p.scene !== CAVE) return;
+    const r = this.townPos(p); p.ret = null;
+    this.changeScene(p, null, r.x, r.y);
+  }
   houseMap() { return this.hmap; } // แมพบ้านเป็นผนัง/พื้นเหมือนกันทุกหลัง (ของตกแต่งอยู่นอกตาราง ดู houseRects)
   houseRects(key) { let r = this.hrects.get(key); if (!r) { r = S.houseSolidRects(this.houses[key] ? this.houses[key].items : {}); this.hrects.set(key, r); } return r; }
-  mapOf(p) { return p.scene ? this.houseMap() : this.map; }
-  blockedFor(p, x, y) { return p.scene ? S.houseBlockedAt(this.houseMap(), this.houseRects(p.scene), x, y, p.x, p.y) : S.blockedAt(this.map, x, y); } // ในบ้านรวมกล่องเฟอร์นิเจอร์ (ถ้าอยู่ในกล่องอยู่แล้ว เช่นเพิ่งลุกจากเก้าอี้ เดินออกได้)
+  mapOf(p) { return p.scene === CAVE ? this.cmap : p.scene ? this.houseMap() : this.map; }
+  blockedFor(p, x, y) { return p.scene === CAVE ? S.blockedAt(this.cmap, x, y) : p.scene ? S.houseBlockedAt(this.houseMap(), this.houseRects(p.scene), x, y, p.x, p.y) : S.blockedAt(this.map, x, y); } // ในบ้านรวมกล่องเฟอร์นิเจอร์ (ถ้าอยู่ในกล่องอยู่แล้ว เช่นเพิ่งลุกจากเก้าอี้ เดินออกได้)
   // ชั้นแก้แมพของผู้ดูแล: mapOv ทับช่องหลัง makeMap/ต้นไม้/โครงการ • mocks เป็นกล่องวางแผน (ไม่ชน ไม่มีผลกติกา)
   applyMapOv() {
     if (!this.mapOv) this.mapOv = {};
@@ -239,7 +271,7 @@ class World {
     p.scene = scene; p.x = x; p.y = y; p.sit = null; p.dir = 0;
     if (p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); }
     this.sceneBroadcast(scene, Object.assign({ t: 'p+', quiet: 1 }, this.pubFull(p)), p);
-    send(p, { t: 'scene', sc: scene, owner: scene ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene ? this.houseItemsPub(scene) : [], st: scene ? this.houseStyle(scene) : null, players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
+    send(p, { t: 'scene', sc: scene, owner: scene && scene !== CAVE ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene && scene !== CAVE ? this.houseItemsPub(scene) : [], st: scene && scene !== CAVE ? this.houseStyle(scene) : null, cave: scene === CAVE ? 1 : 0, ores: scene === CAVE ? this.oresPub() : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
     this.dirty = true;
   }
   enterHouse(p, key) {
@@ -1394,6 +1426,7 @@ class World {
 
   handle(p, m) {
     if (p.scene && !HOUSE_MSG.has(m.t)) return;
+    if (p.scene === CAVE && (m.t === 'house' || m.t === 'gift')) return; // ในถ้ำไม่มีบ้าน/ส่งของขวัญ
     switch (m.t) {
       case 'm': {
         const x = +m.x, y = +m.y;
@@ -1405,11 +1438,14 @@ class World {
         if (Math.hypot(x - p.x, y - p.y) > 0.5) p.activeAt = Date.now(); // ขยับจริงถึงนับว่ามีกิจกรรม (กันเงินฟรีตอนทิ้งตัวละครไว้)
         p.x = x; p.y = y;
         if (m.d >= 0 && m.d < 4) p.dir = m.d | 0;
+        if (p.scene === CAVE) { if (this.cmap[Math.floor(y / TS)][Math.floor(x / TS)] === T.MOUTH) this.leaveCave(p); break; } // เดินถึงทางออกถ้ำ = กลับเมือง
+        if (!p.scene && this.map[Math.floor(y / TS)][Math.floor(x / TS)] === T.MOUTH) { this.enterCave(p); break; } // เดินเข้าปากถ้ำบนหน้าผา
         if (p.scene) { if (Math.floor(y / TS) >= S.HOUSE.y1 && S.HOUSE.door.includes(Math.floor(x / TS))) this.leaveHouse(p); break; } // เดินถึงประตูบ้าน = ออกไปเมือง
         this.arcRangeCheck(p);
         break;
       }
       case 'act': {
+        if (p.scene === CAVE) return this.caveAct(p, m);
         if (p.scene) return this.houseAct(p, m);
         const now = Date.now();
         if (now - p.lastAct < 150) return;
@@ -1570,7 +1606,7 @@ class World {
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); }
   treeList() { const out = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) out.push([x, y, (this.treeKind && this.treeKind.get(x + ',' + y)) || 'broad']); return out; }
   // ---------- ความทนทานเครื่องมือ (รายจ่ายสม่ำเสมอ): ใช้ทุกครั้งสึก 1 หมดแล้วต้องซ่อมที่ร้านเสียเหรียญ ----------
-  toolTier(p, tool) { const inv = p.rec.inv; return tool === 'rod' ? rodOf(inv) : tool === 'axe' ? (inv.axe_3 ? 3 : inv.axe_2 ? 2 : 1) : 1; }
+  toolTier(p, tool) { const inv = p.rec.inv; return tool === 'rod' ? rodOf(inv) : tool === 'axe' ? (inv.axe_3 ? 3 : inv.axe_2 ? 2 : 1) : tool === 'pick' ? (inv.pick_3 ? 3 : inv.pick_2 ? 2 : 1) : 1; }
   fixN(p, tool) { return (p.rec.fix && p.rec.fix[tool]) || 0; }
   durMx(p, tool) { return S.durMax(tool, this.toolTier(p, tool), this.fixN(p, tool)); }
   durCur(p, tool) { const mx = this.durMx(p, tool), d = p.rec.dur && p.rec.dur[tool]; return d === undefined ? mx : Math.max(0, Math.min(d, mx)); }
@@ -1797,7 +1833,7 @@ class World {
     this.add(p, item, n); if (info.furn) this.bookAdd(p, 'furn', info.furn);
     if (item === 'feed' || item === 'hay' || item === 'slop') this.event(p, 'buyfeed');
     if (info.can) this.waterSet(p, S.CANS[info.can].cap); // ซื้อบัวใหม่ได้น้ำเต็มให้เลย
-    if (/^(rod|axe)_/.test(item)) { const tl = item.slice(0, 3); if (p.rec.dur) delete p.rec.dur[tl]; if (p.rec.fix) delete p.rec.fix[tl]; send(p, { t: 'dur', d: this.durPub(p) }); } // อุปกรณ์ใหม่ความทนทานเต็ม
+    if (/^(rod|axe|pick)_/.test(item)) { const tl = item.split('_')[0]; if (p.rec.dur) delete p.rec.dur[tl]; if (p.rec.fix) delete p.rec.fix[tl]; send(p, { t: 'dur', d: this.durPub(p) }); } // อุปกรณ์ใหม่ความทนทานเต็ม
     this.toast(p, `ซื้อ ${info.emoji} ${info.name}${n > 1 ? ' x' + n : ''}`);
     this.sfxTo(p, 'coin');
     if (info.wear) p.rec.wear[info.wear.cat] = info.wear.id; // ซื้อแล้วสวมให้เลย
@@ -1839,6 +1875,46 @@ class World {
     this.sfxTo(p, 'coin');
   }
 
+  caveAct(p, m) { // ใช้เครื่องมือในถ้ำ: ขุดแร่ด้วยอีเต้ออย่างเดียว
+    const now = Date.now();
+    if (now - p.lastAct < 150) return;
+    p.lastAct = p.activeAt = now;
+    if (m.tool !== 'pick') return;
+    p.workAt = now; this.sceneBroadcast(CAVE, { t: 'use', id: p.id }, p);
+    this.pickAct(p, now, m.tx, m.ty);
+  }
+  pickAct(p, now, cx, cy) {
+    const inv = p.rec.inv, pick = inv.pick_3 ? 3 : inv.pick_2 ? 2 : inv.pick_1 ? 1 : 0;
+    if (!pick) return this.toast(p, 'ต้องมีอีเต้อก่อน ซื้อได้ที่ร้านช่างเหมือง ⚒️ (หน้าถ้ำ)');
+    if (p.rec.hunger <= 0) return this.toast(p, '😵 หิวจนไม่มีแรง! ไปกินอาหารก่อนนะ (ร้านอาหาร หรือกินผลผลิตจากกระเป๋า)');
+    if (!this.durOk(p, 'pick')) return;
+    let [tx, ty] = S.facing(p.x, p.y, p.dir);
+    if (Number.isInteger(cx) && Number.isInteger(cy)) { // คลิกเลือกก้อนแร่เอง ต้องอยู่ใกล้
+      const px = Math.floor(p.x / TS), py = Math.floor(p.y / TS);
+      if (cx < 0 || cy < 0 || cx >= S.W || cy >= S.H || Math.max(Math.abs(cx - px), Math.abs(cy - py)) > 2) return this.toast(p, 'ไกลเกินไป เดินเข้าไปใกล้ๆ ก่อน');
+      tx = cx; ty = cy;
+      const dx = cx - px, dy = cy - py;
+      if (dx || dy) p.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
+    }
+    const key = tx + ',' + ty, kid = this.ores.get(key);
+    if (!kid) return this.toast(p, 'ใช้อีเต้อขุดก้อนแร่ในถ้ำ 🪨 (หันหน้าหาก้อนแร่ หรือแตะที่ก้อนแร่)');
+    const O = S.ORES[kid], ml = this.lv(p, 'mine');
+    if (ml < O.lv || pick < O.pick) return this.toast(p, `🔒 ${O.emoji} ${O.name}ต้องเป็นนักขุดแร่ Lv${O.lv} และใช้${S.PICKS[O.pick].name}ขึ้นไป`);
+    let h = this.oreHp.get(key);
+    if (!h || now - h.t > 20000) h = { hp: O.hp, t: now };
+    h.hp -= S.PICKS[pick].power; h.t = now;
+    this.sfx(p, 'chop'); this.durUse(p, 'pick');
+    if (h.hp > 0) { this.oreHp.set(key, h); if (O.hp > 4) this.toast(p, `⚒️ ${O.emoji} ${O.name} อีก ${Math.ceil(h.hp / S.PICKS[pick].power)} ครั้ง`); return; }
+    this.oreHp.delete(key); this.ores.delete(key); this.cmap[ty][tx] = T.CAVE;
+    this.oreWait.push({ x: tx, y: ty, k: kid, at: now + S.MINE.respawn[S.caveTier(ty)] });
+    this.sceneBroadcast(CAVE, { t: 'ore', x: tx, y: ty, k: '' });
+    const got = { [kid]: O.drop };
+    if (O.bonus && Math.random() < O.bonus[1] + 0.01 * (ml - 1)) got[O.bonus[0]] = (got[O.bonus[0]] || 0) + 1;
+    let xp = 0, val = 0; for (const [it, n] of Object.entries(got)) { this.add(p, it, n); xp += S.ORES[it].xp * n; val += S.ORES[it].sell * n; }
+    this.addXp(p, 'mine', S.oreXp(xp, ml)); this.tire(p, 'mine', val);
+    this.toast(p, `⛏️ ขุดได้ ${Object.entries(got).map(([it, n]) => `${S.ORES[it].emoji} ${S.ORES[it].name} x${n}`).join(' ')}`); this.sfx(p, 'fell'); this.event(p, 'mine');
+    if (kid === 'crystal') this.addLog(`💎 ${p.name} ขุดเจอคริสตัลในถ้ำ!`);
+  }
   act(p, tool, now, cx, cy) {
     const inv = p.rec.inv;
     // กำลังตกปลาอยู่: กดอีกครั้งเพื่อดึงเบ็ด
@@ -3478,6 +3554,7 @@ setInterval(() => {
   for (const w of worlds.values()) guard(() => w.tick(dt, now));
 }, 100);
 setInterval(() => { const now = Date.now(); for (const w of worlds.values()) guard(() => w.cropTick(now)); }, 1000);
+setInterval(() => { const now = Date.now(); for (const w of worlds.values()) guard(() => w.oreTick(now)); }, 5000);
 setInterval(() => { for (const w of worlds.values()) guard(() => w.save(false)); }, 30000);
 setInterval(() => { const now = Date.now(); for (const w of worlds.values()) guard(() => w.marketTick(now)); }, +process.env.MARKET_TICK_MS || 60000); // ตลาดปรับราคาทุก 1 นาที
 
