@@ -94,10 +94,12 @@ class World {
       }
       mk = d.market || {}; this.mktDay = Number.isInteger(d.mktDay) ? d.mktDay : -1;
       houseSaved = d.house || {}; townSaved = { evt: d.evt, chain: d.chain, invites: d.invites, stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, chest: d.chest, projects: d.projects, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
+      this._loadMocks = d.mocks; this._loadMapOv = d.mapOv;
     } catch (e) {
       // ไม่มีไฟล์ = โลกใหม่ แต่ถ้ามีไฟล์แต่อ่านไม่ได้ ให้สำรองไว้ก่อน ไม่งั้นการบันทึกครั้งต่อไปจะเขียนทับข้อมูลเดิมทิ้ง
       if (e.code !== 'ENOENT') { try { fs.copyFileSync(this.file, this.file + '.broken-' + Date.now()); console.error('อ่านไฟล์บันทึกไม่ได้ สำรองไว้แล้ว:', e.message); } catch (e2) { /* ไม่มีอะไรให้สำรอง */ } }
     }
+    this.mocks = S.sanitizeMocks(this._loadMocks); this.mapOv = S.sanitizeMapOv(this._loadMapOv); delete this._loadMocks; delete this._loadMapOv;
     this.loadHouse(houseSaved); this.loadTown(townSaved); for (const P of S.PROJECTS) if (S.projectDone(P.id, this.projects[P.id].coin)) S.applyProject(this.map, P.id); this.initNpcs(); this.initPets();
     if (this.mktDay === -1) this.mktDay = Math.floor(Date.now() / S.DAY_MS);
     this.market = {};
@@ -118,6 +120,7 @@ class World {
     this.treeHp = new Map(); this.treeTimer = 0; this.sickTimer = 0;
     this.treeKind = new Map(); // ชนิดต้นไม้ต่อช่อง 'x,y' (S.TREE_KINDS) ต้นที่ยังไม่มีชนิด (เซฟเก่า/แมพใหม่) สุ่มตามที่เกิดแบบคงที่จากตำแหน่ง
     for (const [x, y] of this.treeList()) { const k = treeKinds[x + ',' + y]; this.treeKind.set(x + ',' + y, k || S.pickTreeKind(this.map, x, y, S.rng(x * 7919 + y * 104729))); }
+    this.applyMapOv(); // ทับช่องที่ผู้ดูแลวาดไว้ (หลังต้นไม้จากเซฟ) ให้การแก้แมพติดถาวร
     this.trades = new Map(); this.nextTrade = 1;
     this.cinema = { movie: null, yt: '', name: '', startedAt: 0, pos: 0, ref: 0, playing: false, emptyAt: 0, viewers: new Set(), paid: new Set() };
     this.treeCap = S.TREE.cap; // เพดานคงที่ (เดิมบวกเพิ่มทุกครั้งที่ restart ทำให้ต้นไม้แน่นขึ้นเรื่อยๆ)
@@ -175,6 +178,39 @@ class World {
   houseRects(key) { let r = this.hrects.get(key); if (!r) { r = S.houseSolidRects(this.houses[key] ? this.houses[key].items : {}); this.hrects.set(key, r); } return r; }
   mapOf(p) { return p.scene ? this.houseMap() : this.map; }
   blockedFor(p, x, y) { return p.scene ? S.houseBlockedAt(this.houseMap(), this.houseRects(p.scene), x, y, p.x, p.y) : S.blockedAt(this.map, x, y); } // ในบ้านรวมกล่องเฟอร์นิเจอร์ (ถ้าอยู่ในกล่องอยู่แล้ว เช่นเพิ่งลุกจากเก้าอี้ เดินออกได้)
+  // ชั้นแก้แมพของผู้ดูแล: mapOv ทับช่องหลัง makeMap/ต้นไม้/โครงการ • mocks เป็นกล่องวางแผน (ไม่ชน ไม่มีผลกติกา)
+  applyMapOv() {
+    if (!this.mapOv) this.mapOv = {};
+    for (const [k, t] of Object.entries(this.mapOv)) {
+      const [x, y] = k.split(',').map(Number);
+      if (!this.map[y] || x < 1 || y < 1 || x > S.W - 2 || y > S.H - 2) continue; // ขอบแมพต้นไม้คงที่
+      const prev = this.map[y][x]; this.map[y][x] = t;
+      if (this.treeKind) {
+        if (t === T.TREE && prev !== T.TREE) this.treeKind.set(x + ',' + y, S.pickTreeKind(this.map, x, y, S.rng(x * 7919 + y * 104729)));
+        else if (t !== T.TREE) this.treeKind.delete(x + ',' + y);
+      }
+    }
+  }
+  adminSend(o) { for (const q of this.players.values()) if (q.admin) send(q, o); }
+  paintCells(cells) { // [[x,y,t],...] วาดพื้นแมพสด เก็บใน mapOv
+    if (!Array.isArray(cells) || !cells.length || cells.length > 500) return null;
+    if (!this.mapOv) this.mapOv = {};
+    const out = [], ok = new Set(S.MAP_PAINT.map(p => p.t));
+    for (const c of cells) {
+      if (!Array.isArray(c) || c.length < 3) continue;
+      const x = Math.trunc(+c[0]), y = Math.trunc(+c[1]), t = Math.trunc(+c[2]);
+      if (!Number.isInteger(x) || !Number.isInteger(y) || !ok.has(t)) continue;
+      if (x < 1 || y < 1 || x > S.W - 2 || y > S.H - 2) continue;
+      this.map[y][x] = t; this.mapOv[x + ',' + y] = t;
+      if (t === T.TREE) { if (!this.treeKind.has(x + ',' + y)) this.treeKind.set(x + ',' + y, S.pickTreeKind(this.map, x, y, Math.random)); }
+      else { this.treeKind.delete(x + ',' + y); if (this.treeHp) this.treeHp.delete(x + ',' + y); }
+      out.push([x, y, t]);
+    }
+    if (!out.length) return null;
+    this.dirty = true;
+    this.broadcast({ t: 'mapcell', cells: out });
+    return out;
+  }
   nameOfKey(key) { return (this.saved[key] && this.saved[key].name) || key; }
   houseStyle(key) { const h = this.houses[key] || {}; return { fl: h.fl || S.HOUSE_STYLE_DEFAULT.fl, wp: h.wp || S.HOUSE_STYLE_DEFAULT.wp }; }
   houseItemsPub(key) { const h = this.houses[key]; return h ? Object.entries(h.items).map(([i, it]) => Object.assign({ i: +i }, it)) : []; }
@@ -1317,6 +1353,8 @@ class World {
       trees: this.treeList(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
       players: [...this.players.values()].filter(q => !q.scene).map(q => this.pubFull(q)),
       roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
+      mapOv: this.mapOv && Object.keys(this.mapOv).length ? this.mapOv : undefined,
+      mocks: admin ? (this.mocks || []) : undefined, // Mock วางแผนแมพ เห็นเฉพาะผู้ดูแล
     });
     send(p, { t: 'pst', pst: rec.pst || {}, names: rec.pnames || {} });
     send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); send(p, { t: 'auc', a: this.aucPub() }); this.chPush(p); send(p, { t: 'evt', e: this.evPub() }); send(p, { t: 'stars', s: rec.stars || {} }); send(p, { t: 'fest', f: this.festPub() });
@@ -3042,7 +3080,7 @@ class World {
     if (!this.dirty) return;
     this.dirty = false;
     for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; this.syncHerd(p); } // เซฟฝูงลง rec.herd ก่อนเขียนไฟล์
-    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])] }, replacer);
+    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])], mocks: this.mocks || [], mapOv: this.mapOv || {} }, replacer);
     if (sync) { fs.writeFileSync(this.file, data); return; }
     fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
   }
@@ -3252,6 +3290,36 @@ function adminHandle(p, world, m) {
     if (w) { w.dirty = true; w.save(true); worlds.delete(name); }
     ROOMS.delete(name); saveRooms();
     return reply({ removed: name });
+  }
+  // ----- แก้แมพ (ผู้ดูแล): Mock วางแผนอิสระ + วาดพื้นห้องนี้ -----
+  if (m.a === 'mapget') return reply({ mapedit: true, mocks: world.mocks || [], mapOv: world.mapOv || {}, paint: S.MAP_PAINT });
+  if (m.a === 'mocks') {
+    const mocks = S.sanitizeMocks(m.mocks);
+    world.mocks = mocks; world.dirty = true;
+    world.adminSend({ t: 'mocks', mocks });
+    console.log('ผู้ดูแลแก้ Mock แมพ:', p.name, mocks.length, 'ชิ้น (ห้อง ' + world.room + ')');
+    return reply({ mapedit: true, mocks, ok: 'บันทึก Mock แล้ว (' + mocks.length + ' ชิ้น)' });
+  }
+  if (m.a === 'mappaint') {
+    const cells = world.paintCells(m.cells);
+    if (!cells) return reply({ err: 'วาดแมพไม่สำเร็จ (ช่องไม่ถูกต้องหรือว่าง)', mapedit: true });
+    return reply({ mapedit: true, painted: cells.length }); // ไม่ส่ง mocks/ok ทุกครั้ง — กันทับของที่กำลังแก้และสแปม toast
+  }
+  if (m.a === 'mapovclear') { // ล้างเฉพาะช่องที่วาดทับ คืนพื้นจาก makeMap + ต้นไม้ที่ยังอยู่ใน treeKind + โครงการ
+    const keep = world.treeList();
+    world.mapOv = {};
+    world.map = S.makeMap();
+    for (const P of S.PROJECTS) if (S.projectDone(P.id, world.projects[P.id].coin)) S.applyProject(world.map, P.id);
+    world.treeKind = new Map();
+    for (const [x, y, k] of keep) {
+      if (world.map[y] && world.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2) {
+        world.map[y][x] = T.TREE; world.treeKind.set(x + ',' + y, k || 'broad');
+      }
+    }
+    world.dirty = true;
+    world.broadcast({ t: 'mapreset', trees: world.treeList() });
+    console.log('ผู้ดูแลล้างการวาดแมพ:', p.name, '(ห้อง ' + world.room + ')');
+    return reply({ mapedit: true, mocks: world.mocks || [], mapOv: {}, ok: 'ล้างพื้นที่วาดทับแล้ว (Mock ยังอยู่)' });
   }
 }
 

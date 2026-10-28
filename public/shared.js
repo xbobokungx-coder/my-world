@@ -2,6 +2,43 @@
 (function (root) {
   const TS = 32, W = 64, H = 46;
   const T = { GRASS: 0, WATER: 1, TREE: 2, BUILD: 3, PATH: 4, FENCE: 5, SAND: 6, SHOP: 7, FLOOR: 8, FURN: 9, BRIDGE: 10, LANDMARK: 11, WALL: 12, VOID: 13, CLIFF: 14, STAIR: 15 };
+  // ชนิดพื้นที่ผู้ดูแลวาดแก้แมพได้ (ไม่รวม FLOOR/FURN/WALL/VOID ของบ้าน)
+  const MAP_PAINT = [
+    { t: T.GRASS, name: 'หญ้า', col: '#7bc65a' }, { t: T.PATH, name: 'ทาง', col: '#dcbf82' },
+    { t: T.WATER, name: 'น้ำ', col: '#4ab8cc' }, { t: T.SAND, name: 'ทราย', col: '#efdfa4' },
+    { t: T.TREE, name: 'ต้นไม้', col: '#3f9a3a' }, { t: T.FENCE, name: 'รั้ว', col: '#8b5a2b' },
+    { t: T.BUILD, name: 'สิ่งก่อสร้าง', col: '#a0692f' }, { t: T.SHOP, name: 'เคาน์เตอร์', col: '#c9894a' },
+    { t: T.BRIDGE, name: 'สะพาน', col: '#b8956a' }, { t: T.LANDMARK, name: 'แลนด์มาร์ก', col: '#9b7bb8' },
+    { t: T.CLIFF, name: 'หน้าผา', col: '#8a7a6a' }, { t: T.STAIR, name: 'บันได', col: '#c9a56a' },
+  ];
+  const MOCK_MAX = 120, MOCK_LABEL = 24;
+  const sanitizeMocks = list => {
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    for (const m of list.slice(0, MOCK_MAX)) {
+      if (!m || typeof m !== 'object') continue;
+      const x = Math.trunc(+m.x), y = Math.trunc(+m.y), w = Math.trunc(+m.w) || 1, h = Math.trunc(+m.h) || 1;
+      if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= W || y >= H) continue;
+      const ww = Math.max(1, Math.min(16, w)), hh = Math.max(1, Math.min(16, h));
+      if (x + ww > W || y + hh > H) continue;
+      const id = String(m.id || '').slice(0, 24) || ('m' + out.length);
+      const label = String(m.label || 'Mock').slice(0, MOCK_LABEL);
+      const color = /^#[0-9a-fA-F]{6}$/.test(m.color) ? m.color : '#ffd24a';
+      out.push({ id, x, y, w: ww, h: hh, label, color });
+    }
+    return out;
+  };
+  const sanitizeMapOv = obj => {
+    if (!obj || typeof obj !== 'object') return {};
+    const out = {}, ok = new Set(MAP_PAINT.map(p => p.t));
+    for (const [k, v] of Object.entries(obj)) {
+      const [xs, ys] = String(k).split(','), x = +xs, y = +ys, t = Math.trunc(+v);
+      if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= W || y >= H) continue;
+      if (!ok.has(t)) continue;
+      out[x + ',' + y] = t;
+    }
+    return out;
+  };
   // บ้าน (ระบบเดิม): ที่ดิน 6 แปลงแถวบนสุดของแมพ ตอนนี้เลิกใช้แล้ว เหลือไว้ให้ server ย้ายข้อมูลเก่าเข้าบ้านหลังใหญ่ (ดู HOUSE ด้านล่าง)
   const HOUSING = { price: 400, refund: 0.7, y0: 2, y1: 5, w: 6, plots: [2, 9, 16, 23, 30, 37] };
   const plotAt = (tx, ty) => {
@@ -985,7 +1022,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
