@@ -2517,6 +2517,13 @@ function buildCaveBase() {
   for (let ty = 0; ty < H; ty++) for (let tx = 1; tx < W - 1; tx++) if (MAP[ty][tx] === T.DOWN && MAP[ty][tx - 1] !== T.DOWN && MAP[ty][tx + 1] === T.DOWN && MAP[ty][tx + 2] === T.DOWN) { const ax = (tx + 1.5) * TS, ay = (ty + 0.5) * TS; gh.fillStyle = '#e8f0ff'; gh.beginPath(); gh.moveTo(ax, ay + 7); gh.lineTo(ax + 7, ay - 3); gh.lineTo(ax + 3, ay - 3); gh.lineTo(ax + 3, ay - 7); gh.lineTo(ax - 3, ay - 7); gh.lineTo(ax - 3, ay - 3); gh.lineTo(ax - 7, ay - 3); gh.closePath(); gh.fill(); } // ลูกศรลงบนบันไดกลาง
 }
 function drawOre(tx, ty, k, now, sz) {
+  const spr = PixelOre.has(k) && PixelOre.get(k, sz | 0, (now / 500 | 0) & 1); // สไปรต์พิกเซลวาดมือ (ชนิดที่ยังไม่มีใช้แบบเดิมด้านล่าง)
+  if (spr) {
+    const w = spr.width * 2, h = spr.height * 2, x = tx * TS + 16, y = ty * TS + 31, sm = ctx.imageSmoothingEnabled;
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y - 2, w / 2 - 2, 4 + (sz | 0), 0, 0, 7); ctx.fill();
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(spr, Math.round(x - w / 2), y - h, w, h); ctx.imageSmoothingEnabled = sm;
+    return;
+  }
   const x = tx * TS + 16, y = ty * TS + 18, glow = Shared.ORES[k].lv >= 5, sc = [0.78, 1, 1.28][sz | 0] || 1;
   ctx.save(); ctx.translate(x, y + 11); ctx.scale(sc, sc); ctx.translate(-x, -(y + 11)); // ขนาดก้อน: เล็ก/กลาง/ใหญ่ (ย่อ/ขยายรอบพื้นก้อน)
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y + 11, 13, 5, 0, 0, 7); ctx.fill();
