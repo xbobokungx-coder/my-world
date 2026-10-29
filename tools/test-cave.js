@@ -47,7 +47,9 @@ const last = (ws, t) => { for (let i = ws.msgs.length - 1; i >= 0; i--) if (ws.m
   // ขนาด/ดรอป: ขนาดละช่วงที่กำหนด ความทนทานต่างกัน
   const R = S.rng(5); const seen = [0, 0, 0];
   for (let i = 0; i < 3000; i++) { const s = S.rollSize(R); seen[s]++; const d = S.rollDrop(s, R), r = S.ORE_SIZES[s].drop; assert.ok(d >= r[0] && d <= r[1]); }
-  assert.ok(seen[0] > seen[1] && seen[1] > seen[2] && seen[2] > 100, 'เล็กพบมากสุด ใหญ่หายากสุด');
+  assert.ok(seen[0] > seen[1] && seen[1] > seen[2] && seen[2] > 100, 'เล็กพบมากสุด ใหญ่หายากสุด (ฐาน 50/40/10)');
+  for (let f = 1; f <= S.MINE.floors; f++) { const mx = S.sizeMix(f); assert.strictEqual(mx[0] + mx[1] + mx[2], 100, 'สัดส่วนขนาดชั้น ' + f + ' ต้องรวม 100'); if (f > 1) assert.ok(mx[2] >= S.sizeMix(f - 1)[2] && mx[0] <= S.sizeMix(f - 1)[0], 'ยิ่งลึกก้อนใหญ่ไม่น้อยลง'); }
+  { const big = f => { const sp = S.caveOreSpots(S.makeCaveMap(f), f); return sp.filter(o => o.s === 2).length / sp.length; }; assert.ok(big(10) > big(1), 'ชั้น 10 มีก้อนใหญ่สัดส่วนมากกว่าชั้น 1'); }
   assert.ok(S.oreHp('stone', 0) < S.oreHp('stone', 1) && S.oreHp('stone', 1) < S.oreHp('stone', 2), 'ก้อนใหญ่ HP มากกว่า');
   const t = S.makeMap();
   for (const x of S.MINE.door) { assert.strictEqual(t[S.MINE.y][x], T.MOUTH); assert.strictEqual(t[S.MINE.y + 1][x], T.PATH, 'หน้าปากถ้ำต้องเป็นทาง'); }

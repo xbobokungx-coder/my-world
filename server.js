@@ -214,7 +214,7 @@ class World {
         if (now < w.at) { rest.push(w); continue; }
         const spot = this.oreSpot(F, f, mates) || (mates.some(q => Math.abs(q.x - (w.x + 0.5) * TS) < TS && Math.abs(q.y - (w.y + 0.5) * TS) < TS) ? null : [w.x, w.y]);
         if (!spot) { w.at = now + 5000; rest.push(w); continue; } // ไม่มีที่ให้เกิด/มีคนยืนทับที่เดิม รอรอบหน้า
-        const [x, y] = spot, o = { k: S.rollOre(f, Math.random), s: S.rollSize(Math.random) };
+        const [x, y] = spot, o = { k: S.rollOre(f, Math.random), s: S.rollSize(Math.random, f) };
         F.ores.set(x + ',' + y, o); F.map[y][x] = T.ORE;
         this.sceneBroadcast(CAVE + f, { t: 'ore', x, y, k: o.k, s: o.s });
       }

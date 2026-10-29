@@ -365,11 +365,11 @@
     hpBase: 13,                                    // HP ก้อนเล็ก = hpBase × ระดับอีเต้อขั้นต่ำของแร่ (ใช้อีเต้อที่พอดีกับแร่ ≈ 21 ครั้งต่อก้อนเฉลี่ย)
     door: [25, 26, 27], y: 8,                       // ปากถ้ำบนหน้าผา (แถว y=8) เดินเข้าจากด้านล่าง (y=9)
   };
-  // ขนาดก้อน: ไม่เท่ากัน สุ่มตอนเกิด w = น้ำหนัก hp = ตัวคูณ HP drop = ชิ้นที่ได้ [ต่ำสุด, สูงสุด] สุ่มทุกครั้งที่ขุดแตก
+  // ขนาดก้อน: ไม่เท่ากัน สุ่มตอนเกิด w = น้ำหนักฐานของแมพ 50/40/10 (ชั้นจริงใช้ SIZE_MIX ด้านล่าง) hp = ตัวคูณ HP drop = ชิ้นที่ได้ [ต่ำสุด, สูงสุด] สุ่มทุกครั้งที่ขุดแตก
   const ORE_SIZES = [
-    { id: 's', name: 'เล็ก',  w: 55, hp: 1,   drop: [1, 3] },
-    { id: 'm', name: 'กลาง', w: 33, hp: 2,   drop: [3, 5] },
-    { id: 'l', name: 'ใหญ่', w: 12, hp: 3.5, drop: [5, 8] },
+    { id: 's', name: 'เล็ก',  w: 50, hp: 1,   drop: [1, 3] },
+    { id: 'm', name: 'กลาง', w: 40, hp: 2,   drop: [3, 5] },
+    { id: 'l', name: 'ใหญ่', w: 10, hp: 3.5, drop: [5, 8] },
   ];
   // แร่ 10 ระดับ (ขายที่ร้านช่างเหมือง หมวด "แร่" ไม่เสื่อม) • lv = เลเวลนักขุดแร่ที่ต้องมี • pick = ระดับอีเต้อต่ำสุด • sell/xp = ต่อ 1 ชิ้น (ปรับให้เหรียญและ XP ต่อชม. ใกล้ชาวนา ดู tools/levelsim.js)
   const ORES = {
@@ -384,13 +384,16 @@
     emerald:  { name: 'มรกต',      emoji: '🟢', lv: 9,  pick: 5, sell: 24, xp: 9 },
     crystal:  { name: 'คริสตัล',    emoji: '💎', lv: 10, pick: 6, sell: 27, xp: 10 },
   };
+  // สัดส่วนขนาดก้อน [เล็ก, กลาง, ใหญ่] % ต่อชั้น (ตารางปรับรายชั้นได้): ชั้นตื้นมีแต่ก้อนเล็กเป็นส่วนใหญ่ ชั้นลึกก้อนกลาง/ใหญ่มากขึ้น ชั้น 5–6 ≈ ฐาน 50/40/10
+  const SIZE_MIX = [[60, 35, 5], [58, 36, 6], [56, 37, 7], [53, 38, 9], [51, 40, 9], [49, 41, 10], [46, 42, 12], [44, 43, 13], [42, 44, 14], [40, 45, 15]];
   const ORE_ORDER = Object.keys(ORES);
   for (const o of Object.values(ORES)) o.hp = MINE.hpBase * o.pick;
   const oreXp = (xp, lv) => Math.round(xp * (1 + MINE.xpPerLv * (lv - 1)));
   const oreHp = (kind, size) => Math.round(ORES[kind].hp * ORE_SIZES[size].hp);
   const floorMix = f => { const d = {}; MINE.mix.forEach((w, i) => { const k = ORE_ORDER[Math.min(ORE_ORDER.length, f + i) - 1]; d[k] = (d[k] || 0) + w; }); return d; }; // สัดส่วน % ของแร่แต่ละชนิดในชั้น f
   const rollOre = (f, R) => { let t = R() * 100, k = ORE_ORDER[ORE_ORDER.length - 1]; for (const [id, w] of Object.entries(floorMix(f))) { if ((t -= w) < 0) { k = id; break; } } return k; };
-  const rollSize = R => { let t = R() * 100; for (let i = 0; i < ORE_SIZES.length; i++) if ((t -= ORE_SIZES[i].w) < 0) return i; return ORE_SIZES.length - 1; };
+  const sizeMix = f => SIZE_MIX[Math.max(1, Math.min(SIZE_MIX.length, f | 0)) - 1] || ORE_SIZES.map(z => z.w); // สัดส่วนขนาด % ของชั้น f (ไม่ระบุชั้น = ฐาน)
+  const rollSize = (R, f) => { const mx = f ? sizeMix(f) : ORE_SIZES.map(z => z.w); let t = R() * 100; for (let i = 0; i < mx.length; i++) if ((t -= mx[i]) < 0) return i; return mx.length - 1; };
   const rollDrop = (size, R) => { const d = ORE_SIZES[size].drop; return d[0] + Math.floor(R() * (d[1] - d[0] + 1)); };
   const caveFloor = scene => { const m = typeof scene === 'string' && /^@cave(\d+)$/.exec(scene); return m ? +m[1] : 0; }; // p.scene ของถ้ำคือ '@cave<ชั้น>' (0 = ไม่ใช่ถ้ำ)
   // แผนที่ถ้ำ: ตารางขนาดเท่าแมพเมือง (นอกถ้ำเป็น VOID) ทางออก/บันไดขึ้นอยู่ล่างกลาง จุดเกิดหน้าทางออก บันไดลงอยู่ห้องไกลสุด • ทุกอย่างคำนวณแบบตายตัวจากเลขชั้น (เซิร์ฟเวอร์กับหน้าเว็บได้ผังเดียวกัน)
@@ -458,7 +461,7 @@
       if (!free(x, y)) continue;
       m[y][x] = T.ORE;
       if (caveReach(m) !== total - out.length - 1 || DIRS.some(([dx, dy]) => m[y + dy][x + dx] === T.ORE && !free(x + dx, y + dy))) { m[y][x] = T.CAVE; continue; }
-      out.push({ x, y, k: rollOre(f, R), s: rollSize(R) });
+      out.push({ x, y, k: rollOre(f, R), s: rollSize(R, f) });
     }
     for (const o of out) m[o.y][o.x] = T.CAVE;
     return out;
@@ -1190,7 +1193,7 @@
 
   const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    AXES, PICKS, pickTier, caveReach, caveOpen, MINE, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
+    AXES, PICKS, pickTier, caveReach, caveOpen, MINE, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, FEST, AUCTION, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
