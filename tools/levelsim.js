@@ -34,14 +34,20 @@ function farm(lv) {
 function fishPool(lv, rod, tier) {
   return S.FISH.filter(f => f.lv <= lv).map(f => ({ f, w: S.fishWeight(f, lv, rod, tier) })).filter(x => x.w > 0);
 }
-function fishCpm(lv, rod) { return 60 / (8.75 * Math.max(0.4, 1 - 0.05 * (lv - 1)) * (1 - 0.12 * (rod - 1)) + M.fishOver) * M.fishHit; }
+function fishCpm(lv, rod) { return 60 / (8.75 * Math.max(0.4, 1 - 0.05 * (S.perkLv(lv) - 1)) * S.ROD_WAIT[rod] + M.fishOver) * M.fishHit; }
 function fish(lv) {
-  const rod = lv >= 9 ? 4 : lv >= 6 ? 3 : lv >= 3 ? 2 : 1, cpm = fishCpm(lv, rod);
+  const rod = lv >= 18 ? 7 : lv >= 15 ? 6 : lv >= 12 ? 5 : lv >= 9 ? 4 : lv >= 6 ? 3 : lv >= 3 ? 2 : 1, cpm = fishCpm(lv, rod);
   let best = null;
   for (const t of [1, 2, 3]) {
     const b = S.BAITS[t]; if (b.lv && lv < b.lv) continue;
     const pool = fishPool(lv, rod, t), W = pool.reduce((a, x) => a + x.w, 0);
-    const sell = pool.reduce((a, x) => a + x.w * x.f.sell, 0) / W, xp = pool.reduce((a, x) => a + x.w * x.f.xp, 0) / W;
+    // ปลาราคา ≥ 100 ติดคูลดาวน์ RARE_CD_MS หลังได้หนึ่งตัว (ตัวถัดไปรอเวลา + รอสุ่มโดน): อัตราปลาหายาก/ชม. = 1 / (1/(ครั้งตกที่สุ่มโดน/ชม.) + คูลดาวน์) ส่วนที่เหลือเป็นปลาทั่วไป
+    const WR = pool.filter(x => x.f.sell >= 100).reduce((a, x) => a + x.w, 0), N = cpm * 60, cd = S.RARE_CD_MS / 3600000;
+    const rare = pool.filter(x => x.f.sell >= 100), com = pool.filter(x => x.f.sell < 100), WC = com.reduce((a, x) => a + x.w, 0) || 1;
+    const rr = WR > 0 ? 1 / (1 / (N * WR / W) + cd) : 0, cr = Math.max(0, N - rr);
+    const avg = (arr, k, w0) => arr.reduce((a, x) => a + x.w * x.f[k], 0) / (w0 || 1);
+    const sellH = rr * avg(rare, 'sell', WR) + cr * avg(com, 'sell', WC), xpH = rr * avg(rare, 'xp', WR) + cr * avg(com, 'xp', WC);
+    const sell = sellH / N, xp = xpH / N;
     const coin = cpm * (sell - b.price) * 60;
     if (!best || coin > best.coin) best = { pick: 'เหยื่อ' + t, coin, xp: cpm * xp * 60, gross: cpm * sell * 60, cost: cpm * b.price * 60, pieces: cpm * 60, cat: 'fish' };
   }
@@ -52,14 +58,14 @@ const KIND_SHARE = (() => { if (!S.TREE_KINDS) return { broad: 1 }; const m = S.
   for (let i = 0; i < 4000; i++) { const x = 2 + Math.floor(r() * (S.W - 4)), y = 2 + Math.floor(r() * (S.H - 4)); if (!S.treeSpotOk(m, x, y)) continue; const k = S.pickTreeKind(m, x, y, r); d[k] = (d[k] || 0) + 1; n++; }
   for (const k of Object.keys(d)) d[k] /= n; return d; })();
 function wood(lv) {
-  const axe = lv >= 6 ? 3 : lv >= 3 ? 2 : 1, wl = 1 + (S.WOOD.xpPerLv || 0) * (lv - 1);
+  const axe = lv >= 6 ? 3 : lv >= 3 ? 2 : 1, wl = 1 + (S.WOOD.xpPerLv || 0) * (S.perkLv(lv) - 1);
   const kinds = S.TREE_KINDS || { broad: { lv: 1, axe: 1, hp: S.TREE_HP, drop: [['log', 2]], bonus: [['hardwood', S.WOOD.hardwood.chance]] } }, items = S.WOOD_ITEMS || { log: S.WOOD.log, hardwood: S.WOOD.hardwood };
   let share = 0, val = 0, xp = 0, pcs = 0, secs = 0;
   for (const [id, K] of Object.entries(kinds)) {
     const sh = KIND_SHARE[id] || 0; if (!sh || K.lv > lv || K.axe > axe) continue; // ต้นที่ยังฟันไม่ได้ปล่อยไว้ให้คนเลเวลสูง
     let v = 0, x = 0, n = 0;
-    K.drop.forEach(([it, q], i) => { const qq = q + (i === 0 ? 0.04 * (lv - 1) : 0); v += items[it].sell * qq; x += items[it].xp * qq; n += qq; });
-    for (const [it, ch] of K.bonus || []) { const c = Math.min(1, ch + 0.01 * (lv - 1)); v += items[it].sell * c; x += items[it].xp * c; n += c; }
+    K.drop.forEach(([it, q], i) => { const qq = q + (i === 0 ? 0.04 * (S.perkLv(lv) - 1) : 0); v += items[it].sell * qq; x += items[it].xp * qq; n += qq; });
+    for (const [it, ch] of K.bonus || []) { const c = Math.min(1, ch + 0.01 * (S.perkLv(lv) - 1)); v += items[it].sell * c; x += items[it].xp * c; n += c; }
     share += sh; val += sh * v; xp += sh * x; pcs += sh * n; secs += sh * (Math.ceil(K.hp / S.AXES[axe].power) * 0.7 + M.treeWalk);
   }
   val /= share; xp /= share; pcs /= share; secs /= share;
@@ -98,7 +104,7 @@ function cook(lv) {
 // ขุดเหมือง (ถ้ำ 10 ชั้น): ผู้เล่นเลเวล n ลงชั้น n ขุดได้เฉพาะแร่ที่เลเวลถึง (ส่วนที่เหลือของชั้นข้าม) ใช้อีเต้อดีสุดที่ซื้อได้ ก้อนมี 3 ขนาด (HP/ชิ้นต่างกัน) • อีเต้อสึก 1 ครั้งต่อก้อน
 // เพดานคนเดียว: ชั้นละ ~200+ ก้อนเกิดใหม่ทุก 1 วันในเกม มากกว่าที่คนเดียวขุดทัน จึงติดความเร็วขุด ไม่ติดซัพพลาย
 function mine(lv) {
-  const pk = S.pickTier(Object.fromEntries(Object.entries(S.PICKS).filter(([, p]) => !p.lv || p.lv <= lv).map(([t]) => ['pick_' + t, 1]))), power = S.PICKS[pk].power, wl = 1 + S.MINE.xpPerLv * (lv - 1);
+  const pk = S.pickTier(Object.fromEntries(Object.entries(S.PICKS).filter(([, p]) => !p.lv || p.lv <= lv).map(([t]) => ['pick_' + t, 1]))), power = S.PICKS[pk].power, wl = 1 + S.MINE.xpPerLv * (S.perkLv(lv) - 1);
   const wear = S.TOOL_PRICE.pick[pk] / S.DURABILITY.pick.max[pk] * S.WEAR_RATE.base * 1.35; // ต่อก้อน (1.35 = ซ่อม/ซื้อใหม่เฉลี่ย)
   const mix = Object.entries(S.floorMix(Math.min(lv, S.MINE.floors))).filter(([k]) => S.ORES[k].lv <= lv && S.ORES[k].pick <= pk), share = mix.reduce((a, [, w]) => a + w, 0) / 100;
   let val = 0, xp = 0, pcs = 0, secs = 0;

@@ -235,7 +235,9 @@
   const CLOCK_MS = 24 * 60 * 1000;                     // 1 รอบกลางวัน-กลางคืนบนนาฬิกาเกม = 24 นาทีจริง (แยกจาก DAY_MS เพื่อไม่ให้เศรษฐกิจช้าลง)
   const TREE = { cap: 132, growMs: 20000 };            // เพดานต้นไม้ในแมพ (ตัดทั้งแมพก็ไม่ใช่ทางรวยสุด) + งอกใหม่ทุก growMs
   const WATER_MS = 90000;                              // ดินเปียกนานเท่าไร
-  const MAX_LV = 10;
+  const MAX_LV = 20;                                   // เลเวลสูงสุดทุกอาชีพ (ขยายจาก 10 → 20 เมื่อ 29 ต.ค. 2026)
+  const PERK_LV = 10;                                  // โบนัสผลผลิต/ความเร็วที่ผูกเลเวล (พืช ตกปลา ไม้ สัตว์) คิดสูงสุดที่ Lv10 เหมือนเดิม เลเวล 11–20 ให้ของใหม่แทน ไม่ให้เศรษฐกิจพอง
+  const perkLv = lv => Math.min(lv, PERK_LV);
 
   // อาชีพ 4 สาย (ช่างไม้เพิ่งเริ่ม: ตัดไม้ขาย ยังไม่มีงานฝีมือ)
   const SKILLS = {
@@ -247,7 +249,7 @@
     mine:   { name: 'นักขุดแร่',   emoji: '⚒️' },
   };
   // XP สะสมที่ต้องใช้ถึงเลเวลนั้น (ช่อง = เลเวล) ตั้งตามเวลาเล่นเป้าหมายต่ออาชีพ: Lv2 ~5 นาที • Lv4 ~45 นาที • Lv5 ~1.5 ชม. • Lv7 ~5 ชม. • Lv10 ~18 ชม. (ดู ECONOMY-PLAN.md ขั้น 1B)
-  const XP_TABLE = [0, 0, 150, 600, 1500, 3500, 8000, 14500, 24000, 36000, 64000];
+  const XP_TABLE = [0, 0, 150, 600, 1500, 3500, 8000, 14500, 24000, 36000, 64000, 95000, 130000, 169000, 213000, 262000, 317000, 379000, 448000, 525000, 612000]; // Lv11–20 ขั้นละ ×1.12 ของขั้นก่อน (ถึง Lv20 ≈ 100 ชม.เล่นจริง)
   const xpFor = lv => XP_TABLE[Math.max(1, Math.min(MAX_LV, lv))];
   const levelOf = xp => { let lv = 1; while (lv < MAX_LV && (xp || 0) >= XP_TABLE[lv + 1]) lv++; return lv; };
   // ย้าย XP ตามสูตรเดิม (30×(lv−1)², ใช้ถึง ต.ค. 2026) มาตารางใหม่: เลเวลเท่าเดิม และความคืบหน้าในเลเวลนั้นเป็นสัดส่วนเท่าเดิม
@@ -312,12 +314,25 @@
     { id: 'seal',    name: 'แมวน้ำ',       emoji: '🦭', sell: 105, xp: 32, w: 0.9, lv: 9 },
     { id: 'dolphin', name: 'โลมา',         emoji: '🐬', sell: 140, xp: 36, w: 0.5, lv: 10 },
     { id: 'humpback', name: 'วาฬหลังค่อม', emoji: '🐋', sell: 190, xp: 40, w: 0.25, lv: 10 },
+    // เลเวล 11–20 (29 ต.ค. 2026): rod = ระดับคันเบ็ดขั้นต่ำที่ตกได้ ทุกตัวราคา ≥ 100 จึงติดคูลดาวน์ปลาหายากและกดเป๊ะเหมือนปลากลุ่ม 3
+    { id: 'jelly', name: 'แมงกะพรุน', emoji: '🪼', sell: 210, xp: 41, w: 3, lv: 11, rod: 4 },
+    { id: 'penguin', name: 'เพนกวิน', emoji: '🐧', sell: 230, xp: 42, w: 2.5, lv: 11, rod: 4 },
+    { id: 'beaver', name: 'บีเวอร์', emoji: '🦫', sell: 250, xp: 44, w: 2, lv: 12, rod: 4 },
+    { id: 'dino', name: 'ไดโนน้ำ', emoji: '🦕', sell: 310, xp: 47, w: 1.2, lv: 13, rod: 5 },
+    { id: 'flamingo', name: 'ฟลามิงโก', emoji: '🦩', sell: 290, xp: 46, w: 1.6, lv: 13, rod: 5 },
+    { id: 'coral', name: 'ปะการังแดง', emoji: '🪸', sell: 330, xp: 48, w: 1.4, lv: 14, rod: 5 },
+    { id: 'swan', name: 'หงส์ดำ', emoji: '🦢', sell: 380, xp: 51, w: 1.1, lv: 15, rod: 5 },
+    { id: 'mermaid', name: 'นางเงือกน้อย', emoji: '🧜', sell: 450, xp: 55, w: 0.8, lv: 16, rod: 6 },
+    { id: 'dragon', name: 'มังกรน้ำ', emoji: '🐉', sell: 520, xp: 58, w: 0.6, lv: 17, rod: 6 },
+    { id: 'sdragon', name: 'มังกรทะเล', emoji: '🐲', sell: 600, xp: 62, w: 0.45, lv: 18, rod: 6 },
+    { id: 'unicorn', name: 'ม้าน้ำวิเศษ', emoji: '🦄', sell: 700, xp: 66, w: 0.3, lv: 19, rod: 7 },
+    { id: 'star', name: 'ดาวทะเลทอง', emoji: '🌟', sell: 800, xp: 70, w: 0.2, lv: 20, rod: 7 },
   ];
   // ช่างไม้: ตัดต้นไม้ด้วยขวาน (ขวานแรงกว่าตัดเร็วกว่า) ได้ไม้ท่อน หายากได้ไม้เนื้อแข็งราคาแพง
   const AXES = { 1: { name: 'ขวานหิน', price: 50, power: 1 }, 2: { name: 'ขวานเหล็ก', price: 220, lv: 3, power: 2 }, 3: { name: 'ขวานเหล็กกล้า', price: 700, lv: 6, power: 3 } };
   const TREE_HP = 4;                       // ต้องฟันกี่แต้มถึงล้ม (ขวานหิน = 4 ครั้ง, เหล็ก 2, เหล็กกล้า 2)
   const WOOD = { log: { sell: 16, xp: 5 }, hardwood: { sell: 66, xp: 14, chance: 0.16 }, xpPerLv: 0.1 }; // xpPerLv (0.15 → 0.1 เมื่อมีต้นไม้หลายชนิด 25 ต.ค. 2026): XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
-  const woodXp = (xp, lv) => Math.round(xp * (1 + WOOD.xpPerLv * (lv - 1)));
+  const woodXp = (xp, lv) => Math.round(xp * (1 + WOOD.xpPerLv * (perkLv(lv) - 1)));
   // ของที่ได้จากต้นไม้ (ขายที่ร้านช่างไม้ หมวด "ไม้" ไม่เสื่อม) • xp = XP ช่างไม้ต่อชิ้นก่อนคูณเลเวล (≈ 0.3 XP ต่อเหรียญเหมือนไม้ท่อน)
   const WOOD_ITEMS = {
     log:       { name: 'ไม้ท่อน',      emoji: '🪵', sell: WOOD.log.sell,      xp: WOOD.log.xp },
@@ -389,7 +404,7 @@
   const SIZE_MIX = [[60, 35, 5], [58, 36, 6], [56, 37, 7], [53, 38, 9], [51, 40, 9], [49, 41, 10], [46, 42, 12], [44, 43, 13], [42, 44, 14], [40, 45, 15]];
   const ORE_ORDER = Object.keys(ORES);
   for (const o of Object.values(ORES)) o.hp = MINE.hpBase * o.pick;
-  const oreXp = (xp, lv) => Math.round(xp * (1 + MINE.xpPerLv * (lv - 1)));
+  const oreXp = (xp, lv) => Math.round(xp * (1 + MINE.xpPerLv * (perkLv(lv) - 1)));
   const oreHp = (kind, size) => Math.round(ORES[kind].hp * ORE_SIZES[size].hp);
   const floorMix = f => { const d = {}; MINE.mix.forEach((w, i) => { const k = ORE_ORDER[Math.min(ORE_ORDER.length, f + i) - 1]; d[k] = (d[k] || 0) + w; }); return d; }; // สัดส่วน % ของแร่แต่ละชนิดในชั้น f
   const rollOre = (f, R) => { let t = R() * 100, k = ORE_ORDER[ORE_ORDER.length - 1]; for (const [id, w] of Object.entries(floorMix(f))) { if ((t -= w) < 0) { k = id; break; } } return k; };
@@ -502,7 +517,7 @@
   // ความทนทานเครื่องมือ: ใช้งานทุกครั้งสึกหรอ 1 หน่วย ใช้ครบแล้วใช้ไม่ได้จนกว่าจะซ่อมที่ร้านเสียเหรียญ (ค่าซ่อมคิดตามส่วนที่สึกหรอ) = รายจ่ายที่เกิดขึ้นสม่ำเสมอ
   const DURABILITY = {
     hoe:   { max: [0, 120, 120, 120], fix: [0, 24, 24, 24],  shop: 'farm',   name: 'จอบ' },
-    rod:   { max: [0, 100, 140, 200, 280], fix: [0, 30, 72, 168, 400], shop: 'fish',   name: 'เบ็ดตกปลา' },
+    rod:   { max: [0, 100, 140, 200, 280, 360, 450, 560], fix: [0, 30, 72, 168, 400, 900, 2400, 6000], shop: 'fish',   name: 'เบ็ดตกปลา' },
     axe:   { max: [0, 90, 140, 220],  fix: [0, 36, 96, 216], shop: 'wood',   name: 'ขวาน' },
     pick:  { max: [0, 100, 180, 400, 700, 1100, 1800], fix: [0, 40, 110, 240, 600, 1350, 2700], shop: 'mine',  name: 'อีเต้อ' }, // ขุดแตก 1 ก้อน = สึก 1 ครั้ง (ไม่ใช่ทุกครั้งที่ฟาด) ตัวเลขเป็นจำนวนก้อน
   };
@@ -512,8 +527,8 @@
   // ซ่อมได้จำกัด: ซ่อมแต่ละครั้งความทนทานสูงสุดลดลง decay ของค่าเดิม ค่าซ่อมแพงขึ้น growth ต่อครั้ง ซ่อมครบ maxFixes ครั้งแล้วซ่อมไม่ได้อีก ต้องซื้อใหม่ (ราคา TOOL_PRICE)
   // สมดุล: ค่าซ่อมเต็ม = pct × ราคาซื้อ × (1 + growth × ครั้งที่ซ่อมมาแล้ว) แต่ได้ความทนทานน้อยลงเรื่อยๆ → ซ่อมครั้งที่ ~4 ขึ้นไปต่อหน่วยการใช้งานแพงกว่าซื้อใหม่
   const REPAIR = { decay: 0.15, maxFixes: 3, growth: 0.5, pct: 0.25 };
-  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500], axe: [0, 50, 220, 700], pick: [0, 60, 260, 800, 2000, 4500, 9000] };
-  const tierN = t => Math.max(1, Math.min(6, t || 1)); // ระดับ 4 มีเฉพาะคันเบ็ด ระดับ 4–6 ของอีเต้อ
+  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500, 6000, 16000, 40000], axe: [0, 50, 220, 700], pick: [0, 60, 260, 800, 2000, 4500, 9000] };
+  const tierN = t => Math.max(1, Math.min(7, t || 1)); // ระดับ 4 มีเฉพาะคันเบ็ด ระดับ 4–6 ของอีเต้อ
   const durMax = (tool, tier, fixes) => Math.max(1, Math.floor(DURABILITY[tool].max[tierN(tier)] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fixes || 0))));
   const toolPrice = (tool, tier) => TOOL_PRICE[tool][tierN(tier)];
   // ค่าซ่อมครั้งถัดไป (ซ่อมแล้วเต็มที่ความทนทานสูงสุดใหม่ที่ต่ำลง) เทียบกับความเสียหายของค่าสูงสุดปัจจุบัน
@@ -591,7 +606,7 @@
   };
   const PETCARE = { food: 40, hungerTick: 1, sickBelow: 25, sickChance: 0.12, sickDieMs: DAY_MS }; // ป่วยแล้วไม่รักษาเกิน 1 วันในเกม (นับเฉพาะตอนมีคนออนไลน์) สัตว์เลี้ยงจะตาย ต้องซื้อใหม่ // อาหาร 1 ชิ้นเพิ่มความอิ่ม 40 • ความอิ่มลด 1 ทุก 15 วินาทีที่พาออกมา (เต็มอยู่ได้ ~25 นาที) ต่ำกว่า 25 มีโอกาสป่วยทุกรอบ
   const ANIMAL_XP = { from: 5, perLv: 0.2 }; // XP เลี้ยงสัตว์ ×(1 + perLv × (เลเวล − from)) เมื่อเลเวลเกิน from (สัตว์ปลดครบที่ Lv5 แล้ว XP/ชม. ตันที่ 52% ของชาวนา ดู tools/levelsim.js)
-  const animalXp = (xp, lv) => Math.round(xp * (1 + ANIMAL_XP.perLv * Math.max(0, lv - ANIMAL_XP.from)));
+  const animalXp = (xp, lv) => Math.round(xp * (1 + ANIMAL_XP.perLv * Math.max(0, perkLv(lv) - ANIMAL_XP.from)));
   const ANIMAL_BONUS = 0.25; // โอกาสได้ผลผลิต ×2 เมื่อเก็บจากสัตว์ที่ตัวเองเลี้ยง (เดิม 0.5 ลดเมื่อ 25 ต.ค. 2026: เลี้ยงสัตว์ได้มากกว่าอาชีพอื่นใน tools/econsim.js)
   const ANIMAL_GRACE_MS = 4 * 60 * 1000;   // สัตว์ที่หิวจนหมดแล้ว ถ้าไม่มีใครให้อาหารภายใน 4 นาทีจะตาย
   const PLAYER_HUNGER = { tickMs: 15000, start: 80, sitMs: 5000, sitGain: 1, workMul: 1.8, idleMul: 0.5, workMs: 20000 }; // ทำกิจกรรม (ตัดไม้/ตกปลา/ปลูก/ให้อาหารสัตว์ ฯลฯ ภายใน workMs) หิวเร็ว ×workMul • เดินเฉยๆ/ไม่ทำอะไร หิวช้า ×idleMul • // ผู้เล่นหิวลง 1 แต้มทุก 15 วินาที (เต็ม 100 อยู่ได้ ~25 นาที) ออฟไลน์ไม่ลด
@@ -613,11 +628,14 @@
   const gaugeHit = (f, t) => gaugeDist(f, t) <= f.half;
   // "เป๊ะ" = ตำแหน่งตัวชี้ (ชดเชยหน่วง lag แบบเดียวกันทุกครั้ง ไม่ขยายโซนข้างเดียว) อยู่ในแกนกลางโซน
   const gaugeCore = (f, t) => Math.abs(gaugePos(f, t - FISH_GAUGE.lag / 2) - (f.c === undefined ? 0.5 : f.c)) <= f.half * FISH_GAUGE.perfect; // ชดเชยหน่วงครึ่งเดียว: คนเน็ตเร็ว/ช้าผิดพลาดไม่เกินครึ่งหนึ่งของแกนกลาง
-  const RODS = { 1: { name: 'คันเบ็ดไม้ไผ่' }, 2: { name: 'คันเบ็ดไฟเบอร์', price: 250, lv: 3 }, 3: { name: 'คันเบ็ดคาร์บอน', price: 900, lv: 6 }, 4: { name: 'คันเบ็ดไทเทเนียม', price: 2500, lv: 9 } };
+  const RODS = { 1: { name: 'คันเบ็ดไม้ไผ่' }, 2: { name: 'คันเบ็ดไฟเบอร์', price: 250, lv: 3 }, 3: { name: 'คันเบ็ดคาร์บอน', price: 900, lv: 6 }, 4: { name: 'คันเบ็ดไทเทเนียม', price: 2500, lv: 9 }, 5: { name: 'คันเบ็ดทองคำ', price: 6000, lv: 12 }, 6: { name: 'คันเบ็ดมรกต', price: 16000, lv: 15 }, 7: { name: 'คันเบ็ดเพชร', price: 40000, lv: 18 } };
+  const rodTier = inv => { for (let t = 7; t >= 2; t--) if (inv && inv['rod_' + t]) return t; return 1; }; // ระดับคันเบ็ดสูงสุดที่มี
+  const ROD_WAIT = [0, 1, 0.88, 0.76, 0.64, 0.59, 0.54, 0.49];   // ตัวคูณเวลารอปลากินเบ็ด (ระดับ 1–4 ลด 12%/ระดับ ระดับ 5–7 ลด 5%/ระดับ)
+  const ROD_RARE = [0, 0, 0.35, 0.7, 1.05, 1.25, 1.45, 1.65];    // โบนัสความถี่ปลาราคา ≥ 100 ตามคันเบ็ด (เดิม 0.35×(ระดับ−1))
   // คันเบ็ดปลดความหายากเป็นขั้น (fishClass: 0 = ราคา < 20, 1 = < 60, 2 = < 120, 3 = 120+): ไม้ไผ่ตกได้ถึงกลุ่ม 1 • ไฟเบอร์ถึงกลุ่ม 2 • คาร์บอนขึ้นไปได้ทุกกลุ่ม
   // ปลาราคา ≥ 100 เจอบ่อยขึ้นตามเลเวล (+12%/เลเวล) และคันเบ็ด (+35%/ระดับ) • ปลากลุ่ม 3 ต้องกด "เป๊ะ" (FISH_GAUGE.edgeMul[3] = 0) • ตกปลา ≥ 100 ได้แล้วพักรอบ RARE_CD_MS
-  const ROD_MAXCLASS = [0, 1, 2, 3, 3], RARE_CD_MS = 6 * 60 * 1000;
-  const fishWeight = (f, fl, rod, bait) => fishClass(f) > ROD_MAXCLASS[rod] ? 0 : f.w * (f.sell >= 100 ? 1 + 0.12 * (fl - 1) + 0.35 * (rod - 1) : 1) / (f.id === 'boot' ? 1 + rod : 1) * baitWeight(f, bait);
+  const ROD_MAXCLASS = [0, 1, 2, 3, 3, 3, 3, 3], RARE_CD_MS = 6 * 60 * 1000;
+  const fishWeight = (f, fl, rod, bait) => fishClass(f) > ROD_MAXCLASS[rod] ? 0 : (rod < (f.rod || 0) ? 0 : f.w * (f.sell >= 100 ? 1 + 0.12 * (perkLv(fl) - 1) + ROD_RARE[rod] : 1)) / (f.id === 'boot' ? 1 + rod : 1) * baitWeight(f, bait);
 
   // เสื้อผ้า: ซื้อแล้วสวมได้ (ราคา 0 = มีให้ฟรีตั้งแต่ต้น) สีของเสื้อ/กางเกง/หมวกเลือกเองได้ฟรีในแท็บ "ตัวละคร"
   const WEAR = {
@@ -962,7 +980,7 @@
   // ร้านแต่ละสาย: buy = สินค้าที่ขาย, sell = คำนำหน้าไอเทมที่ร้านรับซื้อ
   const SHOPS = {
     farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: Object.keys(CROPS).map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
-    fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3', 'rod_4'],                  sell: ['fish_'] },
+    fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3', 'rod_4', 'rod_5', 'rod_6', 'rod_7'],                  sell: ['fish_'] },
     animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
     mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
@@ -1192,7 +1210,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

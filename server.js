@@ -45,7 +45,7 @@ const TOOLS = new Set(['hand', 'hoe', 'water', 'rod', 'axe', 'pick', 'medicine',
 const SELLABLE = S.SELLABLE; // รายการเดียวกับ shared.js (เคยก๊อปไว้สองที่แล้วตกหล่น เช่น น้ำผึ้ง)
 const replacer = (k, v) => (k[0] === '_' ? undefined : v);
 const send = (p, o) => { if (p.ws.readyState === 1) p.ws.send(JSON.stringify(o)); };
-const rodOf = inv => (inv.rod_4 ? 4 : inv.rod_3 ? 3 : inv.rod_2 ? 2 : 1);
+const rodOf = inv => S.rodTier(inv);
 
 // ชาวเมือง NPC: เดินท่องไปทั่วแมพ (หาทางด้วย BFS) และพิมพ์ข้อความสั้นๆ แนะนำเกม ขึ้นเป็นฟองเหนือหัวเท่านั้น (ไม่เข้าแชท)
 const NPC_DEFS = [
@@ -2086,7 +2086,7 @@ class World {
       let mine = 0; for (const q in this.farm) if (this.farm[q].c && this.farm[q].o === p.key) { const [qx, qy] = q.split(',').map(Number), r2 = this.rentAt(qx, qy); if (!(r2 && r2.key === p.key)) mine++; } // ต้นในแปลงเช่าของตัวเองไม่นับ
       if (!(rr && rr.key === p.key) && mine >= cap) return this.toast(p, `🌱 ปลูกค้างอยู่ครบ ${cap} ต้นแล้ว เก็บเกี่ยวก่อน หรือแบ่งที่ให้คนอื่นปลูกบ้างนะ (เลเวลชาวนาสูงขึ้นปลูกได้มากขึ้น)`);
       this.add(p, tool, -1);
-      tile.c = tool.slice(5); tile.o = p.key; tile.on = p.name; tile.rm = 0; tile.g = 0; tile.m = 1 + 0.04 * (this.lv(p, 'farm') - 1);
+      tile.c = tool.slice(5); tile.o = p.key; tile.on = p.name; tile.rm = 0; tile.g = 0; tile.m = 1 + 0.04 * (S.perkLv(this.lv(p, 'farm')) - 1);
       if ((p.rec.quick || 0) < S.NEWBIE.quickSeeds && !this.starterOf(p).final) { p.rec.quick = (p.rec.quick || 0) + 1; tile.m = S.NEWBIE.quickMul; this.toast(p, `🌱 เมล็ดมือใหม่ โตไวพิเศษ! (${p.rec.quick}/${S.NEWBIE.quickSeeds}) รดน้ำแล้วรอแป๊บเดียว`); }
       this.tileUpdate(k, tile); this.addXp(p, 'farm', 2); this.tire(p, 'plant'); this.sfx(p, 'plant'); this.event(p, 'plant');
     } else if (tool === 'rod') {
@@ -2097,7 +2097,7 @@ class World {
       if (!(inv[bk] > 0)) return this.toast(p, `ไม่มี${binfo ? binfo.name : 'เหยื่อ'} ซื้อได้ที่ร้านตกปลา ${binfo ? binfo.emoji : '🪱'}`);
       this.add(p, bk, -1);
       const fl = this.lv(p, 'fish'), rod = rodOf(inv);
-      const wait = rand(5500, 12000) * Math.max(0.4, 1 - 0.05 * (fl - 1)) * (1 - 0.12 * (rod - 1)) * (this.happyOn() ? S.VILLAGE.fishMul : 1);
+      const wait = rand(5500, 12000) * Math.max(0.4, 1 - 0.05 * (S.perkLv(fl) - 1)) * S.ROD_WAIT[rod] * (this.happyOn() ? S.VILLAGE.fishMul : 1);
       p.fish = { st: 'wait', at: now + wait, fx: tx * TS + 16, fy: ty * TS + 16, fl, rod, bt };
       this.sfx(p, 'cast'); this.durUse(p, 'rod');
     } else if (tool === 'axe') {
@@ -2114,8 +2114,8 @@ class World {
       this.treeHp.delete(key); this.treeKind.delete(key); this.map[ty][tx] = T.GRASS; this.dirty = true;
       this.broadcast({ t: 'tree', x: tx, y: ty, on: false });
       const got = {}; for (const [it, n] of K.drop) got[it] = (got[it] || 0) + n;
-      if (Math.random() < 0.04 * (wl - 1)) got[K.drop[0][0]]++; // ฝีมือ: ได้ชิ้นหลักเพิ่ม
-      for (const [it, ch] of K.bonus || []) if (Math.random() < ch + 0.01 * (wl - 1) + (this.happyOn() ? S.VILLAGE.hardBonus : 0)) got[it] = (got[it] || 0) + 1;
+      if (Math.random() < 0.04 * (S.perkLv(wl) - 1)) got[K.drop[0][0]]++; // ฝีมือ: ได้ชิ้นหลักเพิ่ม
+      for (const [it, ch] of K.bonus || []) if (Math.random() < ch + 0.01 * (S.perkLv(wl) - 1) + (this.happyOn() ? S.VILLAGE.hardBonus : 0)) got[it] = (got[it] || 0) + 1;
       let xp = 0, val = 0; for (const [it, n] of Object.entries(got)) { this.add(p, it, n); xp += S.WOOD_ITEMS[it].xp * n; val += S.WOOD_ITEMS[it].sell * n; this.bookAdd(p, 'wood', it); }
       this.addXp(p, 'wood', S.woodXp(xp, wl)); this.tire(p, 'chop', val);
       this.toast(p, `${K.emoji} ${K.name}ล้ม! ได้ ${Object.entries(got).map(([it, n]) => `${S.WOOD_ITEMS[it].emoji} ${S.WOOD_ITEMS[it].name} x${n}`).join(' ')}`); this.sfx(p, 'fell'); this.event(p, 'chop'); if (got.hardwood) this.event(p, 'hardwood');
@@ -2141,7 +2141,7 @@ class World {
       if (a.hunger < 25) this.addPts(p, 2); else if (a.hunger < 60) this.addPts(p, 1); // ช่วยสัตว์ที่หิวจริงเท่านั้นได้แต้ม
       this.event(p, 'feed');
       a.hunger = 100; a.zero = 0; // อิ่มเต็ม และหลุดจากอันตรายอดตาย
-      if (!a.fed && !a.prod) { a.fed = true; a.feeder = p.key; a.fn = p.name; a.layAt = now + rand(A.time[0], A.time[1]) * Math.max(0.5, 1 - 0.05 * (this.lv(p, 'animal') - 1)); } // จำคนที่เริ่มเลี้ยงรอบนี้ไว้ปันผลตอนเก็บ
+      if (!a.fed && !a.prod) { a.fed = true; a.feeder = p.key; a.fn = p.name; a.layAt = now + rand(A.time[0], A.time[1]) * Math.max(0.5, 1 - 0.05 * (S.perkLv(this.lv(p, 'animal')) - 1)); } // จำคนที่เริ่มเลี้ยงรอบนี้ไว้ปันผลตอนเก็บ
       this.addXp(p, 'animal', S.animalXp(3, this.lv(p, 'animal')));
       this.toast(p, `${A.name}กินอิ่มแล้ว ${A.emoji}`);
       this.sfx(p, 'feed_' + a.type);
