@@ -181,40 +181,60 @@ class World {
     }
     if (d.houses || d.owners) this.dirty = true;
   }
-  // ----- ถ้ำเหมือง: ฉากร่วมของทั้งห้อง (p.scene = CAVE) ผังตายตัวจาก S.makeCaveMap ก้อนแร่ขุดแล้วเกิดใหม่ตามเวลา (ไม่เก็บลงไฟล์ เริ่มเซิร์ฟเวอร์ใหม่ = แร่เต็ม)
-  initCave() {
-    this.cmap = S.makeCaveMap(); this.ores = new Map(); this.oreHp = new Map(); this.oreWait = [];
-    for (const o of S.caveOreSpots(this.cmap)) { this.ores.set(o.x + ',' + o.y, o.k); this.cmap[o.y][o.x] = T.ORE; }
+  // ----- ถ้ำเหมือง 10 ชั้น: แต่ละชั้นเป็นฉากร่วมของทั้งห้อง (p.scene = CAVE + เลขชั้น เช่น '@cave3') ผังสุ่มตายตัวจาก S.makeCaveMap(ชั้น) ก้อนแร่ขุดแล้วเกิดใหม่ตามเวลา (ไม่เก็บลงไฟล์ เริ่มเซิร์ฟเวอร์ใหม่ = แร่เต็ม)
+  // ชั้นสร้างตอนมีคนเข้าครั้งแรก: { map: ผัง (ก้อนแร่เป็น T.ORE), ores: Map 'x,y' → {k ชนิด, s ขนาด}, hp: Map HP ที่เหลือ, wait: คิวเกิดใหม่ }
+  initCave() { this.floors = new Map(); }
+  floorOf(f) {
+    let F = this.floors.get(f); if (F) return F;
+    const map = S.makeCaveMap(f), ores = new Map();
+    for (const o of S.caveOreSpots(map, f)) { ores.set(o.x + ',' + o.y, { k: o.k, s: o.s }); map[o.y][o.x] = T.ORE; }
+    F = { map, ores, hp: new Map(), wait: [] }; this.floors.set(f, F); return F;
   }
-  oresPub() { return [...this.ores].map(([k, kind]) => { const [x, y] = k.split(',').map(Number); return [x, y, kind]; }); }
-  oreTick(now) { // ก้อนแร่ที่ขุดไปครบเวลา เกิดใหม่ที่เดิม (ถ้ามีคนยืนทับอยู่ รอรอบหน้า)
-    if (!this.oreWait.length) return;
-    const rest = [];
-    for (const w of this.oreWait) {
-      if (now < w.at) { rest.push(w); continue; }
-      if (this.sceneMates(CAVE).some(q => Math.abs(q.x - (w.x + 0.5) * TS) < TS && Math.abs(q.y - (w.y + 0.5) * TS) < TS)) { w.at = now + 5000; rest.push(w); continue; }
-      this.ores.set(w.x + ',' + w.y, w.k); this.cmap[w.y][w.x] = T.ORE;
-      this.sceneBroadcast(CAVE, { t: 'ore', x: w.x, y: w.y, k: w.k });
+  oresPub(f) { return [...this.floorOf(f).ores].map(([k, o]) => { const [x, y] = k.split(',').map(Number); return [x, y, o.k, o.s]; }); }
+  oreTick(now) { // ก้อนแร่ที่ขุดไปครบ 1 วันในเกม เกิดใหม่ที่เดิม (สุ่มชนิด/ขนาดใหม่ตามชั้น ถ้ามีคนยืนทับอยู่ รอรอบหน้า)
+    for (const [f, F] of this.floors) {
+      if (!F.wait.length) continue;
+      const rest = [], mates = this.sceneMates(CAVE + f);
+      for (const w of F.wait) {
+        if (now < w.at) { rest.push(w); continue; }
+        if (mates.some(q => Math.abs(q.x - (w.x + 0.5) * TS) < TS && Math.abs(q.y - (w.y + 0.5) * TS) < TS)) { w.at = now + 5000; rest.push(w); continue; }
+        const o = { k: S.rollOre(f, Math.random), s: S.rollSize(Math.random) };
+        F.ores.set(w.x + ',' + w.y, o); F.map[w.y][w.x] = T.ORE;
+        this.sceneBroadcast(CAVE + f, { t: 'ore', x: w.x, y: w.y, k: o.k, s: o.s });
+      }
+      F.wait = rest;
     }
-    this.oreWait = rest;
   }
   enterCave(p) {
     if (p.scene) return;
     if (p.veh) this.setVeh(p, '');
     this.arcLeave(p); this.tradeCancel(p, 'ผู้เล่นเข้าถ้ำ'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
     p.ret = { x: (Math.floor(p.x / TS) + 0.5) * TS, y: (S.MINE.y + 1.5) * TS }; // ออกมายืนหน้าปากถ้ำ (ไม่ทับช่องปากถ้ำ ไม่งั้นเข้าซ้ำ)
-    this.changeScene(p, CAVE, S.CAVE.spawn.x, S.CAVE.spawn.y);
-    this.toast(p, '⛏️ เข้าถ้ำเหมือง! ใช้อีเต้อ ⚒️ (ร้านช่างเหมือง) ขุดก้อนแร่ ยิ่งลึกยิ่งแพง • พกตะเกียง 🔦 จะเห็นไกลขึ้น • เดินลงทางออกกลางผนังล่างเพื่อกลับ');
+    this.changeScene(p, CAVE + 1, S.CAVE.spawn.x, S.CAVE.spawn.y);
+    this.toast(p, '⛏️ เข้าถ้ำเหมือง ชั้น 1! ใช้อีเต้อ ⚒️ (ร้านช่างเหมือง) ขุดก้อนแร่ • บันไดลงอยู่ห้องไกลสุด ยิ่งลึกยิ่งได้แร่ดี • พกตะเกียง 🔦 จะเห็นไกลขึ้น • ทางออกกลางผนังล่าง');
   }
   leaveCave(p) {
-    if (p.scene !== CAVE) return;
+    if (!S.caveFloor(p.scene)) return;
     const r = this.townPos(p); p.ret = null;
     this.changeScene(p, null, r.x, r.y);
   }
+  caveLanding(f) { // ช่องยืนข้างบันไดลงของชั้น f (ขึ้นมาจากชั้นล่างแล้วไม่ทับบันไดจนลงซ้ำ)
+    const F = this.floorOf(f); if (F.landing) return F.landing;
+    let best = null;
+    for (let y = 0; y < S.H && !best; y++) for (let x = 0; x < S.W && !best; x++) if (F.map[y][x] === T.DOWN) {
+      for (const [dx, dy] of S.DIRS) if (F.map[y + dy][x + dx] === T.CAVE) { best = { x: (x + dx + 0.5) * TS, y: (y + dy + 0.5) * TS }; break; }
+    }
+    return F.landing = best || S.CAVE.spawn;
+  }
+  caveMove(p, f, to) { // ย้ายชั้น (to = ชั้นใหม่) ขึ้นมาจากชั้นล่างยืนข้างบันไดลง ลงมาจากชั้นบนยืนที่จุดเกิด
+    const at = to < f ? this.caveLanding(to) : S.CAVE.spawn;
+    this.changeScene(p, CAVE + to, at.x, at.y);
+    this.toast(p, `⛏️ ถ้ำเหมือง ชั้น ${to}${to === S.MINE.floors ? ' (ชั้นลึกสุด คริสตัลล้วน)' : ''} • แร่ส่วนใหญ่ระดับ ${to}`);
+  }
   houseMap() { return this.hmap; } // แมพบ้านเป็นผนัง/พื้นเหมือนกันทุกหลัง (ของตกแต่งอยู่นอกตาราง ดู houseRects)
   houseRects(key) { let r = this.hrects.get(key); if (!r) { r = S.houseSolidRects(this.houses[key] ? this.houses[key].items : {}); this.hrects.set(key, r); } return r; }
-  mapOf(p) { return p.scene === CAVE ? this.cmap : p.scene ? this.houseMap() : this.map; }
-  blockedFor(p, x, y) { return p.scene === CAVE ? S.blockedAt(this.cmap, x, y) : p.scene ? S.houseBlockedAt(this.houseMap(), this.houseRects(p.scene), x, y, p.x, p.y) : S.blockedAt(this.map, x, y); } // ในบ้านรวมกล่องเฟอร์นิเจอร์ (ถ้าอยู่ในกล่องอยู่แล้ว เช่นเพิ่งลุกจากเก้าอี้ เดินออกได้)
+  mapOf(p) { const f = S.caveFloor(p.scene); return f ? this.floorOf(f).map : p.scene ? this.houseMap() : this.map; }
+  blockedFor(p, x, y) { const f = S.caveFloor(p.scene); return f ? S.blockedAt(this.floorOf(f).map, x, y) : p.scene ? S.houseBlockedAt(this.houseMap(), this.houseRects(p.scene), x, y, p.x, p.y) : S.blockedAt(this.map, x, y); } // ในบ้านรวมกล่องเฟอร์นิเจอร์ (ถ้าอยู่ในกล่องอยู่แล้ว เช่นเพิ่งลุกจากเก้าอี้ เดินออกได้)
   // ชั้นแก้แมพของผู้ดูแล: mapOv ทับช่องหลัง makeMap/ต้นไม้/โครงการ • mocks เป็นกล่องวางแผน (ไม่ชน ไม่มีผลกติกา)
   applyMapOv() {
     if (!this.mapOv) this.mapOv = {};
@@ -271,7 +291,7 @@ class World {
     p.scene = scene; p.x = x; p.y = y; p.sit = null; p.dir = 0;
     if (p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); }
     this.sceneBroadcast(scene, Object.assign({ t: 'p+', quiet: 1 }, this.pubFull(p)), p);
-    send(p, { t: 'scene', sc: scene, owner: scene && scene !== CAVE ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene && scene !== CAVE ? this.houseItemsPub(scene) : [], st: scene && scene !== CAVE ? this.houseStyle(scene) : null, cave: scene === CAVE ? 1 : 0, ores: scene === CAVE ? this.oresPub() : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
+    send(p, { t: 'scene', sc: scene, owner: scene && !S.caveFloor(scene) ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene && !S.caveFloor(scene) ? this.houseItemsPub(scene) : [], st: scene && !S.caveFloor(scene) ? this.houseStyle(scene) : null, cave: S.caveFloor(scene), ores: S.caveFloor(scene) ? this.oresPub(S.caveFloor(scene)) : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
     this.dirty = true;
   }
   enterHouse(p, key) {
@@ -1426,7 +1446,7 @@ class World {
 
   handle(p, m) {
     if (p.scene && !HOUSE_MSG.has(m.t)) return;
-    if (p.scene === CAVE && (m.t === 'house' || m.t === 'gift')) return; // ในถ้ำไม่มีบ้าน/ส่งของขวัญ
+    if (S.caveFloor(p.scene) && (m.t === 'house' || m.t === 'gift')) return; // ในถ้ำไม่มีบ้าน/ส่งของขวัญ
     switch (m.t) {
       case 'm': {
         const x = +m.x, y = +m.y;
@@ -1438,14 +1458,14 @@ class World {
         if (Math.hypot(x - p.x, y - p.y) > 0.5) p.activeAt = Date.now(); // ขยับจริงถึงนับว่ามีกิจกรรม (กันเงินฟรีตอนทิ้งตัวละครไว้)
         p.x = x; p.y = y;
         if (m.d >= 0 && m.d < 4) p.dir = m.d | 0;
-        if (p.scene === CAVE) { if (this.cmap[Math.floor(y / TS)][Math.floor(x / TS)] === T.MOUTH) this.leaveCave(p); break; } // เดินถึงทางออกถ้ำ = กลับเมือง
+        { const cf = S.caveFloor(p.scene); if (cf) { const t = this.floorOf(cf).map[Math.floor(y / TS)][Math.floor(x / TS)]; if (t === T.MOUTH) { if (cf === 1) this.leaveCave(p); else this.caveMove(p, cf, cf - 1); } else if (t === T.DOWN) this.caveMove(p, cf, cf + 1); break; } } // เดินถึงทางออก = ขึ้นชั้นบน (ชั้น 1 = กลับเมือง) • เดินลงบันไดลง = ชั้นถัดไป
         if (!p.scene && this.map[Math.floor(y / TS)][Math.floor(x / TS)] === T.MOUTH) { this.enterCave(p); break; } // เดินเข้าปากถ้ำบนหน้าผา
         if (p.scene) { if (Math.floor(y / TS) >= S.HOUSE.y1 && S.HOUSE.door.includes(Math.floor(x / TS))) this.leaveHouse(p); break; } // เดินถึงประตูบ้าน = ออกไปเมือง
         this.arcRangeCheck(p);
         break;
       }
       case 'act': {
-        if (p.scene === CAVE) return this.caveAct(p, m);
+        if (S.caveFloor(p.scene)) return this.caveAct(p, m);
         if (p.scene) return this.houseAct(p, m);
         const now = Date.now();
         if (now - p.lastAct < 150) return;
@@ -1606,7 +1626,7 @@ class World {
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); }
   treeList() { const out = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) out.push([x, y, (this.treeKind && this.treeKind.get(x + ',' + y)) || 'broad']); return out; }
   // ---------- ความทนทานเครื่องมือ (รายจ่ายสม่ำเสมอ): ใช้ทุกครั้งสึก 1 หมดแล้วต้องซ่อมที่ร้านเสียเหรียญ ----------
-  toolTier(p, tool) { const inv = p.rec.inv; return tool === 'rod' ? rodOf(inv) : tool === 'axe' ? (inv.axe_3 ? 3 : inv.axe_2 ? 2 : 1) : tool === 'pick' ? (inv.pick_3 ? 3 : inv.pick_2 ? 2 : 1) : 1; }
+  toolTier(p, tool) { const inv = p.rec.inv; return tool === 'rod' ? rodOf(inv) : tool === 'axe' ? (inv.axe_3 ? 3 : inv.axe_2 ? 2 : 1) : tool === 'pick' ? (S.pickTier(inv) || 1) : 1; }
   fixN(p, tool) { return (p.rec.fix && p.rec.fix[tool]) || 0; }
   durMx(p, tool) { return S.durMax(tool, this.toolTier(p, tool), this.fixN(p, tool)); }
   durCur(p, tool) { const mx = this.durMx(p, tool), d = p.rec.dur && p.rec.dur[tool]; return d === undefined ? mx : Math.max(0, Math.min(d, mx)); }
@@ -1880,11 +1900,11 @@ class World {
     if (now - p.lastAct < 150) return;
     p.lastAct = p.activeAt = now;
     if (m.tool !== 'pick') return;
-    p.workAt = now; this.sceneBroadcast(CAVE, { t: 'use', id: p.id }, p);
+    p.workAt = now; this.sceneBroadcast(p.scene, { t: 'use', id: p.id }, p);
     this.pickAct(p, now, m.tx, m.ty);
   }
   pickAct(p, now, cx, cy) {
-    const inv = p.rec.inv, pick = inv.pick_3 ? 3 : inv.pick_2 ? 2 : inv.pick_1 ? 1 : 0;
+    const inv = p.rec.inv, pick = S.pickTier(inv), cf = S.caveFloor(p.scene), F = this.floorOf(cf);
     if (!pick) return this.toast(p, 'ต้องมีอีเต้อก่อน ซื้อได้ที่ร้านช่างเหมือง ⚒️ (หน้าถ้ำ)');
     if (p.rec.hunger <= 0) return this.toast(p, '😵 หิวจนไม่มีแรง! ไปกินอาหารก่อนนะ (ร้านอาหาร หรือกินผลผลิตจากกระเป๋า)');
     if (!this.durOk(p, 'pick')) return;
@@ -1896,24 +1916,23 @@ class World {
       const dx = cx - px, dy = cy - py;
       if (dx || dy) p.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
     }
-    const key = tx + ',' + ty, kid = this.ores.get(key);
-    if (!kid) return this.toast(p, 'ใช้อีเต้อขุดก้อนแร่ในถ้ำ 🪨 (หันหน้าหาก้อนแร่ หรือแตะที่ก้อนแร่)');
-    const O = S.ORES[kid], ml = this.lv(p, 'mine');
+    const key = tx + ',' + ty, ore = F.ores.get(key);
+    if (!ore) return this.toast(p, 'ใช้อีเต้อขุดก้อนแร่ในถ้ำ 🪨 (หันหน้าหาก้อนแร่ หรือแตะที่ก้อนแร่)');
+    const kid = ore.k, O = S.ORES[kid], ml = this.lv(p, 'mine');
     if (ml < O.lv || pick < O.pick) return this.toast(p, `🔒 ${O.emoji} ${O.name}ต้องเป็นนักขุดแร่ Lv${O.lv} และใช้${S.PICKS[O.pick].name}ขึ้นไป`);
-    let h = this.oreHp.get(key);
-    if (!h || now - h.t > 20000) h = { hp: O.hp, t: now };
+    let h = F.hp.get(key);
+    if (!h || now - h.t > 20000) h = { hp: S.oreHp(kid, ore.s), t: now };
     h.hp -= S.PICKS[pick].power; h.t = now;
-    this.sfx(p, 'chop'); this.durUse(p, 'pick');
-    if (h.hp > 0) { this.oreHp.set(key, h); if (O.hp > 4) this.toast(p, `⚒️ ${O.emoji} ${O.name} อีก ${Math.ceil(h.hp / S.PICKS[pick].power)} ครั้ง`); return; }
-    this.oreHp.delete(key); this.ores.delete(key); this.cmap[ty][tx] = T.CAVE;
-    this.oreWait.push({ x: tx, y: ty, k: kid, at: now + S.MINE.respawn[S.caveTier(ty)] });
-    this.sceneBroadcast(CAVE, { t: 'ore', x: tx, y: ty, k: '' });
-    const got = { [kid]: O.drop };
-    if (O.bonus && Math.random() < O.bonus[1] + 0.01 * (ml - 1)) got[O.bonus[0]] = (got[O.bonus[0]] || 0) + 1;
-    let xp = 0, val = 0; for (const [it, n] of Object.entries(got)) { this.add(p, it, n); xp += S.ORES[it].xp * n; val += S.ORES[it].sell * n; }
+    this.sfx(p, 'chop');
+    if (h.hp > 0) { F.hp.set(key, h); const left = Math.ceil(h.hp / S.PICKS[pick].power); if (left <= 3 || left % 5 === 0) this.toast(p, `⚒️ ${O.emoji} ${O.name}ก้อน${S.ORE_SIZES[ore.s].name} อีก ${left} ครั้ง`); return; }
+    this.durUse(p, 'pick'); // ขุดแตก 1 ก้อน = อีเต้อสึก 1 ครั้ง (ไม่นับทุกครั้งที่ฟาด)
+    F.hp.delete(key); F.ores.delete(key); F.map[ty][tx] = T.CAVE;
+    F.wait.push({ x: tx, y: ty, at: now + S.MINE.respawnMs });
+    this.sceneBroadcast(p.scene, { t: 'ore', x: tx, y: ty, k: '' });
+    const n = S.rollDrop(ore.s, Math.random), xp = O.xp * n, val = O.sell * n;
+    this.add(p, kid, n);
     this.addXp(p, 'mine', S.oreXp(xp, ml)); this.tire(p, 'mine', val);
-    this.toast(p, `⛏️ ขุดได้ ${Object.entries(got).map(([it, n]) => `${S.ORES[it].emoji} ${S.ORES[it].name} x${n}`).join(' ')}`); this.sfx(p, 'fell'); this.event(p, 'mine');
-    if (kid === 'crystal') this.addLog(`💎 ${p.name} ขุดเจอคริสตัลในถ้ำ!`);
+    this.toast(p, `⛏️ ขุดได้ ${O.emoji} ${O.name} x${n} (ก้อน${S.ORE_SIZES[ore.s].name})`); this.sfx(p, 'fell'); this.event(p, 'mine');
   }
   act(p, tool, now, cx, cy) {
     const inv = p.rec.inv;

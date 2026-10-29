@@ -1,4 +1,4 @@
-// ทดสอบถ้ำเหมือง (ฉากร่วม เข้า-ออกปากถ้ำ ขุดแร่ เลเวล/อีเต้อ ความทนทาน แร่เกิดใหม่ ขายแร่): node tools/test-cave.js
+// ทดสอบถ้ำเหมือง 10 ชั้น (ผังสุ่มต่อชั้น เดินถึงบันไดลงเสมอ แร่ 3 ขนาด สัดส่วนแร่ต่อชั้น ขุด/อีเต้อ/ความทนทาน แร่เกิดใหม่ 1 วันในเกม ขายแร่): node tools/test-cave.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-cave-'));
 const { World } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS, T = S.T;
@@ -6,17 +6,49 @@ const { World } = require('../server.js'), S = require('../public/shared.js'), T
 const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } });
 const last = (ws, t) => { for (let i = ws.msgs.length - 1; i >= 0; i--) if (ws.msgs[i].t === t) return ws.msgs[i]; return null; };
 
-// ผังถ้ำ: ทุกพื้นเดินถึงจากจุดเกิด ก้อนแร่ไม่ปิดทาง ทางออกอยู่ผนังล่าง ปากถ้ำในเมืองเดินเข้าได้จากด้านล่าง
+// สัดส่วนแร่ต่อชั้น: ชั้น f = แร่ระดับ f 70% / f+1 20% / f+2 10% ชั้น 10 คริสตัลล้วน
 {
-  const m = S.makeCaveMap(), spots = S.caveOreSpots(m);
-  assert.ok(spots.length > 40 && spots.length <= S.MINE.maxOres, 'ก้อนแร่ต้องมีหลายสิบก้อน');
-  for (const o of spots) { assert.strictEqual(m[o.y][o.x], T.CAVE); m[o.y][o.x] = T.ORE; }
-  const sol = (x, y) => S.blockedAt(m, (x + 0.5) * TS, (y + 0.5) * TS);
-  const sx = Math.floor(S.CAVE.spawn.x / TS), sy = Math.floor(S.CAVE.spawn.y / TS), seen = new Set([sx + ',' + sy]), q = [[sx, sy]];
-  while (q.length) { const [x, y] = q.shift(); for (const [dx, dy] of S.DIRS) { const k = (x + dx) + ',' + (y + dy); if (seen.has(k) || sol(x + dx, y + dy)) continue; seen.add(k); q.push([x + dx, y + dy]); } }
-  let floor = 0; for (const r of m) for (const c of r) if (c === T.CAVE || c === T.MOUTH) floor++;
-  assert.strictEqual(seen.size, floor, 'ต้องเดินถึงพื้นถ้ำทุกช่อง (ก้อนแร่ไม่ปิดทาง)');
-  assert.ok(!S.blockedAt(m, S.CAVE.spawn.x, S.CAVE.spawn.y), 'จุดเกิดในถ้ำเดินได้');
+  assert.deepStrictEqual(S.floorMix(1), { stone: 70, coal: 20, copper: 10 });
+  assert.deepStrictEqual(S.floorMix(8), { ruby: 70, emerald: 20, crystal: 10 });
+  assert.deepStrictEqual(S.floorMix(9), { emerald: 70, crystal: 30 });
+  assert.deepStrictEqual(S.floorMix(10), { crystal: 100 });
+  assert.strictEqual(S.ORE_ORDER.length, S.MINE.floors, 'แร่ 1 ระดับต่อ 1 ชั้น');
+  assert.strictEqual(S.pickTier({ pick_2: 1, pick_5: 1 }), 5); assert.strictEqual(S.pickTier({}), 0);
+  assert.strictEqual(S.caveFloor('@cave7'), 7); assert.strictEqual(S.caveFloor('alice'), 0); assert.strictEqual(S.caveFloor(null), 0);
+}
+
+// ผังถ้ำทุกชั้น: เดินถึงทุกพื้นและบันไดลงจากหน้าทางออก ก้อนแร่ไม่ปิดทาง ทุกก้อนมีที่ยืนขุด ไม่เกิน 300 ก้อน แต่ละชั้นผังไม่ซ้ำกัน
+{
+  const sigs = new Set();
+  for (let f = 1; f <= S.MINE.floors; f++) {
+    const m = S.makeCaveMap(f), spots = S.caveOreSpots(m, f);
+    assert.ok(spots.length >= 100 && spots.length <= S.MINE.maxOres, `ชั้น ${f}: ก้อนแร่ ${spots.length} ต้องอยู่ที่ 100–300`);
+    const downs = []; let open = 0;
+    m.forEach((r, y) => r.forEach((c, x) => { if (c === T.DOWN) downs.push([x, y]); if (c === T.CAVE || c === T.MOUTH || c === T.DOWN) open++; }));
+    assert.strictEqual(downs.length, f < S.MINE.floors ? 3 : 0, `ชั้น ${f}: บันไดลง`);
+    for (const o of spots) { assert.strictEqual(m[o.y][o.x], T.CAVE); m[o.y][o.x] = T.ORE; }
+    const sol = (x, y) => S.blockedAt(m, (x + 0.5) * TS, (y + 0.5) * TS);
+    const sx = Math.floor(S.CAVE.spawn.x / TS), sy = Math.floor(S.CAVE.spawn.y / TS), seen = new Set([sx + ',' + sy]), q = [[sx, sy]];
+    while (q.length) { const [x, y] = q.shift(); for (const [dx, dy] of S.DIRS) { const k = (x + dx) + ',' + (y + dy); if (seen.has(k) || sol(x + dx, y + dy)) continue; seen.add(k); q.push([x + dx, y + dy]); } }
+    assert.strictEqual(seen.size, open - spots.length, `ชั้น ${f}: ต้องเดินถึงพื้นถ้ำทุกช่อง (ก้อนแร่/เสาไม่ปิดทาง)`);
+    for (const [x, y] of downs) assert.ok(seen.has(x + ',' + y), `ชั้น ${f}: เดินถึงบันไดลงได้`);
+    for (const o of spots) assert.ok(S.DIRS.some(([dx, dy]) => seen.has((o.x + dx) + ',' + (o.y + dy))), `ชั้น ${f}: ก้อนแร่ทุกก้อนมีที่ยืนขุด`);
+    assert.ok(!S.blockedAt(m, S.CAVE.spawn.x, S.CAVE.spawn.y), 'จุดเกิดในถ้ำเดินได้');
+    for (const x of S.CAVE.exit) assert.strictEqual(m[S.CAVE.y1][x], T.MOUTH);
+    // สัดส่วนแร่ใกล้ 70/20/10 (ชั้น 10 ล้วนคริสตัล)
+    const cnt = {}; for (const o of spots) cnt[o.k] = (cnt[o.k] || 0) + 1;
+    for (const [k, w] of Object.entries(S.floorMix(f))) assert.ok(Math.abs((cnt[k] || 0) / spots.length * 100 - w) < 12, `ชั้น ${f}: ${k} ควรราว ${w}% ได้ ${((cnt[k] || 0) / spots.length * 100).toFixed(0)}%`);
+    assert.deepStrictEqual(Object.keys(cnt).sort(), Object.keys(S.floorMix(f)).sort(), `ชั้น ${f}: ชนิดแร่ต้องตรงตามสัดส่วนชั้น`);
+    m.forEach(r => r.forEach((c, i) => { if (c === T.ORE) r[i] = T.CAVE; }));
+    sigs.add(m.map(r => r.join('')).join('|'));
+  }
+  assert.strictEqual(sigs.size, S.MINE.floors, 'ผังแต่ละชั้นต้องต่างกัน');
+  const m1 = S.makeCaveMap(3), m2 = S.makeCaveMap(3); assert.deepStrictEqual(m1, m2, 'ผังชั้นเดียวกันต้องได้เหมือนกันทุกครั้ง (เซิร์ฟเวอร์กับหน้าเว็บตรงกัน)');
+  // ขนาด/ดรอป: ขนาดละช่วงที่กำหนด ความทนทานต่างกัน
+  const R = S.rng(5); const seen = [0, 0, 0];
+  for (let i = 0; i < 3000; i++) { const s = S.rollSize(R); seen[s]++; const d = S.rollDrop(s, R), r = S.ORE_SIZES[s].drop; assert.ok(d >= r[0] && d <= r[1]); }
+  assert.ok(seen[0] > seen[1] && seen[1] > seen[2] && seen[2] > 100, 'เล็กพบมากสุด ใหญ่หายากสุด');
+  assert.ok(S.oreHp('stone', 0) < S.oreHp('stone', 1) && S.oreHp('stone', 1) < S.oreHp('stone', 2), 'ก้อนใหญ่ HP มากกว่า');
   const t = S.makeMap();
   for (const x of S.MINE.door) { assert.strictEqual(t[S.MINE.y][x], T.MOUTH); assert.strictEqual(t[S.MINE.y + 1][x], T.PATH, 'หน้าปากถ้ำต้องเป็นทาง'); }
   assert.ok(!S.blockedAt(t, 26.5 * TS, 8.5 * TS), 'ปากถ้ำเดินเข้าได้');
@@ -27,62 +59,84 @@ const w = new World('main');
 const wa = mkWs(), wb = mkWs();
 const a = w.join(wa, 'alice', '#e74c3c').p, b = w.join(wb, 'bob', '#3498db').p;
 const door = () => ({ x: 26.5 * TS, y: 9.5 * TS });
-const step = (p, x, y) => { Object.assign(p, { x: p.x, y: p.y }); w.handle(p, { t: 'm', x, y, d: 1 }); };
+const step = (p, x, y) => { w.handle(p, { t: 'm', x, y, d: 1 }); };
+const ctr = (x, y) => [(x + 0.5) * TS, (y + 0.5) * TS];
 
-// เดินจากหน้าปากถ้ำขึ้นไปช่องปากถ้ำ (เดินก้าวละไม่เกิน 60 px) = เข้าถ้ำ ฉากร่วม
+// เดินจากหน้าปากถ้ำขึ้นไปช่องปากถ้ำ (เดินก้าวละไม่เกิน 60 px) = เข้าถ้ำชั้น 1 ฉากร่วม
 a.x = door().x; a.y = door().y; b.x = door().x + 64; b.y = door().y;
 step(a, a.x, 8.5 * TS);
-assert.strictEqual(a.scene, '@cave', 'เดินเข้าปากถ้ำ = เข้าถ้ำ');
+assert.strictEqual(a.scene, '@cave1', 'เดินเข้าปากถ้ำ = เข้าถ้ำชั้น 1');
 const sc = last(wa, 'scene');
-assert.ok(sc && sc.cave === 1 && sc.ores.length > 40 && sc.players.length === 1, 'ต้องได้ฉากถ้ำพร้อมรายการแร่');
+assert.ok(sc && sc.cave === 1 && sc.ores.length >= 100 && sc.ores[0].length === 4 && sc.players.length === 1, 'ต้องได้ฉากถ้ำพร้อมรายการแร่ [x,y,ชนิด,ขนาด]');
 assert.deepStrictEqual([a.x, a.y], [S.CAVE.spawn.x, S.CAVE.spawn.y]);
 assert.strictEqual(Math.floor(a.ret.y / TS), 9, 'จำตำแหน่งหน้าปากถ้ำไว้ ไม่ใช่ช่องปากถ้ำ');
 b.x = door().x + 32; b.y = door().y; step(b, b.x, 8.5 * TS);
-assert.strictEqual(b.scene, '@cave'); assert.ok(wa.msgs.some(m => m.t === 'p+' && m.id === b.id), 'คนในถ้ำเห็นกัน');
+assert.strictEqual(b.scene, '@cave1'); assert.ok(wa.msgs.some(m => m.t === 'p+' && m.id === b.id), 'คนในถ้ำเห็นกัน');
 assert.ok(last(wb, 'scene').players.length === 2, 'คนใหม่เห็นคนที่อยู่ก่อน');
+assert.ok(w.floors.size === 1 && w.floorOf(1).ores.size <= S.MINE.maxOres, 'สร้างเฉพาะชั้นที่มีคนเข้า');
 
-// ขุดแร่: ต้องมีอีเต้อ เลเวล และระดับอีเต้อพอ
-const [ox, oy, ok_] = last(wa, 'scene').ores.find(o => o[2] === 'stone');
-a.x = (ox + 0.5) * TS; a.y = (oy + 1.5) * TS; a.dir = 1; // ยืนใต้ก้อนแร่ หันขึ้น
+// ขุดแร่: ต้องมีอีเต้อ เลเวล และระดับอีเต้อพอ • ก้อนเล็ก/กลาง/ใหญ่ ขุดนานต่างกัน ได้ชิ้นตามช่วง
+const F1 = w.floorOf(1);
+const find = (kind, size) => [...F1.ores].find(([, o]) => o.k === kind && (size === undefined || o.s === size));
 const act = (p, tx, ty) => { p.lastAct = 0; w.handle(p, { t: 'act', tool: 'pick', tx, ty }); };
-act(a, ox, oy); assert.ok(w.ores.has(ox + ',' + oy), 'ไม่มีอีเต้อ ขุดไม่ได้');
-a.rec.inv.coin = 5000; a.x = door().x; a.y = door().y; // กลับไปซื้ออีเต้อไม่ได้เพราะอยู่ในถ้ำ: ซื้อไม่ได้ในถ้ำ
-w.handle(a, { t: 'buy', item: 'pick_1', n: 1 }); assert.ok(!a.rec.inv.pick_1, 'ในถ้ำไม่มีร้าน ซื้อไม่ได้');
-a.rec.inv.pick_1 = 1; a.x = (ox + 0.5) * TS; a.y = (oy + 1.5) * TS;
-const xp0 = a.rec.skills.mine || 0;
-for (let i = 0; i < 2; i++) act(a, ox, oy);
-assert.ok(w.ores.has(ox + ',' + oy), 'หิน hp 3 ขุด 2 ครั้งยังไม่แตก');
+const stand = (p, [ox, oy]) => { [p.x, p.y] = ctr(ox, oy + 1); p.dir = 1; };
+let [sk, so] = find('stone', 0); const [ox, oy] = sk.split(',').map(Number);
+stand(a, [ox, oy]); act(a, ox, oy); assert.ok(F1.ores.has(sk) && !F1.hp.size, 'ไม่มีอีเต้อ ขุดไม่ได้');
+a.rec.inv.coin = 99999; [a.x, a.y] = [door().x, door().y]; w.handle(a, { t: 'buy', item: 'pick_1', n: 1 }); assert.ok(!a.rec.inv.pick_1, 'ในถ้ำไม่มีร้าน ซื้อไม่ได้');
+a.rec.inv.pick_1 = 1; stand(a, [ox, oy]);
+const hp0 = S.oreHp('stone', 0), xp0 = a.rec.skills.mine || 0; assert.strictEqual(hp0, S.MINE.hpBase);
+for (let i = 0; i < hp0 - 1; i++) act(a, ox, oy);
+assert.ok(F1.ores.has(sk), 'ขุดยังไม่ครบ HP ยังไม่แตก'); assert.strictEqual(a.rec.dur && a.rec.dur.pick, undefined, 'อีเต้อสึกเมื่อแตกก้อน ไม่ใช่ทุกครั้งที่ฟาด');
 act(a, ox, oy);
-assert.ok(!w.ores.has(ox + ',' + oy) && w.cmap[oy][ox] === T.CAVE, 'ขุด 3 ครั้งแตก ช่องกลายเป็นพื้น');
-assert.ok((a.rec.inv.stone || 0) >= 2, 'ได้หิน'); assert.ok((a.rec.skills.mine || 0) > xp0, 'ได้ XP นักขุดแร่');
+assert.ok(!F1.ores.has(sk) && F1.map[oy][ox] === T.CAVE, 'ขุดครบ HP แตก ช่องกลายเป็นพื้น');
+assert.ok(a.rec.inv.stone >= 1 && a.rec.inv.stone <= 3, 'ก้อนเล็กได้หิน 1–3 ชิ้น'); assert.ok((a.rec.skills.mine || 0) > xp0, 'ได้ XP นักขุดแร่');
 assert.ok(wb.msgs.some(m => m.t === 'ore' && m.x === ox && m.y === oy && m.k === ''), 'คนอื่นในถ้ำเห็นแร่หาย');
-assert.ok(a.rec.dur && a.rec.dur.pick < S.durMax('pick', 1, 0), 'อีเต้อสึกหรอ');
+assert.ok(a.rec.dur.pick < S.durMax('pick', 1, 0) && a.rec.dur.pick >= S.durMax('pick', 1, 0) - 2, 'อีเต้อสึก 1 ครั้งต่อก้อน');
 assert.strictEqual(a.rec.ach && a.rec.ach.cnt.mine, 1, 'นับสถิติ mine');
+// ก้อนใหญ่: HP มากกว่า ชิ้นมากกว่า
+{ const big = find('stone', 2); if (big) { const [bk] = big, [bx, by] = bk.split(',').map(Number); stand(a, [bx, by]); const before = a.rec.inv.stone || 0, need = S.oreHp('stone', 2);
+    for (let i = 0; i < need - 1; i++) act(a, bx, by); assert.ok(F1.ores.has(bk), 'ก้อนใหญ่ต้องฟาดมากกว่า'); act(a, bx, by);
+    const got = a.rec.inv.stone - before; assert.ok(!F1.ores.has(bk) && got >= 5 && got <= 8, 'ก้อนใหญ่ได้ 5–8 ชิ้น ได้ ' + got); } }
 
-// ต้องเลเวล/อีเต้อถึง: ทองแดงต้อง Lv3 + อีเต้อ 2
-{ const c = [...w.ores].find(([, k]) => k === 'copper'); const [cx, cy] = c[0].split(',').map(Number);
-  a.x = (cx + 0.5) * TS; a.y = (cy + 1.5) * TS; act(a, cx, cy);
-  assert.ok(w.ores.has(c[0]) && !w.oreHp.has(c[0]), 'เลเวล/อีเต้อไม่ถึง ขุดไม่ได้ ไม่ลด hp'); }
+// ต้องเลเวล/อีเต้อถึง: ทองแดงต้อง Lv3 + อีเต้อหิน (ระดับ 2)
+{ const c = find('copper'); const [cx, cy] = c[0].split(',').map(Number); stand(a, [cx, cy]); act(a, cx, cy);
+  assert.ok(F1.ores.has(c[0]) && !F1.hp.has(c[0]), 'เลเวล/อีเต้อไม่ถึง ขุดไม่ได้ ไม่ลด HP'); }
 
-// แร่เกิดใหม่เมื่อครบเวลา
-assert.ok(w.oreWait.length === 1); w.oreTick(Date.now() + 1000); assert.ok(!w.ores.has(ox + ',' + oy), 'ยังไม่ครบเวลา');
-w.oreTick(Date.now() + S.MINE.respawn[4] + 1000);
-assert.ok(w.ores.get(ox + ',' + oy) === 'stone' && w.cmap[oy][ox] === T.ORE, 'ครบเวลาเกิดใหม่'); assert.ok(last(wb, 'ore').k === 'stone');
+// แร่เกิดใหม่เมื่อครบ 1 วันในเกม (สุ่มชนิดตามชั้น)
+assert.ok(F1.wait.length >= 1); const waitN = F1.wait.length; w.oreTick(Date.now() + 1000); assert.strictEqual(F1.wait.length, waitN, 'ยังไม่ครบวัน');
+assert.strictEqual(S.MINE.respawnMs, S.DAY_MS);
+w.oreTick(Date.now() + S.DAY_MS + 1000);
+assert.ok(!F1.wait.length && F1.ores.has(sk) && F1.map[oy][ox] === T.ORE, 'ครบ 1 วันเกิดใหม่'); assert.ok(Object.keys(S.floorMix(1)).includes(F1.ores.get(sk).k), 'ชนิดที่เกิดใหม่ตามชั้น');
+{ const m = wb.msgs.filter(x => x.t === 'ore' && x.x === ox && x.y === oy).pop(); assert.ok(m && m.k === F1.ores.get(sk).k && m.s === F1.ores.get(sk).s, 'คนในถ้ำเห็นแร่เกิดใหม่ พร้อมชนิดและขนาด'); }
 
 // อีเต้อพัง ใช้ไม่ได้
-{ a.rec.dur.pick = 0; const [x2, y2] = [...w.ores].find(([, k]) => k === 'stone')[0].split(',').map(Number); a.x = (x2 + 0.5) * TS; a.y = (y2 + 1.5) * TS; act(a, x2, y2); assert.ok(w.ores.has(x2 + ',' + y2), 'อีเต้อพังขุดไม่ได้'); }
+{ a.rec.dur.pick = 0; const [k2] = find('stone'); const [x2, y2] = k2.split(',').map(Number); stand(a, [x2, y2]); act(a, x2, y2); assert.ok(F1.ores.has(k2) && !F1.hp.has(k2), 'อีเต้อพังขุดไม่ได้'); a.rec.dur.pick = 50; }
 
-// ออกจากถ้ำ: เดินลงทางออก → กลับหน้าปากถ้ำ (ไม่ทับช่องปากถ้ำ ไม่วนเข้าซ้ำ)
+// บันไดลง/ขึ้น: ชั้น 1 → 2 → กลับชั้น 1 ยืนข้างบันไดลง → ออกเมือง
+{ const down = []; F1.map.forEach((r, y) => r.forEach((c, x) => { if (c === T.DOWN) down.push([x, y]); }));
+  const land = w.caveLanding(1); [a.x, a.y] = [land.x, land.y];
+  const [dx, dy] = down.find(([x, y]) => Math.hypot((x + 0.5) * TS - land.x, (y + 0.5) * TS - land.y) <= TS + 1); step(a, ...ctr(dx, dy));
+  assert.strictEqual(a.scene, '@cave2', 'เดินลงบันไดลง = ชั้น 2'); assert.strictEqual(last(wa, 'scene').cave, 2);
+  assert.deepStrictEqual([a.x, a.y], [S.CAVE.spawn.x, S.CAVE.spawn.y]); assert.ok(w.floors.size === 2);
+  assert.ok(wb.msgs.some(m => m.t === 'p-' && m.id === a.id), 'คนชั้น 1 เห็นเขาหายไป');
+  const F2 = w.floorOf(2); assert.ok([...F2.ores.values()].every(o => ['coal', 'copper', 'iron'].includes(o.k)), 'ชั้น 2 มีแต่แร่ระดับ 2–4');
+  [a.x, a.y] = ctr(S.CAVE.exit[1], S.CAVE.y1 - 1); step(a, ...ctr(S.CAVE.exit[1], S.CAVE.y1));
+  assert.strictEqual(a.scene, '@cave1', 'ทางออกชั้น 2 = ขึ้นชั้น 1'); assert.ok(!S.blockedAt(F1.map, a.x, a.y) && F1.map[Math.floor(a.y / TS)][Math.floor(a.x / TS)] !== T.DOWN, 'ขึ้นมายืนข้างบันไดลง ไม่ทับบันได');
+}
+
+// ออกจากถ้ำ: เดินลงทางออกชั้น 1 → กลับหน้าปากถ้ำ (ไม่ทับช่องปากถ้ำ ไม่วนเข้าซ้ำ)
 a.x = 31.5 * TS; a.y = (S.CAVE.y1 - 0.5) * TS; step(a, a.x, (S.CAVE.y1 + 0.2) * TS);
-assert.strictEqual(a.scene, null, 'เดินถึงทางออก = กลับเมือง'); assert.strictEqual(Math.floor(a.y / TS), 9);
+assert.strictEqual(a.scene, null, 'เดินถึงทางออกชั้น 1 = กลับเมือง'); assert.strictEqual(Math.floor(a.y / TS), 9);
 assert.notStrictEqual(w.map[Math.floor(a.y / TS)][Math.floor(a.x / TS)], T.MOUTH);
 assert.strictEqual(last(wa, 'scene').sc, null);
 
-// ร้านช่างเหมือง: ซื้ออีเต้อ (ระดับ 2 ต้อง Lv3) แล้วความทนทานเต็ม • ขายแร่ได้เงิน
+// ร้านช่างเหมือง: อีเต้อ 6 ระดับ ต้องเลเวล แล้วความทนทานเต็ม • ขายแร่ได้เงิน
 { const b2 = S.BUILDINGS.find(x => x.kind === 'mine'); a.x = (b2.counter[0][0] + 0.5) * TS; a.y = (b2.counter[0][1] + 1) * TS;
-  a.rec.inv.coin = 5000; delete a.rec.inv.pick_1;
-  w.handle(a, { t: 'buy', item: 'pick_2', n: 1 }); assert.ok(!a.rec.inv.pick_2, 'อีเต้อเหล็กต้อง Lv3');
-  w.handle(a, { t: 'buy', item: 'pick_1', n: 1 }); assert.ok(a.rec.inv.pick_1, 'ซื้ออีเต้อหินได้'); assert.strictEqual(a.rec.dur.pick, undefined, 'ซื้อใหม่ความทนทานเต็ม');
+  a.rec.inv.coin = 99999; delete a.rec.inv.pick_1;
+  assert.strictEqual(Object.keys(S.PICKS).length, 6); assert.deepStrictEqual(S.SHOPS.mine.buy.filter(x => /^pick_/.test(x)), ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6']);
+  w.handle(a, { t: 'buy', item: 'pick_2', n: 1 }); assert.ok(!a.rec.inv.pick_2, 'อีเต้อหินต้อง Lv3');
+  w.handle(a, { t: 'buy', item: 'pick_6', n: 1 }); assert.ok(!a.rec.inv.pick_6, 'อีเต้อเพชรต้อง Lv10');
+  w.handle(a, { t: 'buy', item: 'pick_1', n: 1 }); assert.ok(a.rec.inv.pick_1, 'ซื้ออีเต้อไม้ได้'); assert.strictEqual(a.rec.dur.pick, undefined, 'ซื้อใหม่ความทนทานเต็ม');
   a.rec.inv.coal = 10; const c0 = a.rec.inv.coin; w.handle(a, { t: 'sell', item: 'coal', n: 'all' }); assert.ok(a.rec.inv.coin > c0 && !a.rec.inv.coal, 'ขายแร่ได้'); }
 console.log('test-cave: ok');
 process.exit(0);

@@ -1,7 +1,7 @@
 // โค้ดที่ใช้ร่วมกันระหว่างเซิร์ฟเวอร์และเบราว์เซอร์ (แมพ, ข้อมูลพืช/ปลา/สัตว์/ร้าน, เลเวล, การชน)
 (function (root) {
   const TS = 32, W = 64, H = 46;
-  const T = { GRASS: 0, WATER: 1, TREE: 2, BUILD: 3, PATH: 4, FENCE: 5, SAND: 6, SHOP: 7, FLOOR: 8, FURN: 9, BRIDGE: 10, LANDMARK: 11, WALL: 12, VOID: 13, CLIFF: 14, STAIR: 15, CAVE: 16, ROCK: 17, ORE: 18, MOUTH: 19 };
+  const T = { GRASS: 0, WATER: 1, TREE: 2, BUILD: 3, PATH: 4, FENCE: 5, SAND: 6, SHOP: 7, FLOOR: 8, FURN: 9, BRIDGE: 10, LANDMARK: 11, WALL: 12, VOID: 13, CLIFF: 14, STAIR: 15, CAVE: 16, ROCK: 17, ORE: 18, MOUTH: 19, DOWN: 20 };
   // ชนิดพื้นที่ผู้ดูแลวาดแก้แมพได้ (ไม่รวม FLOOR/FURN/WALL/VOID ของบ้าน)
   const MAP_PAINT = [
     { t: T.GRASS, name: 'หญ้า', col: '#7bc65a' }, { t: T.PATH, name: 'ทาง', col: '#dcbf82' },
@@ -345,66 +345,122 @@
     gold:    { name: 'ต้นราชพฤกษ์',   emoji: '🌼', lv: 6, axe: 3, hp: 8,  w: 5,  drop: [['goldwood', 1]],               bonus: [['kunflower', 0.3]] },
     rose:    { name: 'ต้นพะยูง',      emoji: '🟥', lv: 8, axe: 3, hp: 14, w: 2,  drop: [['rosewood', 1]],               bonus: [['rosewood', 0.1]], where: 'deep' },
   };
-  // ขุดเหมือง (ถ้ำ): เดินเข้าปากถ้ำบนหน้าผาเหนือ ใช้อีเต้อขุดก้อนแร่ ยิ่งลึกแร่ยิ่งแพง (ถ้ำเป็นฉากร่วมของทั้งห้อง เห็นกันและแย่งแร่กัน)
-  // อีเต้อ: ระดับแรงกว่าขุดเร็วกว่าและขุดแร่ลึกได้ (power = แต้มต่อครั้ง) lv = เลเวลนักขุดแร่ที่ซื้อได้
-  const PICKS = { 1: { name: 'อีเต้อหิน', price: 60, power: 1 }, 2: { name: 'อีเต้อเหล็ก', price: 260, lv: 3, power: 2 }, 3: { name: 'อีเต้อเหล็กกล้า', price: 800, lv: 6, power: 3 } };
+  // ขุดเหมือง (ถ้ำ 10 ชั้น): เดินเข้าปากถ้ำบนหน้าผาเหนือ ใช้อีเต้อขุดก้อนแร่ ลงบันไดไปชั้นลึกขึ้นเรื่อยๆ ยิ่งลึกยิ่งได้แร่แพง (แต่ละชั้นเป็นฉากร่วมของทั้งห้อง เห็นกันและแย่งแร่กัน)
+  // อีเต้อ 6 ระดับ ไม้→หิน→เหล็ก→ทองคำ→มรกต→เพชร: power = แต้มต่อครั้ง lv = เลเวลนักขุดแร่ที่ซื้อได้ (ระดับแรกซื้อได้เลย)
+  const PICKS = {
+    1: { name: 'อีเต้อไม้',    price: 60,   power: 1 },
+    2: { name: 'อีเต้อหิน',    price: 260,  lv: 3,  power: 2 },
+    3: { name: 'อีเต้อเหล็ก',  price: 800,  lv: 5,  power: 3 },
+    4: { name: 'อีเต้อทองคำ',  price: 2000, lv: 7,  power: 4 },
+    5: { name: 'อีเต้อมรกต',   price: 4500, lv: 9,  power: 5 },
+    6: { name: 'อีเต้อเพชร',   price: 9000, lv: 10, power: 6 },
+  };
+  const pickTier = inv => { for (let t = 6; t >= 1; t--) if (inv && inv['pick_' + t]) return t; return 0; }; // ระดับอีเต้อสูงสุดที่มี (0 = ไม่มี)
   const MINE = {
     xpPerLv: 0.1,                                  // XP นักขุดแร่ ×(1 + xpPerLv×(เลเวล−1)) เหมือนช่างไม้ (ก้อนแร่มีจำกัด จึงโตตามเลเวลด้วยตัวคูณ)
-    respawn: { 1: 150000, 2: 200000, 3: 280000, 4: 400000 }, // ก้อนแร่ที่ขุดหมดเกิดใหม่ในที่เดิมหลังกี่ ms (ตามชั้นความลึก ลึกยิ่งนาน)
+    floors: 10,                                    // จำนวนชั้นของถ้ำ (ชั้น f = แร่ระดับ f เป็นหลัก)
+    mix: [70, 20, 10],                             // ชั้น f: แร่ระดับ f 70% / f+1 20% / f+2 10% (เกินชนิดสุดท้ายนับเป็นชนิดสุดท้าย → ชั้น 10 เป็นคริสตัลล้วน)
+    maxOres: 300,                                  // ก้อนแร่สูงสุดต่อชั้น (ผังแคบกว่านี้จะน้อยลงตามพื้นที่)
+    respawnMs: DAY_MS,                             // ก้อนแร่ที่ขุดหมดเกิดใหม่ที่เดิมหลัง 1 วันในเกม (12 นาที) แล้วสุ่มชนิด/ขนาดใหม่
+    hpBase: 13,                                    // HP ก้อนเล็ก = hpBase × ระดับอีเต้อขั้นต่ำของแร่ (ใช้อีเต้อที่พอดีกับแร่ ≈ 21 ครั้งต่อก้อนเฉลี่ย)
     door: [25, 26, 27], y: 8,                       // ปากถ้ำบนหน้าผา (แถว y=8) เดินเข้าจากด้านล่าง (y=9)
-    maxOres: 70,                                    // ก้อนแร่ในถ้ำสูงสุดพร้อมกัน
   };
-  // ก้อนแร่/ของที่ได้ (ขายที่ร้านช่างเหมือง หมวด "แร่" ไม่เสื่อม) • lv/pick = เลเวลนักขุดแร่และระดับอีเต้อที่ต้องมี • hp = แต้มที่ต้องขุด • drop = ชิ้นที่ได้ต่อก้อน
-  // tiers = ชั้นความลึกที่เกิดได้ (1 ตื้นสุดใกล้ทางออก … 4 ลึกสุด) • w = น้ำหนักตอนสุ่มเกิด • bonus = ลุ้น [ชิ้นถัดไป, โอกาส] (+1%/เลเวล)
+  // ขนาดก้อน: ไม่เท่ากัน สุ่มตอนเกิด w = น้ำหนัก hp = ตัวคูณ HP drop = ชิ้นที่ได้ [ต่ำสุด, สูงสุด] สุ่มทุกครั้งที่ขุดแตก
+  const ORE_SIZES = [
+    { id: 's', name: 'เล็ก',  w: 55, hp: 1,   drop: [1, 3] },
+    { id: 'm', name: 'กลาง', w: 33, hp: 2,   drop: [3, 5] },
+    { id: 'l', name: 'ใหญ่', w: 12, hp: 3.5, drop: [5, 8] },
+  ];
+  // แร่ 10 ระดับ (ขายที่ร้านช่างเหมือง หมวด "แร่" ไม่เสื่อม) • lv = เลเวลนักขุดแร่ที่ต้องมี • pick = ระดับอีเต้อต่ำสุด • sell/xp = ต่อ 1 ชิ้น (ปรับให้เหรียญและ XP ต่อชม. ใกล้ชาวนา ดู tools/levelsim.js)
   const ORES = {
-    stone:   { name: 'หิน',       emoji: '🪨', lv: 1, pick: 1, hp: 3,  drop: 2, sell: 6,   xp: 5,  w: 50, tiers: [1, 2],    bonus: ['coal', 0.08] },
-    coal:    { name: 'ถ่านหิน',    emoji: '⚫', lv: 2, pick: 1, hp: 4,  drop: 2, sell: 11,  xp: 3,  w: 30, tiers: [1, 2],    bonus: ['copper', 0.06] },
-    copper:  { name: 'ทองแดง',    emoji: '🟠', lv: 3, pick: 2, hp: 6,  drop: 1, sell: 26,  xp: 8, w: 28, tiers: [2, 3],    bonus: ['iron', 0.06] },
-    iron:    { name: 'เหล็ก',      emoji: '🔩', lv: 4, pick: 2, hp: 8,  drop: 1, sell: 40,  xp: 11, w: 22, tiers: [2, 3],    bonus: ['silver', 0.05] },
-    silver:  { name: 'เงิน',       emoji: '🥈', lv: 6, pick: 3, hp: 10, drop: 1, sell: 80,  xp: 22, w: 16, tiers: [3, 4],    bonus: ['gold', 0.05] },
-    gold:    { name: 'ทองคำ',     emoji: '🥇', lv: 8, pick: 3, hp: 13, drop: 1, sell: 130, xp: 28, w: 10, tiers: [3, 4],    bonus: ['crystal', 0.04] },
-    crystal: { name: 'คริสตัล',    emoji: '💎', lv: 9, pick: 3, hp: 17, drop: 1, sell: 210, xp: 42, w: 6,  tiers: [4],       bonus: ['crystal', 0.1] },
+    stone:    { name: 'หิน',       emoji: '🪨', lv: 1,  pick: 1, sell: 5,  xp: 5 },
+    coal:     { name: 'ถ่านหิน',    emoji: '⚫', lv: 2,  pick: 1, sell: 6,  xp: 5 },
+    copper:   { name: 'ทองแดง',    emoji: '🟠', lv: 3,  pick: 2, sell: 9,  xp: 6 },
+    iron:     { name: 'เหล็ก',      emoji: '🔩', lv: 4,  pick: 2, sell: 11, xp: 7 },
+    silver:   { name: 'เงิน',       emoji: '🥈', lv: 5,  pick: 3, sell: 14, xp: 7 },
+    gold:     { name: 'ทองคำ',     emoji: '🥇', lv: 6,  pick: 3, sell: 17, xp: 8 },
+    amethyst: { name: 'อเมทิสต์',   emoji: '🟣', lv: 7,  pick: 4, sell: 19, xp: 9 },
+    ruby:     { name: 'ทับทิม',     emoji: '🔴', lv: 8,  pick: 4, sell: 21, xp: 9 },
+    emerald:  { name: 'มรกต',      emoji: '🟢', lv: 9,  pick: 5, sell: 24, xp: 9 },
+    crystal:  { name: 'คริสตัล',    emoji: '💎', lv: 10, pick: 6, sell: 27, xp: 10 },
   };
+  const ORE_ORDER = Object.keys(ORES);
+  for (const o of Object.values(ORES)) o.hp = MINE.hpBase * o.pick;
   const oreXp = (xp, lv) => Math.round(xp * (1 + MINE.xpPerLv * (lv - 1)));
-  // แผนที่ถ้ำ: ตารางขนาดเท่าแมพเมือง (นอกถ้ำเป็น VOID) ห้องโถง 10 ห้องต่อกันด้วยทางเดินกว้าง 2 ช่อง ทางออกอยู่ล่างกลาง • ทุกอย่างคำนวณแบบตายตัว (เซิร์ฟเวอร์กับหน้าเว็บได้ผังเดียวกัน)
-  const CAVE = { x0: 8, y0: 5, x1: 55, y1: 36, exit: [30, 31, 32], spawn: { x: 31.5 * TS, y: 34.5 * TS },
-    rooms: [[26, 32, 37, 35], [12, 28, 24, 34], [40, 27, 53, 34], [28, 21, 40, 28], [10, 19, 22, 25], [42, 18, 53, 24], [24, 12, 38, 19], [11, 8, 21, 16], [43, 8, 53, 15], [28, 6, 40, 10]],
-    links: [[0, 1], [0, 2], [0, 3], [1, 4], [2, 5], [3, 6], [4, 7], [5, 8], [6, 9], [6, 7], [6, 8]] };
-  const caveTier = ty => ty >= 29 ? 1 : ty >= 21 ? 2 : ty >= 13 ? 3 : 4; // ชั้นความลึกตามแถว (ยิ่งขึ้นไปทางเหนือยิ่งลึก)
-  function makeCaveMap() {
+  const oreHp = (kind, size) => Math.round(ORES[kind].hp * ORE_SIZES[size].hp);
+  const floorMix = f => { const d = {}; MINE.mix.forEach((w, i) => { const k = ORE_ORDER[Math.min(ORE_ORDER.length, f + i) - 1]; d[k] = (d[k] || 0) + w; }); return d; }; // สัดส่วน % ของแร่แต่ละชนิดในชั้น f
+  const rollOre = (f, R) => { let t = R() * 100, k = ORE_ORDER[ORE_ORDER.length - 1]; for (const [id, w] of Object.entries(floorMix(f))) { if ((t -= w) < 0) { k = id; break; } } return k; };
+  const rollSize = R => { let t = R() * 100; for (let i = 0; i < ORE_SIZES.length; i++) if ((t -= ORE_SIZES[i].w) < 0) return i; return ORE_SIZES.length - 1; };
+  const rollDrop = (size, R) => { const d = ORE_SIZES[size].drop; return d[0] + Math.floor(R() * (d[1] - d[0] + 1)); };
+  const caveFloor = scene => { const m = typeof scene === 'string' && /^@cave(\d+)$/.exec(scene); return m ? +m[1] : 0; }; // p.scene ของถ้ำคือ '@cave<ชั้น>' (0 = ไม่ใช่ถ้ำ)
+  // แผนที่ถ้ำ: ตารางขนาดเท่าแมพเมือง (นอกถ้ำเป็น VOID) ทางออก/บันไดขึ้นอยู่ล่างกลาง จุดเกิดหน้าทางออก บันไดลงอยู่ห้องไกลสุด • ทุกอย่างคำนวณแบบตายตัวจากเลขชั้น (เซิร์ฟเวอร์กับหน้าเว็บได้ผังเดียวกัน)
+  const CAVE = { x0: 2, y0: 2, x1: 61, y1: 43, exit: [30, 31, 32], spawn: { x: 31.5 * TS, y: 40.5 * TS }, start: [24, 38, 39, 42] };
+  const caveOpen = t => t === T.CAVE || t === T.MOUTH || t === T.DOWN;
+  function caveReach(m) { // จำนวนช่องเดินได้ที่ไปถึงจากหน้าทางออก (4 ทิศ ก้อนแร่/หินกั้น)
+    const sx = 31, sy = CAVE.y1 - 1, seen = new Uint8Array(W * H), q = [sy * W + sx]; seen[q[0]] = 1; let n = 0;
+    for (let i = 0; i < q.length; i++) { const c = q[i], x = c % W, y = (c / W) | 0; n++;
+      for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy, k = ny * W + nx; if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[k] || !caveOpen(m[ny][nx])) continue; seen[k] = 1; q.push(k); } }
+    return n;
+  }
+  function makeCaveMap(floor) {
+    const f = Math.max(1, Math.min(MINE.floors, floor | 0 || 1)), R = rng(20261029 + f * 7919);
     const m = Array.from({ length: H }, () => new Array(W).fill(T.VOID));
     for (let y = CAVE.y0; y <= CAVE.y1; y++) for (let x = CAVE.x0; x <= CAVE.x1; x++) m[y][x] = T.ROCK;
-    const room = r => { for (let y = r[1]; y <= r[3]; y++) for (let x = r[0]; x <= r[2]; x++) m[y][x] = T.CAVE; };
+    const carve = r => { for (let y = r[1]; y <= r[3]; y++) for (let x = r[0]; x <= r[2]; x++) m[y][x] = T.CAVE; };
     const mid = r => [(r[0] + r[2]) >> 1, (r[1] + r[3]) >> 1];
-    CAVE.rooms.forEach(room);
-    for (const [a, b] of CAVE.links) { // ทางเดินรูปตัว L กว้าง 2 ช่อง: เดินแนวนอนจากห้อง a ไปแนวตั้งของห้อง b แล้วเดินแนวตั้งต่อ
-      const [ax, ay] = mid(CAVE.rooms[a]), [bx, by] = mid(CAVE.rooms[b]);
+    const rooms = [CAVE.start.slice()]; carve(rooms[0]);
+    for (let i = 0; i < 600 && rooms.length < 16; i++) { // ห้องสุ่มขนาด 8–15 × 5–8 ไม่ชิดกัน (เว้น 3 ช่อง)
+      const w = 8 + Math.floor(R() * 8), h = 5 + Math.floor(R() * 4);
+      const x = CAVE.x0 + 2 + Math.floor(R() * (CAVE.x1 - CAVE.x0 - 3 - w)), y = CAVE.y0 + 2 + Math.floor(R() * (CAVE.y1 - CAVE.y0 - 3 - h)), r = [x, y, x + w - 1, y + h - 1];
+      if (rooms.some(o => r[0] <= o[2] + 3 && r[2] >= o[0] - 3 && r[1] <= o[3] + 3 && r[3] >= o[1] - 3)) continue;
+      rooms.push(r); carve(r);
+    }
+    const link = (a, b) => { // ทางเดินรูปตัว L กว้าง 2 ช่อง: เดินแนวนอนจากห้อง a ไปแนวตั้งของห้อง b แล้วเดินแนวตั้งต่อ
+      const [ax, ay] = mid(rooms[a]), [bx, by] = mid(rooms[b]);
       for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++) for (let d = 0; d < 2; d++) m[ay + d][x] = T.CAVE;
       for (let y = Math.min(ay, by); y <= Math.max(ay, by) + 1; y++) for (let d = 0; d < 2; d++) m[y][bx + d] = T.CAVE;
+    };
+    for (let i = 1; i < rooms.length; i++) { // ทุกห้องต่อกับห้องที่ใกล้สุดก่อนหน้า (ต่อกันครบทุกห้องแน่นอน) แล้วเพิ่มทางวนอีกไม่กี่เส้น
+      const [ix, iy] = mid(rooms[i]); let best = 0, bd = 1e9;
+      for (let j = 0; j < i; j++) { const [jx, jy] = mid(rooms[j]), d = Math.abs(ix - jx) + Math.abs(iy - jy); if (d < bd) { bd = d; best = j; } }
+      link(best, i);
     }
-    const R = rng(20261028); // เสาหินกลางห้อง: วางเมื่อรอบตัว 3×3 เป็นพื้นถ้ำหมด (ไม่ปิดทาง)
-    for (let i = 0; i < 90; i++) { const x = CAVE.x0 + 2 + Math.floor(R() * (CAVE.x1 - CAVE.x0 - 3)), y = CAVE.y0 + 2 + Math.floor(R() * (CAVE.y1 - CAVE.y0 - 3)); let ok = true;
-      for (let dy = -2; dy <= 2 && ok; dy++) for (let dx = -2; dx <= 2; dx++) if (m[y + dy][x + dx] !== T.CAVE) { ok = false; break; }
-      if (ok) m[y][x] = T.ROCK; }
-    for (const x of CAVE.exit) m[CAVE.y1][x] = T.MOUTH; // ทางออกกลางผนังล่าง
+    for (let i = 0; i < 4 && rooms.length > 3; i++) { const a = 1 + Math.floor(R() * (rooms.length - 1)), b = 1 + Math.floor(R() * (rooms.length - 1)); if (a !== b) link(a, b); }
+    for (const x of CAVE.exit) m[CAVE.y1][x] = T.MOUTH; // ทางออก/บันไดขึ้นกลางผนังล่าง
+    if (f < MINE.floors) { // บันไดลง 3 ช่องกลางห้องที่ไกลจากทางออกที่สุด (ชั้นสุดท้ายไม่มี)
+      const [sx, sy] = mid(rooms[0]); let far = 1, fd = -1;
+      for (let i = 1; i < rooms.length; i++) { const [x, y] = mid(rooms[i]), d = Math.abs(x - sx) + Math.abs(y - sy); if (d > fd) { fd = d; far = i; } }
+      const [dx, dy] = mid(rooms[far]); for (let x = dx - 1; x <= dx + 1; x++) m[dy][x] = T.DOWN;
+    }
+    // เส้นทางกีดขวางสุ่ม: เสา/กำแพงสั้นๆ วางได้เมื่อช่องเดินได้ที่เหลือยังต่อถึงกันหมด (รวมบันไดลง) ไม่งั้นถอนออก
+    let total = caveReach(m), put = 0;
+    for (let i = 0; i < 400 && put < 90; i++) {
+      const len = 1 + Math.floor(R() * 5), hor = R() < 0.5, x = CAVE.x0 + 1 + Math.floor(R() * (CAVE.x1 - CAVE.x0 - 2)), y = CAVE.y0 + 1 + Math.floor(R() * (CAVE.y1 - CAVE.y0 - 2)), cells = [];
+      for (let k = 0; k < len; k++) { const cx = hor ? x + k : x, cy = hor ? y : y + k; if (cx >= CAVE.x1 || cy >= CAVE.y1 || m[cy][cx] !== T.CAVE || Math.hypot(cx - 31, cy - (CAVE.y1 - 1)) < 4) break; cells.push([cx, cy]); }
+      if (!cells.length) continue;
+      for (const [cx, cy] of cells) m[cy][cx] = T.ROCK;
+      if (caveReach(m) === total - cells.length) { total -= cells.length; put++; } else for (const [cx, cy] of cells) m[cy][cx] = T.CAVE;
+    }
     return m;
   }
-  // ตำแหน่งก้อนแร่ในถ้ำ (ตายตัว): ช่องที่ 4 ทิศรอบตัวเป็นพื้นถ้ำ ห่างกันอย่างน้อย 3 ช่อง ไม่ใกล้ทางออก (ทางเดินยังกว้างพอ ไม่ปิดทาง) • คืน [{x,y,k}]
-  function caveOreSpots(m) {
-    const R = rng(777), cand = [];
-    for (let y = CAVE.y0 + 1; y < CAVE.y1; y++) for (let x = CAVE.x0 + 1; x < CAVE.x1; x++) {
-      if (m[y][x] !== T.CAVE || Math.hypot(x - 31, y - 34) < 5) continue;
-      if (m[y - 1][x] === T.CAVE && m[y + 1][x] === T.CAVE && m[y][x - 1] === T.CAVE && m[y][x + 1] === T.CAVE) cand.push([x, y]);
+  // ตำแหน่งก้อนแร่ในชั้น f (ตายตัว): วางทีละก้อนเมื่อพื้นที่เหลือยังเดินถึงกันหมด และก้อนแร่ทุกก้อนยังมีช่องว่างให้ยืนขุดอย่างน้อย 1 ด้าน • ไม่เกิน MINE.maxOres และไม่เกิน 30% ของพื้นที่ • คืน [{x,y,k,s}] (ช่องยังเป็นพื้นถ้ำ ผู้เรียกใส่ ORE เอง)
+  function caveOreSpots(m, floor) {
+    const f = Math.max(1, Math.min(MINE.floors, floor | 0 || 1)), R = rng(777 + f * 104729), cand = [];
+    let total = 0;
+    for (let y = CAVE.y0; y <= CAVE.y1; y++) for (let x = CAVE.x0; x <= CAVE.x1; x++) {
+      if (caveOpen(m[y][x])) total++;
+      if (y > CAVE.y0 && y < CAVE.y1 && x > CAVE.x0 && x < CAVE.x1 && m[y][x] === T.CAVE && Math.hypot(x - 31, y - (CAVE.y1 - 1)) >= 5 && ![-1, 0, 1].some(dy => [-1, 0, 1].some(dx => m[y + dy][x + dx] === T.DOWN))) cand.push([x, y]);
     }
     for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
-    const out = [];
+    const cap = Math.min(MINE.maxOres, Math.floor(total * 0.3)), out = [], free = (x, y) => DIRS.filter(([dx, dy]) => caveOpen(m[y + dy][x + dx])).length;
     for (const [x, y] of cand) {
-      if (out.length >= MINE.maxOres) break;
-      if (out.some(o => Math.max(Math.abs(o.x - x), Math.abs(o.y - y)) < 3)) continue;
-      const tier = caveTier(y), ok = Object.entries(ORES).filter(([, o]) => o.tiers.includes(tier)); let t = R() * ok.reduce((a, [, o]) => a + o.w, 0), k = ok[0][0];
-      for (const [id, o] of ok) { if ((t -= o.w) < 0) { k = id; break; } }
-      out.push({ x, y, k });
+      if (out.length >= cap) break;
+      if (!free(x, y)) continue;
+      m[y][x] = T.ORE;
+      if (caveReach(m) !== total - out.length - 1 || DIRS.some(([dx, dy]) => m[y + dy][x + dx] === T.ORE && !free(x + dx, y + dy))) { m[y][x] = T.CAVE; continue; }
+      out.push({ x, y, k: rollOre(f, R), s: rollSize(R) });
     }
+    for (const o of out) m[o.y][o.x] = T.CAVE;
     return out;
   }
   const treeWhereOk = (m, x, y, where) => {
@@ -444,7 +500,7 @@
     hoe:   { max: [0, 120, 120, 120], fix: [0, 24, 24, 24],  shop: 'farm',   name: 'จอบ' },
     rod:   { max: [0, 100, 140, 200, 280], fix: [0, 30, 72, 168, 400], shop: 'fish',   name: 'เบ็ดตกปลา' },
     axe:   { max: [0, 90, 140, 220],  fix: [0, 36, 96, 216], shop: 'wood',   name: 'ขวาน' },
-    pick:  { max: [0, 90, 140, 220],  fix: [0, 40, 110, 240], shop: 'mine',  name: 'อีเต้อ' },
+    pick:  { max: [0, 100, 180, 400, 700, 1100, 1800], fix: [0, 40, 110, 240, 600, 1350, 2700], shop: 'mine',  name: 'อีเต้อ' }, // ขุดแตก 1 ก้อน = สึก 1 ครั้ง (ไม่ใช่ทุกครั้งที่ฟาด) ตัวเลขเป็นจำนวนก้อน
   };
   // อัตราสึกหรอ: เกจเท่าเดิม แต่ใช้ 1 ครั้งสึก base หน่วย (เดิม 1) และ "ความร้อน" สะสมเมื่อใช้ถี่ๆ ต่อเนื่อง: ทุกครั้งที่ใช้ +1, เย็นลง cool ต่อวินาที
   // ตัวคูณการสึก = 1 + min(maxBonus, ความร้อน × perHeat) → ใช้ถี่และนานได้สูงสุด 2 เท่า (พักสักครู่ก็เย็นลง) เตือนเมื่อความร้อนถึง warnHeat
@@ -452,8 +508,8 @@
   // ซ่อมได้จำกัด: ซ่อมแต่ละครั้งความทนทานสูงสุดลดลง decay ของค่าเดิม ค่าซ่อมแพงขึ้น growth ต่อครั้ง ซ่อมครบ maxFixes ครั้งแล้วซ่อมไม่ได้อีก ต้องซื้อใหม่ (ราคา TOOL_PRICE)
   // สมดุล: ค่าซ่อมเต็ม = pct × ราคาซื้อ × (1 + growth × ครั้งที่ซ่อมมาแล้ว) แต่ได้ความทนทานน้อยลงเรื่อยๆ → ซ่อมครั้งที่ ~4 ขึ้นไปต่อหน่วยการใช้งานแพงกว่าซื้อใหม่
   const REPAIR = { decay: 0.15, maxFixes: 3, growth: 0.5, pct: 0.25 };
-  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500], axe: [0, 50, 220, 700], pick: [0, 60, 260, 800] };
-  const tierN = t => Math.max(1, Math.min(4, t || 1)); // ระดับ 4 มีเฉพาะคันเบ็ด
+  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500], axe: [0, 50, 220, 700], pick: [0, 60, 260, 800, 2000, 4500, 9000] };
+  const tierN = t => Math.max(1, Math.min(6, t || 1)); // ระดับ 4 มีเฉพาะคันเบ็ด ระดับ 4–6 ของอีเต้อ
   const durMax = (tool, tier, fixes) => Math.max(1, Math.floor(DURABILITY[tool].max[tierN(tier)] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fixes || 0))));
   const toolPrice = (tool, tier) => TOOL_PRICE[tool][tierN(tier)];
   // ค่าซ่อมครั้งถัดไป (ซ่อมแล้วเต็มที่ความทนทานสูงสุดใหม่ที่ต่ำลง) เทียบกับความเสียหายของค่าสูงสุดปัจจุบัน
@@ -905,7 +961,7 @@
     fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3', 'rod_4'],                  sell: ['fish_'] },
     animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
-    mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
+    mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3'], sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
     // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือยังไม่เปิด (soon)
     vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v), sell: [], soon: [{ emoji: '⛵', name: 'เรือ (แล่นในสระ)', price: 4000 }] },
@@ -1134,7 +1190,7 @@
 
   const api = { gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    AXES, PICKS, MINE, ORES, oreXp, CAVE, caveTier, makeCaveMap, caveOreSpots, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
+    AXES, PICKS, pickTier, MINE, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, FEST, AUCTION, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
