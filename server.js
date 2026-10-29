@@ -191,16 +191,32 @@ class World {
     F = { map, ores, hp: new Map(), wait: [] }; this.floors.set(f, F); return F;
   }
   oresPub(f) { return [...this.floorOf(f).ores].map(([k, o]) => { const [x, y] = k.split(',').map(Number); return [x, y, o.k, o.s]; }); }
-  oreTick(now) { // ก้อนแร่ที่ขุดไปครบ 1 วันในเกม เกิดใหม่ที่เดิม (สุ่มชนิด/ขนาดใหม่ตามชั้น ถ้ามีคนยืนทับอยู่ รอรอบหน้า)
+  oreSpot(F, f, mates) { // ช่องสุ่มสำหรับก้อนแร่ใหม่ในชั้น f: เป็นพื้นว่าง ไม่ใกล้ทางออก/บันไดลง/ผู้เล่น และพื้นที่เดินที่เหลือยังต่อถึงกันหมด ทุกก้อนยังมีที่ยืนขุด (กติกาเดียวกับตอนวางครั้งแรก) • ไม่พบ = null
+    if (F.open === undefined) { let n = 0; for (const r of F.map) for (const c of r) if (S.caveOpen(c)) n++; F.open = n + F.ores.size; } // พื้นเดินได้ทั้งหมดถ้าไม่มีก้อนแร่
+    const m = F.map, free = (x, y) => S.DIRS.filter(([dx, dy]) => S.caveOpen(m[y + dy][x + dx])).length;
+    for (let i = 0; i < 60; i++) {
+      const x = S.CAVE.x0 + 1 + Math.floor(Math.random() * (S.CAVE.x1 - S.CAVE.x0 - 1)), y = S.CAVE.y0 + 1 + Math.floor(Math.random() * (S.CAVE.y1 - S.CAVE.y0 - 1));
+      if (m[y][x] !== T.CAVE || Math.hypot(x - 31, y - (S.CAVE.y1 - 1)) < 5 || !free(x, y)) continue;
+      if ([-1, 0, 1].some(dy => [-1, 0, 1].some(dx => m[y + dy][x + dx] === S.T.DOWN))) continue;
+      if (mates.some(q => Math.abs(q.x - (x + 0.5) * TS) < TS * 1.5 && Math.abs(q.y - (y + 0.5) * TS) < TS * 1.5)) continue;
+      m[y][x] = T.ORE;
+      const ok = S.caveReach(m) === F.open - F.ores.size - 1 && !S.DIRS.some(([dx, dy]) => m[y + dy][x + dx] === T.ORE && !free(x + dx, y + dy));
+      m[y][x] = T.CAVE;
+      if (ok) return [x, y];
+    }
+    return null;
+  }
+  oreTick(now) { // ก้อนแร่ที่ขุดไปครบ 1 วันในเกม เกิดใหม่ที่ช่องสุ่มใหม่ในชั้นเดิม (สุ่มชนิด/ขนาดใหม่ตามชั้น ไม่พบช่องใหม่ภายใน 60 ครั้ง = เกิดที่เดิม)
     for (const [f, F] of this.floors) {
       if (!F.wait.length) continue;
       const rest = [], mates = this.sceneMates(CAVE + f);
       for (const w of F.wait) {
         if (now < w.at) { rest.push(w); continue; }
-        if (mates.some(q => Math.abs(q.x - (w.x + 0.5) * TS) < TS && Math.abs(q.y - (w.y + 0.5) * TS) < TS)) { w.at = now + 5000; rest.push(w); continue; }
-        const o = { k: S.rollOre(f, Math.random), s: S.rollSize(Math.random) };
-        F.ores.set(w.x + ',' + w.y, o); F.map[w.y][w.x] = T.ORE;
-        this.sceneBroadcast(CAVE + f, { t: 'ore', x: w.x, y: w.y, k: o.k, s: o.s });
+        const spot = this.oreSpot(F, f, mates) || (mates.some(q => Math.abs(q.x - (w.x + 0.5) * TS) < TS && Math.abs(q.y - (w.y + 0.5) * TS) < TS) ? null : [w.x, w.y]);
+        if (!spot) { w.at = now + 5000; rest.push(w); continue; } // ไม่มีที่ให้เกิด/มีคนยืนทับที่เดิม รอรอบหน้า
+        const [x, y] = spot, o = { k: S.rollOre(f, Math.random), s: S.rollSize(Math.random) };
+        F.ores.set(x + ',' + y, o); F.map[y][x] = T.ORE;
+        this.sceneBroadcast(CAVE + f, { t: 'ore', x, y, k: o.k, s: o.s });
       }
       F.wait = rest;
     }

@@ -102,15 +102,21 @@ assert.strictEqual(a.rec.ach && a.rec.ach.cnt.mine, 1, 'นับสถิติ
 { const c = find('copper'); const [cx, cy] = c[0].split(',').map(Number); stand(a, [cx, cy]); act(a, cx, cy);
   assert.ok(F1.ores.has(c[0]) && !F1.hp.has(c[0]), 'เลเวล/อีเต้อไม่ถึง ขุดไม่ได้ ไม่ลด HP'); }
 
-// แร่เกิดใหม่เมื่อครบ 1 วันในเกม (สุ่มชนิดตามชั้น)
-assert.ok(F1.wait.length >= 1); const waitN = F1.wait.length; w.oreTick(Date.now() + 1000); assert.strictEqual(F1.wait.length, waitN, 'ยังไม่ครบวัน');
+// แร่เกิดใหม่เมื่อครบ 1 วันในเกม ที่ช่องสุ่มใหม่ในชั้นเดิม (ไม่ใช่ที่เดิม) โดยไม่ปิดทางเดิน
+assert.ok(F1.wait.length >= 1); const waitN = F1.wait.length, oresN = F1.ores.size; w.oreTick(Date.now() + 1000); assert.strictEqual(F1.wait.length, waitN, 'ยังไม่ครบวัน');
 assert.strictEqual(S.MINE.respawnMs, S.DAY_MS);
-w.oreTick(Date.now() + S.DAY_MS + 1000);
-assert.ok(!F1.wait.length && F1.ores.has(sk) && F1.map[oy][ox] === T.ORE, 'ครบ 1 วันเกิดใหม่'); assert.ok(Object.keys(S.floorMix(1)).includes(F1.ores.get(sk).k), 'ชนิดที่เกิดใหม่ตามชั้น');
-{ const m = wb.msgs.filter(x => x.t === 'ore' && x.x === ox && x.y === oy).pop(); assert.ok(m && m.k === F1.ores.get(sk).k && m.s === F1.ores.get(sk).s, 'คนในถ้ำเห็นแร่เกิดใหม่ พร้อมชนิดและขนาด'); }
+{ const before = new Set(F1.ores.keys()); w.oreTick(Date.now() + S.DAY_MS + 1000);
+  assert.ok(!F1.wait.length && F1.ores.size === oresN + waitN, 'ครบ 1 วันเกิดใหม่ครบทุกก้อน');
+  const fresh = [...F1.ores.keys()].filter(k => !before.has(k)); assert.strictEqual(fresh.length, waitN);
+  assert.ok(fresh.some(k => k !== sk), 'เกิดที่ช่องสุ่มใหม่ ไม่ใช่ที่เดิมทั้งหมด');
+  for (const k of fresh) { const [x, y] = k.split(',').map(Number); assert.strictEqual(F1.map[y][x], T.ORE); assert.ok(Object.keys(S.floorMix(1)).includes(F1.ores.get(k).k), 'ชนิดที่เกิดใหม่ตามชั้น');
+    const m = wb.msgs.filter(z => z.t === 'ore' && z.x === x && z.y === y).pop(); assert.ok(m && m.k === F1.ores.get(k).k && m.s === F1.ores.get(k).s, 'คนในถ้ำเห็นแร่เกิดใหม่ พร้อมชนิดและขนาด'); }
+  assert.ok(F1.map[oy][ox] === T.CAVE || F1.ores.has(sk));
+  // พื้นที่เดินยังต่อถึงกันหมด (ก้อนใหม่ไม่ปิดทาง)
+  const open = F1.map.flat().filter(c => S.caveOpen(c)).length; assert.strictEqual(S.caveReach(F1.map), open, 'หลังแร่เกิดใหม่ ทุกพื้นยังเดินถึง'); }
 
 // อีเต้อพัง ใช้ไม่ได้
-{ a.rec.dur.pick = 0; const [k2] = find('stone'); const [x2, y2] = k2.split(',').map(Number); stand(a, [x2, y2]); act(a, x2, y2); assert.ok(F1.ores.has(k2) && !F1.hp.has(k2), 'อีเต้อพังขุดไม่ได้'); a.rec.dur.pick = 50; }
+{ a.rec.dur.pick = 0; const [k2] = find('stone') || find('coal'); const [x2, y2] = k2.split(',').map(Number); stand(a, [x2, y2]); act(a, x2, y2); assert.ok(F1.ores.has(k2) && !F1.hp.has(k2), 'อีเต้อพังขุดไม่ได้'); a.rec.dur.pick = 50; }
 
 // บันไดลง/ขึ้น: ชั้น 1 → 2 → กลับชั้น 1 ยืนข้างบันไดลง → ออกเมือง
 { const down = []; F1.map.forEach((r, y) => r.forEach((c, x) => { if (c === T.DOWN) down.push([x, y]); }));
