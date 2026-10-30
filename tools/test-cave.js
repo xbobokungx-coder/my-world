@@ -18,12 +18,13 @@ const last = (ws, t) => { for (let i = ws.msgs.length - 1; i >= 0; i--) if (ws.m
   assert.strictEqual(S.caveFloor('@cave7'), 7); assert.strictEqual(S.caveFloor('alice'), 0); assert.strictEqual(S.caveFloor(null), 0);
 }
 
-// ผังถ้ำทุกชั้น: เดินถึงทุกพื้นและบันไดลงจากหน้าทางออก ก้อนแร่ไม่ปิดทาง ทุกก้อนมีที่ยืนขุด ไม่เกิน 300 ก้อน แต่ละชั้นผังไม่ซ้ำกัน
+// ผังถ้ำทุกชั้น: เดินถึงทุกพื้นและบันไดลงจากหน้าทางออก ก้อนแร่ไม่ปิดทาง ทุกก้อนมีที่ยืนขุด ห่างกัน ≥ oreGap ช่อง 20–45 ก้อน แต่ละชั้นผังไม่ซ้ำกัน
 {
   const sigs = new Set();
   for (let f = 1; f <= S.MINE.floors; f++) {
     const m = S.makeCaveMap(f), spots = S.caveOreSpots(m, f);
-    assert.ok(spots.length >= 100 && spots.length <= S.MINE.maxOres, `ชั้น ${f}: ก้อนแร่ ${spots.length} ต้องอยู่ที่ 100–300`);
+    assert.ok(spots.length >= 20 && spots.length <= S.MINE.maxOres, `ชั้น ${f}: ก้อนแร่ ${spots.length} ต้องอยู่ที่ 20–${S.MINE.maxOres}`);
+    for (const a of spots) for (const b of spots) if (a !== b) assert.ok(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) > S.MINE.oreGap, `ชั้น ${f}: ก้อนแร่ต้องห่างกัน`);
     const downs = []; let open = 0;
     m.forEach((r, y) => r.forEach((c, x) => { if (c === T.DOWN) downs.push([x, y]); if (c === T.CAVE || c === T.MOUTH || c === T.DOWN) open++; }));
     assert.strictEqual(downs.length, f < S.MINE.floors ? 3 : 0, `ชั้น ${f}: บันไดลง`);
@@ -38,7 +39,7 @@ const last = (ws, t) => { for (let i = ws.msgs.length - 1; i >= 0; i--) if (ws.m
     for (const x of S.CAVE.exit) assert.strictEqual(m[S.CAVE.y1][x], T.MOUTH);
     // สัดส่วนแร่ใกล้ 70/20/10 (ชั้น 10 ล้วนคริสตัล)
     const cnt = {}; for (const o of spots) cnt[o.k] = (cnt[o.k] || 0) + 1;
-    for (const [k, w] of Object.entries(S.floorMix(f))) assert.ok(Math.abs((cnt[k] || 0) / spots.length * 100 - w) < 12, `ชั้น ${f}: ${k} ควรราว ${w}% ได้ ${((cnt[k] || 0) / spots.length * 100).toFixed(0)}%`);
+    for (const [k, w] of Object.entries(S.floorMix(f))) assert.ok(Math.abs((cnt[k] || 0) / spots.length * 100 - w) < 22, `ชั้น ${f}: ${k} ควรราว ${w}% ได้ ${((cnt[k] || 0) / spots.length * 100).toFixed(0)}%`);
     assert.deepStrictEqual(Object.keys(cnt).sort(), Object.keys(S.floorMix(f)).sort(), `ชั้น ${f}: ชนิดแร่ต้องตรงตามสัดส่วนชั้น`);
     m.forEach(r => r.forEach((c, i) => { if (c === T.ORE) r[i] = T.CAVE; }));
     sigs.add(m.map(r => r.join('')).join('|'));
@@ -70,7 +71,7 @@ a.x = door().x; a.y = door().y; b.x = door().x + 64; b.y = door().y;
 step(a, a.x, 8.5 * TS);
 assert.strictEqual(a.scene, '@cave1', 'เดินเข้าปากถ้ำ = เข้าถ้ำชั้น 1');
 const sc = last(wa, 'scene');
-assert.ok(sc && sc.cave === 1 && sc.ores.length >= 100 && sc.ores[0].length === 4 && sc.players.length === 1, 'ต้องได้ฉากถ้ำพร้อมรายการแร่ [x,y,ชนิด,ขนาด]');
+assert.ok(sc && sc.cave === 1 && sc.ores.length >= 20 && sc.ores[0].length === 4 && sc.players.length === 1, 'ต้องได้ฉากถ้ำพร้อมรายการแร่ [x,y,ชนิด,ขนาด]');
 assert.deepStrictEqual([a.x, a.y], [S.CAVE.spawn.x, S.CAVE.spawn.y]);
 assert.strictEqual(Math.floor(a.ret.y / TS), 9, 'จำตำแหน่งหน้าปากถ้ำไว้ ไม่ใช่ช่องปากถ้ำ');
 b.x = door().x + 32; b.y = door().y; step(b, b.x, 8.5 * TS);
@@ -105,11 +106,11 @@ assert.strictEqual(a.rec.ach && a.rec.ach.cnt.mine, 1, 'นับสถิติ
 { const c = find('copper'); const [cx, cy] = c[0].split(',').map(Number); stand(a, [cx, cy]); act(a, cx, cy);
   assert.ok(F1.ores.has(c[0]) && !F1.hp.has(c[0]), 'เลเวล/อีเต้อไม่ถึง ขุดไม่ได้ ไม่ลด HP'); }
 
-// แร่เกิดใหม่เมื่อครบ 1 วันในเกม ที่ช่องสุ่มใหม่ในชั้นเดิม (ไม่ใช่ที่เดิม) โดยไม่ปิดทางเดิน
+// แร่เกิดใหม่เมื่อครบ MINE.respawnMs (1/3 วันในเกม) ที่ช่องสุ่มใหม่ในชั้นเดิม (ไม่ใช่ที่เดิม) โดยไม่ปิดทางเดิน
 assert.ok(F1.wait.length >= 1); const waitN = F1.wait.length, oresN = F1.ores.size; w.oreTick(Date.now() + 1000); assert.strictEqual(F1.wait.length, waitN, 'ยังไม่ครบวัน');
-assert.strictEqual(S.MINE.respawnMs, S.DAY_MS);
-{ const before = new Set(F1.ores.keys()); w.oreTick(Date.now() + S.DAY_MS + 1000);
-  assert.ok(!F1.wait.length && F1.ores.size === oresN + waitN, 'ครบ 1 วันเกิดใหม่ครบทุกก้อน');
+assert.strictEqual(S.MINE.respawnMs, S.DAY_MS / 3);
+{ const before = new Set(F1.ores.keys()); w.oreTick(Date.now() + S.MINE.respawnMs + 1000);
+  assert.ok(!F1.wait.length && F1.ores.size === oresN + waitN, 'ครบเวลาเกิดใหม่ครบทุกก้อน');
   const fresh = [...F1.ores.keys()].filter(k => !before.has(k)); assert.strictEqual(fresh.length, waitN);
   assert.ok(fresh.some(k => k !== sk), 'เกิดที่ช่องสุ่มใหม่ ไม่ใช่ที่เดิมทั้งหมด');
   for (const k of fresh) { const [x, y] = k.split(',').map(Number); assert.strictEqual(F1.map[y][x], T.ORE); assert.ok(Object.keys(S.floorMix(1)).includes(F1.ores.get(k).k), 'ชนิดที่เกิดใหม่ตามชั้น');

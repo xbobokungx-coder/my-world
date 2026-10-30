@@ -2490,26 +2490,83 @@ function buildHouseBase() {
 }
 // ถ้ำเหมือง: พื้นถ้ำ/ผนังหิน/ทางออกวาดลงผืนพื้นเอง (3 โทน + เงา ตาม STYLE_GUIDE โทนหินเย็น) แล้วเปลี่ยน base/baseHi ไปใช้ จนกว่าจะออกจากถ้ำ
 const oreBurst = new Map(); // ก้อนแร่ที่เพิ่งแตก: ช่อง → เวลา (วาดเศษหินกระเด็นสั้นๆ)
+let caveTorches = []; // คบเพลิงบนผนังถ้ำ [x, y] พิกเซลโลก (ตำแหน่งเปลวไฟ) ใช้เจาะแสงใน drawNight
+// หินโดดกลางถ้ำ (สิ่งกีดขวาง) วาดเป็นหินงอกปลายแหลมโทนน้ำตาลเข้ม ไม่ให้สับสนกับก้อนแร่ (สีเทา) • กริด 16×16 ×2 แบบ pixelore
+const CAVE_ROCK_PAL = { h: '#a8977f', l: '#8a7a66', m: '#6c5f50', d: '#51473c', x: '#3a332c' };
+const CAVE_ROCK_ART = [
+  ['.......hh.......', '......hlm.......', '......hlmd......', '.....hllmd......', '.....hlmmd......', '....hllmmdd.....', '....hlmmmdd..h..', '...hllmmmmdd.hl.', '...hlmmmmmdd.lmd', '..hllmmmmmddxlmd', '..hlmmmmmmdddmmd', '.hllmmmmmmmddmdx', '.hlmmmmmmmmdddddx', 'hllmmmmmmmmmdddx', '.lmmmmmmmmmddxx.', '..xxdddddddxx...'].map(r => r.padEnd(16, '.').slice(0, 16)),
+  ['................', '................', '................', '.....hhhh.......', '...hhlllllm.....', '..hllllmmmmd....', '.hllmmmmmmmdd...', '.hlmmmmmmmmddhh.', 'hllmmmmmmmdddllm', 'hlmmmmmmmdddlmmd', 'lmmmmmmmmddlmmdx', 'lmmmmmmmddmmmmdx', '.mmmmmmmddmmmddx', '..xxddddxxdddxx.', '................', '................'],
+];
+const caveRockCv = CAVE_ROCK_ART.map(rows => { const c = PixelArt.cv(18, 18), x = c.getContext('2d'); rows.forEach((r, j) => [...r].forEach((ch, i) => { if (CAVE_ROCK_PAL[ch]) { x.fillStyle = CAVE_ROCK_PAL[ch]; x.fillRect(i + 1, j + 1, 1, 1); } })); PixelArt.addOutline(c, '#1b1d24'); return c; });
 function buildCaveBase() {
-  const oc = document.createElement('canvas'); oc.width = W * TS; oc.height = H * TS; const g = oc.getContext('2d');
+  const oc = document.createElement('canvas'); oc.width = W * TS; oc.height = H * TS; const g = oc.getContext('2d'); g.imageSmoothingEnabled = false;
   g.fillStyle = '#0b0a10'; g.fillRect(0, 0, oc.width, oc.height);
-  const rock = ['#6a7285', '#525a6b', '#434a58', '#383e4a', '#2a2e38'], floor = ['#76695a', '#6b5f51', '#5f5447'];
-  const hash = (a, b, c) => PixelArt.hash(a, b, c);
+  const rock = ['#6a7285', '#525a6b', '#434a58', '#383e4a', '#2a2e38'], floor = ['#867664', '#81715f', '#7c6c5b'], deep = ['#22252e', '#17191f', '#0e0f13'];
+  const hash = (a, b, c) => PixelArt.hash(a, b, c), at = (x, y) => (MAP[y] && MAP[y][x] !== undefined ? MAP[y][x] : T.VOID);
+  const isRock = (x, y) => { const t = at(x, y); return t === T.ROCK || t === T.VOID; };
+  // หินโดด = กลุ่มหินเล็ก (≤ 4 ช่อง) ที่ไม่ติดผนัง → วาดเป็นหินงอกบนพื้น ไม่ใช่ผนัง
+  const lone = new Set(), seen = new Set();
+  for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) if (at(tx, ty) === T.ROCK && !seen.has(tx + ',' + ty)) {
+    const grp = [[tx, ty]]; seen.add(tx + ',' + ty); let edge = false;
+    for (let i = 0; i < grp.length; i++) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = grp[i][0] + dx, y = grp[i][1] + dy, t = at(x, y); if (t === T.VOID) edge = true; if (t === T.ROCK && !seen.has(x + ',' + y)) { seen.add(x + ',' + y); grp.push([x, y]); } }
+    if (!edge && grp.length <= 4) for (const [x, y] of grp) lone.add(x + ',' + y);
+  }
+  const wall = (x, y) => isRock(x, y) && !lone.has(x + ',' + y);
+  // ความลึกของผนัง: 1 = ติดพื้น ยิ่งลึกยิ่งมืดจนกลืนไปกับความมืด (ผนังหนาไม่ดูเป็นแถบทึบ)
+  const depth = new Map(), q = [];
+  for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) if (!wall(tx, ty)) { depth.set(tx + ',' + ty, 0); q.push([tx, ty]); }
+  for (let i = 0; i < q.length; i++) { const [x, y] = q[i], d = depth.get(x + ',' + y); if (d >= 4) continue; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const k = (x + dx) + ',' + (y + dy); if (!depth.has(k) && wall(x + dx, y + dy) && at(x + dx, y + dy) !== T.VOID) { depth.set(k, d + 1); q.push([x + dx, y + dy]); } } }
+  const step = [12, 8, 6, 4, 2, 2]; // มุมโค้งแบบขั้นบันไดพิกเซล (กว้างที่ตัดออกต่อแถว 2 พิกเซล)
   for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) {
-    const t = MAP[ty][tx]; if (t === T.VOID) continue;
-    const X = tx * TS, Y = ty * TS, below = MAP[ty + 1] && MAP[ty + 1][tx];
-    if (t === T.ROCK) {
-      g.fillStyle = rock[2]; g.fillRect(X, Y, TS, TS);
-      g.fillStyle = rock[0]; g.fillRect(X, Y, TS, 5); g.fillStyle = rock[1]; g.fillRect(X, Y + 5, TS, 3); // ขอบบนรับแสง
-      for (let i = 0; i < 4; i++) { const h = hash(tx * 7 + i, ty * 13, 9); g.fillStyle = rock[3]; g.fillRect(X + ((h * 24) | 0), Y + 10 + i * 5, 5 + (i & 1) * 5, 2); }
-      if (below !== T.ROCK && below !== T.VOID) { g.fillStyle = rock[4]; g.fillRect(X, Y + TS - 8, TS, 8); g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(X, Y + TS - 10, TS, 2); } // หน้าผนังที่ยื่นลงมาถึงพื้น
-    } else {
-      g.fillStyle = floor[(hash(tx, ty, 3) * 3) | 0]; g.fillRect(X, Y, TS, TS);
-      for (let i = 0; i < 5; i++) { const h1 = hash(tx * 5 + i, ty * 3, 4), h2 = hash(tx * 3 + i, ty * 7, 5); g.fillStyle = i & 1 ? '#857867' : '#54493d'; g.fillRect(X + ((h1 * 28) | 0), Y + ((h2 * 28) | 0), 2 + (i & 1), 2); }
-      const up = MAP[ty - 1] && MAP[ty - 1][tx]; if (up === T.ROCK) { g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(X, Y, TS, 6); } // เงาใต้ผนัง
+    const t = at(tx, ty); if (t === T.VOID) continue;
+    const X = tx * TS, Y = ty * TS;
+    // พื้นถ้ำ (ใต้หินโดดและใต้มุมโค้งของผนังด้วย): โทนเป็นหย่อมๆ + กรวด + รอยแตก + แอ่งน้ำนานๆ ที
+    const ptch = hash(tx, ty, 11);
+    g.fillStyle = floor[(ptch * 3) | 0]; g.fillRect(X, Y, TS, TS);
+    for (let i = 0; i < 4; i++) { const h1 = hash(tx * 5 + i, ty * 3, 4), h2 = hash(tx * 3 + i, ty * 7, 5); g.fillStyle = i & 1 ? '#8a7c6a' : '#574c40'; g.fillRect(X + ((h1 * 14) | 0) * 2, Y + ((h2 * 14) | 0) * 2, 2 + (i & 1) * 2, 2); }
+    const deco = hash(tx, ty, 21);
+    if (t === T.CAVE && deco < 0.035) { g.fillStyle = '#3b4a5c'; g.fillRect(X + 6, Y + 12, 20, 8); g.fillRect(X + 10, Y + 10, 12, 12); g.fillStyle = '#56708a'; g.fillRect(X + 10, Y + 12, 8, 2); } // แอ่งน้ำ
+    else if (t === T.CAVE && deco < 0.08) { g.fillStyle = '#54493d'; g.fillRect(X + 8, Y + 14, 10, 2); g.fillRect(X + 16, Y + 16, 2, 6); g.fillRect(X + 18, Y + 20, 6, 2); } // รอยแตกพื้น
+    if (!wall(tx, ty)) {
+      if (wall(tx, ty - 1)) { g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(X, Y, TS, 6); g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(X, Y + 6, TS, 4); } // เงาใต้ผนัง
+      if (wall(tx - 1, ty)) { g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(X, Y, 4, TS); }
+      if (wall(tx + 1, ty)) { g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(X + TS - 4, Y, 4, TS); }
       if (t === T.MOUTH) { g.fillStyle = caveFlr > 1 ? 'rgba(170,200,255,.5)' : 'rgba(255,236,160,.55)'; g.fillRect(X, Y, TS, TS); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(X + 4, Y + 6, TS - 8, TS - 12); } // แสงวันสาดเข้าทางออก (ชั้นลึกเป็นแสงฟ้า = บันไดขึ้น)
       if (t === T.DOWN) { g.fillStyle = '#0d0b12'; g.fillRect(X, Y, TS, TS); for (let i = 0; i < 4; i++) { g.fillStyle = ['#5a4e42', '#43392f', '#2c251f', '#18141a'][i]; g.fillRect(X + 2, Y + 3 + i * 7, TS - 4, 5); g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(X + 2, Y + 3 + i * 7, TS - 4, 1); } } // บันไดลง
+      if (lone.has(tx + ',' + ty)) { g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(X + 4, Y + 24, 24, 6); g.fillRect(X + 2, Y + 26, 28, 2); g.drawImage(caveRockCv[0], X - 2, Y - 4, 36, 36); } // หินงอก
+      continue;
     }
+    const d = depth.get(tx + ',' + ty) || 4, below = !wall(tx, ty + 1) && at(tx, ty + 1) !== T.VOID, above = !wall(tx, ty - 1);
+    const L = !wall(tx - 1, ty), Rr = !wall(tx + 1, ty);
+    const body = d === 1 ? rock[2] : deep[Math.min(2, d - 2)];
+    // ตัวผนังพร้อมมุมโค้ง: มุมที่สองด้านติดกันเป็นพื้น ตัดเป็นขั้นบันไดให้เห็นพื้นข้างใต้
+    g.fillStyle = body;
+    for (let r = 0; r < 16; r++) {
+      const top = r < step.length, bot = 15 - r < step.length;
+      const cl = (top && above && L ? step[r] : 0) || (bot && below && L ? step[15 - r] : 0), cr = (top && above && Rr ? step[r] : 0) || (bot && below && Rr ? step[15 - r] : 0);
+      g.fillRect(X + cl, Y + r * 2, TS - cl - cr, 2);
+    }
+    if (d === 1) {
+      for (let i = 0; i < 3; i++) { const h = hash(tx * 7 + i, ty * 13, 9); g.fillStyle = rock[3]; g.fillRect(X + 6 + ((h * 8) | 0) * 2, Y + 8 + i * 6, 4 + (i & 1) * 4, 2); } // ลายหิน
+      if (above) { g.fillStyle = rock[0]; g.fillRect(X + (L ? 8 : 0), Y + 2, TS - (L ? 8 : 0) - (Rr ? 8 : 0), 2); g.fillStyle = rock[1]; g.fillRect(X + (L ? 6 : 0), Y + 4, TS - (L ? 6 : 0) - (Rr ? 6 : 0), 4); } // ขอบบนรับแสง
+      if (below) { // หน้าผนังที่ยื่นลงมาถึงพื้น: แถบเข้ม + ร่องแนวตั้ง
+        g.fillStyle = rock[4]; g.fillRect(X + (L ? 6 : 0), Y + TS - 12, TS - (L ? 6 : 0) - (Rr ? 6 : 0), 10);
+        g.fillStyle = rock[3]; g.fillRect(X + (L ? 6 : 0), Y + TS - 12, TS - (L ? 6 : 0) - (Rr ? 6 : 0), 2);
+        g.fillStyle = '#1f2229'; for (let i = 0; i < 2; i++) { const h = hash(tx, ty * 3 + i, 17); g.fillRect(X + 8 + ((h * 8) | 0) * 2, Y + TS - 10, 2, 6); }
+      }
+      if (L && !above && !below) { g.fillStyle = rock[1]; g.fillRect(X, Y, 2, TS); }
+    } else if (hash(tx, ty, 41) < 0.12) { g.fillStyle = deep[0]; g.fillRect(X + 10 + ((hash(tx, ty, 42) * 6) | 0) * 2, Y + 12, 4, 2); } // จุดหินจางๆ ในความมืด
+  }
+  // คบเพลิงบนหน้าผนัง (ช่องผนังที่ข้างล่างเป็นพื้น) ห่างกัน ≥ 7 ช่อง เลือกตายตัวตามผัง
+  caveTorches = [];
+  const tc = []; for (let ty = 1; ty < H - 1; ty++) for (let tx = 1; tx < W - 1; tx++) if (wall(tx, ty) && at(tx, ty + 1) === T.CAVE && !wall(tx, ty + 1) && wall(tx - 1, ty) && wall(tx + 1, ty)) tc.push([tx, ty, hash(tx, ty, 51)]);
+  tc.sort((a, b) => a[2] - b[2]);
+  for (const [tx, ty] of tc) {
+    if (caveTorches.some(([x, y]) => Math.abs(x / TS - tx) < 7 && Math.abs(y / TS - ty) < 7)) continue;
+    const X = tx * TS, Y = ty * TS; caveTorches.push([X + 16, Y + 14]);
+    g.fillStyle = '#1b1d24'; g.fillRect(X + 13, Y + 15, 6, 12); g.fillStyle = '#6b4a2b'; g.fillRect(X + 14, Y + 16, 4, 10); g.fillStyle = '#8a6238'; g.fillRect(X + 14, Y + 16, 2, 10); // ด้ามไม้
+    g.fillStyle = '#4a4f5c'; g.fillRect(X + 11, Y + 22, 10, 3); // ห่วงเหล็กยึดผนัง
+    g.fillStyle = '#ff9a3c'; g.fillRect(X + 13, Y + 8, 6, 8); g.fillStyle = '#ffd36a'; g.fillRect(X + 14, Y + 10, 4, 5); g.fillStyle = '#fff3c0'; g.fillRect(X + 15, Y + 12, 2, 3); // เปลวไฟ
   }
   base = oc; baseHi = document.createElement('canvas'); baseHi.width = baseHi.height = 1;
   const gh = oc.getContext('2d'); if (caveFlr > 1) { const ax = (Shared.CAVE.exit[1] + 0.5) * TS, ay = Shared.CAVE.y1 * TS + 16; gh.fillStyle = '#1b1d24'; gh.fillRect(ax - 11, ay - 11, 22, 22); gh.fillStyle = '#3a4a68'; gh.fillRect(ax - 10, ay - 10, 20, 20); gh.fillStyle = '#e8f0ff'; gh.beginPath(); gh.moveTo(ax, ay - 7); gh.lineTo(ax + 7, ay + 3); gh.lineTo(ax + 3, ay + 3); gh.lineTo(ax + 3, ay + 7); gh.lineTo(ax - 3, ay + 7); gh.lineTo(ax - 3, ay + 3); gh.lineTo(ax - 7, ay + 3); gh.closePath(); gh.fill(); } // ป้ายบันไดขึ้น (ชั้นลึก)
@@ -3146,7 +3203,8 @@ function drawNight(dark, now) {
   const pj = (x, y, z = 0) => (scene ? [x - y, (x + y) / 2 - z] : [x, y]); // ในบ้านวาดแบบไอโซเมตริก ฉายตำแหน่งแสงด้วย
   for (const p of players.values()) if (p.lamp) hole(...pj(p.x, p.y, 4), TS * 5, 0.82);
   if (cave) { // ในถ้ำ: ทุกคนมีแสงรอบตัวเล็กน้อย หมวกนักขุดสว่างกว่า (ไม่มีไฟ = เห็นแคบ) และแร่มีค่าเรืองแสงจางๆ
-    for (const p of players.values()) hole(p.x, p.y, TS * (p.wear && p.wear.hat === 'miner' ? 4.2 : 2.4), 0.45);
+    for (const p of players.values()) hole(p.x, p.y, TS * (p.wear && p.wear.hat === 'miner' ? 6 : 4.2), 0.5);
+    for (const [x, y] of caveTorches) hole(x, y, TS * 4 * (1 + Math.sin(now / 110 + x) * 0.03), 0.3); // คบเพลิงบนผนัง
     for (const [k, id] of oreK) if (Shared.ORES[id].lv >= 5) { const [ox, oy] = k.split(',').map(Number); hole((ox + 0.5) * TS, (oy + 0.5) * TS, TS * 1.6, 0.3); }
   }
   for (const o of furn.values()) if (FURN[o.f].light) hole(...pj(o.x * TS, o.y * TS, (o.z || 0) + 22), TS * 3.2, 0.6); // โคมไฟในบ้าน
@@ -3159,6 +3217,7 @@ function drawNight(dark, now) {
     wg(lx, ly, TS * 6, 0.4 * Math.min(1, dark * 1.3)); ctx.beginPath(); ctx.arc(lx, ly, TS * 6, 0, 7); ctx.fill();
     for (const a of [lAng, lAng + Math.PI]) { wg(lx, ly, TS * 18, 0.22 * Math.min(1, dark * 1.3)); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.arc(lx, ly, TS * 18, a - 0.2, a + 0.2); ctx.closePath(); ctx.fill(); }
   }
+  if (cave) for (const [x, y] of caveTorches) { warm(x, y, TS * 3.2, 0.22 + Math.sin(now / 90 + y) * 0.03); ctx.fillStyle = 'rgba(255,190,90,.55)'; ctx.fillRect(x - 3, y - 6 - (Math.sin(now / 80 + x) > 0 ? 2 : 0), 6, 6); } // แสงอุ่น + ไฟวูบ
   if (inTown()) warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); for (const p of players.values()) if (p.lamp) warm(...pj(p.x, p.y, 4), TS * 5, 0.16 * Math.min(1, dark * 1.2));
   ctx.globalCompositeOperation = 'source-over'; ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
@@ -3767,7 +3826,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
   const dark = daylight(hour);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  drawNight(cave ? 0.9 : scene ? dark * 0.4 : dark, now); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
+  drawNight(cave ? 0.6 : scene ? dark * 0.4 : dark, now); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
   if (inTown()) drawGuideArrow(now);
   if (cave) { const t = '⛏️ ถ้ำเหมือง ชั้น ' + caveFlr + '/' + Shared.MINE.floors; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(10, 96, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, 18, 115); }
   const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);

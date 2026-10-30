@@ -404,8 +404,10 @@
     xpPerLv: 0.1,                                  // XP นักขุดแร่ ×(1 + xpPerLv×(เลเวล−1)) เหมือนช่างไม้ (ก้อนแร่มีจำกัด จึงโตตามเลเวลด้วยตัวคูณ)
     floors: 20,                                    // จำนวนชั้นของถ้ำ (ชั้น f = แร่ระดับ f เป็นหลัก)
     mix: [70, 20, 10],                             // ชั้น f: แร่ระดับ f 70% / f+1 20% / f+2 10% (เกินชนิดสุดท้ายนับเป็นชนิดสุดท้าย → ชั้น 10 เป็นคริสตัลล้วน)
-    maxOres: 300,                                  // ก้อนแร่สูงสุดต่อชั้น (ผังแคบกว่านี้จะน้อยลงตามพื้นที่)
-    respawnMs: DAY_MS,                             // ก้อนแร่ที่ขุดหมดเกิดใหม่หลัง 1 วันในเกม (12 นาที) ที่ช่องสุ่มใหม่ในชั้นเดิม (ไม่ใช่ที่เดิม) พร้อมสุ่มชนิด/ขนาดใหม่
+    maxOres: 45,                                   // ก้อนแร่สูงสุดต่อชั้น (ปกติราว 1 ก้อนต่อพื้น orePer ช่อง ≈ 30–40 ก้อน)
+    orePer: 18,                                    // พื้นเดินได้กี่ช่องต่อแร่ 1 ก้อน (ยิ่งมาก แร่ยิ่งบาง ต้องเดินหา)
+    oreGap: 3,                                     // ก้อนแร่ห่างกันอย่างน้อย 3 ช่อง (ไม่เกาะกันเป็นพืด ต้องเดินหา)
+    respawnMs: DAY_MS / 3,                         // ก้อนแร่ที่ขุดหมดเกิดใหม่หลัง 1/3 วันในเกม (4 นาที แร่น้อยลงจึงเกิดไวขึ้น) ที่ช่องสุ่มใหม่ในชั้นเดิม (ไม่ใช่ที่เดิม) พร้อมสุ่มชนิด/ขนาดใหม่
     hpBase: 13,                                    // HP ก้อนเล็ก = hpBase × ระดับอีเต้อขั้นต่ำของแร่ (ใช้อีเต้อที่พอดีกับแร่ ≈ 21 ครั้งต่อก้อนเฉลี่ย)
     door: [25, 26, 27], y: 8,                       // ปากถ้ำบนหน้าผา (แถว y=8) เดินเข้าจากด้านล่าง (y=9)
   };
@@ -452,7 +454,7 @@
   const rollDrop = (size, R) => { const d = ORE_SIZES[size].drop; return d[0] + Math.floor(R() * (d[1] - d[0] + 1)); };
   const caveFloor = scene => { const m = typeof scene === 'string' && /^@cave(\d+)$/.exec(scene); return m ? +m[1] : 0; }; // p.scene ของถ้ำคือ '@cave<ชั้น>' (0 = ไม่ใช่ถ้ำ)
   // แผนที่ถ้ำ: ตารางขนาดเท่าแมพเมือง (นอกถ้ำเป็น VOID) ทางออก/บันไดขึ้นอยู่ล่างกลาง จุดเกิดหน้าทางออก บันไดลงอยู่ห้องไกลสุด • ทุกอย่างคำนวณแบบตายตัวจากเลขชั้น (เซิร์ฟเวอร์กับหน้าเว็บได้ผังเดียวกัน)
-  const CAVE = { x0: 2, y0: 2, x1: 61, y1: 43, exit: [30, 31, 32], spawn: { x: 31.5 * TS, y: 40.5 * TS }, start: [24, 38, 39, 42] };
+  const CAVE = { x0: 11, y0: 13, x1: 52, y1: 43, exit: [30, 31, 32], spawn: { x: 31.5 * TS, y: 40.5 * TS } }; // กรอบถ้ำ 42×31 (ครึ่งหนึ่งของแบบเดิม 60×42) วางกลางล่างของตาราง
   const caveOpen = t => t === T.CAVE || t === T.MOUTH || t === T.DOWN;
   function caveReach(m) { // จำนวนช่องเดินได้ที่ไปถึงจากหน้าทางออก (4 ทิศ ก้อนแร่/หินกั้น)
     const sx = 31, sy = CAVE.y1 - 1, seen = new Uint8Array(W * H), q = [sy * W + sx]; seen[q[0]] = 1; let n = 0;
@@ -460,62 +462,72 @@
       for (const [dx, dy] of DIRS) { const nx = x + dx, ny = y + dy, k = ny * W + nx; if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[k] || !caveOpen(m[ny][nx])) continue; seen[k] = 1; q.push(k); } }
     return n;
   }
+  // ผังถ้ำแบบธรรมชาติ: โถงโล่งขอบโค้งไม่เรียบ 7–8 โถง ต่อกันด้วยอุโมงค์คดเคี้ยวกว้าง ~3 ช่อง เกลาขอบด้วย cellular automata แล้ววางหินก้อนโดดๆ (ก้อนละ 1–3 ช่อง) ห่างกันเป็นสิ่งกีดขวางบางๆ
   function makeCaveMap(floor) {
-    const f = Math.max(1, Math.min(MINE.floors, floor | 0 || 1)), R = rng(20261029 + f * 7919);
+    const f = Math.max(1, Math.min(MINE.floors, floor | 0 || 1)), R = rng(20261030 + f * 7919);
     const m = Array.from({ length: H }, () => new Array(W).fill(T.VOID));
     for (let y = CAVE.y0; y <= CAVE.y1; y++) for (let x = CAVE.x0; x <= CAVE.x1; x++) m[y][x] = T.ROCK;
-    const carve = r => { for (let y = r[1]; y <= r[3]; y++) for (let x = r[0]; x <= r[2]; x++) m[y][x] = T.CAVE; };
-    const mid = r => [(r[0] + r[2]) >> 1, (r[1] + r[3]) >> 1];
-    const rooms = [CAVE.start.slice()]; carve(rooms[0]);
-    for (let i = 0; i < 600 && rooms.length < 16; i++) { // ห้องสุ่มขนาด 8–15 × 5–8 ไม่ชิดกัน (เว้น 3 ช่อง)
-      const w = 8 + Math.floor(R() * 8), h = 5 + Math.floor(R() * 4);
-      const x = CAVE.x0 + 2 + Math.floor(R() * (CAVE.x1 - CAVE.x0 - 3 - w)), y = CAVE.y0 + 2 + Math.floor(R() * (CAVE.y1 - CAVE.y0 - 3 - h)), r = [x, y, x + w - 1, y + h - 1];
-      if (rooms.some(o => r[0] <= o[2] + 3 && r[2] >= o[0] - 3 && r[1] <= o[3] + 3 && r[3] >= o[1] - 3)) continue;
-      rooms.push(r); carve(r);
+    const inner = (x, y) => x > CAVE.x0 && x < CAVE.x1 && y > CAVE.y0 && y < CAVE.y1; // ขอบกรอบเป็นหินเสมอ
+    const dig = (cx, cy, r) => { for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++) for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r && inner(x, y)) m[y][x] = T.CAVE; };
+    const halls = [{ x: 31, y: 38, r: 5 }], want = 7 + Math.floor(R() * 2); // โถงแรกอยู่หน้าทางออก
+    for (let i = 0; i < 500 && halls.length < want; i++) {
+      const h = { x: CAVE.x0 + 6 + R() * (CAVE.x1 - CAVE.x0 - 12), y: CAVE.y0 + 5 + R() * (CAVE.y1 - CAVE.y0 - 13), r: 4.5 + R() * 2.5 };
+      if (halls.some(o => Math.hypot(o.x - h.x, o.y - h.y) < o.r + h.r)) continue;
+      halls.push(h);
     }
-    const link = (a, b) => { // ทางเดินรูปตัว L กว้าง 2 ช่อง: เดินแนวนอนจากห้อง a ไปแนวตั้งของห้อง b แล้วเดินแนวตั้งต่อ
-      const [ax, ay] = mid(rooms[a]), [bx, by] = mid(rooms[b]);
-      for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++) for (let d = 0; d < 2; d++) m[ay + d][x] = T.CAVE;
-      for (let y = Math.min(ay, by); y <= Math.max(ay, by) + 1; y++) for (let d = 0; d < 2; d++) m[y][bx + d] = T.CAVE;
-    };
-    for (let i = 1; i < rooms.length; i++) { // ทุกห้องต่อกับห้องที่ใกล้สุดก่อนหน้า (ต่อกันครบทุกห้องแน่นอน) แล้วเพิ่มทางวนอีกไม่กี่เส้น
-      const [ix, iy] = mid(rooms[i]); let best = 0, bd = 1e9;
-      for (let j = 0; j < i; j++) { const [jx, jy] = mid(rooms[j]), d = Math.abs(ix - jx) + Math.abs(iy - jy); if (d < bd) { bd = d; best = j; } }
-      link(best, i);
+    for (const h of halls) { dig(h.x, h.y, h.r); for (let k = 0; k < 5; k++) { const a = R() * Math.PI * 2, d = h.r * (0.4 + R() * 0.5); dig(h.x + Math.cos(a) * d, h.y + Math.sin(a) * d * 0.8, h.r * (0.45 + R() * 0.35)); } } // วงกลมซ้อนกันให้ขอบโถงเป็นหยัก
+    const tunnel = (a, b) => { let x = a.x, y = a.y; for (let i = 0; i < 200; i++) { const dx = b.x - x, dy = b.y - y, d = Math.hypot(dx, dy); if (d < 1.5) break; x += dx / d + (R() - 0.5) * 0.9; y += dy / d + (R() - 0.5) * 0.9; dig(x, y, 1.6 + R() * 0.8); } };
+    for (let i = 1; i < halls.length; i++) { let best = 0, bd = 1e9; for (let j = 0; j < i; j++) { const d = Math.hypot(halls[i].x - halls[j].x, halls[i].y - halls[j].y); if (d < bd) { bd = d; best = j; } } tunnel(halls[best], halls[i]); }
+    for (let i = 0; i < 2 && halls.length > 3; i++) { const a = 1 + Math.floor(R() * (halls.length - 1)), b = 1 + Math.floor(R() * (halls.length - 1)); if (a !== b) tunnel(halls[a], halls[b]); } // ทางวน
+    for (let pass = 0; pass < 2; pass++) { // เกลาขอบ: ช่องที่รอบตัวเป็นหินเกินครึ่งกลายเป็นหิน หินที่โดดเดี่ยวกลายเป็นพื้น
+      const n = m.map(r => r.slice());
+      for (let y = CAVE.y0 + 1; y < CAVE.y1; y++) for (let x = CAVE.x0 + 1; x < CAVE.x1; x++) { let c = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && m[y + dy][x + dx] === T.ROCK) c++; if (c > 4) n[y][x] = T.ROCK; else if (c < 4) n[y][x] = T.CAVE; }
+      for (let y = CAVE.y0 + 1; y < CAVE.y1; y++) m[y] = n[y];
     }
-    for (let i = 0; i < 4 && rooms.length > 3; i++) { const a = 1 + Math.floor(R() * (rooms.length - 1)), b = 1 + Math.floor(R() * (rooms.length - 1)); if (a !== b) link(a, b); }
+    for (let y = CAVE.y1 - 3; y < CAVE.y1; y++) for (let x = 29; x <= 33; x++) m[y][x] = T.CAVE; // หน้าทางออกโล่งเสมอ
     for (const x of CAVE.exit) m[CAVE.y1][x] = T.MOUTH; // ทางออก/บันไดขึ้นกลางผนังล่าง
-    if (f < MINE.floors) { // บันไดลง 3 ช่องกลางห้องที่ไกลจากทางออกที่สุด (ชั้นสุดท้ายไม่มี)
-      const [sx, sy] = mid(rooms[0]); let far = 1, fd = -1;
-      for (let i = 1; i < rooms.length; i++) { const [x, y] = mid(rooms[i]), d = Math.abs(x - sx) + Math.abs(y - sy); if (d > fd) { fd = d; far = i; } }
-      const [dx, dy] = mid(rooms[far]); for (let x = dx - 1; x <= dx + 1; x++) m[dy][x] = T.DOWN;
+    { // ตัดพื้นที่ที่เดินไปไม่ถึงทิ้ง แล้วหาจุดไกลสุดจากทางออก (ไว้วางบันไดลง)
+      const dist = new Map(), q = [[31, CAVE.y1 - 1]]; dist.set(q[0].join(), 0); let far = q[0];
+      for (let i = 0; i < q.length; i++) { const [x, y] = q[i], d = dist.get(x + ',' + y); if (d > dist.get(far.join())) far = q[i]; for (const [dx, dy] of DIRS) { const k = (x + dx) + ',' + (y + dy); if (!dist.has(k) && m[y + dy][x + dx] === T.CAVE) { dist.set(k, d + 1); q.push([x + dx, y + dy]); } } }
+      for (let y = CAVE.y0; y < CAVE.y1; y++) for (let x = CAVE.x0; x <= CAVE.x1; x++) if (m[y][x] === T.CAVE && !dist.has(x + ',' + y)) m[y][x] = T.ROCK;
+      if (f < MINE.floors) { // บันไดลง 3 ช่องที่จุดไกลสุด (ชั้นสุดท้ายไม่มี) เปิดพื้นรอบบันได 5×3 ให้ยืนได้
+        const cx = Math.max(CAVE.x0 + 3, Math.min(CAVE.x1 - 3, far[0])), cy = Math.max(CAVE.y0 + 2, Math.min(CAVE.y1 - 4, far[1]));
+        for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 2; x <= cx + 2; x++) m[y][x] = T.CAVE;
+        for (let x = cx - 1; x <= cx + 1; x++) m[cy][x] = T.DOWN;
+      }
     }
-    // เส้นทางกีดขวางสุ่ม: เสา/กำแพงสั้นๆ วางได้เมื่อช่องเดินได้ที่เหลือยังต่อถึงกันหมด (รวมบันไดลง) ไม่งั้นถอนออก
-    let total = caveReach(m), put = 0;
-    for (let i = 0; i < 400 && put < 90; i++) {
-      const len = 1 + Math.floor(R() * 5), hor = R() < 0.5, x = CAVE.x0 + 1 + Math.floor(R() * (CAVE.x1 - CAVE.x0 - 2)), y = CAVE.y0 + 1 + Math.floor(R() * (CAVE.y1 - CAVE.y0 - 2)), cells = [];
-      for (let k = 0; k < len; k++) { const cx = hor ? x + k : x, cy = hor ? y : y + k; if (cx >= CAVE.x1 || cy >= CAVE.y1 || m[cy][cx] !== T.CAVE || Math.hypot(cx - 31, cy - (CAVE.y1 - 1)) < 4) break; cells.push([cx, cy]); }
-      if (!cells.length) continue;
-      for (const [cx, cy] of cells) m[cy][cx] = T.ROCK;
-      if (caveReach(m) === total - cells.length) { total -= cells.length; put++; } else for (const [cx, cy] of cells) m[cy][cx] = T.CAVE;
+    // หินก้อนโดดเป็นสิ่งกีดขวางบางๆ: วางกลางพื้นโล่ง (รอบตัวเป็นพื้นทั้งหมด) ห่างกัน ≥ 4 ช่อง ไม่ใกล้ทางออก/บันไดลง และพื้นที่ที่เหลือยังเดินถึงกันหมด
+    let total = caveReach(m); const rocks = [], nearDown = (x, y) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (m[y + dy] && m[y + dy][x + dx] === T.DOWN) return true; return false; };
+    for (let i = 0, goal = 9 + Math.floor(R() * 6); i < 400 && rocks.length < goal; i++) {
+      const x = CAVE.x0 + 2 + Math.floor(R() * (CAVE.x1 - CAVE.x0 - 3)), y = CAVE.y0 + 2 + Math.floor(R() * (CAVE.y1 - CAVE.y0 - 3));
+      if (Math.hypot(x - 31, y - (CAVE.y1 - 1)) < 5 || nearDown(x, y) || rocks.some(([a, b]) => Math.abs(a - x) < 4 && Math.abs(b - y) < 4)) continue;
+      const cells = [[x, y]]; if (R() < 0.5) cells.push(R() < 0.5 ? [x + 1, y] : [x, y + 1]); if (cells.length > 1 && R() < 0.4) cells.push([x + 1, y + 1]);
+      const mine = (a, b) => cells.some(([c, d]) => c === a && d === b);
+      if (!cells.every(([a, b]) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!mine(a + dx, b + dy) && m[b + dy][a + dx] !== T.CAVE) return false; return true; })) continue;
+      for (const [a, b] of cells) m[b][a] = T.ROCK;
+      if (caveReach(m) === total - cells.length) { total -= cells.length; rocks.push([x, y]); } else for (const [a, b] of cells) m[b][a] = T.CAVE;
     }
     return m;
   }
-  // ตำแหน่งก้อนแร่ในชั้น f (ตายตัว): วางทีละก้อนเมื่อพื้นที่เหลือยังเดินถึงกันหมด และก้อนแร่ทุกก้อนยังมีช่องว่างให้ยืนขุดอย่างน้อย 1 ด้าน • ไม่เกิน MINE.maxOres และไม่เกิน 30% ของพื้นที่ • คืน [{x,y,k,s}] (ช่องยังเป็นพื้นถ้ำ ผู้เรียกใส่ ORE เอง)
+  // ตำแหน่งก้อนแร่ในชั้น f (ตายตัว): ราว 1 ก้อนต่อพื้น MINE.orePer ช่อง (ไม่เกิน MINE.maxOres) ห่างกันอย่างน้อย MINE.oreGap ช่อง ชอบเกาะผนังถ้ำมากกว่ากลางโถง
+  // วางเมื่อพื้นที่เหลือยังเดินถึงกันหมด และทุกก้อนยังมีช่องว่างให้ยืนขุดอย่างน้อย 1 ด้าน • คืน [{x,y,k,s}] (ช่องยังเป็นพื้นถ้ำ ผู้เรียกใส่ ORE เอง)
+  const oreNear = (m, x, y) => { for (let dy = -MINE.oreGap; dy <= MINE.oreGap; dy++) for (let dx = -MINE.oreGap; dx <= MINE.oreGap; dx++) if (m[y + dy] && m[y + dy][x + dx] === T.ORE) return true; return false; };
   function caveOreSpots(m, floor) {
     const f = Math.max(1, Math.min(MINE.floors, floor | 0 || 1)), R = rng(777 + f * 104729), cand = [];
     let total = 0;
     for (let y = CAVE.y0; y <= CAVE.y1; y++) for (let x = CAVE.x0; x <= CAVE.x1; x++) {
       if (caveOpen(m[y][x])) total++;
-      if (y > CAVE.y0 && y < CAVE.y1 && x > CAVE.x0 && x < CAVE.x1 && m[y][x] === T.CAVE && Math.hypot(x - 31, y - (CAVE.y1 - 1)) >= 5 && ![-1, 0, 1].some(dy => [-1, 0, 1].some(dx => m[y + dy][x + dx] === T.DOWN))) cand.push([x, y]);
+      if (y > CAVE.y0 && y < CAVE.y1 && x > CAVE.x0 && x < CAVE.x1 && m[y][x] === T.CAVE && Math.hypot(x - 31, y - (CAVE.y1 - 1)) >= 5 && ![-1, 0, 1].some(dy => [-1, 0, 1].some(dx => m[y + dy][x + dx] === T.DOWN))) {
+        const wall = DIRS.some(([dx, dy]) => m[y + dy][x + dx] === T.ROCK); cand.push([x, y, R() * (wall ? 0.45 : 1)]);
+      }
     }
-    for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
-    const cap = Math.min(MINE.maxOres, Math.floor(total * 0.3)), out = [], free = (x, y) => DIRS.filter(([dx, dy]) => caveOpen(m[y + dy][x + dx])).length;
+    cand.sort((a, b) => a[2] - b[2]);
+    const cap = Math.min(MINE.maxOres, Math.round(total / MINE.orePer)), out = [], free = (x, y) => DIRS.filter(([dx, dy]) => caveOpen(m[y + dy][x + dx])).length;
     for (const [x, y] of cand) {
       if (out.length >= cap) break;
-      if (!free(x, y)) continue;
+      if (!free(x, y) || oreNear(m, x, y)) continue;
       m[y][x] = T.ORE;
-      if (caveReach(m) !== total - out.length - 1 || DIRS.some(([dx, dy]) => m[y + dy][x + dx] === T.ORE && !free(x + dx, y + dy))) { m[y][x] = T.CAVE; continue; }
+      if (caveReach(m) !== total - out.length - 1) { m[y][x] = T.CAVE; continue; }
       out.push({ x, y, k: rollOre(f, R), s: rollSize(R, f) });
     }
     for (const o of out) m[o.y][o.x] = T.CAVE;
@@ -1268,7 +1280,7 @@
 
   const api = { axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
+    AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, FEST, AUCTION, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
