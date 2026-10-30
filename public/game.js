@@ -3702,8 +3702,7 @@ function wallArt(g, it) { // ภาพของติดผนัง (พิก�
   } else wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c98b4a', INK);
 }
 function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง 2 ด้าน + หน้าต่าง + พรมหน้าประตู (วาดครั้งเดียว)
-  const c = document.createElement('canvas'); c.width = ISO_B.w; c.height = ISO_B.h;
-  const g = c.getContext('2d'); g.translate(-ISO_B.x0, -ISO_B.y0);
+  return PixelFurn.scene(g => { // เติมสีแบบพิกเซล ×2 โทนเดียวกับเฟอร์นิเจอร์ (pixelfurn.js)
   g.fillStyle = '#17110d'; g.fillRect(ISO_B.x0, ISO_B.y0, ISO_B.w, ISO_B.h);
   const hs = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
   const FL = Shared.HOUSE_FLOORS[houseSt.fl] || Shared.HOUSE_FLOORS.oak, WP = Shared.HOUSE_WALLS[houseSt.wp] || Shared.HOUSE_WALLS.cream;
@@ -3758,7 +3757,7 @@ function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง
   const mx0 = Shared.HOUSE.door[0] * TS, mx1 = (Shared.HOUSE.door[1] + 1) * TS, my0 = (Shared.HOUSE.y1 - 1.2) * TS, my1 = Shared.HOUSE.y1 * TS; // พรมหน้าประตู + ลูกศรออก
   poly(g, [iso(mx0, my0, 1), iso(mx1, my0, 1), iso(mx1, my1, 1), iso(mx0, my1, 1)], '#8c2a22', INK); poly(g, [iso(mx0 + 3, my0 + 3, 1), iso(mx1 - 3, my0 + 3, 1), iso(mx1 - 3, my1 - 3, 1), iso(mx0 + 3, my1 - 3, 1)], '#e8c66a'); poly(g, [iso(mx0 + 6, my0 + 6, 1), iso(mx1 - 6, my0 + 6, 1), iso(mx1 - 6, my1 - 6, 1), iso(mx0 + 6, my1 - 6, 1)], '#a8322a');
   const mc = (mx0 + mx1) / 2; g.strokeStyle = '#e8c66a'; g.lineWidth = 2; for (const o of [-6, 4]) { g.beginPath(); g.moveTo(...iso(mc - 12, (my0 + my1) / 2 + o - 3, 1)); g.lineTo(...iso(mc, (my0 + my1) / 2 + o + 4, 1)); g.lineTo(...iso(mc + 12, (my0 + my1) / 2 + o - 3, 1)); g.stroke(); }
-  return c;
+  }, ISO_B.x0, ISO_B.y0, ISO_B.w, ISO_B.h).cv;
 }
 function buildHouseGrid() { // เส้นตารางจาง ๆ ตอนตกแต่ง (ทุกครึ่งช่อง เส้นหนักทุกช่อง)
   const c = document.createElement('canvas'); c.width = ISO_B.w; c.height = ISO_B.h;

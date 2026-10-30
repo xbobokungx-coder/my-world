@@ -24,16 +24,16 @@ const PixelFurn = (() => {
     }
     graded.set(s, out); return out;
   }
-  // แคนวาสจำลองที่เติมสีทีละพิกเซล (ไม่มีขอบเบลอ) รองรับเฉพาะคำสั่งที่โค้ดเฟอร์นิเจอร์ใช้
+  // แคนวาสจำลองที่เติมสีทีละพิกเซล (ไม่มีขอบเบลอ) รองรับเฉพาะคำสั่งที่โค้ดเฟอร์นิเจอร์/ห้องใช้ • bw×bh พิกเซลศิลป์ (ox,oy) = ตำแหน่งของจุด (0,0)
   class Raster {
-    constructor() { this.d = new Float32Array(BW * BH * 4); this.st = { fillStyle: '#000', strokeStyle: '#000', lineWidth: 1, globalAlpha: 1, tx: 0, ty: 0 }; this.stack = []; this.subs = []; this.cur = null; this.glows = []; }
+    constructor(bw, bh, ox, oy) { this.bw = bw; this.bh = bh; this.ox = ox; this.oy = oy; this.d = new Float32Array(bw * bh * 4); this.st = { fillStyle: '#000', strokeStyle: '#000', lineWidth: 1, globalAlpha: 1, tx: 0, ty: 0 }; this.stack = []; this.subs = []; this.cur = null; this.glows = []; }
     get fillStyle() { return this.st.fillStyle; } set fillStyle(v) { this.st.fillStyle = v; }
     get strokeStyle() { return this.st.strokeStyle; } set strokeStyle(v) { this.st.strokeStyle = v; }
     get lineWidth() { return this.st.lineWidth; } set lineWidth(v) { this.st.lineWidth = v; }
     get globalAlpha() { return this.st.globalAlpha; } set globalAlpha(v) { this.st.globalAlpha = v; }
     save() { this.stack.push(Object.assign({}, this.st)); } restore() { if (this.stack.length) this.st = this.stack.pop(); }
     translate(x, y) { this.st.tx += x; this.st.ty += y; }
-    P(x, y) { return [OX + (x + this.st.tx) / K, OY + (y + this.st.ty) / K]; }
+    P(x, y) { return [this.ox + (x + this.st.tx) / K, this.oy + (y + this.st.ty) / K]; }
     beginPath() { this.subs = []; this.cur = null; }
     moveTo(x, y) { this.cur = [this.P(x, y)]; this.subs.push(this.cur); }
     lineTo(x, y) { if (!this.cur) return this.moveTo(x, y); this.cur.push(this.P(x, y)); }
@@ -42,7 +42,7 @@ const PixelFurn = (() => {
     ellipse(x, y, rx, ry, rot, a0, a1) { const pts = [], n = 24; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; pts.push(this.P(x + Math.cos(a) * rx, y + Math.sin(a) * ry)); } pts.closed = true; this.cur = pts; this.subs.push(pts); }
     arc(x, y, r, a0, a1) { this.ellipse(x, y, r, r, 0, a0, a1); }
     createRadialGradient(x0, y0, r0, x1, y1, r1) { return { glow: true, x: x1, y: y1, r: r1, stops: [], addColorStop(o, c) { this.stops.push([o, c]); } }; }
-    px(x, y, c, a) { if (x < 0 || y < 0 || x >= BW || y >= BH || a <= 0) return; const o = (y * BW + x) * 4, da = this.d[o + 3], oa = a + da * (1 - a); for (let k = 0; k < 3; k++) this.d[o + k] = (c[k] * a + this.d[o + k] * da * (1 - a)) / oa; this.d[o + 3] = oa; }
+    px(x, y, c, a) { if (x < 0 || y < 0 || x >= this.bw || y >= this.bh || a <= 0) return; const o = (y * this.bw + x) * 4, da = this.d[o + 3], oa = a + da * (1 - a); for (let k = 0; k < 3; k++) this.d[o + k] = (c[k] * a + this.d[o + k] * da * (1 - a)) / oa; this.d[o + 3] = oa; }
     fillRect(x, y, w, h) {
       const f = this.st.fillStyle;
       if (f && f.glow) { this.glows.push({ x: f.x + this.st.tx, y: f.y + this.st.ty, r: f.r, stops: f.stops.slice() }); return; } // แสงเรืองวาดสดทับทีหลัง ไม่อบลงพิกเซล
@@ -53,7 +53,7 @@ const PixelFurn = (() => {
       const f = this.st.fillStyle; if (typeof f !== 'string') return;
       const c = grade(f), a = c[3] * this.st.globalAlpha, all = this.subs.filter(s => s.length > 2); if (!all.length) return;
       let ymin = 1e9, ymax = -1e9; for (const s of all) for (const p of s) { if (p[1] < ymin) ymin = p[1]; if (p[1] > ymax) ymax = p[1]; }
-      for (let y = Math.max(0, Math.floor(ymin)); y <= Math.min(BH - 1, Math.ceil(ymax)); y++) {
+      for (let y = Math.max(0, Math.floor(ymin)); y <= Math.min(this.bh - 1, Math.ceil(ymax)); y++) {
         const cy = y + 0.5, xs = [];
         for (const s of all) for (let i = 0, j = s.length - 1; i < s.length; j = i++) { const [xi, yi] = s[i], [xj, yj] = s[j]; if ((yi > cy) !== (yj > cy)) xs.push(xi + (cy - yi) / (yj - yi) * (xj - xi)); }
         xs.sort((p, q) => p - q);
@@ -69,7 +69,7 @@ const PixelFurn = (() => {
   }
   // วาด → ขอบเข้มรอบเงาตัว (เฉพาะส่วนทึบ ไม่รวมเงาพื้นจาง ๆ) → ตัดขอบว่าง → แคนวาส
   function render(draw) {
-    const R = new Raster(); draw(R);
+    const R = new Raster(BW, BH, OX, OY); draw(R);
     const d = R.d, solid = i => d[i * 4 + 3] >= 0.5, edge = [];
     for (let y = 0; y < BH; y++) for (let x = 0; x < BW; x++) { const i = y * BW + x; if (solid(i)) continue;
       if ((x > 0 && solid(i - 1)) || (x < BW - 1 && solid(i + 1)) || (y > 0 && solid(i - BW)) || (y < BH - 1 && solid(i + BW))) edge.push(i); }
@@ -82,12 +82,21 @@ const PixelFurn = (() => {
     cx.putImageData(img, 0, 0);
     return { cv, w, h, ax: OX - x0, ay: OY - y0, glows: R.glows };
   }
+  // ภาพทั้งฉาก (พื้น/ผนังห้อง): พื้นที่ (x0,y0) ขนาด w×h พิกเซลเกม เติมสีแบบพิกเซล ไม่ใส่ขอบรอบตัว → แคนวาสขนาดเกม (ขยาย 2 เท่าแล้ว)
+  function scene(draw, x0, y0, w, h) {
+    const bw = Math.ceil(w / K), bh = Math.ceil(h / K), R = new Raster(bw, bh, -x0 / K, -y0 / K); draw(R);
+    const small = factory(bw, bh), sx = small.getContext('2d'), img = sx.createImageData(bw, bh), d = R.d;
+    for (let i = 0; i < bw * bh * 4; i += 4) { img.data[i] = d[i]; img.data[i + 1] = d[i + 1]; img.data[i + 2] = d[i + 2]; img.data[i + 3] = Math.round(d[i + 3] * 255); }
+    sx.putImageData(img, 0, 0);
+    const cv = factory(w, h), g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(small, 0, 0, bw * K, bh * K);
+    return { cv, small };
+  }
   // วาดสไปรต์ลงจอ: (sx, sy) = จุดที่ตรงกับ (0,0) ตอนเรนเดอร์
   function draw(g, s, sx, sy) {
     const sm = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
     g.drawImage(s.cv, Math.round(sx - s.ax * K), Math.round(sy - s.ay * K), s.w * K, s.h * K); g.imageSmoothingEnabled = sm;
     for (const o of s.glows) { const x = sx + o.x, y = sy + o.y, gr = g.createRadialGradient(x, y, 0, x, y, o.r); for (const [p, c] of o.stops) gr.addColorStop(p, c); g.fillStyle = gr; g.fillRect(x - o.r, y - o.r, o.r * 2, o.r * 2); }
   }
-  return { render, draw, grade, K, setCanvasFactory(fn) { factory = fn; } };
+  return { render, scene, draw, grade, K, setCanvasFactory(fn) { factory = fn; } };
 })();
 if (typeof module !== 'undefined') module.exports = PixelFurn;
