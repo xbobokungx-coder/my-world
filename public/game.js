@@ -47,7 +47,7 @@ const buffOn = id => (buffExp[id] || 0) > Date.now();
 const build = { on: false, sel: null, erase: false, pick: null, rot: 0 }; // sel = ชนิดที่จะวาง • erase = เก็บคืน • pick = id ของชิ้นที่เลือกไว้จะย้าย/หมุน • rot = ทิศของชิ้นที่จะวาง
 let fg = null, wtr = 10, dur = {}, cin = null, cinAt = 0, cinWatching = false, tradeSt = null, tradeReq = null;
 const mult = k => market[k] || 1;
-let timeOffset = 0, lastSend = 0, lastSent = '', swing = 0, lastAct = 0, shopKind = null, bagTab = 'status', flash = null;
+let timeOffset = 0, lastSend = 0, lastSent = '', swing = 0, lastAct = 0, actGap = 200, shopKind = null, bagTab = 'status', flash = null;
 let miniState = ls.get('mw_mini') || 'small'; // small | big | off
 const keys = {}, joy = { x: 0, y: 0 };
 let chatFocus = false, walk = null;
@@ -156,15 +156,18 @@ function handle(m) {
     case 'chatlog': chatHist.length = 0; for (const e of m.list || []) chatHist.push(e); break;
     case 'ach': achSt = { cnt: m.cnt || {}, got: m.got || {}, sel: m.sel || '' }; if (achShown()) renderAch(); break;
     case 'deaf': presence(m.id, p => { p.deaf = !!m.on; }); break;
-    case 'use': { const p = players.get(m.id); if (p) p.useAt = performance.now(); break; }
+    case 'use': { const p = players.get(m.id); if (p) { p.useAt = performance.now(); p.useK = PixelAction.kindOf(p.held) === 'fish' && p.fs ? 'reel' : ''; } break; } // ตกปลาอยู่แล้ว = ท่าดึงเบ็ด
+    case 'oh': oreHit.set(m.x + ',' + m.y, { t: performance.now(), f: m.f }); break; // ก้อนแร่โดนฟาด: สั่น + รอยร้าวตาม HP ที่เหลือ
+    case 'th': treeHit.set(m.x + ',' + m.y, { t: performance.now(), f: m.f }); break; // ต้นไม้โดนฟัน: ส่าย + รอยบากที่โคน
+    case 'catch': { const p = players.get(m.id), F = Shared.FISH.find(f => f.id === m.f); if (p && F) p.catchFx = { t: performance.now(), e: F.emoji, big: F.sell >= 100, x: p.fx || p.x, y: p.fy || p.y }; break; } // ปลากระโดดขึ้นมาอยู่เหนือหัว
     case 'held': { const p = players.get(m.id); if (p) p.held = m.e || ''; break; }
     case 'status': presence(m.id, p => { p.status = m.s || ''; }); if (peopleShown()) renderPeople(true); break;
     case 'voice': presence(m.id, p => { p.voice = m.on; if (!m.on) p.speaking = false; }); if (peopleShown()) renderPeople(true); break;
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
     case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.cp = null; if (p.id === myId) refreshOpen(); } break; }
     case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
-    case 'ore': { if (cave) { const k = m.x + ',' + m.y; if (m.k) { oreK.set(k, m.k); oreS.set(k, m.s | 0); MAP[m.y][m.x] = T.ORE; oreBurst.delete(k); } else { oreK.delete(k); oreS.delete(k); MAP[m.y][m.x] = T.CAVE; oreBurst.set(k, performance.now()); } } break; } // ก้อนแร่ในถ้ำเกิด/แตก
-    case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; if (m.k) treeKinds.set(m.x + ',' + m.y, m.k); } else if (isChoppable(tm, m.x, m.y)) { tm[m.y][m.x] = T.GRASS; treeKinds.delete(m.x + ',' + m.y); } } break; }
+    case 'ore': { if (cave) { const k = m.x + ',' + m.y; if (m.k) { oreK.set(k, m.k); oreS.set(k, m.s | 0); MAP[m.y][m.x] = T.ORE; oreBurst.delete(k); } else { oreBurst.set(k, { t: performance.now(), k: oreK.get(k), s: oreS.get(k) | 0 }); oreK.delete(k); oreS.delete(k); oreHit.delete(k); MAP[m.y][m.x] = T.CAVE; } } break; } // ก้อนแร่ในถ้ำเกิด/แตก
+    case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; if (m.k) treeKinds.set(m.x + ',' + m.y, m.k); } else if (isChoppable(tm, m.x, m.y)) { const tk = m.x + ',' + m.y; if (inTown()) felled.set(tk, { t: performance.now(), k: treeKinds.get(tk), side: me && me.x > (m.x + 0.5) * TS ? -1 : 1 }); tm[m.y][m.x] = T.GRASS; treeKinds.delete(tk); treeHit.delete(tk); } } break; }
     case 'mapcell': applyMapCells(m.cells); break;
     case 'reload': { toast('🗺️ ผู้ดูแลเปลี่ยนผังเมือง กำลังรีเฟรช…'); const tryReload = n => fetch('/healthz', { cache: 'no-store' }).then(r => { if (r.ok) location.reload(); else throw 0; }).catch(() => { if (n < 40) setTimeout(() => tryReload(n + 1), 1000); }); setTimeout(() => tryReload(0), 3000); break; }
     case 'mapreset': {
@@ -1427,7 +1430,7 @@ const cheb = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
 const inReach = (tx, ty) => { const [px, py] = myTile(); return cheb(tx, ty, px, py) <= reachOf(tx, ty); };
 function act(tx, ty) {
   const now = performance.now();
-  if (!me || chatFocus || modalOpen() || now - lastAct < 200) return;
+  if (!me || chatFocus || modalOpen() || now - lastAct < actGap) return;
   if (scene && tx === undefined) return; // ในบ้านใช้เครื่องมือฟาร์มไม่ได้ (แตะที่นั่งเพื่อนั่งอย่างเดียว)
   if (cave && toolId() !== 'pick') { toast('ในถ้ำใช้อีเต้อ ⚒️ ขุดแร่ (เลือกที่ช่องเครื่องมือ)'); return; }
   const o = { t: 'act', tool: scene ? '' : toolId() }; if (o.tool === 'rod') o.bait = selBait;
@@ -1438,8 +1441,11 @@ function act(tx, ty) {
     if (dx || dy) me.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
     o.tx = tx; o.ty = ty;
   }
-  lastAct = now; swing = 0.25; me.useAt = performance.now(); me.actAt = me.useAt; me.actPt = o.tx !== undefined ? [(o.tx + 0.5) * TS, (o.ty + 0.5) * TS] : null; // จุดกระทบของท่าทำงาน = ช่องที่กด
-  send(o);
+  const kind = scene ? '' : PixelAction.kindOf(me.held), reel = kind === 'fish' && !!me.fs, k = reel ? 'reel' : kind; // ท่าทำงาน (pixelaction.js) ตกปลาอยู่แล้ว = ท่าดึงเบ็ด
+  lastAct = now; actGap = k ? PixelAction.dur(k) : 200; swing = 0.25; me.useAt = performance.now(); me.useK = k; me.actAt = me.useAt; me.actPt = o.tx !== undefined ? [(o.tx + 0.5) * TS, (o.ty + 0.5) * TS] : null; // จุดกระทบของท่าทำงาน = ช่องที่กด
+  if (!k || reel) { send(o); return; } // ดึงเบ็ดส่งทันที (เกจต้องจับจังหวะ) ของอื่นไม่มีท่า
+  send({ t: 'sw' }); // เริ่มเงื้อ: คนรอบตัวเห็นท่าพร้อมกัน
+  const S = PixelAction.SHEETS[k]; setTimeout(() => { if (me && me.actAt === me.useAt) send(o); }, S.hit * S.ms); // ผลจริง (แร่ร้าว/แตก ต้นไม้สั่น/ล้ม ทุ่นลอย) เกิดตรงจังหวะกระทบของท่า
 }
 
 // ---------- คลิก/แตะ: เดินไป หรือใช้งานช่องนั้น ----------
@@ -2489,7 +2495,7 @@ function buildHouseBase() {
   return oc;
 }
 // ถ้ำเหมือง: พื้นถ้ำ/ผนังหิน/ทางออกวาดลงผืนพื้นเอง (3 โทน + เงา ตาม STYLE_GUIDE โทนหินเย็น) แล้วเปลี่ยน base/baseHi ไปใช้ จนกว่าจะออกจากถ้ำ
-const oreBurst = new Map(); // ก้อนแร่ที่เพิ่งแตก: ช่อง → เวลา (วาดเศษหินกระเด็นสั้นๆ)
+const oreBurst = new Map(), oreHit = new Map(), treeHit = new Map(), felled = new Map(); // ก้อนแร่ที่เพิ่งแตก ช่อง → {t, k ชนิด, s ขนาด} • oreHit/treeHit ช่อง → {t เวลาโดนฟาด, f HP ที่เหลือ 0–1} • felled ต้นไม้ที่เพิ่งล้ม ช่อง → {t, k, side}
 let caveTorches = []; // คบเพลิงบนผนังถ้ำ [x, y] พิกเซลโลก (ตำแหน่งเปลวไฟ) ใช้เจาะแสงใน drawNight
 // หินโดดกลางถ้ำ (สิ่งกีดขวาง) วาดเป็นหินงอกปลายแหลมโทนน้ำตาลเข้ม ไม่ให้สับสนกับก้อนแร่ (สีเทา) • กริด 16×16 ×2 แบบ pixelore
 const CAVE_ROCK_PAL = { h: '#a8977f', l: '#8a7a66', m: '#6c5f50', d: '#51473c', x: '#3a332c' };
@@ -2573,12 +2579,16 @@ function buildCaveBase() {
   else PixelUI.world(gh, '🚪', (Shared.CAVE.exit[1] + 0.5) * TS, Shared.CAVE.y1 * TS + 16, 15); // ป้ายทางออกสู่เมือง (ชั้น 1)
   for (let ty = 0; ty < H; ty++) for (let tx = 1; tx < W - 1; tx++) if (MAP[ty][tx] === T.DOWN && MAP[ty][tx - 1] !== T.DOWN && MAP[ty][tx + 1] === T.DOWN && MAP[ty][tx + 2] === T.DOWN) { const ax = (tx + 1.5) * TS, ay = (ty + 0.5) * TS; gh.fillStyle = '#e8f0ff'; gh.beginPath(); gh.moveTo(ax, ay + 7); gh.lineTo(ax + 7, ay - 3); gh.lineTo(ax + 3, ay - 3); gh.lineTo(ax + 3, ay - 7); gh.lineTo(ax - 3, ay - 7); gh.lineTo(ax - 3, ay - 3); gh.lineTo(ax - 7, ay - 3); gh.closePath(); gh.fill(); } // ลูกศรลงบนบันไดกลาง
 }
-function drawOre(tx, ty, k, now, sz) {
+function drawOre(tx, ty, k, now, sz, ctx = mainCtx) {
   const spr = PixelOre.has(k) && PixelOre.get(k, sz | 0, (now / 500 | 0) & 1); // สไปรต์พิกเซลวาดมือ (ชนิดที่ยังไม่มีใช้แบบเดิมด้านล่าง)
   if (spr) {
+    const hit = oreHit.get(tx + ',' + ty), [sx, fl] = hit ? PixelAction.oreShake(now - hit.t) : [0, 0]; // โดนฟาด: สั่น + กะพริบขาว + รอยร้าว
+    if (hit && now - hit.t > 20000) oreHit.delete(tx + ',' + ty); // เซิร์ฟเวอร์คืน HP เต็มหลังไม่มีใครขุด 20 วินาที
     const w = spr.width * 2, h = spr.height * 2, x = tx * TS + 16, y = ty * TS + 31, sm = ctx.imageSmoothingEnabled;
     ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y - 2, w / 2 - 2, 4 + (sz | 0), 0, 0, 7); ctx.fill();
-    ctx.imageSmoothingEnabled = false; ctx.drawImage(spr, Math.round(x - w / 2), y - h, w, h); ctx.imageSmoothingEnabled = sm;
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(spr, Math.round(x - w / 2) + sx, y - h, w, h); ctx.imageSmoothingEnabled = sm;
+    if (hit) PixelAction.crack(ctx, x + sx, y - h / 2 + 2, hit.f, tx * 31 + ty);
+    if (fl) { ctx.globalAlpha = fl; ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(spr, Math.round(x - w / 2) + sx, y - h, w, h); ctx.drawImage(spr, Math.round(x - w / 2) + sx, y - h, w, h); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
     return;
   }
   const x = tx * TS + 16, y = ty * TS + 18, glow = Shared.ORES[k].lv >= 5, sc = [0.78, 1, 1.28][sz | 0] || 1;
@@ -2601,10 +2611,11 @@ function drawCaveWorld(now) {
   const vw = canvas.width / zoom, vh = canvas.height / zoom, x0 = Math.max(0, Math.floor(camX / TS) - 1), x1 = Math.min(W - 1, Math.ceil((camX + vw) / TS) + 1), y0 = Math.max(0, Math.floor(camY / TS) - 1), y1 = Math.min(H - 1, Math.ceil((camY + vh) / TS) + 1);
   const list = [];
   for (const [k, id] of oreK) { const [tx, ty] = k.split(',').map(Number); if (tx >= x0 && tx <= x1 && ty >= y0 && ty <= y1) list.push({ y: (ty + 1) * TS - 2, f: () => drawOre(tx, ty, id, now, oreS.get(k)) }); }
-  for (const [k, t0] of oreBurst) { // เศษหินกระเด็นตอนก้อนแร่แตก (0.4 วินาที)
-    const a = (now - t0) / 400; if (a >= 1) { oreBurst.delete(k); continue; }
-    const [tx, ty] = k.split(',').map(Number); list.push({ y: (ty + 1) * TS + 20, f: () => { for (let i = 0; i < 6; i++) { const an = i * 1.05 + tx, d = 6 + a * 18; ctx.fillStyle = i & 1 ? '#8a93a6' : '#4b5160'; ctx.fillRect(tx * TS + 16 + Math.cos(an) * d, ty * TS + 18 + Math.sin(an) * d * 0.7 + a * a * 10, 3, 3); } } });
+  for (const [k, b] of oreBurst) { // ก้อนแร่แตก: สไปรต์ชีตแตกกระจาย (PixelAction.shatter ~0.65 วินาที)
+    const t = now - b.t; if (t >= 650) { oreBurst.delete(k); continue; }
+    const [tx, ty] = k.split(',').map(Number); list.push({ y: (ty + 1) * TS + 20, f: () => PixelAction.shatter(ctx, tx * TS + 16, ty * TS + 18, t, b.k && ORE_COL[b.k], tx * 7 + ty, b.s === 2) });
   }
+
   for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
   for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
@@ -2856,11 +2867,25 @@ function drawChainTree(now) { // โตตามจำนวนชาเลน�
   ctx.drawImage(s, cx - w / 2, by - h, w, h); PixelUI.world(ctx, '🪣', cx + w / 4, by - h * 0.55 + Math.sin(now / 500) * 2, 14);
   ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(42,27,20,.8)'; ctx.fillRect(cx - 26, by + 2, 52, 13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`🌳 ${n} ใบ`, cx, by + 12);
 }
-function drawTree(x, y) { // สไปรต์ต้นไม้พิกเซล · โคนต้นกลางขอบล่างช่อง · ไม่เบลอตอนขยาย
-  const s = PixelArt.tree(x, y, treeKinds.get(x + ',' + y));
+function drawTree(x, y, kind, rot = 0, alpha = 1, ctx = mainCtx) { // สไปรต์ต้นไม้พิกเซล · โคนต้นกลางขอบล่างช่อง · ไม่เบลอตอนขยาย • rot = เอียงรอบโคน (ส่ายตอนโดนฟัน/ล้ม)
+  const key = x + ',' + y, s = PixelArt.tree(x, y, kind || treeKinds.get(key)), hit = kind ? null : treeHit.get(key), now = performance.now();
+  if (hit && now - hit.t > 20000) treeHit.delete(key);
+  if (hit) rot = PixelAction.treeSway(now - hit.t);
   ctx.imageSmoothingEnabled = false;
-  const dw = s.width * 2, dh = s.height * 2;
-  ctx.drawImage(s, Math.round(x * TS + TS / 2 - dw / 2), Math.round(y * TS + TS - dh), dw, dh);
+  const dw = s.width * 2, dh = s.height * 2, bx = x * TS + TS / 2, by = y * TS + TS;
+  if (rot || alpha < 1) { ctx.save(); ctx.globalAlpha = alpha; ctx.translate(bx, by - 4); ctx.rotate(rot); ctx.translate(-bx, -(by - 4)); }
+  ctx.drawImage(s, Math.round(bx - dw / 2), Math.round(by - dh), dw, dh);
+  if (rot || alpha < 1) ctx.restore();
+  if (hit && hit.f < 0.8) { // รอยบากที่โคนต้น ลึกขึ้นตาม HP ที่หายไป (เนื้อไม้สีอ่อนข้างใน)
+    const d = hit.f < 0.3 ? 3 : hit.f < 0.55 ? 2 : 1; ctx.fillStyle = '#2a1b14'; ctx.fillRect(bx - 4, by - 10, 2 + d * 2, 4); ctx.fillStyle = '#e8c08a'; ctx.fillRect(bx - 3, by - 9, d * 2, 2);
+  }
+}
+function drawFelled(k, f, now, ctx = mainCtx) { // ต้นไม้ที่เพิ่งล้ม (PixelAction.treeFall): เอียงล้มรอบโคน → กระแทกพื้นมีใบไม้/ฝุ่นกระจาย → จาง + ตอไม้
+  const [x, y] = k.split(',').map(Number), t = now - f.t, st = PixelAction.treeFall(t); if (!st) { felled.delete(k); return; }
+  const bx = x * TS + TS / 2, by = y * TS + TS;
+  ctx.fillStyle = '#4a3020'; ctx.fillRect(bx - 5, by - 7, 10, 6); ctx.fillStyle = '#e8c08a'; ctx.fillRect(bx - 4, by - 7, 8, 2); ctx.fillStyle = '#b07a44'; ctx.fillRect(bx - 2, by - 7, 4, 1); // ตอไม้
+  drawTree(x, y, f.k, st.ang * f.side, st.alpha, ctx);
+  if (st.land) PixelAction.burst(ctx, 'chop', bx + f.side * 40, by - 6, t - 520, x * 13 + y, ['#5fa844', '#3f8a34'], f.side); // ยอดไม้กระแทกพื้น: ใบไม้กระจาย
 }
 // ร้านค้า: สไปรต์อาคาร + อีโมจิบนหลังคา + ป้ายชื่อกระดานไม้
 function drawBuilding(b) {
@@ -2945,11 +2970,30 @@ function drawHeldTool(p, now, ctx = mainCtx) {
 // สไปรต์ชีตตัวอย่างของท่าทำงาน (ดีบัก/เอกสาร: __mw.actionSheet()) แถว = ท่า × ทิศ (ข้าง/หน้า/หลัง) คอลัมน์ = เฟรม ใช้ชุดตัวละครของเรา
 function actionSheet() {
   const P = Shared.PICK_EMOJI[6], rows = [['mine', P, 3], ['mine', P, 0], ['mine', P, 1], ['chop', '🪓', 3], ['chop', '🪓', 0], ['chop', '🪓', 1], ['fish', '🎣', 3], ['fish', '🎣', 0], ['fish', '🎣', 1]], cw = 80, chh = 84, n = 7;
-  const c = document.createElement('canvas'); c.width = cw * n; c.height = chh * rows.length; const g = c.getContext('2d');
+  const c = document.createElement('canvas'); c.width = cw * n; c.height = chh * rows.length; let g = c.getContext('2d');
   g.fillStyle = '#8bbf5a'; g.fillRect(0, 0, c.width, c.height);
   rows.forEach(([k, e, d], r) => { const S = PixelAction.SHEETS[k], fr = d >= 2 ? S.side : d === 1 ? S.back : S.front; g.fillStyle = r & 1 ? '#7fb452' : '#8bbf5a'; g.fillRect(0, r * chh, c.width, chh);
-    fr.forEach((_, i) => { const now = performance.now(); drawPlayer(Object.assign({}, me, { name: '', x: i * cw + 40, y: r * chh + 54, dir: d, held: e, moving: false, sit: null, lamp: false, veh: '', wet: false, speaking: false, chat: '', useAt: now - i * S.ms - 1, actPt: null }), now, g); }); });
-  return c;
+    fr.forEach((_, i) => { const now = performance.now(); drawPlayer(Object.assign({}, me, { name: '', x: i * cw + 40, y: r * chh + 54, dir: d, held: e, moving: false, sit: null, lamp: false, veh: '', wet: false, speaking: false, chat: '', useAt: now - i * S.ms - 1, useK: k, actPt: null, catchFx: null }), now, g); }); });
+  // ชีตเอฟเฟกต์ที่เป้าหมาย: แถวละลำดับเวลา (ms) • แร่โดนฟาด/ร้าว • แร่แตก • ต้นไม้โดนฟัน • ต้นไม้ล้ม • ปลาที่ตกได้
+  const fx = [
+    { h: 70, cells: [[0, 1], [40, 0.9], [120, 0.9], [400, 0.6], [400, 0.35], [400, 0.1]], f: (x, y, [t, f], now) => { oreHit.set('0,0', { t: now - t, f }); g.save(); g.translate(x - 16, y - 40); drawOre(0, 0, 'gold', now, 1, g); g.restore(); oreHit.delete('0,0'); } },
+    { h: 70, cells: [0, 60, 140, 250, 380, 500, 620], f: (x, y, t) => PixelAction.shatter(g, x, y - 22, t, ORE_COL.gold, 7, false) },
+    { h: 130, cells: [[0, 1], [40, 0.7], [110, 0.7], [400, 0.5], [400, 0.25]], f: (x, y, [t, f], now) => { treeHit.set('0,0', { t: now - t, f }); g.save(); g.translate(x - 16, y - 32); drawTree(0, 0, undefined, 0, 1, g); g.restore(); treeHit.delete('0,0'); } },
+    { h: 130, cells: [0, 160, 320, 460, 560, 700, 860], f: (x, y, t, now) => { g.save(); g.translate(x - 40, y - 32); drawFelled('1,0', { t: now - t, k: 'broad', side: 1 }, now, g); g.restore(); felled.clear(); } },
+    { h: 110, cells: [0, 120, 260, 420, 560, 900, 1300], f: (x, y, t, now) => drawPlayer(Object.assign({}, me, { name: '', x, y, dir: 0, held: '🎣', moving: false, sit: null, lamp: false, veh: '', wet: false, speaking: false, chat: '', useAt: 0, catchFx: { t: now - t, e: '🐟', big: false, x: x + 34, y: y + 20 } }), now, g) },
+  ];
+  const c2 = document.createElement('canvas'); c2.width = c.width; c2.height = c.height + fx.reduce((a, r) => a + r.h, 0); const g2 = c2.getContext('2d'); g2.drawImage(c, 0, 0);
+  let oy = c.height; const g0 = g;
+  fx.forEach((r, ri) => { g2.fillStyle = ri & 1 ? '#5a5f6e' : '#4d5260'; g2.fillRect(0, oy, c2.width, r.h); r.cells.forEach((cell, i) => { const now = performance.now(); g2.save(); g2.beginPath(); g2.rect(i * cw, oy, cw, r.h); g2.clip(); g = g2; r.f(i * cw + 40, oy + r.h - 14, cell, now); g2.restore(); }); oy += r.h; });
+  g = g0; return c2;
+}
+function drawCatch(p, ctx) { // ปลากระโดดจากทุ่นเป็นวงโค้ง หมุนทีละ 45° มาชูค้างเหนือหัว + น้ำกระเซ็นตอนหลุดจากน้ำ (ปลาหายากมีแสงทอง)
+  const c = p.catchFx, t = performance.now() - c.t, a = PixelAction.fishArc(t, c.x, c.y, p.x, p.y - 38); if (!a) { p.catchFx = null; return; }
+  PixelAction.burst(ctx, 'splash', c.x, c.y, t, (c.t * 5) | 0);
+  ctx.save(); ctx.globalAlpha = a.alpha;
+  if (c.big || a.held) { const g = ctx.createRadialGradient(a.x, a.y, 1, a.x, a.y, c.big ? 22 : 14); g.addColorStop(0, c.big ? 'rgba(255,224,110,.6)' : 'rgba(255,255,255,.35)'); g.addColorStop(1, 'rgba(255,224,110,0)'); ctx.fillStyle = g; ctx.fillRect(a.x - 22, a.y - 22, 44, 44); }
+  ctx.translate(Math.round(a.x), Math.round(a.y)); ctx.rotate(a.rot); ctx.scale(a.flip, 1); PixelUI.world(ctx, c.e, 0, 0, 20); ctx.restore();
+  if (a.held) { const k = ((t / 120) | 0) % 4; ctx.fillStyle = '#ffffff'; for (const [dx, dy, i] of [[-14, -8, 0], [13, -12, 2], [10, 6, 1], [-11, 8, 3]]) if (i === k || i === (k + 2) % 4) { ctx.fillRect(a.x + dx, a.y + dy - 2, 1, 5); ctx.fillRect(a.x + dx - 2, a.y + dy, 5, 1); } } // ประกายรอบปลา
 }
 function drawActionBurst(p, ctx) {
   const k = PixelAction.kindOf(p.held); if (!k || k === 'fish' || !p.useAt || p.sit) return;
@@ -3014,13 +3058,14 @@ function drawPlayer(p, now, cx) {
   const ctx = cx || mainCtx, x = p.x, riding = !!(p.veh && !p.sit && Shared.VEHICLES[p.veh] && PixelVehicle.sprite);
   let y = p.y;
   if (riding) PixelVehicle.draw(ctx, p, now, PixelChar); // ผู้ขี่นั่งบนยานพาหนะพิกเซล (ล้อหมุน 4 ทิศ ขาปั่น ควันท่อ) ใน pixelchar.js
-  const F = !riding && PixelAction.frame(p, performance.now()), bx = F && (p.dir || 0) >= 2 ? F.lean * (p.dir === 2 ? -1 : 1) : 0, by = F ? F.bob : 0; // ท่าทำงาน: ตัวโน้ม/ยุบตามเฟรม
+  const F = !riding && PixelAction.frame(p, performance.now()), bx = F && (p.dir || 0) >= 2 ? F.lean * (p.dir === 2 ? -1 : 1) : 0, ct = p.catchFx ? performance.now() - p.catchFx.t : -1, by = (F ? F.bob : 0) + (ct > 550 && ct < 750 ? -Math.round(Math.sin((ct - 550) / 200 * Math.PI) * 4) : 0); // ได้ปลา: กระโดดดีใจตอนรับปลา // ท่าทำงาน: ตัวโน้ม/ยุบตามเฟรม
   if (!riding) { ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
     ctx.save(); ctx.translate(bx, by); PixelChar.draw(ctx, p, now); ctx.restore(); } // ตัวละครพิกเซล chibi (pixelchar.js)
   if (riding) y -= PixelVehicle.lift(p.veh); // ผู้ขี่ตัวสูงขึ้น ป้ายชื่อ/ฟองแชท/ไอคอนเลื่อนตาม
   if (p.wet) { PixelUI.world(ctx, '🪣', x, y - 20, 16); ctx.fillStyle = 'rgba(120,190,255,.85)'; for (let i = 0; i < 4; i++) { const t = (now / 600 + i / 4) % 1; ctx.fillRect(x - 10 + i * 7, y - 14 + t * 24, 2, 4); } } // โดนราดน้ำจากชาเลนจ์
   if (p.lamp) drawHeldLamp(p, now);
-  if (p.held && !p.sit && !riding) { ctx.save(); ctx.translate(bx, by); drawHeldTool(p, now, ctx); ctx.restore(); drawActionBurst(p, ctx); } // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง) + เศษกระเด็นตอนกระทบ
+  if (p.held && !p.sit && !riding) { ctx.save(); ctx.translate(bx, by); drawHeldTool(p, now, ctx); ctx.restore(); drawActionBurst(p, ctx); }
+  if (p.catchFx) drawCatch(p, ctx); // ปลาที่เพิ่งตกได้ลอยมาชูเหนือหัว // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง) + เศษกระเด็นตอนกระทบ
   if (!p.name) return; // ตัวอย่างในตู้เสื้อผ้า ไม่ต้องวาดชื่อ
   // ป้ายชื่อ: กล่องกระดาษขอบเข้ม (สูงกว่าหัวตัวละครใหม่ ~9 px)
   const OUT = PixelArt.OUT, sp = !!p.speaking;
@@ -4051,6 +4096,7 @@ function step(now) {
   // วาดตามลำดับ y
   const list = [];
   for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) list.push({ y: y * TS + 30, f: () => drawTree(x, y) });
+  for (const [k, f] of felled) { const ty = +k.split(',')[1]; list.push({ y: ty * TS + 30, f: () => drawFelled(k, f, now) }); } // ต้นไม้กำลังล้ม
   if (inTown() && chSt.chain > 0 && x0 <= FIRE.x - 2 && x1 >= FIRE.x - 4 && y0 <= FIRE.y + 5 && y1 >= FIRE.y + 3) list.push({ y: (FIRE.y + 4) * TS + 30, f: () => drawChainTree(now) }); // ต้นไม้แห่งการส่งต่อ (ชาเลนจ์ถังน้ำ)
   if (inTown()) for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
   // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)

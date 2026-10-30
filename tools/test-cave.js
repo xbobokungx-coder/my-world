@@ -82,7 +82,7 @@ assert.ok(w.floors.size === 1 && w.floorOf(1).ores.size <= S.MINE.maxOres, 'ส�
 // ขุดแร่: ต้องมีอีเต้อ เลเวล และระดับอีเต้อพอ • ก้อนเล็ก/กลาง/ใหญ่ ขุดนานต่างกัน ได้ชิ้นตามช่วง
 const F1 = w.floorOf(1);
 const find = (kind, size) => [...F1.ores].find(([, o]) => o.k === kind && (size === undefined || o.s === size));
-const act = (p, tx, ty) => { p.lastAct = 0; w.handle(p, { t: 'act', tool: 'pick', tx, ty }); };
+const act = (p, tx, ty) => { p.lastAct = p.hitAt = 0; w.handle(p, { t: 'act', tool: 'pick', tx, ty }); };
 const stand = (p, [ox, oy]) => { [p.x, p.y] = ctr(ox, oy + 1); p.dir = 1; };
 let [sk, so] = find('stone', 0); const [ox, oy] = sk.split(',').map(Number);
 stand(a, [ox, oy]); act(a, ox, oy); assert.ok(F1.ores.has(sk) && !F1.hp.size, 'ไม่มีอีเต้อ ขุดไม่ได้');
@@ -99,8 +99,14 @@ assert.ok(a.rec.dur.pick < S.durMax('pick', 1, 0) && a.rec.dur.pick >= S.durMax(
 assert.strictEqual(a.rec.ach && a.rec.ach.cnt.mine, 1, 'นับสถิติ mine');
 // ก้อนใหญ่: HP มากกว่า ชิ้นมากกว่า
 { const big = find('stone', 2); if (big) { const [bk] = big, [bx, by] = bk.split(',').map(Number); stand(a, [bx, by]); const before = a.rec.inv.stone || 0, need = S.oreHp('stone', 2);
-    for (let i = 0; i < need - 1; i++) act(a, bx, by); assert.ok(F1.ores.has(bk), 'ก้อนใหญ่ต้องฟาดมากกว่า'); act(a, bx, by);
+    for (let i = 0; i < need - 1; i++) act(a, bx, by); assert.ok(F1.ores.has(bk), 'ก้อนใหญ่ต้องฟาดมากกว่า');
+    { const oh = wb.msgs.filter(z => z.t === 'oh' && z.x === bx && z.y === by).pop(); assert.ok(oh && oh.f > 0 && oh.f < 1, 'คนในถ้ำเห็นก้อนแร่ร้าว (HP ที่เหลือ 0–1)'); }
+    a.lastAct = 0; w.handle(a, { t: 'act', tool: 'pick', tx: bx, ty: by }); assert.ok(F1.ores.has(bk), 'ฟาดถี่กว่าความยาวท่า (SWING_MS) ไม่นับ');
+    act(a, bx, by);
     const got = a.rec.inv.stone - before; assert.ok(!F1.ores.has(bk) && got >= 5 && got <= 8, 'ก้อนใหญ่ได้ 5–8 ชิ้น ได้ ' + got); } }
+
+// เริ่มเงื้อ (sw): คนในชั้นเดียวกันเห็นท่าทันที ก่อนผลจริงจะมาตอนกระทบ
+{ wb.msgs.length = 0; a.swAt = 0; w.handle(a, { t: 'sw' }); assert.ok(wb.msgs.some(z => z.t === 'use' && z.id === a.id), 'sw = คนอื่นเห็นท่าเงื้อ'); }
 
 // ต้องเลเวล/อีเต้อถึง: ทองแดงต้อง Lv3 + อีเต้อหิน (ระดับ 2)
 { const c = find('copper'); const [cx, cy] = c[0].split(',').map(Number); stand(a, [cx, cy]); act(a, cx, cy);

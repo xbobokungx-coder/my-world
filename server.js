@@ -59,7 +59,7 @@ const NPC_DEFS = [
 
 const CAT_NAME = { fish: 'ปลา', crop: 'ผัก/ผลไม้', animal: 'ผลผลิตสัตว์', wood: 'ไม้', ore: 'แร่', dish: 'อาหาร' }; // ชื่อหมวดในข้อความแจ้งผู้เล่น
 const CAVE = '@cave'; // ฉากถ้ำเหมือง (p.scene) ร่วมกันทั้งห้อง: ชื่อผู้เล่นไม่มี @ จึงไม่ชนกับคีย์บ้าน
-const HOUSE_MSG = new Set(['m', 'act', 'held', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'house', 'gift', 'greet']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
+const HOUSE_MSG = new Set(['m', 'act', 'sw', 'held', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'house', 'gift', 'greet']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
 class World {
   constructor(room) {
     this.room = room;
@@ -1484,13 +1484,18 @@ class World {
         this.arcRangeCheck(p);
         break;
       }
+      case 'sw': { // เริ่มเงื้อเครื่องมือ (ท่าทำงาน pixelaction.js): บอกคนรอบตัวให้เล่นท่าพร้อมกัน ส่วนผลจริงมากับ 'act' ตอนจังหวะกระทบ
+        const now = Date.now(); if (now - (p.swAt || 0) < 300) return; p.swAt = now;
+        if (p.scene) this.sceneBroadcast(p.scene, { t: 'use', id: p.id }, p); else this.broadcast({ t: 'use', id: p.id }, p);
+        break;
+      }
       case 'act': {
         if (S.caveFloor(p.scene)) return this.caveAct(p, m);
         if (p.scene) return this.houseAct(p, m);
         const now = Date.now();
         if (now - p.lastAct < 150) return;
         p.lastAct = p.activeAt = now;
-        if (TOOLS.has(m.tool)) { p.workAt = now; this.broadcast({ t: 'use', id: p.id }, p); } // ใช้เครื่องมือ = กำลังทำกิจกรรม (ความหิวลดเร็วขึ้น) + ให้คนอื่นเห็นท่าแกว่ง
+        if (TOOLS.has(m.tool)) { p.workAt = now; if (now - (p.swAt || 0) > 1500) this.broadcast({ t: 'use', id: p.id }, p); } // ใช้เครื่องมือ = กำลังทำกิจกรรม (ความหิวลดเร็วขึ้น) + ให้คนอื่นเห็นท่าแกว่ (ส่ง 'sw' มาก่อนแล้วไม่ต้องซ้ำ)ง
         if (m.tool === 'rod') p.baitSel = typeof m.bait === 'string' && /^bait(_[23])?$/.test(m.bait) ? m.bait : 'bait'; // เหยื่อที่เลือกไว้ที่ช่องเบ็ด
         if (TOOLS.has(m.tool)) this.act(p, m.tool, now, m.tx, m.ty);
         break;
@@ -1920,7 +1925,8 @@ class World {
     if (now - p.lastAct < 150) return;
     p.lastAct = p.activeAt = now;
     if (m.tool !== 'pick') return;
-    p.workAt = now; this.sceneBroadcast(p.scene, { t: 'use', id: p.id }, p);
+    p.workAt = now; if (now - (p.swAt || 0) > 1500) this.sceneBroadcast(p.scene, { t: 'use', id: p.id }, p);
+    if (now - (p.hitAt || 0) < S.SWING_MS - 150) return; p.hitAt = now; // ฟาดได้ไม่ถี่กว่าความยาวท่า (เผื่อเน็ตแกว่ง 150 ms)
     this.pickAct(p, now, m.tx, m.ty);
   }
   pickAct(p, now, cx, cy) {
@@ -1944,7 +1950,7 @@ class World {
     if (!h || now - h.t > 20000) h = { hp: S.oreHp(kid, ore.s), t: now };
     h.hp -= S.PICKS[pick].power; h.t = now;
     this.sfx(p, 'chop');
-    if (h.hp > 0) { F.hp.set(key, h); const left = Math.ceil(h.hp / S.PICKS[pick].power); if (left <= 3 || left % 5 === 0) this.toast(p, `⚒️ ${O.emoji} ${O.name}ก้อน${S.ORE_SIZES[ore.s].name} อีก ${left} ครั้ง`); return; }
+    if (h.hp > 0) { F.hp.set(key, h); this.sceneBroadcast(p.scene, { t: 'oh', x: tx, y: ty, f: +(h.hp / S.oreHp(kid, ore.s)).toFixed(2) }); const left = Math.ceil(h.hp / S.PICKS[pick].power); if (left <= 3 || left % 5 === 0) this.toast(p, `⚒️ ${O.emoji} ${O.name}ก้อน${S.ORE_SIZES[ore.s].name} อีก ${left} ครั้ง`); return; }
     this.durUse(p, 'pick'); // ขุดแตก 1 ก้อน = อีเต้อสึก 1 ครั้ง (ไม่นับทุกครั้งที่ฟาด)
     F.hp.delete(key); F.ores.delete(key); F.map[ty][tx] = T.CAVE;
     F.wait.push({ x: tx, y: ty, at: now + S.MINE.respawnMs });
@@ -1973,7 +1979,7 @@ class World {
         this.addXp(p, 'fish', f.xp); this.tire(p, 'fish', f.sell);
         if (f.sell >= 100) { p.rec.rareAt = Date.now() + S.RARE_CD_MS; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.RARE_CD_MS / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
         this.toast(p, firstFish ? `🎉 ปลาตัวแรกของคุณเป็น ${f.emoji} ${f.name}! โชคดีสุดๆ` : `${perfect ? '🎯 เป๊ะ! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (firstFish) this.addLog(`🎣 ${p.name} ตกปลาครั้งแรกได้${f.emoji} ${f.name}!`); if (f.sell >= 100) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
-        this.event(p, 'fish', f.sell); this.bookAdd(p, 'fish', f.id);
+        this.event(p, 'fish', f.sell); this.bookAdd(p, 'fish', f.id); this.broadcast({ t: 'catch', id: p.id, f: f.id }); // ทุกคนเห็นปลากระโดดขึ้นมาอยู่เหนือหัว
         this.sfx(p, f.sell >= 100 ? 'catch_big' : 'catch');
       } else { this.toast(p, 'ดึงเบ็ดเร็วไป ปลาไม่ทันกิน'); this.sfx(p, 'miss'); }
       p.fish = null;
@@ -2111,10 +2117,11 @@ class World {
       const key = tx + ',' + ty, kid = this.treeKind.get(key) || 'broad', K = S.TREE_KINDS[kid], wl = this.lv(p, 'wood');
       if (wl < K.lv || axe < K.axe) return this.toast(p, `🔒 ${K.emoji} ${K.name}ต้องเป็นช่างไม้ Lv${K.lv} และใช้${S.AXES[K.axe].name}ขึ้นไป`);
       let h = this.treeHp.get(key);
+      if (now - (p.hitAt || 0) < S.SWING_MS - 150) return; p.hitAt = now; // ฟันได้ไม่ถี่กว่าความยาวท่า
       if (!h || now - h.t > 20000) h = { hp: K.hp, t: now };
       h.hp -= S.AXES[axe].power; h.t = now;
       this.sfx(p, 'chop'); this.durUse(p, 'axe');
-      if (h.hp > 0) { this.treeHp.set(key, h); if (K.hp > 4) this.toast(p, `🪓 ${K.emoji} ${K.name} อีก ${Math.ceil(h.hp / S.AXES[axe].power)} ครั้ง`); return; }
+      if (h.hp > 0) { this.treeHp.set(key, h); this.broadcast({ t: 'th', x: tx, y: ty, f: +(h.hp / K.hp).toFixed(2) }); if (K.hp > 4) this.toast(p, `🪓 ${K.emoji} ${K.name} อีก ${Math.ceil(h.hp / S.AXES[axe].power)} ครั้ง`); return; }
       this.treeHp.delete(key); this.treeKind.delete(key); this.map[ty][tx] = T.GRASS; this.dirty = true;
       this.broadcast({ t: 'tree', x: tx, y: ty, on: false });
       const got = {}; for (const [it, n] of K.drop) got[it] = (got[it] || 0) + n;
