@@ -3640,13 +3640,25 @@ Object.assign(ART, {
   },
 });
 function artGeneric(g, X, Y, W, D, r, d) { ibox(g, X, Y, W * 0.85, D * 0.85, 0, (d.h || 24) * 0.8, '#9aa0aa'); }
+// เฟอร์นิเจอร์พิกเซลวาดใหม่ (pixelfurn.js) แคชต่อ ชิ้น|หมุน|เงา|เฟรม • ชิ้นที่ขยับได้มี 8 เฟรม เปลี่ยนทุก 150 มิลลิวินาที • ชิ้นที่ยังไม่มีแบบใหม่ใช้ ART เดิม
+const furnPx = new Map();
+function furnPixel(f, r, shadow, now) {
+  const fr = PixelFurn.anim(f) ? Math.floor(now / 150) % 8 : 0, key = f + '|' + (r ? 1 : 0) + (shadow ? 's' : '') + fr;
+  let s = furnPx.get(key); if (!s) { s = PixelFurn.sprite(f, FURN[f], r, fr / 8, shadow); furnPx.set(key, s); } return s;
+}
 const hits = []; // พื้นที่แตะของแต่ละชิ้นที่วาดในเฟรมนี้ (เรียงตามลำดับวาด ตัวท้ายสุดอยู่หน้าสุด)
 function drawFurnIso(g, it, now, alpha, ghost) {
   const d = FURN[it.f], [w, dd] = Shared.furnDims(it.f, it.r), X = it.x * TS, Y = it.y * TS, W = w * TS, D = dd * TS, z = it.z || 0;
   g.save(); if (alpha != null) g.globalAlpha = alpha;
-  if (!z && !d.flat) poly(g, [iso(X - W / 2 - 2, Y - D / 2 - 2), iso(X + W / 2 + 2, Y - D / 2 - 2), iso(X + W / 2 + 2, Y + D / 2 + 2), iso(X - W / 2 - 2, Y + D / 2 + 2)], 'rgba(40,20,5,.2)'); // เงาบนพื้น
-  g.translate(0, -z);
-  (ART[it.f] || artGeneric)(g, X, Y, W, D, it.r, d, now);
+  if (PixelFurn.has(it.f)) {
+    const s = furnPixel(it.f, it.r, !z, now), [sx, sy] = iso(X, Y, z), sm = g.imageSmoothingEnabled;
+    g.imageSmoothingEnabled = false; g.drawImage(s.cv, Math.round(sx - s.ax), Math.round(sy - s.ay)); g.imageSmoothingEnabled = sm;
+    if (it.f === 'lantern' || it.f === 'floorlamp') { g.translate(0, -z); lampGlow(g, X, Y, it.f === 'lantern' ? 24 : 42, now); } // แสงเรืองวาดสดทับ
+  } else {
+    if (!z && !d.flat) poly(g, [iso(X - W / 2 - 2, Y - D / 2 - 2), iso(X + W / 2 + 2, Y - D / 2 - 2), iso(X + W / 2 + 2, Y + D / 2 + 2), iso(X - W / 2 - 2, Y + D / 2 + 2)], 'rgba(40,20,5,.2)'); // เงาบนพื้น
+    g.translate(0, -z);
+    (ART[it.f] || artGeneric)(g, X, Y, W, D, it.r, d, now);
+  }
   g.restore();
   if (ghost) return;
   if (d.flat) hits.push({ i: it.i, test: (sx, sy) => pip([iso(X - W / 2, Y - D / 2), iso(X + W / 2, Y - D / 2), iso(X + W / 2, Y + D / 2), iso(X - W / 2, Y + D / 2)], sx, sy) });
@@ -3655,8 +3667,17 @@ function drawFurnIso(g, it, now, alpha, ghost) {
 // ของติดผนัง: wl 'n' = ผนังหลังขวา (แนวแกน x) 'w' = ผนังหลังซ้าย (แนวแกน y) u = ตำแหน่งตามแนวผนัง (ช่อง)
 const wallPt = (wl, u, z) => (wl === 'n' ? iso(u, FY0, z) : iso(FX0, u, z));
 const wallRect = (g, wl, u0, u1, z0, z1, fill, stroke) => poly(g, [wallPt(wl, u0, z0), wallPt(wl, u1, z0), wallPt(wl, u1, z1), wallPt(wl, u0, z1)], fill, stroke);
+const wallPx = new Map(); // ของติดผนังพิกเซล แคชต่อ ชิ้น|ผนัง
 function drawWallItem(g, it, alpha) {
   const d = FURN[it.f], U = it.u * TS, hw = (d.w || 1) * TS / 2, hh = (d.h || 30) / 2, zc = 60, wl = it.wl;
+  if (PixelFurn.hasWall(it.f)) {
+    const key = it.f + '|' + wl; let s = wallPx.get(key); if (!s) { s = PixelFurn.wall(it.f, d, wl); wallPx.set(key, s); }
+    const [sx, sy] = wallPt(wl, U, 0), sm = g.imageSmoothingEnabled; g.save(); if (alpha != null) g.globalAlpha = alpha;
+    g.imageSmoothingEnabled = false; g.drawImage(s.cv, Math.round(sx - s.ax), Math.round(sy - s.ay)); g.imageSmoothingEnabled = sm; g.restore();
+    const quad = [wallPt(wl, U - hw, zc - hh), wallPt(wl, U + hw, zc - hh), wallPt(wl, U + hw, zc + hh), wallPt(wl, U - hw, zc + hh)];
+    if (it.i >= 0 && alpha == null) hits.push({ i: it.i, test: (px, py) => pip(quad, px, py) });
+    return;
+  }
   const ring = R => { const out = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; out.push(wallPt(wl, U + Math.cos(a) * R, zc + Math.sin(a) * R)); } return out; };
   g.save(); if (alpha != null) g.globalAlpha = alpha;
   if (it.f === 'painting') {
