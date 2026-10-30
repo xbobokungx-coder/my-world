@@ -1,4 +1,4 @@
-// สไปรต์ก้อนแร่ในถ้ำ (v2 ออกแบบใหม่โดยผู้ดูแล 30 ต.ค. 2026): ทุกชนิด/ขนาดอยู่ในช่อง 16×16 จุดยึดกลางขอบล่าง game.js วาดขยาย 2 เท่า
+// สไปรต์ก้อนแร่ในถ้ำ (v2 ออกแบบโดยผู้ดูแล 30 ต.ค. 2026 ใช้ตามแบบทุกพิกเซล): ช่อง 16×16 จุดยึดกลางขอบล่าง • game.js ขยายตามขนาดก้อน เล็ก ×2 กลาง ×3 ใหญ่ ×4 (ORE_SCALE)
 /* PixelOre v2 — exact 16×16 cells, bottom-centre anchor (8,16).
  * get(kind,size=2,f=0) is compatible with the previous API.
  * size: 0 small, 1 medium, 2 large; f truthy selects sparkle frame.

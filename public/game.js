@@ -2579,15 +2579,16 @@ function buildCaveBase() {
   else PixelUI.world(gh, '🚪', (Shared.CAVE.exit[1] + 0.5) * TS, Shared.CAVE.y1 * TS + 16, 15); // ป้ายทางออกสู่เมือง (ชั้น 1)
   for (let ty = 0; ty < H; ty++) for (let tx = 1; tx < W - 1; tx++) if (MAP[ty][tx] === T.DOWN && MAP[ty][tx - 1] !== T.DOWN && MAP[ty][tx + 1] === T.DOWN && MAP[ty][tx + 2] === T.DOWN) { const ax = (tx + 1.5) * TS, ay = (ty + 0.5) * TS; gh.fillStyle = '#e8f0ff'; gh.beginPath(); gh.moveTo(ax, ay + 7); gh.lineTo(ax + 7, ay - 3); gh.lineTo(ax + 3, ay - 3); gh.lineTo(ax + 3, ay - 7); gh.lineTo(ax - 3, ay - 7); gh.lineTo(ax - 3, ay - 3); gh.lineTo(ax - 7, ay - 3); gh.closePath(); gh.fill(); } // ลูกศรลงบนบันไดกลาง
 }
+const ORE_SCALE = [2, 3, 4]; // ขยายสไปรต์แร่ (ช่อง 16×16) ตามขนาดก้อน: เล็ก 32 px • กลาง 48 px • ใหญ่ 64 px
 function drawOre(tx, ty, k, now, sz, ctx = mainCtx) {
   const spr = PixelOre.has(k) && PixelOre.get(k, sz | 0, (now / 500 | 0) & 1); // สไปรต์พิกเซลวาดมือ (ชนิดที่ยังไม่มีใช้แบบเดิมด้านล่าง)
   if (spr) {
     const hit = oreHit.get(tx + ',' + ty), [sx, fl] = hit ? PixelAction.oreShake(now - hit.t) : [0, 0]; // โดนฟาด: สั่น + กะพริบขาว + รอยร้าว
     if (hit && now - hit.t > 20000) oreHit.delete(tx + ',' + ty); // เซิร์ฟเวอร์คืน HP เต็มหลังไม่มีใครขุด 20 วินาที
-    const w = spr.width * 2, h = spr.height * 2, x = tx * TS + 16, y = ty * TS + 31, sm = ctx.imageSmoothingEnabled;
-    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y - 2, [9, 11, 14][sz | 0] || 14, 3 + (sz | 0), 0, 0, 7); ctx.fill(); // เงากว้างตามขนาดก้อน (สไปรต์ทุกขนาดเป็นช่อง 16×16 เท่ากัน)
+    const sc = ORE_SCALE[sz | 0] || 2, w = spr.width * sc, h = spr.height * sc, x = tx * TS + 16, y = ty * TS + 31, sm = ctx.imageSmoothingEnabled; // ขยายตามขนาดก้อน (แบบเดิมทุกพิกเซล ก้อนใหญ่ใหญ่ขึ้นจริง)
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y - sc, [9, 11, 14][sz | 0] * sc / 2, 2 + sc, 0, 0, 7); ctx.fill(); // เงากว้างเท่าตัวก้อน (แบบ v2 กว้าง 9/11/14 พิกเซลศิลป์)
     ctx.imageSmoothingEnabled = false; ctx.drawImage(spr, Math.round(x - w / 2) + sx, y - h, w, h); ctx.imageSmoothingEnabled = sm;
-    if (hit) PixelAction.crack(ctx, x + sx, y - [8, 10, 12][sz | 0], hit.f, tx * 31 + ty); // รอยร้าวกลางตัวก้อน (ก้อนเล็กเตี้ยกว่า)
+    if (hit) PixelAction.crack(ctx, x + sx, Math.round(y - [5, 6, 7][sz | 0] * sc), hit.f, tx * 31 + ty); // รอยร้าวกลางตัวก้อน
     if (fl) { ctx.globalAlpha = fl; ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(spr, Math.round(x - w / 2) + sx, y - h, w, h); ctx.drawImage(spr, Math.round(x - w / 2) + sx, y - h, w, h); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
     return;
   }
