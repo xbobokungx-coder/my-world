@@ -2585,9 +2585,9 @@ function drawOre(tx, ty, k, now, sz, ctx = mainCtx) {
     const hit = oreHit.get(tx + ',' + ty), [sx, fl] = hit ? PixelAction.oreShake(now - hit.t) : [0, 0]; // โดนฟาด: สั่น + กะพริบขาว + รอยร้าว
     if (hit && now - hit.t > 20000) oreHit.delete(tx + ',' + ty); // เซิร์ฟเวอร์คืน HP เต็มหลังไม่มีใครขุด 20 วินาที
     const w = spr.width * 2, h = spr.height * 2, x = tx * TS + 16, y = ty * TS + 31, sm = ctx.imageSmoothingEnabled;
-    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y - 2, w / 2 - 2, 4 + (sz | 0), 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y - 2, [9, 11, 14][sz | 0] || 14, 3 + (sz | 0), 0, 0, 7); ctx.fill(); // เงากว้างตามขนาดก้อน (สไปรต์ทุกขนาดเป็นช่อง 16×16 เท่ากัน)
     ctx.imageSmoothingEnabled = false; ctx.drawImage(spr, Math.round(x - w / 2) + sx, y - h, w, h); ctx.imageSmoothingEnabled = sm;
-    if (hit) PixelAction.crack(ctx, x + sx, y - h / 2 + 2, hit.f, tx * 31 + ty);
+    if (hit) PixelAction.crack(ctx, x + sx, y - [8, 10, 12][sz | 0], hit.f, tx * 31 + ty); // รอยร้าวกลางตัวก้อน (ก้อนเล็กเตี้ยกว่า)
     if (fl) { ctx.globalAlpha = fl; ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(spr, Math.round(x - w / 2) + sx, y - h, w, h); ctx.drawImage(spr, Math.round(x - w / 2) + sx, y - h, w, h); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
     return;
   }
