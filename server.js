@@ -93,7 +93,7 @@ class World {
         if (Number.isFinite(rec.y)) rec.y /= 2;
         delete rec.px64; this.dirty = true;
       }
-      counts = d.animals || {};
+      counts = d.animals || {}; this.treeMixV = d.treeMix | 0;
       if (Array.isArray(d.trees)) { // คืนสภาพต้นไม้ที่ตัด/งอกใหม่ไว้ (ต้นไม้ขอบแมพไม่เปลี่ยน)
         for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) this.map[y][x] = T.GRASS;
         for (const [x, y, k] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2 && !Object.values(S.PENS).some(P => x >= P.x0 - 1 && x <= P.x1 + 1 && y >= P.y0 - 1 && y <= P.y1 + 1)) { this.map[y][x] = T.TREE; if (Object.hasOwn(S.TREE_KINDS, k)) treeKinds[x + ',' + y] = k; }
@@ -126,6 +126,13 @@ class World {
     this.treeHp = new Map(); this.treeTimer = 0; this.sickTimer = 0;
     this.treeKind = new Map(); // ชนิดต้นไม้ต่อช่อง 'x,y' (S.TREE_KINDS) ต้นที่ยังไม่มีชนิด (เซฟเก่า/แมพใหม่) สุ่มตามที่เกิดแบบคงที่จากตำแหน่ง
     for (const [x, y] of this.treeList()) { const k = treeKinds[x + ',' + y]; this.treeKind.set(x + ',' + y, k || S.pickTreeKind(this.map, x, y, S.rng(x * 7919 + y * 104729))); }
+    if (this.treeMixV !== 2) { // ย้ายครั้งเดียว (30 ต.ค. 2026): แจกชนิดต้นไม้ใหม่ทั้งแมพตามโควตา % จากง่ายไปยาก (S.TREE_KINDS[..].pct)
+      const plan = S.planTreeMix(this.map, this.treeList().map(([x, y]) => [x, y]), S.rng(20261030));
+      for (const [x, y] of plan.drop) { this.map[y][x] = T.GRASS; this.treeKind.delete(x + ',' + y); }
+      for (const [x, y] of plan.add) this.map[y][x] = T.TREE;
+      for (const [k, v] of plan.kinds) this.treeKind.set(k, v);
+      this.treeMixV = 2; this.dirty = true;
+    }
     this.applyMapOv(); // ทับช่องที่ผู้ดูแลวาดไว้ (หลังต้นไม้จากเซฟ) ให้การแก้แมพติดถาวร
     this.trades = new Map(); this.nextTrade = 1;
     this.cinema = { movie: null, yt: '', name: '', startedAt: 0, pos: 0, ref: 0, playing: false, emptyAt: 0, viewers: new Set(), paid: new Set() };
@@ -3124,17 +3131,16 @@ class World {
         // ถ้าน้อยกว่าครึ่งเพดาน งอกทีละหลายต้น (ไล่ทันหลังถูกตัดเกลี้ยง/นาฬิกาพัง) ไม่เกิน 8 ต้น/รอบ
         const want = n >= this.treeCap ? 0 : Math.min(n * 2 < this.treeCap ? 8 : 1, this.treeCap - n);
         for (let spawned = 0; spawned < want; spawned++) {
-          let placed = false;
-          for (let i = 0; i < 40; i++) {
-            const x = 2 + Math.floor(Math.random() * (S.W - 4)), y = 2 + Math.floor(Math.random() * (S.H - 4));
+          const spots = []; // ช่องที่งอกได้ตอนนี้ (ห่างผู้เล่น 4 ช่อง ห่างสัตว์ 3 ช่อง)
+          for (let y = 2; y < S.H - 2; y++) for (let x = 2; x < S.W - 2; x++) {
             if (!S.treeSpotOk(this.map, x, y)) continue;
             if ([...this.players.values()].some(q => Math.hypot(q.x - (x + 0.5) * TS, q.y - (y + 0.5) * TS) < 4 * TS)) continue;
             if (this.animals.some(a => Math.hypot(a.x - (x + 0.5) * TS, a.y - (y + 0.5) * TS) < 3 * TS)) continue;
-            const k = S.pickTreeKind(this.map, x, y, Math.random); this.treeKind.set(x + ',' + y, k);
-            this.map[y][x] = T.TREE; this.dirty = true; this.broadcast({ t: 'tree', x, y, on: true, k });
-            placed = true; n++; break;
+            spots.push([x, y]);
           }
-          if (!placed) break;
+          const pick = S.pickTreeSpawn(this.map, Math.random, spots); if (!pick) break;
+          const { x, y, k } = pick; this.treeKind.set(x + ',' + y, k);
+          this.map[y][x] = T.TREE; this.dirty = true; this.broadcast({ t: 'tree', x, y, on: true, k }); n++;
         }
       }
       const died = this.animals.filter(a => a.dead);
@@ -3207,7 +3213,7 @@ class World {
     if (!this.dirty) return;
     this.dirty = false;
     for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; this.syncHerd(p); } // เซฟฝูงลง rec.herd ก่อนเขียนไฟล์
-    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])], mocks: this.mocks || [], mapOv: this.mapOv || {} }, replacer);
+    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), treeMix: this.treeMixV | 0, house: { houses: this.houses }, log: this.log, chest: this.chest, projects: this.projects, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])], mocks: this.mocks || [], mapOv: this.mapOv || {} }, replacer);
     if (sync) { fs.writeFileSync(this.file, data); return; }
     fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
   }

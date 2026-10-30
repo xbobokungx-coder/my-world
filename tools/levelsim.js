@@ -53,10 +53,8 @@ function fish(lv) {
   }
   return best;
 }
-// สัดส่วนชนิดต้นไม้ที่งอกใหม่ (สุ่มตามที่เกิดจริงบนแมพ) ใช้คิดว่าต้นที่งอกมีกี่ส่วนที่เลเวล/ขวานนี้ฟันได้
-const KIND_SHARE = (() => { if (!S.TREE_KINDS) return { broad: 1 }; const m = S.makeMap(), r = S.rng(5), d = {}; let n = 0;
-  for (let i = 0; i < 4000; i++) { const x = 2 + Math.floor(r() * (S.W - 4)), y = 2 + Math.floor(r() * (S.H - 4)); if (!S.treeSpotOk(m, x, y)) continue; const k = S.pickTreeKind(m, x, y, r); d[k] = (d[k] || 0) + 1; n++; }
-  for (const k of Object.keys(d)) d[k] /= n; return d; })();
+// สัดส่วนชนิดต้นไม้ที่งอกใหม่ ใช้คิดว่าต้นที่งอกมีกี่ส่วนที่เลเวล/ขวานนี้ฟันได้
+const KIND_SHARE = (() => { if (!S.TREE_KINDS) return { broad: 1 }; const d = {}; for (const [k, K] of Object.entries(S.TREE_KINDS)) d[k] = K.pct / 100; return d; })(); // ต้นไม้ที่งอกใหม่ถูกคุมสัดส่วนตามโควตา % ของแต่ละชนิด (S.TREE_KINDS[..].pct)
 function wood(lv) {
   const axe = lv >= 16 ? 5 : lv >= 11 ? 4 : lv >= 6 ? 3 : lv >= 3 ? 2 : 1, wl = 1 + (S.WOOD.xpPerLv || 0) * (S.perkLv(lv) - 1);
   const kinds = S.TREE_KINDS || { broad: { lv: 1, axe: 1, hp: S.TREE_HP, drop: [['log', 2]], bonus: [['hardwood', S.WOOD.hardwood.chance]] } }, items = S.WOOD_ITEMS || { log: S.WOOD.log, hardwood: S.WOOD.hardwood };

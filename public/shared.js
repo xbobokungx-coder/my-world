@@ -374,19 +374,20 @@
   // ต้นไม้หลายชนิด (B5 ใน ECONOMY-PLAN.md): lv/axe = เลเวลช่างไม้และระดับขวานที่ต้องมี • hp = แต้มฟัน (ขวานหิน 1/ครั้ง เหล็ก 2 เหล็กกล้า 3)
   // drop = ได้แน่ [ชิ้น, จำนวน] (ชิ้นแรกมีโอกาส +1 อีก 4%/เลเวล) • bonus = ลุ้น [ชิ้น, โอกาส] (+1%/เลเวล, +10% ช่วง Happy Village)
   // w = น้ำหนักตอนงอกใหม่ • where = ที่เกิดได้ (water ใกล้น้ำ ≤ 4 ช่อง • sand ใกล้ทราย ≤ 3 ช่อง • north แถว y < 14 • deep ห่างทาง/อาคาร 4 ช่อง)
+  // pct = สัดส่วน % ของต้นไม้ทั้งแมพ (รวม 100) เรียงจากง่ายไปยาก มาก → น้อย • ไผ่/มะพร้าวถูกจำกัดด้วยที่เกิด (ริมน้ำ/ริมทราย) จึงได้น้อยกว่าลำดับ
   const TREE_KINDS = {
-    broad:   { name: 'ต้นไม้ใบกว้าง', emoji: '🌳', lv: 1, axe: 1, hp: 4,  w: 45, drop: [['log', 2]],                    bonus: [['hardwood', WOOD.hardwood.chance]] },
-    bamboo:  { name: 'กอไผ่',        emoji: '🎋', lv: 1, axe: 1, hp: 2,  w: 60, drop: [['bamboo', 2]],                 bonus: [['shoot', 0.15]], where: 'water' },
-    pine:    { name: 'ต้นสน',        emoji: '🌲', lv: 2, axe: 1, hp: 5,  w: 15, drop: [['pinewood', 2]],               bonus: [['resin', 0.12]], where: 'north' },
-    coconut: { name: 'ต้นมะพร้าว',    emoji: '🌴', lv: 3, axe: 1, hp: 5,  w: 40, drop: [['palmwood', 1], ['coconut', 1]], bonus: [['coconut', 0.5]], where: 'sand' },
-    teak:    { name: 'ต้นสัก',        emoji: '🍂', lv: 4, axe: 2, hp: 8,  w: 10, drop: [['teak', 1], ['log', 1]],       bonus: [['hardwood', 0.25]] },
-    gold:    { name: 'ต้นราชพฤกษ์',   emoji: '🌼', lv: 6, axe: 3, hp: 8,  w: 5,  drop: [['goldwood', 1]],               bonus: [['kunflower', 0.3]] },
-    rose:    { name: 'ต้นพะยูง',      emoji: '🟥', lv: 8, axe: 3, hp: 14, w: 2,  drop: [['rosewood', 1]],               bonus: [['rosewood', 0.1]], where: 'deep' },
+    broad:   { name: 'ต้นไม้ใบกว้าง', emoji: '🌳', lv: 1, axe: 1, hp: 4,  pct: 38, drop: [['log', 2]],                    bonus: [['hardwood', WOOD.hardwood.chance]] },
+    bamboo:  { name: 'กอไผ่',        emoji: '🎋', lv: 1, axe: 1, hp: 2,  pct: 8, drop: [['bamboo', 2]],                 bonus: [['shoot', 0.15]], where: 'water' },
+    pine:    { name: 'ต้นสน',        emoji: '🌲', lv: 2, axe: 1, hp: 5,  pct: 14, drop: [['pinewood', 2]],               bonus: [['resin', 0.12]], where: 'north' },
+    coconut: { name: 'ต้นมะพร้าว',    emoji: '🌴', lv: 3, axe: 1, hp: 5,  pct: 11, drop: [['palmwood', 1], ['coconut', 1]], bonus: [['coconut', 0.5]], where: 'sand' },
+    teak:    { name: 'ต้นสัก',        emoji: '🍂', lv: 4, axe: 2, hp: 8,  pct: 9, drop: [['teak', 1], ['log', 1]],       bonus: [['hardwood', 0.25]] },
+    gold:    { name: 'ต้นราชพฤกษ์',   emoji: '🌼', lv: 6, axe: 3, hp: 8,  pct: 7,  drop: [['goldwood', 1]],               bonus: [['kunflower', 0.3]] },
+    rose:    { name: 'ต้นพะยูง',      emoji: '🟥', lv: 8, axe: 3, hp: 14, pct: 5,  drop: [['rosewood', 1]],               bonus: [['rosewood', 0.1]], where: 'deep' },
     // เลเวล 11–20 (30 ต.ค. 2026): ต้นหายาก (w ต่ำ) ต้องขวานทองคำ/เพชร
-    maple:   { name: 'ต้นเมเปิล',     emoji: '🍁', lv: 12, axe: 4, hp: 14, w: 5,   drop: [['maplewood', 1]],  bonus: [['syrup', 0.3]], where: 'north' },
-    sakura:  { name: 'ต้นซากุระ',     emoji: '🌸', lv: 15, axe: 5, hp: 20, w: 3,   drop: [['sakurawood', 1]], bonus: [['petal', 0.4]] },
-    ebony:   { name: 'ต้นมะเกลือ',    emoji: '⬛', lv: 18, axe: 5, hp: 28, w: 1.5, drop: [['ebony', 1]],      bonus: [['amber', 0.25]], where: 'deep' },
-    ancient: { name: 'ไม้พันปี',      emoji: '🎄', lv: 20, axe: 5, hp: 36, w: 0.7, drop: [['ancientwood', 1]], bonus: [['ebony', 0.3]], where: 'deep' },
+    maple:   { name: 'ต้นเมเปิล',     emoji: '🍁', lv: 12, axe: 4, hp: 14, pct: 3.5,   drop: [['maplewood', 1]],  bonus: [['syrup', 0.3]], where: 'north' },
+    sakura:  { name: 'ต้นซากุระ',     emoji: '🌸', lv: 15, axe: 5, hp: 20, pct: 2.5,   drop: [['sakurawood', 1]], bonus: [['petal', 0.4]] },
+    ebony:   { name: 'ต้นมะเกลือ',    emoji: '⬛', lv: 18, axe: 5, hp: 28, pct: 1.2, drop: [['ebony', 1]],      bonus: [['amber', 0.25]], where: 'deep' },
+    ancient: { name: 'ไม้พันปี',      emoji: '🎄', lv: 20, axe: 5, hp: 36, pct: 0.8, drop: [['ancientwood', 1]], bonus: [['ebony', 0.3]], where: 'deep' },
   };
   // ขุดเหมือง (ถ้ำ 10 ชั้น): เดินเข้าปากถ้ำบนหน้าผาเหนือ ใช้อีเต้อขุดก้อนแร่ ลงบันไดไปชั้นลึกขึ้นเรื่อยๆ ยิ่งลึกยิ่งได้แร่แพง (แต่ละชั้นเป็นฉากร่วมของทั้งห้อง เห็นกันและแย่งแร่กัน)
   // อีเต้อ 6 ระดับ ไม้→หิน→เหล็ก→ทองคำ→มรกต→เพชร: power = แต้มต่อครั้ง lv = เลเวลนักขุดแร่ที่ซื้อได้ (ระดับแรกซื้อได้เลย)
@@ -544,9 +545,47 @@
     return !want;
   };
   const pickTreeKind = (m, x, y, rnd) => { // สุ่มชนิดต้นไม้ที่ช่องนี้ตามที่เกิดได้และน้ำหนัก
-    const ok = Object.entries(TREE_KINDS).filter(([, k]) => treeWhereOk(m, x, y, k.where)); let t = rnd() * ok.reduce((a, [, k]) => a + k.w, 0);
-    for (const [id, k] of ok) if ((t -= k.w) < 0) return id; return 'broad';
+    const ok = Object.entries(TREE_KINDS).filter(([, k]) => treeWhereOk(m, x, y, k.where)); let t = rnd() * ok.reduce((a, [, k]) => a + k.pct, 0);
+    for (const [id, k] of ok) if ((t -= k.pct) < 0) return id; return 'broad';
   };
+  // ต้นไม้งอกใหม่: สุ่มชนิดตามสัดส่วน % (pct) เฉพาะชนิดที่ตอนนี้มีช่องให้เกิด แล้วเลือกช่องที่ชนิดนั้นเกิดได้ • spots = [[x,y]] ช่องที่งอกได้ • คืน {x,y,k} หรือ null
+  // (ชนิดที่ถูกตัดไปไม่ได้งอกคืนเร็วกว่าสัดส่วนของมัน ไม่ใช่ทางลัดฟาร์มไม้หายาก: อัตราที่ไม้หายากงอก = งอกรวม × pct ของมัน)
+  function pickTreeSpawn(m, rnd, spots) {
+    const kinds = Object.entries(TREE_KINDS).map(([id, K]) => ({ id, pct: K.pct, ok: spots.filter(([x, y]) => treeWhereOk(m, x, y, K.where)) })).filter(o => o.ok.length);
+    let t = rnd() * kinds.reduce((a, o) => a + o.pct, 0);
+    for (const o of kinds) if ((t -= o.pct) < 0) { const [x, y] = o.ok[Math.floor(rnd() * o.ok.length)]; return { x, y, k: o.id }; }
+    return null;
+  }
+  // ปรับสัดส่วนชนิดต้นไม้ที่มีอยู่แล้วให้ได้ตามโควตา % (ใช้ครั้งเดียวตอนย้ายระบบ) • list = [[x,y]] • คืน { kinds: Map 'x,y' → ชนิด, add: [[x,y]] ต้องปลูกเพิ่ม, drop: [[x,y]] ต้องถอน } จำนวนต้นรวมเท่าเดิม
+  // ไผ่/มะพร้าว/เมเปิล/สนเกิดได้เฉพาะริมน้ำ/ริมทราย/ทางเหนือ: ใช้ต้นเดิมที่อยู่ถูกที่ก่อน ขาดเท่าไรปลูกใหม่ในช่องที่เหมาะแล้วถอนต้นอื่นออกเท่ากัน • ที่เหลือแจกตามโควตา ต้นที่เกิดได้น้อยชนิดเลือกก่อน
+  function planTreeMix(m, list, rnd) {
+    const n = list.length, quota = id => TREE_KINDS[id].pct * n / 100, got = {}, kinds = new Map(), add = [], drop = [];
+    const m2 = m.map(r => r.slice()); for (const [x, y] of list) m2[y][x] = T.GRASS;
+    const live = new Map(list.map(([x, y]) => [x + ',' + y, [x, y]])), fresh = new Set();
+    const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const elig = (x, y) => Object.entries(TREE_KINDS).filter(([, K]) => treeWhereOk(m2, x, y, K.where)).map(([id]) => id);
+    const PLACED = ['bamboo', 'coconut', 'maple', 'pine']; // ชนิดที่เกิดได้เฉพาะที่ (ริมน้ำ ริมทราย ทางเหนือ) จัดก่อน ชนิดที่หายากกว่าก่อน
+    for (const id of PLACED) {
+      const K = TREE_KINDS[id]; let need = Math.round(quota(id));
+      for (const [k, [x, y]] of shuffle([...live])) { if (!need) break; if (!kinds.has(k) && treeWhereOk(m2, x, y, K.where)) { kinds.set(k, id); got[id] = (got[id] || 0) + 1; need--; } }
+      if (need > 0) {
+        const free = []; for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) if (!live.has(x + ',' + y) && treeSpotOk(m2, x, y) && treeWhereOk(m2, x, y, K.where)) free.push([x, y]);
+        for (const [x, y] of shuffle(free)) {
+          if (!need) break;
+          const spare = [...live].filter(([k]) => !kinds.has(k)).sort((a, b) => elig(...b[1]).length - elig(...a[1]).length)[0]; if (!spare) break; // ถอนต้นที่เกิดได้หลายชนิดสุด (กระทบสัดส่วนน้อยสุด)
+          if (fresh.has(spare[0])) { fresh.delete(spare[0]); const i = add.findIndex(q => q[0] + ',' + q[1] === spare[0]); if (i >= 0) add.splice(i, 1); } else drop.push(spare[1]);
+          live.delete(spare[0]); const k = x + ',' + y; live.set(k, [x, y]); fresh.add(k); add.push([x, y]); kinds.set(k, id); got[id] = (got[id] || 0) + 1; need--;
+        }
+      }
+    }
+    const rest = [...live].filter(([k]) => !kinds.has(k)).map(([k, [x, y]]) => ({ k, ok: elig(x, y).filter(id => !PLACED.includes(id)), r: rnd() })).sort((a, b) => a.ok.length - b.ok.length || a.r - b.r);
+    for (const it of rest) {
+      let best = 'broad', bs = -1e9;
+      for (const id of it.ok) { const sc = quota(id) - (got[id] || 0) + rnd() * 0.3; if (sc > bs) { bs = sc; best = id; } }
+      got[best] = (got[best] || 0) + 1; kinds.set(it.k, best);
+    }
+    return { kinds, add, drop };
+  }
   // สัตว์ป่วย: ป่วยได้พร้อมกันไม่เกิน max ตัว (รวมทุกชนิด) รักษาด้วยยาตัวเดียวกัน ป่วยแล้วถ้าไม่รักษาจะตายเร็วกว่าหิวปกติ
   const SICK = { max: 1, graceMs: 150000, checkMs: DAY_MS, chance: 0.3 }; // สัตว์ป่วยทีละ 1 ตัวเท่านั้น สุ่มวันละครั้ง (1 วันในเกม = 12 นาทีที่มีคนออนไลน์) โอกาส 30% วันไหนไม่ป่วยก็ข้ามไปวันถัดไปเลย
   const SELLBACK = 0.7;                    // ขายของที่ซื้อมา (เสื้อผ้า คันเบ็ด ขวาน ตะเกียง) คืนร้านได้ 70% ของราคาซื้อ (หัก 30%)
@@ -1281,7 +1320,7 @@
 
   const api = { axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
+    SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, FEST, AUCTION, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
