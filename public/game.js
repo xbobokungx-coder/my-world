@@ -3709,8 +3709,7 @@ function drawWallItem(g, it, alpha) {
   if (it.i >= 0 && alpha == null) hits.push({ i: it.i, test: (sx, sy) => pip(quad, sx, sy) });
 }
 function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง 2 ด้าน + หน้าต่าง + พรมหน้าประตู (วาดครั้งเดียว)
-  const c = document.createElement('canvas'); c.width = ISO_B.w; c.height = ISO_B.h;
-  const g = c.getContext('2d'); g.translate(-ISO_B.x0, -ISO_B.y0);
+  return PixelFurn.room(g => { // เติมสีทีละพิกเซล ไม่มีขอบเบลอ → เส้นต่อเนื่องคม (pixelfurn.js)
   g.fillStyle = '#17110d'; g.fillRect(ISO_B.x0, ISO_B.y0, ISO_B.w, ISO_B.h);
   const hs = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
   const FL = Shared.HOUSE_FLOORS[houseSt.fl] || Shared.HOUSE_FLOORS.oak, WP = Shared.HOUSE_WALLS[houseSt.wp] || Shared.HOUSE_WALLS.cream;
@@ -3718,13 +3717,12 @@ function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง
   poly(g, [iso(FX1, FY0), iso(FX1, FY1), iso(FX1, FY1, -12), iso(FX1, FY0, -12)], FL.edge[1], INK);
   if (FL.kind === 'plank') {
     for (let row = 0, y = FY0; y < FY1; row++, y += 16) { // ไม้กระดานเรียงตามแกน x ต่อกันสลับรอยต่อ
-      let x = FX0 - Math.floor(hs(row, 7) * 96);
-      for (let k = 0; x < FX1; k++, x += 96) {
-        const xa = Math.max(x, FX0), xb = Math.min(x + 96, FX1); if (xb <= xa) continue;
+      let x = FX0 - Math.floor(hs(row, 7) * 8) * 16; // แผ่นยาว 128 รอยต่อลงตารางทุก 16 px (จุดมุมเป็นจำนวนเต็ม เส้นไม่สะดุด)
+      for (let k = 0; x < FX1; k++, x += 128) {
+        const xa = Math.max(x, FX0), xb = Math.min(x + 128, FX1); if (xb <= xa) continue;
         const q = [iso(xa, y), iso(xb, y), iso(xb, y + 16), iso(xa, y + 16)];
         poly(g, q, FL.c[Math.floor(hs(row, k) * FL.c.length)]);
         g.strokeStyle = FL.seam; g.lineWidth = 1; g.beginPath(); g.moveTo(...q[0]); g.lineTo(...q[3]); g.lineTo(...q[2]); g.lineTo(...q[1]); g.stroke();
-        g.strokeStyle = 'rgba(255,230,190,.16)'; g.beginPath(); g.moveTo(...q[0]); g.lineTo(...q[1]); g.stroke();
       }
     }
   } else if (FL.kind === 'tile') { // กระเบื้อง 32 px: หมากรุกสลับสี หรือหินสุ่มโทน
@@ -3741,9 +3739,9 @@ function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง
   const WH = WALL_H;
   for (const wl of ['n', 'w']) { // ผนัง: วอลเปเปอร์ลายขีด + แผ่นไม้ครึ่งล่าง + ราว + บัวพื้น
     const u0 = wl === 'n' ? FX0 : FY0, u1 = wl === 'n' ? FX1 : FY1;
-    wallRect(g, wl, u0, u1, 34, WH, WP.up[0]); if (WP.pat === 'stripe') for (let u = u0; u < u1; u += 20) wallRect(g, wl, u, Math.min(u + 10, u1), 34, WH, WP.up[1]);
-    if (WP.pat === 'brick') for (let z = 34, row = 0; z < WH; z += 8, row++) { wallRect(g, wl, u0, u1, z, z + 1.2, WP.up[1]); for (let u = u0 + (row & 1 ? 10 : 0); u < u1; u += 20) wallRect(g, wl, u, Math.min(u + 1.2, u1), z, Math.min(z + 8, WH), WP.up[1]); } // อิฐก้อนสลับแถว
-    wallRect(g, wl, u0, u1, 0, 34, WP.lo[0]); for (let u = u0 + 7; u < u1; u += 14) wallRect(g, wl, u, u + 1.5, 4, 33, WP.lo[1]);
+    wallRect(g, wl, u0, u1, 34, WH, WP.up[0]); if (WP.pat === 'stripe') for (let u = u0; u < u1; u += 24) wallRect(g, wl, u, Math.min(u + 12, u1), 34, WH, WP.up[1]);
+    if (WP.pat === 'brick') for (let z = 34, row = 0; z < WH; z += 8, row++) { wallRect(g, wl, u0, u1, z, z + 1, WP.up[1]); for (let u = u0 + (row & 1 ? 12 : 0); u < u1; u += 24) wallRect(g, wl, u, Math.min(u + 2, u1), z, Math.min(z + 8, WH), WP.up[1]); } // อิฐก้อนสลับแถว
+    wallRect(g, wl, u0, u1, 0, 34, WP.lo[0]); for (let u = u0 + 8; u < u1; u += 16) wallRect(g, wl, u, u + 2, 4, 33, WP.lo[1]);
     wallRect(g, wl, u0, u1, 34, 38, WP.rail); wallRect(g, wl, u0, u1, 0, 5, WP.skirt);
     const wins = wl === 'n' ? [4.5, 11, 17.5] : [4.5, 10];
     for (const wc of wins) { // หน้าต่างบานเกล็ด
@@ -3765,7 +3763,7 @@ function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง
   const mx0 = Shared.HOUSE.door[0] * TS, mx1 = (Shared.HOUSE.door[1] + 1) * TS, my0 = (Shared.HOUSE.y1 - 1.2) * TS, my1 = Shared.HOUSE.y1 * TS; // พรมหน้าประตู + ลูกศรออก
   poly(g, [iso(mx0, my0, 1), iso(mx1, my0, 1), iso(mx1, my1, 1), iso(mx0, my1, 1)], '#8c2a22', INK); poly(g, [iso(mx0 + 3, my0 + 3, 1), iso(mx1 - 3, my0 + 3, 1), iso(mx1 - 3, my1 - 3, 1), iso(mx0 + 3, my1 - 3, 1)], '#e8c66a'); poly(g, [iso(mx0 + 6, my0 + 6, 1), iso(mx1 - 6, my0 + 6, 1), iso(mx1 - 6, my1 - 6, 1), iso(mx0 + 6, my1 - 6, 1)], '#a8322a');
   const mc = (mx0 + mx1) / 2; g.strokeStyle = '#e8c66a'; g.lineWidth = 2; for (const o of [-6, 4]) { g.beginPath(); g.moveTo(...iso(mc - 12, (my0 + my1) / 2 + o - 3, 1)); g.lineTo(...iso(mc, (my0 + my1) / 2 + o + 4, 1)); g.lineTo(...iso(mc + 12, (my0 + my1) / 2 + o - 3, 1)); g.stroke(); }
-  return c;
+  }, ISO_B.x0, ISO_B.y0, ISO_B.w, ISO_B.h);
 }
 function buildHouseGrid() { // เส้นตารางจาง ๆ ตอนตกแต่ง (ทุกครึ่งช่อง เส้นหนักทุกช่อง)
   const c = document.createElement('canvas'); c.width = ISO_B.w; c.height = ISO_B.h;

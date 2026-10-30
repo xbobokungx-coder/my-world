@@ -217,6 +217,43 @@ const PixelFurn = (() => {
   const ANIM = { cat: 1, fountain: 1, flag: 1, fireplace: 1, aquarium: 1 };
   function sprite(f, d, r, ph, shadow) { const s = new S(Math.round((d.w || 1) * 8), Math.round((d.d || 1) * 8), r ? 1 : 0); if (shadow && !d.flat) s.shadow(); DES[f](s, ph || 0); return s.done(); }
   function wall(f, d, wl) { const s = new S(Math.round((d.w || 1) * 8), 0, wl === 'w' ? 1 : 0), W = Math.round((d.w || 1) * 4), H = Math.round((d.h || 30) / 4); WALL[f](s, W, H); return s.done(); }
-  return { sprite, wall, has: f => !!DES[f], hasWall: f => !!WALL[f], anim: f => !!ANIM[f], P, setCanvasFactory(fn) { factory = fn; } };
+  // พื้นและผนังห้อง: วาดด้วยคำสั่งแคนวาสปกติ แต่เติมสีทีละพิกเซล (ไม่มีขอบเบลอ) ที่ 1 px เกม → เส้นคมต่อเนื่อง ไม่เป็นเส้นประ
+  const rgba = s => { s = String(s).trim(); let m; if (s[0] === '#') { const [r, g, b] = hex(s.slice(0, 7)); return [r, g, b, 1]; } if ((m = /rgba?\(([^)]+)\)/.exec(s))) { const p = m[1].split(',').map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; } return [0, 0, 0, 1]; };
+  class Room {
+    constructor(x0, y0, w, h) { this.w = w; this.h = h; this.d = new Float32Array(w * h * 4); this.st = { fillStyle: '#000', strokeStyle: '#000', lineWidth: 1, globalAlpha: 1, tx: -x0, ty: -y0 }; this.stack = []; this.subs = []; this.cur = null; }
+    get fillStyle() { return this.st.fillStyle; } set fillStyle(v) { this.st.fillStyle = v; }
+    get strokeStyle() { return this.st.strokeStyle; } set strokeStyle(v) { this.st.strokeStyle = v; }
+    get lineWidth() { return this.st.lineWidth; } set lineWidth(v) { this.st.lineWidth = v; }
+    get globalAlpha() { return this.st.globalAlpha; } set globalAlpha(v) { this.st.globalAlpha = v; }
+    save() { this.stack.push(Object.assign({}, this.st)); } restore() { if (this.stack.length) this.st = this.stack.pop(); }
+    translate(x, y) { this.st.tx += x; this.st.ty += y; }
+    P(x, y) { return [x + this.st.tx, y + this.st.ty]; }
+    beginPath() { this.subs = []; this.cur = null; }
+    moveTo(x, y) { this.cur = [this.P(x, y)]; this.subs.push(this.cur); }
+    lineTo(x, y) { if (!this.cur) return this.moveTo(x, y); this.cur.push(this.P(x, y)); }
+    closePath() { if (this.cur) this.cur.closed = true; }
+    px(x, y, c, a) { if (x < 0 || y < 0 || x >= this.w || y >= this.h || a <= 0) return; const o = (y * this.w + x) * 4, da = this.d[o + 3], oa = a + da * (1 - a); for (let k = 0; k < 3; k++) this.d[o + k] = (c[k] * a + this.d[o + k] * da * (1 - a)) / oa; this.d[o + 3] = oa; }
+    fillRect(x, y, w, h) { const c = rgba(this.st.fillStyle), a = c[3] * this.st.globalAlpha, [x0, y0] = this.P(x, y); for (let j = Math.round(y0); j < Math.round(y0 + h); j++) for (let i = Math.round(x0); i < Math.round(x0 + w); i++) this.px(i, j, c, a); }
+    fill() {
+      const c = rgba(this.st.fillStyle), a = c[3] * this.st.globalAlpha, all = this.subs.filter(s => s.length > 2); if (!all.length) return;
+      let ymin = 1e9, ymax = -1e9; for (const s of all) for (const p of s) { if (p[1] < ymin) ymin = p[1]; if (p[1] > ymax) ymax = p[1]; }
+      for (let y = Math.max(0, Math.floor(ymin)); y <= Math.min(this.h - 1, Math.ceil(ymax)); y++) {
+        const cy = y + 0.5, xs = []; for (const s of all) for (let i = 0, j = s.length - 1; i < s.length; j = i++) { const [xi, yi] = s[i], [xj, yj] = s[j]; if ((yi > cy) !== (yj > cy)) xs.push(xi + (cy - yi) / (yj - yi) * (xj - xi)); }
+        xs.sort((p, q) => p - q); for (let k = 0; k + 1 < xs.length; k += 2) for (let x = Math.ceil(xs[k] - 0.5); x < Math.ceil(xs[k + 1] - 0.5); x++) this.px(x, y, c, a);
+      }
+    }
+    stroke() { // เส้นตรง: เดินทีละพิกเซลตามแกนยาว (เส้นเอียง 2:1 = ขั้นละ 2 px สม่ำเสมอ) ไม่ซ้ำจุด
+      const c = rgba(this.st.strokeStyle), a = c[3] * this.st.globalAlpha, w = Math.max(1, Math.round(this.st.lineWidth)), seen = new Set();
+      const line = (p, q) => { const dx = q[0] - p[0], dy = q[1] - p[1], n = Math.max(Math.abs(dx), Math.abs(dy)) || 1; for (let i = 0; i <= n; i++) { const x = Math.floor(p[0] + dx * i / n), y = Math.floor(p[1] + dy * i / n); for (let v = 0; v < w; v++) { const k = (y + v) * this.w + x; if (seen.has(k)) continue; seen.add(k); this.px(x, y + v, c, a); } } };
+      for (const s of this.subs) { for (let i = 1; i < s.length; i++) line(s[i - 1], s[i]); if (s.closed && s.length > 2) line(s[s.length - 1], s[0]); }
+    }
+  }
+  function room(draw, x0, y0, w, h) {
+    const R = new Room(x0, y0, w, h); draw(R);
+    const cv = factory(w, h), g = cv.getContext('2d'), img = g.createImageData(w, h), d = R.d;
+    for (let i = 0; i < w * h * 4; i += 4) { img.data[i] = d[i]; img.data[i + 1] = d[i + 1]; img.data[i + 2] = d[i + 2]; img.data[i + 3] = Math.round(d[i + 3] * 255); }
+    g.putImageData(img, 0, 0); return cv;
+  }
+  return { sprite, wall, room, has: f => !!DES[f], hasWall: f => !!WALL[f], anim: f => !!ANIM[f], P, setCanvasFactory(fn) { factory = fn; } };
 })();
 if (typeof module !== 'undefined') module.exports = PixelFurn;
