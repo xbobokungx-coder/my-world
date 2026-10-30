@@ -432,7 +432,7 @@ const PixelTrees = (() => {
   // อาคาร (มุม top-down 3/4): ชั้นวาด เงาทอด → ผนังไม้ตีเกล็ด → ฐานหิน → หลังคากระเบื้องไล่แสง → ชายคา+เงาชายคา → หน้าต่าง/ประตู → รายละเอียดร้าน → ขอบ
   // สีทั้งหมดไล่แบบ hue shift (เงาอมม่วง/น้ำเงิน แสงอมเหลือง) แสงจากซ้ายบน
   const ROOF_UP = 14, OVER = 3;
-  function building(b) {
+  function legacyBuilding(b) {
     if (BCACHE.has(b)) return BCACHE.get(b);
     const bw = (b.x1 - b.x0 + 1) * U, bh = (b.y1 - b.y0 + 1) * U, SW = bw + OVER * 2, SH = bh + ROOF_UP;
     const RF = ramp(b.roof, .3, .2), WL = b.kind === 'coop' ? ramp('#b5443a', .25, .2) : ramp(b.wall, .14, .3), ST = ramp('#a39886', .28, .22);
@@ -509,6 +509,96 @@ const PixelTrees = (() => {
     const out = { spr: s, ox: -(OVER + 1), oy: -(ROOF_UP + 1), w: s.width, h: s.height };
     BCACHE.set(b, out); return out;
   }
+  // V2 shop art: opaque integer pixel clusters, existing footprint and doors.
+  function building(b) {
+    const known=['farm','fish','animal','pet','cloth','food','wood','vehicle','furn','mine'];
+    if(!known.includes(b.kind)||(b.x1-b.x0!==2)||(b.y1-b.y0!==1))return legacyBuilding(b);
+    if(BCACHE.has(b))return BCACHE.get(b);
+    const RF=[shade(b.roof,-.53),shade(b.roof,-.28),b.roof,shade(b.roof,.23),shade(b.roof,.43)];
+    const wall=b.wall, k=b.kind, wood=['#463332','#75523f','#ae8458','#d3b680'];
+    const s=mk(54,46,(g)=>{
+      const R=(c,x,y,w,h)=>r(g,c,x,y,w,h);
+      // Plaster, cool right plane and half timber framing.
+      R('#514843',3,15,48,31);R(wall,4,16,45,26);R(shade(wall,-.17),44,17,6,26);R(shade(wall,.10),5,19,37,1);
+      R(wood[0],3,17,2,27);R(wood[2],4,19,1,24);R(wood[0],48,17,3,27);R(wood[1],48,19,1,24);
+      R(wood[1],5,27,43,2);R(wood[2],5,27,42,1);
+      // Stone foundation: fewer, broader blocks.
+      R('#5c5b60',2,42,50,4);for(let x=3;x<51;x+=7){R('#9a998a',x,43,6,3);R('#c5bc9e',x,43,5,1);R('#73767a',x+5,44,1,2);}
+      // Quiet roof face leaves room for labels drawn by the game.
+      for(let y=1;y<15;y++){const inset=y<5?5-y:0;R(RF[0],inset,y,54-inset*2,1);R(RF[y<5?3:y<10?2:1],inset+1,y,51-inset*2,1);}
+      R(RF[0],4,0,46,1);R(RF[4],5,1,43,1);
+      for(let y=5;y<14;y+=4){R(RF[0],1,y,51,1);R(RF[y<9?3:2],2,y+1,49,1);for(let x=(y===9?7:3);x<51;x+=10)R(RF[1],x,y-2,1,2);}
+      R(wood[0],0,14,54,3);R(wood[2],1,14,51,1);R(wood[1],2,16,50,1);R(shade(wall,-.38),5,17,43,2);R(shade(wall,-.19),5,19,43,1);
+      // Support brackets underneath eaves.
+      for(const x of [6,45]){R(wood[1],x,19,2,4);R(wood[2],x,19,1,2);}
+      const D=['#503931','#89603e','#c39a60'];
+      if(k==='vehicle'){
+       // Same left garage footprint as the original sprite.
+       R(wood[0],7,29,22,17);R('#28333a',8,36,20,10);
+       for(let y=30;y<36;y+=2){R('#b0b9b7',8,y,20,1);R('#6b7c83',8,y+1,20,1);}
+       R('#e0d8bd',8,30,20,1);
+      }else{
+       R(wood[0],21,29,12,17);R(wood[2],22,30,1,15);door(g,23,31,8,15,D);
+       R('#435058',25,33,4,4);R('#a4c7c4',25,33,3,2);R('#f3e4b9',25,33,1,1);
+       R('#a4a391',21,44,12,2);R('#d5ccb1',22,44,10,1);
+      }
+      // Windows are wall decoration; collisions and purchase interaction stay unchanged.
+      if(k!=='vehicle')win(g,9,22,9,7,false);
+      if(!['fish','cloth','animal','pet','vehicle'].includes(k))win(g,37,22,8,7,false);
+      const line=(x,y,xx,yy,c)=>{const n=Math.max(Math.abs(xx-x),Math.abs(yy-y));for(let i=0;i<=n;i++)R(c,Math.round(x+(xx-x)*i/(n||1)),Math.round(y+(yy-y)*i/(n||1)),1,1);};
+      const crate=(x,y)=>{R(wood[0],x,y,10,7);R(wood[2],x+1,y+1,8,5);R(wood[1],x+1,y+3,8,1);line(x+1,y+1,x+8,y+5,wood[3]);};
+      if(k==='farm'){
+       crate(7,36);for(const [x,y] of [[9,34],[13,33],[16,35]]){R('#456246',x,y,1,3);R('#7b9856',x-1,y,3,1);R('#bbc47c',x-1,y-1,1,1);}
+       R('#9b8254',38,36,8,7);R('#d2bd87',39,36,6,6);R('#e6d4a6',39,37,2,2);R('#685d43',40,35,4,1);R('#68824c',41,39,2,2);
+      }
+      if(k==='fish'){
+       disc(g,40,25,4,'#e8dfc6');disc(g,40,25,2,wall);R('#b75a4a',36,24,2,2);R('#b75a4a',43,24,2,2);R('#b75a4a',39,21,2,2);R('#b75a4a',39,28,2,2);
+       crate(36,36);R('#668c9c',38,36,5,2);R('#c1d3d0',39,36,3,1);R('#668c9c',43,35,2,3);R('#3a4146',38,36,1,1);
+       line(8,35,9,20,wood[1]);line(9,20,14,20,'#aebeb9');
+      }
+      if(k==='animal'){
+       R('#6c7b81',8,35,6,8);R('#b5c3c1',9,35,4,7);R('#e1dfca',9,36,1,5);R('#6c7b81',9,33,4,2);
+       R('#9f8247',36,36,11,7);R('#d0b665',36,36,10,5);R('#e8cf86',36,36,10,1);R('#8d7444',39,36,1,7);R('#8d7444',44,36,1,7);
+       R(wood[0],37,23,8,5);R('#e5dfc9',38,23,6,4);R('#453e39',39,24,2,2);R('#453e39',43,25,1,2);
+      }
+      if(k==='pet'){
+       // Paw motif and miniature kennel; no text baked into art.
+       R('#9f6873',39,25,4,3);[[37,23],[40,21],[43,23]].forEach(([x,y])=>R('#9f6873',x,y,2,2));
+       R('#a78058',37,37,10,6);for(let y=33;y<38;y++)R('#795151',41-(y-33),y,2*(y-33)+2,1);R('#3c3c39',40,39,4,4);R('#dbad7d',38,38,1,4);
+       R('#668b95',8,40,8,3);R('#becfca',9,40,6,1);
+      }
+      if(k==='cloth'){
+       for(let x=6;x<48;x+=6){R('#b86187',x,20,3,2);R('#eee0c6',x+3,20,3,2);}
+       R(wood[1],36,24,11,1);R(wood[0],36,24,1,17);R(wood[0],46,24,1,17);
+       R('#e6c7c0',38,26,7,3);R('#e6c7c0',40,29,4,7);R('#ad7386',42,28,2,8);R('#f2decb',40,27,1,7);
+      }
+      if(k==='food'){
+       for(let x=6;x<48;x+=6){R('#ab5143',x,19,3,3);R('#e7d6af',x+3,19,3,3);}
+       R(wood[0],7,38,11,2);R(wood[1],8,40,2,3);R(wood[1],15,40,2,3);
+       R('#bd864d',9,35,7,3);R('#e8c68b',10,34,5,2);R('#f3dbaa',11,35,1,1);R('#a36e46',13,35,1,2);
+       R('#536a71',38,37,8,5);R('#c8c9b6',37,36,10,1);R('#dcd9bc',41,34,3,2);
+      }
+      if(k==='wood'){
+       [[39,40],[44,40],[41,36]].forEach(([x,y])=>{disc(g,x,y,3,wood[0]);disc(g,x,y,2,wood[2]);R(wood[3],x-1,y-1,2,1);R(wood[1],x,y,1,1);});
+       line(9,40,15,32,wood[1]);R('#788b92',13,32,5,3);R('#c2d0c8',13,32,4,1);
+      }
+      if(k==='vehicle'){
+       for(const x of [35,46]){disc(g,x,40,3,'#333c43');disc(g,x,40,2,'#a5b5b5');disc(g,x,40,1,wall);}
+       line(35,40,39,34,'#b88855');line(39,34,46,40,'#b88855');line(35,40,42,40,'#b88855');line(42,40,39,34,'#b88855');line(42,40,44,33,'#b88855');R('#3b4041',37,33,4,1);line(44,33,47,33,'#8a999e');
+       R('#697f88',36,23,8,2);R('#c9d5cd',37,23,5,1);
+      }
+      if(k==='furn'){
+       R('#51434a',7,34,11,9);R('#9a7f94',8,34,9,6);R('#c3a7b0',9,35,7,1);R('#786078',8,39,9,2);R(wood[1],8,42,2,1);R(wood[1],15,42,2,1);
+       R(wood[1],40,35,2,8);R('#e1c58f',37,34,8,3);R('#f2dfb5',38,33,6,1);R(wood[1],37,42,8,1);
+      }
+      if(k==='mine'){
+       crate(36,36);[[38,35],[42,33],[45,35]].forEach(([x,y])=>{R('#667481',x,y,3,3);R('#bec3b5',x,y,2,1);});
+       line(8,40,16,32,wood[2]);line(10,32,17,36,'#738892');line(10,31,17,35,'#c2c9bd');R('#d3af5f',10,38,3,3);R('#f1d995',11,38,1,2);
+      }
+    }, '#3d2a1a');
+    const out={spr:s,ox:-4,oy:-15,w:s.width,h:s.height};BCACHE.set(b,out);return out;
+  }
+
   // เคาน์เตอร์ร้าน 1 ช่อง: ตัวไม้ + ผ้าใบสีหลังคา
   const CCACHE = new Map();
   function counter(b) {
@@ -541,26 +631,29 @@ const PixelTrees = (() => {
     if (BIG_HOUSE) return BIG_HOUSE;
     const tw = 7 * U, th = 4 * U, OVERH = 8, ROOFH = 24; // 112×64 + ยื่นหลังคา (ขนาด/จุดยึดเดิม ป้ายชื่อใน game.js วางตรงเดิม)
     const SW = tw + OVERH * 2, SH = th + ROOFH;
-    const RF = ramp('#b8382a', .3, .2), WL = ramp('#f0e0bc', .14, .3), ST = ramp('#a39886', .28, .22), WD = ramp('#8f5a2e', .3, .25), SHU = ramp('#4f8a5a', .3, .25);
+    const RF = ramp('#a95643', .26, .16), WL = ramp('#e1d0ab', .13, .16), ST = ramp('#a39886', .28, .22), WD = ramp('#8f5a2e', .3, .25), SHU = ramp('#657d56', .24, .18);
     const s = mk(SW, SH, (x) => {
       const wx = OVERH, ww = tw, wb = SH, cx = wx + (ww >> 1), eave = 38;
       // ผนังไม้ตีเกล็ด
       r(x, WL[2], wx, eave, ww, wb - eave);
       for (let yy = eave + 2; yy < wb - 4; yy += 4) { r(x, WL[3], wx, yy, ww, 1); r(x, WL[1], wx, yy + 3, ww, 1); }
       r(x, WL[3], wx, eave, 3, wb - eave); r(x, WL[4], wx, eave, 1, wb - eave); r(x, WL[1], wx + ww - 4, eave, 4, wb - eave); r(x, WL[0], wx + ww - 1, eave, 1, wb - eave);
+      r(x, '#d6c29b', wx+3, eave+4, ww-7, wb-eave-8);
+      r(x, '#e4d3ae', wx+4, eave+6, ww-14, wb-eave-12);
+      for(const px of [wx+2,wx+34,wx+ww-37,wx+ww-5]){r(x,'#624939',px,eave+4,3,wb-eave-8);r(x,'#ae8657',px,eave+5,1,wb-eave-10);}
+      r(x,'#826040',wx+3,71,ww-6,2);r(x,'#bc9969',wx+4,71,ww-8,1);
       // ฐานหิน + เงาซอก
       r(x, ST[1], wx - 1, wb - 4, ww + 2, 4);
       for (let xx = wx - 1, k = 0; xx < wx + ww + 1; xx += 6, k++) { r(x, k % 2 ? ST[2] : ST[3], xx + 1, wb - 4, 5, 3); r(x, ST[4], xx + 1, wb - 4, 3, 1); r(x, ST[0], xx, wb - 4, 1, 4); }
       r(x, 'rgba(40,24,48,.35)', wx, wb - 5, ww, 1);
       // หลังคาปั้นหยา: ระนาบหน้า (เกล็ดซ้อนไล่แสงจากสันลงชายคา) + ปีกซ้ายรับแสง + ปีกขวาเงา
       const top = 3, rl = 34, L = 3, Rr = SW - 3;
-      const shingle = (xa, xb, y, tone) => { // แถบกระเบื้องเกล็ดซ้อน 1 แถวพิกเซล (แถวละ 4 px: บนมีรอยต่อ+แสง ล่างเป็นลอนเงา)
-        if (xb <= xa) return; tone = clamp(tone, 1, 3); const course = Math.floor((y - top) / 4), ly = (y - top) % 4, ph = (course % 2) * 3;
-        r(x, ly === 3 ? RF[tone - 1] : RF[tone], xa, y, xb - xa, 1);
-        for (let xx = xa - ((xa - ph) % 6 + 6) % 6; xx < xb; xx += 6) {
-          const px = (c, X, w) => { const a0 = Math.max(xa, X), a1 = Math.min(xb, X + w); if (a1 > a0) r(x, c, a0, y, a1 - a0, 1); };
-          if (ly === 0) { px(RF[tone - 1], xx, 1); px(RF[Math.min(4, tone + 1)], xx + 1, 2); } else if (ly === 2) px(RF[tone - 1], xx - 1, 2);
-        }
+      const shingle = (xa,xb,y,tone) => {
+        if(xb<=xa)return; tone=clamp(tone,1,3);
+        const course=Math.floor((y-top)/5),ly=(y-top)%5;
+        r(x,RF[ly===4?Math.max(0,tone-1):tone],xa,y,xb-xa,1);
+        if(ly===0)r(x,RF[Math.min(4,tone+1)],xa,y,xb-xa,1);
+        if(ly===1||ly===2)for(let xx=xa+((course%2)*5);xx<xb;xx+=11)r(x,RF[tone-1],xx,y,1,1);
       };
       for (let y = top; y < eave; y++) {
         const t = (y - top) / (eave - top), hl = Math.round(rl - (rl - L) * t), hr = Math.round(SW - rl + (rl - L) * t), x0 = Math.round(L + (1 - t) * 8), x1 = Math.round(Rr - (1 - t) * 8);
@@ -595,7 +688,7 @@ const PixelTrees = (() => {
       // ป้ายไม้เหนือประตู (ข้อความ/ไอคอนวาดที่ baseHi ใน game.js)
       r(x, WD[0], cx - 22, 43, 44, 12); r(x, '#e8c66a', cx - 20, 45, 40, 8); r(x, '#f6dc8a', cx - 20, 45, 40, 1); r(x, '#c9a24a', cx - 20, 52, 40, 1);
       r(x, '#c9984f', cx - 21, 44, 1, 1); r(x, '#c9984f', cx + 20, 44, 1, 1);
-    }, { soft: ['#3d2a1a', '#7a5a3a'] });
+    }, '#3d2a1a');
     BIG_HOUSE = { spr: s, ox: -(OVERH + 1), oy: -(ROOFH + 1), w: s.width, h: s.height };
     return BIG_HOUSE;
   }
@@ -716,11 +809,11 @@ const PixelTrees = (() => {
   let LH = null;
   function lighthouse() {
     if (LH) return LH;
-    const w = 40, h = 64, cx = 20, RFd = ramp('#c0392b', .3, .22), WH = ramp('#eee8da', .14, .3), ST = ramp('#8e939e', .28, .22), DK = ramp('#3a3f4a', .3, .2), SD = ramp('#e8d49a', .25, .2);
+    const w = 40, h = 64, cx = 20, RFd = ramp('#a95643', .24, .16), WH = ramp('#e4d8b9', .16, .15), ST = ramp('#848a8c', .23, .17), DK = ramp('#3a3f4a', .3, .2), SD = ramp('#e8d49a', .25, .2);
     const s = mk(w, h, (x) => {
       // เกาะทราย: ขอบเปียกเข้ม → ทรายกลาง → แสงซ้ายบน + กรวด + กอหญ้า
       ell(x, cx, 58, 19, 6, SD[0]); ell(x, cx, 57, 18, 5, SD[1]); ell(x, cx, 57, 16, 4, SD[2]); ell(x, cx - 3, 56, 11, 3, SD[3]);
-      for (let k = 0; k < 28; k++) { const a = hash(k, 3, 91), b = hash(k, 5, 92); const px = Math.round(cx - 15 + a * 30), py = Math.round(55 + b * 5); if ((px - cx) ** 2 / 17 ** 2 + (py - 57) ** 2 / 4.5 ** 2 < 1) r(x, k % 3 ? SD[4] : SD[0], px, py, 1, 1); }
+      for (let k = 0; k < 8; k++) { const a = hash(k, 3, 91), b = hash(k, 5, 92); const px = Math.round(cx - 15 + a * 30), py = Math.round(55 + b * 5); if ((px - cx) ** 2 / 17 ** 2 + (py - 57) ** 2 / 4.5 ** 2 < 1) r(x, k % 3 ? SD[4] : SD[0], px, py, 1, 1); }
       for (const [rx2, ry2] of [[6, 59], [32, 58], [10, 56]]) { r(x, ST[3], rx2, ry2, 3, 2); r(x, ST[4], rx2, ry2, 1, 1); r(x, ST[0], rx2 + 1, ry2 + 2, 2, 1); }
       r(x, '#4f913b', 30, 55, 1, 2); r(x, '#7cc76a', 31, 54, 1, 3); r(x, '#4f913b', 32, 55, 1, 2);
       // ฐานหินกลม + ก้อนหินสลับแถว
@@ -745,7 +838,7 @@ const PixelTrees = (() => {
       // โดมแดง: ซ้ายสว่างขวาเงา + ปลายทอง
       for (let y = 2; y < 8; y++) { const hw = 1 + (y - 2); r(x, RFd[2], cx - hw, y, hw * 2 + 1, 1); r(x, RFd[3], cx - hw, y, Math.max(1, hw >> 1), 1); r(x, RFd[0], cx + hw - Math.max(1, hw >> 1), y, Math.max(1, hw >> 1) + 0, 1); }
       r(x, RFd[4], cx - 1, 2, 1, 1); r(x, '#f1c40f', cx, 0, 1, 2); r(x, '#fff3a0', cx, 0, 1, 1);
-    }, { soft: ['#2a1b14', '#5a4a3a'] });
+    }, '#3d2a1a');
     LH = { spr: s, w: s.width, h: s.height, cx: cx + 1, lampY: 13 + 1, baseY: 57 + 1 }; return LH;
   }
   // ตกแต่งริมน้ำบนพื้น: กอกก/หินวางบนทรายที่ติดน้ำ (เรียกหลัง putImageData ใน ground)
