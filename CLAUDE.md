@@ -23,6 +23,7 @@
 | `public/shared.js` | ค่าคงที่ที่ใช้ร่วมกันสองฝั่ง: `FISH`, `CROPS`, `ANIMALS`, `WEAR`, `CABINETS`, `MARKET`, `SICK`, `CASINO` ปรับสมดุลเกมที่นี่ |
 | `public/game.js` | ฝั่งเว็บ: วาด Canvas, รับ input, UI, เสียง |
 | `public/pixelart.js` `pixelchar.js` `pixelui.js` | พิกเซลอาร์ต พื้น/อาคาร, ตัวละคร, สัตว์/พืช/ไอคอน |
+| `public/pixelaction.js` | สไปรต์ชีตท่าทำงาน (ขุดแร่ ตัดไม้ ตกปลา) เฟรม + เศษกระเด็นตอนกระทบ ดูชีตทั้งหมด `__mw.actionSheet()` ในคอนโซลเบราว์เซอร์ |
 | `public/index.html` | หน้าเว็บและ CSS ของ UI |
 | `GAME-DESIGN.md` | **แหล่งความจริงเดียวของกติกาและตัวเลขทั้งเกม** (ดึงจากโค้ด) แก้กติกาแล้วอัปเดตที่นี่ด้วย |
 | `ECONOMY-PLAN.md` | แผนเศรษฐกิจระยะยาว KPI คันโยกปรับสมดุล และบันทึกการปรับค่า |

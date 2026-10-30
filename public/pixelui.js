@@ -21,6 +21,8 @@ const PixelUI = (() => {
     r(x, '#bfe4f8', 0, 7, 1, 1); r(x, '#bfe4f8', 0, 9, 1, 1); r(x, '#8cc8ec', 0, 11, 1, 1);
   }
   // อีเต้อ 13×13: pal = [หัว, ไฮไลต์, เงา] ด้ามไม้เฉียงขึ้นขวา หัวพาดขวางเป็นแถบเฉียง lvl>=5 มีประกาย
+  // สีหัวอีเต้อแต่ละระดับ [หลัก, ไฮไลต์, เงา] (ใช้ทั้งไอคอนและอีเต้อในมือตอนขุด game.js)
+  const PICK_PAL = { '🪝': ['#9c6636', '#c99058', '#5e3a20'], '🧲': ['#7a7f86', '#aeb3ba', '#4e5359'], '⚓': ['#a9b4c2', '#e6ecf2', '#6a7686'], '🔱': ['#f2c14e', '#fff0a8', '#b98a1c'], '🏹': ['#2fcf78', '#b0ffd0', '#13803f'], '🪃': ['#5ec8f0', '#d4f8ff', '#2a82bd'] };
   function pickaxe(x, pal, lvl) {
     const [b, hi, sh] = pal;
     for (let i = 0; i < 9; i++) r(x, i < 2 ? '#5e3a20' : '#9c6636', 1 + i, 12 - i, 2, 1);
@@ -37,12 +39,12 @@ const PixelUI = (() => {
     '🚰'(x) { can(x, ['#f2c14e', '#ffe9a0', '#c99428', '#7a540e'], 2); },   // บัวรดน้ำทองคำ (แถบ + ประกาย)
     '🎣'(x) { for (let i = 0; i < 12; i++) r(x, i < 4 ? '#5e3a20' : '#9c6636', 1 + i, 12 - i, 1, 1); disc(x, 3, 9, 1, '#9aa5ad'); r(x, '#e4f4ff', 12, 1, 1, 7); r(x, '#9aa5ad', 11, 8, 1, 2); r(x, '#9aa5ad', 12, 10, 1, 1); r(x, '#d9473c', 12, 5, 1, 1); },
     '🪓'(x) { for (let i = 0; i < 11; i++) { r(x, i < 3 ? '#5e3a20' : '#9c6636', 1 + i, 12 - i, 2, 1); } r(x, '#9aa5ad', 6, 1, 6, 5); r(x, '#c9d3dc', 6, 1, 2, 5); r(x, '#6c7782', 11, 2, 1, 3); r(x, '#6c7782', 6, 5, 6, 1); },
-    '🪝'(x) { pickaxe(x, ['#9c6636', '#c99058', '#5e3a20'], 1); },   // อีเต้อ ไม้
-    '🧲'(x) { pickaxe(x, ['#7a7f86', '#aeb3ba', '#4e5359'], 2); },   // อีเต้อ หิน
-    '⚓'(x) { pickaxe(x, ['#a9b4c2', '#e6ecf2', '#6a7686'], 3); },   // อีเต้อ เหล็ก
-    '🔱'(x) { pickaxe(x, ['#f2c14e', '#fff0a8', '#b98a1c'], 4); },   // อีเต้อ ทองคำ
-    '🏹'(x) { pickaxe(x, ['#2fcf78', '#b0ffd0', '#13803f'], 5); },   // อีเต้อ มรกต
-    '🪃'(x) { pickaxe(x, ['#5ec8f0', '#d4f8ff', '#2a82bd'], 6); },   // อีเต้อ เพชร
+    '🪝'(x) { pickaxe(x, PICK_PAL['🪝'], 1); },   // อีเต้อ ไม้
+    '🧲'(x) { pickaxe(x, PICK_PAL['🧲'], 2); },   // อีเต้อ หิน
+    '⚓'(x) { pickaxe(x, PICK_PAL['⚓'], 3); },   // อีเต้อ เหล็ก
+    '🔱'(x) { pickaxe(x, PICK_PAL['🔱'], 4); },   // อีเต้อ ทองคำ
+    '🏹'(x) { pickaxe(x, PICK_PAL['🏹'], 5); },   // อีเต้อ มรกต
+    '🪃'(x) { pickaxe(x, PICK_PAL['🪃'], 6); },   // อีเต้อ เพชร
     '🪙'(x) { disc(x, 6, 6, 6, '#b8801f'); disc(x, 6, 6, 5, '#f2c14e'); disc(x, 5, 5, 3, '#ffe08a'); r(x, '#c99428', 5, 3, 2, 7); r(x, '#c99428', 4, 4, 4, 1); r(x, '#c99428', 4, 8, 4, 1); r(x, '#fff6c8', 3, 3, 1, 1); },
   };
   const norm = e => e.replace(/️/g, '');
@@ -324,6 +326,6 @@ const PixelUI = (() => {
   ];
   const crop = s => crops[Math.max(0, Math.min(3, s))];
 
-  return { icon: pix, url: dataUrl, world, dom, watch, animal, crop, A };
+  return { icon: pix, url: dataUrl, world, dom, watch, animal, crop, A, PICK_PAL };
 })();
 if (document.body) PixelUI.watch(); else addEventListener('DOMContentLoaded', () => PixelUI.watch());

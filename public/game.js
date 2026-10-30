@@ -1438,7 +1438,7 @@ function act(tx, ty) {
     if (dx || dy) me.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
     o.tx = tx; o.ty = ty;
   }
-  lastAct = now; swing = 0.25; me.useAt = performance.now();
+  lastAct = now; swing = 0.25; me.useAt = performance.now(); me.actAt = me.useAt; me.actPt = o.tx !== undefined ? [(o.tx + 0.5) * TS, (o.ty + 0.5) * TS] : null; // จุดกระทบของท่าทำงาน = ช่องที่กด
   send(o);
 }
 
@@ -1576,7 +1576,7 @@ $('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk();
 // ---------- แชทเสียง (WebRTC, ต่อตรงระหว่างผู้เล่น / signaling ผ่าน WebSocket เดิม) ----------
 const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 const peers = new Map(), levels = new Map();
-window.__mw = { get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
+window.__mw = { actionSheet: () => actionSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
 let callWith = 0, callPend = 0, callIn = 0, callMicOn = false, callTimer = 0; // callWith = คู่สายที่ต่อแล้ว, callPend = เรากำลังโทรหา, callIn = กำลังมีคนโทรหาเรา
 const pcSend = (to, k) => send({ t: 'pcall', to, k });
@@ -2888,28 +2888,36 @@ function heldHand(p) { // ตำแหน่งมือที่ถืออุ
   if (dir < 2) return [p.x + hs * 8, p.y + 3 + (f === (hs > 0 ? 2 : 1) ? 2 : 0), hs];
   const fx = dir === 3 ? 1 : -1; return [p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)), p.y + 3, fx];
 }
-const rodAngle = p => { const k = p.useAt ? (performance.now() - p.useAt) / 260 : 2; return ((p.dir || 0) >= 2 ? 0.8 : 0.15) - 0.72 * Math.sin(k < 1 ? k * Math.PI * 2 : 0); };
+const rodAngle = p => { const F = PixelAction.frame(p, performance.now()); return F ? F.a : (p.dir || 0) >= 2 ? 0.8 : 0.15; }; // มุมคันเบ็ด: ตอนเหวี่ยงตามเฟรมท่าตกปลา (pixelaction.js)
 const isRodHeld = p => !!p.held && p.held.replace(/\uFE0F/g, '') === '🎣' && !p.sit;
-function rodTip(p) { // ปลายคันเบ็ด (ตรงกับที่ drawHeldTool วาด: จุดปลาย 12,-19 หมุนตามมุมคัน)
-  const [hx, hy, fx] = heldHand(p), a = rodAngle(p);
+function rodTip(p) { // ปลายคันเบ็ด (ตรงกับที่ drawHeldTool วาด: จุดปลาย 12,-19 หมุนตามมุมคัน + มือที่เลื่อนตามเฟรมท่า)
+  let [hx, hy, fx] = heldHand(p); const a = rodAngle(p), F = PixelAction.frame(p, performance.now());
+  if (F) { const lx = (p.dir || 0) >= 2 ? F.lean * fx : 0; hx += F.hx * fx + lx; hy += F.hy + F.bob; }
   return [hx + fx * (12 * Math.cos(a) + 19 * Math.sin(a)), hy + 12 * Math.sin(a) - 19 * Math.cos(a)];
 }
-function drawHeldTool(p, now) {
+function drawHeldTool(p, now, ctx = mainCtx) {
   const e = p.held.replace(/️/g, ''), OUT = PixelArt.OUT, dir = p.dir || 0;
   const sn = p.moving && !p.sit ? Math.sin((p.anim || 0) * 14) : 0, f = sn > .35 ? 1 : sn < -.35 ? 2 : 0;
   const lampSide = dir === 2 || dir === 1 ? -1 : 1, hs = p.lamp ? -lampSide : lampSide;
   let hx, fx, hy = p.y + 3;
   if (dir < 2) { fx = hs; hx = p.x + hs * 8; if (f === (hs > 0 ? 2 : 1)) hy += 2; }                      // หน้า/หลัง: มือซ้าย/ขวา (แขนที่ก้าวลงต่ำกว่า)
   else { fx = dir === 3 ? 1 : -1; hx = p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)); }          // ข้าง: แขนอยู่กลางลำตัว
-  const k = p.useAt ? (performance.now() - p.useAt) / 260 : 2, sw = k < 1 ? Math.sin(k * Math.PI) : 0; // ท่าใช้งาน 0→1→0
+  const F = PixelAction.frame(p, performance.now()); // เฟรมท่าทำงาน (ขุด/ตัด/ตกปลา) จากสไปรต์ชีต null = ท่าถือปกติ
+  if (F) hx += F.hx * fx, hy += F.hy;
+  const k = p.useAt ? (performance.now() - p.useAt) / 260 : 2, sw = k < 1 ? Math.sin(k * Math.PI) : 0; // ท่าใช้งาน 0→1→0 (บัวรดน้ำ/ของในมือ)
   const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
   const WOOD = '#9c6a35', WD = '#6b4423', STEEL = '#b9c2cc', STH = '#e8eef3';
-  const a0 = dir >= 2 ? 0.95 : 0.3, a1 = dir >= 2 ? 1.5 : 1.25; // มุมจอบ/ขวาน: ด้านข้างถือเอียงไปข้างหน้ามากกว่า (ไม่พาดหน้า)
-  const isHoe = e === '⛏', isAxe = e === '🪓', isRod = e === '🎣', isCan = WATER_EMOJIS.has(e);
-  if (isHoe || isAxe || isRod || isCan) {
+  const a0 = dir >= 2 ? 0.95 : 0.3; // มุมถือจอบ/ขวาน/อีเต้อตอนไม่ได้ใช้: ด้านข้างถือเอียงไปข้างหน้ามากกว่า (ไม่พาดหน้า) ตอนใช้ตามเฟรม PixelAction
+  const isHoe = e === '⛏', isAxe = e === '🪓', isRod = e === '🎣', isCan = WATER_EMOJIS.has(e), isPick = !isHoe && PixelAction.kindOf(e) === 'mine', ang = F ? F.a : a0;
+  if (isHoe || isAxe || isRod || isCan || isPick) {
     ctx.save(); ctx.translate(hx, hy); ctx.scale(fx, 1);
-    if (isHoe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(-6, -14, 13, 5, OUT); R(-5, -13, 11, 3, STEEL); R(-5, -13, 11, 1, STH); R(-5, -11, 2, 2, STEEL); R(4, -11, 2, 2, STEEL); }
-    else if (isAxe) { ctx.rotate(a0 + (a1 - a0) * sw); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, STEEL); R(1, -13, 6, 1, STH); R(6, -13, 2, 6, STH); }
+    if (isPick) { // อีเต้อ: ด้ามไม้ + หัวโค้งปลายแหลมสองข้าง สีตามระดับ (PixelUI.PICK_PAL) ขนาดเท่าขวาน
+      const [pb, ph, ps] = PixelUI.PICK_PAL[e] || ['#8d99a6', '#c9d3dc', '#6c7782'];
+      ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD);
+      R(-8, -16, 17, 5, OUT); R(-10, -13, 3, 4, OUT); R(8, -13, 3, 4, OUT); R(-7, -15, 15, 3, pb); R(-7, -15, 15, 1, ph); R(-9, -12, 2, 2, ps); R(8, -12, 2, 2, ps); R(-2, -13, 4, 2, ps);
+      if (/[🏹🪃]/u.test(e) && Math.floor(now / 280) % 2) { R(-5, -15, 1, 1, '#ffffff'); R(5, -14, 1, 1, '#ffffff'); } } // มรกต/เพชรมีประกาย
+    else if (isHoe) { ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(-6, -14, 13, 5, OUT); R(-5, -13, 11, 3, STEEL); R(-5, -13, 11, 1, STH); R(-5, -11, 2, 2, STEEL); R(4, -11, 2, 2, STEEL); }
+    else if (isAxe) { ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, STEEL); R(1, -13, 6, 1, STH); R(6, -13, 2, 6, STH); }
     else if (isCan) { // บัวรดน้ำตามระดับที่ซื้อ: 1 สังกะสี (เทาเงิน) • 2 ทองแดง • 3 ทองคำ (ประกาย) ใหญ่ขึ้นตามความจุ
       const T = +Object.keys(CANS).find(k => CANS[k].emoji.replace(/\uFE0F/g, '') === e) || 1, bw = 7 + T, bh = 7 + T, x0 = -(bw >> 1), y0 = -bh - 1, sx = x0 + bw;
       const pal = { 1: { b: '#9fb4c8', l: '#dbe6f0', d: '#6d839a' }, 2: { b: '#c8763a', l: '#f2a868', d: '#8c4a20' }, 3: { b: '#f0c030', l: '#fff2a0', d: '#b08a10' } }[T];
@@ -2933,6 +2941,24 @@ function drawHeldTool(p, now) {
     PixelUI.world(ctx, p.held, Math.round(hx + fx * 3), Math.round(hy - 3 - sw * 3), 10);
   }
 }
+// เศษหิน/ประกายไฟ (ขุด) • เศษไม้/ใบไม้ (ตัดไม้) • ดิน (จอบ) กระเด็นที่จุดกระทบ หลังจังหวะฟาดของสไปรต์ชีต (ตกปลาใช้น้ำกระเซ็นตอนทุ่นตกน้ำใน drawFishing)
+// สไปรต์ชีตตัวอย่างของท่าทำงาน (ดีบัก/เอกสาร: __mw.actionSheet()) แถว = ท่า × ทิศ (ข้าง/หน้า/หลัง) คอลัมน์ = เฟรม ใช้ชุดตัวละครของเรา
+function actionSheet() {
+  const P = Shared.PICK_EMOJI[6], rows = [['mine', P, 3], ['mine', P, 0], ['mine', P, 1], ['chop', '🪓', 3], ['chop', '🪓', 0], ['chop', '🪓', 1], ['fish', '🎣', 3], ['fish', '🎣', 0], ['fish', '🎣', 1]], cw = 80, chh = 84, n = 7;
+  const c = document.createElement('canvas'); c.width = cw * n; c.height = chh * rows.length; const g = c.getContext('2d');
+  g.fillStyle = '#8bbf5a'; g.fillRect(0, 0, c.width, c.height);
+  rows.forEach(([k, e, d], r) => { const S = PixelAction.SHEETS[k], fr = d >= 2 ? S.side : d === 1 ? S.back : S.front; g.fillStyle = r & 1 ? '#7fb452' : '#8bbf5a'; g.fillRect(0, r * chh, c.width, chh);
+    fr.forEach((_, i) => { const now = performance.now(); drawPlayer(Object.assign({}, me, { name: '', x: i * cw + 40, y: r * chh + 54, dir: d, held: e, moving: false, sit: null, lamp: false, veh: '', wet: false, speaking: false, chat: '', useAt: now - i * S.ms - 1, actPt: null }), now, g); }); });
+  return c;
+}
+function drawActionBurst(p, ctx) {
+  const k = PixelAction.kindOf(p.held); if (!k || k === 'fish' || !p.useAt || p.sit) return;
+  const S = PixelAction.SHEETS[k], t = performance.now() - p.useAt - S.hit * S.ms; if (t < 0 || t > PixelAction.BURST[k].life) return;
+  const [x, y] = p.actPt && p.actAt === p.useAt ? p.actPt : PixelAction.front(p), tx = Math.floor(x / TS), ty = Math.floor(y / TS);
+  const hoe = (p.held || '').replace(/\uFE0F/g, '') === '⛏', ore = cave && oreK.get(tx + ',' + ty);
+  const cols = hoe ? ['#b07a44', '#6b4423'] : ore ? ORE_COL[ore] : null;
+  PixelAction.burst(ctx, k, x, y, t, (p.useAt * 7) | 0, cols, (p.dir || 0) === 2 ? -1 : (p.dir || 0) === 3 ? 1 : 0);
+}
 function drawHeldLamp(p, now) {
   const side = p.dir === 2 || p.dir === 1 ? -1 : 1, hx = Math.round(p.x + side * 11), hy = Math.round(p.y + 1 + (p.moving ? Math.round(Math.sin(p.anim * 8)) : 0));
   const fl = 0.85 + Math.sin(now / 130 + (p.id || 0)) * 0.1;
@@ -2955,6 +2981,7 @@ function drawFishing(p, t) {
   const by = sy + (p.fy - sy) * e - Math.sin(Math.PI * k) * 34 + (k >= 1 ? bob : 0);
   const sag = k < 1 ? 6 : bite ? 2 : 9 + Math.sin(t / 700 + ph) * 3;             // ตึงตอนกัด หย่อนตอนรอ
   const mx = (sx + bx) / 2 + Math.sin(t / 900 + ph) * (bite ? 0.5 : 2.5), my = (sy + by) / 2 + sag;
+  if (k >= 1) PixelAction.burst(ctx, 'splash', p.fx, p.fy, t - (p.castAt || 0) - 480, ((p.castAt || 0) * 3) | 0); // น้ำกระเซ็นตอนทุ่นตกน้ำ
   if (k >= 1) { // ระลอกน้ำรอบทุ่น (กัดแรงขึ้นและถี่ขึ้น)
     ctx.lineWidth = 1;
     for (let i = 0; i < (bite ? 3 : 2); i++) {
@@ -2987,12 +3014,13 @@ function drawPlayer(p, now, cx) {
   const ctx = cx || mainCtx, x = p.x, riding = !!(p.veh && !p.sit && Shared.VEHICLES[p.veh] && PixelVehicle.sprite);
   let y = p.y;
   if (riding) PixelVehicle.draw(ctx, p, now, PixelChar); // ผู้ขี่นั่งบนยานพาหนะพิกเซล (ล้อหมุน 4 ทิศ ขาปั่น ควันท่อ) ใน pixelchar.js
-  else { ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
-    PixelChar.draw(ctx, p, now); } // ตัวละครพิกเซล chibi (pixelchar.js)
+  const F = !riding && PixelAction.frame(p, performance.now()), bx = F && (p.dir || 0) >= 2 ? F.lean * (p.dir === 2 ? -1 : 1) : 0, by = F ? F.bob : 0; // ท่าทำงาน: ตัวโน้ม/ยุบตามเฟรม
+  if (!riding) { ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.translate(bx, by); PixelChar.draw(ctx, p, now); ctx.restore(); } // ตัวละครพิกเซล chibi (pixelchar.js)
   if (riding) y -= PixelVehicle.lift(p.veh); // ผู้ขี่ตัวสูงขึ้น ป้ายชื่อ/ฟองแชท/ไอคอนเลื่อนตาม
   if (p.wet) { PixelUI.world(ctx, '🪣', x, y - 20, 16); ctx.fillStyle = 'rgba(120,190,255,.85)'; for (let i = 0; i < 4; i++) { const t = (now / 600 + i / 4) % 1; ctx.fillRect(x - 10 + i * 7, y - 14 + t * 24, 2, 4); } } // โดนราดน้ำจากชาเลนจ์
   if (p.lamp) drawHeldLamp(p, now);
-  if (p.held && !p.sit && !riding) drawHeldTool(p, now); // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง)
+  if (p.held && !p.sit && !riding) { ctx.save(); ctx.translate(bx, by); drawHeldTool(p, now, ctx); ctx.restore(); drawActionBurst(p, ctx); } // ถืออุปกรณ์ที่เลือกอยู่ในมือ (ตะเกียงอยู่มืออีกข้าง) + เศษกระเด็นตอนกระทบ
   if (!p.name) return; // ตัวอย่างในตู้เสื้อผ้า ไม่ต้องวาดชื่อ
   // ป้ายชื่อ: กล่องกระดาษขอบเข้ม (สูงกว่าหัวตัวละครใหม่ ~9 px)
   const OUT = PixelArt.OUT, sp = !!p.speaking;
