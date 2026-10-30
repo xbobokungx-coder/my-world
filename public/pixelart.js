@@ -293,163 +293,116 @@ const PixelArt = (() => {
   }
 
   // ---------- trees ----------
-  // kind: 0 ใบกลม • 1 ผลส้ม • 2 ใบเข้ม • 3 สน • 4 ดอกชมพู • 5 สัก • 6 ราชพฤกษ์ • 7 พะยูง
-  // พุ่มเมฆกลม มี padding พอให้ขอบไม่ชนแคนวาส (กันภาพตัดตรง) · ขอบ OUT ตาม STYLE_GUIDE
-  const TREE_OUT = true; // ขอบ #2a1b14 1 px
-  function softPuffSafe(x, cx, cy, rx, ry, pal, R, pad) {
-    // เหมือน softPuff แต่ไม่ยื่นจุดสุ่มออกนอกพุ่มมาก (ลดขอบฟันเลื่อย/ตัดแปลก)
-    for (let dy = -ry - 1; dy <= ry + 1; dy++) for (let dx = -rx - 1; dx <= rx + 1; dx++) {
-      const nx = dx / (rx + 0.35), ny = dy / (ry + 0.35), d2 = nx * nx + ny * ny;
-      if (d2 > 1.05) continue;
-      if (d2 > 0.88 && dith(cx + dx, cy + dy) > 0.72) continue; // ขอบหยักเบา ไม่กัดลึก
-      const lit = clamp(0.55 - ny * 0.4 - nx * 0.14 + (1 - Math.min(1, d2)) * 0.28, 0, 1);
-      let i = Math.floor(lit * (pal.length - 1.05));
-      if (lit * (pal.length - 1) - i > dith(cx + dx, cy + dy)) i++;
-      i = clamp(i, 0, pal.length - 1);
-      if (d2 > 0.8) i = Math.max(0, i - 1);
-      if (ny > 0.32 && d2 < 0.82) i = Math.max(0, i - 1);
-      r(x, pal[i], cx + dx, cy + dy, 1, 1);
-    }
-    for (let k = 0; k < 3 + Math.floor(R() * 3); k++) {
-      const a = R() * Math.PI * 2, rr = Math.max(rx, ry) * (0.72 + R() * 0.18);
-      const px = Math.round(cx + Math.cos(a) * rr), py = Math.round(cy + Math.sin(a) * rr * 0.88);
-      if (px < pad || py < pad || px >= 48 - pad || py >= 52 - pad) continue;
-      r(x, pal[Math.min(pal.length - 1, 3)], px, py, 1, 1);
-    }
+  // ต้นไม้ 11 ชนิด 28 แบบ ออกแบบใหม่โดยผู้ดูแล (30 ต.ค. 2026): PixelTrees.get(ชนิด, แบบ) ขนาดและจุดโคนต้นเท่าเดิม เกมเรียกผ่าน PixelArt.tree(tx, ty, ชนิด)
+/* My World • PixelTrees v2. Original sprite bounds, anchors and 28 variants.
+   Integer raster shapes; no gradients, antialiasing or random per-frame noise.
+   get(kind,variant) returns cached read-only canvas. */
+const PixelTrees = (() => {
+ const specs={broad:[50,54,6],pine:[38,46,3],coconut:[42,46,2],teak:[50,54,2],bamboo:[38,44,3],gold:[50,54,2],rose:[50,54,2],maple:[50,54,2],sakura:[50,54,2],ebony:[50,54,2],ancient:[50,54,2]};
+ const palettes={broad:['#243d37','#365943','#527946','#7b9e54','#b5c77b'],pine:['#203735','#2b5048','#3c7160','#649174','#a0b48b'],coconut:['#293d34','#3c6040','#688746','#94ac5b','#c6cf87'],teak:['#353e2d','#52623a','#7a8748','#a5a75d','#d2c57e'],bamboo:['#273c36','#3f6247','#6c9251','#a3b66c','#d1ce8d'],gold:['#4d492c','#7b7139','#b49a44','#dfbc56','#f6dda0'],rose:['#263a37','#354e40','#506b4b','#7a9161','#b0b784'],maple:['#583739','#874738','#b9653f','#df9150','#f1c17b'],sakura:['#603b54','#9b5a75','#ca8095','#e9b0bb','#f9dcd0'],ebony:['#252d35','#303f3d','#435c4a','#657b57','#929b6b'],ancient:['#243b40','#30564f','#4d7b65','#80a187','#b9c79b']};
+ const cache=new Map();let factory=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
+ function get(kind,variant=0){
+  if(!Object.prototype.hasOwnProperty.call(specs,kind)||!Number.isInteger(variant)||variant<0||variant>=specs[kind][2])return null;
+  const key=kind+'/'+variant;if(cache.has(key))return cache.get(key);
+  const [W,H]=specs[kind],cx=W/2,base=H-4,p=palettes[kind],c=factory(W,H),g=c.getContext('2d'),a=Array.from({length:H},()=>Array(W).fill(null));
+  function dot(x,y,col){x=Math.round(x);y=Math.round(y);if(x>=2&&x<W-2&&y>=2&&y<=base)a[y][x]=col;}
+  function rect(x,y,w,h,col){for(let j=0;j<h;j++)for(let i=0;i<w;i++)dot(x+i,y+j,col);}
+  function poly(pts,col){const ymin=Math.floor(Math.min(...pts.map(p=>p[1]))),ymax=Math.ceil(Math.max(...pts.map(p=>p[1])));for(let y=ymin;y<=ymax;y++){let xs=[];for(let i=0;i<pts.length;i++){const [x1,y1]=pts[i],[x2,y2]=pts[(i+1)%pts.length];if((y1<=y+.5&&y2>y+.5)||(y2<=y+.5&&y1>y+.5))xs.push(x1+(y+.5-y1)*(x2-x1)/(y2-y1));}xs.sort((a,b)=>a-b);for(let i=0;i<xs.length;i+=2)for(let x=Math.ceil(xs[i]-.5);x<xs[i+1]-.5;x++)dot(x,y,col);}}
+  function line(x1,y1,x2,y2,col,width=1){let n=Math.max(Math.abs(x2-x1),Math.abs(y2-y1));for(let t=0;t<=n;t++)rect(Math.round(x1+(x2-x1)*t/(n||1)),Math.round(y1+(y2-y1)*t/(n||1)),width,width,col);}
+  const bark=kind==='ebony'?['#303039','#4b4446','#73604e','#9a8367']:kind==='rose'?['#452d30','#704338','#a16b4b','#c49866']:['#443337','#71503e','#a47b52','#c7a473'];
+  function trunk(w=6,top=23){
+   poly([[cx-2,top],[cx+2,top],[cx+w/2-1,base-3],[cx+w+2,base],[cx-w-2,base],[cx-w/2+1,base-3]],bark[0]);
+   poly([[cx-1,top],[cx+1,top],[cx+2,base-3],[cx+5,base],[cx-5,base],[cx-2,base-4]],bark[1]);
+   line(cx-1,top+2,cx-2,base-3,bark[2],2);line(cx-1,top+8,cx-1,top+13,bark[3]);
+   if(kind!=='pine'){line(cx,top+10,cx-10,top-1,bark[1],3);line(cx+1,top+9,cx+10,top-3,bark[0],3);}
+   line(cx,base-4,cx+5,base-1,bark[2]);line(cx-2,base-4,cx-7,base,bark[2]);
+   for(let y=top+13;y<base-3;y+=7){line(cx+2,y,cx+1,y+3,bark[0]);dot(cx-2,y+2,bark[3]);}
   }
-  function tree(seed, kind) {
-    // แคนวาสกว้าง/สูงขึ้น + เว้นขอบใน กันพุ่มโดนตัดตรง
-    const TW = 48, TH = 52, PAD = 4;
-    const c = mk(TW, TH, (x) => {
-      const R = rng(seed), bark = kind === 7 ? ['#4a1f16', '#6b2f22', '#8a3f2c'] : ['#5a371e', '#7d4f2a', '#a07040'];
-      const cx0 = 24;
-      // ลำต้น + รากแผ่ (วางกลาง โคนอยู่ใกล้ขอบล่าง)
-      r(x, bark[0], cx0 - 3, 26, 6, 22); r(x, bark[1], cx0 - 2, 26, 3, 22); r(x, bark[2], cx0 - 2, 36, 1, 8); // ลำต้นยื่นขึ้นไปซ่อนใต้พุ่ม ไม่ให้พุ่มลอยห่างจากต้น
-      for (let yy = 36; yy < 46; yy += 3) r(x, bark[0], cx0 - 3, yy, 6, 1);
-      r(x, bark[0], cx0 - 7, 46, 14, 3); r(x, bark[1], cx0 - 5, 46, 5, 1); // ราก
-      r(x, bark[0], cx0 - 8, 47, 3, 2); r(x, bark[0], cx0 + 5, 47, 3, 2);
-      ell(x, cx0 - 8, 48, 4, 2, '#3f8a46'); ell(x, cx0 + 8, 48, 4, 2, '#4f913b'); // หญ้าโคนต้น
-      // ก้อนเมฆพุ่ม: อยู่ภายใน PAD+รัศมี เสมอ
-      let blobs = kind === 1 ? [[24, 18, 11, 9], [12, 20, 8, 6], [35, 20, 8, 6], [24, 24, 8, 6], [16, 12, 6, 5], [32, 12, 6, 5], [17, 26, 6, 4], [31, 26, 6, 4]]
-        : kind === 5 ? [[24, 18, 12, 9], [11, 20, 8, 6], [36, 20, 8, 6], [24, 10, 7, 6], [15, 13, 6, 5], [33, 13, 6, 5], [17, 26, 6, 4], [31, 26, 6, 4]]
-        : kind === 7 ? [[24, 16, 11, 9], [12, 19, 8, 6], [35, 19, 8, 6], [24, 9, 6, 5], [16, 12, 5, 4], [32, 12, 5, 4], [17, 25, 6, 4], [31, 25, 6, 4]]
-        : [[24, 18, 12, 10], [11, 20, 9, 7], [36, 20, 9, 7], [24, 9, 8, 7], [14, 13, 7, 5], [34, 13, 7, 5], [16, 26, 7, 5], [32, 26, 7, 5], [24, 27, 6, 4], [19, 11, 5, 4], [29, 11, 5, 4]];
-      for (const b of blobs) {
-        b[0] += Math.round(R() * 2 - 1); b[1] += Math.round(R() * 2 - 1);
-        b[2] = Math.max(4, b[2] + Math.round(R() * 1.5 - 0.5));
-        b[3] = Math.max(3, b[3] + Math.round(R() * 1.5 - 0.5));
-        // ดันเข้าในไม่ให้รัศมีชนขอบแคนวาส (+ outline)
-        b[0] = clamp(b[0], PAD + b[2] + 1, TW - PAD - b[2] - 1);
-        b[1] = clamp(b[1], PAD + b[3] + 1, 32);
-      }
-      // พาเลตพุ่มแบบ hue shift: โทนเงาเหลื่อมไปทางเขียวคราม/น้ำเงิน โทนแสงเหลื่อมไปทางเหลือง (แสงซ้ายบน)
-      const pal = kind === 2 ? ['#163a36', '#1f5540', '#2e7a46', '#4c9e4a', '#7cc458', '#b4e27a']
-        : kind === 5 ? ['#2a4228', '#46662a', '#6a8c2e', '#98b63c', '#c8dc60', '#ecf0a0']
-        : kind === 7 ? ['#121f30', '#173634', '#25543c', '#3a7446', '#5a9454', '#86b46a']
-        : kind === 8 ? ['#6a2444', '#a2406c', '#d86e98', '#f29ab8', '#ffc4d6', '#ffeaf0']   // ซากุระ
-        : kind === 9 ? ['#4a1812', '#82281c', '#bc4824', '#e8742c', '#f6a040', '#ffd078']   // เมเปิล
-        : kind === 10 ? ['#0e2c2c', '#17504a', '#238066', '#46b088', '#8ee0a8', '#e6f6a0'] // ไม้พันปี
-        : kind === 11 ? ['#14101e', '#2a1c3c', '#44305c', '#64488a', '#8a68b0', '#b8a0d8'] // มะเกลือ
-        : ['#18463e', '#1f6644', '#348a42', '#5aae48', '#8ad25e', '#c4ec84'];
-      const order = blobs.map((b, i) => [b[1] + b[3], i]).sort((a, b) => b[0] - a[0]).map(p => p[1]);
-      for (const i of order) softPuffSafe(x, blobs[i][0], blobs[i][1], blobs[i][2], blobs[i][3], pal, R, PAD);
-      r(x, 'rgba(26,28,44,.42)', cx0 - 3, 33, 6, 3); r(x, 'rgba(26,28,44,.2)', cx0 - 3, 36, 6, 2); // เงาพุ่มตกบนลำต้น (โปร่งแสง)
-      const inside = (px, py) => blobs.some(([bx, by, rx, ry]) => {
-        const nx = (px - bx) / (rx + 1), ny = (py - by) / (ry + 1); return nx * nx + ny * ny < 0.95;
-      });
-      for (let i = 0; i < 36; i++) {
-        const px = 12 + Math.floor(R() * 24), py = 8 + Math.floor(R() * 16); if (!inside(px, py)) continue;
-        r(x, '#d0f8a8', px, py, 2, 1);
-      }
-      if (kind === 1) for (let i = 0; i < 9; i++) { const px = 12 + Math.floor(R() * 24), py = 10 + Math.floor(R() * 16); if (!inside(px, py)) continue; r(x, '#e8862a', px, py, 2, 2); r(x, '#ffc06a', px, py, 1, 1); }
-      if (kind === 4 || kind === 0) for (let i = 0; i < (kind === 4 ? 12 : 5); i++) {
-        const px = 12 + Math.floor(R() * 24), py = 9 + Math.floor(R() * 16); if (!inside(px, py)) continue;
-        const fc = R() < .5 ? '#ffc9de' : '#ffe37a'; r(x, fc, px, py, 2, 1); r(x, '#fff6e0', px, py, 1, 1);
-      }
-      if (kind === 5) for (let i = 0; i < 6; i++) { const px = 12 + Math.floor(R() * 24), py = 10 + Math.floor(R() * 14); if (!inside(px, py)) continue; r(x, '#d8e98a', px, py, 3, 1); }
-      if (kind === 6) for (let i = 0; i < 8; i++) { const px = 12 + Math.floor(R() * 24), py = 16 + Math.floor(R() * 10); if (!inside(px, py - 2)) continue; const L = 3 + Math.floor(R() * 3); r(x, '#e0a81e', px, py, 2, L); r(x, '#ffe27a', px, py, 1, L - 1); }
-      if (kind === 7) for (let i = 0; i < 8; i++) { const px = 14 + Math.floor(R() * 20), py = 8 + Math.floor(R() * 16); if (!inside(px, py)) continue; r(x, '#1a3522', px, py, 1, 1); }
-    }, TREE_OUT);
-    const g = c.getContext('2d'); g.globalCompositeOperation = 'destination-over'; ell(g, 27, 51, 13, 2, 'rgba(24,34,52,.3)'); ell(g, 27, 51, 9, 1, 'rgba(24,34,52,.18)'); g.globalCompositeOperation = 'source-over'; // เงาทอดเยื้องขวา (แสงซ้ายบน) อมน้ำเงิน
-    return c;
+  // Hand-designed stepped leaf cluster, with contiguous highlight planes.
+  function crown(x,y,rx,ry,seed=0,colors=p,pointed=false){
+   let shape=pointed?[[0,-1],[.3,-.65],[.65,-.85],[.64,-.4],[1,-.2],[.8,.2],[1,.48],[.5,.7],[.2,1],[0,.8],[-.5,1],[-.55,.6],[-1,.4],[-.8,0],[-1,-.4],[-.5,-.5],[-.35,-.9]]:[[-.35,-1],[.25,-1],[.4,-.8],[.7,-.8],[.7,-.6],[.93,-.45],[1,-.1],[.9,.1],[1,.35],[.7,.6],[.45,.6],[.35,.88],[-.1,1],[-.4,.8],[-.7,.8],[-.75,.55],[-1,.4],[-1,-.1],[-.8,-.3],[-.8,-.6],[-.55,-.65]];
+   poly(shape.map(([u,v])=>[x+Math.round(u*rx),y+Math.round(v*ry)]),colors[0]);
+   // Paint within this cluster only, preserving the stepped boundary.
+   const temp=[];for(let yy=Math.max(2,y-ry);yy<=Math.min(base,y+ry);yy++)for(let xx=Math.max(2,x-rx);xx<=Math.min(W-3,x+rx);xx++){
+    // point-in-polygon at pixel centre
+    const pts=shape.map(([u,v])=>[x+Math.round(u*rx),y+Math.round(v*ry)]);let inside=false;
+    for(let i=0,j=pts.length-1;i<pts.length;j=i++){const A=pts[i],B=pts[j];if((A[1]>yy+.5)!=(B[1]>yy+.5)&&(xx+.5<(B[0]-A[0])*(yy+.5-A[1])/(B[1]-A[1])+A[0]))inside=!inside;}
+    if(!inside)continue;
+    let u=(xx-x)/rx,v=(yy-y)/ry,idx=1;
+    if(v<.36&&u<.65)idx=2;if(v<-.03&&u<.25)idx=3;if(v<-.4&&u<-.06&&u>-.72)idx=4;
+    if(v>.55||(u>.7&&v>-.15))idx=0;
+    // Sparse 2–3px leaf facets, not single-pixel dithering.
+    if(idx===2&&((Math.floor((xx+seed)/4)+Math.floor((yy-seed)/3)*3)%7===0)&&v<.25)idx=3;
+    temp.push([xx,yy,colors[idx]]);
+   }temp.forEach(v=>dot(...v));
   }
-  // กอไผ่: ลำเขียวหลายลำ ข้อปล้องเข้ม ใบเรียวที่ปลาย
-  function bamboo(seed) {
-    const c = mk(36, 42, (x) => {
-      const R = rng(seed), n = 5 + Math.floor(R() * 2);
-      ell(x, 10, 39, 4, 2, '#3f8a46'); ell(x, 26, 39, 4, 2, '#4f913b');
-      for (let i = 0; i < n; i++) {
-        const k = i - (n - 1) / 2, top = 4 + Math.floor(R() * 10) + Math.round(Math.abs(k) * 2), lean = k * 0.35;
-        for (let y = top; y < 40; y++) { const sx = Math.round(18 + k * 2.2 + lean * (40 - y) / 6); r(x, i % 2 ? '#5f8f30' : '#6fa63a', sx, y, 2, 1); r(x, '#b4e870', sx, y, 1, 1); if ((y - top) % 4 === 3) r(x, '#3f6420', sx, y, 2, 1); }
-        const tx = Math.round(18 + k * 2.2 + lean * (40 - top) / 6), dir = k < 0 ? -1 : 1;
-        for (let l = 0; l < 4; l++) { const ly = top + 1 + l * 3; for (let q = 0; q < 5; q++) r(x, q < 2 ? '#4f913b' : '#7cc76a', tx + 1 + dir * (q + 1), ly - Math.floor(q / 2), 1, 1); }
-        r(x, '#a0e078', tx, top - 1, 2, 1);
-      }
-    }, TREE_OUT);
-    const g = c.getContext('2d'); g.globalCompositeOperation = 'destination-over'; ell(g, 21, 41, 11, 2, 'rgba(24,34,52,.28)'); g.globalCompositeOperation = 'source-over';
-    return c;
+  const v=variant;
+  if(kind==='pine'){
+   trunk(4,24);const tilt=[0,-1,1][v];
+   for(let t=3;t>=0;t--){const top=4+t*7,hw=4+t*3+(v===1?1:0),mid=cx+tilt;
+    poly([[mid,top],[mid+hw,top+12],[mid+hw-4,top+11],[mid+hw-2,top+14],[mid-2,top+13],[mid-hw,top+14],[mid-hw+3,top+10]],p[0]);
+    poly([[mid,top],[mid+hw-2,top+11],[mid,top+12],[mid-hw+2,top+11]],p[1]);
+    poly([[mid,top],[mid-1,top+9],[mid-hw+2,top+11]],p[2]);
+    line(mid-1,top+3,mid-hw+3,top+10,p[3]);dot(mid-1,top+2,p[4]);
+   }
+  }else if(kind==='coconut'){
+   const lean=v? -4:4,tx=cx+lean,ty=14;
+   for(let y=ty;y<=base;y++){let x=cx+Math.round(lean*((base-y)/(base-ty))**2);rect(x-2,y,5,1,bark[0]);rect(x-1,y,3,1,bark[2]);dot(x-1,y,bark[3]);if((y-ty)%5===3)rect(x-2,y,4,1,bark[1]);}
+   const ends=[[3,17],[5,7],[15,3],[W-10,4],[W-4,11],[W-4,24],[9,27],[W-12,29]];
+   for(const [ex,ey] of ends){const mx=Math.round((tx+ex)/2),my=Math.min(ty,ey)-3;
+    poly([[tx,ty],[mx-1,my-2],[ex,ey],[mx+2,my+3]],p[1]);line(tx,ty,mx,my,p[3]);line(mx,my,ex,ey,p[2]);
+    for(let q=1;q<4;q++){const t=q/4,x=Math.round(mx+(ex-mx)*t),y=Math.round(my+(ey-my)*t);line(x,y,x+(ex<tx?-2:2),y+3,p[2]);}
+   }
+   [[-3,1],[0,3],[3,1]].forEach(([x,y])=>{rect(tx+x,ty+y,3,3,bark[0]);rect(tx+x,ty+y,2,2,bark[2]);dot(tx+x,ty+y,bark[3]);});
+  }else if(kind==='bamboo'){
+   for(let i=0;i<4;i++){const x=cx-7+i*4,top=5+((i*5+v*3)%10);
+    rect(x,top,3,base-top,p[1]);rect(x,top,1,base-top,p[3]);
+    for(let y=top+5;y<base;y+=6){rect(x-1,y,4,1,p[0]);rect(x,y+1,3,1,p[4]);}
+    for(let j=0;j<3;j++){const y=top+3+j*7,dir=(i+j)%2?1:-1;
+     line(x,y,x+dir*7,y-3,p[1]);poly([[x+dir*2,y-1],[x+dir*8,y-6],[x+dir*5,y-1]],p[3]);poly([[x+dir*3,y-1],[x+dir*9,y],[x+dir*6,y+2]],p[2]);}
+   }
+  }else{
+   trunk(kind==='ancient'?10:kind==='ebony'?8:6,22);
+   let clusters;
+   if(kind==='broad')clusters=[[-10,23,10,10],[9,22,12,10],[0,28,11,8],[-8,14,10,10],[7,12,11,9],[0,8,9,6]];
+   if(kind==='teak')clusters=[[-10,21,9,11],[10,21,9,10],[0,26,10,9],[-7,12,8,10],[7,11,8,9],[0,7,7,5]];
+   if(kind==='gold')clusters=[[-12,19,9,7],[11,19,10,8],[0,24,12,7],[-5,11,11,8],[8,11,10,7]];
+   if(kind==='rose')clusters=[[-11,25,10,7],[11,23,9,8],[0,27,11,7],[-9,16,9,8],[7,14,10,9],[0,9,8,6]];
+   if(kind==='maple')clusters=[[-12,23,9,9],[11,21,10,10],[0,27,10,8],[-7,14,10,10],[7,12,9,10],[0,8,7,6]];
+   if(kind==='sakura')clusters=[[-13,25,9,7],[12,23,10,7],[0,27,12,8],[-8,16,11,8],[9,15,10,7],[0,10,11,6]];
+   if(kind==='ebony')clusters=[[-8,25,10,10],[9,23,10,12],[0,28,9,9],[-6,14,9,10],[7,12,8,9],[0,8,7,6]];
+   if(kind==='ancient')clusters=[[-12,24,10,10],[12,23,10,10],[0,28,12,9],[-10,14,10,9],[8,12,12,9],[0,8,10,6]];
+   clusters.forEach(([x,y,rx,ry],i)=>{const dx=((v+i*2)%3)-1,dy=((v*2+i)%3)-1;crown(cx+x+dx,y+dy,rx-(v===3?1:0),ry,v+i,p,kind==='maple');});
+   if(kind==='gold')for(let i=0;i<7;i++){const x=9+i*5,y=23+((i+v)%3)*2,L=5+(i*3+v)%6;line(x,y,x-1,y+L,'#9b7936',2);for(let j=0;j<L;j+=2){rect(x-1,y+j,3,2,'#dfb94d');dot(x-1,y+j,'#f6dfa1');}dot(x-1,y+L,'#f6dfa1');}
+   if(kind==='teak')for(const [x,y] of [[14,17],[28,12],[33,23],[22,27]]){poly([[x-3,y],[x,y-3],[x+4,y],[x,y+3]],p[3]);line(x-2,y,x+2,y,p[2]);}
+   if(kind==='sakura')for(const [x,y] of [[11,19],[20,12],[33,17],[27,26],[15,28]]){rect(x-1,y,3,1,p[4]);rect(x,y-1,1,3,p[4]);dot(x,y,'#e4a766');}
+   if(kind==='ancient'){
+    poly([[cx-3,37],[cx+2,36],[cx+4,45],[cx-4,46]],'#293036');line(cx-3,38,cx-4,45,bark[2]);dot(cx-2,39,'#c3b58b');
+    line(cx-5,34,cx-7,base-2,p[2],2);line(cx+6,41,cx+9,base,p[1],2);
+    for(const [x,y] of [[12,29],[35,26]]){line(x,y,x,y+10,p[1]);dot(x,y+5,p[3]);}
+   }
+   if(kind==='ebony'){line(cx+1,37,cx+2,46,'#292c35',2);line(cx-2,38,cx-2,43,bark[3]);}
   }
-  // สน: ทรงกรวยซ้อน ขอบหยักเบา ไม่ตัดแบน
-  function conifer(seed) {
-    const c = mk(36, 44, (x) => {
-      const R = rng(seed);
-      r(x, '#5a371e', 16, 32, 4, 9); r(x, '#7d4f2a', 17, 32, 2, 9); r(x, '#5a371e', 12, 40, 12, 2);
-      ell(x, 11, 41, 3, 2, '#3f8a46'); ell(x, 25, 41, 3, 2, '#4f913b');
-      const tiers = 4, h0 = 4 + Math.floor(R() * 2);
-      for (let t = 0; t < tiers; t++) {
-        const top = h0 + t * 6, hgt = 9, half = 4 + t * 2 + Math.round(R() * 0.8);
-        for (let y = 0; y < hgt; y++) {
-          let w = Math.round(half * (y + 1) / hgt);
-          if (dith(18 + y, top + y) > 0.7) w += (y > hgt / 2 ? 1 : 0);
-          const x0 = 18 - w;
-          r(x, y === hgt - 1 ? '#173a36' : '#1f5540', x0, top + y, w * 2 + 1, 1); // ด้านเงาขวา + ขอบล่างชั้นอมคราม
-          r(x, '#2e7a46', x0, top + y, Math.max(1, w), 1);
-          r(x, '#58a84c', 18 - Math.max(0, w - 1), top + y, Math.max(1, Math.floor(w / 2)), 1);
-          if (y < 2) r(x, '#9ad468', 17, top + y, 2, 1);
-        }
-      }
-      r(x, '#cdee8a', 17, h0, 2, 2);
-    }, TREE_OUT);
-    const g = c.getContext('2d'); g.globalCompositeOperation = 'destination-over'; ell(g, 21, 43, 11, 2, 'rgba(24,34,52,.28)'); g.globalCompositeOperation = 'source-over';
-    return c;
+  // Sparse grass at the root; no wide grassy pedestal.
+  [[cx-7,base],[cx+7,base]].forEach(([x,y])=>{line(x,y,x-2,y-2,'#465f43');line(x,y,x+1,y-3,'#80925c');});
+  // Outline derived only from opaque art, ground shadow kept separate.
+  g.fillStyle='rgba(25,32,44,0.28)';for(let yy=-1;yy<=1;yy++){let rw=yy===0?11:8;g.fillRect(cx+2-rw,H-3+yy,rw*2+1,1);}
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+   let col=a[y][x];if(!col&&[[x-1,y],[x+1,y],[x,y-1],[x,y+1]].some(([u,v])=>(a[v]&&a[v][u])))col='#2a1b14';
+   if(col){g.fillStyle=col;g.fillRect(x,y,1,1);}
   }
-  // มะพร้าว: ลำต้นโค้งมีวงปล้อง ทางใบแผ่รอบยอด ลูกมะพร้าวใต้ยอด
-  function palm(seed) {
-    const c = mk(40, 44, (x) => {
-      const R = rng(seed), lean = R() < .5 ? -1 : 1;
-      ell(x, 12, 41, 3, 2, '#3f8a46'); ell(x, 28, 41, 3, 2, '#4f913b');
-      for (let y = 12; y < 42; y++) { const off = Math.round(lean * Math.pow((42 - y) / 28, 2) * 4); r(x, '#7d5a2e', 18 + off, y, 4, 1); r(x, '#a8854a', 19 + off, y, 1, 1); if (y % 3 === 0) r(x, '#5e4220', 18 + off, y, 4, 1); }
-      const cx = 20 + lean * 3, cy = 11;
-      for (const [dx, dy] of [[-13, 3], [-10, -4], [-2, -9], [6, -8], [12, -2], [13, 4], [-8, 7], [8, 7]]) {
-        const n = 12; for (let k = 0; k <= n; k++) {
-          const t = k / n, px = Math.round(cx + dx * t), py = Math.round(cy + dy * t + Math.sin(t * 3.1) * 2);
-          if (px < 2 || py < 2 || px > 37 || py > 40) continue;
-          r(x, '#3d8f44', px - 1, py, 3, 2); r(x, '#7ed06a', px, py, 1, 1);
-        }
-      }
-      for (const [dx, dy] of [[-2, 2], [1, 3], [3, 1]]) { disc(x, cx + dx, cy + dy, 1, '#6b4a22'); r(x, '#9c7440', cx + dx - 1, cy + dy - 1, 1, 1); }
-    }, TREE_OUT);
-    const g = c.getContext('2d'); g.globalCompositeOperation = 'destination-over'; ell(g, 23, 43, 12, 2, 'rgba(24,34,52,.28)'); g.globalCompositeOperation = 'source-over';
-    return c;
-  }
-  const TREES = [tree(3, 0), tree(9, 1), tree(17, 2), tree(25, 0), conifer(31), tree(44, 4), tree(52, 2), tree(60, 0)];
-  // สไปรต์ตามชนิดต้นไม้ของเซิร์ฟเวอร์ (Shared.TREE_KINDS) แต่ละชนิดมีหลายแบบ เลือกตามตำแหน่ง ป่าจึงไม่ซ้ำกัน • ไม่มีชนิด (ต้นไม้ขอบแมพ) = แบบสุ่มเดิม
-  const KIND_TREES = {
-    broad: [tree(3, 0), tree(25, 0), tree(60, 0), tree(17, 2), tree(52, 2), tree(44, 4)],
-    pine: [conifer(31), conifer(33), conifer(37)],
-    bamboo: [bamboo(5), bamboo(11), bamboo(23)],
-    coconut: [palm(7), palm(19)],
-    teak: [tree(41, 5), tree(47, 5)],
-    gold: [tree(13, 6), tree(29, 6)],
-    rose: [tree(71, 7), tree(83, 7)],
-    maple: [tree(91, 9), tree(97, 9)],
-    sakura: [tree(101, 8), tree(107, 8)],
-    ebony: [tree(111, 11), tree(117, 11)],
-    ancient: [tree(121, 10), tree(127, 10)],
-  };
-  const treeFor = (tx, ty, kind) => {
-    const set = kind && KIND_TREES[kind]; if (set) return set[Math.floor(hash(tx, ty, 78) * set.length)];
-    const h = hash(tx, ty, 77); return TREES[h < .08 ? 1 : h < .14 ? 5 : Math.floor(hash(tx, ty, 78) * TREES.length)];
+  cache.set(key,c);return c;
+ }
+ return {get,specs,palettes,setCanvasFactory(fn){factory=fn;cache.clear();}};
+})();
+
+
+  // Preserve coordinate-based deterministic selection and original fallback mix.
+  const treeFor = (tx,ty,kind) => {
+    if(Object.prototype.hasOwnProperty.call(PixelTrees.specs,kind)) return PixelTrees.get(kind,Math.floor(hash(tx,ty,78)*PixelTrees.specs[kind][2]));
+    const h=hash(tx,ty,77),i=h<.08?1:h<.14?5:Math.floor(hash(tx,ty,78)*8);
+    const fallback=[['broad',0],['broad',1],['broad',3],['broad',1],['pine',0],['broad',5],['broad',4],['broad',2]];
+    return PixelTrees.get(...fallback[i]);
   };
 
   // ---------- buildings ----------
