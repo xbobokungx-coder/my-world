@@ -168,7 +168,7 @@ const PixelUI = (() => {
       }
     } },
     sheep: { w: 25, h: 17, cx: 10, ground: 10, fn(x, o) {
-      const v = o.v || 's', g = o.prod ? 1 : 0, S = SH;
+      const v = o.v || 's', g = o.prod ? 1 : 0, S = o.pal || SH;
       if (v === 'f' || v === 'b') {
         legs(x, S.leg, [8, 12], 13, 4, o.f);
         for (const [cx, cy, rd] of [[10, 9, 6], [6, 8, 3], [14, 8, 3], [10, 5, 4]]) disc(x, cx, cy, rd + g, S.wd);
@@ -195,7 +195,7 @@ const PixelUI = (() => {
       }
     } },
     pig: { w: 26, h: 15, cx: 10, ground: 9, fn(x, o) {
-      const v = o.v || 's', P = PG;
+      const v = o.v || 's', P = o.pal || PG;
       if (v === 'f') {
         legs(x, P.d, [7, 12], 12, 3, o.f); hoofs(x, P.hoof, [7, 12], 14, o.f);
         ell(x, 10, 9, 6, 4, P.b); r(x, P.hi, 7, 6, 4, 1);
@@ -232,7 +232,7 @@ const PixelUI = (() => {
       r(x, K, 0, 4, 1, 1); r(x, K, 7, 3, 1, 1);
     } },
     cow: { w: 31, h: 20, cx: 12, ground: 11, fn(x, o) {
-      const v = o.v || 's', C = CW;
+      const v = o.v || 's', C = o.pal || CW;
       if (v === 'f') {
         legs(x, C.g, [8, 14], 15, 5, o.f); hoofs(x, C.hoof, [8, 14], 19, o.f);
         ell(x, 12, 11, 7, 6, C.w); ell(x, 12, 15, 5, 2, C.g); ell(x, 9, 11, 2, 3, C.k); ell(x, 16, 13, 2, 2, C.k);
@@ -268,6 +268,11 @@ const PixelUI = (() => {
       }
     } },
   };
+  // สัตว์ชั้นสูง (เลเวล 11–20): ใช้ทรงเดิมเปลี่ยนพาเลต อัลปากา = ทรงแกะ • ม้าด่าง = ทรงวัว • หมูป่า = ทรงหมู
+  const variant = (base, pal) => Object.assign({}, A[base], { fn: (x, o) => A[base].fn(x, Object.assign({}, o, { pal })) });
+  A.alpaca = variant('sheep', { wl: '#ecd2a8', wd: '#d8b684', ws: '#b89066', f: '#5a3f2c', leg: '#5a3f2c' });
+  A.horse = variant('cow', { w: '#f6efe2', g: '#e0d4c0', k: '#8a5226', pk: '#d98a7a', hn: '#8a5226', hoof: '#3a2a1a' });
+  A.boar = variant('pig', { b: '#6b4a3a', d: '#553a2e', k: '#3e2a20', s: '#7a5646', hi: '#9a7260', n: '#d8c8a8', hoof: '#2a1a12' });
   // ---- สัตว์เลี้ยง: แมว (เดิน/นั่ง) และหมา 2 สี (เดิน/ยืนกระดิกหาง) o.idle = หยุดนิ่ง ----
   const dogArt = (P) => (x, o) => {
     const w = o.f ? 1 : 0;

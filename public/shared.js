@@ -218,6 +218,9 @@
     cow:     { x0: 47, y0: 18, x1: 49, y1: 21, gate: [[46, 19], [46, 20]], sign: [48, 16] },
     sheep:   { x0: 53, y0: 18, x1: 55, y1: 21, gate: [[52, 19], [52, 20]], sign: [54, 16] },
     bee:     { x0: 59, y0: 18, x1: 61, y1: 21, gate: [[58, 19], [58, 20]], sign: [60, 16] },
+    alpaca:  { x0: 47, y0: 27, x1: 49, y1: 30, gate: [[46, 28], [46, 29]], sign: [48, 25] }, // แถวที่ 3 (เลเวล 11–20)
+    horse:   { x0: 53, y0: 27, x1: 55, y1: 30, gate: [[52, 28], [52, 29]], sign: [54, 25] },
+    boar:    { x0: 59, y0: 27, x1: 61, y1: 30, gate: [[58, 28], [58, 29]], sign: [60, 25] },
   };
   // เล้าผึ้ง: ต้นไม้ถาวร 1 ต้น (ตัดไม่ได้) และรังผึ้ง (ลัง) 2 ลังวางในเล้า • ผึ้งบินวนรอบรัง
   const BEE = { trees: [[61, 18]], hives: [[59, 20], [61, 21]] };
@@ -603,7 +606,7 @@
   //   0.00015 = ของราคา 67 ลดชิ้นละ 1% (เท่าเดิม) • แครอท 20 ลด 0.3% • มะม่วง 188 ลด 2.8% • ชุดเลี้ยงฉลอง 330 ลด 5% (ไม่เกิน dropMax) เลือกจาก tools/econsim.js (G2 ผ่าน Gini 0.37 ชาวนายังมีกำไร)
   const CATFAT = { min: 0.3, recover: 0.03, spread: 0.01, spreadMax: 0.25, perCoin: 0.00015, dropMax: 0.1 };
   const CAT_KEYS = ['fish', 'crop', 'animal', 'wood', 'ore', 'dish', 'other'];
-  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'].includes(k) ? 'animal' : (k === 'plank' || Object.hasOwn(WOOD_ITEMS, k)) ? 'wood' : Object.hasOwn(ORES, k) ? 'ore' : 'other';
+  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut'].includes(k) ? 'animal' : (k === 'plank' || Object.hasOwn(WOOD_ITEMS, k)) ? 'wood' : Object.hasOwn(ORES, k) ? 'ore' : 'other';
   // ขายเป็นชุดใหญ่ (ถือของได้ไม่จำกัดจำนวน): คิดราคาทีละชิ้นตามชนิด ราคาต่อชิ้นลดลงเชิงเส้นชิ้นละ 1% ของราคาฐาน (MARKET.drop) จนถึงพื้น 20% แล้วคงที่
   // ตัวอย่างขาย 100 ชิ้นเมื่อราคาตั้งต้น 100%: ชิ้นที่ 1 = 100%, 2 = 99% … 80 = 21%, ชิ้นที่ 81-100 = 20% รวม 5,240 จากราคาฐาน 100/ชิ้น (กด "ขายทั้งหมด" คำนวณทั้งชุดให้เลย)
   // ตลาดจำการขายด้วยการลดเท่ากันทุกชิ้น (server แบ่งเข้าตลาดชนิด/ส่วนตัว/หมวด) ขายรวดหรือทยอยขายติดกันทีละชิ้นจึงได้เงินเท่ากัน ต่างกันเฉพาะ "รอให้ตลาดฟื้น" ที่ได้ราคาดีขึ้น
@@ -630,6 +633,10 @@
     duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 4, init: 0, time: [30000, 50000], xp: 5, starveMin: 25 },
     sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 850, lv: 4, cap: 4, init: 0, time: [50000, 80000], xp: 10, starveMin: 35 },
     pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1100, lv: 5, cap: 4, init: 0, time: [60000, 90000], xp: 12, starveMin: 35 },
+    // เลเวล 11–20 (30 ต.ค. 2026): คอกแถวที่ 3 (PENS ด้านล่าง) ราคาสัตว์สูง ผลผลิตแพงตามเลเวล
+    alpaca:  { name: 'อัลปากา', emoji: '🦙', product: 'alpaca_wool', feedItem: 'hay', price: 2400, lv: 12, cap: 4, init: 0, time: [70000, 100000], xp: 14, starveMin: 35 },
+    horse:   { name: 'ม้าด่าง', emoji: '🐴', product: 'horse_milk', feedItem: 'hay', price: 4200, lv: 15, cap: 4, init: 0, time: [80000, 110000], xp: 17, starveMin: 35 },
+    boar:    { name: 'หมูป่า', emoji: '🐗', product: 'chestnut', feedItem: 'slop', price: 7000, lv: 18, cap: 4, init: 0, time: [90000, 120000], xp: 20, starveMin: 35 },
     bee:     { name: 'ผึ้ง', emoji: '🐝', product: 'honey', feedItem: 'nectar', price: 360, lv: 2, cap: 4, init: 0, time: [40000, 60000], xp: 6, starveMin: 30 },
   };
   // สัตว์เลี้ยงคู่ใจ (ซื้อที่ร้านสัตว์เลี้ยง): เดินตามเจ้าของ ทุกคนเห็น ไม่ต้องให้อาหาร • ซื้อได้หลายตัว แต่พาไปได้ทีละตัว (เลือกในร้าน)
@@ -1028,7 +1035,7 @@
   const SHOPS = {
     farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: Object.keys(CROPS).map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
     fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3', 'rod_4', 'rod_5', 'rod_6', 'rod_7'],                  sell: ['fish_'] },
-    animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey'] },
+    animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee', 'animal_alpaca', 'animal_horse', 'animal_boar'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
     mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3', 'axe_4', 'axe_5'], sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
@@ -1071,6 +1078,9 @@
     if (k === 'nectar') return { name: 'น้ำหวานดอกไม้ (อาหารผึ้ง)', emoji: '🌼', buy: 10, cat: 'feed' };
     if (k === 'honey') return { name: 'น้ำผึ้ง', emoji: '🍯', sell: 80, cat: 'animal' };
     if (k === 'truffle') return { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', sell: 110, cat: 'animal' };
+    if (k === 'alpaca_wool') return { name: 'ขนอัลปากา', emoji: '🧵', sell: 95, cat: 'animal' };
+    if (k === 'horse_milk') return { name: 'นมม้า', emoji: '🍼', sell: 110, cat: 'animal' };
+    if (k === 'chestnut') return { name: 'เกาลัดป่า', emoji: '🌰', sell: 130, cat: 'animal' };
     if (k === 'bait') return { name: 'เหยื่อตกปลา (ไส้เดือน)', emoji: '🪱', buy: BAIT_PRICE, cat: 'tool', bait: 1 };
     const bm = /^bait_(\d)$/.exec(k);
     if (bm && BAITS[bm[1]]) { const b = BAITS[bm[1]]; return { name: `เหยื่อ${b.name} (ปลาแพงขึ้น)`, emoji: b.emoji, buy: b.price, lv: b.lv, skill: 'fish', cat: 'tool', bait: +bm[1] }; }
@@ -1169,7 +1179,7 @@
     for (let x = 0; x < W; x++) { set(x, 0, T.TREE); set(x, H - 1, T.TREE); }
     for (let y = 0; y < H; y++) { set(0, y, T.TREE); set(W - 1, y, T.TREE); }
     const r = rng(11);
-    const reserved = [[2, 9, 20, 28], [20, 9, 46, 32], [24, 0, 42, 8], [39, 22, 46, 34], [29, 30, 57, 45], [44, 9, 63, 23], [3, 24, 26, 28]];
+    const reserved = [[2, 9, 20, 28], [20, 9, 46, 32], [24, 0, 42, 8], [39, 22, 46, 34], [29, 30, 57, 45], [44, 9, 63, 32], [3, 24, 26, 28]];
     for (let i = 0; i < 330; i++) {
       const x = 1 + Math.floor(r() * (W - 2)), y = 1 + Math.floor(r() * (H - 2));
       if (reserved.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3])) continue;
@@ -1255,7 +1265,7 @@
   }
   function inFarm(tx, ty) { return tx >= FARM.x0 && tx <= FARM.x1 && ty >= FARM.y0 && ty <= FARM.y1; }
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
-  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
+  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
   const api = { axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
