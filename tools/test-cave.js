@@ -10,8 +10,9 @@ const last = (ws, t) => { for (let i = ws.msgs.length - 1; i >= 0; i--) if (ws.m
 {
   assert.deepStrictEqual(S.floorMix(1), { stone: 70, coal: 20, copper: 10 });
   assert.deepStrictEqual(S.floorMix(8), { ruby: 70, emerald: 20, crystal: 10 });
-  assert.deepStrictEqual(S.floorMix(9), { emerald: 70, crystal: 30 });
-  assert.deepStrictEqual(S.floorMix(10), { crystal: 100 });
+  assert.deepStrictEqual(S.floorMix(10), { crystal: 70, opal: 20, topaz: 10 });
+  assert.deepStrictEqual(S.floorMix(19), { mythril: 70, starcore: 30 });
+  assert.deepStrictEqual(S.floorMix(20), { starcore: 100 });
   assert.strictEqual(S.ORE_ORDER.length, S.MINE.floors, 'แร่ 1 ระดับต่อ 1 ชั้น');
   assert.strictEqual(S.pickTier({ pick_2: 1, pick_5: 1 }), 5); assert.strictEqual(S.pickTier({}), 0);
   assert.strictEqual(S.caveFloor('@cave7'), 7); assert.strictEqual(S.caveFloor('alice'), 0); assert.strictEqual(S.caveFloor(null), 0);

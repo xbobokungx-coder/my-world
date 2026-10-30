@@ -346,6 +346,10 @@ const PixelArt = (() => {
       const pal = kind === 2 ? ['#163a36', '#1f5540', '#2e7a46', '#4c9e4a', '#7cc458', '#b4e27a']
         : kind === 5 ? ['#2a4228', '#46662a', '#6a8c2e', '#98b63c', '#c8dc60', '#ecf0a0']
         : kind === 7 ? ['#121f30', '#173634', '#25543c', '#3a7446', '#5a9454', '#86b46a']
+        : kind === 8 ? ['#6a2444', '#a2406c', '#d86e98', '#f29ab8', '#ffc4d6', '#ffeaf0']   // ซากุระ
+        : kind === 9 ? ['#4a1812', '#82281c', '#bc4824', '#e8742c', '#f6a040', '#ffd078']   // เมเปิล
+        : kind === 10 ? ['#0e2c2c', '#17504a', '#238066', '#46b088', '#8ee0a8', '#e6f6a0'] // ไม้พันปี
+        : kind === 11 ? ['#14101e', '#2a1c3c', '#44305c', '#64488a', '#8a68b0', '#b8a0d8'] // มะเกลือ
         : ['#18463e', '#1f6644', '#348a42', '#5aae48', '#8ad25e', '#c4ec84'];
       const order = blobs.map((b, i) => [b[1] + b[3], i]).sort((a, b) => b[0] - a[0]).map(p => p[1]);
       for (const i of order) softPuffSafe(x, blobs[i][0], blobs[i][1], blobs[i][2], blobs[i][3], pal, R, PAD);
@@ -438,6 +442,10 @@ const PixelArt = (() => {
     teak: [tree(41, 5), tree(47, 5)],
     gold: [tree(13, 6), tree(29, 6)],
     rose: [tree(71, 7), tree(83, 7)],
+    maple: [tree(91, 9), tree(97, 9)],
+    sakura: [tree(101, 8), tree(107, 8)],
+    ebony: [tree(111, 11), tree(117, 11)],
+    ancient: [tree(121, 10), tree(127, 10)],
   };
   const treeFor = (tx, ty, kind) => {
     const set = kind && KIND_TREES[kind]; if (set) return set[Math.floor(hash(tx, ty, 78) * set.length)];

@@ -56,7 +56,7 @@ if (isTouch) document.body.classList.add('touch');
 ['gesturestart', 'gesturechange', 'contextmenu'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
 const lvl = s => levelOf(skills[s]);
 const rodLevel = () => Shared.rodTier(inv);
-const axeLevel = () => (inv.axe_3 ? 3 : inv.axe_2 ? 2 : inv.axe_1 ? 1 : 0);
+const axeLevel = () => Shared.axeTier(inv);
 const pickLevel = () => Shared.pickTier(inv);
 const toolLocked = t => (t === 'axe' && !axeLevel()) || (t === 'pick' && !pickLevel());
 
@@ -2538,7 +2538,7 @@ function drawOre(tx, ty, k, now, sz) {
   });
   ctx.restore();
 }
-const ORE_COL = { stone: ['#a4abb8', '#7c8494'], coal: ['#3a3a44', '#23232b'], copper: ['#e8924a', '#b0602a'], iron: ['#c9b09a', '#8a6a58'], silver: ['#eef2f7', '#aab4c2'], gold: ['#ffe066', '#d9a21e'], amethyst: ['#d9a6ff', '#9a4fd6'], ruby: ['#ff8a98', '#c2223f'], emerald: ['#86ffb4', '#1fa35a'], crystal: ['#8af0ff', '#3aa6d8'] }; // [สว่าง, เข้ม]
+const ORE_COL = { stone: ['#a4abb8', '#7c8494'], coal: ['#3a3a44', '#23232b'], copper: ['#e8924a', '#b0602a'], iron: ['#c9b09a', '#8a6a58'], silver: ['#eef2f7', '#aab4c2'], gold: ['#ffe066', '#d9a21e'], amethyst: ['#d9a6ff', '#9a4fd6'], ruby: ['#ff8a98', '#c2223f'], emerald: ['#86ffb4', '#1fa35a'], crystal: ['#8af0ff', '#3aa6d8'], opal: ['#f4f8ff', '#a8b8d8'], topaz: ['#ffe27a', '#d89a1a'], sapphire: ['#7aa8ff', '#2a50c0'], garnet: ['#d27a5a', '#7a2a1c'], jade: ['#7ae0a8', '#1f8a5a'], obsidian: ['#6a5a8a', '#1c1428'], moonstone: ['#d8e4ff', '#7a8ac0'], sunstone: ['#ffb060', '#d85a1a'], mythril: ['#8af4ff', '#4a98c8'], starcore: ['#fff6a0', '#e8a020'] }; // [สว่าง, เข้ม]
 function drawCaveWorld(now) {
   ctx.drawImage(base, 0, 0, W * TS, H * TS);
   const vw = canvas.width / zoom, vh = canvas.height / zoom, x0 = Math.max(0, Math.floor(camX / TS) - 1), x1 = Math.min(W - 1, Math.ceil((camX + vw) / TS) + 1), y0 = Math.max(0, Math.floor(camY / TS) - 1), y1 = Math.min(H - 1, Math.ceil((camY + vh) / TS) + 1);

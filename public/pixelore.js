@@ -18,6 +18,16 @@ const PixelOre = (() => {
     ruby:     { ...STONE, n: '#e0334f', p: '#ff9aa8', q: '#9a1630', s: '#ffffff' },
     emerald:  { ...STONE, n: '#2fcf78', p: '#9bffc4', q: '#13803f', s: '#ffffff' },
     crystal:  { h: '#f2fbff', l: '#d3e6f2', m: '#b3cce0', d: '#8aa4c0', x: '#647fa0', n: '#5ec8f0', p: '#d4f8ff', q: '#2a82bd', s: '#ffffff' },
+    opal:      { ...STONE, n: '#e8f0ff', p: '#ffffff', q: '#a8b8d8', s: '#ffd0f0' },
+    topaz:     { ...STONE, n: '#f2c030', p: '#fff0a0', q: '#c08010', s: '#ffffff' },
+    sapphire:  { ...STONE, n: '#3a62d8', p: '#a8c4ff', q: '#1c2f8a', s: '#ffffff' },
+    garnet:    { ...STONE, n: '#b8402c', p: '#ee8c70', q: '#6a1a12' },
+    jade:      { ...STONE, n: '#2fb878', p: '#9af0c0', q: '#12704a', s: '#ffffff' },
+    obsidian:  { h: '#c8bee0', l: '#9a8cb8', m: '#6a5a8a', d: '#4a3c68', x: '#2c2244', n: '#2a2038', p: '#6a5a8a', q: '#12091c', s: '#ffffff' },
+    moonstone: { ...STONE, n: '#c4d4ff', p: '#ffffff', q: '#7a8ac0', s: '#ffffff' },
+    sunstone:  { ...STONE, n: '#ff9a3c', p: '#ffd890', q: '#c04a14', s: '#ffffff' },
+    mythril:   { ...STONE, n: '#58d8f0', p: '#d0faff', q: '#2a88b0', s: '#ffffff' },
+    starcore:  { h: '#fffbe0', l: '#f0e4b0', m: '#d4c080', d: '#a89050', x: '#786830', n: '#ffd84a', p: '#fffbb0', q: '#d08a10', s: '#ffffff' },
   };
   // แม่แบบก้อนหินมีแร่ 3 แบบ × 3 ขนาด: A เม็ดกระจาย (ถ่าน ทองแดง เงิน) • B เส้นแร่เฉียง (เหล็ก ทอง) • C ผลึกชี้ขึ้นจากหินฐาน (อเมทิสต์ ทับทิม มรกต คริสตัล)
   const TPL_A = [
@@ -77,6 +87,7 @@ const PixelOre = (() => {
       ],
     ],
     coal: TPL_A, copper: TPL_A, iron: TPL_B, silver: TPL_A, gold: TPL_B, amethyst: TPL_C, ruby: TPL_C, emerald: TPL_C, crystal: TPL_C,
+    opal: TPL_A, topaz: TPL_C, sapphire: TPL_C, garnet: TPL_A, jade: TPL_B, obsidian: TPL_C, moonstone: TPL_A, sunstone: TPL_B, mythril: TPL_B, starcore: TPL_C,
   };
   const cache = new Map();
   function get(kind, size, f) {

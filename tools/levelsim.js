@@ -58,7 +58,7 @@ const KIND_SHARE = (() => { if (!S.TREE_KINDS) return { broad: 1 }; const m = S.
   for (let i = 0; i < 4000; i++) { const x = 2 + Math.floor(r() * (S.W - 4)), y = 2 + Math.floor(r() * (S.H - 4)); if (!S.treeSpotOk(m, x, y)) continue; const k = S.pickTreeKind(m, x, y, r); d[k] = (d[k] || 0) + 1; n++; }
   for (const k of Object.keys(d)) d[k] /= n; return d; })();
 function wood(lv) {
-  const axe = lv >= 6 ? 3 : lv >= 3 ? 2 : 1, wl = 1 + (S.WOOD.xpPerLv || 0) * (S.perkLv(lv) - 1);
+  const axe = lv >= 16 ? 5 : lv >= 11 ? 4 : lv >= 6 ? 3 : lv >= 3 ? 2 : 1, wl = 1 + (S.WOOD.xpPerLv || 0) * (S.perkLv(lv) - 1);
   const kinds = S.TREE_KINDS || { broad: { lv: 1, axe: 1, hp: S.TREE_HP, drop: [['log', 2]], bonus: [['hardwood', S.WOOD.hardwood.chance]] } }, items = S.WOOD_ITEMS || { log: S.WOOD.log, hardwood: S.WOOD.hardwood };
   let share = 0, val = 0, xp = 0, pcs = 0, secs = 0;
   for (const [id, K] of Object.entries(kinds)) {

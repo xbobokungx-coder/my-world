@@ -529,7 +529,7 @@ class World {
   // ----- เควสประจำวัน + แต้มความดี + บัฟ + สถิติประจำวัน (Hall of Fame) -----
   today() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
   questPick(p, r, have) { // สุ่มเควสให้ครบ QUEST_PER_DAY ข้อ: กระจายหลายหมวดก่อน แล้วค่อยเติมให้เต็ม • have = id ที่มีอยู่แล้ว (ไม่ซ้ำ)
-    const inv = p.rec.inv, newbie = (p.rec.qtotal || 0) < S.QUEST_NEWBIE, hasAxe = !!(inv.axe_1 || inv.axe_2 || inv.axe_3);
+    const inv = p.rec.inv, newbie = (p.rec.qtotal || 0) < S.QUEST_NEWBIE, hasAxe = S.axeTier(inv) > 0;
     const ids = Object.keys(S.QUESTS).filter(id => { const d = S.QUESTS[id]; return !have.includes(id) && !(newbie && (d.adv || d.cat === 'cook')) && !(d.cat === 'wood' && !hasAxe); }); // มือใหม่: ข้อง่ายเท่านั้น • เควสไม้ต้องมีขวาน
     const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
     const out = [];
@@ -1642,7 +1642,7 @@ class World {
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); }
   treeList() { const out = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) out.push([x, y, (this.treeKind && this.treeKind.get(x + ',' + y)) || 'broad']); return out; }
   // ---------- ความทนทานเครื่องมือ (รายจ่ายสม่ำเสมอ): ใช้ทุกครั้งสึก 1 หมดแล้วต้องซ่อมที่ร้านเสียเหรียญ ----------
-  toolTier(p, tool) { const inv = p.rec.inv; return tool === 'rod' ? rodOf(inv) : tool === 'axe' ? (inv.axe_3 ? 3 : inv.axe_2 ? 2 : 1) : tool === 'pick' ? (S.pickTier(inv) || 1) : 1; }
+  toolTier(p, tool) { const inv = p.rec.inv; return tool === 'rod' ? rodOf(inv) : tool === 'axe' ? (S.axeTier(inv) || 1) : tool === 'pick' ? (S.pickTier(inv) || 1) : 1; }
   fixN(p, tool) { return (p.rec.fix && p.rec.fix[tool]) || 0; }
   durMx(p, tool) { return S.durMax(tool, this.toolTier(p, tool), this.fixN(p, tool)); }
   durCur(p, tool) { const mx = this.durMx(p, tool), d = p.rec.dur && p.rec.dur[tool]; return d === undefined ? mx : Math.max(0, Math.min(d, mx)); }
@@ -2101,7 +2101,7 @@ class World {
       p.fish = { st: 'wait', at: now + wait, fx: tx * TS + 16, fy: ty * TS + 16, fl, rod, bt };
       this.sfx(p, 'cast'); this.durUse(p, 'rod');
     } else if (tool === 'axe') {
-      const axe = inv.axe_3 ? 3 : inv.axe_2 ? 2 : inv.axe_1 ? 1 : 0;
+      const axe = S.axeTier(inv);
       if (!axe) return this.toast(p, 'ต้องมีขวานก่อน ซื้อได้ที่ร้านช่างไม้ 🪓');
       if (!S.isChoppable(this.map, tx, ty)) return this.toast(p, 'ใช้ขวานฟันต้นไม้ 🌳 (ต้นไม้ขอบแมพตัดไม่ได้)');
       const key = tx + ',' + ty, kid = this.treeKind.get(key) || 'broad', K = S.TREE_KINDS[kid], wl = this.lv(p, 'wood');
