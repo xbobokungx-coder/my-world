@@ -3414,9 +3414,9 @@ const pip = (pts, x, y) => { let on = false; for (let i = 0, j = pts.length - 1;
 // กล่อง 3 ด้าน: (X,Y) = กึ่งกลางฐาน w×d px ตั้งแต่ความสูง z0 สูง h • ซ้ายล่างหันหาผู้เล่น ขวาล่างเข้มกว่า (แสงมาจากซ้ายบน)
 function ibox(g, X, Y, w, d, z0, h, c, o = {}) {
   const x0 = X - w / 2, x1 = X + w / 2, y0 = Y - d / 2, y1 = Y + d / 2, zt = z0 + h, st = o.flat ? null : INK;
-  poly(g, [iso(x0, y1, zt), iso(x1, y1, zt), iso(x1, y1, z0), iso(x0, y1, z0)], o.left || tint(c, -0.1), st);
-  poly(g, [iso(x1, y0, zt), iso(x1, y1, zt), iso(x1, y1, z0), iso(x1, y0, z0)], o.right || tint(c, -0.3), st);
-  poly(g, [iso(x0, y0, zt), iso(x1, y0, zt), iso(x1, y1, zt), iso(x0, y1, zt)], o.top || tint(c, 0.15), st);
+  poly(g, [iso(x0, y1, zt), iso(x1, y1, zt), iso(x1, y1, z0), iso(x0, y1, z0)], o.left || PixelArt.hue(c, -0.08), st); // แสงซ้ายบน: บน = สว่างอมเหลือง ซ้าย = สีหลัก ขวา = เงาอมม่วง
+  poly(g, [iso(x1, y0, zt), iso(x1, y1, zt), iso(x1, y1, z0), iso(x1, y0, z0)], o.right || PixelArt.hue(c, -0.3), st);
+  poly(g, [iso(x0, y0, zt), iso(x1, y0, zt), iso(x1, y1, zt), iso(x0, y1, zt)], o.top || PixelArt.hue(c, 0.16), st);
 }
 // แผ่นสีบนด้านของกล่อง (u0..u1 = สัดส่วนตามด้าน): L = ด้านซ้ายล่าง (y = y1) R = ด้านขวาล่าง (x = x1)
 const faceL = (g, X, Y, w, d, u0, u1, z0, z1, c) => poly(g, [iso(X - w / 2 + u0 * w, Y + d / 2, z1), iso(X - w / 2 + u1 * w, Y + d / 2, z1), iso(X - w / 2 + u1 * w, Y + d / 2, z0), iso(X - w / 2 + u0 * w, Y + d / 2, z0)], c);
@@ -3640,13 +3640,23 @@ Object.assign(ART, {
   },
 });
 function artGeneric(g, X, Y, W, D, r, d) { ibox(g, X, Y, W * 0.85, D * 0.85, 0, (d.h || 24) * 0.8, '#9aa0aa'); }
+// สไปรต์พิกเซลของเฟอร์นิเจอร์ (PixelFurn): เรนเดอร์ครั้งเดียวต่อ ชิ้น|หมุน|มีเงา • ชิ้นที่ขยับได้ (ART รับ now) เรนเดอร์ใหม่ทุก 100 มิลลิวินาที
+const furnSpr = new Map();
+function furnSprite(f, r, shadow, now) {
+  const art = ART[f] || artGeneric, t = art.length >= 8 ? Math.floor(now / 100) : 0, key = f + '|' + (r ? 1 : 0) + (shadow ? 's' : '');
+  let s = furnSpr.get(key); if (s && s.t === t) return s;
+  const d = FURN[f], [w, dd] = Shared.furnDims(f, r), W = w * TS, D = dd * TS;
+  s = PixelFurn.render(g => {
+    if (shadow) poly(g, [iso(-W / 2 - 2, -D / 2 - 2), iso(W / 2 + 2, -D / 2 - 2), iso(W / 2 + 2, D / 2 + 2), iso(-W / 2 - 2, D / 2 + 2)], 'rgba(34,26,48,.24)'); // เงาบนพื้น (อมม่วงเย็น)
+    art(g, 0, 0, W, D, r, d, t * 100);
+  });
+  s.t = t; furnSpr.set(key, s); return s;
+}
 const hits = []; // พื้นที่แตะของแต่ละชิ้นที่วาดในเฟรมนี้ (เรียงตามลำดับวาด ตัวท้ายสุดอยู่หน้าสุด)
 function drawFurnIso(g, it, now, alpha, ghost) {
   const d = FURN[it.f], [w, dd] = Shared.furnDims(it.f, it.r), X = it.x * TS, Y = it.y * TS, W = w * TS, D = dd * TS, z = it.z || 0;
   g.save(); if (alpha != null) g.globalAlpha = alpha;
-  if (!z && !d.flat) poly(g, [iso(X - W / 2 - 2, Y - D / 2 - 2), iso(X + W / 2 + 2, Y - D / 2 - 2), iso(X + W / 2 + 2, Y + D / 2 + 2), iso(X - W / 2 - 2, Y + D / 2 + 2)], 'rgba(40,20,5,.2)'); // เงาบนพื้น
-  g.translate(0, -z);
-  (ART[it.f] || artGeneric)(g, X, Y, W, D, it.r, d, now);
+  const [sx, sy] = iso(X, Y, z); PixelFurn.draw(g, furnSprite(it.f, it.r, !z && !d.flat, now), sx, sy);
   g.restore();
   if (ghost) return;
   if (d.flat) hits.push({ i: it.i, test: (sx, sy) => pip([iso(X - W / 2, Y - D / 2), iso(X + W / 2, Y - D / 2), iso(X + W / 2, Y + D / 2), iso(X - W / 2, Y + D / 2)], sx, sy) });
@@ -3655,10 +3665,17 @@ function drawFurnIso(g, it, now, alpha, ghost) {
 // ของติดผนัง: wl 'n' = ผนังหลังขวา (แนวแกน x) 'w' = ผนังหลังซ้าย (แนวแกน y) u = ตำแหน่งตามแนวผนัง (ช่อง)
 const wallPt = (wl, u, z) => (wl === 'n' ? iso(u, FY0, z) : iso(FX0, u, z));
 const wallRect = (g, wl, u0, u1, z0, z1, fill, stroke) => poly(g, [wallPt(wl, u0, z0), wallPt(wl, u1, z0), wallPt(wl, u1, z1), wallPt(wl, u0, z1)], fill, stroke);
+const wallSpr = new Map(); // สไปรต์พิกเซลของของติดผนัง แยกตามชิ้น|ผนัง
 function drawWallItem(g, it, alpha) {
+  const d = FURN[it.f], U = it.u * TS, hw = (d.w || 1) * TS / 2, hh = (d.h || 30) / 2, zc = 60, wl = it.wl, key = it.f + '|' + wl, [sx, sy] = wallPt(wl, U, 0);
+  let s = wallSpr.get(key); if (!s) { s = PixelFurn.render(w => { w.translate(-sx, -sy); wallArt(w, it); }); wallSpr.set(key, s); }
+  g.save(); if (alpha != null) g.globalAlpha = alpha; PixelFurn.draw(g, s, sx, sy); g.restore();
+  const quad = [wallPt(wl, U - hw, zc - hh), wallPt(wl, U + hw, zc - hh), wallPt(wl, U + hw, zc + hh), wallPt(wl, U - hw, zc + hh)];
+  if (it.i >= 0 && alpha == null) hits.push({ i: it.i, test: (sx, sy) => pip(quad, sx, sy) });
+}
+function wallArt(g, it) { // ภาพของติดผนัง (พิกัดจริงบนผนัง)
   const d = FURN[it.f], U = it.u * TS, hw = (d.w || 1) * TS / 2, hh = (d.h || 30) / 2, zc = 60, wl = it.wl;
   const ring = R => { const out = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; out.push(wallPt(wl, U + Math.cos(a) * R, zc + Math.sin(a) * R)); } return out; };
-  g.save(); if (alpha != null) g.globalAlpha = alpha;
   if (it.f === 'painting') {
     wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c98b4a', INK); wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc + hh - 4, '#8fd0f0');
     wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc - 2, '#5fa844'); wallRect(g, wl, U - hw + 8, U - 2, zc - 2, zc + 6, '#4a8a3a'); wallRect(g, wl, U + hw - 14, U + hw - 8, zc + 4, zc + 10, '#ffe08a');
@@ -3683,9 +3700,6 @@ function drawWallItem(g, it, alpha) {
   } else if (it.f === 'wreath') {
     poly(g, ring(13), '#2d6e2a', INK); poly(g, ring(9), '#3f9a3a'); poly(g, ring(5), '#2d6e2a'); wallRect(g, wl, U - 4, U + 4, zc - 13, zc - 7, '#e74c3c');
   } else wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c98b4a', INK);
-  g.restore();
-  const quad = [wallPt(wl, U - hw, zc - hh), wallPt(wl, U + hw, zc - hh), wallPt(wl, U + hw, zc + hh), wallPt(wl, U - hw, zc + hh)];
-  if (it.i >= 0 && alpha == null) hits.push({ i: it.i, test: (sx, sy) => pip(quad, sx, sy) });
 }
 function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง 2 ด้าน + หน้าต่าง + พรมหน้าประตู (วาดครั้งเดียว)
   const c = document.createElement('canvas'); c.width = ISO_B.w; c.height = ISO_B.h;
