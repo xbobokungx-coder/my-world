@@ -190,7 +190,7 @@ function handle(m) {
         const p = players.get(id); if (!p) continue;
         if (fs && !p.fs) p.castAt = performance.now(); // เพิ่งเหวี่ยงเบ็ด: เริ่มแอนิเมชันทุ่นลอยเป็นวงโค้ง
         if (!fs && p.fs && id === myId && fg) { fg = null; $('fgauge').classList.add('hidden'); }
-        p.fs = fs; p.fx = fx; p.fy = fy; p.sit = !!sit; p.bt = bt || 1;
+        p.fs = fs; p.fx = fx; p.fy = fy; p.sit = !!sit; p.lie = sit === 2; p.bt = bt || 1;
         if (id !== myId) { p.tx = x; p.ty = y; p.dir = d; }
       }
       for (const [id, x, y, d] of (m.n || [])) { const n = npcs.get(id); if (n) { n.tx = x; n.ty = y; n.dir = d; } }
@@ -3069,7 +3069,10 @@ function drawPlayer(p, now, cx) {
   if (riding) PixelVehicle.draw(ctx, p, now, PixelChar); // ผู้ขี่นั่งบนยานพาหนะพิกเซล (ล้อหมุน 4 ทิศ ขาปั่น ควันท่อ) ใน pixelchar.js
   const F = !riding && PixelAction.frame(p, performance.now()), bx = F && (p.dir || 0) >= 2 ? F.lean * (p.dir === 2 ? -1 : 1) : 0, ct = p.catchFx ? performance.now() - p.catchFx.t : -1, by = (F ? F.bob : 0) + (ct > 550 && ct < 750 ? -Math.round(Math.sin((ct - 550) / 200 * Math.PI) * 4) : 0); // ได้ปลา: กระโดดดีใจตอนรับปลา // ท่าทำงาน: ตัวโน้ม/ยุบตามเฟรม
   if (!riding) { ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
-    ctx.save(); ctx.translate(bx, by); PixelChar.draw(ctx, p, now); ctx.restore(); } // ตัวละครพิกเซล chibi (pixelchar.js)
+    if (p.lie) { // นอนบนเตียง: หมุนตัวละครยืนเป็นท่านอนราบ (ชื่อ/ฟองแชทไม่หมุน)
+      ctx.save(); ctx.translate(bx, by); ctx.translate(x, y - 8); ctx.rotate(Math.PI / 2); ctx.translate(-x, -(y - 8));
+      PixelChar.draw(ctx, Object.assign({}, p, { sit: false, moving: false }), now); ctx.restore();
+    } else { ctx.save(); ctx.translate(bx, by); PixelChar.draw(ctx, p, now); ctx.restore(); } } // ตัวละครพิกเซล chibi (pixelchar.js)
   if (riding) y -= PixelVehicle.lift(p.veh); // ผู้ขี่ตัวสูงขึ้น ป้ายชื่อ/ฟองแชท/ไอคอนเลื่อนตาม
   if (p.wet) { PixelUI.world(ctx, '🪣', x, y - 20, 16); ctx.fillStyle = 'rgba(120,190,255,.85)'; for (let i = 0; i < 4; i++) { const t = (now / 600 + i / 4) % 1; ctx.fillRect(x - 10 + i * 7, y - 14 + t * 24, 2, 4); } } // โดนราดน้ำจากชาเลนจ์
   if (p.lamp) drawHeldLamp(p, now);
@@ -3513,7 +3516,7 @@ function buildHouseGrid() { // เส้นตารางจาง ๆ ตอ�
 }
 function drawIsoPlayer(p, now) { // ตัวละครเดิมวาดที่พิกัดโลก → เลื่อนไปยังพิกัดไอโซเมตริก (นั่งแล้วยกขึ้นตามที่นั่ง)
   const [sx, sy] = iso(p.x, p.y); let lift = 0;
-  if (p.sit) for (const it of furn.values()) if (FURN[it.f].seat && Math.abs(it.x * TS - p.x) < 6 && Math.abs(it.y * TS - p.y) < 6) lift = 8;
+  if (p.sit) for (const it of furn.values()) if ((FURN[it.f].seat || FURN[it.f].bed) && Math.abs(it.x * TS - p.x) < 6 && Math.abs(it.y * TS - p.y) < 6) lift = FURN[it.f].bed ? 12 : 8;
   ctx.save(); ctx.translate(sx - p.x, sy - p.y - 10 - lift); drawPlayer(p, now); ctx.restore();
 }
 function drawIsoCompanion(cp, now) { const [sx, sy] = iso(cp.x, cp.y); ctx.save(); ctx.translate(sx - cp.x, sy - cp.y - 6); drawCompanion(cp, now); ctx.restore(); }
@@ -3613,7 +3616,7 @@ function houseIsoClick(sx, sy) {
   if (inMyHouse() && build.on) return buildClick(sx, sy, hit);
   if (hit != null) {
     const it = furn.get(hit);
-    if (it && FURN[it.f].seat) { // แตะเก้าอี้/โซฟา: ถ้าอยู่ใกล้ก็นั่งเลย ไม่งั้นเดินไปก่อนแล้วนั่ง
+    if (it && (FURN[it.f].seat || FURN[it.f].bed)) { // แตะเก้าอี้/โซฟา/เตียง: ถ้าอยู่ใกล้ก็นั่ง/นอนเลย ไม่งั้นเดินไปก่อน
       if (Math.hypot(it.x * TS - me.x, it.y * TS - me.y) <= 3.5 * TS) { stopWalk(); send({ t: 'act', tool: '', i: hit }); }
       else walkHouse(it.x * TS, it.y * TS + FURN[it.f].d * TS / 2 + 14, { sit: hit });
       return;

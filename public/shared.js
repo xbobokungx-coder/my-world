@@ -112,14 +112,14 @@
     return { ok: true, z, on };
   }
   const plotSignAt = (tx, ty) => ty === HOUSING.y0 - 1 ? plotAt(tx, HOUSING.y0) : -1; // ป้ายหน้าที่ดิน (แถวเหนือพื้นไม้)
-  // เฟอร์นิเจอร์: solid = เดินผ่านไม่ได้, seat = นั่งได้, flat = พรมปูพื้น, light = ให้แสงตอนกลางคืน
+  // เฟอร์นิเจอร์: solid = เดินผ่านไม่ได้, seat = นั่งได้, bed = นอนพักได้ (เหมือนนั่งแต่ท่านอน), flat = พรมปูพื้น, light = ให้แสงตอนกลางคืน
   const FURN_SELL = 0.35; // ร้านเฟอร์นิเจอร์รับซื้อคืนกี่เปอร์เซ็นต์ของราคาซื้อ (ตั้งต่ำไว้ให้เป็นของตกแต่ง ไม่ใช่ช่องทางทำเงิน)
   const FURN = {
     rug:      { cat: 'decor', name: 'พรมปูพื้น',     emoji: '🟥', price: 150,  flat: true, w: 2, d: 2 },
     chair:    { cat: 'living', name: 'เก้าอี้',        emoji: '🪑', price: 120,  seat: true, solid: true, w: 0.75, d: 0.75, h: 26 },
     sofa:     { cat: 'living', name: 'โซฟา',         emoji: '🛋️', price: 400, seat: true, solid: true, w: 2, d: 1, h: 30 },
     table:    { cat: 'kitchen', name: 'โต๊ะอาหาร',     emoji: '🍽️', price: 250,  solid: true, w: 2, d: 1.25, h: 16, top: true },
-    bed:      { cat: 'bedroom', name: 'เตียงนอน',      emoji: '🛏️', price: 600, solid: true, size: 30, w: 2, d: 3, h: 24, top: true },
+    bed:      { cat: 'bedroom', name: 'เตียงนอน',      emoji: '🛏️', price: 600, solid: true, size: 30, w: 2, d: 3, h: 24, top: true, bed: true },
     shelf:    { cat: 'study', name: 'ชั้นหนังสือ',    emoji: '📚', price: 350, solid: true, w: 1.5, d: 0.5, h: 42, top: true },
     tv:       { cat: 'living', name: 'ทีวี',          emoji: '📺', price: 700, solid: true, w: 1.5, d: 0.75, h: 34 },
     fridge:   { cat: 'kitchen', name: 'ตู้เย็น',        emoji: '🧊', price: 500, solid: true, w: 1, d: 1, h: 50 },
@@ -148,8 +148,8 @@
     coffeetable:{ cat: 'living', name: 'โต๊ะกลางโซฟา',     emoji: '☕', price: 180,  solid: true, w: 1.5, d: 1, h: 14, top: true },
     stool:      { cat: 'living', name: 'สตูลไม้',          emoji: '🪑', price: 70,   seat: true, solid: true, w: 0.5, d: 0.5, h: 14 },
     fireplace:  { cat: 'living', name: 'เตาผิงอิฐ',        emoji: '🔥', price: 950,  solid: true, light: true, w: 2, d: 0.75, h: 50 },
-    bedsingle:  { cat: 'bedroom', name: 'เตียงเดี่ยว',     emoji: '🛏️', price: 350,  solid: true, w: 1.5, d: 2.5, h: 20, top: true },
-    bedking:    { cat: 'bedroom', name: 'เตียงคิงไซส์',    emoji: '🛌', price: 1100, solid: true, w: 3, d: 3, h: 26, top: true },
+    bedsingle:  { cat: 'bedroom', name: 'เตียงเดี่ยว',     emoji: '🛏️', price: 350,  solid: true, w: 1.5, d: 2.5, h: 20, top: true, bed: true },
+    bedking:    { cat: 'bedroom', name: 'เตียงคิงไซส์',    emoji: '🛌', price: 1100, solid: true, w: 3, d: 3, h: 26, top: true, bed: true },
     wardrobe:   { cat: 'bedroom', name: 'ตู้เสื้อผ้า',      emoji: '🚪', price: 550,  solid: true, w: 1.5, d: 0.75, h: 60 },
     nightstand: { cat: 'bedroom', name: 'ตู้ข้างเตียง',     emoji: '🗄️', price: 150,  solid: true, w: 0.75, d: 0.75, h: 16, top: true },
     dresser:    { cat: 'bedroom', name: 'ตู้ลิ้นชัก',       emoji: '🗃️', price: 420,  solid: true, w: 1.5, d: 0.75, h: 28, top: true },

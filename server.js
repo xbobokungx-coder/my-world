@@ -408,14 +408,15 @@ class World {
       }
     }
   }
-  houseAct(p, m) { // ในบ้าน แตะเก้าอี้/โซฟาเพื่อนั่งได้อย่างเดียว (เครื่องมือฟาร์มใช้ไม่ได้)
+  houseAct(p, m) { // ในบ้าน แตะเก้าอี้/โซฟาเพื่อนั่ง หรือเตียงเพื่อนอนพัก (เครื่องมือฟาร์มใช้ไม่ได้)
     const now = Date.now(); if (now - p.lastAct < 150) return; p.lastAct = p.activeAt = now;
     const h = this.houses[p.scene], id = m.i | 0, it = h && h.items[id];
-    if (!it || !S.FURN[it.f].seat) return;
+    if (!it || !(S.FURN[it.f].seat || S.FURN[it.f].bed)) return;
     if (Math.hypot(it.x * TS - p.x, it.y * TS - p.y) > 4 * TS) return this.toast(p, 'ไกลเกินไป เดินเข้าไปใกล้ๆ ก่อน');
-    if (this.sceneMates(p.scene, p).some(q => q.sit && q.sit.i === id)) return this.toast(p, 'มีคนนั่งอยู่แล้ว');
-    p.sit = { i: id }; p.x = it.x * TS; p.y = it.y * TS; p.dir = 0;
-    send(p, { t: 'tp', x: p.x, y: p.y }); this.toast(p, '🪑 นั่งพักผ่อน... (เดินเพื่อลุก)');
+    if (this.sceneMates(p.scene, p).some(q => q.sit && q.sit.i === id)) return this.toast(p, S.FURN[it.f].bed ? 'มีคนนอนอยู่แล้ว' : 'มีคนนั่งอยู่แล้ว');
+    const lie = !!S.FURN[it.f].bed; // lie = นอนท่าราบ (พักเหมือนนั่ง: ความหิว/พลังงานเหมือนกัน)
+    p.sit = { i: id, lie }; p.x = it.x * TS; p.y = it.y * TS; p.dir = 0;
+    send(p, { t: 'tp', x: p.x, y: p.y }); this.toast(p, lie ? '😴 นอนพักผ่อน... (เดินเพื่อลุก)' : '🪑 นั่งพักผ่อน... (เดินเพื่อลุก)');
   }
 
   // ----- เมือง: กระดานข่าว (log โลก 50 รายการล่าสุด) + ตู้เซฟกองกลาง (ทุกคนลงขันเหรียญ → จ่ายยา/อาหารสัตว์อัตโนมัติ และชุบสัตว์ที่ตาย) -----
@@ -3184,7 +3185,7 @@ class World {
     const groups = new Map(); // ส่งตำแหน่งแยกตามฉาก: คนในบ้านเห็นเฉพาะคนในบ้านเดียวกัน
     for (const q of this.players.values()) { const k = q.scene || ''; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(q); }
     for (const [k, ps] of groups) {
-      const msg = { t: 's', p: ps.map(p => [p.id, Math.round(p.x), Math.round(p.y), p.dir, p.fish ? (p.fish.st === 'bite' ? 2 : 1) : 0, p.fish ? p.fish.fx : 0, p.fish ? p.fish.fy : 0, p.sit ? 1 : 0, p.fish ? p.fish.bt || 1 : 1]), n: [], pt: [], c: [] };
+      const msg = { t: 's', p: ps.map(p => [p.id, Math.round(p.x), Math.round(p.y), p.dir, p.fish ? (p.fish.st === 'bite' ? 2 : 1) : 0, p.fish ? p.fish.fx : 0, p.fish ? p.fish.fy : 0, p.sit ? (p.sit.lie ? 2 : 1) : 0, p.fish ? p.fish.bt || 1 : 1]), n: [], pt: [], c: [] };
       if (!k) {
         msg.n = this.npcs.map(n => [n.id, Math.round(n.x), Math.round(n.y), n.dir]);
         msg.pt = this.pets.map(q => [q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? 1 : 0]);
