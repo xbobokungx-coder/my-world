@@ -104,10 +104,10 @@ function cook(lv) {
 function mine(lv) {
   const pk = S.pickTier(Object.fromEntries(Object.entries(S.PICKS).filter(([, p]) => !p.lv || p.lv <= lv).map(([t]) => ['pick_' + t, 1]))), power = S.PICKS[pk].power, wl = 1 + S.MINE.xpPerLv * (S.perkLv(lv) - 1);
   const wear = S.TOOL_PRICE.pick[pk] / S.DURABILITY.pick.max[pk] * S.WEAR_RATE.base * 1.35; // ต่อก้อน (1.35 = ซ่อม/ซื้อใหม่เฉลี่ย)
-  const mix = Object.entries(S.floorMix(Math.min(lv, S.MINE.floors))).filter(([k]) => S.ORES[k].lv <= lv && S.ORES[k].pick <= pk), share = mix.reduce((a, [, w]) => a + w, 0) / 100;
+  const mix = Object.entries(S.floorMix(Math.min(Math.ceil(lv / 2), S.MINE.floors))).filter(([k]) => S.ORES[k].lv <= lv && S.ORES[k].pick <= pk), share = mix.reduce((a, [, w]) => a + w, 0) / 100;
   let val = 0, xp = 0, pcs = 0, secs = 0;
   for (const [k, w] of mix) { const o = S.ORES[k], f = w / 100 / share; // สัดส่วนในกลุ่มที่ขุดได้
-    for (let i = 0; i < S.ORE_SIZES.length; i++) { const z = S.ORE_SIZES[i], p = f * S.sizeMix(Math.min(lv, S.MINE.floors))[i] / 100, n = (z.drop[0] + z.drop[1]) / 2;
+    for (let i = 0; i < S.ORE_SIZES.length; i++) { const z = S.ORE_SIZES[i], p = f * S.sizeMix(Math.min(Math.ceil(lv / 2), S.MINE.floors))[i] / 100, n = (z.drop[0] + z.drop[1]) / 2;
       val += p * n * o.sell; xp += p * n * o.xp; pcs += p * n; secs += p * Math.ceil(S.oreHp(k, i) / power) * 0.7; } }
   secs += M.oreWalk / Math.sqrt(share); // ก้อนที่ขุดไม่ได้ (เลเวลไม่ถึง) ทำให้ต้องเดินหาไกลขึ้น
   const npm = 60 / secs;

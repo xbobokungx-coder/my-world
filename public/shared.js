@@ -433,17 +433,17 @@
   const PICKS = {
     1: { name: 'อีเต้อไม้',    price: 60,   power: 1 },
     2: { name: 'อีเต้อหิน',    price: 260,  lv: 3,  power: 2 },
-    3: { name: 'อีเต้อเหล็ก',  price: 800,  lv: 5,  power: 3 },
-    4: { name: 'อีเต้อทองคำ',  price: 2000, lv: 7,  power: 4 },
-    5: { name: 'อีเต้อมรกต',   price: 4500, lv: 9,  power: 5 },
-    6: { name: 'อีเต้อเพชร',   price: 9000, lv: 10, power: 6 },
+    3: { name: 'อีเต้อเหล็ก',  price: 800,  lv: 7,  power: 3 },
+    4: { name: 'อีเต้อทองคำ',  price: 2000, lv: 11,  power: 4 },
+    5: { name: 'อีเต้อมรกต',   price: 4500, lv: 15,  power: 5 },
+    6: { name: 'อีเต้อเพชร',   price: 9000, lv: 19, power: 6 },
   };
   const PICK_EMOJI = { 1: '🪝', 2: '🧲', 3: '⚓', 4: '🔱', 5: '🏹', 6: '🪃' }; // คีย์ไอคอนอีเต้อพิกเซลแต่ละระดับ (วาดใน pixelui.js)
   const pickTier = inv => { for (let t = 6; t >= 1; t--) if (inv && inv['pick_' + t]) return t; return 0; }; // ระดับอีเต้อสูงสุดที่มี (0 = ไม่มี)
   const SWING_MS = 570; // ความยาวท่าขุดแร่/ตัดไม้ (pixelaction.js 6 เฟรม × 95 ms) = ระยะห่างขั้นต่ำระหว่างการฟาด (levelsim คิด 0.7 วินาที/ครั้ง)
   const MINE = {
     xpPerLv: 0.1,                                  // XP นักขุดแร่ ×(1 + xpPerLv×(เลเวล−1)) เหมือนช่างไม้ (ก้อนแร่มีจำกัด จึงโตตามเลเวลด้วยตัวคูณ)
-    floors: 20,                                    // จำนวนชั้นของถ้ำ (ชั้น f = แร่ระดับ f เป็นหลัก)
+    floors: 10,                                    // จำนวนชั้นของถ้ำ (ชั้น f = แร่ระดับ f เป็นหลัก)
     mix: [70, 20, 10],                             // ชั้น f: แร่ระดับ f 70% / f+1 20% / f+2 10% (เกินชนิดสุดท้ายนับเป็นชนิดสุดท้าย → ชั้น 10 เป็นคริสตัลล้วน)
     maxOres: 45,                                   // ก้อนแร่สูงสุดต่อชั้น (ปกติราว 1 ก้อนต่อพื้น orePer ช่อง ≈ 30–40 ก้อน)
     orePer: 18,                                    // พื้นเดินได้กี่ช่องต่อแร่ 1 ก้อน (ยิ่งมาก แร่ยิ่งบาง ต้องเดินหา)
@@ -463,32 +463,34 @@
     { id: 'l', name: 'ใหญ่', w: 10, hp: 3.5, drop: [3, 5] },
   ];
   // แร่ 10 ระดับ (ขายที่ร้านช่างเหมือง หมวด "แร่" ไม่เสื่อม) • lv = เลเวลนักขุดแร่ที่ต้องมี • pick = ระดับอีเต้อต่ำสุด • sell/xp = ต่อ 1 ชิ้น (ปรับให้เหรียญและ XP ต่อชม. ใกล้ชาวนา ดู tools/levelsim.js)
+  // 31 ต.ค. 2026: เหลือแร่ที่ขุดได้ 10 ชนิด = ถ้ำ 10 ชั้น (ชั้น f = แร่ลำดับ f เป็นหลัก) ปลดทุก 2 เลเวลนักขุดแร่ (Lv1,3,5,…,19) • ชั้นล่างขึ้นมาแทนที่ชั้นเก่า 2 ชั้นต่อ 1 ชั้น
+  // แร่ที่เลิกขุด (legacy) ยังขายได้ที่ร้านช่างเหมือง แต่ไม่ปรากฏในถ้ำ hpm = ตัวคูณ HP ของแร่ตัวที่สองในคู่อีเต้อเดียวกัน
   const ORES = {
-    stone:    { name: 'หิน',       emoji: '🪨', lv: 1,  pick: 1, sell: 5,  xp: 5 },
-    coal:     { name: 'ถ่านหิน',    emoji: '⚫', lv: 2,  pick: 1, sell: 6,  xp: 5 },
-    copper:   { name: 'ทองแดง',    emoji: '🟠', lv: 3,  pick: 2, sell: 9,  xp: 6 },
-    iron:     { name: 'เหล็ก',      emoji: '🔩', lv: 4,  pick: 2, sell: 11, xp: 7 },
-    silver:   { name: 'เงิน',       emoji: '🥈', lv: 5,  pick: 3, sell: 14, xp: 7 },
-    gold:     { name: 'ทองคำ',     emoji: '🥇', lv: 6,  pick: 3, sell: 17, xp: 8 },
-    amethyst: { name: 'อเมทิสต์',   emoji: '🟣', lv: 7,  pick: 4, sell: 19, xp: 9 },
-    ruby:     { name: 'ทับทิม',     emoji: '🔴', lv: 8,  pick: 4, sell: 21, xp: 9 },
-    emerald:  { name: 'มรกต',      emoji: '🟢', lv: 9,  pick: 5, sell: 24, xp: 9 },
-    crystal:  { name: 'คริสตัล',    emoji: '💎', lv: 10, pick: 6, sell: 27, xp: 10 },
-    // ชั้น 11–20 (30 ต.ค. 2026): ใช้อีเต้อเพชร (ระดับ 6) ทุกชนิด hpm = ตัวคูณ HP (แข็งขึ้นทีละนิด) ชั้น 20 เป็นแกนดวงดาวล้วน
-    opal:      { name: 'โอปอล',      emoji: '🤍', lv: 11, pick: 6, sell: 29, xp: 11, hpm: 1.03 },
-    topaz:     { name: 'โทแพซ',      emoji: '🟡', lv: 12, pick: 6, sell: 30, xp: 11, hpm: 1.06 },
-    sapphire:  { name: 'ไพลิน',      emoji: '🔵', lv: 13, pick: 6, sell: 31, xp: 11, hpm: 1.09 },
-    garnet:    { name: 'การ์เน็ต',    emoji: '🟤', lv: 14, pick: 6, sell: 32, xp: 12, hpm: 1.12 },
-    jade:      { name: 'หยก',        emoji: '🍀', lv: 15, pick: 6, sell: 33, xp: 12, hpm: 1.15 },
-    obsidian:  { name: 'ออบซิเดียน',   emoji: '⬛', lv: 16, pick: 6, sell: 34, xp: 12, hpm: 1.18 },
-    moonstone: { name: 'มูนสโตน',    emoji: '🌙', lv: 17, pick: 6, sell: 35, xp: 13, hpm: 1.21 },
-    sunstone:  { name: 'ซันสโตน',    emoji: '🌞', lv: 18, pick: 6, sell: 36, xp: 13, hpm: 1.24 },
-    mythril:   { name: 'มิทริล',      emoji: '🔷', lv: 19, pick: 6, sell: 37, xp: 13, hpm: 1.27 },
-    starcore:  { name: 'แกนดวงดาว',  emoji: '⭐', lv: 20, pick: 6, sell: 38, xp: 14, hpm: 1.3 },
+    stone:     { name: 'หิน',       emoji: '🪨', lv: 1,  pick: 1, sell: 5,  xp: 5 },
+    copper:    { name: 'ทองแดง',    emoji: '🟠', lv: 3,  pick: 2, sell: 9,  xp: 6 },
+    silver:    { name: 'เงิน',       emoji: '🥈', lv: 5,  pick: 2, sell: 14, xp: 7, hpm: 1.2 },
+    amethyst:  { name: 'อเมทิสต์',   emoji: '🟣', lv: 7,  pick: 3, sell: 19, xp: 9 },
+    emerald:   { name: 'มรกต',      emoji: '🟢', lv: 9,  pick: 3, sell: 24, xp: 9, hpm: 1.2 },
+    opal:      { name: 'โอปอล',      emoji: '🤍', lv: 11, pick: 4, sell: 29, xp: 11 },
+    sapphire:  { name: 'ไพลิน',      emoji: '🔵', lv: 13, pick: 4, sell: 33, xp: 11, hpm: 1.2 },
+    jade:      { name: 'หยก',        emoji: '🍀', lv: 15, pick: 5, sell: 37, xp: 12 },
+    moonstone: { name: 'มูนสโตน',    emoji: '🌙', lv: 17, pick: 5, sell: 41, xp: 13, hpm: 1.2 },
+    mythril:   { name: 'มิทริล',      emoji: '🔷', lv: 19, pick: 6, sell: 45, xp: 13, hpm: 1.2 },
+    // legacy (ไม่อยู่ในถ้ำแล้ว)
+    coal:      { name: 'ถ่านหิน',    emoji: '⚫', lv: 2,  pick: 1, sell: 6,  xp: 5, legacy: true },
+    iron:      { name: 'เหล็ก',      emoji: '🔩', lv: 4,  pick: 2, sell: 11, xp: 7, legacy: true },
+    gold:      { name: 'ทองคำ',     emoji: '🥇', lv: 6,  pick: 3, sell: 17, xp: 8, legacy: true },
+    ruby:      { name: 'ทับทิม',     emoji: '🔴', lv: 8,  pick: 4, sell: 21, xp: 9, legacy: true },
+    crystal:   { name: 'คริสตัล',    emoji: '💎', lv: 10, pick: 6, sell: 27, xp: 10, legacy: true },
+    topaz:     { name: 'โทแพซ',      emoji: '🟡', lv: 12, pick: 6, sell: 30, xp: 11, legacy: true },
+    garnet:    { name: 'การ์เน็ต',    emoji: '🟤', lv: 14, pick: 6, sell: 32, xp: 12, legacy: true },
+    obsidian:  { name: 'ออบซิเดียน',   emoji: '⬛', lv: 16, pick: 6, sell: 34, xp: 12, legacy: true },
+    sunstone:  { name: 'ซันสโตน',    emoji: '🌞', lv: 18, pick: 6, sell: 36, xp: 13, legacy: true },
+    starcore:  { name: 'แกนดวงดาว',  emoji: '⭐', lv: 20, pick: 6, sell: 38, xp: 14, legacy: true },
   };
   // สัดส่วนขนาดก้อน [เล็ก, กลาง, ใหญ่] % ต่อชั้น (ตารางปรับรายชั้นได้): ชั้นตื้นมีแต่ก้อนเล็กเป็นส่วนใหญ่ ชั้นลึกก้อนกลาง/ใหญ่มากขึ้น ชั้น 5–6 ≈ ฐาน 50/40/10
-  const SIZE_MIX = [[60, 35, 5], [58, 36, 6], [56, 37, 7], [53, 38, 9], [51, 40, 9], [49, 41, 10], [46, 42, 12], [44, 43, 13], [42, 44, 14], [40, 45, 15], [39, 45, 16], [38, 45, 17], [37, 45, 18], [36, 45, 19], [35, 45, 20], [34, 45, 21], [33, 45, 22], [32, 45, 23], [31, 45, 24], [30, 45, 25]];
-  const ORE_ORDER = Object.keys(ORES);
+  const SIZE_MIX = [[60, 35, 5], [58, 36, 6], [56, 37, 7], [53, 38, 9], [51, 40, 9], [49, 41, 10], [46, 42, 12], [44, 43, 13], [42, 44, 14], [40, 45, 15], [39, 45, 16], [38, 45, 17], [37, 45, 18], [36, 45, 19], [35, 45, 20], [34, 45, 21], [33, 45, 22], [32, 45, 23], [31, 45, 24], [30, 45, 25]].filter((_, i) => i % 2 === 0); // ถ้ำ 10 ชั้น: ใช้แถวของเลเวล 1,3,5,…,19 ของตารางเดิม
+  const ORE_ORDER = Object.keys(ORES).filter(k => !ORES[k].legacy); // แร่ในถ้ำตามลำดับชั้น
   for (const o of Object.values(ORES)) o.hp = Math.round(MINE.hpBase * ACTION_TUNE.mine * o.pick * (o.hpm || 1));
   const oreXp = (xp, lv) => Math.round(xp * (1 + MINE.xpPerLv * (perkLv(lv) - 1)));
   const oreHp = (kind, size) => Math.round(ORES[kind].hp * ORE_SIZES[size].hp);

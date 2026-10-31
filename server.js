@@ -258,7 +258,7 @@ class World {
   caveMove(p, f, to) { // ย้ายชั้น (to = ชั้นใหม่) ขึ้นมาจากชั้นล่างยืนข้างบันไดลง ลงมาจากชั้นบนยืนที่จุดเกิด
     const at = to < f ? this.caveLanding(to) : S.CAVE.spawn;
     this.changeScene(p, CAVE + to, at.x, at.y);
-    this.toast(p, `⛏️ ถ้ำเหมือง ชั้น ${to}${to === S.MINE.floors ? ' (ชั้นลึกสุด คริสตัลล้วน)' : ''} • แร่ส่วนใหญ่ระดับ ${to}`);
+    this.toast(p, `⛏️ ถ้ำเหมือง ชั้น ${to}${to === S.MINE.floors ? ' (ชั้นลึกสุด มิทริลล้วน)' : ''} • แร่ส่วนใหญ่ระดับ ${to}`);
   }
   houseMap() { return this.hmap; } // แมพบ้านเป็นผนัง/พื้นเหมือนกันทุกหลัง (ของตกแต่งอยู่นอกตาราง ดู houseRects)
   houseRects(key) { let r = this.hrects.get(key); if (!r) { r = S.houseSolidRects(this.houses[key] ? this.houses[key].items : {}); this.hrects.set(key, r); } return r; }
