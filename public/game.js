@@ -216,6 +216,7 @@ function handle(m) {
     case 'mkt': Object.assign(market, m.m); refreshOpen(); break;
     case 'sfx': {
       let k = 1;
+      if (scene && !m.self && m.id !== myId && !(m.id && players.has(m.id))) break; // อยู่ในบ้าน: ไม่ได้ยินเสียงข้างนอก (ได้ยินเฉพาะเสียงของตัวเองและคนในบ้านเดียวกัน • โทรคุยส่วนตัวไม่ผ่านทางนี้)
       if (!m.self && m.id !== myId && me) k = Math.max(0, 1 - Math.hypot(m.x - me.x, m.y - me.y) / TS / 14); // คนอื่นทำเสียงไกลๆ จะเบาลงตามระยะ
       if (k > 0.05) playSfx(m.k, k * (m.id === myId || m.self ? 1 : 0.7));
       break;
