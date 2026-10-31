@@ -304,7 +304,7 @@
   };
   // ฤดูกาล (ขั้น 4 ใน ECONOMY-PLAN.md): ร้อน → ฝน → หนาว วนทุก days วันจริง นับจาก epoch • พืชในฤดู: ราคาเป้าตลาด ×inMul • นอกฤดู: โตช้าลง (เวลา ×outGrow) และราคา ×outMul
   // พืชเลเวล 1 (แครอท กะหล่ำ) โตปกติทุกฤดู คนใหม่ไม่โดน
-  const CROP_IDS = () => Object.keys(CROPS).filter(c => !CROPS[c].legacy); // พืชที่ขายอยู่จริง (ไม่รวม legacy)
+  const CROP_IDS = () => Object.keys(CROPS).filter(c => !CROPS[c].legacy).sort((a, b) => CROPS[a].lv - CROPS[b].lv || CROPS[a].sell - CROPS[b].sell); // พืชที่ขายอยู่จริง (ไม่รวม legacy)
   const SEASONS = { epoch: Date.parse('2026-11-01T00:00:00+07:00'), days: 3.5, inMul: 1.15, outMul: 0.9, outGrow: 1.5, list: [
     { id: 'hot',  name: 'ฤดูร้อน', emoji: '☀️', crops: ['corn', 'tomato', 'pineapple', 'melon', 'peach', 'avocado', 'sunflower'] },
     { id: 'rain', name: 'ฤดูฝน',  emoji: '🌧️', crops: ['cabbage', 'eggplant', 'pumpkin', 'grape', 'kiwi', 'blueberry', 'beans'] },
