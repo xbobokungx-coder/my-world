@@ -55,7 +55,7 @@ const last = (ws, t) => { for (let i = ws.msgs.length - 1; i >= 0; i--) if (ws.m
   assert.ok(S.oreHp('stone', 0) < S.oreHp('stone', 1) && S.oreHp('stone', 1) < S.oreHp('stone', 2), 'ก้อนใหญ่ HP มากกว่า');
   const t = S.makeMap();
   for (const x of S.MINE.door) { assert.strictEqual(t[S.MINE.y][x], T.MOUTH); assert.strictEqual(t[S.MINE.y + 1][x], T.PATH, 'หน้าปากถ้ำต้องเป็นทาง'); }
-  assert.ok(!S.blockedAt(t, (S.MINE.door[1] + 0.5) * TS, 8.5 * TS), 'ปากถ้ำเดินเข้าได้');
+  assert.ok(!S.blockedAt(t, (S.MINE.door[0] + 0.5) * TS, 8.5 * TS), 'ปากถ้ำเดินเข้าได้');
   for (let x = S.MINE.hill.x0; x <= S.MINE.hill.x1; x++) assert.ok(S.blockedAt(t, (x + 0.5) * TS, 7.5 * TS) || !S.hillAt(x, 7), 'ภูเขาถ้ำเดินทะลุไม่ได้');
   assert.strictEqual(S.playLevel({}), 5, 'อาชีพใหม่ต้องไม่ดันระดับการเล่นของคนทั่วไป');
 }
@@ -63,7 +63,7 @@ const last = (ws, t) => { for (let i = ws.msgs.length - 1; i >= 0; i--) if (ws.m
 const w = new World('main');
 const wa = mkWs(), wb = mkWs();
 const a = w.join(wa, 'alice', '#e74c3c').p, b = w.join(wb, 'bob', '#3498db').p;
-const door = () => ({ x: (S.MINE.door[1] + 0.5) * TS, y: 9.5 * TS });
+const door = () => ({ x: (S.MINE.door[0] + 0.5) * TS, y: 9.5 * TS });
 const step = (p, x, y) => { w.handle(p, { t: 'm', x, y, d: 1 }); };
 const ctr = (x, y) => [(x + 0.5) * TS, (y + 0.5) * TS];
 
@@ -75,7 +75,7 @@ const sc = last(wa, 'scene');
 assert.ok(sc && sc.cave === 1 && sc.ores.length >= 20 && sc.ores[0].length === 4 && sc.players.length === 1, 'ต้องได้ฉากถ้ำพร้อมรายการแร่ [x,y,ชนิด,ขนาด]');
 assert.deepStrictEqual([a.x, a.y], [S.CAVE.spawn.x, S.CAVE.spawn.y]);
 assert.strictEqual(Math.floor(a.ret.y / TS), 9, 'จำตำแหน่งหน้าปากถ้ำไว้ ไม่ใช่ช่องปากถ้ำ');
-b.x = door().x + 32; b.y = door().y; step(b, b.x, 8.5 * TS);
+b.x = door().x; b.y = door().y; step(b, b.x, 8.5 * TS);
 assert.strictEqual(b.scene, '@cave1'); assert.ok(wa.msgs.some(m => m.t === 'p+' && m.id === b.id), 'คนในถ้ำเห็นกัน');
 assert.ok(last(wb, 'scene').players.length === 2, 'คนใหม่เห็นคนที่อยู่ก่อน');
 assert.ok(w.floors.size === 1 && w.floorOf(1).ores.size <= S.MINE.maxOres, 'สร้างเฉพาะชั้นที่มีคนเข้า');

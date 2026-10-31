@@ -2622,6 +2622,7 @@ function drawCaveWorld(now) {
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
 }
 // หน้าผา/บันได (ผังเมืองใหม่): วาดทับพื้นทางหลังสร้างพื้นโลก ใช้พาเลตดินหิน-น้ำตาลตาม STYLE_GUIDE
+let caveLamp = [0, 0]; // ตำแหน่งตะเกียงหน้าถ้ำ (พิกเซลเกม) ตั้งตอนวาดภูเขา ใช้ใน drawNight
 function drawCliffs(gx) {
   const rock = ['#a89478', '#8f7e68', '#7a6a58', '#665848', '#4a3d30'];
   for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) {
@@ -2640,9 +2641,9 @@ function drawCliffs(gx) {
     }
   }
   // ภูเขาถ้ำเหมือง (pixelart.js caveHill) ภาพ ×2 ปากถ้ำอยู่ตีนเขาตรงช่อง MINE.door + ป้าย ⚒️ บนคาน
-  const HL = Shared.MINE.hill, hill = PixelArt.caveHill(Shared.hillTop, HL.peaks), sm = gx.imageSmoothingEnabled;
+  const HL = Shared.MINE.hill, hill = PixelArt.caveHill(Shared.hillTop, HL.peaks, (HL.x1 - HL.x0 + 1) * 16, (Shared.MINE.door[0] - HL.x0) * 16 + 8), sm = gx.imageSmoothingEnabled, at = p => [HL.x0 * TS + p.x * 2, p.y * 2]; // พิกเซลภาพ → พิกเซลเกม (ภาพมีขอบ 1 วางที่ −2)
   gx.imageSmoothingEnabled = false; gx.drawImage(hill, HL.x0 * TS - 2, -2, hill.width * 2, hill.height * 2); gx.imageSmoothingEnabled = sm;
-  PixelUI.world(gx, '⚒️', HL.x0 * TS + 175, 210, 12);
+  PixelUI.world(gx, '⚒️', ...at(hill.sign), 9); caveLamp = at(hill.lamp);
 }
 function buildBase() {
   const U = PixelArt.U, K = PixelArt.GK, GU = U * K, oc = document.createElement('canvas'); oc.width = W * GU; oc.height = H * GU; // พื้นโลกละเอียด K เท่า (GU = 32 px ต่อช่อง = พิกเซลเกม)
@@ -3269,7 +3270,7 @@ function drawNight(dark, now) {
   const hole = (x, y, r, inner) => { const g = lctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(inner, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, r, 0, 7); lctx.fill(); };
   const fx = FIRE.x * TS + 16, fy = FIRE.y * TS + 12, fr = TS * 10.5 * (1 + Math.sin(now / 130) * 0.02 + Math.sin(now / 71) * 0.015);
   if (inTown()) hole(fx, fy, fr, 0.3);
-  const hl = Shared.MINE.hill.x0 * TS + 219, hy = 233; if (inTown()) hole(hl, hy, TS * 3, 0.35); // ตะเกียงหน้าถ้ำเหมือง
+  const [hl, hy] = caveLamp; if (inTown()) hole(hl, hy, TS * 2, 0.35); // ตะเกียงหน้าถ้ำเหมือง
   const LH = inTown() && builtProj.has('lighthouse') && Shared.LIGHTHOUSE, lx = LH ? (LH.x0 + (LH.x1 - LH.x0 + 1) / 2) * TS : 0, ly = LH ? LH.y0 * TS + 39 : 0, lAng = now / 1800; // ประภาคาร: ห้องตะเกียงอยู่ใกล้ยอดหอ ลำแสงหมุนรอบ ~11 วินาที
   const beam = (r, half, ang, a0) => { const g = lctx.createRadialGradient(lx, ly, 0, lx, ly, r); g.addColorStop(0, `rgba(0,0,0,${a0})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(lx, ly); lctx.arc(lx, ly, r, ang - half, ang + half); lctx.closePath(); lctx.fill(); };
   if (LH) { hole(lx, ly, TS * 7 * (1 + Math.sin(now / 400) * 0.02), 0.25); beam(TS * 18, 0.2, lAng, 0.95); beam(TS * 18, 0.2, lAng + Math.PI, 0.95); }
@@ -3291,7 +3292,7 @@ function drawNight(dark, now) {
     for (const a of [lAng, lAng + Math.PI]) { wg(lx, ly, TS * 18, 0.22 * Math.min(1, dark * 1.3)); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.arc(lx, ly, TS * 18, a - 0.2, a + 0.2); ctx.closePath(); ctx.fill(); }
   }
   if (cave) for (const [x, y] of caveTorches) { warm(x, y, TS * 3.2, 0.22 + Math.sin(now / 90 + y) * 0.03); ctx.fillStyle = 'rgba(255,190,90,.55)'; ctx.fillRect(x - 3, y - 6 - (Math.sin(now / 80 + x) > 0 ? 2 : 0), 6, 6); } // แสงอุ่น + ไฟวูบ
-  if (inTown()) { warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); warm(hl, hy, TS * 2.5, 0.25 * Math.min(1, dark * 1.2)); } for (const p of players.values()) if (p.lamp) warm(...pj(p.x, p.y, 4), TS * 5, 0.16 * Math.min(1, dark * 1.2));
+  if (inTown()) { warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); warm(hl, hy, TS * 1.8, 0.25 * Math.min(1, dark * 1.2)); } for (const p of players.values()) if (p.lamp) warm(...pj(p.x, p.y, 4), TS * 5, 0.16 * Math.min(1, dark * 1.2));
   ctx.globalCompositeOperation = 'source-over'; ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
