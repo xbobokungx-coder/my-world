@@ -1258,9 +1258,10 @@ function renderShop() {
   }
   const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'seed', tabs = SHOP_TABS[shopKind], sellTab = !!tabs && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'pets';
   let h = tabs ? `<div class="tabs">${tabs.map(([c, n]) => `<button class="tab${farmTab === c ? ' on' : ''}" data-ftab="${c}">${n}</button>`).join('')}</div>` : '';
-  h += sellTab || cookTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากกำไรต่อนาทีดีที่สุด → แย่ที่สุด)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : 'ซื้อ') + '</div>';
+  h += sellTab || cookTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากเลเวลต่ำ → สูง)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : 'ซื้อ') + '</div>';
   let keys = sellTab || cookTab ? [] : isFarm ? sh.buy.filter(k => k.startsWith('seed_') === seedTab) : shopKind === 'animal' ? sh.buy.filter(k => !!itemInfo(k).animal === petTab) : shopKind === 'furn' ? sh.buy.filter(k => furnCatOf(k) === farmTab) : sh.buy;
-  if (seedTab) keys = keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a));
+  const profitRank = seedTab ? keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a)) : [];
+  if (seedTab) keys = keys.slice().sort((a, b) => CROPS[a.slice(5)].lv - CROPS[b.slice(5)].lv || CROPS[a.slice(5)].sell - CROPS[b.slice(5)].sell);
   for (const k of keys) {
     const i = itemInfo(k), locked = i.lv && lvl(i.skill) < i.lv, coin = inv.coin || 0;
     let sub = '';
@@ -1268,7 +1269,7 @@ function renderShop() {
     else if (i.once) sub = inv[k] ? 'มีแล้ว ✅' : '';
     else sub = `มี ${inv[k] || 0}${i.food ? ` • อิ่ม +${i.food}` : ''}`;
     if (seedTab) { const sz = Shared.cropSeason(k.slice(5), Date.now() + timeOffset); if (sz) sub += sz > 0 ? ' • 🌟 ในฤดู ราคาดี' : ' • 🐢 นอกฤดู โตช้า'; }
-    if (seedTab) { const c = CROPS[k.slice(5)], pr = seedProfit(k), ix = keys.indexOf(k); sub += ` • กำไร ${c.sell - c.seed}/ต้น (${pr.toFixed(1)}/นาที) ${ix < 3 ? '⭐ ดี' : ix >= keys.length - 3 ? '▼ ต่ำ' : ''}`; }
+    if (seedTab) { const c = CROPS[k.slice(5)], pr = seedProfit(k), ix = profitRank.indexOf(k); sub += ` • กำไร ${c.sell - c.seed}/ต้น (${pr.toFixed(1)}/นาที) ${ix < 3 ? '⭐ ดี' : ix >= profitRank.length - 3 ? '▼ ต่ำ' : ''}`; }
     const lockTxt = locked ? ` <small>🔒 Lv${i.lv}</small>` : '';
     const off = locked || (i.once && inv[k]) || (i.animal && animalCount(i.animal) >= ANIMALS[i.animal].cap);
     h += `<div class="row${locked ? ' lock' : ''}"><span>${i.emoji} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${i.buy} `
