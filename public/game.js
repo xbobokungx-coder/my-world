@@ -159,7 +159,7 @@ function handle(m) {
     case 'use': { const p = players.get(m.id); if (p) { p.useAt = performance.now(); p.useK = PixelAction.kindOf(p.held) === 'fish' && p.fs ? 'reel' : ''; } break; } // ตกปลาอยู่แล้ว = ท่าดึงเบ็ด
     case 'oh': oreHit.set(m.x + ',' + m.y, { t: performance.now(), f: m.f }); break; // ก้อนแร่โดนฟาด: สั่น + รอยร้าวตาม HP ที่เหลือ
     case 'th': treeHit.set(m.x + ',' + m.y, { t: performance.now(), f: m.f }); break; // ต้นไม้โดนฟัน: ส่าย + รอยบากที่โคน
-    case 'catch': { const p = players.get(m.id), F = Shared.FISH.find(f => f.id === m.f); if (p && F) p.catchFx = { t: performance.now(), e: F.emoji, big: F.sell >= 100, x: p.fx || p.x, y: p.fy || p.y }; break; } // ปลากระโดดขึ้นมาอยู่เหนือหัว
+    case 'catch': { const p = players.get(m.id), F = Shared.FISH_ALL.find(f => f.id === m.f); if (p && F) p.catchFx = { t: performance.now(), e: F.emoji, big: F.sell >= 100, x: p.fx || p.x, y: p.fy || p.y }; break; } // ปลากระโดดขึ้นมาอยู่เหนือหัว
     case 'held': { const p = players.get(m.id); if (p) p.held = m.e || ''; break; }
     case 'status': presence(m.id, p => { p.status = m.s || ''; }); if (peopleShown()) renderPeople(true); break;
     case 'voice': presence(m.id, p => { p.voice = m.on; if (!m.on) p.speaking = false; }); if (peopleShown()) renderPeople(true); break;
@@ -1036,7 +1036,7 @@ function showPicker() {
     }
     el.classList.remove('hidden'); return;
   }
-  let keysList = s === 'seed' ? Object.keys(CROPS).map(c => 'seed_' + c) : s === 'rod' ? BAIT_KEYS : FEEDS;
+  let keysList = s === 'seed' ? Shared.CROP_IDS().map(c => 'seed_' + c).concat(Object.keys(CROPS).filter(c => CROPS[c].legacy && (inv['seed_' + c] || 0) > 0).map(c => 'seed_' + c)) : s === 'rod' ? BAIT_KEYS : FEEDS;
   const isLocked = k => { const i = itemInfo(k); return !!(i.lv && lvl(i.skill) < i.lv && !(inv[k] || 0)); };
   if (isTouch) keysList = keysList.filter(k => !isLocked(k)).concat(keysList.filter(isLocked)); // มือถือ: ของที่ใช้ได้ขึ้นก่อน ของที่ยังล็อกไปท้ายแผง (ลำดับเดิมในแต่ละกลุ่ม)
   el.innerHTML = '';
@@ -1155,7 +1155,7 @@ function renderBag() {
     if (!Object.keys(inv).some(k => k !== 'coin' && inv[k] > 0)) h += '<p style="opacity:.7">ยังไม่มีของ ลองปลูกผัก ตกปลา หรือเลี้ยงสัตว์ดูนะ</p>';
     el.innerHTML = h;
   } else if (bagTab === 'skills') {
-    const nextCrop = () => Object.values(CROPS).filter(c => c.lv > lvl('farm')).sort((a, b) => a.lv - b.lv)[0];
+    const nextCrop = () => Object.values(CROPS).filter(c => !c.legacy && c.lv > lvl('farm')).sort((a, b) => a.lv - b.lv)[0];
     const nextFish = () => FISH.filter(f => f.lv > lvl('fish')).sort((a, b) => a.lv - b.lv)[0];
     const hints = {
       farm: () => { const c = nextCrop(); return (c ? `ถัดไป: ปลดล็อก ${c.emoji} ${c.name} ที่ Lv${c.lv}` : 'ปลดล็อกเมล็ดครบแล้ว') + ' • พืชโตเร็วขึ้น 4% ต่อเลเวล'; },

@@ -22,7 +22,7 @@ function farm(lv) {
   const cap = Math.min(S.FARM_CAP.max, S.FARM_CAP.base + S.FARM_CAP.perLv * (lv - 1)), m = 1 + 0.04 * (lv - 1), wet = S.CANS[lv >= 6 ? 3 : lv >= 3 ? 2 : 1].wet;
   let best = null;
   for (const [k, c] of Object.entries(S.CROPS)) {
-    if (c.lv > lv) continue;
+    if (c.lv > lv || c.legacy) continue;
     const grow = c.time / m, waters = Math.ceil(grow / wet), acts = 3 + waters; // ขุด ปลูก เก็บ + รดน้ำทุกครั้งที่ดินแห้ง
     if (S.cropCan && S.canTier({ can_2: lv >= 3, can_3: lv >= 6 }) < S.cropCan(c)) continue; // ยังไม่มีบัวที่พืชนี้ต้องใช้
     const ppm = Math.min(cap / (grow / 60000), M.apm / acts);                 // ต้นต่อนาที: ติดเพดานแปลงหรือแรงงาน

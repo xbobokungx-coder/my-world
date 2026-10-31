@@ -252,9 +252,17 @@
     mine:   { name: 'นักขุดแร่',   emoji: '⚒️' },
   };
   // XP สะสมที่ต้องใช้ถึงเลเวลนั้น (ช่อง = เลเวล) ตั้งตามเวลาเล่นเป้าหมายต่ออาชีพ: Lv2 ~5 นาที • Lv4 ~45 นาที • Lv5 ~1.5 ชม. • Lv7 ~5 ชม. • Lv10 ~18 ชม. (ดู ECONOMY-PLAN.md ขั้น 1B)
-  const XP_TABLE = [0, 0, 150, 600, 1500, 3500, 8000, 14500, 24000, 36000, 64000, 95000, 130000, 169000, 213000, 262000, 317000, 379000, 448000, 525000, 612000]; // Lv11–20 ขั้นละ ×1.12 ของขั้นก่อน (ถึง Lv20 ≈ 100 ชม.เล่นจริง)
+  const XP_TABLE_V2 = [0, 0, 150, 600, 1500, 3500, 8000, 14500, 24000, 36000, 64000, 95000, 130000, 169000, 213000, 262000, 317000, 379000, 448000, 525000, 612000]; // ตารางเดิม (ใช้ย้าย XP ผู้เล่นเก่า xpv 2 → 3)
+  // 31 ต.ค. 2026 (xpv 3): ยืดเลเวลต้นให้อยู่นานขึ้น ชม.เล่นจริงต่อเลเวล (ชาวนา): Lv1→2 0.5 • 2→3 0.8 • 3→4 1.2 • 4→5 1.6 • 5→6 2.0 • 6→7 2.5 • 7→8 3.0 • 8→9 3.5 • 9→10 4.2 • Lv10 ขึ้นไปเท่าเดิม (ถึง Lv10 ≈ 19 ชม. Lv20 ≈ 114 ชม.)
+  const XP_TABLE = [0, 0, 700, 2000, 4350, 7600, 12650, 20150, 31300, 43900, 63550, 91950, 126900, 165700, 209800, 259000, 314200, 380800, 449800, 526900, 613650]; // Lv11–20 ขั้นละ ×1.12 ของขั้นก่อน (ถึง Lv20 ≈ 100 ชม.เล่นจริง)
   const xpFor = lv => XP_TABLE[Math.max(1, Math.min(MAX_LV, lv))];
   const levelOf = xp => { let lv = 1; while (lv < MAX_LV && (xp || 0) >= XP_TABLE[lv + 1]) lv++; return lv; };
+  // ย้าย XP จากตาราง xpv 2 มาตารางใหม่: เลเวลเท่าเดิม ความคืบหน้าในเลเวลเป็นสัดส่วนเท่าเดิม (เลเวลสูงสุดเก็บส่วนเกินไว้)
+  const xpFromV2 = xp => {
+    xp = Math.max(0, xp || 0); let L = 1; while (L < MAX_LV && xp >= XP_TABLE_V2[L + 1]) L++;
+    if (L >= MAX_LV) return XP_TABLE[MAX_LV] + Math.floor(xp - XP_TABLE_V2[MAX_LV]);
+    return XP_TABLE[L] + Math.floor((xp - XP_TABLE_V2[L]) / (XP_TABLE_V2[L + 1] - XP_TABLE_V2[L]) * (XP_TABLE[L + 1] - XP_TABLE[L]));
+  };
   // ย้าย XP ตามสูตรเดิม (30×(lv−1)², ใช้ถึง ต.ค. 2026) มาตารางใหม่: เลเวลเท่าเดิม และความคืบหน้าในเลเวลนั้นเป็นสัดส่วนเท่าเดิม
   const xpFromV1 = xp => {
     xp = Math.max(0, xp || 0); const old = lv => 30 * (lv - 1) * (lv - 1), L = Math.min(MAX_LV, Math.floor(Math.sqrt(xp / 30)) + 1);
@@ -265,29 +273,30 @@
   // เมล็ดพืช: lv = เลเวลชาวนาที่ปลดล็อก, time = เวลาโต (ms) เมื่อรดน้ำต่อเนื่อง, xp = XP ตอนเก็บเกี่ยว
   // ราคาเมล็ดลด 25% (25 ต.ค. 2026) ชาวนาเคยได้กำไรน้อยสุดในทุกอาชีพ (tools/econsim.js) เมล็ด ≈ 38–45% ของราคาขาย
   // เวลาโตผูกกำไร (sell−seed) ≈ 0.22 เหรียญ/วิ (ขั้นต่ำ 60 วิ สูงสุด 480 วิ) ให้พืชแพงไม่คุ้มเวลากว่าพืชกลาง — สลับชนิดแทนจ้องแต่ของแพง (พลังงานปิด)
+  // 31 ต.ค. 2026: เหลือพืชที่ขายจริง 20 ชนิด เลเวลละ 1 ชนิด (เรียงตามราคา) • potato chili broccoli cherry olive = legacy: ซ่อนจากร้าน/สมุด/ฤดู แต่ยังเก็บเกี่ยวและขายของเดิมได้
   const CROPS = {
     carrot:     { name: 'แครอท',      emoji: '🥕', seed: 8, sell: 20,  time: 60000,  lv: 1, xp: 5 },
-    cabbage:    { name: 'กะหล่ำปลี',   emoji: '🥬', seed: 11, sell: 28,  time: 77000,  lv: 1, xp: 7 },
-    corn:       { name: 'ข้าวโพด',     emoji: '🌽', seed: 15, sell: 39,  time: 109000, lv: 2, xp: 9 },
-    tomato:     { name: 'มะเขือเทศ',   emoji: '🍅', seed: 19, sell: 50,  time: 141000, lv: 3, xp: 12 },
-    eggplant:   { name: 'มะเขือม่วง',  emoji: '🍆', seed: 26, sell: 67,  time: 186000, lv: 4, xp: 16 },
-    strawberry: { name: 'สตรอว์เบอร์รี', emoji: '🍓', seed: 34, sell: 84,  time: 227000, lv: 5, xp: 20 },
-    pumpkin:    { name: 'ฟักทอง',      emoji: '🎃', seed: 45, sell: 102, time: 259000, lv: 6, xp: 26 },
-    potato:     { name: 'มันฝรั่ง',     emoji: '🥔', seed: 14,  sell: 35,  time: 95000,  lv: 2, xp: 10 },
-    chili:      { name: 'พริก',        emoji: '🌶️', seed: 21,  sell: 55,  time: 155000, lv: 3, xp: 14 },
-    broccoli:   { name: 'บรอกโคลี',     emoji: '🥦', seed: 28,  sell: 72,  time: 200000, lv: 4, xp: 18 },
-    cherry:     { name: 'เชอร์รี',      emoji: '🍒', seed: 41,  sell: 99, time: 264000, lv: 5, xp: 22 },
-    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 52,  sell: 116, time: 291000, lv: 6, xp: 28 },
-    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 64,  sell: 143, time: 359000, lv: 7, xp: 34 },
-    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 82, sell: 188, time: 480000, lv: 9, xp: 42 },
-    melon:      { name: 'แตงโม',       emoji: '🍉', seed: 68, sell: 150, time: 373000, lv: 8, xp: 38 },
+    cabbage:    { name: 'กะหล่ำปลี',   emoji: '🥬', seed: 11, sell: 28,  time: 77000,  lv: 2, xp: 7 },
+    corn:       { name: 'ข้าวโพด',     emoji: '🌽', seed: 15, sell: 39,  time: 109000, lv: 3, xp: 9 },
+    tomato:     { name: 'มะเขือเทศ',   emoji: '🍅', seed: 19, sell: 50,  time: 141000, lv: 4, xp: 12 },
+    eggplant:   { name: 'มะเขือม่วง',  emoji: '🍆', seed: 26, sell: 67,  time: 186000, lv: 5, xp: 16 },
+    strawberry: { name: 'สตรอว์เบอร์รี', emoji: '🍓', seed: 34, sell: 84,  time: 227000, lv: 6, xp: 20 },
+    pumpkin:    { name: 'ฟักทอง',      emoji: '🎃', seed: 45, sell: 102, time: 259000, lv: 7, xp: 26 },
+    potato:     { name: 'มันฝรั่ง',     emoji: '🥔', seed: 14,  sell: 35,  time: 95000,  lv: 1, legacy: true, xp: 10 },
+    chili:      { name: 'พริก',        emoji: '🌶️', seed: 21,  sell: 55,  time: 155000, lv: 1, legacy: true, xp: 14 },
+    broccoli:   { name: 'บรอกโคลี',     emoji: '🥦', seed: 28,  sell: 72,  time: 200000, lv: 1, legacy: true, xp: 18 },
+    cherry:     { name: 'เชอร์รี',      emoji: '🍒', seed: 41,  sell: 99, time: 264000, lv: 1, legacy: true, xp: 22 },
+    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 52,  sell: 116, time: 291000, lv: 8, xp: 28 },
+    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 64,  sell: 143, time: 359000, lv: 9, xp: 34 },
+    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 82, sell: 188, time: 480000, lv: 11, xp: 42 },
+    melon:      { name: 'แตงโม',       emoji: '🍉', seed: 68, sell: 150, time: 373000, lv: 10, xp: 38 },
     // เลเวล 11–20 (30 ต.ค. 2026): เมล็ด ≈ 43% ของราคาขาย เวลาโตตามกำไร (≈ 0.22 เหรียญ/วิ) สูงสุด 12 นาที
-    peach: { name: 'พีช', emoji: '🍑', seed: 86, sell: 200, time: 518000, lv: 11, xp: 44 },
-    kiwi: { name: 'กีวี', emoji: '🥝', seed: 90, sell: 210, time: 545000, lv: 12, xp: 45 },
-    coconut: { name: 'มะพร้าวน้ำหอม', emoji: '🥥', seed: 95, sell: 222, time: 577000, lv: 13, xp: 46 },
-    avocado: { name: 'อะโวคาโด', emoji: '🥑', seed: 101, sell: 234, time: 605000, lv: 14, xp: 47 },
-    blueberry: { name: 'บลูเบอร์รี', emoji: '🫐', seed: 106, sell: 246, time: 636000, lv: 15, xp: 49 },
-    olive: { name: 'มะกอก', emoji: '🫒', seed: 111, sell: 258, time: 668000, lv: 16, xp: 50 },
+    peach: { name: 'พีช', emoji: '🍑', seed: 86, sell: 200, time: 518000, lv: 12, xp: 44 },
+    kiwi: { name: 'กีวี', emoji: '🥝', seed: 90, sell: 210, time: 545000, lv: 13, xp: 45 },
+    coconut: { name: 'มะพร้าวน้ำหอม', emoji: '🥥', seed: 95, sell: 222, time: 577000, lv: 14, xp: 46 },
+    avocado: { name: 'อะโวคาโด', emoji: '🥑', seed: 101, sell: 234, time: 605000, lv: 15, xp: 47 },
+    blueberry: { name: 'บลูเบอร์รี', emoji: '🫐', seed: 106, sell: 246, time: 636000, lv: 16, xp: 49 },
+    olive: { name: 'มะกอก', emoji: '🫒', seed: 111, sell: 258, time: 668000, lv: 1, legacy: true, xp: 50 },
     beans: { name: 'เมล็ดโกโก้', emoji: '🫘', seed: 115, sell: 268, time: 695000, lv: 17, xp: 51 },
     mushroom: { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', seed: 120, sell: 278, time: 718000, lv: 18, xp: 52 },
     sunflower: { name: 'ทานตะวันทอง', emoji: '🌻', seed: 124, sell: 288, time: 720000, lv: 19, xp: 53 },
@@ -295,10 +304,11 @@
   };
   // ฤดูกาล (ขั้น 4 ใน ECONOMY-PLAN.md): ร้อน → ฝน → หนาว วนทุก days วันจริง นับจาก epoch • พืชในฤดู: ราคาเป้าตลาด ×inMul • นอกฤดู: โตช้าลง (เวลา ×outGrow) และราคา ×outMul
   // พืชเลเวล 1 (แครอท กะหล่ำ) โตปกติทุกฤดู คนใหม่ไม่โดน
+  const CROP_IDS = () => Object.keys(CROPS).filter(c => !CROPS[c].legacy); // พืชที่ขายอยู่จริง (ไม่รวม legacy)
   const SEASONS = { epoch: Date.parse('2026-11-01T00:00:00+07:00'), days: 3.5, inMul: 1.15, outMul: 0.9, outGrow: 1.5, list: [
-    { id: 'hot',  name: 'ฤดูร้อน', emoji: '☀️', crops: ['corn', 'chili', 'tomato', 'melon', 'pineapple', 'peach', 'avocado', 'olive'] },
-    { id: 'rain', name: 'ฤดูฝน',  emoji: '🌧️', crops: ['eggplant', 'pumpkin', 'potato', 'cherry', 'grape', 'kiwi', 'blueberry', 'beans'] },
-    { id: 'cool', name: 'ฤดูหนาว', emoji: '❄️', crops: ['broccoli', 'strawberry', 'mango', 'carrot', 'cabbage', 'coconut', 'mushroom', 'sunflower', 'tulip'] },
+    { id: 'hot',  name: 'ฤดูร้อน', emoji: '☀️', crops: ['corn', 'tomato', 'pineapple', 'melon', 'peach', 'avocado', 'sunflower'] },
+    { id: 'rain', name: 'ฤดูฝน',  emoji: '🌧️', crops: ['cabbage', 'eggplant', 'pumpkin', 'grape', 'kiwi', 'blueberry', 'beans'] },
+    { id: 'cool', name: 'ฤดูหนาว', emoji: '❄️', crops: ['carrot', 'strawberry', 'mango', 'coconut', 'mushroom', 'tulip'] },
   ] };
   const seasonAt = t => { const L = SEASONS.days * 864e5, n = Math.floor((t - SEASONS.epoch) / L), i = ((n % 3) + 3) % 3; return { s: SEASONS.list[i], end: SEASONS.epoch + (n + 1) * L, on: t >= SEASONS.epoch }; };
   const cropSeason = (c, t) => { const se = seasonAt(t); if (!se.on || !CROPS[c] || CROPS[c].lv <= 1) return 0; return se.s.crops.includes(c) ? 1 : -1; }; // 1 ในฤดู • -1 นอกฤดู • 0 ไม่มีผล
@@ -306,33 +316,21 @@
   const MASTERY = { xpPer: 25000, costBase: 2000, max: 5 };
   // ปลา: lv = เลเวลชาวประมงที่เริ่มตกได้, w = น้ำหนักความน่าจะเป็น (หายาก = ราคาแพง: ราคาแปรผันตามความหายาก)
   // XP ปลา ≈ 6 × ราคา^0.36 (ปลาแพงให้ XP มากขึ้นแต่ไม่ตามราคา) ให้ XP/ชม. ใกล้ชาวนาที่เลเวลเดียวกัน ตรวจด้วย node tools/levelsim.js
+  // 31 ต.ค. 2026: เหลือปลาที่ตกได้ 20 ชนิด (+รองเท้า) เลเวลละ 1 ชนิดเรียงตามราคา ปลา 12 ชนิดที่เลิกตก (LEGACY_FISH) ยังขาย/ดูในกระเป๋าได้
   const FISH = [
     { id: 'boot',    name: 'รองเท้าเก่า',  emoji: '👢', sell: 1,   xp: 1,  w: 8,  lv: 1 },
     { id: 'carp',    name: 'ปลาตะเพียน',  emoji: '🐟', sell: 12,  xp: 15,  w: 40, lv: 1 },
-    { id: 'catfish', name: 'ปลาดุก',      emoji: '🐡', sell: 16,  xp: 16,  w: 25, lv: 1 },
     { id: 'bass',    name: 'ปลากะพง',     emoji: '🐠', sell: 20,  xp: 18, w: 20, lv: 2 },
     { id: 'shrimp',  name: 'กุ้ง',        emoji: '🦐', sell: 26,  xp: 19, w: 15, lv: 3 },
     { id: 'crab',    name: 'ปู',          emoji: '🦀', sell: 32,  xp: 21, w: 12, lv: 4 },
     { id: 'koi',     name: 'ปลาคอยทอง',   emoji: '🎏', sell: 50,  xp: 25, w: 6,  lv: 5 },
     { id: 'lobster', name: 'กุ้งมังกร',    emoji: '🦞', sell: 55,  xp: 25, w: 5,  lv: 6 },
     { id: 'squid',   name: 'หมึก',        emoji: '🦑', sell: 65,  xp: 27, w: 4,  lv: 7 },
-    { id: 'shell',   name: 'หอยเชลล์',     emoji: '🐚', sell: 18,  xp: 17,   w: 22, lv: 2 },
-    { id: 'frog',    name: 'กบน้อย',      emoji: '🐸', sell: 24,  xp: 19,  w: 18, lv: 3 },
-    { id: 'oyster',  name: 'หอยนางรม',    emoji: '🦪', sell: 36,  xp: 22,  w: 12, lv: 4 },
-    { id: 'turtle',  name: 'เต่าน้อย',     emoji: '🐢', sell: 44,  xp: 23,  w: 6,  lv: 5 },
-    { id: 'shark',   name: 'ฉลามน้อย',    emoji: '🦈', sell: 90, xp: 30,  w: 1.3, lv: 9 },
-    { id: 'whale',   name: 'วาฬน้อย',     emoji: '🐳', sell: 120, xp: 34, w: 0.7, lv: 10 },
     { id: 'octopus', name: 'ปลาหมึกยักษ์', emoji: '🐙', sell: 75, xp: 28, w: 3,  lv: 8 },
-    { id: 'otter',   name: 'นากน้ำ',       emoji: '🦦', sell: 55,  xp: 25, w: 4,  lv: 6 },
-    { id: 'croc',    name: 'จระเข้น้อย',    emoji: '🐊', sell: 85, xp: 30, w: 1.6, lv: 8 },
-    { id: 'seal',    name: 'แมวน้ำ',       emoji: '🦭', sell: 105, xp: 32, w: 0.9, lv: 9 },
+    { id: 'shark',   name: 'ฉลามน้อย',    emoji: '🦈', sell: 90, xp: 30,  w: 1.3, lv: 9 },
     { id: 'dolphin', name: 'โลมา',         emoji: '🐬', sell: 140, xp: 36, w: 0.5, lv: 10 },
-    { id: 'humpback', name: 'วาฬหลังค่อม', emoji: '🐋', sell: 190, xp: 40, w: 0.25, lv: 10 },
-    // เลเวล 11–20 (29 ต.ค. 2026): rod = ระดับคันเบ็ดขั้นต่ำที่ตกได้ ทุกตัวราคา ≥ 100 จึงติดคูลดาวน์ปลาหายากและกดเป๊ะเหมือนปลากลุ่ม 3
     { id: 'jelly', name: 'แมงกะพรุน', emoji: '🪼', sell: 210, xp: 41, w: 3, lv: 11, rod: 4 },
-    { id: 'penguin', name: 'เพนกวิน', emoji: '🐧', sell: 230, xp: 42, w: 2.5, lv: 11, rod: 4 },
     { id: 'beaver', name: 'บีเวอร์', emoji: '🦫', sell: 250, xp: 44, w: 2, lv: 12, rod: 4 },
-    { id: 'dino', name: 'ไดโนน้ำ', emoji: '🦕', sell: 310, xp: 47, w: 1.2, lv: 13, rod: 5 },
     { id: 'flamingo', name: 'ฟลามิงโก', emoji: '🦩', sell: 290, xp: 46, w: 1.6, lv: 13, rod: 5 },
     { id: 'coral', name: 'ปะการังแดง', emoji: '🪸', sell: 330, xp: 48, w: 1.4, lv: 14, rod: 5 },
     { id: 'swan', name: 'หงส์ดำ', emoji: '🦢', sell: 380, xp: 51, w: 1.1, lv: 15, rod: 5 },
@@ -342,12 +340,27 @@
     { id: 'unicorn', name: 'ม้าน้ำวิเศษ', emoji: '🦄', sell: 700, xp: 66, w: 0.3, lv: 19, rod: 7 },
     { id: 'star', name: 'ดาวทะเลทอง', emoji: '🌟', sell: 800, xp: 70, w: 0.2, lv: 20, rod: 7 },
   ];
+  const LEGACY_FISH = [
+    { id: 'catfish', name: 'ปลาดุก',      emoji: '🐡', sell: 16,  xp: 16,  w: 25, lv: 1 },
+    { id: 'shell',   name: 'หอยเชลล์',     emoji: '🐚', sell: 18,  xp: 17,   w: 22, lv: 2 },
+    { id: 'frog',    name: 'กบน้อย',      emoji: '🐸', sell: 24,  xp: 19,  w: 18, lv: 3 },
+    { id: 'oyster',  name: 'หอยนางรม',    emoji: '🦪', sell: 36,  xp: 22,  w: 12, lv: 4 },
+    { id: 'turtle',  name: 'เต่าน้อย',     emoji: '🐢', sell: 44,  xp: 23,  w: 6,  lv: 5 },
+    { id: 'whale',   name: 'วาฬน้อย',     emoji: '🐳', sell: 120, xp: 34, w: 0.7, lv: 10 },
+    { id: 'otter',   name: 'นากน้ำ',       emoji: '🦦', sell: 55,  xp: 25, w: 4,  lv: 6 },
+    { id: 'croc',    name: 'จระเข้น้อย',    emoji: '🐊', sell: 85, xp: 30, w: 1.6, lv: 8 },
+    { id: 'seal',    name: 'แมวน้ำ',       emoji: '🦭', sell: 105, xp: 32, w: 0.9, lv: 9 },
+    { id: 'humpback', name: 'วาฬหลังค่อม', emoji: '🐋', sell: 190, xp: 40, w: 0.25, lv: 10 },
+    { id: 'penguin', name: 'เพนกวิน', emoji: '🐧', sell: 230, xp: 42, w: 2.5, lv: 11, rod: 4 },
+    { id: 'dino', name: 'ไดโนน้ำ', emoji: '🦕', sell: 310, xp: 47, w: 1.2, lv: 13, rod: 5 },
+  ].map(f => ({ ...f, legacy: true }));
+  const FISH_ALL = FISH.concat(LEGACY_FISH);
   // ช่างไม้: ตัดต้นไม้ด้วยขวาน (ขวานแรงกว่าตัดเร็วกว่า) ได้ไม้ท่อน หายากได้ไม้เนื้อแข็งราคาแพง
   const AXES = { 1: { name: 'ขวานหิน', price: 50, power: 1 }, 2: { name: 'ขวานเหล็ก', price: 220, lv: 3, power: 2 }, 3: { name: 'ขวานเหล็กกล้า', price: 700, lv: 6, power: 3 }, 4: { name: 'ขวานทองคำ', price: 2000, lv: 11, power: 4 }, 5: { name: 'ขวานเพชร', price: 5500, lv: 16, power: 5 } };
   const axeTier = inv => { for (let t = 5; t >= 1; t--) if (inv && inv['axe_' + t]) return t; return 0; }; // ระดับขวานสูงสุดที่มี (0 = ไม่มี)
   const ACTION_TUNE = { wood: 1.25, fish: 1.15, mine: 0.85 }; // ตัวคูณ "เวลาต่อการกระทำ" (31 ต.ค. 2026): ตัดไม้ HP ต้นไม้ ×1.25, ตกปลารอปลากินเบ็ด ×1.15, ขุดแร่ HP ก้อนแร่ ×0.85 ให้สามอาชีพสมดุลกัน
   const TREE_HP = 4;                       // ต้องฟันกี่แต้มถึงล้ม (ขวานหิน = 4 ครั้ง, เหล็ก 2, เหล็กกล้า 2)
-  const WOOD = { log: { sell: 16, xp: 5 }, hardwood: { sell: 66, xp: 14, chance: 0.16 }, xpPerLv: 0.1 }; // xpPerLv (0.15 → 0.1 เมื่อมีต้นไม้หลายชนิด 25 ต.ค. 2026): XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
+  const WOOD = { log: { sell: 18, xp: 9 }, hardwood: { sell: 66, xp: 14, chance: 0.22 }, xpPerLv: 0.075 }; // xpPerLv (0.15 → 0.1 เมื่อมีต้นไม้หลายชนิด 25 ต.ค. 2026): XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
   const woodXp = (xp, lv) => Math.round(xp * (1 + WOOD.xpPerLv * (perkLv(lv) - 1)));
   // ของที่ได้จากต้นไม้ (ขายที่ร้านช่างไม้ หมวด "ไม้" ไม่เสื่อม) • xp = XP ช่างไม้ต่อชิ้นก่อนคูณเลเวล (≈ 0.3 XP ต่อเหรียญเหมือนไม้ท่อน)
   const WOOD_ITEMS = {
@@ -368,27 +381,49 @@
     syrup:     { name: 'น้ำเชื่อมเมเปิล', emoji: '🫙', sell: 55,  xp: 14 },
     sakurawood: { name: 'ไม้ซากุระ',    emoji: '🌸', sell: 110, xp: 30 },
     petal:     { name: 'กลีบซากุระ',    emoji: '🪷', sell: 45,  xp: 10 },
-    ebony:     { name: 'ไม้มะเกลือ',    emoji: '⬛', sell: 180, xp: 44 },
+    ebony:     { name: 'ไม้มะเกลือ',    emoji: '⬛', sell: 160, xp: 38 },
     amber:     { name: 'อำพัน',        emoji: '🔶', sell: 120, xp: 25 },
-    ancientwood: { name: 'ไม้พันปี',   emoji: '🎄', sell: 300, xp: 62 },
+    ancientwood: { name: 'ไม้พันปี',   emoji: '🎄', sell: 260, xp: 52 },
+    // 31 ต.ค. 2026: ต้นไม้ใหม่ 9 ชนิด รวมเป็น 20 ชนิด เลเวลละ 1 ชนิด
+    padaukwood: { name: 'ไม้ประดู่',     emoji: '🧡', sell: 60,  xp: 20 },
+    oakwood:   { name: 'ไม้โอ๊ก',       emoji: '🌰', sell: 66,  xp: 22 },
+    acorn:     { name: 'ลูกโอ๊ก',       emoji: '🌰', sell: 38,  xp: 9 },
+    willowwood: { name: 'ไม้หลิว',      emoji: '🌿', sell: 75,  xp: 24 },
+    diptwood:  { name: 'ไม้ยางนา',      emoji: '🟤', sell: 84,  xp: 26 },
+    takianwood: { name: 'ไม้ตะเคียนทอง', emoji: '🟠', sell: 100, xp: 28 },
+    ginkgowood: { name: 'ไม้แปะก๊วย',   emoji: '🍃', sell: 118, xp: 29 },
+    ginkgonut: { name: 'ผลแปะก๊วย',     emoji: '🥜', sell: 70,  xp: 14 },
+    makhawood: { name: 'ไม้มะค่าโมง',   emoji: '🔸', sell: 132, xp: 33 },
+    raintreewood: { name: 'ไม้จามจุรี', emoji: '🌳', sell: 145, xp: 36 },
+    shingwood: { name: 'ไม้ชิงชัน',     emoji: '🟥', sell: 205, xp: 44 },
   };
   // ต้นไม้หลายชนิด (B5 ใน ECONOMY-PLAN.md): lv/axe = เลเวลช่างไม้และระดับขวานที่ต้องมี • hp = แต้มฟัน (ขวานหิน 1/ครั้ง เหล็ก 2 เหล็กกล้า 3)
   // drop = ได้แน่ [ชิ้น, จำนวน] (ชิ้นแรกมีโอกาส +1 อีก 4%/เลเวล) • bonus = ลุ้น [ชิ้น, โอกาส] (+1%/เลเวล, +10% ช่วง Happy Village)
   // w = น้ำหนักตอนงอกใหม่ • where = ที่เกิดได้ (water ใกล้น้ำ ≤ 4 ช่อง • sand ใกล้ทราย ≤ 3 ช่อง • north แถว y < 14 • deep ห่างทาง/อาคาร 4 ช่อง)
   // pct = สัดส่วน % ของต้นไม้ทั้งแมพ (รวม 100) เรียงจากง่ายไปยาก มาก → น้อย • ไผ่/มะพร้าวถูกจำกัดด้วยที่เกิด (ริมน้ำ/ริมทราย) จึงได้น้อยกว่าลำดับ
   const TREE_KINDS = {
-    broad:   { name: 'ต้นไม้ใบกว้าง', emoji: '🌳', lv: 1, axe: 1, hp: 4,  pct: 38, drop: [['log', 2]],                    bonus: [['hardwood', WOOD.hardwood.chance]] },
-    bamboo:  { name: 'กอไผ่',        emoji: '🎋', lv: 1, axe: 1, hp: 2,  pct: 8, drop: [['bamboo', 2]],                 bonus: [['shoot', 0.15]], where: 'water' },
-    pine:    { name: 'ต้นสน',        emoji: '🌲', lv: 2, axe: 1, hp: 5,  pct: 14, drop: [['pinewood', 2]],               bonus: [['resin', 0.12]], where: 'north' },
-    coconut: { name: 'ต้นมะพร้าว',    emoji: '🌴', lv: 3, axe: 1, hp: 5,  pct: 11, drop: [['palmwood', 1], ['coconut', 1]], bonus: [['coconut', 0.5]], where: 'sand' },
-    teak:    { name: 'ต้นสัก',        emoji: '🍂', lv: 4, axe: 2, hp: 8,  pct: 9, drop: [['teak', 1], ['log', 1]],       bonus: [['hardwood', 0.25]] },
-    gold:    { name: 'ต้นราชพฤกษ์',   emoji: '🌼', lv: 6, axe: 3, hp: 8,  pct: 7,  drop: [['goldwood', 1]],               bonus: [['kunflower', 0.3]] },
-    rose:    { name: 'ต้นพะยูง',      emoji: '🟥', lv: 8, axe: 3, hp: 14, pct: 5,  drop: [['rosewood', 1]],               bonus: [['rosewood', 0.1]], where: 'deep' },
-    // เลเวล 11–20 (30 ต.ค. 2026): ต้นหายาก (w ต่ำ) ต้องขวานทองคำ/เพชร
-    maple:   { name: 'ต้นเมเปิล',     emoji: '🍁', lv: 12, axe: 4, hp: 14, pct: 3.5,   drop: [['maplewood', 1]],  bonus: [['syrup', 0.3]], where: 'north' },
-    sakura:  { name: 'ต้นซากุระ',     emoji: '🌸', lv: 15, axe: 5, hp: 20, pct: 2.5,   drop: [['sakurawood', 1]], bonus: [['petal', 0.4]] },
-    ebony:   { name: 'ต้นมะเกลือ',    emoji: '⬛', lv: 18, axe: 5, hp: 28, pct: 1.2, drop: [['ebony', 1]],      bonus: [['amber', 0.25]], where: 'deep' },
-    ancient: { name: 'ไม้พันปี',      emoji: '🎄', lv: 20, axe: 5, hp: 36, pct: 0.8, drop: [['ancientwood', 1]], bonus: [['ebony', 0.3]], where: 'deep' },
+    // 31 ต.ค. 2026: 20 ชนิด เลเวลละ 1 ชนิด (pct = สัดส่วนต้นที่งอก รวม 100) ต้นแพงหายากกว่า ต้องขวานดีขึ้น
+    broad:   { name: 'ต้นไม้ใบกว้าง', emoji: '🌳', lv: 1, axe: 1, hp: 4,  pct: 27.7, drop: [['log', 2]],                    bonus: [['hardwood', WOOD.hardwood.chance]] },
+    bamboo:  { name: 'กอไผ่',        emoji: '🎋', lv: 2, axe: 1, hp: 3,  pct: 9, drop: [['bamboo', 2]],                 bonus: [['shoot', 0.15]], where: 'water' },
+    pine:    { name: 'ต้นสน',        emoji: '🌲', lv: 3, axe: 1, hp: 5,  pct: 12, drop: [['pinewood', 2]],               bonus: [['resin', 0.12]], where: 'north' },
+    coconut: { name: 'ต้นมะพร้าว',    emoji: '🌴', lv: 4, axe: 1, hp: 5,  pct: 9, drop: [['palmwood', 1], ['coconut', 1]], bonus: [['coconut', 0.5]], where: 'sand' },
+    teak:    { name: 'ต้นสัก',        emoji: '🍂', lv: 5, axe: 2, hp: 8,  pct: 8, drop: [['teak', 1], ['log', 1]],       bonus: [['hardwood', 0.25]] },
+    gold:    { name: 'ต้นราชพฤกษ์',   emoji: '🌼', lv: 6, axe: 3, hp: 8,  pct: 6,  drop: [['goldwood', 1]],               bonus: [['kunflower', 0.3]] },
+    padauk:  { name: 'ต้นประดู่',      emoji: '🧡', lv: 7, axe: 3, hp: 11, pct: 5,  drop: [['padaukwood', 1]],             bonus: [['hardwood', 0.2]] },
+    rose:    { name: 'ต้นพะยูง',      emoji: '🟥', lv: 8, axe: 3, hp: 14, pct: 4,  drop: [['rosewood', 1]],               bonus: [['rosewood', 0.1]], where: 'deep' },
+    oak:     { name: 'ต้นโอ๊ก',       emoji: '🌰', lv: 9, axe: 3, hp: 12, pct: 4,  drop: [['oakwood', 1]],                bonus: [['acorn', 0.4]], where: 'north' },
+    willow:  { name: 'ต้นหลิว',       emoji: '🌿', lv: 10, axe: 3, hp: 10, pct: 3,  drop: [['willowwood', 1]],             bonus: [['hardwood', 0.2]], where: 'water' },
+    dipt:    { name: 'ต้นยางนา',      emoji: '🟤', lv: 11, axe: 4, hp: 14, pct: 2.5, drop: [['diptwood', 1]],              bonus: [['resin', 0.25]], where: 'deep' },
+    // ต้นหายาก ต้องขวานทองคำ/เพชร
+    maple:   { name: 'ต้นเมเปิล',     emoji: '🍁', lv: 12, axe: 4, hp: 14, pct: 2,   drop: [['maplewood', 1]],  bonus: [['syrup', 0.3]], where: 'north' },
+    takian:  { name: 'ต้นตะเคียนทอง', emoji: '🟠', lv: 13, axe: 4, hp: 16, pct: 1.8,   drop: [['takianwood', 1]], bonus: [['resin', 0.2]], where: 'deep' },
+    ginkgo:  { name: 'ต้นแปะก๊วย',    emoji: '🍃', lv: 14, axe: 4, hp: 18, pct: 1.5, drop: [['ginkgowood', 1]], bonus: [['ginkgonut', 0.4]] },
+    sakura:  { name: 'ต้นซากุระ',     emoji: '🌸', lv: 15, axe: 5, hp: 20, pct: 1.2, drop: [['sakurawood', 1]], bonus: [['petal', 0.4]] },
+    makha:   { name: 'ต้นมะค่าโมง',   emoji: '🔸', lv: 16, axe: 5, hp: 22, pct: 1,   drop: [['makhawood', 1]],  bonus: [['hardwood', 0.3]], where: 'deep' },
+    raintree: { name: 'ต้นจามจุรี',   emoji: '🌳', lv: 17, axe: 5, hp: 24, pct: 0.8, drop: [['raintreewood', 1]], bonus: [['hardwood', 0.3]] },
+    ebony:   { name: 'ต้นมะเกลือ',    emoji: '⬛', lv: 18, axe: 5, hp: 28, pct: 0.6, drop: [['ebony', 1]],      bonus: [['amber', 0.25]], where: 'deep' },
+    shingchan: { name: 'ต้นชิงชัน',   emoji: '🟥', lv: 19, axe: 5, hp: 32, pct: 0.5, drop: [['shingwood', 1]],  bonus: [['rosewood', 0.2]], where: 'deep' },
+    ancient: { name: 'ไม้พันปี',      emoji: '🎄', lv: 20, axe: 5, hp: 36, pct: 0.4,   drop: [['ancientwood', 1]], bonus: [['ebony', 0.3]], where: 'deep' },
   };
   for (const k of Object.values(TREE_KINDS)) k.hp = Math.round(k.hp * ACTION_TUNE.wood);
   // ขุดเหมือง (ถ้ำ 10 ชั้น): เดินเข้าปากถ้ำบนหน้าผาเหนือ ใช้อีเต้อขุดก้อนแร่ ลงบันไดไปชั้นลึกขึ้นเรื่อยๆ ยิ่งลึกยิ่งได้แร่แพง (แต่ละชั้นเป็นฉากร่วมของทั้งห้อง เห็นกันและแย่งแร่กัน)
@@ -1044,13 +1079,13 @@
   const BOOK_ENTRY_COIN = 8;
   const BOOK = {
     fish: { name: 'ปลา',        emoji: '🐟', ids: FISH.filter(f => f.id !== 'boot').map(f => f.id), coin: 300, rare: 'statue' },
-    crop: { name: 'พืชผล',      emoji: '🥬', ids: Object.keys(CROPS),                               coin: 250, rare: 'fountain' },
+    crop: { name: 'พืชผล',      emoji: '🥬', ids: CROP_IDS(),                               coin: 250, rare: 'fountain' },
     furn: { name: 'เฟอร์นิเจอร์', emoji: '🛋️', ids: Object.keys(FURN).filter(k => !FURN[k].rare),      coin: 400, rare: 'cat' },
     meal: { name: 'อาหาร',      emoji: '🍜', ids: MEALS.map(m => m.id),                              coin: 100, rare: 'flag' },
     wood: { name: 'ไม้และของจากป่า', emoji: '🌳', ids: Object.keys(WOOD_ITEMS),                       coin: 300 }, // ไม่มีของหายาก (rare) ได้แค่เหรียญ
   };
   const bookInfo = (cat, id) => {
-    if (cat === 'fish') { const f = FISH.find(x => x.id === id); return { emoji: f.emoji, name: f.name }; }
+    if (cat === 'fish') { const f = FISH_ALL.find(x => x.id === id); return { emoji: f.emoji, name: f.name }; }
     if (cat === 'crop') return { emoji: CROPS[id].emoji, name: CROPS[id].name };
     if (cat === 'furn') return { emoji: FURN[id].emoji, name: FURN[id].name };
     if (cat === 'wood') return { emoji: WOOD_ITEMS[id].emoji, name: WOOD_ITEMS[id].name };
@@ -1092,7 +1127,7 @@
   const WISH_EXTRA = Object.values(VEHICLES).map(v => ({ k: 'veh', p: v.price })); // ที่ใช้เงินแบบซื้อครั้งเดียวที่เพิ่มในขั้น 2 (tools/econsim.js ใช้ทำรายการของที่อยากได้)
   // ร้านแต่ละสาย: buy = สินค้าที่ขาย, sell = คำนำหน้าไอเทมที่ร้านรับซื้อ
   const SHOPS = {
-    farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: Object.keys(CROPS).map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
+    farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: CROP_IDS().map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
     fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3', 'rod_4', 'rod_5', 'rod_6', 'rod_7'],                  sell: ['fish_'] },
     animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee', 'animal_alpaca', 'animal_horse', 'animal_boar'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
@@ -1155,7 +1190,7 @@
     const i = k.indexOf('_'), a = k.slice(0, i), b = k.slice(i + 1);
     if (a === 'seed' && CROPS[b]) return { name: 'เมล็ด' + CROPS[b].name, emoji: CROPS[b].emoji, buy: CROPS[b].seed, lv: CROPS[b].lv, skill: 'farm', cat: 'seed' };
     if (a === 'crop' && CROPS[b]) return { name: CROPS[b].name, emoji: CROPS[b].emoji, sell: CROPS[b].sell, cat: 'crop' };
-    if (a === 'fish') { const f = FISH.find(f => f.id === b); if (f) return { name: f.name, emoji: f.emoji, sell: f.sell, cat: 'fish' }; }
+    if (a === 'fish') { const f = FISH_ALL.find(f => f.id === b); if (f) return { name: f.name, emoji: f.emoji, sell: f.sell, cat: 'fish' }; }
     return null;
   }
   // ขายของที่ซื้อมาคืนร้านได้ในราคา 70% ของราคาซื้อ (เฉพาะของชิ้นเดียวที่ซื้อครั้งเดียว: เสื้อผ้า คันเบ็ด ขวาน ตะเกียง)
@@ -1324,9 +1359,9 @@
   }
   function inFarm(tx, ty) { return tx >= FARM.x0 && tx <= FARM.x1 && ty >= FARM.y0 && ty <= FARM.y1; }
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
-  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
+  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

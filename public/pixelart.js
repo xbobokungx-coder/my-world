@@ -265,8 +265,8 @@ const PixelArt = (() => {
    Integer raster shapes; no gradients, antialiasing or random per-frame noise.
    get(kind,variant) returns cached read-only canvas. */
 const PixelTrees = (() => {
- const specs={broad:[50,54,6],pine:[38,46,3],coconut:[42,46,2],teak:[50,54,2],bamboo:[38,44,3],gold:[50,54,2],rose:[50,54,2],maple:[50,54,2],sakura:[50,54,2],ebony:[50,54,2],ancient:[50,54,2]};
- const palettes={broad:['#243d37','#365943','#527946','#7b9e54','#b5c77b'],pine:['#203735','#2b5048','#3c7160','#649174','#a0b48b'],coconut:['#293d34','#3c6040','#688746','#94ac5b','#c6cf87'],teak:['#353e2d','#52623a','#7a8748','#a5a75d','#d2c57e'],bamboo:['#273c36','#3f6247','#6c9251','#a3b66c','#d1ce8d'],gold:['#4d492c','#7b7139','#b49a44','#dfbc56','#f6dda0'],rose:['#263a37','#354e40','#506b4b','#7a9161','#b0b784'],maple:['#583739','#874738','#b9653f','#df9150','#f1c17b'],sakura:['#603b54','#9b5a75','#ca8095','#e9b0bb','#f9dcd0'],ebony:['#252d35','#303f3d','#435c4a','#657b57','#929b6b'],ancient:['#243b40','#30564f','#4d7b65','#80a187','#b9c79b']};
+ const specs={broad:[50,54,6],pine:[38,46,3],coconut:[42,46,2],teak:[50,54,2],bamboo:[38,44,3],gold:[50,54,2],rose:[50,54,2],maple:[50,54,2],sakura:[50,54,2],ebony:[50,54,2],ancient:[50,54,2],padauk:[50,54,2],oak:[50,54,2],willow:[50,54,2],dipt:[50,54,2],takian:[50,54,2],ginkgo:[50,54,2],makha:[50,54,2],raintree:[50,54,2],shingchan:[50,54,2]};
+ const palettes={broad:['#243d37','#365943','#527946','#7b9e54','#b5c77b'],pine:['#203735','#2b5048','#3c7160','#649174','#a0b48b'],coconut:['#293d34','#3c6040','#688746','#94ac5b','#c6cf87'],teak:['#353e2d','#52623a','#7a8748','#a5a75d','#d2c57e'],bamboo:['#273c36','#3f6247','#6c9251','#a3b66c','#d1ce8d'],gold:['#4d492c','#7b7139','#b49a44','#dfbc56','#f6dda0'],rose:['#263a37','#354e40','#506b4b','#7a9161','#b0b784'],maple:['#583739','#874738','#b9653f','#df9150','#f1c17b'],sakura:['#603b54','#9b5a75','#ca8095','#e9b0bb','#f9dcd0'],ebony:['#252d35','#303f3d','#435c4a','#657b57','#929b6b'],ancient:['#243b40','#30564f','#4d7b65','#80a187','#b9c79b'],padauk:['#2c4130','#44603a','#6a8a45','#98ad59','#c6c97a'],oak:['#3b3220','#5a4a2a','#7f6a37','#a89048','#d0b870'],willow:['#35513a','#58794a','#82a35b','#acc66f','#d6e49b'],dipt:['#1f3a33','#2e5648','#47775a','#6e9c6e','#a3c392'],takian:['#34502a','#4f7a30','#78a63a','#a4cc4e','#d3ec86'],ginkgo:['#6b5a1f','#9a8329','#cdb23a','#ecd35a','#faeaa0'],makha:['#2f3a4a','#475a6e','#667f90','#8fa8b0','#bcd0d0'],raintree:['#2e4a38','#44704a','#639658','#8fbf6c','#c4e096'],shingchan:['#4a2630','#6e3a40','#935650','#b87a64','#dba98a']};
  const cache=new Map();let factory=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
  function get(kind,variant=0){
   if(!Object.prototype.hasOwnProperty.call(specs,kind)||!Number.isInteger(variant)||variant<0||variant>=specs[kind][2])return null;
@@ -276,7 +276,7 @@ const PixelTrees = (() => {
   function rect(x,y,w,h,col){for(let j=0;j<h;j++)for(let i=0;i<w;i++)dot(x+i,y+j,col);}
   function poly(pts,col){const ymin=Math.floor(Math.min(...pts.map(p=>p[1]))),ymax=Math.ceil(Math.max(...pts.map(p=>p[1])));for(let y=ymin;y<=ymax;y++){let xs=[];for(let i=0;i<pts.length;i++){const [x1,y1]=pts[i],[x2,y2]=pts[(i+1)%pts.length];if((y1<=y+.5&&y2>y+.5)||(y2<=y+.5&&y1>y+.5))xs.push(x1+(y+.5-y1)*(x2-x1)/(y2-y1));}xs.sort((a,b)=>a-b);for(let i=0;i<xs.length;i+=2)for(let x=Math.ceil(xs[i]-.5);x<xs[i+1]-.5;x++)dot(x,y,col);}}
   function line(x1,y1,x2,y2,col,width=1){let n=Math.max(Math.abs(x2-x1),Math.abs(y2-y1));for(let t=0;t<=n;t++)rect(Math.round(x1+(x2-x1)*t/(n||1)),Math.round(y1+(y2-y1)*t/(n||1)),width,width,col);}
-  const bark=kind==='ebony'?['#303039','#4b4446','#73604e','#9a8367']:kind==='rose'?['#452d30','#704338','#a16b4b','#c49866']:['#443337','#71503e','#a47b52','#c7a473'];
+  const bark=kind==='ebony'?['#303039','#4b4446','#73604e','#9a8367']:(kind==='rose'||kind==='shingchan'||kind==='makha')?['#452d30','#704338','#a16b4b','#c49866']:['#443337','#71503e','#a47b52','#c7a473'];
   function trunk(w=6,top=23){
    poly([[cx-2,top],[cx+2,top],[cx+w/2-1,base-3],[cx+w+2,base],[cx-w-2,base],[cx-w/2+1,base-3]],bark[0]);
    poly([[cx-1,top],[cx+1,top],[cx+2,base-3],[cx+5,base],[cx-5,base],[cx-2,base-4]],bark[1]);
@@ -330,19 +330,20 @@ const PixelTrees = (() => {
    }
   }else{
    trunk(kind==='ancient'?10:kind==='ebony'?8:6,22);
-   let clusters;
-   if(kind==='broad')clusters=[[-10,23,10,10],[9,22,12,10],[0,28,11,8],[-8,14,10,10],[7,12,11,9],[0,8,9,6]];
-   if(kind==='teak')clusters=[[-10,21,9,11],[10,21,9,10],[0,26,10,9],[-7,12,8,10],[7,11,8,9],[0,7,7,5]];
-   if(kind==='gold')clusters=[[-12,19,9,7],[11,19,10,8],[0,24,12,7],[-5,11,11,8],[8,11,10,7]];
-   if(kind==='rose')clusters=[[-11,25,10,7],[11,23,9,8],[0,27,11,7],[-9,16,9,8],[7,14,10,9],[0,9,8,6]];
-   if(kind==='maple')clusters=[[-12,23,9,9],[11,21,10,10],[0,27,10,8],[-7,14,10,10],[7,12,9,10],[0,8,7,6]];
+   let clusters;const LK=({padauk:'teak',oak:'broad',willow:'gold',dipt:'rose',takian:'teak',ginkgo:'maple',makha:'rose',raintree:'gold',shingchan:'rose'})[kind]||kind;
+   if(LK==='broad')clusters=[[-10,23,10,10],[9,22,12,10],[0,28,11,8],[-8,14,10,10],[7,12,11,9],[0,8,9,6]];
+   if(LK==='teak')clusters=[[-10,21,9,11],[10,21,9,10],[0,26,10,9],[-7,12,8,10],[7,11,8,9],[0,7,7,5]];
+   if(LK==='gold')clusters=[[-12,19,9,7],[11,19,10,8],[0,24,12,7],[-5,11,11,8],[8,11,10,7]];
+   if(LK==='rose')clusters=[[-11,25,10,7],[11,23,9,8],[0,27,11,7],[-9,16,9,8],[7,14,10,9],[0,9,8,6]];
+   if(LK==='maple')clusters=[[-12,23,9,9],[11,21,10,10],[0,27,10,8],[-7,14,10,10],[7,12,9,10],[0,8,7,6]];
    if(kind==='sakura')clusters=[[-13,25,9,7],[12,23,10,7],[0,27,12,8],[-8,16,11,8],[9,15,10,7],[0,10,11,6]];
    if(kind==='ebony')clusters=[[-8,25,10,10],[9,23,10,12],[0,28,9,9],[-6,14,9,10],[7,12,8,9],[0,8,7,6]];
    if(kind==='ancient')clusters=[[-12,24,10,10],[12,23,10,10],[0,28,12,9],[-10,14,10,9],[8,12,12,9],[0,8,10,6]];
-   clusters.forEach(([x,y,rx,ry],i)=>{const dx=((v+i*2)%3)-1,dy=((v*2+i)%3)-1;crown(cx+x+dx,y+dy,rx-(v===3?1:0),ry,v+i,p,kind==='maple');});
-   if(kind==='gold')for(let i=0;i<7;i++){const x=9+i*5,y=23+((i+v)%3)*2,L=5+(i*3+v)%6;line(x,y,x-1,y+L,'#9b7936',2);for(let j=0;j<L;j+=2){rect(x-1,y+j,3,2,'#dfb94d');dot(x-1,y+j,'#f6dfa1');}dot(x-1,y+L,'#f6dfa1');}
+   clusters.forEach(([x,y,rx,ry],i)=>{const dx=((v+i*2)%3)-1,dy=((v*2+i)%3)-1;crown(cx+x+dx,y+dy,rx-(v===3?1:0),ry,v+i,p,LK==='maple');});
+   if(kind==='gold'||kind==='willow')for(let i=0;i<7;i++){const x=9+i*5,y=23+((i+v)%3)*2,L=5+(i*3+v)%6;const wl=kind==='willow';line(x,y,x-1,y+L,wl?'#4f6f3a':'#9b7936',2);for(let j=0;j<L;j+=2){rect(x-1,y+j,3,2,wl?'#8fbf5f':'#dfb94d');dot(x-1,y+j,wl?'#cfe8a0':'#f6dfa1');}dot(x-1,y+L,wl?'#cfe8a0':'#f6dfa1');}
    if(kind==='teak')for(const [x,y] of [[14,17],[28,12],[33,23],[22,27]]){poly([[x-3,y],[x,y-3],[x+4,y],[x,y+3]],p[3]);line(x-2,y,x+2,y,p[2]);}
    if(kind==='sakura')for(const [x,y] of [[11,19],[20,12],[33,17],[27,26],[15,28]]){rect(x-1,y,3,1,p[4]);rect(x,y-1,1,3,p[4]);dot(x,y,'#e4a766');}
+   if(kind==='padauk'||kind==='raintree')for(const [x,y] of [[11,19],[20,12],[33,17],[27,26],[15,28],[24,19]]){const c=kind==='padauk'?'#f0902f':'#f2a6c4';rect(x-1,y,3,2,c);dot(x,y-1,c);dot(x,y,'#fff0c0');}
    if(kind==='ancient'){
     poly([[cx-3,37],[cx+2,36],[cx+4,45],[cx-4,46]],'#293036');line(cx-3,38,cx-4,45,bark[2]);dot(cx-2,39,'#c3b58b');
     line(cx-5,34,cx-7,base-2,p[2],2);line(cx+6,41,cx+9,base,p[1],2);
