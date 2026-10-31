@@ -2114,7 +2114,7 @@ class World {
       if (!(inv[bk] > 0)) return this.toast(p, `ไม่มี${binfo ? binfo.name : 'เหยื่อ'} ซื้อได้ที่ร้านตกปลา ${binfo ? binfo.emoji : '🪱'}`);
       this.add(p, bk, -1);
       const fl = this.lv(p, 'fish'), rod = rodOf(inv);
-      const wait = rand(5500, 12000) * Math.max(0.4, 1 - 0.05 * (S.perkLv(fl) - 1)) * S.ROD_WAIT[rod] * (this.happyOn() ? S.VILLAGE.fishMul : 1);
+      const wait = rand(5500, 12000) * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(fl) - 1)) * S.ROD_WAIT[rod] * (this.happyOn() ? S.VILLAGE.fishMul : 1);
       p.fish = { st: 'wait', at: now + wait, fx: tx * TS + 16, fy: ty * TS + 16, fl, rod, bt };
       this.sfx(p, 'cast'); this.durUse(p, 'rod');
     } else if (tool === 'axe') {

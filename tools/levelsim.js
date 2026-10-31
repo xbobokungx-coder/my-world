@@ -34,7 +34,7 @@ function farm(lv) {
 function fishPool(lv, rod, tier) {
   return S.FISH.filter(f => f.lv <= lv).map(f => ({ f, w: S.fishWeight(f, lv, rod, tier) })).filter(x => x.w > 0);
 }
-function fishCpm(lv, rod) { return 60 / (8.75 * Math.max(0.4, 1 - 0.05 * (S.perkLv(lv) - 1)) * S.ROD_WAIT[rod] + M.fishOver) * M.fishHit; }
+function fishCpm(lv, rod) { return 60 / (8.75 * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(lv) - 1)) * S.ROD_WAIT[rod] + M.fishOver) * M.fishHit; }
 function fish(lv) {
   const rod = lv >= 18 ? 7 : lv >= 15 ? 6 : lv >= 12 ? 5 : lv >= 9 ? 4 : lv >= 6 ? 3 : lv >= 3 ? 2 : 1, cpm = fishCpm(lv, rod);
   let best = null;
