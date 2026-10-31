@@ -1582,7 +1582,7 @@ $('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk();
 // ---------- แชทเสียง (WebRTC, ต่อตรงระหว่างผู้เล่น / signaling ผ่าน WebSocket เดิม) ----------
 const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 const peers = new Map(), levels = new Map();
-window.__mw = { actionSheet: () => actionSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
+window.__mw = { get base() { return base; }, actionSheet: () => actionSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
 let callWith = 0, callPend = 0, callIn = 0, callMicOn = false, callTimer = 0; // callWith = คู่สายที่ต่อแล้ว, callPend = เรากำลังโทรหา, callIn = กำลังมีคนโทรหาเรา
 const pcSend = (to, k) => send({ t: 'pcall', to, k });
@@ -2627,13 +2627,7 @@ function drawCliffs(gx) {
   for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) {
     const t = MAP[ty][tx]; if (t !== T.CLIFF && t !== T.STAIR && t !== T.MOUTH) continue;
     const X = tx * TS, Y = ty * TS;
-    if (t === T.MOUTH) { // ปากถ้ำเหมือง: หน้าผาเจาะเป็นโพรงมืด มีคานไม้ค้ำกับตะเกียงหน้าถ้ำ
-      gx.fillStyle = rock[2]; gx.fillRect(X, Y, TS, TS); gx.fillStyle = rock[0]; gx.fillRect(X, Y, TS, 5);
-      gx.fillStyle = '#120f14'; gx.fillRect(X, Y + 5, TS, TS - 5); gx.fillStyle = '#1d1a22'; gx.fillRect(X, Y + 5, TS, 4); gx.fillStyle = 'rgba(0,0,0,.35)'; gx.fillRect(X, Y + TS - 6, TS, 6);
-      if (tx === Shared.MINE.door[0] || tx === Shared.MINE.door[2]) { gx.fillStyle = '#5a3a1c'; gx.fillRect(tx === Shared.MINE.door[0] ? X : X + TS - 5, Y + 3, 5, TS - 3); gx.fillStyle = '#7d4f2a'; gx.fillRect(tx === Shared.MINE.door[0] ? X + 1 : X + TS - 4, Y + 3, 2, TS - 3); }
-      if (tx === Shared.MINE.door[2]) { gx.fillStyle = '#5a3a1c'; gx.fillRect(X - TS * 2, Y + 1, TS * 3, 4); gx.fillStyle = '#7d4f2a'; gx.fillRect(X - TS * 2, Y + 1, TS * 3, 1); PixelUI.world(gx, '⚒️', X - TS + 16, Y + 12, 14); } // คานค้ำปากถ้ำ + ป้าย
-      continue;
-    }
+    const HL = Shared.MINE.hill; if (tx >= HL.x0 && tx <= HL.x1 && ty <= Shared.MINE.y) continue; // ภูเขาถ้ำวาดเป็นภาพเดียวด้านล่าง
     if (t === T.CLIFF) {
       gx.fillStyle = rock[2]; gx.fillRect(X, Y, TS, TS);
       gx.fillStyle = rock[0]; gx.fillRect(X, Y, TS, 5); gx.fillStyle = rock[1]; gx.fillRect(X, Y + 5, TS, 3);
@@ -2645,6 +2639,10 @@ function drawCliffs(gx) {
       gx.fillStyle = '#7a5a30'; gx.fillRect(X, Y, 2, TS); gx.fillRect(X + TS - 2, Y, 2, TS);
     }
   }
+  // ภูเขาถ้ำเหมือง (pixelart.js caveHill) ภาพ ×2 ปากถ้ำอยู่ตีนเขาตรงช่อง MINE.door + ป้าย ⚒️ บนคาน
+  const HL = Shared.MINE.hill, hill = PixelArt.caveHill(Shared.hillTop, HL.peaks), sm = gx.imageSmoothingEnabled;
+  gx.imageSmoothingEnabled = false; gx.drawImage(hill, HL.x0 * TS - 2, -2, hill.width * 2, hill.height * 2); gx.imageSmoothingEnabled = sm;
+  PixelUI.world(gx, '⚒️', HL.x0 * TS + 176, 189, 14);
 }
 function buildBase() {
   const U = PixelArt.U, K = PixelArt.GK, GU = U * K, oc = document.createElement('canvas'); oc.width = W * GU; oc.height = H * GU; // พื้นโลกละเอียด K เท่า (GU = 32 px ต่อช่อง = พิกเซลเกม)
@@ -3271,6 +3269,7 @@ function drawNight(dark, now) {
   const hole = (x, y, r, inner) => { const g = lctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(inner, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, r, 0, 7); lctx.fill(); };
   const fx = FIRE.x * TS + 16, fy = FIRE.y * TS + 12, fr = TS * 10.5 * (1 + Math.sin(now / 130) * 0.02 + Math.sin(now / 71) * 0.015);
   if (inTown()) hole(fx, fy, fr, 0.3);
+  const hl = Shared.MINE.hill.x0 * TS + 230, hy = 222; if (inTown()) hole(hl, hy, TS * 3, 0.35); // ตะเกียงหน้าถ้ำเหมือง
   const LH = inTown() && builtProj.has('lighthouse') && Shared.LIGHTHOUSE, lx = LH ? (LH.x0 + (LH.x1 - LH.x0 + 1) / 2) * TS : 0, ly = LH ? LH.y0 * TS + 39 : 0, lAng = now / 1800; // ประภาคาร: ห้องตะเกียงอยู่ใกล้ยอดหอ ลำแสงหมุนรอบ ~11 วินาที
   const beam = (r, half, ang, a0) => { const g = lctx.createRadialGradient(lx, ly, 0, lx, ly, r); g.addColorStop(0, `rgba(0,0,0,${a0})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(lx, ly); lctx.arc(lx, ly, r, ang - half, ang + half); lctx.closePath(); lctx.fill(); };
   if (LH) { hole(lx, ly, TS * 7 * (1 + Math.sin(now / 400) * 0.02), 0.25); beam(TS * 18, 0.2, lAng, 0.95); beam(TS * 18, 0.2, lAng + Math.PI, 0.95); }
@@ -3292,7 +3291,7 @@ function drawNight(dark, now) {
     for (const a of [lAng, lAng + Math.PI]) { wg(lx, ly, TS * 18, 0.22 * Math.min(1, dark * 1.3)); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.arc(lx, ly, TS * 18, a - 0.2, a + 0.2); ctx.closePath(); ctx.fill(); }
   }
   if (cave) for (const [x, y] of caveTorches) { warm(x, y, TS * 3.2, 0.22 + Math.sin(now / 90 + y) * 0.03); ctx.fillStyle = 'rgba(255,190,90,.55)'; ctx.fillRect(x - 3, y - 6 - (Math.sin(now / 80 + x) > 0 ? 2 : 0), 6, 6); } // แสงอุ่น + ไฟวูบ
-  if (inTown()) warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); for (const p of players.values()) if (p.lamp) warm(...pj(p.x, p.y, 4), TS * 5, 0.16 * Math.min(1, dark * 1.2));
+  if (inTown()) { warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); warm(hl, hy, TS * 2.5, 0.25 * Math.min(1, dark * 1.2)); } for (const p of players.values()) if (p.lamp) warm(...pj(p.x, p.y, 4), TS * 5, 0.16 * Math.min(1, dark * 1.2));
   ctx.globalCompositeOperation = 'source-over'; ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
