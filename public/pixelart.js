@@ -883,12 +883,21 @@ const PixelTrees = (() => {
     const mt = X => 128 + Math.pow((X - cx) / 6.5, 2) * 4; // โพรงปากถ้ำ (กว้าง 12 พิกเซลภาพ = 24 px เกม)
     for (let X = cx - 6; X <= cx + 6; X++) for (let Y = Math.ceil(mt(X)); Y < H; Y++) px(X, Y, Y - mt(X) < 1.5 || Math.abs(X - cx) > 5 ? '#2e2630' : Y > 140 ? '#1d1a22' : '#120f14');
     for (let Y = 136; Y < H; Y += 3) for (let X = cx - 3; X <= cx + 3; X++) px(X, Y, '#5a3a1c'); // หมอนราง
-    for (let Y = 134; Y < H; Y++) { px(cx - 2, Y, '#9aa0aa'); px(cx + 2, Y, '#9aa0aa'); } // รางรถแร่
+    for (let Y = 142; Y < H; Y++) { px(cx - 2, Y, '#9aa0aa'); px(cx + 2, Y, '#9aa0aa'); } // รางรถแร่ (โผล่ใต้รถ)
     const beam = (x0, y0, bw, bh) => { for (let j = 0; j < bh; j++) for (let i = 0; i < bw; i++) px(x0 + i, y0 + j, i === 0 || j === 0 ? '#9a6a3a' : i === bw - 1 || j === bh - 1 ? '#4a2f18' : '#7d4f2a'); };
     beam(cx - 9, 128, 3, 16); beam(cx + 7, 128, 3, 16); // เสาค้ำ
     beam(cx - 11, 125, 23, 3); // คานบน
     for (let j = 0; j < 6; j++) for (let i = 0; i < 9; i++) px(cx - 4 + i, 118 + j, i === 0 || j === 0 || i === 8 || j === 5 ? '#5a3a1c' : '#c9a56a'); // ป้ายไม้เล็ก
     px(cx + 12, 127, '#3a3f4a'); for (let j = 0; j < 4; j++) for (let i = 0; i < 3; i++) px(cx + 11 + i, 128 + j, i === 1 && j > 0 && j < 3 ? '#ffd36a' : '#3a3f4a'); // ตะเกียงแขวน
+    const gem = (X, Y, pal) => { if (Y - 4 <= tops[X] || Y - 3 <= tops[X - 1] || Y - 3 <= tops[X + 1]) return; px(X - 1, Y + 1, pal[0]); px(X, Y + 1, pal[0]); px(X + 1, Y + 1, pal[0]); px(X, Y - 2, pal[2]); px(X, Y - 1, pal[1]); px(X, Y, pal[1]); px(X - 1, Y - 1, pal[2]); px(X - 1, Y, pal[1]); px(X + 1, Y, pal[0]); px(X + 1, Y - 1, pal[1]); px(X, Y - 3, '#ffffff'); }; // ผลึกโผล่จากหิน 3 แท่ง + ประกาย
+    gem(11, 122, ['#2f5f8a', '#5fb4e8', '#bdeeff']); gem(56, 120, ['#5a3a8a', '#a070e0', '#e2c8ff']); gem(24, 110, ['#2f6a5a', '#4fc09a', '#b8f5dc']);
+    for (const [X, Y] of [[19, 130], [58, 129], [7, 112]]) if (Y > tops[X] + 2) { px(X, Y, '#ffd36a'); px(X + 1, Y, '#c9962e'); px(X, Y + 1, '#c9962e'); } // เกล็ดทองในหิน
+    for (const X of [cx - 10, cx - 5, cx + 4, cx + 10]) { px(X, 128, '#5a9a42'); if ((X & 1) === 0) px(X, 129, '#3f7a34'); } // มอสห้อยใต้คาน
+    for (let j = 0; j < 4; j++) for (let i = 0; i < 9; i++) px(cx - 4 + i, 138 + j, j === 0 ? '#9aa0aa' : i === 0 || i === 8 ? '#3a3f4a' : '#6a7080'); // รถแร่ในปากถ้ำ
+    px(cx - 3, 142, '#1b1d24'); px(cx + 3, 142, '#1b1d24'); px(cx - 2, 143, '#1b1d24'); px(cx + 2, 143, '#1b1d24');
+    for (const [i, col] of [[-3, '#8f7e68'], [-2, '#5fb4e8'], [-1, '#a89478'], [0, '#ffd36a'], [1, '#8f7e68'], [2, '#a070e0'], [3, '#a89478']]) { px(cx + i, 137, col); if (Math.abs(i) < 2) px(cx + i, 136, i ? '#7a6a58' : '#bdeeff'); } // กองแร่บนรถ
+    for (let k = 0; k < 9; k++) px(cx - 12 - (k >> 1), 143 - k, '#9a6a3a'); px(cx - 17, 134, '#c4c8cf'); px(cx - 16, 133, '#c4c8cf'); px(cx - 15, 133, '#c4c8cf'); px(cx - 14, 133, '#e6e8ec'); px(cx - 13, 134, '#c4c8cf'); px(cx - 15, 134, '#5c6068'); // อีเต้อพิงเสา
+    for (const X of [cx - 14, cx + 15]) { px(X, 143, R[1]); px(X + 1, 143, R[3]); } // กรวดหน้าถ้ำ
     addOutline(c, OUT);
     c.sign = { x: cx + 0.5, y: 121 }; c.lamp = { x: cx + 12.5, y: 130 };
     return c;
