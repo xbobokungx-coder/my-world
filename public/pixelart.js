@@ -108,171 +108,138 @@ const PixelArt = (() => {
 
   // พื้นโลก: วาดที่ความละเอียด K เท่าของสไปรต์ (K=2 → 32 px ต่อช่อง = 1 พิกเซลพื้น 1 พิกเซลเกม) ขอบดิน/หญ้า/ทรายเรียบละเอียดขึ้น • ของตกแต่ง (ดอกไม้ กอหญ้า กรวดใหญ่) ยังเป็นก้อนเท่าพิกเซลสไปรต์ให้เข้ากับอาคาร/ต้นไม้
   // สนามสัญญาณสุ่มคำนวณบนกริดพิกเซลศิลป์แล้ว interpolate (เร็วกว่าคำนวณทุกพิกเซลละเอียด)
-  function ground(MAP, K = 1) {
-    const PA_W = W * U, PA_H = H * U, PW = PA_W * K, PH = PA_H * K, c = cv(PW, PH), x = c.getContext('2d'), img = x.createImageData(PW, PH), a = img.data;
-    const TT = new Uint8Array(W * H); for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) TT[ty * W + tx] = gtype(MAP[ty][tx]);
-    const tileT = (tx, ty) => (tx < 0 || ty < 0 || tx >= W || ty >= H) ? G : TT[ty * W + tx];
-    const field = (sc, seed) => { // สนามสัญญาณบนกริดห่าง st พิกเซลศิลป์ (สเกลใหญ่ใช้กริดห่างขึ้น เร็วขึ้น) แล้วสุ่ม interpolate
-      const st = Math.max(1, Math.floor(sc / 4)), gw = Math.ceil(PA_W / st) + 2, gh = Math.ceil(PA_H / st) + 2, f = new Float32Array(gw * gh);
-      for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) f[j * gw + i] = vnoise(i * st, j * st, sc, seed); return { f, gw, st };
-    };
-    const samp = (F, ax, ay) => { ax /= F.st; ay /= F.st; const i = ax | 0, j = ay | 0, tx = ax - i, ty = ay - j, o = j * F.gw + i, f = F.f, g2 = F.gw; return f[o] + (f[o + 1] - f[o]) * tx + (f[o + g2] - f[o]) * ty + (f[o] - f[o + 1] - f[o + g2] + f[o + g2 + 1]) * tx * ty; };
-    // ระยะจากฝั่งของน้ำแต่ละช่อง (ไว้ไล่สีน้ำตื้น-ลึก)
-    const depth = Array.from({ length: H }, () => new Array(W).fill(0));
-    { const q = []; for (let y = 0; y < H; y++) for (let x2 = 0; x2 < W; x2++) if (tileT(x2, y) === WA) depth[y][x2] = 99; else q.push([x2, y]);
-      while (q.length) { const [qx, qy] = q.shift(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = qx + dx, ny = qy + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue; if (depth[ny][nx] > depth[qy][qx] + 1) { depth[ny][nx] = depth[qy][qx] + 1; q.push([nx, ny]); } } } }
-    const PVM = new Uint8Array(W * H); for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) PVM[ty * W + tx] = TT[ty * W + tx] === P && isPaved(tx, ty) ? 1 : 0;
-    const pv = (tx, ty) => tx >= 0 && ty >= 0 && tx < W && ty < H && PVM[ty * W + tx] === 1; // ลานปูหิน: ขอบคมตามช่อง ไม่ให้หญ้า/ดินรุกเข้ามา
-    const J1 = field(8, 11), J2 = field(8, 12), J3 = field(3, 21), J4 = field(3, 22);
-    const types = new Uint8Array(PW * PH);
-    // ช่องที่ล้อมรอบด้วยชนิดเดียวกันหมด (ส่วนใหญ่ของแมพ) ไม่ต้องคำนวณขอบ ข้ามไปได้เลย (เร็วขึ้นหลายเท่า)
-    const UNI = new Uint8Array(W * H); for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) { let u = 1; const t0 = TT[ty * W + tx]; for (let dy = -1; dy <= 1 && u; dy++) for (let dx = -1; dx <= 1; dx++) if (tileT(tx + dx, ty + dy) !== t0 || (PVM[ty * W + tx] !== (pv(tx + dx, ty + dy) ? 1 : 0))) { u = 0; break; } UNI[ty * W + tx] = u; }
-    // ขอบ organic ละมุน: สั่นหลายสเกล ที่ความละเอียดสูงขอบเป็นเส้นโค้งเนียน + dither มุมช่อง
-    for (let py = 0; py < PH; py++) for (let px = 0; px < PW; px++) {
-      const tx0 = Math.floor(px / (K * U)), ty0 = Math.floor(py / (K * U)), t0 = tileT(tx0, ty0); let t = t0;
-      if (UNI[ty0 * W + tx0]) { types[py * PW + px] = t; continue; }
-      const ax = (px + .5) / K, ay = (py + .5) / K;
-      if (BLEND[t0] && !pv(tx0, ty0)) {
-        const jx = (samp(J1, ax, ay) - .5) * 11 + (samp(J3, ax, ay) - .5) * 5 + (hash(px, py, 41) - .5) * 1.6;
-        const jy = (samp(J2, ax, ay) - .5) * 11 + (samp(J4, ax, ay) - .5) * 5 + (hash(px, py, 42) - .5) * 1.6;
-        const tx1 = Math.floor((ax + jx) / U), ty1 = Math.floor((ay + jy) / U), t1 = tileT(tx1, ty1);
-        if (BLEND[t1] && !pv(tx1, ty1)) t = t1;
-        else if (BLEND[t0]) {
-          const lx = Math.floor(ax) & 15, ly = Math.floor(ay) & 15, corner = (lx < 3 || lx > 12) && (ly < 3 || ly > 12);
-          if (corner && dith(px, py) > 0.55) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) { const t2 = tileT(tx0 + dx, ty0 + dy); if (BLEND[t2] && t2 !== t0 && !pv(tx0 + dx, ty0 + dy)) { t = t2; break; } }
-        }
+  // GARDEN TERRAIN V3: calm color areas, sparse clusters, no per-pixel grain/dither.
+  // K retains the original API; optional density [0..1] controls accent groups only.
+  function ground(MAP, K=1, options={}) {
+    if(!Number.isInteger(K)||K<1||K>4)throw new RangeError('ground K must be an integer 1..4');
+    if(MAP.length!==H||MAP.some(row=>row.length!==W))throw new Error('Unexpected map dimensions');
+    const AW=W*U,AH=H*U,N=AW*AH,base=cv(AW,AH),ctx=base.getContext('2d');
+    const types=new Uint8Array(N),paved=new Uint8Array(N),cells=new Uint8Array(W*H);
+    const density=Math.max(0,Math.min(1,Number.isFinite(options.density)?options.density:.55));
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++)cells[y*W+x]=gtype(MAP[y][x]);
+    const cell=(x,y)=>x<0||y<0||x>=W||y>=H?G:cells[y*W+x];
+    // Round only exposed terrain corners, within the original tile footprint.
+    // No random boundary jitter and no collision/map-data mutation.
+    for(let y=0;y<AH;y++)for(let x=0;x<AW;x++){
+      const tx=x>>4,ty=y>>4,lx=x&15,ly=y&15,t=cell(tx,ty),pv=t===P&&isPaved(tx,ty);let out=t;
+      if(!pv&&t!==G&&t!==FL){
+        const radius=t===WA?6:4;
+        const sx=lx<radius?-1:lx>=16-radius?1:0,sy=ly<radius?-1:ly>=16-radius?1:0;
+        if(sx&&sy){const a=cell(tx+sx,ty),b=cell(tx,ty+sy);if(a===b&&a!==t&&a!==FL){const dx=sx<0?radius-lx:lx-(15-radius),dy=sy<0?radius-ly:ly-(15-radius);if(dx*dx+dy*dy>radius*radius)out=a;}}
       }
-      types[py * PW + px] = t;
-    }
-    const Tp = (px, py) => (px < 0 || py < 0 || px >= PW || py >= PH) ? G : types[py * PW + px]; // พิกัดพิกเซลละเอียด
-    const TA = (ax, ay) => Tp(ax * K, ay * K);                                                  // พิกัดพิกเซลศิลป์
-    const set = (px, py, col) => { if (px < 0 || py < 0 || px >= PW || py >= PH) return; const i = (py * PW + px) * 4; a[i] = col[0]; a[i + 1] = col[1]; a[i + 2] = col[2]; a[i + 3] = 255; };
-    const setA = (ax, ay, col) => { for (let j = 0; j < K; j++) for (let i = 0; i < K; i++) set(ax * K + i, ay * K + j, col); }; // ก้อนเท่าพิกเซลสไปรต์
-    const C = {}; const hx = s => C[s] || (C[s] = rgb(s));
-    const near = (px, py, n, kind) => Tp(px - n, py) === kind || Tp(px + n, py) === kind || Tp(px, py - n) === kind || Tp(px, py + n) === kind;
-    const GV1 = field(56, 1), GV2 = field(14, 2), GV3 = field(5, 7), PV = field(18, 4), SV = field(6, 8), SV2 = field(3, 9);
-    for (let py = 0; py < PH; py++) for (let px = 0; px < PW; px++) {
-      const t = types[py * PW + px], h = hash(px, py, 3), ax = (px + .5) / K, ay = (py + .5) / K, ix = Math.floor(ax), iy = Math.floor(ay), uni = UNI[(iy >> 4) * W + (ix >> 4)] === 1; let col;
-      if (t === G) {
-        const v = samp(GV1, ax, ay) * .6 + samp(GV2, ax, ay) * .28 + samp(GV3, ax, ay) * .12;
-        col = GRASS[clamp(Math.floor(v * 4.4 + dith(px, py) - 1.05), 0, 4)];
-        if (h > .992 && v > .55) col = mixc(col, rgb('#fff3b0'), .22); // แดดจุดๆ
-        else if (h < .035) col = GRASS[Math.max(0, clamp(Math.floor(v * 4.4 + dith(px, py) - 1.05), 0, 4) - 1)]; // เม็ดเงาเล็กๆ ให้หญ้าไม่เรียบ
-        if (!uni && K > 1 && near(px, py, 1, P) && h < .5) col = mixc(col, rgb('#6a8a3e'), .35); // ขอบหญ้าติดถนนเข้มขึ้นเล็กน้อย
-      } else if (t === P && pv(ix >> 4, iy >> 4)) { // ปูหินก้อนสี่เหลี่ยมสลับแถว มีรอยต่อ ขอบนอกเข้ม + ลบมุม (bevel) ที่ความละเอียดสูง
-        const row = iy >> 3, off = (row & 1) * 4, bx = (ix + off) >> 3, bh = hash(bx, row, 31), lx = Math.floor((ax + off) * K) % (8 * K), ly = Math.floor(ay * K) % (8 * K);
-        col = hx(bh < .33 ? '#d2c8b0' : bh < .66 ? '#c9bea4' : '#dbd1ba');
-        if (h < .12) col = mixc(col, rgb('#a89d84'), .35); else if (h > .93) col = mixc(col, rgb('#f0e8d4'), .5); // เม็ดหินในก้อน
-        if (lx === 0 || ly === 0) col = hx('#a79c80');                                   // ร่องรอยต่อ
-        else if (ly === 1 && K > 1) col = hx('#e8e0cc'); else if (ly <= K && K === 1) col = hx('#e8e0cc'); // ขอบบนรับแสง
-        else if (lx === 1 && K > 1) col = hx('#e0d7c2');                                 // ขอบซ้ายรับแสง
-        else if (ly === 8 * K - 1 || (lx === 8 * K - 1)) col = hx('#b8ad92');             // ขอบล่าง/ขวาเงา
-        const pt = (tx, ty) => pv(tx, ty), tx2 = ix >> 4, ty2 = iy >> 4;
-        if (!pt(Math.floor((px - 1) / K / 16), ty2) && ((px % (16 * K)) === 0) || !pt(Math.floor((px + 1) / K / 16), ty2) && ((px % (16 * K)) === 16 * K - 1) || !pt(tx2, Math.floor((py - 1) / K / 16)) && ((py % (16 * K)) === 0) || !pt(tx2, Math.floor((py + 1) / K / 16)) && ((py % (16 * K)) === 16 * K - 1)) col = hx('#7d7258'); // ขอบลาน
-      } else if (t === P) {
-        const dv = samp(PV, ax, ay);
-        col = PATH[clamp(Math.floor(dv * 3 + dith(px, py) * .6 - .3), 0, 2)];
-        if (h < .04) col = hx('#e8c896'); else if (h > .97) col = hx('#a77a4a'); else if (h > .86 && h < .88) col = hx('#b88958'); // จุดดิน/กรวดเล็ก
-        if (K > 1 && samp(SV2, ax, ay) > .74 && dith(px >> 1, py >> 1) > .5) col = mixc(col, rgb('#b08a58'), .35); // ร่องล้อ/รอยเท้าจางๆ
-        const nearG = !uni && (near(px, py, 2 * K, G) || Tp(px - 3 * K, py - 2 * K) === G || Tp(px + 3 * K, py + 2 * K) === G);
-        if (nearG) { // ขอบทาง: ผสมหญ้ารุกเข้ามา + โทนดินอุ่น (ลบเส้นตัดตรง)
-          if (h < .22) col = GRASS[clamp(2 + (h < .1 ? 1 : 0), 0, 4)];
-          else col = hx(h < .5 ? '#b4844f' : '#c09458');
-        }
-        if (!uni && K > 1 && (Tp(px - 1, py - 1) === G && Tp(px + 1, py + 1) !== G)) col = hx('#9a6f40'); // เงาริมถนนด้านซ้ายบน (หญ้ายกสูงกว่า)
-      } else if (t === SA) {
-        const sv = samp(SV, ax, ay) + dith(px, py) * .3 + (K > 1 ? Math.sin(ay * 1.7 + samp(SV2, ax, ay) * 6) * .06 : 0); // ริ้วทรายเบาๆ
-        col = hx(sv > .78 ? '#d6b97c' : sv > .4 ? '#e2c890' : '#efdfa4');
-        if (uni) { /* ทรายกลางหาด */ } else if (near(px, py, K + 1, WA)) col = hx('#c5a46a');                                                  // ทรายเปียกริมน้ำ
-        else if (!uni && K > 1 && near(px, py, 2 * K + 1, WA) && h < .4) col = hx('#d2b87c');
-        if (h < .05) col = hx('#f5e4b8'); else if (h > .97) col = hx('#c9a869');
-      } else if (t === WA) {
-        const tx = ax / U - .5, ty = ay / U - .5, ix2 = clamp(Math.floor(tx), 0, W - 1), iy2 = clamp(Math.floor(ty), 0, H - 1);
-        const fx = tx - ix2, fy = ty - iy2, dv = (k, l) => Math.min(4, depth[clamp(iy2 + l, 0, H - 1)][clamp(ix2 + k, 0, W - 1)]);
-        const d = (dv(0, 0) * (1 - fx) + dv(1, 0) * fx) * (1 - fy) + (dv(0, 1) * (1 - fx) + dv(1, 1) * fx) * fy;
-        col = WATERC[3 - clamp(Math.floor(d * .9 + dith(px, py) * .8 - .4), 0, 3)];
-        const sh = clamp((2.6 - d) / 1.5, 0, 1); // ใกล้ฝั่งน้ำใสขึ้น เห็นทรายข้างล่าง
-        col = mixc(mixc(col, SHALLOW, sh * .5), SANDBED, sh * sh * .22);
-        if (K > 1) { const cs = samp(SV, ax * .6, ay * 1.5) + samp(SV2, ax + 3, ay * 1.3) * .5; if (cs > 1.12 && d > 1) col = mixc(col, rgb('#aee8f0'), .22); } // ลายแสงใต้น้ำ (caustics) จางๆ
-        if (uni) { /* น้ำกลางสระ ไม่มีฟอง */ } else if (Tp(px, py - 1) !== WA || Tp(px - 1, py) !== WA) col = hx('#eafdfd'); // ฟองริมตลิ่ง
-        else if (K > 1 && (Tp(px, py - 2) !== WA || Tp(px - 2, py) !== WA) && h < .6) col = hx('#c8f4f6');
-      } else { // พื้นไม้ของที่ดิน
-        const pid = Math.floor(iy / 5), ix3 = (ix + pid * 11) % 26, iy3 = iy % 5;
-        col = hx(hash(pid, Math.floor((ix + pid * 11) / 26), 5) < .5 ? '#b67d45' : '#c08a50');
-        if (iy3 === 0) col = hx('#d29a5e');
-        if (iy3 === 4 || ix3 === 0) col = hx('#7a4d28');
-        if (ix3 === 2 && iy3 === 2) col = hx('#5a3a20');
+      // Coherent scallops 1–3 pixels deep; no independent pixel noise.
+      // Dirt/sand only: traversable visual edge, never change the map grid.
+      if(!pv&&(t===P||t===SA)){
+        const ex=1+Math.floor(hash(Math.floor(x/5),Math.floor(y/16),810)*3);
+        const ey=1+Math.floor(hash(Math.floor(x/16),Math.floor(y/5),811)*3);
+        if((cell(tx,ty-1)===G&&ly<ex)||(cell(tx,ty+1)===G&&ly>15-ex)||(cell(tx-1,ty)===G&&lx<ey)||(cell(tx+1,ty)===G&&lx>15-ey))out=G;
       }
-      set(px, py, col);
+      types[y*AW+x]=out;paved[y*AW+x]=pv?1:0;
     }
-    const AW = PA_W, AH = PA_H;
-    // รายละเอียดริมสระ: กรวดและกอต้นกกเล็กๆ บนทรายที่ติดน้ำ
-    for (let ay = 2; ay < AH - 3; ay++) for (let ax = 2; ax < AW - 2; ax++) {
-      if (TA(ax, ay) !== SA) continue;
-      if (!(TA(ax, ay - 2) === WA || TA(ax, ay + 2) === WA || TA(ax - 2, ay) === WA || TA(ax + 2, ay) === WA)) continue;
-      const r = hash(ax, ay, 21);
-      if (r < .018) { setA(ax, ay, hx('#4f8a3a')); setA(ax, ay - 1, hx('#6fa84f')); setA(ax, ay - 2, hx('#8cc463')); setA(ax - 1, ay - 1, hx('#4f8a3a')); }
-      else if (r < .045) { setA(ax, ay, hx('#8f9aa1')); setA(ax + 1, ay, hx('#8f9aa1')); setA(ax, ay - 1, hx('#c4ccd0')); }
+    const at=(x,y)=>x<0||y<0||x>=AW||y>=AH?G:types[y*AW+x];
+    const near=(x,y,t,n)=>at(x-n,y)===t||at(x+n,y)===t||at(x,y-n)===t||at(x,y+n)===t;
+    // Pixel-distance field for broad, clean shallow-water bands.
+    const distance=new Uint16Array(N);for(let i=0;i<N;i++)distance[i]=types[i]===WA?4095:0;
+    for(let y=0;y<AH;y++)for(let x=0;x<AW;x++){const i=y*AW+x;if(distance[i])distance[i]=Math.min(distance[i],x?distance[i-1]+1:1,y?distance[i-AW]+1:1);}
+    for(let y=AH-1;y>=0;y--)for(let x=AW-1;x>=0;x--){const i=y*AW+x;if(distance[i])distance[i]=Math.min(distance[i],x<AW-1?distance[i+1]+1:1,y<AH-1?distance[i+AW]+1:1);}
+    const colors={grass:['#819b64','#859e68','#8aa36c'],path:['#cbb38b','#cfb88f','#d3bc93'],sand:['#dbc797','#dfcc9f'],water:['#c0d7c2','#94bdb5','#79aaa7','#64979b','#56888f'],stone:['#c8c2aa','#ccc6b0','#c3bea8'],wood:['#ac8960','#b6956a']};
+    const cache={};const color=c=>cache[c]||(cache[c]=rgb(c));
+    const img=ctx.createImageData(AW,AH),a=img.data;
+    function set(x,y,col){if(x<0||y<0||x>=AW||y>=AH)return;const i=(y*AW+x)*4,c=color(col);a[i]=c[0];a[i+1]=c[1];a[i+2]=c[2];a[i+3]=255;}
+    for(let y=0;y<AH;y++)for(let x=0;x<AW;x++){
+      const i=y*AW+x,t=types[i];let c;
+      if(t===G){
+        const n=vnoise(x,y,96,701)*.72+vnoise(x,y,40,702)*.28;
+        c=colors.grass[n<.40?0:n>.64?2:1];
+        if(near(x,y,P,1)||near(x,y,SA,1))c='#627d48';else if(near(x,y,P,3)||near(x,y,SA,3))c='#a2b978';
+      }else if(t===P&&paved[i]){
+        // Large staggered slabs: low-contrast grout, no speckle inside stones.
+        const row=Math.floor(y/16),xx=x+(row%2)*12,lx=xx%24,ly=y%16;
+        c=colors.stone[Math.floor(hash(Math.floor(xx/24),row,703)*3)];
+        if(lx===0||ly===0)c='#b1ad97';else if(ly===1)c='#d9d2b9';else if(lx===23||ly===15)c='#bbb69f';
+        if((x>0&&!paved[i-1])||(x<AW-1&&!paved[i+1])||(y>0&&!paved[i-AW])||(y<AH-1&&!paved[i+AW]))c='#a6a58a';
+      }else if(t===P){
+        const n=vnoise(x,y,66,710);c=colors.path[n<.38?0:n>.63?2:1];
+        if(near(x,y,G,1))c='#ab966e';else if(near(x,y,G,3))c='#c1a97f';
+      }else if(t===SA){
+        c=colors.sand[vnoise(x,y,48,720)>.5?1:0];
+        if(near(x,y,WA,2))c='#bfb58e';else if(near(x,y,WA,5))c='#d0bf93';
+      }else if(t===WA){
+        const d=distance[i];c=colors.water[d<3?0:d<10?1:d<23?2:d<43?3:4];
+        if(d===1&&(at(x,y-1)!==WA||at(x-1,y)!==WA))c='#d9e3ce';
+      }else{
+        const row=Math.floor(y/8),off=row%2*16,lx=(x+off)%32,ly=y%8;
+        c=colors.wood[Math.floor(hash(Math.floor((x+off)/32),row,730)*2)];
+        if(ly===0)c='#ceb48b';else if(ly===7||lx===0)c='#896e52';
+      }set(x,y,c);
     }
-    // ใบหญ้า กอหญ้า ดอกไม้ป่า กรวด — หนาขึ้นทั้งแมพให้โซนโล่งใกล้ลานกลาง
-    for (let ay = 1; ay < AH - 1; ay++) for (let ax = 0; ax < AW; ax++) if (TA(ax, ay) === G && hash(ax, ay, 13) < .045) { setA(ax, ay, GRASS[4]); setA(ax, ay + 1, GRASS[0]); }
-    const R = rng(42), area = W * H;
-    for (let i = 0; i < area * .78; i++) {
-      const ax = Math.floor(R() * AW), ay = Math.floor(R() * AH);
-      if (TA(ax, ay) !== G || TA(ax - 3, ay) !== G || TA(ax + 3, ay) !== G) continue;
-      const dk = GRASS[0], lt = GRASS[3];
-      setA(ax, ay, dk); setA(ax, ay - 1, lt); setA(ax, ay - 2, lt); setA(ax - 1, ay, dk); setA(ax - 2, ay - 1, lt); setA(ax + 1, ay, dk); setA(ax + 2, ay - 1, lt);
+    // Accents are placed by coarse world cells, never by independent pixel chance.
+    let groups=0;
+    const stamp=(x,y,w,h,c,t)=>{for(let j=0;j<h;j++)for(let i=0;i<w;i++)if(x+i>=0&&y+j>=0&&x+i<AW&&y+j<AH&&at(x+i,y+j)===t)set(x+i,y+j,c);};
+    for(let by=0;by<AH;by+=64)for(let bx=0;bx<AW;bx+=64){
+      if(hash(bx,by,740)>density*.68)continue;
+      const x=bx+12+Math.floor(hash(bx,by,741)*36),y=by+12+Math.floor(hash(bx,by,742)*36);
+      if(x>=AW-5||y>=AH-5||at(x,y)!==G||near(x,y,P,8)||near(x,y,SA,8))continue;
+      const tile=MAP[y>>4][x>>4];if(tile===T.BUILD||tile===T.SHOP||tile===T.FENCE)continue;
+      // One quiet 3-blade tuft with a soft contact shadow.
+      stamp(x-4,y+2,10,2,'#7b955e',G);stamp(x-3,y-1,2,4,'#a1b57b',G);stamp(x,y-3,2,6,'#a1b57b',G);stamp(x+3,y,2,3,'#9aaf74',G);groups++;
     }
-    // ดอกจุดเล็ก: เหลือง/ชมพู/ฟ้าเป็นหลัก (ตามภาพอ้างอิง) + ขาวอ่อน
-    const FLC = ['#ffe37a', '#ffc9de', '#9fd4ff', '#fff6e0', '#ff9db0', '#c9b6ff'].map(rgb);
-    for (let i = 0; i < area * .42; i++) {
-      const ax = 2 + Math.floor(R() * (AW - 4)), ay = 2 + Math.floor(R() * (AH - 4));
-      let ok = true; for (let dy = -2; dy <= 2 && ok; dy++) for (let dx = -2; dx <= 2; dx++) if (TA(ax + dx, ay + dy) !== G) { ok = false; break; }
-      if (!ok) continue;
-      const pc = FLC[Math.floor(R() * FLC.length)], cc = hx(R() < .55 ? '#ffcf3d' : '#e8743f');
-      setA(ax, ay + 2, GRASS[0]); setA(ax - 1, ay, pc); setA(ax + 1, ay, pc); setA(ax, ay - 1, pc); setA(ax, ay + 1, pc); setA(ax, ay, cc);
-      if (R() < .45) { setA(ax + 3, ay + 1, pc); setA(ax + 3, ay + 2, GRASS[0]); }
+    // Water ripples: short paired strokes with large empty areas between groups.
+    for(let by=12;by<AH;by+=40)for(let bx=12;bx<AW;bx+=48){
+      const x=bx+Math.floor(hash(bx,by,750)*20),y=by+Math.floor(hash(bx,by,751)*14);
+      if(at(x,y)!==WA||distance[y*AW+x]<8||hash(bx,by,752)>.45*density)continue;
+      stamp(x,y,9,1,'#9ebfb4',WA);stamp(x+2,y+2,5,1,'#8bb4ac',WA);
     }
-    // กรวดบนทางดิน (ระดับพิกเซลละเอียด ให้ดูเม็ดเล็กละเอียด) + จุดเปียกบางๆ ให้ทางไม่เรียบทึบ
-    for (let i = 0; i < area * .16 * K * K; i++) {
-      const px = Math.floor(R() * PW), py = Math.floor(R() * PH);
-      if (Tp(px, py) !== P || Tp(px + 1, py + 1) !== P || pv(Math.floor(px / K / U), Math.floor(py / K / U))) continue;
-      set(px, py, hx('#e2d4b8')); set(px + 1, py, hx('#a89070')); set(px, py + 1, hx('#a89070')); set(px + 1, py + 1, hx('#6e5f52'));
+    // Broad sand strokes, very sparse; not grains or individual dots.
+    for(let by=10;by<AH;by+=48)for(let bx=10;bx<AW;bx+=48){
+      const x=bx+Math.floor(hash(bx,by,760)*18),y=by+Math.floor(hash(bx,by,761)*18);
+      if(at(x,y)!==SA||hash(bx,by,762)>density*.42)continue;
+      stamp(x,y,8,1,'#d1bd90',SA);stamp(x+2,y+1,6,1,'#e5d3aa',SA);
     }
-    for (let i = 0; i < area * .06; i++) {
-      const ax = Math.floor(R() * AW), ay = Math.floor(R() * AH);
-      if (TA(ax, ay) !== SA) continue;
-      setA(ax, ay, hx('#f0dcab')); if (TA(ax + 1, ay) === SA) setA(ax + 1, ay, hx('#c9a869'));
+    ctx.putImageData(img,0,0);
+    if(options.decorations!==false)ctx.drawImage(mapDecor(MAP),0,0);
+    // Existing player-plot boundary treatment is kept.
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      if(gtype(MAP[y][x])!==FL)continue;const pi=plotAt(x,y);if(pi<0)continue;
+      const left=HOUSING.plots[pi];ctx.fillStyle='#826548';
+      if(y===HOUSING.y0)ctx.fillRect(x*U,y*U,U,2);if(y===HOUSING.y1)ctx.fillRect(x*U,y*U+U-2,U,2);
+      if(x===left)ctx.fillRect(x*U,y*U,2,U);if(x===left+HOUSING.w-1)ctx.fillRect(x*U+U-2,y*U,2,U);
     }
-    // transition ขอบดิน↔หญ้า: ดอก/กรวด/กอหญ้าแซมตามรอยต่อ ลบเส้นสี่เหลี่ยม
-    for (let ay = 2; ay < AH - 2; ay++) for (let ax = 2; ax < AW - 2; ax++) {
-      const t = TA(ax, ay); if (t !== G && t !== P) continue;
-      if (pv(ax >> 4, ay >> 4)) continue;
-      const og = t === G, o = og ? P : G, cross = TA(ax - 1, ay) === o || TA(ax + 1, ay) === o || TA(ax, ay - 1) === o || TA(ax, ay + 1) === o;
-      if (!cross) continue;
-      const u = hash(ax, ay, 44);
-      if (u < .08) setA(ax, ay, hx(u < .04 ? '#8f9aa1' : '#c4ccd0')); // กรวด
-      else if (u < .16) { setA(ax, ay, FLC[Math.floor(hash(ax, ay, 45) * FLC.length)]); setA(ax, ay + 1, GRASS[0]); } // ดอกขอบทาง
-      else if (u < .28 && og) { setA(ax, ay, GRASS[0]); setA(ax, ay - 1, GRASS[3]); } // กอหญ้า
-      else if (u < .22 && !og) setA(ax, ay, GRASS[2]); // หญ้ารุกบนดิน
-    }
-    x.putImageData(img, 0, 0);
-    x.save(); x.scale(K, K); x.imageSmoothingEnabled = false;
-    shoreProps(x, tileT, W, H, hash);
-    // กรอบที่ดิน (ช่องขอบของแต่ละแปลง) แบบเดิม
-    for (let y = 0; y < H; y++) for (let x2 = 0; x2 < W; x2++) {
-      if (gtype(MAP[y][x2]) !== FL) continue;
-      const pi = plotAt(x2, y); if (pi < 0) continue;
-      const px = x2 * U, py = y * U, x0 = HOUSING.plots[pi];
-      x.fillStyle = '#6e4524';
-      if (y === HOUSING.y0) x.fillRect(px, py, U, 2); if (y === HOUSING.y1) x.fillRect(px, py + U - 2, U, 2);
-      if (x2 === x0) x.fillRect(px, py, 2, U); if (x2 === x0 + HOUSING.w - 1) x.fillRect(px + U - 2, py, 2, U);
-    }
-    x.restore();
-    return c;
+    // Metadata is diagnostic only; renderer never writes MAP or Shared.
+    base.cleanTerrain={version:3,tuftGroups:groups,density};
+    if(K===1)return base;const out=cv(AW*K,AH*K),g=out.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(base,0,0,out.width,out.height);out.cleanTerrain=base.cleanTerrain;return out;
   }
 
   // ---------- fences (วาดลงพื้น ต่อกันตามช่องข้างเคียง) — ไม้โทนอุ่นตาม STYLE_GUIDE ----------
+
+  // Low ornamental groundcover only. No new solid obstacles or collision cells.
+  // Separate layer: set ground(...,{decorations:false}) and draw mapDecor manually.
+  function mapDecor(MAP) {
+    const c=cv(W*U,H*U),g=c.getContext('2d'),placements=[];
+    const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
+    // Scanline ellipse keeps every pixel hard-edged, including native 1x output.
+    const oval=(x,y,rx,ry,col)=>{for(let j=-ry;j<=ry;j++){const w=Math.floor(rx*Math.sqrt(Math.max(0,1-j*j/(ry*ry))));px(x-w,y+j,w*2+1,1,col);}};
+    function leaf(x,y,r){oval(x,y+2,r,r-2,'#3d6241');oval(x-1,y,r-1,r-3,'#5c884c');oval(x-2,y-2,r-3,Math.max(1,r-5),'#80a65a');px(x-3,y-3,3,2,'#a6bd70');}
+    function bloom(x,y,col){px(x,y,1,5,'#466d40');px(x-2,y-3,5,5,col);px(x-3,y-2,7,3,col);px(x-1,y-2,2,2,'#f4dc8c');}
+    function cluster(x,y,kind){
+      oval(x,y+5,23,9,'#79945b');
+      if(kind===0){leaf(x-12,y,9);leaf(x+3,y-3,12);leaf(x+16,y+3,7);bloom(x-8,y-3,'#e6dfbc');bloom(x+5,y-6,'#e9d9b1');}
+      if(kind===1){for(let i=0;i<6;i++){const xx=x-17+i*6,yy=y+(i%3)*3;leaf(xx,yy+2,5);bloom(xx,yy-3,i%2?'#af98ba':'#d0b7cc');}}
+      if(kind===2){leaf(x-15,y+2,7);leaf(x+14,y-1,9);oval(x,y+3,8,5,'#535e58');oval(x-1,y+1,7,4,'#8f9c8c');px(x-4,y-2,6,2,'#bdc6ad');bloom(x+14,y-5,'#e5cf87');}
+      if(kind===3){for(let i=0;i<4;i++){leaf(x-13+i*9,y+(i%2)*4,7);bloom(x-13+i*9,y-2+(i%2)*4,'#dddcb7');}}
+    }
+    const inside=(tx,ty,b,pad=1)=>b&&tx>=b.x0-pad&&tx<=b.x1+pad&&ty>=b.y0-pad&&ty<=b.y1+pad;
+    const reserved=(tx,ty)=>inside(tx,ty,Shared.FARM,1)||inside(tx,ty,Shared.HOUSE_BLD,0)||Object.values(Shared.PENS||{}).some(b=>inside(tx,ty,b,1))|| (Shared.BUILDINGS||[]).some(b=>inside(tx,ty,b,0));
+    const safe=(tx,ty)=>{if(tx<2||ty<2||tx>W-3||ty>H-3||reserved(tx,ty))return false;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)if(MAP[ty+dy][tx+dx]!==T.GRASS)return false;return true;};
+    // Spaced garden pockets. Stable placement; never put foliage on paths/gates.
+    for(let ty=3;ty<H-2;ty+=3)for(let tx=3;tx<W-2;tx+=3){
+      const x=tx+Math.floor(hash(tx,ty,840)*3)-1,y=ty+Math.floor(hash(tx,ty,841)*3)-1;
+      if(!safe(x,y)||hash(tx,ty,842)>.65)continue;
+      const kind=Math.floor(hash(tx,ty,843)*4);cluster(x*U+8,y*U+8,kind);placements.push({tx:x,ty:y,kind,solid:false});
+    }
+    c.placements=placements;return c;
+  }
+
   function fences(x, MAP) {
     const isF = (tx, ty) => MAP[ty] && MAP[ty][tx] === T.FENCE;
     const W0 = '#835437', W1 = '#a0692f', W2 = '#d6a05a', W3 = '#5a3a34'; // ไม้ hue shift: เงาอมม่วง แสงอมเหลือง
@@ -902,5 +869,5 @@ const PixelTrees = (() => {
     c.sign = { x: cx + 0.5, y: 121 }; c.lamp = { x: cx + 12.5, y: 130 };
     return c;
   }
-  return { mk, r, ell, disc, shade, ramp, hue, fish, lily, duckPond, lighthouse,  hash, rng, addOutline, caveHill, cv, U, OUT, ground, GK: 2, fences, tree: treeFor, building, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
+  return { mk, r, ell, disc, shade, ramp, hue, fish, lily, duckPond, lighthouse,  hash, rng, addOutline, caveHill, cv, U, OUT, ground, GK: 2, mapDecor, fences, tree: treeFor, building, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
 })();
