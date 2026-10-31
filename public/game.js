@@ -1205,9 +1205,15 @@ $('shop').addEventListener('pointerdown', e => { if (e.target === $('shop')) clo
 const animalCount = type => { let n = 0; const my = me && me.name; animals.forEach(a => { if (a.type === type && (!a.on || a.on === my)) n++; }); return n; }; // นับเฉพาะสัตว์ของฉัน (cap ต่อคน)
 let farmTab = 'gear';
 // ทุกร้านที่รับซื้อมีแท็บ 💰 ขาย ไว้ท้ายสุด (แท็บซื้อของร้านที่ไม่มีแท็บเดิม)
-const SHOP_TABS = { farm: [['gear', '🧰 อุปกรณ์'], ['seed', '🌱 เมล็ดพันธุ์'], ['sell', '💰 ขายผลผลิต']], fish: [['gear', '🎣 อุปกรณ์ตกปลา'], ['sell', '🐟 ขายปลา']],
-  food: [['buy', '🍜 ซื้ออาหาร'], ['cook', '👨‍🍳 ทำอาหาร'], ['sell', '💰 ขาย']], animal: [['feed', '🌾 อาหาร / ยา'], ['pets', '🐾 สัตว์เลี้ยง'], ['sell', '💰 ขาย']],
-  wood: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']], furn: [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['divider', '🪟 ฉากกั้น'], ['sell', '💰 ขาย']] };
+const SHOP_TABS = { // ทุกร้านที่มีซื้อขายใช้รูปแบบเดียวกัน: 🛒 ซื้อ → 🧰 อุปกรณ์ → (ทำ/ประดิษฐ์) → 💰 ขาย
+  farm: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], fish: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']],
+  animal: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], food: [['buy', '🛒 ซื้อ'], ['cook', '👨‍🍳 ทำอาหาร'], ['sell', '💰 ขาย']],
+  wood: [['gear', '🧰 อุปกรณ์'], ['craft', '🔨 ประดิษฐ์'], ['sell', '💰 ขาย']], mine: [['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']],
+  furn: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']] };
+// ของแต่ละชิ้นอยู่แท็บไหนของร้าน (ซื้อ = สินค้า/วัตถุดิบ/สัตว์ • อุปกรณ์ = เครื่องมือ บัวรดน้ำ อาหารสัตว์ ยา)
+const buyTabOf = (kind, k) => kind === 'farm' ? (k.startsWith('seed_') ? 'buy' : 'gear') : kind === 'fish' ? (k.startsWith('bait') ? 'buy' : 'gear') : kind === 'animal' ? (itemInfo(k).animal ? 'buy' : 'gear') : kind === 'wood' || kind === 'mine' ? 'gear' : 'buy';
+let furnSub = 'living';
+const FURN_SUBS = [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['divider', '🪟 ฉากกั้น']];
 const furnCatOf = k => (FURN[k.slice(5)] || {}).cat; // หมวดของที่ร้านเฟอร์นิเจอร์ (ดูจาก cat ใน FURN)
 // เมนูปลาใหม่ขายได้เฉพาะแท็บ 💰 ขาย ของร้านอาหาร (ไม่ขายใต้เมนูทำอาหารเดิม)
 const FISH_DISH_SELL_TAB = new Set(['dish_fishsoup', 'dish_sashimi', 'dish_fishburger', 'dish_fishpie']);
@@ -1256,10 +1262,11 @@ function renderShop() {
     $('shopBody').querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask('ขายคืนร้าน (ได้ 70% ของราคาซื้อ)?', () => send({ t: 'sellback', item: b.dataset.sellback })));
     return;
   }
-  const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'seed', tabs = SHOP_TABS[shopKind], sellTab = !!tabs && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'pets';
+  const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'buy', tabs = SHOP_TABS[shopKind], sellTab = !!tabs && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'buy', craftTab = shopKind === 'wood' && farmTab === 'craft';
   let h = tabs ? `<div class="tabs">${tabs.map(([c, n]) => `<button class="tab${farmTab === c ? ' on' : ''}" data-ftab="${c}">${n}</button>`).join('')}</div>` : '';
-  h += sellTab || cookTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากเลเวลต่ำ → สูง)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : 'ซื้อ') + '</div>';
-  let keys = sellTab || cookTab ? [] : isFarm ? sh.buy.filter(k => k.startsWith('seed_') === seedTab) : shopKind === 'animal' ? sh.buy.filter(k => !!itemInfo(k).animal === petTab) : shopKind === 'furn' ? sh.buy.filter(k => furnCatOf(k) === farmTab) : sh.buy;
+  if (shopKind === 'furn' && farmTab === 'buy') h += `<div class="tabs">${FURN_SUBS.map(([c, n]) => `<button class="tab${furnSub === c ? ' on' : ''}" data-fsub="${c}">${n}</button>`).join('')}</div>`;
+  h += sellTab || cookTab || craftTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากเลเวลต่ำ → สูง)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : tabs && farmTab === 'gear' ? 'อุปกรณ์' : 'ซื้อ') + '</div>';
+  let keys = sellTab || cookTab || craftTab ? [] : tabs ? sh.buy.filter(k => buyTabOf(shopKind, k) === farmTab && (shopKind !== 'furn' || furnCatOf(k) === furnSub)) : sh.buy;
   const profitRank = seedTab ? keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a)) : [];
   if (seedTab) keys = keys.slice().sort((a, b) => CROPS[a.slice(5)].lv - CROPS[b.slice(5)].lv || CROPS[a.slice(5)].sell - CROPS[b.slice(5)].sell);
   for (const k of keys) {
@@ -1288,7 +1295,7 @@ function renderShop() {
   }
   if (shopKind === 'pet') h += petPanelHtml();
   const tierOf = t => (t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : 1);
-  const fixable = seedTab || sellTab ? [] : Object.keys(DURABILITY).filter(t => DURABILITY[t].shop === shopKind && tierOf(t) > 0);
+  const fixable = tabs && farmTab !== 'gear' ? [] : Object.keys(DURABILITY).filter(t => DURABILITY[t].shop === shopKind && tierOf(t) > 0);
   if (fixable.length) {
     h += '<div class="sec">🔧 ซ่อมอุปกรณ์ (ใช้แล้วสึกหรอ ถ้าพังต้องซ่อมก่อนใช้ต่อ)</div>';
     for (const t of fixable) {
@@ -1300,7 +1307,7 @@ function renderShop() {
         + (fx || cur <= 0 ? ` <button class="btn small${better || worn ? '' : ' muted'}" data-rebuy="${t}" ${(inv.coin || 0) < price ? 'disabled' : ''}>🛒 ซื้อใหม่ 🪙${price}</button>` : '') + `</span></div>`;
     }
   }
-  const showSell = sh.sell.length && (!tabs || sellTab || cookTab || petTab); // แท็บเมล็ดพันธุ์ไม่แสดงส่วนขาย ให้ไปขายที่แท็บขายผลผลิต
+  const showSell = sh.sell.length && (!tabs || sellTab || cookTab); // ขายอยู่แท็บ 💰 ขายแท็บเดียว (แท็บทำอาหารยังขายจานได้)
   const sellKeys = showSell ? Object.keys(inv).filter(k => shopSells(shopKind, k) && itemInfo(k) && itemInfo(k).sell && !(cookTab && FISH_DISH_SELL_TAB.has(k))) : [];
   if (showSell) h += '<div class="sec">ขาย (เลือกได้ว่าจะขายอะไร)</div>';
   if (showSell && !sellKeys.length) h += '<p style="opacity:.7;margin:6px 0">ยังไม่มีของที่ร้านนี้รับซื้อ</p>';
@@ -1326,7 +1333,7 @@ function renderShop() {
   }
   if (shopKind === 'food' && !cookTab) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">🍖 ความอิ่มลดลงเรื่อยๆ ขณะออนไลน์ ถึง 0 จะใช้เครื่องมือไม่ได้ • ผลผลิตของตัวเองก็กินได้ (อิ่มน้อยกว่า) ในกระเป๋า 🎒</p>';
   if (shopKind === 'furn') h += `<p style="font-size:12px;opacity:.65;margin:8px 0 0">🏠 ทุกคนมีบ้านหลังใหญ่เป็นของตัวเอง เข้าได้จากเมนู ☰ → 🏠 บ้านฉัน แล้วกดปุ่ม 🏠 อีกครั้ง (หรือ H) เพื่อวางของ • มูลค่าและจำนวนของที่ตกแต่งจะขึ้นอันดับใน 🏘️ บ้านเพื่อน • เก้าอี้/โซฟานั่งได้ • โคมไฟสว่างตอนกลางคืน</p>`;
-  if (shopKind === 'wood') {
+  if (craftTab) {
     h += '<div class="sec">🔨 โรงงานช่างไม้ (ประดิษฐ์ของจากไม้ที่หามาได้)</div>';
     for (const r of CRAFT) {
       const i = itemInfo(r.id), locked = lvl('wood') < r.lv, ok = Object.entries(r.in).every(([k, n]) => (inv[k] || 0) >= n);
@@ -1337,6 +1344,7 @@ function renderShop() {
   }
   const body = $('shopBody'); body.innerHTML = h;
   body.querySelectorAll('[data-ftab]').forEach(b => b.onclick = () => { farmTab = b.dataset.ftab; renderShop(); });
+  body.querySelectorAll('[data-fsub]').forEach(b => b.onclick = () => { furnSub = b.dataset.fsub; renderShop(); });
   body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft }));
   body.querySelectorAll('[data-rent]').forEach(b => b.onclick = () => send({ t: 'rent', id: b.dataset.rent }));
   body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook }));
@@ -1583,7 +1591,7 @@ $('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk();
 // ---------- แชทเสียง (WebRTC, ต่อตรงระหว่างผู้เล่น / signaling ผ่าน WebSocket เดิม) ----------
 const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 const peers = new Map(), levels = new Map();
-window.__mw = { get base() { return base; }, actionSheet: () => actionSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
+window.__mw = { openShop: (k, t) => { openShop(k); if (t) { farmTab = t; renderShop(); } }, get base() { return base; }, actionSheet: () => actionSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
 let callWith = 0, callPend = 0, callIn = 0, callMicOn = false, callTimer = 0; // callWith = คู่สายที่ต่อแล้ว, callPend = เรากำลังโทรหา, callIn = กำลังมีคนโทรหาเรา
 const pcSend = (to, k) => send({ t: 'pcall', to, k });
