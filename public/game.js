@@ -1300,7 +1300,7 @@ function renderShop() {
         + (fx || cur <= 0 ? ` <button class="btn small${better || worn ? '' : ' muted'}" data-rebuy="${t}" ${(inv.coin || 0) < price ? 'disabled' : ''}>🛒 ซื้อใหม่ 🪙${price}</button>` : '') + `</span></div>`;
     }
   }
-  const showSell = sh.sell.length && (!tabs || seedTab || sellTab || cookTab || petTab);
+  const showSell = sh.sell.length && (!tabs || sellTab || cookTab || petTab); // แท็บเมล็ดพันธุ์ไม่แสดงส่วนขาย ให้ไปขายที่แท็บขายผลผลิต
   const sellKeys = showSell ? Object.keys(inv).filter(k => shopSells(shopKind, k) && itemInfo(k) && itemInfo(k).sell && !(cookTab && FISH_DISH_SELL_TAB.has(k))) : [];
   if (showSell) h += '<div class="sec">ขาย (เลือกได้ว่าจะขายอะไร)</div>';
   if (showSell && !sellKeys.length) h += '<p style="opacity:.7;margin:6px 0">ยังไม่มีของที่ร้านนี้รับซื้อ</p>';
