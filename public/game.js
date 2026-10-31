@@ -2642,7 +2642,7 @@ function drawCliffs(gx) {
   // ภูเขาถ้ำเหมือง (pixelart.js caveHill) ภาพ ×2 ปากถ้ำอยู่ตีนเขาตรงช่อง MINE.door + ป้าย ⚒️ บนคาน
   const HL = Shared.MINE.hill, hill = PixelArt.caveHill(Shared.hillTop, HL.peaks), sm = gx.imageSmoothingEnabled;
   gx.imageSmoothingEnabled = false; gx.drawImage(hill, HL.x0 * TS - 2, -2, hill.width * 2, hill.height * 2); gx.imageSmoothingEnabled = sm;
-  PixelUI.world(gx, '⚒️', HL.x0 * TS + 176, 189, 14);
+  PixelUI.world(gx, '⚒️', HL.x0 * TS + 175, 210, 12);
 }
 function buildBase() {
   const U = PixelArt.U, K = PixelArt.GK, GU = U * K, oc = document.createElement('canvas'); oc.width = W * GU; oc.height = H * GU; // พื้นโลกละเอียด K เท่า (GU = 32 px ต่อช่อง = พิกเซลเกม)
@@ -3269,7 +3269,7 @@ function drawNight(dark, now) {
   const hole = (x, y, r, inner) => { const g = lctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(inner, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, r, 0, 7); lctx.fill(); };
   const fx = FIRE.x * TS + 16, fy = FIRE.y * TS + 12, fr = TS * 10.5 * (1 + Math.sin(now / 130) * 0.02 + Math.sin(now / 71) * 0.015);
   if (inTown()) hole(fx, fy, fr, 0.3);
-  const hl = Shared.MINE.hill.x0 * TS + 230, hy = 222; if (inTown()) hole(hl, hy, TS * 3, 0.35); // ตะเกียงหน้าถ้ำเหมือง
+  const hl = Shared.MINE.hill.x0 * TS + 219, hy = 233; if (inTown()) hole(hl, hy, TS * 3, 0.35); // ตะเกียงหน้าถ้ำเหมือง
   const LH = inTown() && builtProj.has('lighthouse') && Shared.LIGHTHOUSE, lx = LH ? (LH.x0 + (LH.x1 - LH.x0 + 1) / 2) * TS : 0, ly = LH ? LH.y0 * TS + 39 : 0, lAng = now / 1800; // ประภาคาร: ห้องตะเกียงอยู่ใกล้ยอดหอ ลำแสงหมุนรอบ ~11 วินาที
   const beam = (r, half, ang, a0) => { const g = lctx.createRadialGradient(lx, ly, 0, lx, ly, r); g.addColorStop(0, `rgba(0,0,0,${a0})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(lx, ly); lctx.arc(lx, ly, r, ang - half, ang + half); lctx.closePath(); lctx.fill(); };
   if (LH) { hole(lx, ly, TS * 7 * (1 + Math.sin(now / 400) * 0.02), 0.25); beam(TS * 18, 0.2, lAng, 0.95); beam(TS * 18, 0.2, lAng + Math.PI, 0.95); }

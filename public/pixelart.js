@@ -859,7 +859,7 @@ const PixelTrees = (() => {
     const W = 176, H = 144, c = cv(W + 2, H + 2), x = c.getContext('2d'), px = (X, Y, col) => { x.fillStyle = col; x.fillRect(X + 1, Y + 1, 1, 1); };
     const R = ['#c4b08e', '#a89478', '#8f7e68', '#7a6a58', '#665848', '#4a3d30'], GR = ['#3f7a34', '#5a9a42', '#7fc25a', '#a6dc78'];
     const tops = []; for (let X = 0; X < W; X++) tops.push(Math.round(top(X)) + (top(X) < 118 ? Math.floor(hash(X >> 2, 7, 3) * 3) - 1 : 0)); // ขอบบนหยักทีละ 4 px
-    const mouthTop = X => 108 + Math.pow((X - 88) / 19, 2) * 10, inMouth = (X, Y) => X >= 69 && X <= 107 && Y >= mouthTop(X);
+    const mouthTop = X => 117 + Math.pow((X - 88) / 12.5, 2) * 6, inMouth = (X, Y) => X >= 72 && X <= 104 && Y >= mouthTop(X);
     const own = X => { let pk = peaks[0], best = 1e9; for (const p of peaks) { const v = p.y + Math.abs(X - p.x) * p.s; if (v < best) { best = v; pk = p; } } return pk; };
     for (let X = 0; X < W; X++) {
       const pk0 = own(X), cr = own(X - 1) !== pk0 || own(X + 1) !== pk0; // cr = ร่องหุบระหว่างยอด
@@ -892,19 +892,19 @@ const PixelTrees = (() => {
       for (let j = 0; j < 6; j++) for (let i = 0; i < 9; i++) if ((i - 4) ** 2 / 20 + (j - 3) ** 2 / 9 <= 1) px(X + i, Y + j, j < 2 ? R[0] : i > 5 ? R[3] : R[1]);
       for (let i = 1; i < 8; i++) px(X + i, Y + 6, R[5]);
     }
-    for (let X = 69; X <= 107; X++) for (let Y = Math.ceil(mouthTop(X)); Y < H; Y++) { // โพรงปากถ้ำ: ขอบในเป็นหินเงา ข้างในมืดลึก
-      const e = Y - mouthTop(X) < 3 || X < 72 || X > 104; px(X, Y, e ? '#2e2630' : Y > 132 ? '#1d1a22' : '#120f14');
+    for (let X = 76; X <= 100; X++) for (let Y = Math.ceil(mouthTop(X)); Y < H; Y++) { // โพรงปากถ้ำ: ขอบในเป็นหินเงา ข้างในมืดลึก
+      const e = Y - mouthTop(X) < 2 || X < 78 || X > 98; px(X, Y, e ? '#2e2630' : Y > 132 ? '#1d1a22' : '#120f14');
     }
-    const rail = (x0, x1) => { for (let Y = 124; Y < H; Y++) { const X = Math.round(x0 + (x1 - x0) * (Y - 124) / 19); px(X, Y, '#9aa0aa'); px(X + 1, Y, '#5c6068'); } };
-    for (let Y = 126; Y < H; Y += 4) { const w = 8 + (Y - 124) * 0.3; for (let X = Math.round(88 - w); X <= Math.round(88 + w); X++) { px(X, Y, '#5a3a1c'); px(X, Y + 1, '#3d2712'); } } // หมอนรางรถแร่
-    rail(82, 78); rail(93, 97);
+    const rail = (x0, x1) => { for (let Y = 128; Y < H; Y++) { const X = Math.round(x0 + (x1 - x0) * (Y - 128) / 15); px(X, Y, '#9aa0aa'); px(X + 1, Y, '#5c6068'); } };
+    for (let Y = 130; Y < H; Y += 4) { const w = 6 + (Y - 128) * 0.3; for (let X = Math.round(88 - w); X <= Math.round(88 + w); X++) { px(X, Y, '#5a3a1c'); px(X, Y + 1, '#3d2712'); } } // หมอนรางรถแร่
+    rail(84, 82); rail(91, 93);
     const beam = (x0, y0, w, h) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) px(x0 + i, y0 + j, i === 0 || j === 0 ? '#9a6a3a' : i === w - 1 || j === h - 1 ? '#4a2f18' : (i + j * 3) % 9 ? '#7d4f2a' : '#6b4423'); };
-    beam(64, 106, 5, 38); beam(107, 106, 5, 38); // เสาค้ำ
-    for (let i = 0; i < 6; i++) { px(69 + i, 112 - i, '#7d4f2a'); px(69 + i, 113 - i, '#5a3a1c'); px(106 - i, 112 - i, '#7d4f2a'); px(106 - i, 113 - i, '#5a3a1c'); } // ค้ำเฉียง
-    beam(60, 101, 56, 6); // คานบน
-    for (let j = 0; j < 11; j++) for (let i = 0; i < 20; i++) px(78 + i, 89 + j, i === 0 || j === 0 || i === 19 || j === 10 ? '#5a3a1c' : j === 1 ? '#e2c792' : '#c9a56a'); // ป้ายไม้ (เกมวาดไอคอน ⚒️ ทับ)
-    px(81, 100, '#4a2f18'); px(96, 100, '#4a2f18');
-    px(115, 107, '#3a3f4a'); for (let j = 0; j < 7; j++) for (let i = 0; i < 5; i++) px(113 + i, 108 + j, i === 0 || i === 4 || j === 0 || j === 6 ? '#3a3f4a' : j < 3 ? '#ffe9a8' : '#ffc95a'); // ตะเกียงแขวน
+    beam(72, 115, 4, 29); beam(101, 115, 4, 29); // เสาค้ำ
+    for (let i = 0; i < 4; i++) { px(76 + i, 119 - i, '#7d4f2a'); px(76 + i, 120 - i, '#5a3a1c'); px(100 - i, 119 - i, '#7d4f2a'); px(100 - i, 120 - i, '#5a3a1c'); } // ค้ำเฉียง
+    beam(68, 110, 41, 5); // คานบน
+    for (let j = 0; j < 9; j++) for (let i = 0; i < 16; i++) px(80 + i, 101 + j, i === 0 || j === 0 || i === 15 || j === 8 ? '#5a3a1c' : j === 1 ? '#e2c792' : '#c9a56a'); // ป้ายไม้ (เกมวาดไอคอน ⚒️ ทับ)
+    px(83, 110, '#4a2f18'); px(92, 110, '#4a2f18');
+    px(109, 115, '#3a3f4a'); for (let j = 0; j < 6; j++) for (let i = 0; i < 4; i++) px(108 + i, 116 + j, i === 0 || i === 3 || j === 0 || j === 5 ? '#3a3f4a' : j < 3 ? '#ffe9a8' : '#ffc95a'); // ตะเกียงแขวน
     addOutline(c, OUT);
     return c;
   }
