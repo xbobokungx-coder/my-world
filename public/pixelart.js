@@ -852,5 +852,61 @@ const PixelTrees = (() => {
     }
   }
 
-  return { mk, r, ell, disc, shade, ramp, hue, fish, lily, duckPond, lighthouse,  hash, rng, addOutline, cv, U, OUT, ground, GK: 2, fences, tree: treeFor, building, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
+
+  // ภูเขาถ้ำเหมือง (ภาพ 176×144 + ขอบ 1 = 178×146 ภาพ ×2 = พิกเซลเกม) วางที่ช่อง x MINE.hill.x0 แถว 0 ลบ 2 px • แนวสันจาก Shared.hillTop
+  // ยอดหลักเหนือปากถ้ำ ยอดรองซ้าย/ขวา • แสงซ้ายบน: ซ้ายสันสว่าง ขวาสันเงา • ชั้นหินเป็นขั้น มีหญ้าขึ้นบนขั้น • ปากถ้ำ = โพรงโค้งมืด คานไม้ค้ำ รางรถแร่ ตะเกียง
+  function caveHill(top, peaks) {
+    const W = 176, H = 144, c = cv(W + 2, H + 2), x = c.getContext('2d'), px = (X, Y, col) => { x.fillStyle = col; x.fillRect(X + 1, Y + 1, 1, 1); };
+    const R = ['#c4b08e', '#a89478', '#8f7e68', '#7a6a58', '#665848', '#4a3d30'], GR = ['#3f7a34', '#5a9a42', '#7fc25a', '#a6dc78'];
+    const tops = []; for (let X = 0; X < W; X++) tops.push(Math.round(top(X)) + (top(X) < 118 ? Math.floor(hash(X >> 2, 7, 3) * 3) - 1 : 0)); // ขอบบนหยักทีละ 4 px
+    const mouthTop = X => 108 + Math.pow((X - 88) / 19, 2) * 10, inMouth = (X, Y) => X >= 69 && X <= 107 && Y >= mouthTop(X);
+    const own = X => { let pk = peaks[0], best = 1e9; for (const p of peaks) { const v = p.y + Math.abs(X - p.x) * p.s; if (v < best) { best = v; pk = p; } } return pk; };
+    for (let X = 0; X < W; X++) {
+      const pk0 = own(X), cr = own(X - 1) !== pk0 || own(X + 1) !== pk0; // cr = ร่องหุบระหว่างยอด
+      for (let Y = tops[X]; Y < H; Y++) {
+        const pk = pk0 !== peaks[0] && Y - tops[X] > 22 ? peaks[0] : pk0; // ใต้ยอดรองลงไปเป็นเนื้อเขาหลัก (รอยต่อไม่เป็นเส้นตั้งยาว)
+        const rx = pk.x + (Y - pk.y) * 0.22 + Math.sin(Y / 7) * 1.5, lit = X < rx, d = Math.abs(X - rx), u = (Y - tops[X]);
+        let k = lit ? (d < 2 ? 0 : 1) : (d < 2 ? 4 : 3);
+        if (lit && u < 2 && Y < 110) k = 0; // ขอบบนฝั่งแสงสว่าง
+        if (cr && Y - tops[X] < 14) k = 4;
+        if (Y > 120) k = Math.min(5, k + 1); // ตีนเขาเข้มลง
+        if (hash(X >> 1, Y >> 1, 19) < 0.05) k = Math.min(5, k + 1); // เม็ดหินประปราย 2×2
+        px(X, Y, R[k]);
+      }
+    }
+    for (let s = 0; s < 7; s++) for (let X = 0; X < W; X += 6) { // ชั้นหินเป็นขั้นสั้นๆ ไม่ต่อกันเป็นแถว
+      const L = 26 + s * 15 + Math.round(Math.sin(X / 11 + s * 2.3) * 3); if (hash(X >> 2, s, 11) < 0.7) continue;
+      for (let i = 0; i < 6 + (hash(X, s, 5) * 6 | 0); i++) { const x2 = X + i; if (x2 >= W || L - tops[x2] < 4 || L > 124) continue; const pk = L - tops[x2] > 22 ? peaks[0] : own(x2), lit = x2 < pk.x + (L - pk.y) * 0.22; px(x2, L, lit ? R[0] : R[2]); px(x2, L + 1, R[5]); }
+    }
+    for (let i = 0; i < 9; i++) { // รอยแยกเฉียงลงจากยอดฝั่งเงา
+      const p = peaks[i % 3]; let X = p.x + 4 + hash(i, 1, 31) * 24, Y = p.y + 12 + hash(i, 2, 31) * 30;
+      for (let n = 0; n < 10 && Y < 118; n++) { if (Y >= tops[X | 0] + 3) px(X | 0, Y | 0, R[5]); Y += 1; X += hash(i, n, 41) < 0.5 ? 0 : 1; }
+    }
+    const tuft = (X, Y, n) => { for (let i = 0; i < n; i++) { px(X + i, Y, GR[1]); px(X + i, Y + 1, GR[0]); } for (let i = 1; i < n - 1; i++) px(X + i, Y - 1, GR[2]); px(X + (n >> 1), Y - 2, GR[3]); };
+    for (let X = 4; X < W - 8; X += 5) { // หญ้าเป็นหย่อมบนลาดเขาตอนล่าง (ไม่บังปากถ้ำ)
+      if (X > 54 && X < 122) continue; const Y = Math.max(tops[X] + 6, 70 + (hash(X, 3, 17) * 50 | 0)); if (Y > 124 || hash(X, 9, 17) < 0.35) continue;
+      tuft(X, Y, 4 + (hash(X, 4, 17) * 4 | 0));
+    }
+    for (const [X, Y] of [[60, 40], [104, 30], [128, 60], [22, 64]]) if (Y > tops[X] + 4) tuft(X, Y, 5); // หญ้าบนไหล่เขา
+    for (const [X, Y] of [[18, 118], [150, 112], [131, 126], [40, 128]]) { // ก้อนหินตีนเขา
+      for (let j = 0; j < 6; j++) for (let i = 0; i < 9; i++) if ((i - 4) ** 2 / 20 + (j - 3) ** 2 / 9 <= 1) px(X + i, Y + j, j < 2 ? R[0] : i > 5 ? R[3] : R[1]);
+      for (let i = 1; i < 8; i++) px(X + i, Y + 6, R[5]);
+    }
+    for (let X = 69; X <= 107; X++) for (let Y = Math.ceil(mouthTop(X)); Y < H; Y++) { // โพรงปากถ้ำ: ขอบในเป็นหินเงา ข้างในมืดลึก
+      const e = Y - mouthTop(X) < 3 || X < 72 || X > 104; px(X, Y, e ? '#2e2630' : Y > 132 ? '#1d1a22' : '#120f14');
+    }
+    const rail = (x0, x1) => { for (let Y = 124; Y < H; Y++) { const X = Math.round(x0 + (x1 - x0) * (Y - 124) / 19); px(X, Y, '#9aa0aa'); px(X + 1, Y, '#5c6068'); } };
+    for (let Y = 126; Y < H; Y += 4) { const w = 8 + (Y - 124) * 0.3; for (let X = Math.round(88 - w); X <= Math.round(88 + w); X++) { px(X, Y, '#5a3a1c'); px(X, Y + 1, '#3d2712'); } } // หมอนรางรถแร่
+    rail(82, 78); rail(93, 97);
+    const beam = (x0, y0, w, h) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) px(x0 + i, y0 + j, i === 0 || j === 0 ? '#9a6a3a' : i === w - 1 || j === h - 1 ? '#4a2f18' : (i + j * 3) % 9 ? '#7d4f2a' : '#6b4423'); };
+    beam(64, 106, 5, 38); beam(107, 106, 5, 38); // เสาค้ำ
+    for (let i = 0; i < 6; i++) { px(69 + i, 112 - i, '#7d4f2a'); px(69 + i, 113 - i, '#5a3a1c'); px(106 - i, 112 - i, '#7d4f2a'); px(106 - i, 113 - i, '#5a3a1c'); } // ค้ำเฉียง
+    beam(60, 101, 56, 6); // คานบน
+    for (let j = 0; j < 11; j++) for (let i = 0; i < 20; i++) px(78 + i, 89 + j, i === 0 || j === 0 || i === 19 || j === 10 ? '#5a3a1c' : j === 1 ? '#e2c792' : '#c9a56a'); // ป้ายไม้ (เกมวาดไอคอน ⚒️ ทับ)
+    px(81, 100, '#4a2f18'); px(96, 100, '#4a2f18');
+    px(115, 107, '#3a3f4a'); for (let j = 0; j < 7; j++) for (let i = 0; i < 5; i++) px(113 + i, 108 + j, i === 0 || i === 4 || j === 0 || j === 6 ? '#3a3f4a' : j < 3 ? '#ffe9a8' : '#ffc95a'); // ตะเกียงแขวน
+    addOutline(c, OUT);
+    return c;
+  }
+  return { mk, r, ell, disc, shade, ramp, hue, fish, lily, duckPond, lighthouse,  hash, rng, addOutline, caveHill, cv, U, OUT, ground, GK: 2, fences, tree: treeFor, building, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
 })();

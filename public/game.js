@@ -2647,7 +2647,7 @@ function drawCliffs(gx) {
 function buildBase() {
   const U = PixelArt.U, K = PixelArt.GK, GU = U * K, oc = document.createElement('canvas'); oc.width = W * GU; oc.height = H * GU; // พื้นโลกละเอียด K เท่า (GU = 32 px ต่อช่อง = พิกเซลเกม)
   const g = oc.getContext('2d');
-  g.drawImage(PixelArt.ground(MAP, K), 0, 0);
+  g.drawImage(PixelArt.ground(MAP.map((row, y) => Array.from(row, (t, x) => (Shared.hillAt(x, y) ? T.GRASS : t))), K), 0, 0); // ใต้ภูเขาถ้ำเป็นหญ้า (ขอบภาพเขาไม่เต็มช่อง)
   g.save(); g.scale(K, K); g.imageSmoothingEnabled = false; // รั้ว/เคาน์เตอร์ยังเป็นสไปรต์ 16 px ต่อช่อง ขยายเท่าตัวตามพื้น
   PixelArt.fences(g, MAP);
   g.restore();

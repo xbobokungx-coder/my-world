@@ -413,8 +413,12 @@
     oreGap: 3,                                     // ก้อนแร่ห่างกันอย่างน้อย 3 ช่อง (ไม่เกาะกันเป็นพืด ต้องเดินหา)
     respawnMs: DAY_MS / 3,                         // ก้อนแร่ที่ขุดหมดเกิดใหม่หลัง 1/3 วันในเกม (4 นาที แร่น้อยลงจึงเกิดไวขึ้น) ที่ช่องสุ่มใหม่ในชั้นเดิม (ไม่ใช่ที่เดิม) พร้อมสุ่มชนิด/ขนาดใหม่
     hpBase: 13,                                    // HP ก้อนเล็ก = hpBase × ระดับอีเต้อขั้นต่ำของแร่ (ใช้อีเต้อที่พอดีกับแร่ ≈ 21 ครั้งต่อก้อนเฉลี่ย)
-    door: [25, 26, 27], y: 8,                       // ปากถ้ำบนหน้าผา (แถว y=8) เดินเข้าจากด้านล่าง (y=9)
+    door: [17, 18, 19], y: 8,                       // ปากถ้ำตีนภูเขาบนหน้าผา (แถว y=8) เดินเข้าจากด้านล่าง (y=9)
+    hill: { x0: 13, x1: 23, peaks: [{ x: 88, y: 10, s: 0.9 }, { x: 140, y: 32, s: 0.8 }, { x: 36, y: 36, s: 0.8 }] }, // peaks = ยอดเขา (x, y พิกเซลภาพ, s = ความชัน)                       // ภูเขาถ้ำ: ช่อง x13–23 แถว 1–7 (เฉพาะที่อยู่ใต้แนวสัน hillTop) เดินผ่านไม่ได้ วาดเป็นภาพเดียวใน game.js
   };
+  // แนวสันภูเขาถ้ำ: ax = พิกเซลภาพ (×2 = พิกเซลเกม) นับจากซ้ายของ MINE.hill 0..175 → y ภาพของขอบบน (ภาพสูง 144 = แถว 0–8) ยอดหลักอยู่เหนือปากถ้ำ
+  const hillTop = ax => Math.min(124, Math.min(...MINE.hill.peaks.map(p => p.y + Math.abs(ax - p.x) * p.s)) + Math.max(0, 24 - ax) * 2.5 + Math.max(0, ax - 151) * 2.5);
+  const hillAt = (x, y) => x >= MINE.hill.x0 && x <= MINE.hill.x1 && y >= 1 && y <= 7 && hillTop((x - MINE.hill.x0) * 16 + 8) <= y * 16 + 8; // ช่องที่ภูเขาบัง
   // ขนาดก้อน: ไม่เท่ากัน สุ่มตอนเกิด w = น้ำหนักฐานของแมพ 50/40/10 (ชั้นจริงใช้ SIZE_MIX ด้านล่าง) hp = ตัวคูณ HP drop = ชิ้นที่ได้ [ต่ำสุด, สูงสุด] สุ่มทุกครั้งที่ขุดแตก
   const ORE_SIZES = [
     { id: 's', name: 'เล็ก',  w: 50, hp: 1,   drop: [1, 3] },
@@ -1198,7 +1202,7 @@
     // ถนน / ลานปูหิน (ผังเมือง v3): ถนนหลักรูปกากบาท ตัดกันที่ลานกองไฟ • เหนือ = ที่ราบ Arcade/เทศกาล (ขึ้นบันได) • ตะวันตก = แปลงผัก+บ่อ
     // • ตะวันออก = เล้าสัตว์ 3 แถว • ใต้ = สระใหญ่ • ตะวันตกเฉียงใต้ = ป่า (ร้านช่างไม้) • เหนือถนนหลัก = แถวร้าน + บ้านหลังใหญ่ + ร้านช่างเหมือง
     road(24, 1, 41, 7);                                       // ลานตู้เกม (Arcade Hub) บนที่ราบเหนือ
-    road(21, 9, 45, 9);                                       // ทางเลียบหน้าผา: ปากถ้ำ → บันได → เล้าสัตว์
+    road(16, 9, 45, 9);                                       // ทางเลียบหน้าผา: ปากถ้ำ → บันได → เล้าสัตว์
     road(33, 9, 34, 33);                                      // ถนนสายกลาง เหนือ→ใต้ (บันได → ลานกองไฟ → ชายสระ)
     road(19, 19, 45, 20);                                     // ถนนหลักตะวันออก–ตะวันตก (ประตูแปลงผัก → เล้าสัตว์)
     road(24, 9, 24, 15); road(24, 15, 32, 15);                // ทางหน้าร้านช่างเหมือง + ทางหน้าบ้านหลังใหญ่
@@ -1210,7 +1214,8 @@
     road(46, 15, 62, 16); road(46, 24, 62, 25);               // ทางเดินระหว่างเล้า 3 แถว
     // หน้าผาเหนือ (บันได x32–35) แบ่งที่ราบ Arcade ออกจากตัวเมือง • เลิกใช้หน้าผาตะวันออก (เล้าสัตว์อยู่ระดับเดียวกับเมือง เดินถึงง่าย)
     for (let x = 0; x < W; x++) set(x, 8, (x >= 32 && x <= 35) ? T.STAIR : T.CLIFF);
-    for (const x of MINE.door) set(x, MINE.y, T.MOUTH);       // ปากถ้ำเหมืองบนหน้าผาเหนือ (เดินเข้า = เข้าถ้ำ)
+    for (let y = 1; y <= 7; y++) for (let x = MINE.hill.x0; x <= MINE.hill.x1; x++) if (hillAt(x, y)) set(x, y, T.CLIFF); // ภูเขาถ้ำบนที่ราบเหนือ
+    for (const x of MINE.door) set(x, MINE.y, T.MOUTH);       // ปากถ้ำเหมืองตีนภูเขา (เดินเข้า = เข้าถ้ำ)
     // รั้ว + ประตู
     fence(FARM.x0 - 1, FARM.y0 - 1, FARM.x1 + 1, FARM.y1 + 1); set(10, FARM.y1 + 1, T.PATH); set(11, FARM.y1 + 1, T.PATH); set(FARM.x1 + 1, 19, T.PATH); set(FARM.x1 + 1, 20, T.PATH); // ประตูสวน: กลางล่าง (ไปบ่อน้ำ) + ขวาล่าง (ไปถนนหลัก)
     for (const P of Object.values(PENS)) { fence(P.x0 - 1, P.y0 - 1, P.x1 + 1, P.y1 + 1); for (const [x, y] of P.gate) set(x, y, T.PATH); }
@@ -1291,7 +1296,7 @@
     rebuildPaved();
   }
   applyLayout(typeof globalThis !== 'undefined' ? globalThis.__LAYOUT : null);
-  const NO_TREE = [FARM, ...Object.values(PENS), PLAZA, { x0: 24, y0: 1, x1: 41, y1: 7 }, FESTIVAL.plaza].map(z => ({ x0: z.x0 - 2, y0: z.y0 - 2, x1: z.x1 + 2, y1: z.y1 + 2 }));
+  const NO_TREE = [FARM, ...Object.values(PENS), PLAZA, { x0: 24, y0: 1, x1: 41, y1: 7 }, { x0: MINE.hill.x0, y0: 1, x1: MINE.hill.x1, y1: 8 }, FESTIVAL.plaza].map(z => ({ x0: z.x0 - 2, y0: z.y0 - 2, x1: z.x1 + 2, y1: z.y1 + 2 }));
   const PERM_TREE = new Set(BEE.trees.map(([x, y]) => x + ',' + y)); // ต้นไม้ถาวรของเล้าผึ้ง ตัดไม่ได้
   const isChoppable = (m, x, y) => !!(m[y] && m[y][x] === T.TREE && x >= 1 && y >= 1 && x <= W - 2 && y <= H - 2 && !PERM_TREE.has(x + ',' + y));
   function treeSpotOk(m, x, y) {
@@ -1322,7 +1327,7 @@
 
   const api = { ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
+    SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, FEST, AUCTION, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
