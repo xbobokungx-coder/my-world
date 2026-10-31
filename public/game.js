@@ -3071,7 +3071,7 @@ function drawPlayer(p, now, cx) {
   const F = !riding && PixelAction.frame(p, performance.now()), bx = F && (p.dir || 0) >= 2 ? F.lean * (p.dir === 2 ? -1 : 1) : 0, ct = p.catchFx ? performance.now() - p.catchFx.t : -1, by = (F ? F.bob : 0) + (ct > 550 && ct < 750 ? -Math.round(Math.sin((ct - 550) / 200 * Math.PI) * 4) : 0); // ได้ปลา: กระโดดดีใจตอนรับปลา // ท่าทำงาน: ตัวโน้ม/ยุบตามเฟรม
   if (!riding) { ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
     if (p.lie) { // นอนบนเตียง: หมุนตัวละครยืนเป็นท่านอนราบ (ชื่อ/ฟองแชทไม่หมุน)
-      ctx.save(); ctx.translate(bx, by); ctx.translate(x, y - 8); ctx.rotate(Math.PI / 2); ctx.translate(-x, -(y - 8));
+      ctx.save(); ctx.translate(bx, by); ctx.translate(x, y - 8); ctx.rotate(p.lieRot || Math.PI / 2); ctx.translate(-x, -(y - 8));
       PixelChar.draw(ctx, Object.assign({}, p, { sit: false, moving: false }), now); ctx.restore();
     } else { ctx.save(); ctx.translate(bx, by); PixelChar.draw(ctx, p, now); ctx.restore(); } } // ตัวละครพิกเซล chibi (pixelchar.js)
   if (riding) y -= PixelVehicle.lift(p.veh); // ผู้ขี่ตัวสูงขึ้น ป้ายชื่อ/ฟองแชท/ไอคอนเลื่อนตาม
@@ -3516,9 +3516,19 @@ function buildHouseGrid() { // เส้นตารางจาง ๆ ตอ�
   return c;
 }
 function drawIsoPlayer(p, now) { // ตัวละครเดิมวาดที่พิกัดโลก → เลื่อนไปยังพิกัดไอโซเมตริก (นั่งแล้วยกขึ้นตามที่นั่ง)
-  const [sx, sy] = iso(p.x, p.y); let lift = 0;
-  if (p.sit) for (const it of furn.values()) if ((FURN[it.f].seat || FURN[it.f].bed) && Math.abs(it.x * TS - p.x) < 6 && Math.abs(it.y * TS - p.y) < 6) lift = FURN[it.f].bed ? 12 : 8;
-  ctx.save(); ctx.translate(sx - p.x, sy - p.y - 10 - lift); drawPlayer(p, now); ctx.restore();
+  const [sx, sy] = iso(p.x, p.y); let lift = 0, q = p;
+  const it = p.sit ? sitNear(p) : null; // นั่ง/นอนอยู่บนชิ้นไหน: ยกตามความสูงและหันตามแนวชิ้น
+  if (it) { lift = FURN[it.f].bed ? 12 : 8; q = Object.assign({}, p, { dir: it.r ? 3 : 0 }, p.lie ? { lieRot: lieAngle(it) } : {}); }
+  ctx.save(); ctx.translate(sx - p.x, sy - p.y - 10 - lift); drawPlayer(q, now); ctx.restore();
+}
+function sitNear(p) { // ชิ้นนั่ง/นอนที่อยู่ใกล้ตัวละคร (จุดนั่งอยู่ห่างกลางชิ้นไม่เกิน 1 ช่อง)
+  let best = null, bd = 1.6 * TS;
+  for (const it of furn.values()) { const d = FURN[it.f]; if (!(d.seat || d.bed)) continue; const dist = Math.hypot(it.x * TS - p.x, it.y * TS - p.y); if (dist < bd) { bd = dist; best = it; } }
+  return best;
+}
+function lieAngle(it) { // มุมหมุนท่านอน: หัวชี้ขึ้นบนจอเสมอ ตามแนวยาวของเตียง (หมุนตามทิศของชิ้น)
+  const [W, D] = Shared.furnDims(it.f, it.r), horiz = W >= D, hx = horiz ? -1 : 0, hy = horiz ? 0 : -1;
+  return Math.atan2((hx + hy) / 2, hx - hy) + Math.PI / 2;
 }
 function drawIsoCompanion(cp, now) { const [sx, sy] = iso(cp.x, cp.y); ctx.save(); ctx.translate(sx - cp.x, sy - cp.y - 6); drawCompanion(cp, now); ctx.restore(); }
 function drawHouseWorld(now) {

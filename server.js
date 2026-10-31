@@ -413,9 +413,11 @@ class World {
     const h = this.houses[p.scene], id = m.i | 0, it = h && h.items[id];
     if (!it || !(S.FURN[it.f].seat || S.FURN[it.f].bed)) return;
     if (Math.hypot(it.x * TS - p.x, it.y * TS - p.y) > 4 * TS) return this.toast(p, 'ไกลเกินไป เดินเข้าไปใกล้ๆ ก่อน');
-    if (this.sceneMates(p.scene, p).some(q => q.sit && q.sit.i === id)) return this.toast(p, S.FURN[it.f].bed ? 'มีคนนอนอยู่แล้ว' : 'มีคนนั่งอยู่แล้ว');
+    const spots = S.seatSpots(it), taken = new Set(this.sceneMates(p.scene, p).filter(q => q.sit && q.sit.i === id).map(q => q.sit.k));
+    const k = spots.findIndex((_, j) => !taken.has(j)); // ช่องว่างแรกของชิ้นนี้ (เตียงคู่/โซฟา 2 คน)
+    if (k < 0) return this.toast(p, S.FURN[it.f].bed ? 'เตียงเต็มแล้ว' : 'ที่นั่งเต็มแล้ว');
     const lie = !!S.FURN[it.f].bed; // lie = นอนท่าราบ (พักเหมือนนั่ง: ความหิว/พลังงานเหมือนกัน)
-    p.sit = { i: id, lie }; p.x = it.x * TS; p.y = it.y * TS; p.dir = 0;
+    p.sit = { i: id, k, lie }; p.x = spots[k].x * TS; p.y = spots[k].y * TS; p.dir = it.r ? 3 : 0; // หันตามแนวชิ้น
     send(p, { t: 'tp', x: p.x, y: p.y }); this.toast(p, lie ? '😴 นอนพักผ่อน... (เดินเพื่อลุก)' : '🪑 นั่งพักผ่อน... (เดินเพื่อลุก)');
   }
 

@@ -67,6 +67,8 @@
   const HOUSE_MAX_ITEMS = 300, SNAP = 4;                                                        // ชิ้นสูงสุดต่อบ้าน • ละเอียด 1/4 ช่อง
   const snapQ = v => Math.round(v * SNAP) / SNAP;
   const furnDims = (f, r) => { const d = FURN[f], w = d.w || 1, dd = d.d || 1; return r ? [dd, w] : [w, dd]; };
+  // จุดนั่ง/นอนของเฟอร์นิเจอร์ (cap คน) เรียงตามแนวยาวของชิ้น: แนวเดียวกับตัวชิ้นเสมอ
+  const seatSpots = it => { const [W, D] = furnDims(it.f, it.r), horiz = W >= D, L = horiz ? W : D, n = FURN[it.f].cap || 1; return Array.from({ length: n }, (_, k) => { const o = (k + 0.5) * L / n - L / 2; return { x: it.x + (horiz ? o : 0), y: it.y + (horiz ? 0 : o) }; }); };
   const furnRect = it => { const [w, d] = furnDims(it.f, it.r); return { x0: it.x - w / 2, y0: it.y - d / 2, x1: it.x + w / 2, y1: it.y + d / 2 }; };
   const rectOvl = (a, b, e = 0.04) => a.x0 < b.x1 - e && a.x1 > b.x0 + e && a.y0 < b.y1 - e && a.y1 > b.y0 + e;
   const rectHas = (r, x, y) => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1;
@@ -117,9 +119,9 @@
   const FURN = {
     rug:      { cat: 'decor', name: 'พรมปูพื้น',     emoji: '🟥', price: 150,  flat: true, w: 2, d: 2 },
     chair:    { cat: 'living', name: 'เก้าอี้',        emoji: '🪑', price: 120,  seat: true, solid: true, w: 0.75, d: 0.75, h: 26 },
-    sofa:     { cat: 'living', name: 'โซฟา',         emoji: '🛋️', price: 400, seat: true, solid: true, w: 2, d: 1, h: 30 },
+    sofa:     { cat: 'living', name: 'โซฟา',         emoji: '🛋️', price: 400, seat: true, cap: 2, solid: true, w: 2, d: 1, h: 30 },
     table:    { cat: 'kitchen', name: 'โต๊ะอาหาร',     emoji: '🍽️', price: 250,  solid: true, w: 2, d: 1.25, h: 16, top: true },
-    bed:      { cat: 'bedroom', name: 'เตียงนอน',      emoji: '🛏️', price: 600, solid: true, size: 30, w: 2, d: 3, h: 24, top: true, bed: true },
+    bed:      { cat: 'bedroom', name: 'เตียงนอน',      emoji: '🛏️', price: 600, solid: true, size: 30, w: 2, d: 3, h: 24, top: true, bed: true, cap: 2 },
     shelf:    { cat: 'study', name: 'ชั้นหนังสือ',    emoji: '📚', price: 350, solid: true, w: 1.5, d: 0.5, h: 42, top: true },
     tv:       { cat: 'living', name: 'ทีวี',          emoji: '📺', price: 700, solid: true, w: 1.5, d: 0.75, h: 34 },
     fridge:   { cat: 'kitchen', name: 'ตู้เย็น',        emoji: '🧊', price: 500, solid: true, w: 1, d: 1, h: 50 },
@@ -149,7 +151,7 @@
     stool:      { cat: 'living', name: 'สตูลไม้',          emoji: '🪑', price: 70,   seat: true, solid: true, w: 0.5, d: 0.5, h: 14 },
     fireplace:  { cat: 'living', name: 'เตาผิงอิฐ',        emoji: '🔥', price: 950,  solid: true, light: true, w: 2, d: 0.75, h: 50 },
     bedsingle:  { cat: 'bedroom', name: 'เตียงเดี่ยว',     emoji: '🛏️', price: 350,  solid: true, w: 1.5, d: 2.5, h: 20, top: true, bed: true },
-    bedking:    { cat: 'bedroom', name: 'เตียงคิงไซส์',    emoji: '🛌', price: 1100, solid: true, w: 3, d: 3, h: 26, top: true, bed: true },
+    bedking:    { cat: 'bedroom', name: 'เตียงคิงไซส์',    emoji: '🛌', price: 1100, solid: true, w: 3, d: 3, h: 26, top: true, bed: true, cap: 2 },
     wardrobe:   { cat: 'bedroom', name: 'ตู้เสื้อผ้า',      emoji: '🚪', price: 550,  solid: true, w: 1.5, d: 0.75, h: 60 },
     nightstand: { cat: 'bedroom', name: 'ตู้ข้างเตียง',     emoji: '🗄️', price: 150,  solid: true, w: 0.75, d: 0.75, h: 16, top: true },
     dresser:    { cat: 'bedroom', name: 'ตู้ลิ้นชัก',       emoji: '🗃️', price: 420,  solid: true, w: 1.5, d: 0.75, h: 28, top: true },
@@ -1361,7 +1363,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
