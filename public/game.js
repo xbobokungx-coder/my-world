@@ -1208,7 +1208,7 @@ let farmTab = 'gear';
 const SHOP_TABS = { // ทุกร้านที่มีซื้อขายใช้รูปแบบเดียวกัน: 🛒 ซื้อ → 🧰 อุปกรณ์ → (ทำ/ประดิษฐ์) → 💰 ขาย
   farm: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], fish: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']],
   animal: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], food: [['buy', '🛒 ซื้อ'], ['cook', '👨‍🍳 ทำอาหาร'], ['sell', '💰 ขาย']],
-  wood: [['gear', '🧰 อุปกรณ์'], ['craft', '🔨 ประดิษฐ์'], ['sell', '💰 ขาย']], mine: [['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']],
+  wood: [['gear', '🧰 อุปกรณ์'], ['craft', '🔨 สร้าง'], ['sell', '💰 ขาย']], mine: [['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']],
   furn: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']] };
 // ของแต่ละชิ้นอยู่แท็บไหนของร้าน (ซื้อ = สินค้า/วัตถุดิบ/สัตว์ • อุปกรณ์ = เครื่องมือ บัวรดน้ำ อาหารสัตว์ ยา)
 const buyTabOf = (kind, k) => kind === 'farm' ? (k.startsWith('seed_') ? 'buy' : 'gear') : kind === 'fish' ? (k.startsWith('bait') ? 'buy' : 'gear') : kind === 'animal' ? (itemInfo(k).animal ? 'buy' : 'gear') : kind === 'wood' || kind === 'mine' ? 'gear' : 'buy';
