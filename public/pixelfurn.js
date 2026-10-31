@@ -9,7 +9,7 @@ const PixelFurn = (() => {
   const hex = s => { const n = parseInt(s.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
   let factory = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 // ===== เริ่มบล็อกจาก furniture-kit-v2 (furniture-source.js) =====
-const HF = Shared.HFLOOR, FX0 = HF.x0 * TS, FX1 = HF.x1 * TS, FY0 = HF.y0 * TS, FY1 = HF.y1 * TS, WALL_H = 96, INK = '#2a1b14';
+const HF = Shared.HFLOOR, FX0 = HF.x0 * TS, FX1 = HF.x1 * TS, FY0 = HF.y0 * TS, FY1 = HF.y1 * TS, WALL_H = 96, INK = '#000000'; // เส้นขอบเฟอร์นิเจอร์สีดำ (ผู้ดูแลขอ 31 ต.ค. 2026)
 const iso = (X, Y, z = 0) => [X - Y, (X + Y) / 2 - z];       // พื้นโลก (px) → จอไอโซเมตริก
 const unIso = (sx, sy) => [sy + sx / 2, sy - sx / 2];       // จอ → พื้นโลก (ที่ความสูง 0)
 // V2: native integer raster, consistent material palette; no image resampling.
@@ -385,7 +385,12 @@ function artGeneric(g, X, Y, W, D, r, d) { ibox(g, X, Y, W * 0.85, D * 0.85, 0, 
   const ANIM = { cat: 1, fountain: 1, flag: 1, lantern: 1, fireplace: 1, floorlamp: 1, aquarium: 1 };
   const CW = 340, CH = 300, OX = 170, OY = 210; // ผืนวาดชั่วคราว (ชิ้นใหญ่สุด เตียงคิงไซส์ 198×128)
   function trim(cv, ox, oy) { // ตัดขอบโปร่งใสออก คืนจุดยึด
-    const w = cv.width, h = cv.height, a = cv.getContext('2d').getImageData(0, 0, w, h).data; let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    const w = cv.width, h = cv.height, cx = cv.getContext('2d'), img = cx.getImageData(0, 0, w, h), a = img.data; let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    // ขอบนอกสีดำ 1 px ด้านในรูปทรง: พิกเซลทึบที่ติดพื้นที่ว่าง/เงา (เงาโปร่ง ~20% ไม่นับเป็นเนื้อ)
+    const solid = (x, y) => x >= 0 && y >= 0 && x < w && y < h && a[(y * w + x) * 4 + 3] >= 200, edge = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (solid(x, y) && (!solid(x - 1, y) || !solid(x + 1, y) || !solid(x, y - 1) || !solid(x, y + 1))) edge.push((y * w + x) * 4);
+    for (const o of edge) { a[o] = a[o + 1] = a[o + 2] = 0; a[o + 3] = 255; }
+    cx.putImageData(img, 0, 0);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (a[(y * w + x) * 4 + 3]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     if (x1 < 0) return { cv: factory(1, 1), ax: 0, ay: 0 };
     const out = factory(x1 - x0 + 1, y1 - y0 + 1); out.getContext('2d').drawImage(cv, -x0, -y0); return { cv: out, ax: ox - x0, ay: oy - y0 };
