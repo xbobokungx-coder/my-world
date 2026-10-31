@@ -168,7 +168,8 @@ class World {
         else { // รุ่นปัจจุบัน: เก็บ id เดิมไว้ ตรวจกติกาทีละชิ้นตามลำดับ id
           const out = { items: {}, next: Math.max(1, +h.next || 1) };
           if (S.HOUSE_FLOORS[h.fl]) out.fl = h.fl; if (S.HOUSE_WALLS[h.wp]) out.wp = h.wp; // พื้น/วอลเปเปอร์ที่เลือกไว้
-          for (const [id, it] of Object.entries(h.items).sort((a, b) => a[0] - b[0])) {
+          // ตรวจของที่ไม่ได้วางบนอะไรก่อน แล้วค่อยตรวจของที่วางบนหลังชิ้นอื่น (ไม่งั้นของเล็กที่ id ต่ำกว่าโต๊ะที่ย้ายมาวางทีหลัง จะไปขวางโต๊ะตอนโหลด โต๊ะถูกคืนเข้ากระเป๋า)
+          for (const [id, it] of Object.entries(h.items).sort((a, b) => ((a[1] && a[1].on != null) - (b[1] && b[1].on != null)) || a[0] - b[0])) {
             if (!it || !S.FURN[it.f]) continue;
             const res = S.houseCheck(out.items, it.f, S.snapQ(+it.x), S.snapQ(+it.y), it.r ? 1 : 0, { wl: it.wl, u: it.u });
             if (!res.ok || out.items[id]) { refund(key, it.f); continue; }
