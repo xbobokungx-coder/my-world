@@ -3540,7 +3540,8 @@ function drawHouseWorld(now) {
   if (build.on) ctx.drawImage(houseGrid, ISO_B.x0, ISO_B.y0);
   for (const it of its) if (it !== held && FURN[it.f].flat) drawFurnIso(ctx, it, now);
   for (const it of its) { if (it === held) continue; const d = FURN[it.f]; if (!d.wall && !d.flat) list.push({ k: (it.x + it.y) * TS + (it.on ? 1 : 0), f: () => drawFurnIso(ctx, it, now) }); }
-  for (const p of players.values()) { list.push({ k: p.x + p.y, f: () => drawIsoPlayer(p, now) }); if (p.cp) list.push({ k: p.cp.x + p.cp.y, f: () => drawIsoCompanion(p.cp, now) }); }
+  // นั่ง/นอนอยู่บนเตียง/โซฟา: วาดทับหลังตัวเฟอร์นิเจอร์นั้น ไม่ให้ตัวละครไปอยู่ข้างหลัง (ดันลำดับวาดให้ไม่ต่ำกว่าชิ้นนั้น)
+  for (const p of players.values()) { const sit = p.sit ? sitNear(p) : null; list.push({ k: sit ? Math.max(p.x + p.y, (sit.x + sit.y) * TS + 2) : p.x + p.y, f: () => drawIsoPlayer(p, now) }); if (p.cp) list.push({ k: p.cp.x + p.cp.y, f: () => drawIsoCompanion(p.cp, now) }); }
   list.sort((a, b) => a.k - b.k).forEach(o => o.f());
   drawHouseOverlay(now);
 }
