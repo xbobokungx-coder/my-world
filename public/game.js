@@ -3403,262 +3403,24 @@ const iso = (X, Y, z = 0) => [X - Y, (X + Y) / 2 - z];       // พื้นโ�
 const unIso = (sx, sy) => [sy + sx / 2, sy - sx / 2];       // จอ → พื้นโลก (ที่ความสูง 0)
 const ISO_B = { x0: FX0 - FY1 - 40, y0: (FX0 + FY0) / 2 - WALL_H - 40, x1: FX1 - FY0 + 40, y1: (FX1 + FY1) / 2 + 60 };
 ISO_B.w = ISO_B.x1 - ISO_B.x0; ISO_B.h = ISO_B.y1 - ISO_B.y0;
-const rgbOf = hex => { const n = parseInt(hex.slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255]; };
-const tint = (hex, k) => `rgb(${rgbOf(hex).map(v => Math.max(0, Math.min(255, Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k)))).join(',')})`; // k<0 เข้มขึ้น k>0 สว่างขึ้น
 function poly(g, pts, fill, stroke) {
   g.beginPath(); pts.forEach((q, i) => (i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]))); g.closePath();
   if (fill) { g.fillStyle = fill; g.fill(); }
   if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1; g.stroke(); }
 }
 const pip = (pts, x, y) => { let on = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) on = !on; } return on; };
-// กล่อง 3 ด้าน: (X,Y) = กึ่งกลางฐาน w×d px ตั้งแต่ความสูง z0 สูง h • ซ้ายล่างหันหาผู้เล่น ขวาล่างเข้มกว่า (แสงมาจากซ้ายบน)
-function ibox(g, X, Y, w, d, z0, h, c, o = {}) {
-  const x0 = X - w / 2, x1 = X + w / 2, y0 = Y - d / 2, y1 = Y + d / 2, zt = z0 + h, st = o.flat ? null : INK;
-  poly(g, [iso(x0, y1, zt), iso(x1, y1, zt), iso(x1, y1, z0), iso(x0, y1, z0)], o.left || tint(c, -0.1), st);
-  poly(g, [iso(x1, y0, zt), iso(x1, y1, zt), iso(x1, y1, z0), iso(x1, y0, z0)], o.right || tint(c, -0.3), st);
-  poly(g, [iso(x0, y0, zt), iso(x1, y0, zt), iso(x1, y1, zt), iso(x0, y1, zt)], o.top || tint(c, 0.15), st);
-}
-// แผ่นสีบนด้านของกล่อง (u0..u1 = สัดส่วนตามด้าน): L = ด้านซ้ายล่าง (y = y1) R = ด้านขวาล่าง (x = x1)
-const faceL = (g, X, Y, w, d, u0, u1, z0, z1, c) => poly(g, [iso(X - w / 2 + u0 * w, Y + d / 2, z1), iso(X - w / 2 + u1 * w, Y + d / 2, z1), iso(X - w / 2 + u1 * w, Y + d / 2, z0), iso(X - w / 2 + u0 * w, Y + d / 2, z0)], c);
-const faceR = (g, X, Y, w, d, u0, u1, z0, z1, c) => poly(g, [iso(X + w / 2, Y - d / 2 + u0 * d, z1), iso(X + w / 2, Y - d / 2 + u1 * d, z1), iso(X + w / 2, Y - d / 2 + u1 * d, z0), iso(X + w / 2, Y - d / 2 + u0 * d, z0)], c);
-const backSlab = (X, Y, W, D, r, t) => (r ? [X - W / 2 + t / 2, Y, t, D] : [X, Y - D / 2 + t / 2, W, t]); // แผ่นบางชิดด้านหลัง (r=0 ชิดเหนือ, r=1 ชิดตะวันตก)
-const dot = (g, X, Y, z, rx, ry, c) => { const [px, py] = iso(X, Y, z); g.fillStyle = c; g.beginPath(); g.ellipse(px, py, rx, ry, 0, 0, 7); g.fill(); };
-// สไปรต์เฟอร์นิเจอร์: (g, X, Y = กึ่งกลางฐาน, W, D = ขนาดฐาน px หลังหมุน, r = หมุนไหม, d = ข้อมูลใน FURN, now)
-// เตียงสองแบบใช้ร่วมกัน: frame = สีโครง/หัวเตียง, blanket = สีผ้าห่ม, pillows = จำนวนหมอน
-const bedArt = (g, X, Y, W, D, r, frame, blanket, pillows) => {
-  const [hx, hy, hw, hd] = backSlab(X, Y, W, D, r, 6); ibox(g, hx, hy, hw, hd, 0, 30, frame); ibox(g, X, Y, W, D, 0, 10, tint(frame, 0.12)); ibox(g, X, Y, W - 6, D - 6, 10, 7, '#f0e4c0');
-  const pw = pillows > 1 ? 0.36 : 0.6, at = k => (pillows > 1 ? (k ? 0.22 : -0.22) : 0);
-  if (r) { ibox(g, X, Y, W * 0.55 - 3, D - 6, 17, 2, blanket, { flat: true }); for (let k = 0; k < pillows; k++) ibox(g, X - W / 2 + 16, Y + D * at(k), 14, D * pw, 17, 5, '#fdf6e3'); }
-  else { ibox(g, X, Y + D * 0.18, W - 6, D * 0.55, 17, 2, blanket, { flat: true }); for (let k = 0; k < pillows; k++) ibox(g, X + W * at(k), Y - D / 2 + 16, W * pw, 14, 17, 5, '#fdf6e3'); }
-};
-const lampGlow = (g, X, Y, z, now) => { const [px, py] = iso(X, Y, z), gr = g.createRadialGradient(px, py, 0, px, py, 22); gr.addColorStop(0, `rgba(255,220,120,${0.5 + Math.sin(now / 300) * 0.06})`); gr.addColorStop(1, 'rgba(255,220,120,0)'); g.fillStyle = gr; g.fillRect(px - 22, py - 22, 44, 44); };
-const ART = {
-  rug(g, X, Y, W, D) {
-    const q = (k, c, s) => poly(g, [iso(X - W / 2 + k, Y - D / 2 + k, 1), iso(X + W / 2 - k, Y - D / 2 + k, 1), iso(X + W / 2 - k, Y + D / 2 - k, 1), iso(X - W / 2 + k, Y + D / 2 - k, 1)], c, s);
-    q(0, '#8c2a22', INK); q(3, '#e8c66a'); q(6, '#c0453a'); q(14, '#a8322a');
-    poly(g, [iso(X, Y - 7, 1), iso(X + 12, Y, 1), iso(X, Y + 7, 1), iso(X - 12, Y, 1)], '#e8c66a');
-  },
-  chair(g, X, Y, W, D, r) {
-    const [bx, by, bw, bd] = backSlab(X, Y, W * 0.9, D * 0.9, r, 5);
-    ibox(g, bx, by, bw, bd, 0, 30, '#a8703a');
-    ibox(g, X, Y, W * 0.9, D * 0.9, 0, 12, '#c98b4a');
-    ibox(g, X, Y, W * 0.7, D * 0.7, 12, 3, '#d65a4a', { flat: true });
-  },
-  sofa(g, X, Y, W, D, r) {
-    const c = '#4a6fa5', [bx, by, bw, bd] = backSlab(X, Y, W, D, r, (r ? W : D) * 0.3);
-    ibox(g, bx, by, bw, bd, 0, 32, tint(c, -0.1) && '#3d5d8f');
-    if (r) ibox(g, X, Y - D / 2 + 5, W, 10, 0, 22, '#3d5d8f'); else ibox(g, X - W / 2 + 5, Y, 10, D, 0, 22, '#3d5d8f');
-    ibox(g, X, Y, W, D, 0, 12, c);
-    if (r) { ibox(g, X, Y - D * 0.22, W * 0.7, D * 0.4, 12, 4, '#5e86bd', { flat: true }); ibox(g, X, Y + D * 0.22, W * 0.7, D * 0.4, 12, 4, '#5e86bd', { flat: true }); }
-    else { ibox(g, X - W * 0.22, Y + D * 0.08, W * 0.4, D * 0.7, 12, 4, '#5e86bd', { flat: true }); ibox(g, X + W * 0.22, Y + D * 0.08, W * 0.4, D * 0.7, 12, 4, '#5e86bd', { flat: true }); }
-    if (r) ibox(g, X, Y + D / 2 - 5, W, 10, 0, 22, '#3d5d8f'); else ibox(g, X + W / 2 - 5, Y, 10, D, 0, 22, '#3d5d8f');
-  },
-  table(g, X, Y, W, D) {
-    const lg = (dx, dy) => ibox(g, X + dx * (W / 2 - 5), Y + dy * (D / 2 - 5), 5, 5, 0, 13, '#8b5a2b');
-    lg(-1, -1); lg(1, -1); lg(-1, 1); lg(1, 1);
-    ibox(g, X, Y, W, D, 13, 4, '#c98b4a');
-    ibox(g, X - W * 0.18, Y, 13, 13, 17, 1.5, '#f4f4f4', { flat: true }); ibox(g, X + W * 0.2, Y + D * 0.12, 8, 8, 17, 6, '#e8e1d0');
-  },
-  bed(g, X, Y, W, D, r) {
-    const [hx, hy, hw, hd] = backSlab(X, Y, W, D, r, 6);
-    ibox(g, hx, hy, hw, hd, 0, 30, '#7a4a24');
-    ibox(g, X, Y, W, D, 0, 10, '#8b5a2b');
-    ibox(g, X, Y, W - 6, D - 6, 10, 7, '#f0e4c0');
-    if (r) { ibox(g, X, Y, W * 0.55 - 3, D - 6, 17, 2, '#d1543e', { flat: true }); ibox(g, X - W / 2 + 16, Y - D * 0.22, 14, D * 0.36, 17, 5, '#fdf6e3'); ibox(g, X - W / 2 + 16, Y + D * 0.22, 14, D * 0.36, 17, 5, '#fdf6e3'); }
-    else { ibox(g, X, Y + D * 0.18, W - 6, D * 0.55, 17, 2, '#d1543e', { flat: true }); ibox(g, X - W * 0.22, Y - D / 2 + 16, W * 0.36, 14, 17, 5, '#fdf6e3'); ibox(g, X + W * 0.22, Y - D / 2 + 16, W * 0.36, 14, 17, 5, '#fdf6e3'); }
-  },
-  shelf(g, X, Y, W, D, r, d) {
-    ibox(g, X, Y, W, D, 0, d.h, '#8b5a2b');
-    const f = r ? faceR : faceL, cols = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6', '#e67e22'];
-    for (let k = 0; k < 3; k++) {
-      f(g, X, Y, W, D, 0.06, 0.94, 5 + k * 13, 15 + k * 13, '#4b2e17');
-      for (let i = 0; i < 7; i++) f(g, X, Y, W, D, 0.09 + i * 0.125, 0.09 + i * 0.125 + 0.09, 6 + k * 13, 14 + k * 13 - (i % 3), cols[(i + k) % 6]);
-    }
-  },
-  tv(g, X, Y, W, D, r) {
-    ibox(g, X, Y, W, D, 0, 14, '#6b4423');
-    const [sx, sy, sw, sd] = backSlab(X, Y, W * 0.92, D * 0.92, r, 7);
-    ibox(g, sx, sy, sw, sd, 14, 24, '#171a2b');
-    const f = r ? faceR : faceL; f(g, sx, sy, sw, sd, 0.05, 0.95, 16, 36, '#2e3c68'); f(g, sx, sy, sw, sd, 0.12, 0.4, 28, 35, '#5a6fa8');
-  },
-  fridge(g, X, Y, W, D, r, d) {
-    ibox(g, X, Y, W, D, 0, d.h, '#dfe6ee');
-    const f = r ? faceR : faceL;
-    f(g, X, Y, W, D, 0.05, 0.95, d.h * 0.62, d.h - 2, '#cfd9e6'); f(g, X, Y, W, D, 0.05, 0.95, 3, d.h * 0.6, '#e8eef6'); f(g, X, Y, W, D, 0.78, 0.86, 8, d.h * 0.5, '#7a8aa0'); f(g, X, Y, W, D, 0.78, 0.86, d.h * 0.66, d.h - 8, '#7a8aa0');
-  },
-  plant(g, X, Y, W, D) {
-    ibox(g, X, Y, W * 0.7, D * 0.7, 0, 11, '#c0652d');
-    dot(g, X, Y, 17, 8, 6.5, '#2d6e2a'); dot(g, X - 6, Y + 3, 21, 6.5, 5.5, '#3f9a3a'); dot(g, X + 6, Y - 2, 23, 6.5, 5.5, '#3f9a3a'); dot(g, X, Y, 28, 6, 5, '#4fa048'); dot(g, X - 2, Y - 3, 33, 4, 3.5, '#6cc65a');
-  },
-  piano(g, X, Y, W, D, r) {
-    ibox(g, X, Y, W, D, 0, 26, '#23232d'); ibox(g, X, Y, W * 0.98, D * 0.98, 26, 5, '#15151c');
-    const f = r ? faceR : faceL; f(g, X, Y, W, D, 0.06, 0.94, 15, 21, '#f4f4f4');
-    for (let i = 1; i < 12; i++) f(g, X, Y, W, D, 0.06 + i * 0.0733, 0.067 + i * 0.0733, 15, 21, '#2a2a33');
-  },
-  trophy(g, X, Y) { ibox(g, X, Y, 12, 12, 0, 5, '#7a5a1e'); ibox(g, X, Y, 5, 5, 5, 8, '#e8c04a', { flat: true }); ibox(g, X, Y, 12, 12, 13, 8, '#f1c40f'); },
-  teddy(g, X, Y) {
-    dot(g, X, Y, 0, 9, 3.5, 'rgba(0,0,0,.2)'); dot(g, X, Y, 6, 6, 6, '#c98b4a'); dot(g, X, Y, 6.5, 3.5, 4, '#e8c78a'); dot(g, X, Y, 15, 5, 5, '#c98b4a');
-    dot(g, X - 5, Y, 19, 2, 2, '#c98b4a'); dot(g, X + 5, Y, 19, 2, 2, '#c98b4a'); dot(g, X, Y, 14, 2.2, 1.6, '#e8c78a'); dot(g, X - 2, Y, 16, .8, .8, INK); dot(g, X + 2, Y, 16, .8, .8, INK); dot(g, X, Y, 14.6, .9, .6, INK);
-  },
-  cat(g, X, Y, W, D, r, d, now) {
-    dot(g, X, Y, 0, 10, 3.5, 'rgba(0,0,0,.2)'); dot(g, X, Y, 5, 8, 5, '#e8943a'); dot(g, X - 3, Y, 6, 1.4, 4, '#c97a28'); dot(g, X + 2, Y, 6, 1.4, 4, '#c97a28');
-    dot(g, X + 5, Y, 11, 4.8, 4.4, '#e8943a'); poly(g, [iso(X + 2, Y, 14), iso(X + 3, Y, 18), iso(X + 5, Y, 14)], '#e8943a'); poly(g, [iso(X + 6, Y, 14), iso(X + 8, Y, 18), iso(X + 9, Y, 13)], '#e8943a');
-    dot(g, X + 4, Y, 11.5, .8, 1, INK); dot(g, X + 7, Y, 11.5, .8, 1, INK);
-    const tw = Math.sin(now / 400) * 3; g.strokeStyle = '#e8943a'; g.lineWidth = 2; g.beginPath(); g.moveTo(...iso(X - 7, Y, 4)); g.quadraticCurveTo(...iso(X - 13, Y, 10), ...iso(X - 11 + tw, Y, 15)); g.stroke();
-  },
-  statue(g, X, Y, W, D) {
-    ibox(g, X, Y, W * 0.7, D * 0.7, 0, 18, '#8e949e'); ibox(g, X, Y, W * 0.32, D * 0.32, 18, 26, '#c4c8cf');
-    dot(g, X, Y, 49, 7.5, 7.5, INK); dot(g, X, Y, 49, 6.5, 6.5, '#c4c8cf');
-  },
-  fountain(g, X, Y, W, D, r, d, now) {
-    ibox(g, X, Y, W, D, 0, 12, '#aab4c4');
-    poly(g, [iso(X - W / 2 + 5, Y - D / 2 + 5, 12), iso(X + W / 2 - 5, Y - D / 2 + 5, 12), iso(X + W / 2 - 5, Y + D / 2 - 5, 12), iso(X - W / 2 + 5, Y + D / 2 - 5, 12)], '#6cc6d6', INK);
-    ibox(g, X, Y, 8, 8, 12, 16, '#cfd6e0');
-    for (let i = 0; i < 8; i++) { const ph = (now / 700 + i / 8) % 1, a = i * 0.785, rr = ph * 16, [px, py] = iso(X + Math.cos(a) * rr, Y + Math.sin(a) * rr, 30 - ph * ph * 24); g.fillStyle = 'rgba(190,235,250,.95)'; g.fillRect(px - 1, py - 1, 2, 2); }
-  },
-  flag(g, X, Y, W, D, r, d, now) {
-    ibox(g, X, Y, 4, 4, 0, d.h, '#7a4a24'); const [px, py] = iso(X, Y, d.h), w = Math.sin(now / 250) * 2;
-    poly(g, [[px, py], [px + 22, py + 3 + w], [px + 22, py + 15 + w], [px, py + 13]], '#e74c3c', INK);
-  },
-  crate(g, X, Y, W, D, r, d) { ibox(g, X, Y, W, D, 0, d.h, '#c98b4a'); faceL(g, X, Y, W, D, 0.04, 0.96, d.h * 0.42, d.h * 0.52, '#8b5a2b'); faceR(g, X, Y, W, D, 0.04, 0.96, d.h * 0.42, d.h * 0.52, '#6b4423'); },
-  barrel(g, X, Y, W, D, r, d) { ibox(g, X, Y, W * 0.9, D * 0.9, 0, d.h, '#8b5a2b'); for (const z of [5, d.h - 8]) ibox(g, X, Y, W * 0.94, D * 0.94, z, 3, '#3a3f4a'); },
-  signpost(g, X, Y, W, D, r, d) { ibox(g, X, Y, 5, 5, 0, d.h, '#8b5a2b'); ibox(g, X, Y, 22, 4, d.h - 16, 12, '#e8c66a'); },
-  mailbox(g, X, Y) { ibox(g, X, Y, 5, 5, 0, 24, '#6b4423'); ibox(g, X, Y, 18, 10, 24, 13, '#2e7bb5'); const [px, py] = iso(X + 9, Y, 36); poly(g, [[px, py], [px + 8, py - 2], [px + 8, py + 4], [px, py + 4]], '#e74c3c', INK); },
-  toolbox(g, X, Y, W, D, r, d) { ibox(g, X, Y, W, D, 0, d.h, '#c0392b'); ibox(g, X, Y, W * 0.5, 4, d.h, 5, '#3a3f4a'); },
-  hut(g, X, Y, W, D) {
-    ibox(g, X, Y, W, D, 0, 34, '#c9a869');
-    const ap = iso(X, Y, 64); poly(g, [iso(X - W / 2, Y + D / 2, 34), iso(X + W / 2, Y + D / 2, 34), ap], '#a8552f', INK); poly(g, [iso(X + W / 2, Y - D / 2, 34), iso(X + W / 2, Y + D / 2, 34), ap], '#8a4426', INK);
-    faceL(g, X, Y, W, D, 0.38, 0.62, 0, 20, '#4a2f18');
-  },
-  lantern(g, X, Y, W, D, r, d, now) {
-    ibox(g, X, Y, 5, 5, 0, 18, '#3a3f4a'); ibox(g, X, Y, 12, 12, 18, 11, '#ffd36a');
-    lampGlow(g, X, Y, 24, now);
-  },
-  armchair(g, X, Y, W, D, r) {
-    const [bx, by, bw, bd] = backSlab(X, Y, W, D, r, 8); ibox(g, bx, by, bw, bd, 0, 32, '#a8553a');
-    if (r) { ibox(g, X, Y - D / 2 + 4, W, 8, 0, 20, '#a8553a'); ibox(g, X, Y + D / 2 - 4, W, 8, 0, 20, '#a8553a'); } else { ibox(g, X - W / 2 + 4, Y, 8, D, 0, 20, '#a8553a'); ibox(g, X + W / 2 - 4, Y, 8, D, 0, 20, '#a8553a'); }
-    ibox(g, X, Y, W, D, 0, 12, '#c0654a'); ibox(g, X, Y, W * 0.6, D * 0.6, 12, 4, '#d97a5e', { flat: true });
-  },
-  coffeetable(g, X, Y, W, D) {
-    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) ibox(g, X + dx * (W / 2 - 4), Y + dy * (D / 2 - 4), 4, 4, 0, 10, '#8b5a2b');
-    ibox(g, X, Y, W, D, 10, 4, '#a8703a'); ibox(g, X + W * 0.15, Y, 8, 8, 14, 5, '#f4f4f4'); dot(g, X + W * 0.15, Y, 19.5, 3.5, 2, '#6b4423');
-  },
-  stool(g, X, Y, W, D) { for (const dx of [-1, 1]) for (const dy of [-1, 1]) ibox(g, X + dx * (W / 2 - 3), Y + dy * (D / 2 - 3), 3, 3, 0, 10, '#8b5a2b'); ibox(g, X, Y, W, D, 10, 4, '#d65a4a'); },
-  fireplace(g, X, Y, W, D, r, d, now) {
-    ibox(g, X, Y, W, D, 0, d.h, '#a8584a'); ibox(g, X, Y, W * 1.06, D * 1.06, d.h - 5, 5, '#6b4423');
-    const f = r ? faceR : faceL; f(g, X, Y, W, D, 0.22, 0.78, 0, 28, '#2a1a14'); f(g, X, Y, W, D, 0.3, 0.7, 0, 6, '#5a3a24');
-    const fx = r ? X + W / 2 - 1 : X, fy = r ? Y : Y + D / 2 - 1, fl = Math.sin(now / 130) * 1.2;
-    dot(g, fx, fy, 9, 7, 5 + fl, '#e8541a'); dot(g, fx, fy, 10, 4.5, 4 - fl / 2, '#ffb02e'); dot(g, fx, fy, 11, 2, 2.5, '#fff0a0');
-  },
-  bedsingle: (g, X, Y, W, D, r) => bedArt(g, X, Y, W, D, r, '#8b5a2b', '#5a8a5a', 1),
-  bedking: (g, X, Y, W, D, r) => bedArt(g, X, Y, W, D, r, '#4a2f18', '#7a3a8a', 2),
-  wardrobe(g, X, Y, W, D, r, d) {
-    ibox(g, X, Y, W, D, 0, d.h, '#8b5a2b'); const f = r ? faceR : faceL;
-    f(g, X, Y, W, D, 0.06, 0.48, 4, d.h - 4, '#7a4f2a'); f(g, X, Y, W, D, 0.52, 0.94, 4, d.h - 4, '#7a4f2a'); f(g, X, Y, W, D, 0.41, 0.45, 28, 34, '#e8c04a'); f(g, X, Y, W, D, 0.55, 0.59, 28, 34, '#e8c04a');
-  },
-  nightstand(g, X, Y, W, D, r, d) { ibox(g, X, Y, W, D, 0, d.h, '#a8703a'); const f = r ? faceR : faceL; f(g, X, Y, W, D, 0.12, 0.88, 3, 12, '#8b5a2b'); f(g, X, Y, W, D, 0.44, 0.56, 7, 9, '#e8c04a'); },
-  dresser(g, X, Y, W, D, r, d) {
-    ibox(g, X, Y, W, D, 0, d.h, '#a8703a'); const f = r ? faceR : faceL;
-    for (let k = 0; k < 3; k++) { f(g, X, Y, W, D, 0.05, 0.95, 3 + k * 8, 9 + k * 8, '#c98b4a'); f(g, X, Y, W, D, 0.45, 0.55, 5 + k * 8, 7 + k * 8, '#e8c04a'); }
-  },
-  stove(g, X, Y, W, D, r, d) {
-    ibox(g, X, Y, W, D, 0, d.h, '#cfd5dc'); const f = r ? faceR : faceL;
-    f(g, X, Y, W, D, 0.1, 0.9, 3, 19, '#2a2d36'); f(g, X, Y, W, D, 0.2, 0.8, 6, 16, '#5a5f6b');
-    for (const dx of [-1, 1]) for (const dy of [-1, 1]) dot(g, X + dx * W * 0.22, Y + dy * D * 0.22, d.h + 0.5, 5, 2.5, '#2a2d36');
-  },
-  counter(g, X, Y, W, D, r, d) {
-    ibox(g, X, Y, W, D, 0, d.h - 3, '#c98b4a'); ibox(g, X, Y, W * 1.03, D * 1.03, d.h - 3, 3, '#e8e1d0'); const f = r ? faceR : faceL;
-    f(g, X, Y, W, D, 0.05, 0.48, 3, d.h - 6, '#a8703a'); f(g, X, Y, W, D, 0.52, 0.95, 3, d.h - 6, '#a8703a');
-  },
-  sink(g, X, Y, W, D, r, d) {
-    ART.counter(g, X, Y, W, D, r, d);
-    poly(g, [iso(X - W * 0.3, Y - D * 0.3, d.h + 0.5), iso(X + W * 0.3, Y - D * 0.3, d.h + 0.5), iso(X + W * 0.3, Y + D * 0.3, d.h + 0.5), iso(X - W * 0.3, Y + D * 0.3, d.h + 0.5)], '#9fc5d8', INK);
-    const [fx, fy] = r ? [X - W / 2 + 5, Y] : [X, Y - D / 2 + 5]; ibox(g, fx, fy, 3, 3, d.h, 9, '#9aa0aa');
-  },
-  cupboard(g, X, Y, W, D, r, d) {
-    ibox(g, X, Y, W, D, 0, d.h, '#7b5a3a'); const f = r ? faceR : faceL;
-    f(g, X, Y, W, D, 0.05, 0.48, 4, d.h - 4, '#8f6a45'); f(g, X, Y, W, D, 0.52, 0.95, 4, d.h - 4, '#8f6a45'); f(g, X, Y, W, D, 0.12, 0.42, d.h * 0.5, d.h - 10, '#8fd0f0'); f(g, X, Y, W, D, 0.58, 0.88, d.h * 0.5, d.h - 10, '#8fd0f0');
-  },
-  desk(g, X, Y, W, D, r, d) {
-    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) ibox(g, X + dx * (W / 2 - 4), Y + dy * (D / 2 - 4), 4, 4, 0, d.h - 4, '#6b4423');
-    ibox(g, X, Y, W, D, d.h - 4, 4, '#c98b4a'); ibox(g, X - W * 0.2, Y, 12, 9, d.h, 1.5, '#f4f4f4', { flat: true }); ibox(g, X + W * 0.25, Y + D * 0.1, 5, 5, d.h, 8, '#3498db');
-  },
-  officechair(g, X, Y, W, D, r) {
-    dot(g, X, Y, 1.5, 7, 3.5, '#2a2d36'); ibox(g, X, Y, 3, 3, 1, 11, '#3a3f4a'); ibox(g, X, Y, W * 0.8, D * 0.8, 12, 5, '#3d5d8f');
-    const [bx, by, bw, bd] = backSlab(X, Y, W * 0.8, D * 0.8, r, 4); ibox(g, bx, by, bw, bd, 17, 15, '#3d5d8f');
-  },
-  globe(g, X, Y) { ibox(g, X, Y, 10, 10, 0, 4, '#7a4a24'); ibox(g, X, Y, 2, 2, 4, 6, '#9aa0aa'); dot(g, X, Y, 15, 7, 7, '#3a7bb5'); dot(g, X - 2, Y, 16, 3, 3.5, '#5fa844'); dot(g, X + 3, Y, 13, 2, 2.5, '#5fa844'); },
-  computer(g, X, Y, W, D, r) {
-    ibox(g, X, Y, 8, 8, 0, 3, '#3a3f4a'); const [sx, sy, sw, sd] = backSlab(X, Y, W, D, r, 5); ibox(g, sx, sy, sw, sd, 3, 17, '#171a2b');
-    const f = r ? faceR : faceL; f(g, sx, sy, sw, sd, 0.08, 0.92, 5, 18, '#5a8fd0'); f(g, sx, sy, sw, sd, 0.12, 0.5, 12, 17, '#9cc4ee');
-  },
-  vase(g, X, Y) { ibox(g, X, Y, 8, 8, 0, 10, '#3a7bb5'); dot(g, X - 3, Y, 15, 2.5, 2.5, '#e84a5f'); dot(g, X + 3, Y, 16, 2.5, 2.5, '#f1c40f'); dot(g, X, Y, 18, 2.5, 2.5, '#fff3d6'); dot(g, X, Y, 12, 5, 2, '#3f9a3a'); },
-  floorlamp(g, X, Y, W, D, r, d, now) {
-    ibox(g, X, Y, 10, 10, 0, 3, '#3a3f4a'); ibox(g, X, Y, 3, 3, 3, 36, '#3a3f4a'); ibox(g, X, Y, 14, 14, 38, 12, '#ffd36a'); lampGlow(g, X, Y, 44, now);
-  },
-  roundrug(g, X, Y, W, D) {
-    const ring = (k, c, s) => { const out = []; for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2; out.push(iso(X + Math.cos(a) * (W / 2 - k), Y + Math.sin(a) * (D / 2 - k), 1)); } poly(g, out, c, s); };
-    ring(0, '#1f5a78', INK); ring(3, '#e8d6a0'); ring(7, '#3f8fb5'); ring(15, '#2e6e8e'); ring(22, '#e8d6a0');
-  },
-  aquarium(g, X, Y, W, D, r, d, now) {
-    ibox(g, X, Y, W, D, 0, 12, '#6b4423'); ibox(g, X, Y, W * 0.95, D * 0.9, 12, 20, '#6cc6d6', { left: 'rgba(140,215,240,.75)', right: 'rgba(90,170,200,.8)', top: 'rgba(170,230,250,.8)' });
-    ibox(g, X, Y, W * 0.9, D * 0.85, 12, 3, '#e8d6a0', { flat: true }); dot(g, X - W * 0.25, Y, 16, 3, 4, '#3f9a3a');
-    const sw = Math.sin(now / 700) * W * 0.28; dot(g, X + sw, Y, 24, 3.5, 2, '#ff9a3c'); dot(g, X - sw * 0.7, Y, 20, 3, 1.8, '#e84a5f');
-  },
-};
-// ฉากกั้น: แผ่นบางตั้งพื้น ด้านยาวที่เห็น = faceL (ตั้งตามแกน x) หรือ faceR (หมุนแล้วตามแกน y)
-const screenFrame = (g, X, Y, W, D, r, d, c) => { const f = r ? faceR : faceL; ibox(g, X, Y, W, D, 0, d.h, c); return f; };
-Object.assign(ART, {
-  screen_wood(g, X, Y, W, D, r, d) {
-    const f = screenFrame(g, X, Y, W, D, r, d, '#7a4f2a');
-    for (let k = 0; k < 3; k++) { const a = k / 3 + 0.02, b = (k + 1) / 3 - 0.02, c = k & 1 ? '#c98b4a' : '#b87a3c'; f(g, X, Y, W, D, a, b, 5, d.h - 6, c); f(g, X, Y, W, D, a + 0.03, b - 0.03, 9, d.h - 12, k & 1 ? '#d9a05c' : '#c98b4a'); }
-  },
-  screen_shoji(g, X, Y, W, D, r, d) {
-    const f = screenFrame(g, X, Y, W, D, r, d, '#5a3a1e');
-    f(g, X, Y, W, D, 0.03, 0.97, 4, d.h - 4, '#f6f0dc');
-    for (let k = 1; k < 4; k++) f(g, X, Y, W, D, k / 4 - 0.012, k / 4 + 0.012, 4, d.h - 4, '#6b4423');
-    for (const z of [d.h * 0.33, d.h * 0.66]) f(g, X, Y, W, D, 0.03, 0.97, z - 1, z + 1, '#6b4423');
-  },
-  screen_lattice(g, X, Y, W, D, r, d) {
-    const f = screenFrame(g, X, Y, W, D, r, d, '#6b4423');
-    f(g, X, Y, W, D, 0.04, 0.96, 6, d.h - 6, '#e8d6a0');
-    for (let k = 0; k <= 8; k++) f(g, X, Y, W, D, k / 8 * 0.9 + 0.035, k / 8 * 0.9 + 0.065, 6, d.h - 6, '#8b5a2b');
-    for (let z = 6; z < d.h - 6; z += 10) f(g, X, Y, W, D, 0.04, 0.96, z, z + 2.5, '#8b5a2b');
-  },
-  screen_glass(g, X, Y, W, D, r, d) {
-    ibox(g, X, Y, W, D, 0, 5, '#9aa0aa'); ibox(g, X, Y, W, D, d.h - 4, 4, '#9aa0aa');
-    ibox(g, X, Y, W * 0.97, D * 0.7, 5, d.h - 9, '#cfe8f5', { left: 'rgba(205,230,245,.7)', right: 'rgba(150,190,215,.75)', top: 'rgba(225,242,252,.8)' });
-    const f = r ? faceR : faceL; f(g, X, Y, W, D, 0.12, 0.2, 14, d.h - 12, 'rgba(255,255,255,.55)'); f(g, X, Y, W, D, 0.26, 0.29, 22, d.h - 12, 'rgba(255,255,255,.45)');
-  },
-  screen_bamboo(g, X, Y, W, D, r, d) {
-    const f = screenFrame(g, X, Y, W, D, r, d, '#7d6a2a');
-    for (let k = 0; k < 8; k++) { const a = k / 8 + 0.008, b = (k + 1) / 8 - 0.008; f(g, X, Y, W, D, a, b, 4, d.h - 3, k & 1 ? '#c9b458' : '#b8a24a'); f(g, X, Y, W, D, a, b, d.h * 0.45, d.h * 0.45 + 2, '#7d6a2a'); f(g, X, Y, W, D, a, b, d.h * 0.8, d.h * 0.8 + 2, '#7d6a2a'); }
-  },
-  lowwall(g, X, Y, W, D, r, d) {
-    ibox(g, X, Y, W, D, 0, d.h - 4, '#e8e1d0'); ibox(g, X, Y, W * 1.04, D * 1.4, d.h - 4, 4, '#c98b4a');
-    const f = r ? faceR : faceL; for (let k = 0; k < 4; k++) f(g, X, Y, W, D, k / 4 + 0.03, k / 4 + 0.22, 5, d.h - 8, '#d8d0bc');
-  },
-});
-function artGeneric(g, X, Y, W, D, r, d) { ibox(g, X, Y, W * 0.85, D * 0.85, 0, (d.h || 24) * 0.8, '#9aa0aa'); }
-// เฟอร์นิเจอร์พิกเซลวาดใหม่ (pixelfurn.js) แคชต่อ ชิ้น|หมุน|เงา|เฟรม • ชิ้นที่ขยับได้มี 8 เฟรม เปลี่ยนทุก 150 มิลลิวินาที • ชิ้นที่ยังไม่มีแบบใหม่ใช้ ART เดิม
+// เฟอร์นิเจอร์ = ชุด furniture-kit-v2 ใน pixelfurn.js แคชเป็นภาพต่อ ชิ้น|หมุน|เงา (ชิ้นที่ขยับได้วาดใหม่ทุก 150 ms)
 const furnPx = new Map();
-function furnPixel(f, r, shadow, now) {
-  const fr = PixelFurn.anim(f) ? Math.floor(now / 150) % 8 : 0, key = f + '|' + (r ? 1 : 0) + (shadow ? 's' : '') + fr;
-  let s = furnPx.get(key); if (!s) { s = PixelFurn.sprite(f, FURN[f], r, fr / 8, shadow); furnPx.set(key, s); } return s;
+function furnSprite(f, r, shadow, W, D, now) {
+  const an = PixelFurn.anim(f), fr = an ? Math.floor(now / 150) : 0, key = f + '|' + (r ? 1 : 0) + (shadow ? 's' : '') + W + 'x' + D;
+  let c = furnPx.get(key); if (!c || c.fr !== fr) { c = { fr, s: PixelFurn.sprite(f, FURN[f], r, an ? now : 0, shadow, W, D) }; furnPx.set(key, c); } return c.s;
 }
 const hits = []; // พื้นที่แตะของแต่ละชิ้นที่วาดในเฟรมนี้ (เรียงตามลำดับวาด ตัวท้ายสุดอยู่หน้าสุด)
 function drawFurnIso(g, it, now, alpha, ghost) {
   const d = FURN[it.f], [w, dd] = Shared.furnDims(it.f, it.r), X = it.x * TS, Y = it.y * TS, W = w * TS, D = dd * TS, z = it.z || 0;
+  const s = furnSprite(it.f, it.r, !z, W, D, now), [sx, sy] = iso(X, Y, z), sm = g.imageSmoothingEnabled;
   g.save(); if (alpha != null) g.globalAlpha = alpha;
-  if (PixelFurn.has(it.f)) {
-    const s = furnPixel(it.f, it.r, !z, now), [sx, sy] = iso(X, Y, z), sm = g.imageSmoothingEnabled;
-    g.imageSmoothingEnabled = false; g.drawImage(s.cv, Math.round(sx - s.ax), Math.round(sy - s.ay)); g.imageSmoothingEnabled = sm;
-    if (it.f === 'lantern' || it.f === 'floorlamp') { g.translate(0, -z); lampGlow(g, X, Y, it.f === 'lantern' ? 24 : 42, now); } // แสงเรืองวาดสดทับ
-  } else {
-    if (!z && !d.flat) poly(g, [iso(X - W / 2 - 2, Y - D / 2 - 2), iso(X + W / 2 + 2, Y - D / 2 - 2), iso(X + W / 2 + 2, Y + D / 2 + 2), iso(X - W / 2 - 2, Y + D / 2 + 2)], 'rgba(40,20,5,.2)'); // เงาบนพื้น
-    g.translate(0, -z);
-    (ART[it.f] || artGeneric)(g, X, Y, W, D, it.r, d, now);
-  }
+  g.imageSmoothingEnabled = false; g.drawImage(s.cv, Math.round(sx - s.ax), Math.round(sy - s.ay)); g.imageSmoothingEnabled = sm;
   g.restore();
   if (ghost) return;
   if (d.flat) hits.push({ i: it.i, test: (sx, sy) => pip([iso(X - W / 2, Y - D / 2), iso(X + W / 2, Y - D / 2), iso(X + W / 2, Y + D / 2), iso(X - W / 2, Y + D / 2)], sx, sy) });
@@ -3670,43 +3432,11 @@ const wallRect = (g, wl, u0, u1, z0, z1, fill, stroke) => poly(g, [wallPt(wl, u0
 const wallPx = new Map(); // ของติดผนังพิกเซล แคชต่อ ชิ้น|ผนัง
 function drawWallItem(g, it, alpha) {
   const d = FURN[it.f], U = it.u * TS, hw = (d.w || 1) * TS / 2, hh = (d.h || 30) / 2, zc = 60, wl = it.wl;
-  if (PixelFurn.hasWall(it.f)) {
-    const key = it.f + '|' + wl; let s = wallPx.get(key); if (!s) { s = PixelFurn.wall(it.f, d, wl); wallPx.set(key, s); }
-    const [sx, sy] = wallPt(wl, U, 0), sm = g.imageSmoothingEnabled; g.save(); if (alpha != null) g.globalAlpha = alpha;
-    g.imageSmoothingEnabled = false; g.drawImage(s.cv, Math.round(sx - s.ax), Math.round(sy - s.ay)); g.imageSmoothingEnabled = sm; g.restore();
-    const quad = [wallPt(wl, U - hw, zc - hh), wallPt(wl, U + hw, zc - hh), wallPt(wl, U + hw, zc + hh), wallPt(wl, U - hw, zc + hh)];
-    if (it.i >= 0 && alpha == null) hits.push({ i: it.i, test: (px, py) => pip(quad, px, py) });
-    return;
-  }
-  const ring = R => { const out = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; out.push(wallPt(wl, U + Math.cos(a) * R, zc + Math.sin(a) * R)); } return out; };
-  g.save(); if (alpha != null) g.globalAlpha = alpha;
-  if (it.f === 'painting') {
-    wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c98b4a', INK); wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc + hh - 4, '#8fd0f0');
-    wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc - 2, '#5fa844'); wallRect(g, wl, U - hw + 8, U - 2, zc - 2, zc + 6, '#4a8a3a'); wallRect(g, wl, U + hw - 14, U + hw - 8, zc + 4, zc + 10, '#ffe08a');
-  } else if (it.f === 'clock') {
-    poly(g, ring(14), '#3a3f4a', INK); poly(g, ring(11.5), '#fff8e7');
-    g.strokeStyle = INK; g.lineWidth = 1.5; g.beginPath(); g.moveTo(...wallPt(wl, U, zc)); g.lineTo(...wallPt(wl, U, zc + 8)); g.moveTo(...wallPt(wl, U, zc)); g.lineTo(...wallPt(wl, U + 6, zc - 1)); g.stroke();
-  } else if (it.f === 'map') {
-    wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#8b5a2b', INK); wallRect(g, wl, U - hw + 3, U + hw - 3, zc - hh + 3, zc + hh - 3, '#e8d6a0');
-    wallRect(g, wl, U - hw + 8, U - 6, zc - 8, zc + 8, '#6cc6d6'); wallRect(g, wl, U - 2, U + 18, zc - 2, zc + 10, '#7bc65a'); wallRect(g, wl, U + 4, U + 14, zc - 12, zc - 5, '#5fa844');
-  } else if (it.f === 'records') {
-    const cols = ['#e84a5f', '#2e9e6b', '#8a5bd1'], n = 3, sw = hw * 2 / n;
-    for (let k = 0; k < n; k++) {
-      const u0 = U - hw + k * sw + 1, u1 = u0 + sw - 2; wallRect(g, wl, u0, u1, zc - hh, zc + hh, '#2b2f55', INK);
-      const uc = (u0 + u1) / 2; wallRect(g, wl, uc - 5, uc + 5, zc - 5, zc + 5, cols[k]); wallRect(g, wl, uc - 1.5, uc + 1.5, zc - 1.5, zc + 1.5, '#fff3d6');
-    }
-  } else if (it.f === 'mirror') {
-    wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c9a24a', INK); wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc + hh - 4, '#cfe8f5');
-    wallRect(g, wl, U - hw + 7, U - hw + 12, zc + 2, zc + hh - 7, '#f4fbff'); wallRect(g, wl, U - hw + 14, U - hw + 17, zc + 8, zc + hh - 7, '#f4fbff');
-  } else if (it.f === 'poster') {
-    wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#f4ecd8', INK); wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc + 4, '#e8a33a');
-    wallRect(g, wl, U - hw + 4, U + hw - 4, zc - hh + 4, zc - 6, '#3a7bb5'); wallRect(g, wl, U - 6, U + 6, zc - 6, zc + 2, '#c0453a'); wallRect(g, wl, U - hw + 6, U + hw - 6, zc + hh - 8, zc + hh - 5, '#8b5a2b');
-  } else if (it.f === 'wreath') {
-    poly(g, ring(13), '#2d6e2a', INK); poly(g, ring(9), '#3f9a3a'); poly(g, ring(5), '#2d6e2a'); wallRect(g, wl, U - 4, U + 4, zc - 13, zc - 7, '#e74c3c');
-  } else wallRect(g, wl, U - hw, U + hw, zc - hh, zc + hh, '#c98b4a', INK);
-  g.restore();
+  const key = it.f + '|' + wl; let s = wallPx.get(key); if (!s) { s = PixelFurn.wall(it.f, d, wl); wallPx.set(key, s); }
+  const [sx, sy] = wallPt(wl, U, 0), sm = g.imageSmoothingEnabled; g.save(); if (alpha != null) g.globalAlpha = alpha;
+  g.imageSmoothingEnabled = false; g.drawImage(s.cv, Math.round(sx - s.ax), Math.round(sy - s.ay)); g.imageSmoothingEnabled = sm; g.restore();
   const quad = [wallPt(wl, U - hw, zc - hh), wallPt(wl, U + hw, zc - hh), wallPt(wl, U + hw, zc + hh), wallPt(wl, U - hw, zc + hh)];
-  if (it.i >= 0 && alpha == null) hits.push({ i: it.i, test: (sx, sy) => pip(quad, sx, sy) });
+  if (it.i >= 0 && alpha == null) hits.push({ i: it.i, test: (px, py) => pip(quad, px, py) });
 }
 function buildHouseIsoBg() { // พื้นไม้ + ผนังหลัง 2 ด้าน + หน้าต่าง + พรมหน้าประตู (วาดครั้งเดียว)
   return PixelFurn.room(g => { // เติมสีทีละพิกเซล ไม่มีขอบเบลอ → เส้นต่อเนื่องคม (pixelfurn.js)
