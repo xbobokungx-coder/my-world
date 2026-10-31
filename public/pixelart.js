@@ -108,7 +108,7 @@ const PixelArt = (() => {
 
   // พื้นโลก: วาดที่ความละเอียด K เท่าของสไปรต์ (K=2 → 32 px ต่อช่อง = 1 พิกเซลพื้น 1 พิกเซลเกม) ขอบดิน/หญ้า/ทรายเรียบละเอียดขึ้น • ของตกแต่ง (ดอกไม้ กอหญ้า กรวดใหญ่) ยังเป็นก้อนเท่าพิกเซลสไปรต์ให้เข้ากับอาคาร/ต้นไม้
   // สนามสัญญาณสุ่มคำนวณบนกริดพิกเซลศิลป์แล้ว interpolate (เร็วกว่าคำนวณทุกพิกเซลละเอียด)
-  // GARDEN TERRAIN V3: calm color areas, sparse clusters, no per-pixel grain/dither.
+  // SUNLIT TERRAIN V4: calm color areas, sparse clusters, no per-pixel grain/dither.
   // K retains the original API; optional density [0..1] controls accent groups only.
   function ground(MAP, K=1, options={}) {
     if(!Number.isInteger(K)||K<1||K>4)throw new RangeError('ground K must be an integer 1..4');
@@ -142,7 +142,7 @@ const PixelArt = (() => {
     const distance=new Uint16Array(N);for(let i=0;i<N;i++)distance[i]=types[i]===WA?4095:0;
     for(let y=0;y<AH;y++)for(let x=0;x<AW;x++){const i=y*AW+x;if(distance[i])distance[i]=Math.min(distance[i],x?distance[i-1]+1:1,y?distance[i-AW]+1:1);}
     for(let y=AH-1;y>=0;y--)for(let x=AW-1;x>=0;x--){const i=y*AW+x;if(distance[i])distance[i]=Math.min(distance[i],x<AW-1?distance[i+1]+1:1,y<AH-1?distance[i+AW]+1:1);}
-    const colors={grass:['#819b64','#859e68','#8aa36c'],path:['#cbb38b','#cfb88f','#d3bc93'],sand:['#dbc797','#dfcc9f'],water:['#c0d7c2','#94bdb5','#79aaa7','#64979b','#56888f'],stone:['#c8c2aa','#ccc6b0','#c3bea8'],wood:['#ac8960','#b6956a']};
+    const colors={grass:['#72a23f','#79aa44','#80b14b'],path:['#d5ac6c','#deb677','#e4bf82'],sand:['#e8cb86','#efd394'],water:['#b8e3cc','#7acdc5','#51b7bd','#35a4b4','#288da5'],stone:['#c9c6aa','#d1cdb2','#c1bfa3'],wood:['#ac8960','#b6956a']};
     const cache={};const color=c=>cache[c]||(cache[c]=rgb(c));
     const img=ctx.createImageData(AW,AH),a=img.data;
     function set(x,y,col){if(x<0||y<0||x>=AW||y>=AH)return;const i=(y*AW+x)*4,c=color(col);a[i]=c[0];a[i+1]=c[1];a[i+2]=c[2];a[i+3]=255;}
@@ -151,22 +151,22 @@ const PixelArt = (() => {
       if(t===G){
         const n=vnoise(x,y,96,701)*.72+vnoise(x,y,40,702)*.28;
         c=colors.grass[n<.40?0:n>.64?2:1];
-        if(near(x,y,P,1)||near(x,y,SA,1))c='#627d48';else if(near(x,y,P,3)||near(x,y,SA,3))c='#a2b978';
+        if(near(x,y,P,1)||near(x,y,SA,1))c='#4f8136';else if(near(x,y,P,3)||near(x,y,SA,3))c='#a1c45d';
       }else if(t===P&&paved[i]){
         // Large staggered slabs: low-contrast grout, no speckle inside stones.
         const row=Math.floor(y/16),xx=x+(row%2)*12,lx=xx%24,ly=y%16;
         c=colors.stone[Math.floor(hash(Math.floor(xx/24),row,703)*3)];
-        if(lx===0||ly===0)c='#b1ad97';else if(ly===1)c='#d9d2b9';else if(lx===23||ly===15)c='#bbb69f';
-        if((x>0&&!paved[i-1])||(x<AW-1&&!paved[i+1])||(y>0&&!paved[i-AW])||(y<AH-1&&!paved[i+AW]))c='#a6a58a';
+        if(lx===0||ly===0)c='#a4a78a';else if(ly===1)c='#e1ddbf';else if(lx===23||ly===15)c='#b4b69a';
+        if((x>0&&!paved[i-1])||(x<AW-1&&!paved[i+1])||(y>0&&!paved[i-AW])||(y<AH-1&&!paved[i+AW]))c='#969f7a';
       }else if(t===P){
         const n=vnoise(x,y,66,710);c=colors.path[n<.38?0:n>.63?2:1];
-        if(near(x,y,G,1))c='#ab966e';else if(near(x,y,G,3))c='#c1a97f';
+        if(near(x,y,G,1))c='#b78e53';else if(near(x,y,G,3))c='#cda364';
       }else if(t===SA){
         c=colors.sand[vnoise(x,y,48,720)>.5?1:0];
-        if(near(x,y,WA,2))c='#bfb58e';else if(near(x,y,WA,5))c='#d0bf93';
+        if(near(x,y,WA,2))c='#b7c28b';else if(near(x,y,WA,5))c='#d8c17f';
       }else if(t===WA){
         const d=distance[i];c=colors.water[d<3?0:d<10?1:d<23?2:d<43?3:4];
-        if(d===1&&(at(x,y-1)!==WA||at(x-1,y)!==WA))c='#d9e3ce';
+        if(d===1&&(at(x,y-1)!==WA||at(x-1,y)!==WA))c='#def2cf';
       }else{
         const row=Math.floor(y/8),off=row%2*16,lx=(x+off)%32,ly=y%8;
         c=colors.wood[Math.floor(hash(Math.floor((x+off)/32),row,730)*2)];
@@ -182,19 +182,19 @@ const PixelArt = (() => {
       if(x>=AW-5||y>=AH-5||at(x,y)!==G||near(x,y,P,8)||near(x,y,SA,8))continue;
       const tile=MAP[y>>4][x>>4];if(tile===T.BUILD||tile===T.SHOP||tile===T.FENCE)continue;
       // One quiet 3-blade tuft with a soft contact shadow.
-      stamp(x-4,y+2,10,2,'#7b955e',G);stamp(x-3,y-1,2,4,'#a1b57b',G);stamp(x,y-3,2,6,'#a1b57b',G);stamp(x+3,y,2,3,'#9aaf74',G);groups++;
+      stamp(x-4,y+2,10,2,'#6e9c3e',G);stamp(x-3,y-1,2,4,'#a5c85e',G);stamp(x,y-3,2,6,'#a5c85e',G);stamp(x+3,y,2,3,'#96bd53',G);groups++;
     }
     // Water ripples: short paired strokes with large empty areas between groups.
     for(let by=12;by<AH;by+=40)for(let bx=12;bx<AW;bx+=48){
       const x=bx+Math.floor(hash(bx,by,750)*20),y=by+Math.floor(hash(bx,by,751)*14);
       if(at(x,y)!==WA||distance[y*AW+x]<8||hash(bx,by,752)>.45*density)continue;
-      stamp(x,y,9,1,'#9ebfb4',WA);stamp(x+2,y+2,5,1,'#8bb4ac',WA);
+      stamp(x,y,9,1,'#a0ded1',WA);stamp(x+2,y+2,5,1,'#83d3cd',WA);
     }
     // Broad sand strokes, very sparse; not grains or individual dots.
     for(let by=10;by<AH;by+=48)for(let bx=10;bx<AW;bx+=48){
       const x=bx+Math.floor(hash(bx,by,760)*18),y=by+Math.floor(hash(bx,by,761)*18);
       if(at(x,y)!==SA||hash(bx,by,762)>density*.42)continue;
-      stamp(x,y,8,1,'#d1bd90',SA);stamp(x+2,y+1,6,1,'#e5d3aa',SA);
+      stamp(x,y,8,1,'#d9ba73',SA);stamp(x+2,y+1,6,1,'#f5dfa3',SA);
     }
     ctx.putImageData(img,0,0);
     if(options.decorations!==false)ctx.drawImage(mapDecor(MAP),0,0);
@@ -206,7 +206,7 @@ const PixelArt = (() => {
       if(x===left)ctx.fillRect(x*U,y*U,2,U);if(x===left+HOUSING.w-1)ctx.fillRect(x*U+U-2,y*U,2,U);
     }
     // Metadata is diagnostic only; renderer never writes MAP or Shared.
-    base.cleanTerrain={version:3,tuftGroups:groups,density};
+    base.cleanTerrain={version:4,tuftGroups:groups,density};
     if(K===1)return base;const out=cv(AW*K,AH*K),g=out.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(base,0,0,out.width,out.height);out.cleanTerrain=base.cleanTerrain;return out;
   }
 
@@ -219,14 +219,14 @@ const PixelArt = (() => {
     const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
     // Scanline ellipse keeps every pixel hard-edged, including native 1x output.
     const oval=(x,y,rx,ry,col)=>{for(let j=-ry;j<=ry;j++){const w=Math.floor(rx*Math.sqrt(Math.max(0,1-j*j/(ry*ry))));px(x-w,y+j,w*2+1,1,col);}};
-    function leaf(x,y,r){oval(x,y+2,r,r-2,'#3d6241');oval(x-1,y,r-1,r-3,'#5c884c');oval(x-2,y-2,r-3,Math.max(1,r-5),'#80a65a');px(x-3,y-3,3,2,'#a6bd70');}
-    function bloom(x,y,col){px(x,y,1,5,'#466d40');px(x-2,y-3,5,5,col);px(x-3,y-2,7,3,col);px(x-1,y-2,2,2,'#f4dc8c');}
+    function leaf(x,y,r){oval(x,y+2,r,r-2,'#376d38');oval(x-1,y,r-1,r-3,'#559342');oval(x-2,y-2,r-3,Math.max(1,r-5),'#7fb447');px(x-3,y-3,3,2,'#b1d26a');}
+    function bloom(x,y,col){px(x,y,1,5,'#3f7938');px(x-2,y-3,5,5,col);px(x-3,y-2,7,3,col);px(x-1,y-2,2,2,'#f4dc8c');}
     function cluster(x,y,kind){
-      oval(x,y+5,23,9,'#79945b');
-      if(kind===0){leaf(x-12,y,9);leaf(x+3,y-3,12);leaf(x+16,y+3,7);bloom(x-8,y-3,'#e6dfbc');bloom(x+5,y-6,'#e9d9b1');}
-      if(kind===1){for(let i=0;i<6;i++){const xx=x-17+i*6,yy=y+(i%3)*3;leaf(xx,yy+2,5);bloom(xx,yy-3,i%2?'#af98ba':'#d0b7cc');}}
-      if(kind===2){leaf(x-15,y+2,7);leaf(x+14,y-1,9);oval(x,y+3,8,5,'#535e58');oval(x-1,y+1,7,4,'#8f9c8c');px(x-4,y-2,6,2,'#bdc6ad');bloom(x+14,y-5,'#e5cf87');}
-      if(kind===3){for(let i=0;i<4;i++){leaf(x-13+i*9,y+(i%2)*4,7);bloom(x-13+i*9,y-2+(i%2)*4,'#dddcb7');}}
+      oval(x,y+5,23,9,'#6a983c');
+      if(kind===0){leaf(x-12,y,9);leaf(x+3,y-3,12);leaf(x+16,y+3,7);bloom(x-8,y-3,'#fff0ca');bloom(x+5,y-6,'#ffe5a2');}
+      if(kind===1){for(let i=0;i<6;i++){const xx=x-17+i*6,yy=y+(i%3)*3;leaf(xx,yy+2,5);bloom(xx,yy-3,i%2?'#b27ac9':'#dfa1d4');}}
+      if(kind===2){leaf(x-15,y+2,7);leaf(x+14,y-1,9);oval(x,y+3,8,5,'#535e58');oval(x-1,y+1,7,4,'#8f9c8c');px(x-4,y-2,6,2,'#bdc6ad');bloom(x+14,y-5,'#ffdc68');}
+      if(kind===3){for(let i=0;i<4;i++){leaf(x-13+i*9,y+(i%2)*4,7);bloom(x-13+i*9,y-2+(i%2)*4,'#fff0bf');}}
     }
     const inside=(tx,ty,b,pad=1)=>b&&tx>=b.x0-pad&&tx<=b.x1+pad&&ty>=b.y0-pad&&ty<=b.y1+pad;
     const reserved=(tx,ty)=>inside(tx,ty,Shared.FARM,1)||inside(tx,ty,Shared.HOUSE_BLD,0)||Object.values(Shared.PENS||{}).some(b=>inside(tx,ty,b,1))|| (Shared.BUILDINGS||[]).some(b=>inside(tx,ty,b,0));
