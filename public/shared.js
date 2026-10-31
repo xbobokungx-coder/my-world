@@ -356,9 +356,9 @@
   ].map(f => ({ ...f, legacy: true }));
   const FISH_ALL = FISH.concat(LEGACY_FISH);
   // ช่างไม้: ตัดต้นไม้ด้วยขวาน (ขวานแรงกว่าตัดเร็วกว่า) ได้ไม้ท่อน หายากได้ไม้เนื้อแข็งราคาแพง
-  const AXES = { 1: { name: 'ขวานหิน', price: 50, power: 1 }, 2: { name: 'ขวานเหล็ก', price: 220, lv: 3, power: 2 }, 3: { name: 'ขวานเหล็กกล้า', price: 700, lv: 6, power: 3 }, 4: { name: 'ขวานทองคำ', price: 2000, lv: 11, power: 4 }, 5: { name: 'ขวานเพชร', price: 5500, lv: 16, power: 5 } };
+  const AXES = { 1: { name: 'ขวานหิน', price: 50, power: 1 }, 2: { name: 'ขวานเหล็ก', price: 220, lv: 3, power: 1.5 }, 3: { name: 'ขวานเหล็กกล้า', price: 700, lv: 6, power: 2 }, 4: { name: 'ขวานทองคำ', price: 2000, lv: 11, power: 2.5 }, 5: { name: 'ขวานเพชร', price: 5500, lv: 16, power: 3 } }; // power ปรับ 31 ต.ค. 2026 (เดิม 1–5) ให้ต้นไม้ธรรมดาไม่ล้มในครั้งเดียวเมื่อมีขวานดี
   const axeTier = inv => { for (let t = 5; t >= 1; t--) if (inv && inv['axe_' + t]) return t; return 0; }; // ระดับขวานสูงสุดที่มี (0 = ไม่มี)
-  const ACTION_TUNE = { wood: 1.25, fish: 1.15, mine: 0.85 }; // ตัวคูณ "เวลาต่อการกระทำ" (31 ต.ค. 2026): ตัดไม้ HP ต้นไม้ ×1.25, ตกปลารอปลากินเบ็ด ×1.15, ขุดแร่ HP ก้อนแร่ ×0.85 ให้สามอาชีพสมดุลกัน
+  const ACTION_TUNE = { wood: { swings: 5, perLv: 0.15 }, fish: 1.15, mine: 0.46 }; // ตัวคูณ "เวลาต่อการกระทำ" (31 ต.ค. 2026; ตัดไม้/ขุดแร่ปรับใหม่รอบสอง): ตัดไม้ = จำนวนครั้งที่ฟันต้นไม้ด้วยขวานขั้นต่ำที่ต้องใช้ (swings + perLv × (เลเวลที่ปลดล็อก−1)) แทนตัวคูณ HP, ตกปลารอปลากินเบ็ด ×1.15, ขุดแร่ HP ก้อนแร่ ×0.85 ให้สามอาชีพสมดุลกัน
   const TREE_HP = 4;                       // ต้องฟันกี่แต้มถึงล้ม (ขวานหิน = 4 ครั้ง, เหล็ก 2, เหล็กกล้า 2)
   const WOOD = { log: { sell: 18, xp: 9 }, hardwood: { sell: 66, xp: 14, chance: 0.22 }, xpPerLv: 0.075 }; // xpPerLv (0.15 → 0.1 เมื่อมีต้นไม้หลายชนิด 25 ต.ค. 2026): XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
   const woodXp = (xp, lv) => Math.round(xp * (1 + WOOD.xpPerLv * (perkLv(lv) - 1)));
@@ -425,7 +425,7 @@
     shingchan: { name: 'ต้นชิงชัน',   emoji: '🟥', lv: 19, axe: 5, hp: 32, pct: 0.5, drop: [['shingwood', 1]],  bonus: [['rosewood', 0.2]], where: 'deep' },
     ancient: { name: 'ไม้พันปี',      emoji: '🎄', lv: 20, axe: 5, hp: 36, pct: 0.4,   drop: [['ancientwood', 1]], bonus: [['ebony', 0.3]], where: 'deep' },
   };
-  for (const k of Object.values(TREE_KINDS)) k.hp = Math.round(k.hp * ACTION_TUNE.wood);
+  for (const k of Object.values(TREE_KINDS)) k.hp = Math.round((ACTION_TUNE.wood.swings + ACTION_TUNE.wood.perLv * (k.lv - 1)) * AXES[k.axe].power * (k.hpMul || 1)); // HP = ครั้งที่ฟันด้วยขวานขั้นต่ำที่ต้องใช้ × พลังขวานนั้น
   // ขุดเหมือง (ถ้ำ 10 ชั้น): เดินเข้าปากถ้ำบนหน้าผาเหนือ ใช้อีเต้อขุดก้อนแร่ ลงบันไดไปชั้นลึกขึ้นเรื่อยๆ ยิ่งลึกยิ่งได้แร่แพง (แต่ละชั้นเป็นฉากร่วมของทั้งห้อง เห็นกันและแย่งแร่กัน)
   // อีเต้อ 6 ระดับ ไม้→หิน→เหล็ก→ทองคำ→มรกต→เพชร: power = แต้มต่อครั้ง lv = เลเวลนักขุดแร่ที่ซื้อได้ (ระดับแรกซื้อได้เลย)
   const PICKS = {
@@ -456,9 +456,9 @@
   const hillAt = (x, y) => x >= MINE.hill.x0 && x <= MINE.hill.x1 && y >= 1 && y <= 7 && hillTop((x - MINE.hill.x0) * 16 + 8) <= y * 16 + 8; // ช่องที่ภูเขาบัง
   // ขนาดก้อน: ไม่เท่ากัน สุ่มตอนเกิด w = น้ำหนักฐานของแมพ 50/40/10 (ชั้นจริงใช้ SIZE_MIX ด้านล่าง) hp = ตัวคูณ HP drop = ชิ้นที่ได้ [ต่ำสุด, สูงสุด] สุ่มทุกครั้งที่ขุดแตก
   const ORE_SIZES = [
-    { id: 's', name: 'เล็ก',  w: 50, hp: 1,   drop: [1, 3] },
-    { id: 'm', name: 'กลาง', w: 40, hp: 2,   drop: [3, 5] },
-    { id: 'l', name: 'ใหญ่', w: 10, hp: 3.5, drop: [5, 8] },
+    { id: 's', name: 'เล็ก',  w: 50, hp: 1,   drop: [1, 2] },
+    { id: 'm', name: 'กลาง', w: 40, hp: 2,   drop: [2, 3] },
+    { id: 'l', name: 'ใหญ่', w: 10, hp: 3.5, drop: [3, 5] },
   ];
   // แร่ 10 ระดับ (ขายที่ร้านช่างเหมือง หมวด "แร่" ไม่เสื่อม) • lv = เลเวลนักขุดแร่ที่ต้องมี • pick = ระดับอีเต้อต่ำสุด • sell/xp = ต่อ 1 ชิ้น (ปรับให้เหรียญและ XP ต่อชม. ใกล้ชาวนา ดู tools/levelsim.js)
   const ORES = {
@@ -473,16 +473,16 @@
     emerald:  { name: 'มรกต',      emoji: '🟢', lv: 9,  pick: 5, sell: 24, xp: 9 },
     crystal:  { name: 'คริสตัล',    emoji: '💎', lv: 10, pick: 6, sell: 27, xp: 10 },
     // ชั้น 11–20 (30 ต.ค. 2026): ใช้อีเต้อเพชร (ระดับ 6) ทุกชนิด hpm = ตัวคูณ HP (แข็งขึ้นทีละนิด) ชั้น 20 เป็นแกนดวงดาวล้วน
-    opal:      { name: 'โอปอล',      emoji: '🤍', lv: 11, pick: 6, sell: 29, xp: 12, hpm: 1.1 },
-    topaz:     { name: 'โทแพซ',      emoji: '🟡', lv: 12, pick: 6, sell: 31, xp: 13, hpm: 1.2 },
-    sapphire:  { name: 'ไพลิน',      emoji: '🔵', lv: 13, pick: 6, sell: 33, xp: 14, hpm: 1.3 },
-    garnet:    { name: 'การ์เน็ต',    emoji: '🟤', lv: 14, pick: 6, sell: 35, xp: 15, hpm: 1.4 },
-    jade:      { name: 'หยก',        emoji: '🍀', lv: 15, pick: 6, sell: 37, xp: 16, hpm: 1.5 },
-    obsidian:  { name: 'ออบซิเดียน',   emoji: '⬛', lv: 16, pick: 6, sell: 39, xp: 17, hpm: 1.6 },
-    moonstone: { name: 'มูนสโตน',    emoji: '🌙', lv: 17, pick: 6, sell: 41, xp: 18, hpm: 1.7 },
-    sunstone:  { name: 'ซันสโตน',    emoji: '🌞', lv: 18, pick: 6, sell: 43, xp: 19, hpm: 1.8 },
-    mythril:   { name: 'มิทริล',      emoji: '🔷', lv: 19, pick: 6, sell: 45, xp: 20, hpm: 1.9 },
-    starcore:  { name: 'แกนดวงดาว',  emoji: '⭐', lv: 20, pick: 6, sell: 47, xp: 21, hpm: 2.0 },
+    opal:      { name: 'โอปอล',      emoji: '🤍', lv: 11, pick: 6, sell: 29, xp: 11, hpm: 1.03 },
+    topaz:     { name: 'โทแพซ',      emoji: '🟡', lv: 12, pick: 6, sell: 30, xp: 11, hpm: 1.06 },
+    sapphire:  { name: 'ไพลิน',      emoji: '🔵', lv: 13, pick: 6, sell: 31, xp: 11, hpm: 1.09 },
+    garnet:    { name: 'การ์เน็ต',    emoji: '🟤', lv: 14, pick: 6, sell: 32, xp: 12, hpm: 1.12 },
+    jade:      { name: 'หยก',        emoji: '🍀', lv: 15, pick: 6, sell: 33, xp: 12, hpm: 1.15 },
+    obsidian:  { name: 'ออบซิเดียน',   emoji: '⬛', lv: 16, pick: 6, sell: 34, xp: 12, hpm: 1.18 },
+    moonstone: { name: 'มูนสโตน',    emoji: '🌙', lv: 17, pick: 6, sell: 35, xp: 13, hpm: 1.21 },
+    sunstone:  { name: 'ซันสโตน',    emoji: '🌞', lv: 18, pick: 6, sell: 36, xp: 13, hpm: 1.24 },
+    mythril:   { name: 'มิทริล',      emoji: '🔷', lv: 19, pick: 6, sell: 37, xp: 13, hpm: 1.27 },
+    starcore:  { name: 'แกนดวงดาว',  emoji: '⭐', lv: 20, pick: 6, sell: 38, xp: 14, hpm: 1.3 },
   };
   // สัดส่วนขนาดก้อน [เล็ก, กลาง, ใหญ่] % ต่อชั้น (ตารางปรับรายชั้นได้): ชั้นตื้นมีแต่ก้อนเล็กเป็นส่วนใหญ่ ชั้นลึกก้อนกลาง/ใหญ่มากขึ้น ชั้น 5–6 ≈ ฐาน 50/40/10
   const SIZE_MIX = [[60, 35, 5], [58, 36, 6], [56, 37, 7], [53, 38, 9], [51, 40, 9], [49, 41, 10], [46, 42, 12], [44, 43, 13], [42, 44, 14], [40, 45, 15], [39, 45, 16], [38, 45, 17], [37, 45, 18], [36, 45, 19], [35, 45, 20], [34, 45, 21], [33, 45, 22], [32, 45, 23], [31, 45, 24], [30, 45, 25]];
