@@ -178,6 +178,11 @@
     screen_bamboo: { cat: 'divider', name: 'ฉากไม้ไผ่',        emoji: '🎍', price: 260, solid: true, w: 2, d: 0.25, h: 56 },
     lowwall:       { cat: 'divider', name: 'ผนังกั้นเตี้ย',     emoji: '🧱', price: 220, solid: true, w: 2, d: 0.25, h: 30, top: true },
   };
+  // 2 พ.ย. 2026: เฟอร์นิเจอร์ไม้ต้องประดิษฐ์ที่โรงช่างไม้เท่านั้น (ร้านไม่ขาย ซื้อจากช่างไม้ผ่านแผงฝากขายได้) • legacy = เลิกขายแล้ว คนที่มีอยู่ใช้ต่อได้ ไม่นับในสมุดสะสม
+  const FURN_CRAFT_ONLY = ['chair', 'table', 'shelf', 'bed', 'stool', 'armchair', 'wardrobe', 'dresser', 'bedking', 'screen_bamboo', 'bedsingle', 'nightstand', 'coffeetable', 'desk', 'cupboard', 'screen_wood'];
+  const FURN_LEGACY = ['trophy', 'records', 'mirror', 'roundrug', 'map', 'wreath', 'screen_lattice', 'screen_glass'];
+  for (const k of FURN_CRAFT_ONLY) FURN[k].noshop = true;
+  for (const k of FURN_LEGACY) FURN[k].legacy = true;
   // พื้นบ้าน/วอลเปเปอร์: เลือกเปลี่ยนได้ฟรีไม่จำกัดครั้ง (เก็บ id ไว้ในข้อมูลบ้านเป็น fl / wp) เพิ่มแบบใหม่ได้ที่นี่ + ใส่ไว้ใน HOUSE_*_ORDER
   // kind: plank = ไม้กระดานเรียงยาว • tile = กระเบื้องสี่เหลี่ยม (c[0],c[1] สลับหมากรุก) • carpet = พรมปูทั้งห้อง | edge = [สีขอบพื้นด้านหน้า, ด้านขวา]
   const HOUSE_FLOORS = {
@@ -823,6 +828,10 @@
   // เชฟ (อาชีพที่ 5): แต่ละสูตรปลดล็อกตามเลเวลเชฟ (lv) ได้ XP เชฟ (xp) และใช้เวลาทำ (time มิลลิวินาที = เตาต้องพักก่อนทำจานถัดไป)
   // XP สูตร = XP เดิม × (2.3 − 0.08×เลเวลสูตร) (ปรับ 25 ต.ค. 2026) ให้ XP/ชม. ของเชฟรวมเวลาหาวัตถุดิบใกล้ชาวนา ตรวจด้วย node tools/levelsim.js
   const COOK = [
+    // เมนูง่ายทำกินเอง (2 พ.ย. 2026): ใช้ของที่ผลิตเองล้วน อิ่มกว่ากินดิบ ราคาขาย ≈ มูลค่าวัตถุดิบ (ไม่ใช่ทางทำเงิน)
+    { id: 'dish_vegbowl',   name: 'ผัดผักรวม',   emoji: '🥬', sell: 20, food: 35, lv: 1, xp: 8, time: 2000, in: [{ c: 'crop', n: 2 }] },
+    { id: 'dish_boiledegg', name: 'ไข่ต้ม',      emoji: '🥚', sell: 12, food: 25, lv: 1, xp: 6, time: 2000, in: [{ c: 'egg', n: 1 }] },
+    { id: 'dish_saltfish',  name: 'ปลาเผาเกลือ', emoji: '🐟', sell: 15, food: 30, lv: 1, xp: 7, time: 2000, in: [{ c: 'fish', n: 1 }] },
     { id: 'dish_grill',   name: 'ปลาย่างผักสด',     emoji: '🍱', sell: 60,  food: 45,  lv: 1, xp: 27, time: 3000,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
     { id: 'dish_omelet',  name: 'ไข่เจียวผักรวม',    emoji: '🍳', sell: 80,  food: 55,  lv: 3, xp: 41, time: 4000,  in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 1 }] },
     { id: 'dish_seafood', name: 'ซีฟู้ดไข่นุ่ม',     emoji: '🍤', sell: 135, food: 70,  lv: 5, xp: 65, time: 6000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
@@ -866,6 +875,7 @@
     crop_carrot: 6, crop_cabbage: 8, crop_corn: 12, crop_tomato: 8, crop_eggplant: 10, crop_strawberry: 10, crop_pumpkin: 15, crop_melon: 15,
     crop_potato: 12, crop_chili: 6, crop_broccoli: 10, crop_cherry: 10, crop_grape: 12, crop_pineapple: 15, crop_mango: 18, shoot: 6, coconut: 20,
     egg: 8, milk: 15, truffle: 5, duck_egg: 8,
+    dish_vegbowl: 35, dish_boiledegg: 25, dish_saltfish: 30,
     dish_grill: 45, dish_omelet: 55, dish_seafood: 70, dish_feast: 100,
     dish_fishsoup: 50, dish_sashimi: 55, dish_fishburger: 80, dish_fishpie: 90,
     dish_fishmix: 65, dish_fishstew: 85, dish_platter: 105,
@@ -1091,7 +1101,7 @@
   const BOOK = {
     fish: { name: 'ปลา',        emoji: '🐟', ids: FISH.filter(f => f.id !== 'boot').map(f => f.id), coin: 300, rare: 'statue' },
     crop: { name: 'พืชผล',      emoji: '🥬', ids: CROP_IDS(),                               coin: 250, rare: 'fountain' },
-    furn: { name: 'เฟอร์นิเจอร์', emoji: '🛋️', ids: Object.keys(FURN).filter(k => !FURN[k].rare),      coin: 400, rare: 'cat' },
+    furn: { name: 'เฟอร์นิเจอร์', emoji: '🛋️', ids: Object.keys(FURN).filter(k => !FURN[k].rare && !FURN[k].legacy),      coin: 400, rare: 'cat' },
     meal: { name: 'อาหาร',      emoji: '🍜', ids: MEALS.map(m => m.id),                              coin: 100, rare: 'flag' },
     wood: { name: 'ไม้และของจากป่า', emoji: '🌳', ids: Object.keys(WOOD_ITEMS),                       coin: 300 }, // ไม่มีของหายาก (rare) ได้แค่เหรียญ
   };
@@ -1109,24 +1119,33 @@
   // id = ไอเทมที่ได้ (1 ชิ้น), in = วัตถุดิบ, lv = เลเวลช่างไม้ที่ต้องมี
   const CRAFT = [
     { id: 'plank',         in: { log: 2 },                   lv: 1, xp: 4 },
-    { id: 'furn_chair',    in: { log: 8 },                   lv: 1, xp: 14 },
+    { id: 'furn_chair',    in: { log: 4 },                   lv: 1, xp: 7 }, // 2 พ.ย. 2026: ลดวัตถุดิบ ~ครึ่ง (เดิมแพงกว่าราคาของ) XP ลดตามสัดส่วน XP ต่อไม้เท่าเดิม
     { id: 'furn_crate',    in: { plank: 4 },                 lv: 1, xp: 18 },
-    { id: 'furn_table',    in: { log: 16 },                  lv: 2, xp: 28 },
+    { id: 'furn_table',    in: { log: 8 },                   lv: 2, xp: 14 },
     { id: 'furn_barrel',   in: { plank: 6 },                 lv: 2, xp: 26 },
     { id: 'furn_signpost', in: { plank: 5, log: 4 },         lv: 2, xp: 26 },
-    { id: 'furn_shelf',    in: { log: 22 },                  lv: 3, xp: 36 },
+    { id: 'furn_shelf',    in: { log: 10 },                  lv: 3, xp: 16 },
     { id: 'furn_mailbox',  in: { plank: 8 },                 lv: 3, xp: 36 },
     { id: 'furn_toolbox',  in: { plank: 8, hardwood: 2 },    lv: 4, xp: 46 },
-    { id: 'furn_bed',      in: { log: 30, hardwood: 3 },     lv: 5, xp: 60 },
+    { id: 'furn_bed',      in: { log: 14, hardwood: 2 },     lv: 5, xp: 31 },
     { id: 'furn_hut',      in: { plank: 24, hardwood: 6 },   lv: 6, xp: 110 },
     // จากไม้ชนิดใหม่ (B5): XP ≈ 0.27 ต่อเหรียญของวัตถุดิบ เท่ากับลังไม้
     { id: 'furn_screen_bamboo', in: { bamboo: 8 },             lv: 1, xp: 20 },
-    { id: 'furn_stool',    in: { pinewood: 3 },               lv: 2, xp: 18 },
-    { id: 'furn_armchair', in: { palmwood: 4, plank: 2 },     lv: 3, xp: 45 },
+    { id: 'furn_stool',    in: { pinewood: 2 },               lv: 2, xp: 12 },
+    { id: 'furn_armchair', in: { palmwood: 3, plank: 1 },     lv: 3, xp: 27 },
     { id: 'furn_wardrobe', in: { teak: 5, plank: 2 },         lv: 4, xp: 75 },
     { id: 'furn_dresser',  in: { goldwood: 4 },               lv: 6, xp: 65 },
     { id: 'furn_bedking',  in: { rosewood: 5, teak: 3 },      lv: 8, xp: 200 },
+    // 2 พ.ย. 2026: เฟอร์นิเจอร์ที่เลิกขายในร้าน วัตถุดิบ ≈ 45–60% ของราคา XP ≈ 0.27 ต่อเหรียญของวัตถุดิบ
+    { id: 'furn_nightstand',  in: { log: 4 },                   lv: 1, xp: 19 },
+    { id: 'furn_screen_wood', in: { plank: 2, log: 2 },         lv: 1, xp: 41 },
+    { id: 'furn_coffeetable', in: { bamboo: 6, log: 2 },        lv: 2, xp: 24 },
+    { id: 'furn_bedsingle',   in: { pinewood: 6, plank: 1 },    lv: 3, xp: 45 },
+    { id: 'furn_cupboard',    in: { palmwood: 5, plank: 2 },    lv: 4, xp: 58 },
+    { id: 'furn_desk',        in: { teak: 4, plank: 1 },        lv: 5, xp: 55 },
   ];
+  const CRAFT_FEE = 0.2; // ค่าใช้โรงช่างไม้ = สัดส่วนของราคาเฟอร์นิเจอร์ที่ร้านเลิกขาย (FURN_CRAFT_ONLY) ครึ่งหนึ่งหายจากระบบ อีกครึ่งเข้ากองกลาง เหมือนค่าเตา
+  const craftFee = id => { const m = /^furn_(\w+)$/.exec(id), f = m && FURN[m[1]]; return f && f.noshop ? Math.round(f.price * CRAFT_FEE) : 0; };
   const seatAt = (tx, ty) => SEATS.find(s => s.x === tx && s.y === ty) || null;
   const cinemaAt = () => false; // เลิกมีโรงหนังกลางแปลงแล้ว (ผังเมืองใหม่) ระบบฉายหนังเดิมยังค้างในโค้ด ไม่มีทางเข้า
   const CINEMA_CENTER = { x: 17 * TS, y: 35 * TS };
@@ -1147,8 +1166,9 @@
     // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือยังไม่เปิด (soon)
     vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v), sell: [], soon: [{ emoji: '⛵', name: 'เรือ (แล่นในสระ)', price: 4000 }] },
     cloth:  { name: '👕 ร้านเสื้อผ้า',    skill: null,     buy: Object.keys(WEAR).flatMap(c => WEAR[c].filter(i => i.price > 0).map(i => wearKey(c, i.id))), sell: [] },
-    food:   { name: '🍜 ร้านอาหาร',      skill: null,     buy: MEALS.map(m => 'meal_' + m.id), sell: ['dish_'] },
-    furn:   { name: '🛋️ ร้านเฟอร์นิเจอร์', skill: null,     buy: Object.keys(FURN).filter(f => !FURN[f].rare && !FURN[f].craft).map(f => 'furn_' + f), sell: ['furn_'] }, // รับซื้อเฟอร์นิเจอร์ในกระเป๋า (ที่ยังไม่ได้วาง) คืนที่ SELLBACK ของราคา
+    food:   { name: '🍜 ร้านอาหาร',      skill: null,     buy: ['meal_bread'], // 2 พ.ย. 2026: ขายแค่ขนมปัง (อาหารฉุกเฉิน + วัตถุดิบเบอร์เกอร์ปลา) อาหารอื่นทำเองที่ครัว เมนูอื่นใน MEALS ยังกินได้และยังแจกจากกองกลาง
+                                                        sell: ['dish_'] },
+    furn:   { name: '🛋️ ร้านเฟอร์นิเจอร์', skill: null,     buy: Object.keys(FURN).filter(f => !FURN[f].rare && !FURN[f].craft && !FURN[f].noshop && !FURN[f].legacy).map(f => 'furn_' + f), sell: ['furn_'] }, // รับซื้อเฟอร์นิเจอร์ในกระเป๋า (ที่ยังไม่ได้วาง) คืนที่ SELLBACK ของราคา
   };
 
   // ข้อมูลของแต่ละไอเทม: buy/sell = ราคา, lv + skill = เงื่อนไขเลเวลตอนซื้อ
@@ -1168,7 +1188,7 @@
     if (k === 'lamp') return { name: 'ตะเกียง/ไฟฉาย (สว่างรอบตัว 5 ช่อง)', emoji: '🔦', buy: 120, once: true, cat: 'gear' }; // ซื้อได้ที่ร้านช่างเหมือง (ใช้ส่องถ้ำ) หรือได้จากรางวัลคู่มือเริ่มต้น • ขายต่อไม่ได้
     if (k === 'medicine') return { name: 'ยารักษาสัตว์', emoji: '💊', buy: 20, cat: 'feed' };
     const fm = /^furn_(\w+)$/.exec(k);
-    if (fm) return FURN[fm[1]] ? { name: FURN[fm[1]].name, emoji: FURN[fm[1]].emoji, buy: FURN[fm[1]].price, sell: FURN[fm[1]].rare ? undefined : Math.floor(FURN[fm[1]].price * FURN_SELL), cat: 'furn', furn: fm[1] } : null;
+    if (fm) return FURN[fm[1]] ? { name: FURN[fm[1]].name, emoji: FURN[fm[1]].emoji, buy: FURN[fm[1]].price, sell: FURN[fm[1]].rare ? undefined : Math.floor(FURN[fm[1]].price * FURN_SELL), std: FURN[fm[1]].noshop ? FURN[fm[1]].price : undefined, cat: 'furn', furn: fm[1] } : null; // std = ราคามาตรฐานที่แผงฝากขาย (ของทำเองอย่างเดียว ใช้ราคาเต็ม ช่างไม้จึงขายได้กำไร)
     const cm = /^can_(\d)$/.exec(k);
     if (cm && CANS[cm[1]] && CANS[cm[1]].price) { const c = CANS[cm[1]]; return { name: `${c.name} (น้ำ ${c.cap} ครั้ง • ดินเปียก ${c.wet / 1000} วิ)`, emoji: c.emoji, buy: c.price, lv: c.lv, skill: 'farm', once: true, cat: 'gear', can: +cm[1] }; }
     let am = /^axe_(\d)$/.exec(k);
@@ -1207,7 +1227,7 @@
   // ขายของที่ซื้อมาคืนร้านได้ในราคา 70% ของราคาซื้อ (เฉพาะของชิ้นเดียวที่ซื้อครั้งเดียว: เสื้อผ้า คันเบ็ด ขวาน ตะเกียง)
   const sellbackValue = k => { const i = itemInfo(k); return i && i.once && i.buy ? Math.floor(i.buy * SELLBACK) : 0; };
   // ของที่เทรดได้: ไม่ใช่เหรียญ ไม่ใช่ของชิ้นเดียวที่ผูกกับตัว (เสื้อผ้า คันเบ็ด ขวาน ตะเกียง) ไม่ใช่สัตว์ที่ซื้อ
-  const tradeValue = k => { const i = itemInfo(k); return i ? (i.sell || i.buy || 0) : 0; };
+  const tradeValue = k => { const i = itemInfo(k); return i ? (i.std || i.sell || i.buy || 0) : 0; };
   const isTradable = k => { if (typeof k !== 'string' || k === 'coin') return false; const i = itemInfo(k); return !!(i && !i.once && !i.animal && tradeValue(k) > 0); };
   const shopSells = (kind, key) => !!SHOPS[kind] && SHOPS[kind].sell.some(p => key === p || (p.endsWith('_') && key.startsWith(p)));
   const shopAt = (tx, ty) => { for (const b of BUILDINGS) if (b.counter.length && tx >= b.x0 && tx <= b.x1 && ty >= b.y0 && ty <= b.y1) return b.kind; return null; }; // กดที่ไหนก็ได้บนตัวอาคารร้าน (ประตูคือจุดที่ใช้วัดระยะ)
@@ -1385,7 +1405,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, FEST, AUCTION, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, FEST, AUCTION, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);
