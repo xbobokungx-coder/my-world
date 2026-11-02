@@ -573,7 +573,7 @@ class World {
     const q = this.questsOf(p), pts = this.ptsOf(p), now = Date.now(), buffs = {};
     for (const id of Object.keys(S.BUFFS)) if (this.buffOn(p, id)) buffs[id] = p.rec.buffs[id] - now;
     send(p, { t: 'quests', wk1: this.wk1Pub(p.rec), list: q.list.map(it => [it.id, it.n, it.done ? 1 : 0]), total: p.rec.qtotal || 0, title: this.titleOf(p.rec), dole: p.rec.dole === this.today(),
-      starter: { done: Object.keys(this.starterOf(p).done), final: !!this.starterOf(p).final }, streak: { n: (p.rec.streak || {}).n || 0 },
+      starter: { done: Object.keys(this.starterOf(p).done), final: !!this.starterOf(p).final, c2: { done: Object.keys(this.starterOf(p).c2.done), final: !!this.starterOf(p).c2.final } }, streak: { n: (p.rec.streak || {}).n || 0 },
       book: Object.fromEntries(Object.keys(S.BOOK).map(c => [c, Object.keys(this.bookOf(p)[c])])),
       wk: (this.wkRoll(), { mine: this.week.by[p.name] || 0, claimed: !!this.week.claimed[p.key] }), pts: { bal: pts.bal, earned: pts.earned }, buffs });
   }
@@ -912,10 +912,28 @@ class World {
   rareOfWeek() { return S.RARE[Math.floor(Date.now() / (7 * 864e5)) % S.RARE.length]; }
 
   starterOf(p) { // ผู้เล่นเก่าที่เล่นมานานแล้ว (ระดับการเล่น ≥ 8) ข้ามคู่มือเริ่มต้น
-    return p.rec.starter || (p.rec.starter = { done: {}, final: S.playLevel(p.rec.skills) >= 8 });
+    const st = p.rec.starter || (p.rec.starter = { done: {}, final: S.playLevel(p.rec.skills) >= 8 });
+    if (!st.c2) st.c2 = { done: {}, final: S.playLevel(p.rec.skills) >= 8 }; // คู่มือบทที่ 2 (ตัดไม้ ขุดแร่ สัตว์ ทำอาหาร): แยกสถานะ ผู้เล่นเก่าระดับ ≥ 8 ข้าม
+    return st;
+  }
+  starterStep2(p, ev) { // บทที่ 2: นับทุกเหตุการณ์ที่ตรงข้อ (ไม่ต้องรอจบบทแรก) ได้เหรียญต่อข้อ ครบแล้วรับรางวัลรวม
+    const c2 = this.starterOf(p).c2; if (c2.final) return;
+    let changed = false;
+    for (const s of S.STARTER2) if (s.ev === ev && !c2.done[s.id]) {
+      c2.done[s.id] = 1; changed = true; this.add(p, 'coin', s.coin, 'starter');
+      logEv(this.room, 'starter2', { p: p.key, step: s.id, n: Object.keys(c2.done).length, sec: p.rec.firstSeen ? Math.round((Date.now() - p.rec.firstSeen) / 1000) : null });
+      this.toast(p, `✅ ${s.text} +🪙${s.coin} (บท 2: ${Object.keys(c2.done).length}/${S.STARTER2.length})`);
+    }
+    if (!changed) return;
+    if (S.STARTER2.every(s => c2.done[s.id])) {
+      c2.final = true; this.add(p, 'coin', S.STARTER2_FINAL.coin, 'starter');
+      this.addLog(`🎓 ${p.name} ผ่านคู่มือบทที่ 2 (รู้จักอาชีพอื่น) ครบแล้ว!`);
+      this.toast(p, `🎓 ผ่านคู่มือบทที่ 2 ครบ! รับ 🪙${S.STARTER2_FINAL.coin} — ตัดไม้ ขุดแร่ เลี้ยงสัตว์ ทำอาหารเป็นแล้ว`); this.sfxTo(p, 'levelup');
+    }
+    this.dirty = true; this.questPush(p);
   }
   starterStep(p, ev) { // event starter: sec = วินาทีนับจากเข้าเกมครั้งแรก (รวมเวลาออฟไลน์), ses = วินาทีนับจากเข้าเซสชันนี้
-    const st = this.starterOf(p); if (st.final) return;
+    const st = this.starterOf(p); this.starterStep2(p, ev); if (st.final) return;
     let changed = false;
     for (const s of S.STARTER) if (s.ev === ev && !st.done[s.id]) { st.done[s.id] = 1; changed = true; logEv(this.room, 'starter', { p: p.key, step: s.id, n: Object.keys(st.done).length, sec: p.rec.firstSeen ? Math.round((Date.now() - p.rec.firstSeen) / 1000) : null, ses: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000), joins: p.rec.joins || 1 }); this.add(p, 'coin', s.coin, 'starter'); this.toast(p, `✅ คู่มือเริ่มต้น: ${s.hint} (+🪙${s.coin})`); }
     if (!changed && !S.STARTER.every(s => st.done[s.id])) return; // ไม่มีข้อใหม่ แต่ครบทุกข้อแล้ว (คู่มือถูกย่อเหลือ 6 ข้อ) ก็ปิดคู่มือให้

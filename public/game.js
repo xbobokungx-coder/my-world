@@ -465,17 +465,26 @@ function updateQuestBadge() { // เลขบนไอคอนเควส = �
   b.textContent = left; b.classList.toggle('hidden', !left);
 }
 $('questBtn').onclick = () => (questShown() ? closeQuest() : openQuest());
+// คู่มือ: บท 1 (STARTER 6 ข้อ) แล้วต่อบท 2 (STARTER2 ตัดไม้/ขุดแร่/สัตว์/ทำอาหาร) บท 2 ซ่อนป้ายได้ (จำใน localStorage)
+const g2Hidden = () => ls.get('mw_g2hide') === '1';
+function guideNext() { // { s: ข้อถัดไป, ch: 1|2, n: ทำแล้วกี่ข้อ, tot: ทั้งหมดกี่ข้อ } หรือ null
+  const st = questSt.starter; if (!me || !st) return null;
+  if (!st.final) { const s = STARTER.find(x => !st.done.includes(x.id)); return s ? { s, ch: 1, n: st.done.length, tot: STARTER.length } : null; }
+  const c2 = st.c2; if (!c2 || c2.final || g2Hidden()) return null;
+  const s = Shared.STARTER2.find(x => !c2.done.includes(x.id)); return s ? { s, ch: 2, n: c2.done.length, tot: Shared.STARTER2.length } : null;
+}
 function updateGuide() {
   const el = $('guide'); if (!el) return;
-  const st = questSt.starter, next = st && !st.final && STARTER.find(s => !st.done.includes(s.id));
-  if (!me || !next) { el.classList.add('hidden'); return; }
-  el.classList.remove('hidden'); el.textContent = '👉 ' + next.hint + ' (' + st.done.length + '/' + STARTER.length + ')';
+  const g = guideNext();
+  if (!g) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden'); el.textContent = '👉 ' + (g.ch === 2 ? 'บท 2: ' : '') + g.s.hint + ' (' + g.n + '/' + g.tot + ')';
 }
 $('guide').onclick = () => openQuest('start');
 function guideHTML() { // คู่มือเริ่มต้น + เข้าเกมติดต่อกัน (ส่วนบนสุดของแท็บเควส)
   let h = '';
   const st = questSt.starter, sk = questSt.streak;
   if (sk && sk.n) h += `<div class="vcard on"><b>🔥 เข้าเกมติดต่อกัน ${sk.n} วัน</b> <small>ได้เหรียญทุกวัน • ครบ 7 วันได้ของตกแต่งหายาก (ขาดวันแล้วเริ่มนับใหม่)</small></div>`;
+  if (st && st.final && st.c2 && !st.c2.final) h += `<div class="vcard"><b>🧭 คู่มือบทที่ 2 ${st.c2.done.length}/${Shared.STARTER2.length}</b>` + Shared.STARTER2.map(s => { const d = st.c2.done.includes(s.id); return `<div style="font-size:13px;opacity:${d ? 0.55 : 1}">${d ? '✅' : '⬜'} ${s.text} <small>+🪙${s.coin}</small></div>`; }).join('') + '</div>';
   if (st && !st.final) h += `<div class="vcard"><b>🌱 คู่มือเริ่มต้น ${st.done.length}/${STARTER.length}</b>` + STARTER.map(s => { const d = st.done.includes(s.id); return `<div style="font-size:13px;opacity:${d ? 0.55 : 1}">${d ? '✅' : '⬜'} ${s.text} <small>+🪙${s.coin}</small></div>`; }).join('') + `<small>ครบทุกข้อรับ 🪙${STARTER_FINAL.coin} + เก้าอี้ + ต้นไม้ประดับ (ทำข้อไหนก่อนก็ได้)</small></div>`;
   return h;
 }
@@ -533,14 +542,14 @@ let questTab = 'daily';
 const questShown = () => !$('quest').classList.contains('hidden');
 function openQuest(tab) {
   const st = questSt.starter;
-  questTab = tab || (st && !st.final ? 'start' : 'daily'); // มือใหม่ที่ยังทำคู่มือไม่ครบ เปิดมาเจอหน้าเริ่มต้นก่อน
+  questTab = tab || (st && (!st.final || (st.c2 && !st.c2.final)) ? 'start' : 'daily'); // มือใหม่ที่ยังทำคู่มือไม่ครบ เปิดมาเจอหน้าเริ่มต้นก่อน
   $('quest').classList.remove('hidden'); renderQuestPanel();
 }
 function closeQuest() { $('quest').classList.add('hidden'); }
 $('questClose').onclick = closeQuest;
 $('quest').addEventListener('pointerdown', e => { if (e.target === $('quest')) closeQuest(); });
 function renderQuestPanel() {
-  const st = questSt.starter, showStart = !!(st && !st.final);
+  const st = questSt.starter, showStart = !!(st && (!st.final || (st.c2 && !st.c2.final)));
   const tabs = (showStart ? [['start', '🌱 เริ่มต้น']] : []).concat(questSt.wk1 ? [['wk1', '🗓️ สัปดาห์แรก']] : []).concat([['daily', '📋 เควสวันนี้'], ['ch', '🪣 ชาเลนจ์'], ['pts', '💛 แต้ม/บัฟ']]);
   if (!tabs.some(t => t[0] === questTab)) questTab = 'daily';
   $('questTabs').innerHTML = tabs.map(([c, n]) => `<button class="tab${questTab === c ? ' on' : ''}" data-qtab="${c}">${n}</button>`).join('');
@@ -570,6 +579,19 @@ function renderQuestPanel() {
     el.innerHTML = `<div class="tabs-note">ภารกิจวันละข้อใน 7 วันแรก (ข้อใหม่ปลดล็อกทุกวัน ทำย้อนหลังได้) ข้อละ 🪙${W1.coin} • ครบ 7 ข้อได้ฉายา "${W1.final.title}" + 🪙${W1.final.coin} + ${itemInfo(W1.final.item).emoji} ${itemInfo(W1.final.item).name}</div>`
       + W1.list.map(m => { const done = w.done.includes(m.d), open = m.d <= w.day, n = Math.min(m.goal, w.n[m.d] || 0);
         return `<div class="qrow${done ? ' done' : ''}" style="${open ? '' : 'opacity:.5'}"><div>${done ? '✅' : open ? m.emoji : '🔒'} <b>วันที่ ${m.d}</b> ${m.text}</div><small>${open ? `${n}/${m.goal}` : `ปลดล็อกในอีก ${m.d - w.day} วัน`}</small></div>`; }).join('');
+  } else if (questTab === 'start' && st.final) { // บทที่ 2: รู้จักอาชีพอื่น
+    const c2 = st.c2, S2 = Shared.STARTER2, next = S2.find(s => !c2.done.includes(s.id)), hid = g2Hidden();
+    const steps = S2.map(s => {
+      const d = c2.done.includes(s.id), cur = next === s;
+      return `<details class="vcard"${cur ? ' open' : ''} style="margin:6px 0;${d ? 'opacity:.55' : ''}"><summary style="cursor:pointer;font-weight:700">${d ? '✅' : cur ? '👉' : '⬜'} ${s.text} <small>+🪙${s.coin}</small></summary>`
+        + `<ol style="margin:6px 0 2px;padding-left:20px;font-size:13px">${(s.how || []).map(x => `<li>${x}</li>`).join('')}</ol></details>`;
+    }).join('');
+    el.innerHTML = '<div class="tabs-note">🧭 บทที่ 2: รู้จักอาชีพอื่นของเมือง ตัดไม้ ขุดแร่ เลี้ยงสัตว์ ทำอาหาร ทำข้อไหนก่อนก็ได้ ลูกศรสีเหลืองจะชี้ทางให้ (ซื้อของที่ร้านก่อน แล้วค่อยชี้ที่ทำงาน)</div>'
+      + (next ? `<div class="banner" style="background:#fff3cf">👉 ข้อต่อไป: <b>${next.hint}</b></div>` : '')
+      + `<div class="sec">🧭 คู่มือบทที่ 2 ${c2.done.length}/${S2.length}</div>` + steps
+      + `<small>ครบทุกข้อรับ 🪙${Shared.STARTER2_FINAL.coin}</small>`
+      + `<div class="center" style="margin-top:10px"><button class="btn small muted" id="g2toggle">${hid ? '👁️ แสดงป้าย/ลูกศรนำทางอีกครั้ง' : '🙈 ซ่อนป้ายและลูกศรนำทาง'}</button></div>`;
+    $('g2toggle').onclick = () => { ls.set('mw_g2hide', hid ? '0' : '1'); updateGuide(); renderQuestPanel(); };
   } else if (questTab === 'start') {
     const next = STARTER.find(s => !st.done.includes(s.id));
     const steps = STARTER.map(s => {
@@ -587,7 +609,7 @@ function renderQuestPanel() {
       + (next ? `<div class="banner" style="background:#fff3cf">👉 ข้อต่อไป: <b>${next.hint}</b></div>` : '')
       + (questSt.streak && questSt.streak.n ? `<div class="vcard on"><b>🔥 เข้าเกมติดต่อกัน ${questSt.streak.n} วัน</b> <small>ได้เหรียญทุกวัน • ครบ 7 วันได้ของตกแต่งหายาก</small></div>` : '')
       + `<div class="sec">🌱 คู่มือเริ่มต้น ${st.done.length}/${STARTER.length}</div>` + steps
-      + `<small>ครบทุกข้อรับ 🪙${STARTER_FINAL.coin} + เก้าอี้ + ต้นไม้ประดับ</small>`;
+      + `<small>ครบทุกข้อรับ 🪙${STARTER_FINAL.coin} + เก้าอี้ + ต้นไม้ประดับ • แล้วมี "บทที่ 2" สอนตัดไม้ ขุดแร่ เลี้ยงสัตว์ ทำอาหาร ต่อให้</small>`;
   } else if (questTab === 'pts') {
     renderPtsTab(el);
   } else renderDailyTab(el);
@@ -3422,8 +3444,27 @@ $('miniHide').onclick = () => setMini(miniState === 'off' ? 'small' : 'off');
 addEventListener('resize', () => { sizeMini(); layoutHud(); });
 if (window.ResizeObserver) new ResizeObserver(layoutHud).observe($('hudTop'));
 let lastMini = 0;
-function drawGuideArrow(now) { // ลูกศรนำทางไปข้อถัดไปของคู่มือเริ่มต้น (หายเมื่อเดินถึงที่หมายแล้ว)
-  const st = questSt.starter, next = me && st && !st.final && STARTER.find(s => !st.done.includes(s.id)), go = next && STARTER_GO[next.id];
+const bldDoor = k => { const b = BUILDINGS.find(q => q.kind === k); return b && b.counter[0] ? [b.counter[0][0], b.counter[0][1] + 1] : null; }; // หน้าประตูร้านชนิด k (ตามผังจริง)
+const treeNear = { at: 0, p: null };
+function nearestTree() { // ต้นไม้ที่ตัดได้ใกล้ตัวที่สุด (คำนวณใหม่ทุก 0.5 วินาที)
+  const t = performance.now(); if (t - treeNear.at < 500) return treeNear.p; treeNear.at = t;
+  const mx = Math.floor(me.x / TS), my = Math.floor(me.y / TS); let best = null, bd = Infinity;
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (isChoppable(MAP, x, y)) { const d = (x - mx) * (x - mx) + (y - my) * (y - my); if (d < bd) { bd = d; best = [x, y]; } }
+  return treeNear.p = best;
+}
+function guideGo(g) { // จุดหมายของลูกศร (ช่อง x,y): บท 1 ตามตาราง • บท 2 ชี้ร้านก่อน ถ้ามีของแล้วค่อยชี้ที่ทำงาน
+  if (g.ch === 1) return STARTER_GO[g.s.id];
+  switch (g.s.id) {
+    case 'chop': return Shared.axeTier(inv) > 0 ? nearestTree() : bldDoor('wood');
+    case 'mine': return Shared.pickTier(inv) > 0 ? [Shared.MINE.door[0], Shared.MINE.y] : bldDoor('mine');
+    case 'feed': return inv.feed > 0 ? Shared.PENS.chicken.gate[0] : bldDoor('animal');
+    case 'collect': return Shared.PENS.chicken.gate[0];
+    case 'cook': return bldDoor('food');
+  }
+  return null;
+}
+function drawGuideArrow(now) { // ลูกศรนำทางไปข้อถัดไปของคู่มือ บท 1/2 (หายเมื่อเดินถึงที่หมายแล้ว)
+  const g = guideNext(), go = g && guideGo(g);
   if (!go) return;
   const dx = (go[0] + 0.5) * TS - me.x, dy = (go[1] + 0.5) * TS - me.y, dist = Math.hypot(dx, dy) / TS;
   if (dist < 4) return;
