@@ -130,6 +130,13 @@ assert.strictEqual(w2.projects.bridge.coin, 5000, 'bridge coin lost after reload
 assert.strictEqual(w2.projects.lighthouse.coin, 500, 'lighthouse coin lost after reload');
 assert.strictEqual(w2.projects.bridge.donors.tester, 5000, 'donors lost after reload');
 assert.strictEqual(crossable(w2.map), true, 'หลังรีสตาร์ตสะพานต้องยังอยู่');
+// สูตรประดิษฐ์: เลเวลสูตรต้องไม่ต่ำกว่าเลเวลที่ต้นไม้ให้วัตถุดิบปลดล็อก • เฟอร์นิเจอร์ที่ร้านเลิกขายต้องมีสูตรทุกชิ้น และวัตถุดิบ+ค่าโรงช่างไม่เกินราคาของ
+{ const woodLv = {}; for (const t of Object.values(S.TREE_KINDS)) for (const [it] of t.drop || []) woodLv[it] = Math.min(woodLv[it] || 99, t.lv);
+  const need = k => k === 'plank' ? 1 : woodLv[k] || 1;
+  for (const r of S.CRAFT) for (const k of Object.keys(r.in)) assert.ok(r.lv >= need(k), `${r.id} Lv${r.lv} ใช้ ${k} ที่ได้ตอน Lv${need(k)}`);
+  for (const k of S.FURN_CRAFT_ONLY) { const r = S.CRAFT.find(x => x.id === 'furn_' + k); assert.ok(r, 'ไม่มีสูตร ' + k);
+    const mat = Object.entries(r.in).reduce((t, [i, n]) => t + n * S.itemInfo(i).sell, 0); assert.ok(mat + S.craftFee(r.id) <= S.FURN[k].price, `${k} ต้นทุน ${mat}+${S.craftFee(r.id)} เกินราคา ${S.FURN[k].price}`); }
+  assert.ok(Object.keys(woodLv).length >= 10, 'อ่านเลเวลไม้จาก TREE_KINDS ได้'); }
 // ทุกโครงการ: แปลงช่องตามที่ตั้งใจ เดินถึงได้/ตันตามกติกา ไม่ทับอาคารอื่น
 const all = S.makeMap(); for (const P of S.PROJECTS) S.applyProject(all, P.id);
 const T = S.T, walk = (x, y) => !S.blockedAt(all, x * S.TS + 16, y * S.TS + 16);

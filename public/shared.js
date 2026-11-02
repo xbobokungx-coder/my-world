@@ -1130,10 +1130,10 @@
     { id: 'furn_bed',      in: { log: 14, hardwood: 2 },     lv: 5, xp: 31 },
     { id: 'furn_hut',      in: { plank: 24, hardwood: 6 },   lv: 6, xp: 110 },
     // จากไม้ชนิดใหม่ (B5): XP ≈ 0.27 ต่อเหรียญของวัตถุดิบ เท่ากับลังไม้
-    { id: 'furn_screen_bamboo', in: { bamboo: 8 },             lv: 1, xp: 20 },
-    { id: 'furn_stool',    in: { pinewood: 2 },               lv: 2, xp: 12 },
-    { id: 'furn_armchair', in: { palmwood: 3, plank: 1 },     lv: 3, xp: 27 },
-    { id: 'furn_wardrobe', in: { teak: 5, plank: 2 },         lv: 4, xp: 75 },
+    { id: 'furn_screen_bamboo', in: { bamboo: 8 },             lv: 2, xp: 20 },
+    { id: 'furn_stool',    in: { pinewood: 2 },               lv: 3, xp: 12 }, // lv ตามต้นที่ให้ไม้ (สน Lv3)
+    { id: 'furn_armchair', in: { palmwood: 3, plank: 1 },     lv: 4, xp: 27 }, // มะพร้าว Lv4
+    { id: 'furn_wardrobe', in: { teak: 5, plank: 2 },         lv: 5, xp: 75 }, // สัก Lv5
     { id: 'furn_dresser',  in: { goldwood: 4 },               lv: 6, xp: 65 },
     { id: 'furn_bedking',  in: { rosewood: 5, teak: 3 },      lv: 8, xp: 200 },
     // 2 พ.ย. 2026: เฟอร์นิเจอร์ที่เลิกขายในร้าน วัตถุดิบ ≈ 45–60% ของราคา XP ≈ 0.27 ต่อเหรียญของวัตถุดิบ

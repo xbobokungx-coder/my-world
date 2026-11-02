@@ -3426,6 +3426,10 @@ function commitLayout(world, p, items, how) { // เก็บของเดิ�
 function adminHandle(p, world, m) {
   const reply = o => send(p, Object.assign({ t: 'admin', rooms: roomsPub(), current: world.room }, o));
   if (m.a === 'rooms') return reply({});
+  if (m.a === 'news') { // ประกาศจากผู้ดูแล: ขึ้นข่าวเมือง (ค้างใน 15 ข่าวล่าสุด) + ป้ายข้อความให้ทุกคนที่ออนไลน์ในห้องนั้น
+    const text = String(m.text || '').replace(/\s+/g, ' ').trim().slice(0, 300); if (!text) return reply({ err: 'ไม่มีข้อความ' });
+    world.addLog('📢 ' + text); world.broadcast({ t: 'msg', text: '📢 ' + text }); console.log('ประกาศ (ห้อง ' + world.room + '):', text); return reply({ ok: 'ประกาศแล้ว' });
+  }
   if (m.a === 'bugs') return reply({ bugs: bugList() });
   if (m.a === 'bugimg') { // ส่งภาพของรายงานนั้นให้แอดมินดู (data URL ไม่เกิน 1MB)
     const r = bugRead(String(m.id || '')); if (!r || !r.img) return reply({ err: 'ไม่พบภาพ', bugs: bugList() });

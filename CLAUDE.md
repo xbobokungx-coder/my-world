@@ -35,6 +35,7 @@
 | `tools/economy.js` | รายงานเศรษฐกิจรายวัน (เงินรวม Gini เข้า–ออก ราคาจริงต่อหมวด พลังงาน ตลาด คู่มือ): `node tools/economy.js 7` (นับเฉพาะผู้เล่นจริงที่ออนไลน์ ≥ 5 นาที ตาม `tools/realplayers.js` ใส่ `--all` เพื่อนับทุกบัญชี) |
 | `tools/levelsim.js` | จำลอง XP/ชม. และเหรียญ/ชม. ทุกอาชีพทุกเลเวล ใช้ก่อนปรับ XP หรือราคา: `node tools/levelsim.js` |
 | `tools/econsim.js` | จำลองเศรษฐกิจทั้งเมือง 35 วัน วัดเกณฑ์ความไม่เหลื่อมล้ำ G2–G8: `node tools/econsim.js` (ใช้คู่กับ levelsim ก่อนปรับตัวเลข) |
+| `tools/test-*.js` | เทสต์อัตโนมัติ (บ้าน ถ้ำ ฝูงสัตว์ เซฟ/เศรษฐกิจ/สูตรประดิษฐ์) รันทุกไฟล์ก่อน restart ดูขั้นตอนด้านล่าง |
 | `tools/backup.sh` | สำรอง `data/` (cron ทุกชั่วโมง ดูหัวข้อสำรองข้อมูล) |
 | `*.ps1` `*.bat` | สคริปต์สำหรับ Windows (ใช้บนเครื่องที่บ้านได้ ไม่ใช้บน VPS) |
 
@@ -49,6 +50,7 @@ cd /root/my-world
 git pull                      # 1) ดึงล่าสุด
 # 2) แก้โค้ด
 node --check server.js        # 3) เช็ค syntax ก่อนรีสตาร์ท (ทำกับไฟล์ .js ที่แก้ด้วย)
+for t in tools/test-*.js; do node $t >/dev/null && echo "ผ่าน $t" || echo "พัง $t"; done   # 3.1) เทสต์ต้องผ่านครบก่อนขึ้นเกมจริง (พังเพราะกติกาเปลี่ยนตั้งใจ = แก้เทสต์ให้ตรง ไม่ใช่ข้าม)
 systemctl restart my-world    # 4) เฉพาะเมื่อแก้ server.js (แก้ public/* ไม่ต้อง แค่รีเฟรชเบราว์เซอร์)
 systemctl status my-world --no-pager
 curl -s localhost:3000/healthz   # ต้องตอบ ok
