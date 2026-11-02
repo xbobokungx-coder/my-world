@@ -3451,8 +3451,13 @@ function poly(g, pts, fill, stroke) {
 const pip = (pts, x, y) => { let on = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) on = !on; } return on; };
 // เฟอร์นิเจอร์ = ชุด furniture-kit-v2 ใน pixelfurn.js แคชเป็นภาพต่อ ชิ้น|หมุน|เงา (ชิ้นที่ขยับได้วาดใหม่ทุก 150 ms)
 const furnPx = new Map();
+// ภาพที่ขยับน้อยแบบสลับไม่กี่ท่า (โคมไฟ 2 ท่า หางแมว 7 ท่า) แคชครบทุกท่าไว้เลย ไม่วาดใหม่ทุก 150 ms (วาด+trim ผืน 340×300 แพง บ้านที่มีโคมหลายดวงเลยกระตุก)
+const FURN_POSE = { lantern: now => Math.sin(now / 300) > 0 ? 1 : 0, floorlamp: now => Math.sin(now / 300) > 0 ? 1 : 0, cat: now => Math.round(Math.sin(now / 400) * 3) };
+const FURN_POSE_T = { lantern: p => (p ? 1 : -1) * 300 * Math.PI / 2, floorlamp: p => (p ? 1 : -1) * 300 * Math.PI / 2, cat: p => Math.asin(p / 3) * 400 };
 function furnSprite(f, r, shadow, W, D, now) {
-  const an = PixelFurn.anim(f), fr = an ? Math.floor(now / 150) : 0, key = f + '|' + (r ? 1 : 0) + (shadow ? 's' : '') + W + 'x' + D;
+  const pose = FURN_POSE[f], an = PixelFurn.anim(f), key = f + '|' + (r ? 1 : 0) + (shadow ? 's' : '') + W + 'x' + D;
+  if (pose) { const p = pose(now), k = key + '|' + p; let c = furnPx.get(k); if (!c) { c = { s: PixelFurn.sprite(f, FURN[f], r, FURN_POSE_T[f](p), shadow, W, D) }; furnPx.set(k, c); } return c.s; }
+  const fr = an ? Math.floor(now / 150) : 0;
   let c = furnPx.get(key); if (!c || c.fr !== fr) { c = { fr, s: PixelFurn.sprite(f, FURN[f], r, an ? now : 0, shadow, W, D) }; furnPx.set(key, c); } return c.s;
 }
 const hits = []; // พื้นที่แตะของแต่ละชิ้นที่วาดในเฟรมนี้ (เรียงตามลำดับวาด ตัวท้ายสุดอยู่หน้าสุด)
