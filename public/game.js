@@ -3271,17 +3271,17 @@ function drawSunMotes(now, dark) {
 }
 // รหัสพืชในเกม → รหัสในชุดภาพ pixelcrops.js (พืช legacy ไม่มีในชุด ใช้ภาพเดิม)
 const CROP_KIT = { carrot: 'carrot', cabbage: 'cabbage', corn: 'corn', tomato: 'tomato', eggplant: 'eggplant', strawberry: 'strawberry', pumpkin: 'pumpkin', grape: 'grape', pineapple: 'pineapple', melon: 'watermelon', mango: 'mango', peach: 'peach', kiwi: 'kiwi', coconut: 'coconut', avocado: 'avocado', blueberry: 'blueberry', beans: 'cacao', mushroom: 'truffle', sunflower: 'golden_sunflower', tulip: 'golden_tulip' };
-function drawCrop(tile, px, py, now) {
-  ctx.drawImage(PixelArt.soil(tile.w), px, py, TS, TS);
+function drawCrop(tile, px, py, now, pass) { // pass 0 = ดินทุกช่องก่อน • pass 1 = ต้นเรียงจากแถวบนลงล่าง (ต้นโตใหญ่เกินช่องได้ ไม่โดนดินช่องข้างๆ ทับ)
+  if (!pass) { ctx.drawImage(PixelArt.soil(tile.w), px, py, TS, TS); return; }
   if (!tile.c) return;
   const cx = px + 16, cy = py + 27, s = tile.s, kit = CROP_KIT[tile.c], f = tile.f == null ? Math.min(6, s * 2) : tile.f;
   ctx.imageSmoothingEnabled = false;
   if (f === 0 && kit) { // เพาะปลูก: โรยเมล็ดเป็นเม็ดๆ กระจายบนดิน (ตำแหน่งคงที่ตามช่อง)
     const sd = [[7, 14], [14, 19], [21, 13], [11, 24], [19, 23], [25, 19], [16, 15]];
     for (let i = 0; i < sd.length; i++) { const x = px + sd[i][0] + (px * 7 + i * 3) % 3 - 1, y = py + sd[i][1] + (py * 5 + i) % 3 - 1; ctx.fillStyle = '#4a3322'; ctx.fillRect(x - 1, y, 4, 3); ctx.fillStyle = '#e8cf8e'; ctx.fillRect(x, y, 3, 2); ctx.fillStyle = '#fff3c4'; ctx.fillRect(x, y, 1, 1); }
-  } else if (kit && typeof PixelCrops !== 'undefined') { // ชุดภาพโตทีละระยะ 8 เฟรม (48×64 โคนต้นอยู่ที่ 24,60) ย่อครึ่งเดียวให้พอดีช่อง 32px
-    const sp = PixelCrops.get(kit, f), k = 0.5;
-    ctx.drawImage(sp, cx - 24 * k, cy + 2 - 60 * k, 48 * k, 64 * k);
+  } else if (kit && typeof PixelCrops !== 'undefined') { // ชุดภาพโตทีละระยะ 8 เฟรม (48×64 โคนต้นอยู่ที่ 24,60) วาดขนาดจริง 48×64 ใหญ่เกินช่อง 32px ให้เห็นต้นโตชัด
+    const sp = PixelCrops.get(kit, f);
+    ctx.drawImage(sp, cx - 24, cy + 2 - 60, 48, 64);
   } else {
     const sp = PixelUI.crop(s);
     ctx.drawImage(sp, cx - sp.width, cy - sp.height * 2, sp.width * 2, sp.height * 2);
@@ -3881,10 +3881,12 @@ function step(now) {
     if (active) { ctx.font = 'bold 11px sans-serif'; const t = `🏡 ${r.name}`, w = ctx.measureText(t).width + 8; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(P.x0 * TS + 4, P.y0 * TS + 4, w, 15); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, P.x0 * TS + 8, P.y0 * TS + 15); }
   }
   // ช่องฟาร์ม
-  if (inTown()) for (const k in farm) {
-    const [fx, fy] = k.split(',').map(Number);
-    if (fx < x0 || fx > x1 || fy < y0 || fy > y1) continue;
-    drawCrop(farm[k], fx * TS, fy * TS, now);
+  if (inTown()) {
+    const vis = [];
+    for (const k in farm) { const [fx, fy] = k.split(',').map(Number); if (fx < x0 - 1 || fx > x1 + 1 || fy < y0 || fy > y1 + 2) continue; vis.push([fx, fy, farm[k]]); } // +2 แถวล่าง: ต้นสูงยื่นขึ้นมาในจอ
+    for (const [fx, fy, t] of vis) if (fx >= x0 && fx <= x1 && fy >= y0 && fy <= y1) drawCrop(t, fx * TS, fy * TS, now, 0);
+    vis.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+    for (const [fx, fy, t] of vis) drawCrop(t, fx * TS, fy * TS, now, 1);
   }
   // จุดหมายที่คลิกให้เดิน
   if (walk && walk.dest) {
