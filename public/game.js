@@ -3276,7 +3276,10 @@ function drawCrop(tile, px, py, now) {
   if (!tile.c) return;
   const cx = px + 16, cy = py + 27, s = tile.s, kit = CROP_KIT[tile.c], f = tile.f == null ? Math.min(6, s * 2) : tile.f;
   ctx.imageSmoothingEnabled = false;
-  if (kit && typeof PixelCrops !== 'undefined') { // ชุดภาพโตทีละระยะ 8 เฟรม (48×64 โคนต้นอยู่ที่ 24,60) ย่อครึ่งเดียวให้พอดีช่อง 32px
+  if (f === 0 && kit) { // เพาะปลูก: โรยเมล็ดเป็นเม็ดๆ กระจายบนดิน (ตำแหน่งคงที่ตามช่อง)
+    const sd = [[7, 14], [14, 19], [21, 13], [11, 24], [19, 23], [25, 19], [16, 15]];
+    for (let i = 0; i < sd.length; i++) { const x = px + sd[i][0] + (px * 7 + i * 3) % 3 - 1, y = py + sd[i][1] + (py * 5 + i) % 3 - 1; ctx.fillStyle = '#4a3322'; ctx.fillRect(x - 1, y, 4, 3); ctx.fillStyle = '#e8cf8e'; ctx.fillRect(x, y, 3, 2); ctx.fillStyle = '#fff3c4'; ctx.fillRect(x, y, 1, 1); }
+  } else if (kit && typeof PixelCrops !== 'undefined') { // ชุดภาพโตทีละระยะ 8 เฟรม (48×64 โคนต้นอยู่ที่ 24,60) ย่อครึ่งเดียวให้พอดีช่อง 32px
     const sp = PixelCrops.get(kit, f), k = 0.5;
     ctx.drawImage(sp, cx - 24 * k, cy + 2 - 60 * k, 48 * k, 64 * k);
   } else {
@@ -3284,7 +3287,7 @@ function drawCrop(tile, px, py, now) {
     ctx.drawImage(sp, cx - sp.width, cy - sp.height * 2, sp.width * 2, sp.height * 2);
   }
   if (s >= 3) {
-    PixelUI.world(ctx, CROPS[tile.c].emoji, cx, cy - 14 + Math.sin(now / 400 + px) * 1, 22);
+    PixelUI.world(ctx, CROPS[tile.c].emoji, px + 8, py + 8 + Math.sin(now / 400 + px) * 1, 11); // ไอคอนผลผลิตเล็กๆ มุมช่อง ไม่บังต้น
     if (tile.o && me && tile.o !== me.name) PixelUI.world(ctx, tile.l ? '🔒' : '✨', px + 25, py + 8, 12); // ผักของคนอื่น: 🔒 ยังเก็บไม่ได้ / ✨ เจ้าของไม่มาเก็บเกิน 1 วัน คนอื่นเก็บได้แล้ว
   }
 }
