@@ -3269,12 +3269,20 @@ function drawSunMotes(now, dark) {
     ctx.fillStyle = `rgba(255,236,160,${a})`; ctx.fillRect(Math.round(bx), Math.round(by), 2, 2);
   }
 }
+// รหัสพืชในเกม → รหัสในชุดภาพ pixelcrops.js (พืช legacy ไม่มีในชุด ใช้ภาพเดิม)
+const CROP_KIT = { carrot: 'carrot', cabbage: 'cabbage', corn: 'corn', tomato: 'tomato', eggplant: 'eggplant', strawberry: 'strawberry', pumpkin: 'pumpkin', grape: 'grape', pineapple: 'pineapple', melon: 'watermelon', mango: 'mango', peach: 'peach', kiwi: 'kiwi', coconut: 'coconut', avocado: 'avocado', blueberry: 'blueberry', beans: 'cacao', mushroom: 'truffle', sunflower: 'golden_sunflower', tulip: 'golden_tulip' };
 function drawCrop(tile, px, py, now) {
   ctx.drawImage(PixelArt.soil(tile.w), px, py, TS, TS);
   if (!tile.c) return;
-  const cx = px + 16, cy = py + 27, s = tile.s, sp = PixelUI.crop(s);
+  const cx = px + 16, cy = py + 27, s = tile.s, kit = CROP_KIT[tile.c], f = tile.f == null ? Math.min(6, s * 2) : tile.f;
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(sp, cx - sp.width, cy - sp.height * 2, sp.width * 2, sp.height * 2);
+  if (kit && typeof PixelCrops !== 'undefined') { // ชุดภาพโตทีละระยะ 8 เฟรม (48×64 โคนต้นอยู่ที่ 24,60) ย่อครึ่งเดียวให้พอดีช่อง 32px
+    const sp = PixelCrops.get(kit, f), k = 0.5;
+    ctx.drawImage(sp, cx - 24 * k, cy + 2 - 60 * k, 48 * k, 64 * k);
+  } else {
+    const sp = PixelUI.crop(s);
+    ctx.drawImage(sp, cx - sp.width, cy - sp.height * 2, sp.width * 2, sp.height * 2);
+  }
   if (s >= 3) {
     PixelUI.world(ctx, CROPS[tile.c].emoji, cx, cy - 14 + Math.sin(now / 400 + px) * 1, 22);
     if (tile.o && me && tile.o !== me.name) PixelUI.world(ctx, tile.l ? '🔒' : '✨', px + 25, py + 8, 12); // ผักของคนอื่น: 🔒 ยังเก็บไม่ได้ / ✨ เจ้าของไม่มาเก็บเกิน 1 วัน คนอื่นเก็บได้แล้ว

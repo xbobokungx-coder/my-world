@@ -1367,7 +1367,7 @@ class World {
 
   // พืชเป็นของคนปลูก (t.o = key, t.on = ชื่อ): เก็บได้เฉพาะเจ้าของ แต่ถ้าสุกแล้วไม่มีใครมาเก็บครบ 1 วันในเกม (t.rm = เวลาที่สุกค้างอยู่ นับเฉพาะตอนมีคนออนไลน์) คนอื่นก็มาเก็บได้ ต้นเก่าที่ไม่มีเจ้าของ = ใครเก็บก็ได้
   cropLocked(t, p) { return !!(t.o && p.key !== t.o && (t.rm || 0) < S.DAY_MS); }
-  pub(t, now) { return { c: t.c || null, s: t.c ? S.cropStage(t) : 0, w: t.wu > now ? 1 : 0, o: t.on || '', l: t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS ? 1 : 0 }; }
+  pub(t, now) { return { c: t.c || null, s: t.c ? S.cropStage(t) : 0, f: t.c ? S.cropFrame(t) : 0, w: t.wu > now ? 1 : 0, o: t.on || '', l: t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS ? 1 : 0 }; }
   broadcast(o, except) {
     const s = JSON.stringify(o);
     for (const p of this.players.values()) if (p !== except && p.ws.readyState === 1) p.ws.send(s);
