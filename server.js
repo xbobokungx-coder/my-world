@@ -3233,6 +3233,8 @@ class World {
   }
 }
 
+// ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
+const ADMIN_NAME = (process.env.ADMIN_NAME || 'Sira').trim();
 if (require.main !== module) { module.exports = { World }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)
 
 const worlds = new Map();
@@ -3331,8 +3333,6 @@ const ROOM_RE = /^[a-z0-9_-]{1,20}$/, DEFAULT_ROOM = ROOM, ROOMS_FILE = path.joi
 const ROOMS = new Map([[DEFAULT_ROOM, { name: DEFAULT_ROOM, created: 0 }]]);
 try { for (const r of JSON.parse(fs.readFileSync(ROOMS_FILE, 'utf8').replace(/^\uFEFF/, '')).rooms || []) if (r && typeof r.name === 'string' && ROOM_RE.test(r.name) && !ROOMS.has(r.name)) ROOMS.set(r.name, { name: r.name, created: +r.created || 0 }); } catch (e) { /* ยังไม่มีห้องเพิ่ม */ }
 const saveRooms = () => { try { fs.writeFileSync(ROOMS_FILE, JSON.stringify({ rooms: [...ROOMS.values()].filter(r => r.name !== DEFAULT_ROOM) })); } catch (e) { console.error('บันทึกรายชื่อห้องไม่ได้', e.message); } };
-// ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
-const ADMIN_NAME = (process.env.ADMIN_NAME || 'Sira').trim();
 const KEY_FILE = path.join(__dirname, 'admin.key');
 let ADMIN_KEY = process.env.ADMIN_KEY || '';
 if (!ADMIN_KEY) { try { ADMIN_KEY = fs.readFileSync(KEY_FILE, 'utf8').trim(); } catch (e) { /* ยังไม่มีไฟล์ */ } }

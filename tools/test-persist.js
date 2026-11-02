@@ -22,7 +22,7 @@ assert.strictEqual(w.bankOf(p).bal, 5000, 'ยอดฝากเปลี่ย�
 assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่มีแล้ว');
 // พลังงาน ⚡ + งานหนัก: ต้นทุนสัมพันธ์กับรายได้ของงาน
 {
-  const E = S.ENERGY, R = E.coinsPerEnergy; p.rec.en = null; w.enJoin(p); p.sit = null;
+  const E = S.ENERGY, R = E.coinsPerEnergy, ON = E.on; E.on = true; p.rec.en = null; w.enJoin(p); p.sit = null; // ระบบพลังงานปิดอยู่ในเกม (ECONOMY-PLAN 7.5) แต่โค้ดยังอยู่ เปิดชั่วคราวเพื่อทดสอบ
   assert.strictEqual(w.enOf(p).v, E.max, 'เริ่มเต็ม');
   // ต้นทุนพลังงาน ≈ มูลค่า ÷ coinsPerEnergy ทุกกลุ่มงาน (ผักรวมทั้งรอบ ขุด+ปลูก+รดน้ำ+เก็บ)
   const fixed = E.cost.dig + E.cost.plant + E.cost.water;
@@ -65,12 +65,14 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   const pub = w.enPub(p, 7); assert.ok(pub.t === 'en' && pub.rate > 0 && pub.spent === 7 && Number.isFinite(pub.v), 'ข้อมูลส่ง client ถูกต้อง');
   console.log('  พลังงาน: แครอท 1 รอบ', S.energyCost('harvest', S.CROPS.carrot.sell) + fixed, '• มะม่วง', S.energyCost('harvest', S.CROPS.mango.sell) + fixed, '• ปลาคาร์พ', S.energyCost('fish', 12), '• ปลาวาฬ', S.energyCost('fish', 120), '• ตัดไม้', per, '(' + R + ' เหรียญ/พลังงาน)');
   e.v = E.max; e.ex = false;
+  E.on = ON;
 }
 // ความอิ่มตัวของตลาดต่อหมวด: ขายซ้ำๆ ในหมวดเดียวกัน (สลับชนิดก็ตก) ราคาตก ไม่มีลิมิต พักแล้วฟื้น
 {
   const C = S.CATFAT;
   assert.deepStrictEqual(['fish_carp', 'crop_melon', 'egg', 'milk', 'log', 'dish_grill'].map(S.sellCat), ['fish', 'crop', 'animal', 'animal', 'wood', 'dish'], 'จัดหมวดสินค้า');
-  assert.strictEqual(S.sellQuote(100, 1, 1).total, 100, 'ชิ้นแรกได้เต็ม'); assert.strictEqual(S.sellQuote(100, 1, 30).total, Array.from({ length: 30 }, (_, i) => Math.round(100 * (1 - 0.01 * i))).reduce((x, y) => x + y, 0), 'ขาย 30 ชิ้นลดชิ้นละ 1%');
+  assert.strictEqual(S.sellQuote(100, 1, 1).total, 100, 'ชิ้นแรกได้เต็ม'); { const d = S.sellDrop(100); assert.strictEqual(S.sellQuote(100, 1, 30).total, (() => { let m = 1, t = 0; for (let i = 0; i < 30; i++) { t += Math.round(100 * m); m = Math.max(S.MARKET.min, m - d); } return t; })(), 'ขาย 30 ชิ้นลดตาม sellDrop (ตามมูลค่า B3)'); }
+  assert.ok(S.sellDrop(5) < S.sellDrop(67) && S.sellDrop(67) < S.sellDrop(180) && S.sellDrop(1e6) === S.CATFAT.dropMax, 'ของแพงลดต่อชิ้นมากกว่าของถูก มีเพดาน');
   w.event = () => {}; w.nearShopKind = () => 'fish'; p.rec.cat = null; p.rec.sold = null; p.rec.mk = {};
   const kinds = S.FISH.filter(f => f.id !== 'boot').slice(0, 12).map(f => 'fish_' + f.id); let paid = 0, itemOnly = 0, units = 0;
   for (const k of kinds) w.market[k] = w.market[k] || { m: 1, t: 1 };
@@ -92,32 +94,24 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   p.rec.cat = { fish: 0.5 }; p.rec.catAt = Date.now() - 60 * 60000; w.catJoin(p);
   assert.ok(Math.abs(p.rec.cat.fish - (1 - 0.5 * Math.pow(1 - S.CATFAT.recover, 60))) < 1e-3, 'ออฟไลน์ 60 นาที ตลาดหมวดฟื้นตามเวลาจริง');
   p.rec.cat = null;
-  // ใบสั่งซื้อ NPC: ไม่ล้นกระดาน ราคา 115% ของราคาร้านตอนนั้น สินค้าสลับ ไม่ซ้ำใบที่เปิดอยู่
-  w.orders = []; for (const k of S.SELLABLE) w.market[k] = w.market[k] || { m: 1, t: 1 }; let sameCat = 0, last = null; const seen = [];
-  for (let i = 0; i < 60; i++) {
-    const before = new Set(w.orders.map(o => o.id)); w.npcPostOrders(); const o = w.orders.find(x => !before.has(x.id)); assert.ok(o, 'ต้องมีใบใหม่ทุกวัน');
-    const info = S.itemInfo(o.item), m = w.market[o.item].m; assert.strictEqual(o.perUnit, Math.max(1, Math.round(info.sell * m * S.ORDER.npcPremium)), 'NPC จ่าย 115% ของราคาร้าน');
-    const cat = S.sellCat(o.item); if (cat === last) sameCat++; last = cat; seen.push(o.item);
-    const open = w.orders.filter(x => x.npc); assert.ok(open.length <= S.ORDER.npcMaxOpen, 'ใบ NPC ต้องไม่เกิน ' + S.ORDER.npcMaxOpen); assert.strictEqual(new Set(open.map(x => x.item)).size, open.length, 'ไม่มีสินค้าซ้ำในใบที่เปิดอยู่');
-  }
-  assert.ok(new Set(seen).size >= 25, 'เมนูต้องหมุนเวียนหลากหลาย (ได้ ' + new Set(seen).size + ' ชนิดจาก 60 ใบ)'); assert.ok(sameCat <= 6, 'หมวดซ้ำติดกันต้องน้อย (' + sameCat + ')');
-  // ใบของผู้เล่นต้องขึ้นก่อนใบ NPC
-  w.orders.push({ id: 99999, by: 'someone', byName: 'เพื่อน', npc: false, item: 'crop_carrot', qty: 5, filled: 0, perUnit: 20, esc: 100, exp: Date.now() + 1e7 });
-  w.orders.push({ id: 100000, by: p.key, byName: 'tester', npc: false, item: 'crop_corn', qty: 5, filled: 0, perUnit: 30, esc: 150, exp: Date.now() + 1e7 });
-  const list = w.ordersPub(p).list; assert.ok(list[0].mine && !list[1].npc && list.slice(2).every(x => x.npc), 'ลำดับ: ใบของเรา → ใบผู้เล่นอื่น → NPC');
-  // โหลดข้อมูลเดิมที่ล้น (59 ใบ NPC) ต้องถูกตัดเหลือ npcMaxOpen
-  w.orders = []; for (let i = 0; i < 59; i++) w.orders.push({ id: 200 + i, by: '', byName: 'x', npc: true, item: S.SELLABLE[i % S.SELLABLE.length], qty: 10, filled: 0, perUnit: 10, esc: 0, exp: Date.now() + i * 1000 });
-  w.trimNpc(S.ORDER.npcMaxOpen); assert.strictEqual(w.orders.length, S.ORDER.npcMaxOpen, 'ตัดใบ NPC ที่ล้น');
-  console.log('  ใบสั่งซื้อ NPC: 60 ใบหมุนเวียน ' + new Set(seen).size + ' ชนิด หมวดซ้ำติดกัน ' + sameCat + ' ครั้ง เปิดค้างไม่เกิน ' + S.ORDER.npcMaxOpen);
+  // ใบงาน NPC (ORDERS แทนกระดานใบสั่งซื้อเดิมที่เอาออกแล้ว): จำนวนใบตามคน ใบละ 2–3 หมวดไม่ซ้ำ ของราคา ≤ 90 ไม่ใช่อาหาร จ่าย 120% ของราคามาตรฐาน
+  { const O = S.ORDERS; w.orders = {}; const o = w.ordersRoll();
+    assert.ok(o.list.length >= O.minN && o.list.length <= O.maxN, 'จำนวนใบงานอยู่ในช่วง minN–maxN');
+    for (const x of o.list) {
+      assert.ok(x.need.length >= 2 && x.need.length <= 3 && new Set(x.need.map(([k]) => S.sellCat(k))).size === x.need.length, 'ใบละ 2–3 หมวดไม่ซ้ำกัน');
+      for (const [k, q] of x.need) assert.ok(S.itemInfo(k).sell <= 90 && S.sellCat(k) !== 'dish' && q >= O.qty[0] && q <= O.qty[1], 'ของราคา ≤ 90 ไม่ใช่อาหาร จำนวนในช่วง qty');
+      assert.strictEqual(x.pay, Math.round(x.need.reduce((t, [k, q]) => t + S.itemInfo(k).sell * q, 0) * O.pay), 'จ่าย 120% ของราคามาตรฐาน');
+    }
+    assert.strictEqual(w.ordersRoll(), o, 'วันเดียวกันได้ชุดเดิม');
+    console.log('  ใบงาน NPC: ' + o.list.length + ' ใบ ตรงกติกา'); }
 }
-// ถือได้ไม่จำกัด + ขายเป็นชุดใหญ่: ราคาต่อชิ้นลดเชิงเส้นชิ้นละ 1% ของราคาฐาน ถึงพื้น 20% ที่ชิ้น ~81 ขายรวดหรือทยอยติดกันได้เงินเท่ากัน
+// ถือได้ไม่จำกัด + ขายเป็นชุดใหญ่: ราคาต่อชิ้นลดตามมูลค่า (sellDrop, B3) ถึงพื้น 20% ที่ชิ้น ~81 ขายรวดหรือทยอยติดกันได้เงินเท่ากัน
 {
-  const C = S.CATFAT, Mn = S.MARKET.min, D = S.MARKET.drop; assert.strictEqual(Mn, 0.2); assert.strictEqual(D, 0.01);
-  const unit = (base, m0, i) => Math.max(1, Math.round(base * Math.max(Mn, m0 - D * i))); // ราคาชิ้นที่ i (เริ่ม 0)
-  let sum = 0; for (let i = 0; i < 100; i++) sum += unit(100, 1, i);
-  assert.strictEqual(S.sellQuote(100, 1, 100).total, sum); assert.strictEqual(sum, 5240, '100 ชิ้น ราคาฐาน 100 รวม 5,240');
-  assert.deepStrictEqual([0, 1, 9, 19, 39, 59, 79, 80, 99].map(i => unit(100, 1, i)), [100, 99, 91, 81, 61, 41, 21, 20, 20], 'ชิ้นที่ N ได้ (101-N)% ถึงพื้น 20%');
-  assert.strictEqual(S.sellQuote(100, 1, 100).total - S.sellQuote(100, 1, 80).total, 20 * 20, 'ชิ้นที่ 81-100 ราคาชิ้นละ 20% (20 ชิ้น × 20 = 400)');
+  const C = S.CATFAT, Mn = S.MARKET.min; assert.strictEqual(Mn, 0.2);
+  const D = S.sellDrop(100), units = []; { let m = 1; for (let i = 0; i < 100; i++) { units.push(Math.max(1, Math.round(100 * Math.max(Mn, m)))); m = Math.max(Mn, m - D); } } // ราคาชิ้นที่ i ลดตามมูลค่า (B3)
+  assert.strictEqual(S.sellQuote(100, 1, 100).total, units.reduce((x, y) => x + y, 0), 'ราคารวมตรงกับลดทีละชิ้น');
+  assert.ok(units[0] === 100 && units.every((u, i) => i === 0 || u <= units[i - 1]), 'ชิ้นแรกเต็ม แล้วลดลงเรื่อยๆ');
+  assert.ok(units.slice(Math.ceil((1 - Mn) / D) + 1).every(u => u === 20), 'ถึงพื้น 20% แล้วไม่ต่ำกว่านั้น');
   assert.strictEqual(S.sellQuote(100, 0.05, 3).total, 3 * 20, 'ตลาดตกหนักก็ไม่ต่ำกว่า 20% ของราคาฐาน');
   // ผ่านระบบจริง: ขายรวด 100 ชิ้น เทียบทยอยขายติดกันทีละชิ้น ต้องได้เงินเท่ากัน (ขายทีละชิ้นไม่ได้เปรียบ) ถือไม่จำกัด
   w.event = () => {}; w.nearShopKind = () => 'animal'; const base = S.itemInfo('egg').sell, reset = () => { w.market.egg = { m: 1, t: 1 }; p.rec.cat = null; p.rec.mk = {}; p.rec.sold = null; };
@@ -125,7 +119,7 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   reset(); p.rec.inv.egg = 100; c0 = p.rec.inv.coin; for (let i = 0; i < 100; i++) w.sell(p, 'egg', 1); const singles = p.rec.inv.coin - c0;
   assert.ok(Math.abs(batch - singles) / batch < 0.03, `ขายรวด 100 ชิ้น (${batch}) กับทยอยติดกันทีละชิ้น (${singles}) ต้องได้เงินเท่ากัน`);
   assert.ok(Math.abs(w.catOf(p, 'animal') - catB) < 0.02 && Math.abs(w.pmOf(p, 'egg') - pmB) < 0.02 && Math.abs(w.market.egg.m - gB) < 0.02, 'ตลาดหลังขายรวด กับ หลังทยอยขาย ต้องอยู่ที่เดียวกัน');
-  assert.ok(batch > 100 * base * 0.4 && batch < 100 * base * 0.6, 'ชุด 100 ชิ้นได้เฉลี่ย ~52% ของราคาฐาน (ได้ ' + batch + ' จาก ' + 100 * base + ')');
+  assert.ok(batch >= 100 * Math.round(base * Mn) && batch < 100 * base, 'ชุด 100 ชิ้นได้ระหว่างพื้น 20% กับราคาเต็ม (ได้ ' + batch + ' จาก ' + 100 * base + ')');
   reset(); p.rec.inv.egg = 3000; c0 = p.rec.inv.coin; w.sell(p, 'egg', 'all'); const got = p.rec.inv.coin - c0;
   assert.strictEqual(p.rec.inv.egg || 0, 0, 'ถือ 3,000 ชิ้น ขายหมดในครั้งเดียว ไม่มีเพดาน'); assert.ok(got >= 3000 * Math.round(base * Mn), 'ชิ้นท้ายๆ ได้พื้น 20%');
   console.log('  ขายไข่ 100 ชิ้น: ชุดเดียว ' + batch + ' • ทยอยติดกันทีละชิ้น ' + singles + ' (ราคาฐานรวม ' + 100 * base + ') • 3,000 ชิ้น ได้ ' + got + ' • ตลาดหมวดหลังขายชุด 100 = ' + Math.round(catB * 100) + '% ส่วนตัว ' + Math.round(pmB * 100) + '%');
@@ -139,7 +133,7 @@ assert.strictEqual(crossable(w2.map), true, 'หลังรีสตาร์�
 // ทุกโครงการ: แปลงช่องตามที่ตั้งใจ เดินถึงได้/ตันตามกติกา ไม่ทับอาคารอื่น
 const all = S.makeMap(); for (const P of S.PROJECTS) S.applyProject(all, P.id);
 const T = S.T, walk = (x, y) => !S.blockedAt(all, x * S.TS + 16, y * S.TS + 16);
-for (let y = S.LIGHTHOUSE.y0; y <= S.LIGHTHOUSE.y1; y++) for (let x = S.LIGHTHOUSE.x0; x <= S.LIGHTHOUSE.x1; x++) assert.strictEqual(all[y][x], T.WATER, 'ประภาคารต้องอยู่บนน้ำ'); assert.ok(!walk(x, y), 'ประภาคารต้องเดินทะลุไม่ได้');
+for (let y = S.LIGHTHOUSE.y0; y <= S.LIGHTHOUSE.y1; y++) for (let x = S.LIGHTHOUSE.x0; x <= S.LIGHTHOUSE.x1; x++) { assert.strictEqual(all[y][x], T.WATER, 'ประภาคารต้องอยู่บนน้ำ'); assert.ok(!walk(x, y), 'ประภาคารต้องเดินทะลุไม่ได้'); }
 for (let y = S.ISLAND.y0; y <= S.ISLAND.y1; y++) for (let x = S.ISLAND.x0; x <= S.ISLAND.x1; x++) assert.ok(walk(x, y), 'เกาะต้องเดินได้');
 for (let x = S.ISLAND.x0; x <= S.BRIDGE.x0; x++) assert.ok(walk(x, S.ISLAND.walk.y), 'ต้องเดินจากสะพานขึ้นเกาะได้');
 for (const r of [S.FESTIVAL.stage, ...S.FESTIVAL.tents]) for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) assert.strictEqual(all[y][x], T.LANDMARK, 'เวที/เต็นท์ต้องเป็นช่องตัน');

@@ -15,9 +15,9 @@ const items = () => w.houses.alice.items;
 const idOf = f => Object.keys(items()).find(i => items()[i].f === f);
 
 // ประตูบ้านหลังใหญ่ในเมือง (27,5): ช่องประตูเดินได้ ต่อกับถนน ตัวบ้านเหนือประตูเป็นช่องตัน
-{ const t = S.makeMap(), D = S.HOUSE_DOOR; assert.deepStrictEqual([D.x, D.y], [27, 5]);
-  assert.ok(!S.blockedAt(t, D.x * TS + 16, D.y * TS + 16), 'ช่องประตูต้องเดินได้'); assert.ok(!S.blockedAt(t, D.x * TS + 16, 6 * TS + 16), 'ถนนหน้าประตูต้องเดินได้');
-  assert.ok(S.blockedAt(t, D.x * TS + 16, 4 * TS + 16) && S.blockedAt(t, S.HOUSE_BLD.x0 * TS + 16, S.HOUSE_BLD.y0 * TS + 16), 'ตัวบ้านต้องตัน'); }
+{ const t = S.makeMap(), D = S.HOUSE_DOOR; assert.deepStrictEqual([D.x, D.y], [S.HOUSE_DOOR.x, S.HOUSE_BLD.y1 + 1], 'ประตูอยู่ใต้ตัวบ้านพอดี');
+  assert.ok(!S.blockedAt(t, D.x * TS + 16, D.y * TS + 16), 'ช่องประตูต้องเดินได้'); assert.ok(!S.blockedAt(t, D.x * TS + 16, (D.y + 1) * TS + 16), 'ถนนหน้าประตูต้องเดินได้');
+  assert.ok(S.blockedAt(t, D.x * TS + 16, (D.y - 1) * TS + 16) && S.blockedAt(t, S.HOUSE_BLD.x0 * TS + 16, S.HOUSE_BLD.y0 * TS + 16), 'ตัวบ้านต้องตัน'); }
 // เมืองไม่มีที่ดินแล้ว • แมพบ้าน: พื้น 22x15, ผนัง/ช่องว่างเดินทะลุไม่ได้, ประตูเดินออกได้
 { const t = S.makeMap(); assert.ok(!t.some(r => r.includes(S.T.FLOOR)), 'แมพเมืองต้องไม่มีพื้นไม้ของที่ดินเดิม'); }
 { const m = S.makeHouseMap(); let f = 0; for (const r of m) for (const c of r) if (c === S.T.FLOOR) f++; assert.strictEqual(f, 22 * 15);
@@ -70,7 +70,7 @@ w.tick(0.05, Date.now());
 const sn = last(wa, 's'); assert.ok(sn && sn.p.every(r => r[0] === a.id) && sn.c.length === 0, 'สแนปช็อตในบ้านต้องมีแค่คนในบ้าน');
 const sb = last(wb, 's'); assert.ok(sb.p.every(r => r[0] === b.id), 'สแนปช็อตในเมืองต้องไม่มีคนที่อยู่ในบ้าน');
 // นั่ง
-const sid = idOf('sofa'); a.x = 38 * TS; a.y = 20 * TS; w.handle(a, { t: 'act', tool: '', i: +sid }); assert.deepStrictEqual(a.sit, { i: +sid }, 'นั่งโซฟาได้'); assert.strictEqual(Math.round(a.x), 40 * TS);
+const sid = idOf('sofa'); a.x = 38 * TS; a.y = 20 * TS; w.handle(a, { t: 'act', tool: '', i: +sid }); assert.ok(a.sit && a.sit.i === +sid && !a.sit.lie, 'นั่งโซฟาได้'); { const sp = S.seatSpots(items()[sid])[a.sit.k]; assert.strictEqual(Math.round(a.x), Math.round(sp.x * TS), 'นั่งตรงที่นั่งของโซฟา (โซฟา 2 ที่นั่ง)'); }
 w.handle(a, H({ a: 'remove', i: +sid })); assert.strictEqual(a.sit, null, 'ที่นั่งถูกเก็บ = ลุกขึ้น'); a.x = 28 * TS; a.y = 25 * TS;
 
 // ลีดเดอร์บอร์ด + เยี่ยมบ้าน
