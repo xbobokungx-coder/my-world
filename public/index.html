@@ -314,9 +314,10 @@
   #hudTop > #bagBtn, #hudTop > #chatBtn, #hudTop > #micBtn, #hudTop > #lampBtn, #hudTop > #vehBtn, #hudTop > #homeQuick { width:38px; padding:0; }
   #vehMenu { position:absolute; top:calc(100% + 6px); left:0; min-width:190px; box-sizing:border-box; padding:8px 10px 10px; background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); z-index:6; display:flex; flex-direction:column; gap:6px; }
   #vehMenu .mtitle { font-size:12px; font-weight:800; color:#5a4636; opacity:.8; margin:0 2px 2px; }
-  #vehMenu .btn { display:flex; align-items:center; justify-content:flex-start; gap:8px; min-height:40px; font-size:15px; text-align:left; }
-  #vehMenu .btn.on { background:#4aa3df; border-bottom-color:#2e7bb5; }
-  #vehMenu .btn.off { background:#9aa0a6; border-bottom-color:#6f757b; }
+  #hudTop > #vehBtn { font-size:16px; }
+  #hudTop #vehMenu .btn { display:flex; align-items:center; justify-content:flex-start; gap:8px; min-height:40px; padding:6px 12px; font-size:15px; text-align:left; } /* #hudTop นำหน้าเพื่อชนะกฎ body.touch #hudTop .btn: มือถือกับคอมหน้าตาเหมือนกัน */
+  #hudTop #vehMenu .btn.on { background:#4aa3df; border-bottom-color:#2e7bb5; }
+  #hudTop #vehMenu .btn.off { background:#9aa0a6; border-bottom-color:#6f757b; }
   #vehMenu.hidden { display:none !important; }
   #hudMenu { position:absolute; top:calc(100% + 6px); left:0; width:min(92vw,340px); box-sizing:border-box; padding:8px 10px 10px; background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); z-index:6; max-height:calc(100vh - 90px); overflow:auto; }
   #hudMenu .mtitle { font-size:12px; font-weight:800; color:#5a4636; opacity:.8; margin:8px 2px 4px; }
