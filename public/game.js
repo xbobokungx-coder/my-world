@@ -164,7 +164,7 @@ function handle(m) {
     case 'status': presence(m.id, p => { p.status = m.s || ''; }); if (peopleShown()) renderPeople(true); break;
     case 'voice': presence(m.id, p => { p.voice = m.on; if (!m.on) p.speaking = false; }); if (peopleShown()) renderPeople(true); break;
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
-    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.cp = null; if (p.id === myId) refreshOpen(); } break; }
+    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.cp = null; if (p.id === myId) { refreshOpen(); updatePetBtn(); } } break; }
     case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
     case 'ore': { if (cave) { const k = m.x + ',' + m.y; if (m.k) { oreK.set(k, m.k); oreS.set(k, m.s | 0); MAP[m.y][m.x] = T.ORE; oreBurst.delete(k); } else { oreBurst.set(k, { t: performance.now(), k: oreK.get(k), s: oreS.get(k) | 0 }); oreK.delete(k); oreS.delete(k); oreHit.delete(k); MAP[m.y][m.x] = T.CAVE; } } break; } // ก้อนแร่ในถ้ำเกิด/แตก
     case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; if (m.k) treeKinds.set(m.x + ',' + m.y, m.k); } else if (isChoppable(tm, m.x, m.y)) { const tk = m.x + ',' + m.y; if (inTown()) felled.set(tk, { t: performance.now(), k: treeKinds.get(tk), side: me && me.x > (m.x + 0.5) * TS ? -1 : 1 }); tm[m.y][m.x] = T.GRASS; treeKinds.delete(tk); treeHit.delete(tk); } } break; }
@@ -1115,7 +1115,7 @@ function syncVehBtn() { // เรียกทุกเฟรม แต่แต�
 $('vehBtn').onclick = () => { setVehMenu($('vehMenu').classList.contains('hidden')); playSfx('click'); };
 $('vehMenu').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || !me) return; send({ t: 'veh', v: b.dataset.v === me.veh ? '' : b.dataset.v }); setVehMenu(false); playSfx('click'); }); // กดรถที่ขี่อยู่ซ้ำ = ลงรถ
 addEventListener('pointerdown', e => { if (!$('vehMenu').classList.contains('hidden') && !e.target.closest('#vehMenu') && !e.target.closest('#vehBtn')) setVehMenu(false); });
-$('petBtn').onclick = () => { if (me) { openPetMenu(); playSfx('click'); } };
+$('petBtn').onclick = $('petQuick').onclick = () => { if (me) { openPetMenu(); playSfx('click'); } };
 $('lampBtn').onclick = () => { if (me) { send({ t: 'lamp', on: !me.lamp }); playSfx('click'); } };
 
 const CATS = [['furn', '🛋️ เฟอร์นิเจอร์ (วางในบ้านด้วยปุ่ม 🏠)'], ['food', '🍽️ อาหารสำเร็จรูป (กินแล้วหายหิว)'], ['seed', '🌱 เมล็ดพันธุ์'], ['crop', '🥬 พืชผล'], ['fish', '🐟 ปลาที่ตกได้'], ['animal', '🥚 ผลผลิตจากสัตว์'], ['feed', '🌾 อาหารสัตว์ / ยา'], ['tool', '🪱 เหยื่อตกปลา'], ['wood', '🪵 ไม้'], ['gear', '🎒 อุปกรณ์ที่ซื้อ']];
@@ -1260,7 +1260,15 @@ function bindPet(body) {
   body.querySelectorAll('[data-petcare]').forEach(b => b.onclick = () => send({ t: 'petcare', a: b.dataset.petcare }));
 }
 function openPetMenu() { shopKind = 'petmenu'; $('shop').classList.remove('hidden'); renderShop(); }
-function updatePetBtn() { const b = $('petBtn'); if (b) b.classList.toggle('hidden', !Object.keys(COMPANIONS).some(c => inv['pet_' + c] > 0)); }
+function updatePetBtn() {
+  const own = Object.keys(COMPANIONS).some(c => inv['pet_' + c] > 0), b = $('petBtn'), q = $('petQuick');
+  if (b) b.classList.toggle('hidden', !own);
+  if (!q) return;
+  const cur = me && me.pet && COMPANIONS[me.pet] ? me.pet : '', st = cur ? petSt[cur] || { h: 100, sick: false } : null, need = !!st && (st.sick || st.h <= PETCARE.sickBelow); // ปุ่มลัดบนแถบบน: ไอคอนตามตัวที่พาออกมา จุดแดง = หิว/ป่วย
+  q.classList.toggle('hidden', !own); q.classList.toggle('on', !!cur); q.classList.toggle('alert', need);
+  q.textContent = cur ? COMPANIONS[cur].emoji : '🐾';
+  q.title = cur ? `${petNames[cur] || COMPANIONS[cur].name}${need ? ' (หิว/ป่วย ต้องดูแล)' : ''} • กดเพื่อเปิดเมนูสัตว์เลี้ยง` : 'สัตว์เลี้ยง: กดเพื่อพาออกมา';
+}
 function renderShop() {
   if (shopKind === 'petmenu') { $('shopTitle').textContent = '🐾 สัตว์เลี้ยง'; $('shopInfo').textContent = '🪙 ' + (inv.coin || 0); $('shopBody').innerHTML = petPanelHtml(); bindPet($('shopBody')); updatePetBtn(); return; }
   const sh = SHOPS[shopKind]; if (!sh) return;
