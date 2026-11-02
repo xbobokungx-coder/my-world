@@ -919,7 +919,7 @@
   // กระดานข่าว (log ของโลก) และตู้เซฟกองกลาง อยู่ขอบเหนือของลานกองไฟ (ช่องเดินผ่านไม่ได้ กดจากช่องติดกัน)
   const BOARD = { x: 29, y: 21 }, ATM = { x: 31, y: 21 }, CHEST = { x: 36, y: 21 };
   // feeShare = สัดส่วนค่าเตา/ตู้เกมเข้ากองกลาง • autoAfterMs/revive/respawnMs เลิกใช้ (สัตว์ของคนซื้อ ตายแล้วจบ ไม่ชุบ) คงค่าไว้กันโค้ดเก่า
-  const TOWN = { logMax: 15, donate: [10, 50, 100], autoAfterMs: 60000, revive: 0.5, respawnMs: 5 * 60 * 1000, feeShare: 0.5 };
+  const TOWN = { logMax: 15, donate: [10, 50, 100, 1000], autoAfterMs: 60000, revive: 0.5, respawnMs: 5 * 60 * 1000, feeShare: 0.5 };
   const townAt = (tx, ty) => (tx === BOARD.x && ty === BOARD.y ? 'board' : tx === CHEST.x && ty === CHEST.y ? 'chest' : tx === ATM.x && ty === ATM.y ? 'atm' : null);
   const reviveCost = type => Math.round(ANIMALS[type].price * TOWN.revive); // เลิกใช้ใน UI แล้ว
   // เควสประจำวัน (วันตามปฏิทินของเซิร์ฟเวอร์): แต่ละคนได้ 3 เควสจาก 3 สายอาชีพที่ต่างกัน ทำเสร็จได้ XP + เหรียญทันที ยิ่งทำสะสมยิ่งได้ฉายา
@@ -1041,6 +1041,10 @@
     { id: 'arcwin5',    e: '🏆', name: 'เซียนตู้เกม',        desc: 'ชนะตู้เกมกับคนจริง 5 ครั้ง',           stat: 'arcwin',  goal: 5,   coin: 100,  title: 'เซียนตู้เกม' },
     { id: 'arcwin30',   e: '👑', name: 'แชมป์อาร์เคด',       desc: 'ชนะตู้เกมกับคนจริง 30 ครั้ง',          stat: 'arcwin',  goal: 30,  coin: 500,  title: 'แชมป์อาร์เคด' },
     { id: 'mentor3',    e: '🤗', name: 'พี่เลี้ยงใจดี',       desc: 'ทักคนใหม่แล้วเขาผ่านคู่มือเริ่มต้น 3 คน',  stat: 'mentor',  goal: 3,   coin: 100,  title: 'พี่เลี้ยงใจดี' },
+    // ผู้อุปถัมภ์เมือง (2 พ.ย. 2026): ยอดลงขันตู้เซฟ + โครงการ/เทศกาลสะสม ให้ฉายาอย่างเดียว (coin 0 = ไม่สร้างเหรียญคืน) เป็นที่ใช้เงินเชิงสถานะของคนมีเงิน
+    { id: 'give2k',     e: '🏛️', name: 'ผู้อุปถัมภ์เมือง',    desc: 'ลงขันให้เมืองรวม 2,000 เหรียญ (ตู้เซฟ โครงการ เทศกาล)', stat: 'give', goal: 2000,  coin: 0, title: 'ผู้อุปถัมภ์เมือง' },
+    { id: 'give10k',    e: '🏛️', name: 'คหบดีใจบุญ',         desc: 'ลงขันให้เมืองรวม 10,000 เหรียญ',        stat: 'give', goal: 10000, coin: 0, title: 'คหบดีใจบุญ' },
+    { id: 'give30k',    e: '🏛️', name: 'เสาหลักของเมือง',     desc: 'ลงขันให้เมืองรวม 30,000 เหรียญ',        stat: 'give', goal: 30000, coin: 0, title: 'เสาหลักของเมือง' },
     { id: 'invite1',    e: '🪣', name: 'ผู้จุดไฟ',            desc: 'ท้าเพื่อนด้วยชาเลนจ์ถังน้ำ แล้วเพื่อนผ่านคู่มือ 1 คน', stat: 'invite', goal: 1,  coin: 0,    title: 'ผู้จุดไฟ' },
     { id: 'invite3',    e: '🪣', name: 'นักส่งต่อถังน้ำ',      desc: 'ท้าเพื่อนสำเร็จ 3 คน',                 stat: 'invite',  goal: 3,   coin: 0,    title: 'นักส่งต่อถังน้ำ' },
     { id: 'invite10',   e: '🌳', name: 'ตำนานส่งต่อ',          desc: 'ท้าเพื่อนสำเร็จ 10 คน',                stat: 'invite',  goal: 10,  coin: 0,    title: 'ตำนานส่งต่อ' },

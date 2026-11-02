@@ -504,7 +504,7 @@ class World {
     if (room <= 0) return this.toast(p, `${P.emoji} ${P.name} สร้างเสร็จแล้ว`);
     const give = Math.min(amt, room, p.rec.inv.coin || 0);
     if (give <= 0) return this.toast(p, 'เหรียญไม่พอ');
-    this.add(p, 'coin', -give, 'project'); o.coin += give; o.donors[p.name] = (o.donors[p.name] || 0) + give;
+    this.add(p, 'coin', -give, 'project'); this.achAdd(p.rec, 'give', give); o.coin += give; o.donors[p.name] = (o.donors[p.name] || 0) + give;
     const names = Object.keys(o.donors); if (names.length > 40) delete o.donors[names.sort((a, b) => o.donors[a] - o.donors[b])[0]]; // เก็บเฉพาะผู้บริจาคสูงสุด
     this.addPts(p, Math.floor(give / 10)); this.sfxTo(p, 'coin');
     this.toast(p, `${P.emoji} ร่วมสร้าง${P.name} 🪙 ${give} (${o.coin}/${P.goal})`);
@@ -524,7 +524,7 @@ class World {
       const amt = m.amt | 0;
       if (!S.TOWN.donate.includes(amt) || (p.rec.inv.coin || 0) < amt) return this.toast(p, 'เหรียญไม่พอ');
       this.add(p, 'coin', -amt, 'donate'); this.chest.coin += amt; this.chestPush();
-      this.addLog(`🪙 ${p.name} ลงขันเข้าตู้เซฟกองกลาง ${amt} เหรียญ`); this.addPts(p, Math.floor(amt / 10)); this.event(p, 'help'); this.villageBump(p); this.toast(p, `ลงขัน 🪙 ${amt} ขอบคุณที่ช่วยเมือง 💛`); this.sfxTo(p, 'coin');
+      this.addLog(`🪙 ${p.name} ลงขันเข้าตู้เซฟกองกลาง ${amt} เหรียญ`); this.addPts(p, Math.floor(amt / 10)); this.achAdd(p.rec, 'give', amt); this.event(p, 'help'); this.villageBump(p); this.toast(p, `ลงขัน 🪙 ${amt} ขอบคุณที่ช่วยเมือง 💛`); this.sfxTo(p, 'coin');
     } else if (m.a === 'claim') {
       const rec = p.rec, day = this.today(), level = S.playLevel(rec.skills), q = this.questsOf(p), done = q.list.filter(x => x.done).length;
       if (rec.dole === day) return this.toast(p, 'วันนี้คุณรับของแจกไปแล้ว พรุ่งนี้มาใหม่นะ');
@@ -640,9 +640,9 @@ class World {
     for (const d of S.ACH) {
       if (a.got[d.id] || val(d.stat) < d.goal) continue;
       a.got[d.id] = Date.now(); any = true;
-      if (p) this.add(p, 'coin', d.coin, 'ach'); else rec.inv.coin = (rec.inv.coin || 0) + d.coin;
+      if (d.coin) { if (p) this.add(p, 'coin', d.coin, 'ach'); else rec.inv.coin = (rec.inv.coin || 0) + d.coin; }
       if (p) {
-        this.toast(p, `🏆 ความสำเร็จใหม่: ${d.e} ${d.name} (+🪙${d.coin})${d.title ? ` • ปลดล็อกฉายา "${d.title}"` : ''}`); this.sfxTo(p, 'levelup');
+        this.toast(p, `🏆 ความสำเร็จใหม่: ${d.e} ${d.name}${d.coin ? ` (+🪙${d.coin})` : ''}${d.title ? ` • ปลดล็อกฉายา "${d.title}"` : ''}`); this.sfxTo(p, 'levelup');
         if (d.title) this.addLog(`🏆 ${p.name} ได้ความสำเร็จ "${d.name}" ปลดล็อกฉายา "${d.title}"`);
       }
     }
@@ -1222,7 +1222,7 @@ class World {
     const fp = this.festPub(), f = this.week.fest; if (!fp.open) return this.toast(p, 'ต้องสร้างโครงการเมืองให้ครบก่อน');
     if (f.done) return this.toast(p, '🎪 เทศกาลสัปดาห์นี้จัดไปแล้ว รอสัปดาห์หน้านะ');
     const give = Math.min(amt, fp.goal - f.coin, p.rec.inv.coin || 0); if (give <= 0) return this.toast(p, 'เหรียญไม่พอ');
-    this.add(p, 'coin', -give, 'project'); f.coin += give; this.addPts(p, Math.floor(give / 10)); this.dirty = true;
+    this.add(p, 'coin', -give, 'project'); this.achAdd(p.rec, 'give', give); f.coin += give; this.addPts(p, Math.floor(give / 10)); this.dirty = true;
     if (f.coin >= fp.goal) {
       f.done = true; this.village.until = Math.max(this.village.until, Date.now()) + S.FEST.buffMs; this.village.open = this.village.until; this.villageSend(); // เทศกาล = ทุกคนได้บัฟเต็ม
       const news = `🎪 เทศกาลประจำสัปดาห์เริ่มแล้ว! ทุกคนได้บัฟ Happy Village ${Math.round(S.FEST.buffMs / 3600e3)} ชม. (ตกปลาไว หาไม้เนื้อแข็งง่าย)`; this.broadcast({ t: 'msg', text: news }); this.addLog(news); this.broadcast(this.villagePub());

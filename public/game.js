@@ -523,7 +523,7 @@ function renderAch() {
     const list = ACH.slice().sort((a, b) => (!!got[b.id] - !!got[a.id]) || (val(b) / b.goal - val(a) / a.goal));
     h += list.map(a => { const ok = !!got[a.id], pct = Math.round(val(a) / a.goal * 100);
       return `<div class="qrow${ok ? ' done' : ''}" style="${ok ? 'border-color:#e8a33d;background:#fff4d6' : ''}"><div>${a.e} <b>${esc(a.name)}</b> ${ok ? '✅' : ''}${a.title ? ` <small>🏅 ฉายา "${esc(a.title)}"</small>` : ''}</div><small>${esc(a.desc)}</small>`
-        + `${ok ? '' : `<div class="bar"><i style="width:${pct}%"></i></div><small>${val(a).toLocaleString()}/${a.goal.toLocaleString()}</small>`} <small>🎁 +🪙${a.coin}</small></div>`; }).join('');
+        + `${ok ? '' : `<div class="bar"><i style="width:${pct}%"></i></div><small>${val(a).toLocaleString()}/${a.goal.toLocaleString()}</small>`} <small>🎁 ${a.coin ? `+🪙${a.coin}` : `ฉายา "${a.title}"`}</small></div>`; }).join('');
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-title]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'title', id: b.dataset.title }));
