@@ -1406,6 +1406,7 @@ class World {
   freshPub(rec, key) { const o = {}; for (const k of Object.keys(rec.inv)) if (S.perishable(k) && rec.inv[k] > 0) o[k] = this.lotsOf(rec, k).map(([t, n]) => [t, n]); return { l: o, fz: this.hasFridge(key) }; }
   lv(p, skill) { return S.levelOf(p.rec.skills[skill]); }
   addXp(p, skill, n) {
+    const xb = this.petBonus(p).xp; if (xb > 0 && n > 0) { const f = n * (1 + xb); n = Math.floor(f) + (Math.random() < f - Math.floor(f) ? 1 : 0); } // 📚 สัตว์เลี้ยง: XP เพิ่ม (ปัดแบบสุ่มตามเศษ ไม่ให้ค่าน้อยๆ สูญ)
     const r = p.rec.skills, before = S.levelOf(r[skill]);
     r[skill] = (r[skill] || 0) + n;
     send(p, { t: 'skills', skills: r });
@@ -1617,6 +1618,11 @@ class World {
   }
 
   petSt(p, id) { const o = p.rec.pst || (p.rec.pst = {}); return o[id] || (o[id] = { h: 100, sick: false }); } // สถานะสัตว์เลี้ยงแต่ละตัว: h = ความอิ่ม 0-100, sick = ป่วย (เฉพาะตัวที่พาออกมาถึงจะหิว/ป่วย)
+  petBonus(p) { return p.pet ? S.petBonus(p.pet, this.petSt(p, p.pet).h, this.petSt(p, p.pet).sick) : { xp: 0, spd: 0, luck: 0, mood: 0 }; } // โบนัสสัตว์เลี้ยงที่พาออกมาอยู่ (ดู PETSTAT ใน shared.js)
+  petLuck(p, label) { // 🍀 ลุ้นได้ผลผลิตเพิ่ม 1 ชิ้น คืน true ถ้าได้ (ผู้เรียกเป็นคนเพิ่มของ)
+    const b = this.petBonus(p).luck; if (!(b > 0) || Math.random() >= b) return false;
+    const C = S.COMPANIONS[p.pet]; this.toast(p, `🍀 ${C.emoji} ${C.name}นำโชค! ได้${label}เพิ่ม 1`); return true;
+  }
   petPubOf(p) { const id = p.pet || ''; return { t: 'pet', id: p.id, pet: id, mode: p.pm || 'follow', ax: Math.round(p.pax || 0), ay: Math.round(p.pay || 0), sick: !!(id && this.petSt(p, id).sick), name: id ? this.petName(p, id) : '' }; }
   petName(p, id) { const n = p.rec.pnames && p.rec.pnames[id]; return typeof n === 'string' ? n : ''; } // ชื่อที่เจ้าของตั้งให้สัตว์แต่ละตัว (ไม่เกิน 12 ตัวอักษร)
   petRename(p, id, name) {
@@ -1979,6 +1985,7 @@ class World {
     const n = S.rollDrop(ore.s, Math.random), xp = O.xp * n, val = O.sell * n;
     this.add(p, kid, n);
     this.addXp(p, 'mine', S.oreXp(xp, ml)); this.tire(p, 'mine', val);
+    if (this.petLuck(p, O.emoji + ' ' + O.name)) this.add(p, kid, 1);
     this.toast(p, `⛏️ ขุดได้ ${O.emoji} ${O.name} x${n} (ก้อน${S.ORE_SIZES[ore.s].name})`); this.sfx(p, 'fell'); this.event(p, 'mine');
   }
   act(p, tool, now, cx, cy) {
@@ -1998,6 +2005,7 @@ class World {
         const firstFish = !(this.achOf(p.rec).cnt.fish > 0); if (firstFish) f = FISH.find(x => x.id === S.NEWBIE.firstFish) || f; // ปลาตัวแรกในชีวิตการันตีตัวสวย
         this.add(p, 'fish_' + f.id, 1);
         this.addXp(p, 'fish', f.xp); this.tire(p, 'fish', f.sell);
+        if (this.petLuck(p, f.emoji + ' ' + f.name)) this.add(p, 'fish_' + f.id, 1);
         if (f.sell >= 100) { p.rec.rareAt = Date.now() + S.RARE_CD_MS; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.RARE_CD_MS / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
         this.toast(p, firstFish ? `🎉 ปลาตัวแรกของคุณเป็น ${f.emoji} ${f.name}! โชคดีสุดๆ` : `${perfect ? '🎯 เป๊ะ! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (firstFish) this.addLog(`🎣 ${p.name} ตกปลาครั้งแรกได้${f.emoji} ${f.name}!`); if (f.sell >= 100) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
         this.event(p, 'fish', f.sell); this.bookAdd(p, 'fish', f.id); this.broadcast({ t: 'catch', id: p.id, f: f.id }); // ทุกคนเห็นปลากระโดดขึ้นมาอยู่เหนือหัว
@@ -2042,6 +2050,7 @@ class World {
       prod.prod = false;
       const mine = prod.feeder && prod.feeder === p.key; // คนที่ให้อาหาร (เลี้ยง) ตัวนี้มาเก็บผลผลิตเอง
       this.add(p, A.product, 1);
+      if (this.petLuck(p, info.emoji + ' ' + info.name)) this.add(p, A.product, 1);
       let extra = 0;
       const al = this.lv(p, 'animal');
       if (mine) { this.addXp(p, 'animal', S.animalXp(A.xp, al)); if (Math.random() < S.ANIMAL_BONUS) { extra = 1; this.add(p, A.product, 1); } } // เลี้ยงเอง = XP เต็ม + ลุ้นผลผลิตงาม ×2
@@ -2058,6 +2067,7 @@ class World {
       if (this.cropLocked(tile, p)) return this.toast(p, `🌱 ต้นนี้เป็นของ ${tile.on || 'ผู้เล่นอื่น'} — ถ้าเขาไม่มาเก็บภายใน ${Math.max(1, Math.ceil((S.DAY_MS - (tile.rm || 0)) / 60000))} นาที (1 วันในเกม) คนอื่นถึงจะมาเก็บได้`);
       const c = CROPS[tile.c];
       this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp); this.tire(p, 'harvest', c.sell);
+      if (this.petLuck(p, c.emoji + ' ' + c.name)) this.add(p, 'crop_' + tile.c, 1);
       this.toast(p, `เก็บ ${c.emoji} ${c.name}`);
       if (tile.o && tile.o !== p.key) this.addLog(`🔓 ${p.name} เก็บ${c.emoji} ${c.name}ของ ${tile.on || 'ผู้เล่นอื่น'} (หมดเวลาจอง 1 วัน)`); // ข่าว: ใครเก็บผลผลิตของคนอื่นที่ปลดล็อกแล้ว
       else if (c.sell >= 100) this.addLog(`${c.emoji} ${p.name} เก็บเกี่ยว${c.name}สำเร็จ`);
@@ -2150,6 +2160,7 @@ class World {
       for (const [it, ch] of K.bonus || []) if (Math.random() < ch + 0.01 * (S.perkLv(wl) - 1) + (this.happyOn(p) ? S.VILLAGE.hardBonus : 0)) got[it] = (got[it] || 0) + 1;
       let xp = 0, val = 0; for (const [it, n] of Object.entries(got)) { this.add(p, it, n); xp += S.WOOD_ITEMS[it].xp * n; val += S.WOOD_ITEMS[it].sell * n; this.bookAdd(p, 'wood', it); }
       this.addXp(p, 'wood', S.woodXp(xp, wl)); this.tire(p, 'chop', val);
+      { const mi = K.drop[0][0], W0 = S.WOOD_ITEMS[mi]; if (this.petLuck(p, W0.emoji + ' ' + W0.name)) { this.add(p, mi, 1); got[mi]++; } }
       this.toast(p, `${K.emoji} ${K.name}ล้ม! ได้ ${Object.entries(got).map(([it, n]) => `${S.WOOD_ITEMS[it].emoji} ${S.WOOD_ITEMS[it].name} x${n}`).join(' ')}`); this.sfx(p, 'fell'); this.event(p, 'chop'); if (got.hardwood) this.event(p, 'hardwood');
       if (kid === 'rose') this.addLog(`🟥 ${p.name} โค่นต้นพะยูงได้!`);
     } else if (tool === 'medicine') {

@@ -1236,13 +1236,19 @@ const furnCatOf = k => (FURN[k.slice(5)] || {}).cat; // หมวดของท
 const FISH_DISH_SELL_TAB = new Set(['dish_fishsoup', 'dish_sashimi', 'dish_fishburger', 'dish_fishpie']);
 const seedProfit = k => { const c = CROPS[k.slice(5)]; return (c.sell - c.seed) / (c.time / 60000); };
 let petNames = {}, petSt = {}; // สถานะสัตว์เลี้ยงของเรา: { dog: { h: ความอิ่ม, sick } }
+function petStatHtml(c, st, out) { // บรรทัดค่าสถานะ + สถานะผลตอนนี้ (พาออก/หิว/ป่วย)
+  const C = COMPANIONS[c], b = Shared.petBonus(c, st.h, st.sick);
+  const stats = Shared.PETSTAT.keys.filter(([k]) => C.st && C.st[k]).map(([k, ic, nm]) => `${ic} ${nm} +${Math.round(C.st[k] * Shared.PETSTAT.unit * 100)}%`).join(' • ');
+  const eff = !out ? '🏠 พาออกมาถึงจะได้ผล' : st.sick ? '🤒 ป่วย ผลหยุดทำงาน' : b.mood >= 1 ? '✅ ผลทำงานเต็ม' : b.mood > 0 ? '🍖 หิว ผลเหลือครึ่งเดียว ให้อาหารด่วน' : '😣 หิวจัด ผลหยุดทำงาน';
+  return `<br><small style="opacity:.9">${stats}</small><br><small><b>${eff}</b></small>`;
+}
 function petPanelHtml() { // เมนูสัตว์เลี้ยง: พาออกมา/เดินตาม/ปล่อยเล่น/เก็บ + ให้อาหาร + รักษา (ใช้ทั้งในร้านและเมนู 🐾)
   const own = Object.keys(COMPANIONS).filter(c => inv['pet_' + c] > 0), cur = me.pet || '', mode = me.pm || 'follow';
   let h = '<div class="sec">🐾 สัตว์เลี้ยงของคุณ</div>';
   if (!own.length) return h + '<p style="opacity:.7;margin:6px 0">ยังไม่มีสัตว์เลี้ยง ซื้อได้ที่ร้านสัตว์เลี้ยง (36,10) 🐶🐱🐦</p>';
   for (const c of own) {
     const C = COMPANIONS[c], st = petSt[c] || { h: 100, sick: false }, out = cur === c, hp = Math.round(st.h);
-    h += `<div class="row"><span>${C.emoji} ${petNames[c] ? esc(petNames[c]) + ' <small>(' + C.name + ')</small>' : C.name}${st.sick ? ' 🤒 <small style="color:#c0392b">ป่วย</small>' : ''}<br><small>${out ? (mode === 'play' ? '🎾 กำลังวิ่งเล่น' : '🚶 เดินตามคุณ') : '🏠 อยู่บ้าน'} • อิ่ม ${hp}/100${out ? '' : ' (ไม่หิวตอนอยู่บ้าน)'}</small><div class="hbar" style="width:120px;height:7px"><i style="width:${hp}%;${hp <= 25 ? 'background:#e74c3c' : ''}"></i></div></span><span>`
+    h += `<div class="row"><span>${C.emoji} ${petNames[c] ? esc(petNames[c]) + ' <small>(' + C.name + ')</small>' : C.name}${st.sick ? ' 🤒 <small style="color:#c0392b">ป่วย</small>' : ''}${petStatHtml(c, st, out)}<br><small>${out ? (mode === 'play' ? '🎾 กำลังวิ่งเล่น' : '🚶 เดินตามคุณ') : '🏠 อยู่บ้าน'} • อิ่ม ${hp}/100${out ? '' : ' (ไม่หิวตอนอยู่บ้าน)'}</small><div class="hbar" style="width:120px;height:7px"><i style="width:${hp}%;${hp <= 25 ? 'background:#e74c3c' : ''}"></i></div></span><span>`
       + (out ? `<button class="btn small${mode === 'follow' ? ' muted' : ''}" data-petmode="follow" data-pet="${c}">🚶 เดินตาม</button> <button class="btn small${mode === 'play' ? ' muted' : ''}" data-petmode="play" data-pet="${c}">🎾 ปล่อยเล่น</button> <button class="btn small muted" data-petmode="store" data-pet="">🏠 เก็บ</button>`
         : `<button class="btn small" data-petmode="follow" data-pet="${c}">🐾 พาออกมา</button>`)
       + ` <button class="btn small muted" data-petname="${c}">✏️ ตั้งชื่อ</button></span></div>`;
@@ -1251,7 +1257,7 @@ function petPanelHtml() { // เมนูสัตว์เลี้ยง: พ�
   h += '<div class="sec">🦴 ดูแลสัตว์เลี้ยง</div>'
     + `<div class="row"><span>🦴 ให้อาหาร<br><small>มีอาหาร ${inv.petfood || 0} ชิ้น • +${PETCARE.food} อิ่ม • ซื้อที่ร้านสัตว์เลี้ยง</small></span><span><button class="btn small" data-petcare="feed" ${cur && inv.petfood > 0 && ci.h < 95 ? '' : 'disabled'}>ให้อาหาร</button></span></div>`
     + `<div class="row"><span>💊 รักษาสัตว์ป่วย<br><small>มียา ${inv.medicine || 0} ขวด • สัตว์หิวจัดจะป่วย (เดินช้า เศร้า)</small></span><span><button class="btn small" data-petcare="heal" ${cur && ci.sick && inv.medicine > 0 ? '' : 'disabled'}>รักษา</button></span></div>`
-    + '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ต้องพาสัตว์ออกมาก่อนถึงจะให้อาหาร/รักษาได้ • ปล่อยเล่นแล้วสัตว์จะซนอยู่รอบจุดที่ปล่อย • เดินตาม: ห่างเกิน 2 ช่องจะวิ่งมาหา ยืนเฉยๆ จะเดินไปมาใกล้ตัว</p>';
+    + '<p style="font-size:12px;opacity:.65;margin:8px 0 0">📚 ฉลาด = XP ทุกสายเพิ่ม • 🏃 ว่องไว = เดินเร็วขึ้น • 🍀 โชค = ลุ้นได้ผลผลิตเพิ่ม 1 ชิ้น (เก็บผัก ตกปลา ขุดแร่ ตัดไม้ เก็บของจากสัตว์) • ผลทำงานเมื่อพาออกมา ไม่ป่วย และอิ่มพอ (หิว = ครึ่งเดียว)<br>💡 ต้องพาสัตว์ออกมาก่อนถึงจะให้อาหาร/รักษาได้ • ปล่อยเล่นแล้วสัตว์จะซนอยู่รอบจุดที่ปล่อย • เดินตาม: ห่างเกิน 2 ช่องจะวิ่งมาหา ยืนเฉยๆ จะเดินไปมาใกล้ตัว</p>';
   return h;
 }
 function bindPet(body) {
@@ -1260,6 +1266,10 @@ function bindPet(body) {
   body.querySelectorAll('[data-petcare]').forEach(b => b.onclick = () => send({ t: 'petcare', a: b.dataset.petcare }));
 }
 function openPetMenu() { shopKind = 'petmenu'; $('shop').classList.remove('hidden'); renderShop(); }
+function petSpeedMul() { // 🏃 สัตว์เลี้ยงที่พาออกมา เดินเร็วขึ้นตามค่าสถานะ (ไม่ป่วย/อิ่มพอ)
+  const c = me && me.pet; if (!c || !COMPANIONS[c]) return 1;
+  const st = petSt[c] || { h: 100, sick: false }; return 1 + Shared.petBonus(c, st.h, st.sick).spd;
+}
 function updatePetBtn() {
   const own = Object.keys(COMPANIONS).some(c => inv['pet_' + c] > 0), b = $('petBtn'), q = $('petQuick');
   if (b) b.classList.toggle('hidden', !own);
@@ -1267,7 +1277,7 @@ function updatePetBtn() {
   const cur = me && me.pet && COMPANIONS[me.pet] ? me.pet : '', st = cur ? petSt[cur] || { h: 100, sick: false } : null, need = !!st && (st.sick || st.h <= PETCARE.sickBelow); // ปุ่มลัดบนแถบบน: ไอคอนตามตัวที่พาออกมา จุดแดง = หิว/ป่วย
   q.classList.toggle('hidden', !own); q.classList.toggle('on', !!cur); q.classList.toggle('alert', need);
   q.textContent = cur ? COMPANIONS[cur].emoji : '🐾';
-  q.title = cur ? `${petNames[cur] || COMPANIONS[cur].name}${need ? ' (หิว/ป่วย ต้องดูแล)' : ''} • กดเพื่อเปิดเมนูสัตว์เลี้ยง` : 'สัตว์เลี้ยง: กดเพื่อพาออกมา';
+  q.title = cur ? `${petNames[cur] || COMPANIONS[cur].name} ${Shared.petStatText(cur)}${need ? ' (หิว/ป่วย ต้องดูแล)' : ''} • กดเพื่อเปิดเมนูสัตว์เลี้ยง` : 'สัตว์เลี้ยง: กดเพื่อพาออกมา';
 }
 function renderShop() {
   if (shopKind === 'petmenu') { $('shopTitle').textContent = '🐾 สัตว์เลี้ยง'; $('shopInfo').textContent = '🪙 ' + (inv.coin || 0); $('shopBody').innerHTML = petPanelHtml(); bindPet($('shopBody')); updatePetBtn(); return; }
@@ -3785,7 +3795,7 @@ function step(now) {
   me.moving = mag > 0.1;
   if (me.moving) {
     if (mag > 1) { ix /= mag; iy /= mag; }
-    const sp = 110 * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1) * (me.veh && inTown() && Shared.VEHICLES[me.veh] ? Shared.VEHICLES[me.veh].speed : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
+    const sp = 110 * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1) * petSpeedMul() * (me.veh && inTown() && Shared.VEHICLES[me.veh] ? Shared.VEHICLES[me.veh].speed : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
     if (!blk(me.x + ix * sp, me.y, me.x, me.y)) me.x += ix * sp;
     if (!blk(me.x, me.y + iy * sp, me.x, me.y)) me.y += iy * sp;
     const dsx = scene ? ix - iy : ix, dsy = scene ? (ix + iy) / 2 : iy; // ทิศที่หันตามหน้าจอ

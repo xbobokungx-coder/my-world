@@ -743,13 +743,19 @@
   };
   // สัตว์เลี้ยงคู่ใจ (ซื้อที่ร้านสัตว์เลี้ยง): เดินตามเจ้าของ ทุกคนเห็น ไม่ต้องให้อาหาร • ซื้อได้หลายตัว แต่พาไปได้ทีละตัว (เลือกในร้าน)
   const COMPANIONS = {
-    dog:  { name: 'ลูกสุนัข', emoji: '🐶', price: 500, kind: 'dog', v: 1, say: 'โฮ่ง โฮ่ง! 🐶' },
-    cat:  { name: 'ลูกแมว',  emoji: '🐱', price: 450, kind: 'cat', v: 0, say: 'เหมียว~ 🐱' },
-    bird: { name: 'นกน้อย',  emoji: '🐦', price: 300, kind: 'bird', v: 0, say: 'จิ๊บ จิ๊บ 🐦' },
-    monkey: { name: 'ลิงน้อย', emoji: '🐒', price: 700, kind: 'monkey', v: 0, say: 'อุ๊ก อุ๊ก 🐒' },
-    capybara: { name: 'คาปิบาร่า', emoji: '🦫', price: 900, kind: 'capy', v: 0, say: 'ฟี้~ 🦫' },
+    dog:  { name: 'ลูกสุนัข', emoji: '🐶', price: 500, kind: 'dog', v: 1, st: { spd: 3, luck: 2 }, say: 'โฮ่ง โฮ่ง! 🐶' },
+    cat:  { name: 'ลูกแมว',  emoji: '🐱', price: 450, kind: 'cat', v: 0, st: { luck: 3, xp: 1 }, say: 'เหมียว~ 🐱' },
+    bird: { name: 'นกน้อย',  emoji: '🐦', price: 300, kind: 'bird', v: 0, st: { xp: 3 }, say: 'จิ๊บ จิ๊บ 🐦' },
+    monkey: { name: 'ลิงน้อย', emoji: '🐒', price: 700, kind: 'monkey', v: 0, st: { xp: 4, spd: 3 }, say: 'อุ๊ก อุ๊ก 🐒' },
+    capybara: { name: 'คาปิบาร่า', emoji: '🦫', price: 900, kind: 'capy', v: 0, st: { spd: 4, xp: 3, luck: 2 }, say: 'ฟี้~ 🦫' },
   };
   const PETCARE = { food: 40, hungerTick: 1, sickBelow: 25, sickChance: 0.12, sickDieMs: DAY_MS }; // ป่วยแล้วไม่รักษาเกิน 1 วันในเกม (นับเฉพาะตอนมีคนออนไลน์) สัตว์เลี้ยงจะตาย ต้องซื้อใหม่ // อาหาร 1 ชิ้นเพิ่มความอิ่ม 40 • ความอิ่มลด 1 ทุก 15 วินาทีที่พาออกมา (เต็มอยู่ได้ ~25 นาที) ต่ำกว่า 25 มีโอกาสป่วยทุกรอบ
+  // ค่าสถานะสัตว์เลี้ยง (Stat): แต้มรวมของแต่ละตัว ≈ ราคา ÷ 100 (นก 3 • แมว 4 • หมา 5 • ลิง 7 • คาปิบาร่า 9) 1 แต้ม = 2% • ได้ผลเฉพาะตอนพาออกมา ไม่ป่วย และอิ่มพอ (อิ่ม ≥ full ผลเต็ม • ≥ half ผลครึ่งเดียว • ต่ำกว่านั้นไม่มีผล) ปรับสมดุลที่นี่
+  //   xp = 📚 ฉลาด: XP ทุกสายอาชีพเพิ่ม • spd = 🏃 ว่องไว: เดินเร็วขึ้น • luck = 🍀 โชค: โอกาสได้ผลผลิตเพิ่ม +1 ชิ้น (เก็บผัก ตกปลา ขุดแร่ ตัดไม้ เก็บผลผลิตสัตว์)
+  const PETSTAT = { unit: 0.02, full: 50, half: 25, keys: [['xp', '📚', 'ฉลาด'], ['spd', '🏃', 'ว่องไว'], ['luck', '🍀', 'โชค']] };
+  const petMood = (h, sick) => (sick ? 0 : h >= PETSTAT.full ? 1 : h >= PETSTAT.half ? 0.5 : 0);
+  const petBonus = (id, h, sick) => { const C = COMPANIONS[id], m = petMood(h, sick), o = { xp: 0, spd: 0, luck: 0, mood: m }; if (C && C.st) for (const k of Object.keys(o)) if (C.st[k]) o[k] = C.st[k] * PETSTAT.unit * m; return o; }; // คืนเป็นสัดส่วน (0.06 = 6%)
+  const petStatText = id => { const C = COMPANIONS[id]; return C && C.st ? PETSTAT.keys.filter(([k]) => C.st[k]).map(([k, ic]) => ic + '+' + Math.round(C.st[k] * PETSTAT.unit * 100) + '%').join(' ') : ''; };
   const ANIMAL_XP = { from: 5, perLv: 0.2 }; // XP เลี้ยงสัตว์ ×(1 + perLv × (เลเวล − from)) เมื่อเลเวลเกิน from (สัตว์ปลดครบที่ Lv5 แล้ว XP/ชม. ตันที่ 52% ของชาวนา ดู tools/levelsim.js)
   const animalXp = (xp, lv) => Math.round(xp * (1 + ANIMAL_XP.perLv * Math.max(0, perkLv(lv) - ANIMAL_XP.from)));
   const ANIMAL_BONUS = 0.25; // โอกาสได้ผลผลิต ×2 เมื่อเก็บจากสัตว์ที่ตัวเองเลี้ยง (เดิม 0.5 ลดเมื่อ 25 ต.ค. 2026: เลี้ยงสัตว์ได้มากกว่าอาชีพอื่นใน tools/econsim.js)
@@ -1215,7 +1221,7 @@
     m = /^veh_(\w+)$/.exec(k);
     if (m && VEHICLES[m[1]]) { const v = VEHICLES[m[1]]; return { name: `${v.name} (เร็วขึ้น ${Math.round((v.speed - 1) * 100)}%)`, emoji: v.emoji, buy: v.price, once: true, cat: 'gear', veh: m[1] }; }
     m = /^pet_(\w+)$/.exec(k);
-    if (m && COMPANIONS[m[1]]) { const c = COMPANIONS[m[1]]; return { name: c.name, emoji: c.emoji, buy: c.price, once: true, cat: 'pet', pet: m[1] }; }
+    if (m && COMPANIONS[m[1]]) { const c = COMPANIONS[m[1]]; return { name: c.name + ' ' + petStatText(m[1]), emoji: c.emoji, buy: c.price, once: true, cat: 'pet', pet: m[1] }; }
     m = /^animal_(\w+)$/.exec(k);
     if (m && ANIMALS[m[1]]) { const a = ANIMALS[m[1]]; return { name: 'ซื้อ' + a.name + 'เพิ่ม', emoji: a.emoji, buy: a.price, lv: a.lv, skill: 'animal', animal: m[1], cat: 'animalbuy' }; }
     const i = k.indexOf('_'), a = k.slice(0, i), b = k.slice(i + 1);
@@ -1401,7 +1407,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, DOLE, playLevel, doleCost, dolePackage, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, CHEST, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, FESTIVAL, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
