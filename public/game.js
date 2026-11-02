@@ -1099,6 +1099,21 @@ function updateLampBtn() {
   b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
   b.title = on ? 'ตะเกียง: เปิดอยู่ (กดหรือ L เพื่อปิด)' : 'ตะเกียง: ปิดอยู่ (กดหรือ L เพื่อเปิด)'; b.textContent = '🔦';
 }
+// ยานพาหนะ: ปุ่มบนแถบบน กดแล้วเลือกรถที่มีขี่ หรือกดลงรถ ไม่ต้องกลับไปร้านยานพาหนะ (ใช้ได้เฉพาะในเมือง เหมือนปุ่ม V)
+let vehKey = '';
+const setVehMenu = on => { $('vehMenu').classList.toggle('hidden', !on); $('vehBtn').setAttribute('aria-expanded', on ? 'true' : 'false'); };
+function syncVehBtn() { // เรียกทุกเฟรม แต่แตะ DOM เฉพาะตอนสถานะเปลี่ยน
+  const V = Shared.VEHICLES, own = me && inTown() ? Object.keys(V).filter(v => inv['veh_' + v] > 0) : [], cur = (me && me.veh) || '', key = own.join() + '|' + cur;
+  if (key === vehKey) return; vehKey = key;
+  const b = $('vehBtn');
+  b.classList.toggle('hidden', !own.length); b.classList.toggle('on', !!cur);
+  b.textContent = cur && V[cur] ? V[cur].emoji : own.length ? V[own[own.length - 1]].emoji : '🚲';
+  if (!own.length) setVehMenu(false);
+  $('vehMenu').innerHTML = '<div class="mtitle">🚲 ยานพาหนะ</div>' + own.map(v => `<button class="btn small${v === cur ? ' on' : ''}" data-v="${v}">${V[v].emoji} ${V[v].name}${v === cur ? ' ✅' : ''}</button>`).join('') + (cur ? '<button class="btn small off" data-v="">🚶 ลงรถ</button>' : '');
+}
+$('vehBtn').onclick = () => { setVehMenu($('vehMenu').classList.contains('hidden')); playSfx('click'); };
+$('vehMenu').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || !me) return; send({ t: 'veh', v: b.dataset.v === me.veh ? '' : b.dataset.v }); setVehMenu(false); playSfx('click'); }); // กดรถที่ขี่อยู่ซ้ำ = ลงรถ
+addEventListener('pointerdown', e => { if (!$('vehMenu').classList.contains('hidden') && !e.target.closest('#vehMenu') && !e.target.closest('#vehBtn')) setVehMenu(false); });
 $('petBtn').onclick = () => { if (me) { openPetMenu(); playSfx('click'); } };
 $('lampBtn').onclick = () => { if (me) { send({ t: 'lamp', on: !me.lamp }); playSfx('click'); } };
 
@@ -1401,7 +1416,7 @@ addEventListener('keydown', e => {
   if (build.on && c === 'Escape' && (build.sel || build.pick != null || build.erase)) { build.sel = null; build.pick = null; build.erase = false; renderBuild(); return; } // Esc ในโหมดตกแต่ง: ยกเลิกสิ่งที่เลือกอยู่ก่อน
   if (build.on && c === 'KeyZ') { undoBuild(); return; }
   if (build.on && (c === 'Delete' || c === 'Backspace') && build.pick != null) { e.preventDefault(); send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; return; }
-  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); setVehMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
   if (c === 'KeyV' && me && inTown()) { const own = Object.keys(Shared.VEHICLES).filter(v => inv['veh_' + v] > 0); if (me.veh) send({ t: 'veh', v: '' }); else if (own.length) send({ t: 'veh', v: own[own.length - 1] }); else toast('ยังไม่มียานพาหนะ ซื้อได้ที่ร้านยานพาหนะ 🚲'); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (toolLocked(TOOL_LIST[n])); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
@@ -3687,6 +3702,7 @@ function step(now) {
   requestAnimationFrame(step);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (!joined || !me) return;
+  syncVehBtn();
   { const bf = !!(scene && build.on); if (bf !== bfLast) { bfLast = bf; bz.z = 1; bz.px = bz.py = 0; resize(); } }
   const wall = Date.now() + timeOffset;
 

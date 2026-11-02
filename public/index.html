@@ -24,6 +24,8 @@
   .btn.lamp { background:#9aa0a6; border-bottom-color:#6f757b; }
   .btn.lamp:not(.on) { filter:grayscale(1); }
   .btn.lamp.on { background:#3cb44b; border-bottom-color:#238a33; }
+  .btn.veh { background:#9aa0a6; border-bottom-color:#6f757b; }
+  .btn.veh.on { background:#4aa3df; border-bottom-color:#2e7bb5; }
   .btn.spk { background:#4aa3df; border-bottom-color:#2e7bb5; }
   .btn.spk.off { background:#9aa0a6; border-bottom-color:#6f757b; }
   #stage { cursor:crosshair; }
@@ -307,9 +309,15 @@
   #bag .tab { padding:6px 9px; font-size:13px; white-space:nowrap; flex:1 1 auto; }
   /* เมนูหลัก: ไอคอนที่ใช้บ่อยอยู่แถบบน ที่เหลือซ่อนในเมนู แบ่งหมวดพร้อมชื่อสั้นๆ */
   #hudTop #satChip, #hudTop #enChip, #hudTop #cdChip, #hudTop #evChip { cursor:pointer; font-size:13px; } #hudTop .panel.warn { background:#a8661f; } #hudTop .panel.over { background:#8f2a22; }
-  #hudTop > :not(.hidden):not(#hudMenu) { height:38px; box-sizing:border-box; margin:0; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; line-height:1; }
+  #hudTop > :not(.hidden):not(#hudMenu):not(#vehMenu) { height:38px; box-sizing:border-box; margin:0; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; line-height:1; }
   #hudTop > .btn.small { font-size:15px; padding:0 12px; }
-  #hudTop > #bagBtn, #hudTop > #chatBtn, #hudTop > #micBtn, #hudTop > #lampBtn, #hudTop > #homeQuick { width:38px; padding:0; }
+  #hudTop > #bagBtn, #hudTop > #chatBtn, #hudTop > #micBtn, #hudTop > #lampBtn, #hudTop > #vehBtn, #hudTop > #homeQuick { width:38px; padding:0; }
+  #vehMenu { position:absolute; top:calc(100% + 6px); left:0; min-width:190px; box-sizing:border-box; padding:8px 10px 10px; background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); z-index:6; display:flex; flex-direction:column; gap:6px; }
+  #vehMenu .mtitle { font-size:12px; font-weight:800; color:#5a4636; opacity:.8; margin:0 2px 2px; }
+  #vehMenu .btn { display:flex; align-items:center; justify-content:flex-start; gap:8px; min-height:40px; font-size:15px; text-align:left; }
+  #vehMenu .btn.on { background:#4aa3df; border-bottom-color:#2e7bb5; }
+  #vehMenu .btn.off { background:#9aa0a6; border-bottom-color:#6f757b; }
+  #vehMenu.hidden { display:none !important; }
   #hudMenu { position:absolute; top:calc(100% + 6px); left:0; width:min(92vw,340px); box-sizing:border-box; padding:8px 10px 10px; background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); z-index:6; max-height:calc(100vh - 90px); overflow:auto; }
   #hudMenu .mtitle { font-size:12px; font-weight:800; color:#5a4636; opacity:.8; margin:8px 2px 4px; }
   #hudMenu .mtitle:first-child { margin-top:2px; }
@@ -438,6 +446,8 @@
   <button class="btn small" id="chatBtn" title="แชท (Enter)" aria-label="แชท">💬</button>
   <button class="btn small mic" id="micBtn" title="ไมค์: ปิดอยู่ (กดเพื่อเปิด)" aria-label="เปิด/ปิดไมค์">🎤</button>
   <button class="btn small lamp hidden" id="lampBtn" title="ตะเกียง (L)" aria-label="เปิด/ปิดตะเกียง" aria-pressed="false">🔦</button>
+  <button class="btn small veh hidden" id="vehBtn" title="ยานพาหนะ (V): เลือกรถขี่ / ลงรถ" aria-label="ยานพาหนะ" aria-haspopup="true" aria-expanded="false">🚲</button>
+  <div id="vehMenu" class="hidden" role="menu" aria-label="เลือกยานพาหนะ"></div>
   <button class="btn small" id="homeQuick" title="เข้าบ้านตัวเอง / ตกแต่งบ้าน (H)" aria-label="บ้านฉัน">🏠</button>
   <div id="hudMenu" class="hidden" role="menu" aria-label="เมนูหลัก">
     <div class="mtitle">🧍 ตัวละคร</div>
