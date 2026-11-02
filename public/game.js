@@ -3301,7 +3301,40 @@ function daylight(h) { // ความมืด 0..0.75 (กลางคืน�
 }
 // ชั้นความมืด: เติมสีทึบแล้ว "เจาะ" วงสว่างที่กองไฟกลางลานและรอบตัวคนที่ถือตะเกียง (รัศมี 3 ช่อง)
 const lightCv = document.createElement('canvas'), lctx = lightCv.getContext('2d');
+const lightMask = { key: '', cv: null, x: 0, y: 0 };
+function houseLightMask() { // ภาพรูแสงของโคมในบ้าน (พิกัดไอโซเมตริก) สร้างใหม่เฉพาะตอนโคมเปลี่ยนที่/จำนวน
+  const lamps = []; for (const o of furn.values()) if (FURN[o.f].light) lamps.push(o.x + ',' + o.y + ',' + (o.z || 0)); lamps.sort();
+  const key = lamps.join(';'); if (key === lightMask.key) return lightMask.cv ? lightMask : null;
+  lightMask.key = key; lightMask.cv = null; if (!lamps.length) return null;
+  const R = TS * 3.2, x = ISO_B.x0 - R, y = ISO_B.y0 - R, c = document.createElement('canvas'); c.width = Math.ceil(ISO_B.w + R * 2); c.height = Math.ceil(ISO_B.h + R * 2);
+  const g = c.getContext('2d'); g.translate(-x, -y);
+  for (const o of furn.values()) if (FURN[o.f].light) { const [hx, hy] = iso(o.x * TS, o.y * TS, (o.z || 0) + 22), gr = g.createRadialGradient(hx, hy, 0, hx, hy, R); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.6, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(hx, hy, R, 0, 7); g.fill(); }
+  lightMask.cv = c; lightMask.x = x; lightMask.y = y; return lightMask;
+}
+let nightKey = '';
+function drawNightHouse(dark, now) { // ชั้นมืดในบ้าน: ทุกอย่างนิ่งตามกล้อง/โคม/ไฟผู้เล่น จึงแคชไว้ แล้วสร้างใหม่เฉพาะตอนข้อใดข้อหนึ่งเปลี่ยน (เดิมล้างเทสีและเจาะรูทั้งจอทุกเฟรม)
+  if (dark <= 0.02) return;
+  if (lightCv.width !== canvas.width || lightCv.height !== canvas.height) { lightCv.width = canvas.width; lightCv.height = canvas.height; nightKey = ''; }
+  const m = houseLightMask(), qd = Math.round(dark * 60) / 60, lamps = [];
+  for (const p of players.values()) if (p.lamp) lamps.push([p.x - p.y, (p.x + p.y) / 2 - 4]); // จุดบนจอไอโซเมตริกของหมวก/ตะเกียงผู้เล่น
+  const key = [qd, canvas.width, canvas.height, zoom, camX, camY, m ? m.key : '', lamps.map(l => l[0].toFixed(1) + ',' + l[1].toFixed(1)).join(';')].join('|');
+  if (key !== nightKey) {
+    nightKey = key;
+    lctx.globalCompositeOperation = 'source-over'; lctx.setTransform(1, 0, 0, 1, 0, 0); lctx.clearRect(0, 0, lightCv.width, lightCv.height);
+    lctx.fillStyle = `rgba(5,9,32,${qd})`; lctx.fillRect(0, 0, lightCv.width, lightCv.height);
+    lctx.globalCompositeOperation = 'destination-out'; lctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
+    if (m) lctx.drawImage(m.cv, m.x, m.y); // รูแสงของโคมในบ้าน (ภาพแคช)
+    for (const [x, y] of lamps) { const g = lctx.createRadialGradient(x, y, 0, x, y, TS * 5); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.82, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, TS * 5, 0, 7); lctx.fill(); }
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(lightCv, 0, 0);
+  if (lamps.length) { // แสงอุ่นสีส้มรอบไฟผู้เล่น
+    ctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom); ctx.globalCompositeOperation = 'lighter';
+    for (const [x, y] of lamps) { const g = ctx.createRadialGradient(x, y, 0, x, y, TS * 5); g.addColorStop(0, `rgba(255,150,50,${0.16 * Math.min(1, dark * 1.2)})`); g.addColorStop(1, 'rgba(255,150,50,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, TS * 5, 0, 7); ctx.fill(); }
+    ctx.globalCompositeOperation = 'source-over'; ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+}
 function drawNight(dark, now) {
+  if (scene && !cave) return drawNightHouse(dark, now);
   if (dark <= 0.02) return;
   if (lightCv.width !== canvas.width || lightCv.height !== canvas.height) { lightCv.width = canvas.width; lightCv.height = canvas.height; }
   lctx.globalCompositeOperation = 'source-over'; lctx.setTransform(1, 0, 0, 1, 0, 0); lctx.clearRect(0, 0, lightCv.width, lightCv.height);
@@ -3454,6 +3487,8 @@ const furnPx = new Map();
 // ภาพที่ขยับน้อยแบบสลับไม่กี่ท่า (โคมไฟ 2 ท่า หางแมว 7 ท่า) แคชครบทุกท่าไว้เลย ไม่วาดใหม่ทุก 150 ms (วาด+trim ผืน 340×300 แพง บ้านที่มีโคมหลายดวงเลยกระตุก)
 const FURN_POSE = { lantern: now => Math.sin(now / 300) > 0 ? 1 : 0, floorlamp: now => Math.sin(now / 300) > 0 ? 1 : 0, cat: now => Math.round(Math.sin(now / 400) * 3) };
 const FURN_POSE_T = { lantern: p => (p ? 1 : -1) * 300 * Math.PI / 2, floorlamp: p => (p ? 1 : -1) * 300 * Math.PI / 2, cat: p => Math.asin(p / 3) * 400 };
+// ของที่ขยับเป็นวงรอบเวลาคงที่ (น้ำพุ ธง เตาผิง ตู้ปลา): แบ่งรอบเป็น N ท่าแล้วแคชทุกท่า (เดิมวาดใหม่+อ่านพิกเซลตัดขอบทุก 150 ms)
+for (const [f, P, N] of [['fountain', 700, 10], ['flag', 1571, 10], ['fireplace', 817, 8], ['aquarium', 4398, 24]]) { FURN_POSE[f] = now => Math.floor(now % P / P * N); FURN_POSE_T[f] = k => k * P / N; }
 function furnSprite(f, r, shadow, W, D, now) {
   const pose = FURN_POSE[f], an = PixelFurn.anim(f), key = f + '|' + (r ? 1 : 0) + (shadow ? 's' : '') + W + 'x' + D;
   if (pose) { const p = pose(now), k = key + '|' + p; let c = furnPx.get(k); if (!c) { c = { s: PixelFurn.sprite(f, FURN[f], r, FURN_POSE_T[f](p), shadow, W, D) }; furnPx.set(k, c); } return c.s; }
@@ -3547,9 +3582,9 @@ function buildHouseGrid() { // เส้นตารางจาง ๆ ตอ�
   for (let Y = FY0, k = 0; Y <= FY1; Y += TS / 2, k++) { g.strokeStyle = k % 2 ? 'rgba(255,255,255,.10)' : 'rgba(255,255,255,.26)'; g.beginPath(); g.moveTo(...iso(FX0, Y)); g.lineTo(...iso(FX1, Y)); g.stroke(); }
   return c;
 }
-function drawIsoPlayer(p, now) { // ตัวละครเดิมวาดที่พิกัดโลก → เลื่อนไปยังพิกัดไอโซเมตริก (นั่งแล้วยกขึ้นตามที่นั่ง)
+function drawIsoPlayer(p, now, sit) { // ตัวละครเดิมวาดที่พิกัดโลก → เลื่อนไปยังพิกัดไอโซเมตริก (นั่งแล้วยกขึ้นตามที่นั่ง)
   const [sx, sy] = iso(p.x, p.y); let lift = 0, q = p;
-  const it = p.sit ? sitNear(p) : null; // นั่ง/นอนอยู่บนชิ้นไหน: ยกตามความสูงและหันตามแนวชิ้น
+  const it = sit; // นั่ง/นอนอยู่บนชิ้นไหน (drawHouseWorld หาให้แล้วรอบเดียวต่อเฟรม): ยกตามความสูงและหันตามแนวชิ้น
   if (it) { lift = FURN[it.f].bed ? 12 : 8; q = Object.assign({}, p, { dir: it.r ? 3 : 0 }, p.lie ? { lieRot: lieAngle(it) } : {}); }
   ctx.save(); ctx.translate(sx - p.x, sy - p.y - 10 - lift); drawPlayer(q, now); ctx.restore();
 }
@@ -3573,7 +3608,7 @@ function drawHouseWorld(now) {
   for (const it of its) if (it !== held && FURN[it.f].flat) drawFurnIso(ctx, it, now);
   for (const it of its) { if (it === held) continue; const d = FURN[it.f]; if (!d.wall && !d.flat) list.push({ k: (it.x + it.y) * TS + (it.on ? 1 : 0), f: () => drawFurnIso(ctx, it, now) }); }
   // นั่ง/นอนอยู่บนเตียง/โซฟา: วาดทับหลังตัวเฟอร์นิเจอร์นั้น ไม่ให้ตัวละครไปอยู่ข้างหลัง (ดันลำดับวาดให้ไม่ต่ำกว่าชิ้นนั้น)
-  for (const p of players.values()) { const sit = p.sit ? sitNear(p) : null; list.push({ k: sit ? Math.max(p.x + p.y, (sit.x + sit.y) * TS + 2) : p.x + p.y, f: () => drawIsoPlayer(p, now) }); if (p.cp) list.push({ k: p.cp.x + p.cp.y, f: () => drawIsoCompanion(p.cp, now) }); }
+  for (const p of players.values()) { const sit = p.sit ? sitNear(p) : null; list.push({ k: sit ? Math.max(p.x + p.y, (sit.x + sit.y) * TS + 2) : p.x + p.y, f: () => drawIsoPlayer(p, now, sit) }); if (p.cp) list.push({ k: p.cp.x + p.cp.y, f: () => drawIsoCompanion(p.cp, now) }); }
   list.sort((a, b) => a.k - b.k).forEach(o => o.f());
   drawHouseOverlay(now);
 }
