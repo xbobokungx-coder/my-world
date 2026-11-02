@@ -379,8 +379,9 @@ function updateHappyChip() {
 }
 setInterval(updateHappyChip, 5000);
 function villageCard() {
-  const v = villageSt, on = happyOn(), pct = v.goal ? Math.min(100, Math.round(v.n / v.goal * 100)) : 0;
-  return `<div class="vcard${on ? ' on' : ''}"><b>🎉 Happy Village</b> — ${on ? `ติดบัฟอยู่ เหลือ ${Math.ceil((villageEnd - Date.now()) / 60000)} นาที: ตกปลาไวขึ้น 25% และหาไม้เนื้อแข็งง่ายขึ้น` : v.done ? 'วันนี้ทำครบเป้าแล้ว 🎊 (พรุ่งนี้เริ่มใหม่)' : 'ช่วยกันทำงานให้ครบเป้าของวัน ทั้งเมืองจะได้บัฟร่วม'}<div class="bar"><i style="width:${v.done ? 100 : pct}%"></i></div><small>งานของทุกคนวันนี้ ${v.n}/${v.goal} (เก็บเกี่ยว รดน้ำ ให้อาหารสัตว์ ตกปลา โค่นไม้ เก็บผลผลิต รักษาสัตว์ ลงขัน) • เป้าเพิ่มตามจำนวนคนที่ออนไลน์</small></div>`;
+  const v = villageSt, on = happyOn(), pct = v.goal ? Math.min(100, Math.round(v.n / v.goal * 100)) : 0, need = Math.max(0, (v.full || 0) - (v.mine || 0));
+  const mine = need ? `<br><small>คุณช่วยวันนี้ ${v.mine || 0}/${v.full} ครั้ง • ช่วยอีก ${need} ครั้งเพื่อรับบัฟเต็มเวลา (ไม่ได้ช่วยได้แค่ 5 นาทีแรก)</small>` : v.full ? `<br><small>✅ คุณช่วยครบ ${v.full} ครั้งแล้ว ได้บัฟเต็มเวลา</small>` : '';
+  return `<div class="vcard${on ? ' on' : ''}"><b>🎉 Happy Village</b> — ${on ? `ติดบัฟอยู่ เหลือ ${Math.ceil((villageEnd - Date.now()) / 60000)} นาที: ตกปลาไวขึ้น 25% และหาไม้เนื้อแข็งง่ายขึ้น` : v.done ? 'วันนี้ทำครบเป้าแล้ว 🎊 (พรุ่งนี้เริ่มใหม่)' : 'ช่วยกันทำงานให้ครบเป้าของวัน ทั้งเมืองจะได้บัฟร่วม'}<div class="bar"><i style="width:${v.done ? 100 : pct}%"></i></div><small>งานของทุกคนวันนี้ ${v.n}/${v.goal} (เก็บเกี่ยว รดน้ำ ให้อาหารสัตว์ ตกปลา โค่นไม้ เก็บผลผลิต รักษาสัตว์ ลงขัน) • เป้าเพิ่มตามจำนวนคนที่ออนไลน์</small>${mine}</div>`;
 }
 // ความอิ่มตัวของตลาดต่อหมวด: ป้ายแถบบนบอกหมวดที่ราคาตกเพราะขายซ้ำๆ และเวลาที่ราคาจะกลับมา (ไม่มีลิมิต ขายต่อได้ แค่ได้ราคาต่ำลง)
 const CAT_TH = { fish: 'ปลา', crop: 'ผัก/ผลไม้', animal: 'ผลผลิตสัตว์', wood: 'ไม้', dish: 'อาหาร' };
@@ -993,7 +994,7 @@ function slotInfo(i) {
 function toolInfo(t) { // ข้อมูลเครื่องมือในช่อง 1: e = ไอคอน, n = ชื่อเต็ม, sub = บรรทัดย่อในเมนู, cnt = ตัวเลขมุมช่อง (null = ไม่แสดง)
   if (t === 'hand') return { e: '✋', n: 'มือเปล่า (เก็บผลผลิต เปิดร้าน นั่ง)', sub: 'เก็บ/เปิดร้าน', cnt: null };
   if (t === 'hoe') return { e: '⛏️', n: 'จอบ', sub: 'ขุดดิน', cnt: null };
-  if (t === 'water') { const c = CANS[canTier(inv)]; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${c.cap} • แตะสระเพื่อตักน้ำ)`, sub: `น้ำ ${wtr}/${c.cap}`, cnt: wtr }; }
+  if (t === 'water') { const c = CANS[canTier(inv)], cap = buffOn('bigcan') ? Math.round(c.cap * BUFFS.bigcan.capMul) : c.cap; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${cap} • แตะสระเพื่อตักน้ำ)`, sub: `น้ำ ${wtr}/${cap}`, cnt: wtr }; }
   if (t === 'rod') { const b = itemInfo(selBait); return { e: '🎣', n: RODS[rodLevel()].name + ' (' + b.name.split(' ')[0] + ' ' + (inv[selBait] || 0) + ')', sub: `เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
   if (t === 'pick') { const pk = pickLevel(); return { e: pk ? Shared.PICK_EMOJI[pk] : '⚒️', n: pk ? Shared.PICKS[pk].name : 'อีเต้อ (ยังไม่มี ซื้อที่ร้านช่างเหมือง)', sub: pk ? Shared.PICKS[pk].name : 'ยังไม่มี', cnt: pk ? null : 0 }; }
   const ax = axeLevel(); return { e: '🪓', n: ax ? AXES[ax].name : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', sub: ax ? AXES[ax].name : 'ยังไม่มี', cnt: ax ? null : 0 };
