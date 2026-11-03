@@ -2697,6 +2697,7 @@ function drawCaveWorld(now) {
   for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
   for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
+  if (inSea()) for (const p of players.values()) if (p.fs) drawFishing(p, now); // เอ็นเบ็ด ทุ่น ระลอกน้ำ น้ำกระเซ็น (เดิมวาดเฉพาะรอบวาดของเมือง ฉากทะเลเลยไม่เห็นแอนิเมชันตกปลา)
 }
 // หน้าผา/บันได (ผังเมืองใหม่): วาดทับพื้นทางหลังสร้างพื้นโลก ใช้พาเลตดินหิน-น้ำตาลตาม STYLE_GUIDE
 let caveLamp = [0, 0]; // ตำแหน่งตะเกียงหน้าถ้ำ (พิกเซลเกม) ตั้งตอนวาดภูเขา ใช้ใน drawNight
