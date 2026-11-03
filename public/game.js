@@ -265,7 +265,7 @@ function handle(m) {
     case 'rents': rentsSt = m.r || {}; if (!$('shop').classList.contains('hidden')) renderShop(); break;
     case 'arcpts': arcSt = m.arc; if (hubShown()) renderHub(); break;
     case 'lb': lbSt = m; if (hubShown()) renderHub(); break;
-    case 'town': if (m.w === 'sea') { ask(`⛵ ออกทะเลตกปลาทะเลลึก? ค่าเรือ 🪙${m.fee} • อยู่ได้ ${Math.round(m.ms / 60000)} นาที • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • ใช้เบ็ดและเหยื่อเหมือนเดิม`, () => send({ t: 'sea' })); break; } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : 'log'); break;
+    case 'town': if (m.w === 'sea') { ask(`⛵ ออกทะเลตกปลาทะเลลึก? ${m.boat ? 'ใช้เรือของคุณ ออกฟรี' : `ค่าเรือ 🪙${m.fee} (ซื้อเรือของตัวเองที่ร้านยานพาหนะ ออกฟรีทุกเที่ยว)`} • อยู่ได้ ${Math.round(m.ms / 60000)} นาที • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • ใช้เบ็ดและเหยื่อเหมือนเดิม`, () => send({ t: 'sea' })); break; } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : 'log'); break;
     case 'scene': applyScene(m); break;
     case 'hboard': hboard = m; if (plotsShown()) renderPlots(); break;
   }
@@ -1312,13 +1312,14 @@ function renderShop() {
   $('shopTitle').textContent = sh.name;
   $('shopInfo').textContent = (sh.skill ? `${SKILLS[sh.skill].emoji} ${SKILLS[sh.skill].name} เลเวล ${lvl(sh.skill)} • ` : '') + `🪙 ${inv.coin || 0}` + (shopKind === 'food' ? ` • 🍖 ความอิ่ม ${hunger}/100` : '');
   if (shopKind === 'cloth') return renderCloth();
-  if (sh.soon) { // ร้านยานพาหนะ: ซื้อแล้วขี่/ลงได้ที่นี่ (หรือกด V) • ของที่ยังไม่เปิดอยู่ท้ายรายการ
-    const vrows = sh.buy.map(k => { const i = itemInfo(k), v = k.slice(4), own = inv[k] > 0, riding = me && me.veh === v;
+  if (shopKind === 'vehicle') { // ร้านยานพาหนะ: ซื้อแล้วขี่/ลงได้ที่นี่ (หรือกด V) • เรือ ⛵ อยู่ท้ายรายการ (ไม่ได้ขี่ ใช้ออกทะเลฟรี)
+    const vrows = sh.buy.filter(k => k.startsWith('veh_')).map(k => { const i = itemInfo(k), v = k.slice(4), own = inv[k] > 0, riding = me && me.veh === v;
       return `<div class="row"><span>${i.emoji} ${i.name}<br><small>${own ? (riding ? 'กำลังขี่อยู่ ✅' : 'มีแล้ว') : `🪙${i.buy}`}</small></span><span>`
         + (own ? `<button class="btn small" data-veh="${riding ? '' : v}">${riding ? 'ลงเดิน' : 'ขี่'}</button> <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sellbackValue(k)}</button>` : `<button class="btn small" data-buy="${k}" data-n="1" ${(inv.coin || 0) < i.buy ? 'disabled' : ''}>ซื้อ</button>`) + '</span></div>'; }).join('');
-    $('shopBody').innerHTML = '<div class="sec">🚲 ยานพาหนะ (ขี่ได้ในเมือง เดินเร็วขึ้น • กด V ขี่/ลง)</div>' + vrows + '<div class="sec">เร็วๆ นี้</div>'
-      + sh.soon.map(s => `<div class="row lock"><span>${s.emoji} ${s.name}<br><small>ราคาประมาณ 🪙${s.price}</small></span><span><button class="btn small" disabled>ยังไม่เปิดขาย</button></span></div>`).join('')
-      + '';
+    const bi = itemInfo('boat'), bown = inv.boat > 0;
+    const brow = `<div class="row"><span>${bi.emoji} ${bi.name}<br><small>${bown ? 'มีแล้ว ✅ ออกทะเลฟรีทุกเที่ยว (แตะเรือที่ท่าบนเกาะลึกลับ)' : `🪙${bi.buy} • ไม่ได้ขี่บนบก • ไม่มีเรือต้องจ่ายค่าเรือ 🪙${Shared.SEA.fee} ทุกเที่ยว`}</small></span><span>`
+      + (bown ? `<button class="btn small muted" data-sellback="boat">↩️ ขายคืน 🪙${sellbackValue('boat')}</button>` : `<button class="btn small" data-buy="boat" data-n="1" ${(inv.coin || 0) < bi.buy ? 'disabled' : ''}>ซื้อ</button>`) + '</span></div>';
+    $('shopBody').innerHTML = '<div class="sec">🚲 ยานพาหนะ (ขี่ได้ในเมือง เดินเร็วขึ้น • กด V ขี่/ลง)</div>' + vrows + '<div class="sec">⛵ ออกทะเล</div>' + brow;
     $('shopBody').querySelectorAll('[data-veh]').forEach(b => b.onclick = () => send({ t: 'veh', v: b.dataset.veh }));
     $('shopBody').querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: 1 }));
     $('shopBody').querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask('ขายคืนร้าน (ได้ 70% ของราคาซื้อ)?', () => send({ t: 'sellback', item: b.dataset.sellback })));

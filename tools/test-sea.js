@@ -41,5 +41,22 @@ S.gaugeHit = gh; S.gaugeCore = gc;
 a.rec.inv.coin = 1000; a.x = (S.SEA.exit.x + 0.5) * TS; a.y = (S.SEA.exit.y + 0.5) * TS; a.lastMove = 0;
 w.handle(a, { t: 'm', x: a.x, y: a.y, d: 0 }); assert.ok(!a.scene, 'เดินถึงท้ายเรือแล้วกลับเกาะ'); assert.ok(Math.abs(a.x - (S.SEA.ret.x + 0.5) * TS) < 1, 'ลงที่เกาะ');
 w.seaGo(a); a.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!a.scene, 'หมดเวลา กัปตันพากลับเกาะ');
+// เรือขาย: ร้านยานพาหนะขาย 'boat' (ซื้อครั้งเดียว ขายคืน 70%) มีเรือ = ออกทะเลฟรี ไม่เข้ากองกลาง • ไม่มี = จ่าย SEA.fee
+{
+  assert.ok(S.SHOPS.vehicle.buy.includes('boat') && !S.SHOPS.vehicle.soon, 'ร้านยานพาหนะเปิดขายเรือแล้ว');
+  const bi = S.itemInfo('boat'); assert.strictEqual(bi.buy, S.BOAT.price); assert.ok(bi.once && !bi.veh, 'เรือเป็นของชิ้นเดียว ไม่ใช่ยานพาหนะขี่บนบก');
+  assert.strictEqual(S.sellbackValue('boat'), Math.floor(S.BOAT.price * S.SELLBACK), 'ขายคืนเรือ 70%');
+  const q = mk('Skipper', 5000); w.nearShopKind = () => 'vehicle';
+  assert.strictEqual(w.seaFee(q), S.SEA.fee, 'ไม่มีเรือ = จ่ายค่าเรือ');
+  w.buy(q, 'boat', 1); assert.strictEqual(q.rec.inv.boat, 1, 'ซื้อเรือได้'); assert.strictEqual(q.rec.inv.coin, 5000 - S.BOAT.price);
+  w.buy(q, 'boat', 1); assert.strictEqual(q.rec.inv.coin, 5000 - S.BOAT.price, 'ซื้อซ้ำไม่ได้');
+  assert.strictEqual(w.seaFee(q), 0, 'มีเรือ = ออกฟรี');
+  const pot1 = w.lotto.pot, c1 = q.rec.inv.coin; w.seaGo(q);
+  assert.strictEqual(S.caveFloor(q.scene), S.SEA.floor, 'มีเรือ ออกทะเลได้'); assert.strictEqual(q.rec.inv.coin, c1, 'ไม่เสียค่าเรือ'); assert.strictEqual(w.lotto.pot, pot1, 'ไม่มีเงินเข้ากองกลาง');
+  w.seaLeave(q, 'ทดสอบ');
+  // เหรียญน้อยแต่มีเรือ ก็ออกได้
+  q.rec.inv.coin = 0; w.seaGo(q); assert.strictEqual(S.caveFloor(q.scene), S.SEA.floor, 'มีเรือ เหรียญ 0 ก็ออกได้'); w.seaLeave(q, 'ทดสอบ');
+  w.sellback(q, 'boat'); assert.ok(!q.rec.inv.boat && q.rec.inv.coin === S.sellbackValue('boat'), 'ขายคืนเรือได้ 70%'); assert.strictEqual(w.seaFee(q), S.SEA.fee);
+}
 console.log('✓ ผ่าน: ออกทะเล (ท่าเรือ ค่าเรือเข้ากองกลาง ชุดปลาแยก ตกปลา หมดเวลา/ท้ายเรือกลับเกาะ)');
 fs.rmSync(process.env.DATA_DIR, { recursive: true, force: true }); process.exit(0);

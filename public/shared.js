@@ -1189,7 +1189,8 @@
   const cabinetAt = (tx, ty) => { for (let i = 0; i < CABINETS.length; i++) if (CABINETS[i].x === tx && CABINETS[i].y === ty) return Object.assign({ idx: i }, CABINETS[i]); return null; };
   // ยานพาหนะ: ซื้อครั้งเดียว ขี่/ลงได้ที่ร้านยานพาหนะหรือกด V • speed = ตัวคูณความเร็วเดิน (เฉพาะในเมือง ในบ้านลงเดิน) • ขายคืนได้ 70%
   const VEHICLES = { bike: { name: 'จักรยาน', emoji: '🚲', price: 300, speed: 1.2 }, scooter: { name: 'มอเตอร์ไซค์', emoji: '🛵', price: 1500, speed: 1.4 }, car: { name: 'รถยนต์', emoji: '🚗', price: 6000, speed: 1.6 } };
-  const WISH_EXTRA = Object.values(VEHICLES).map(v => ({ k: 'veh', p: v.price })); // ที่ใช้เงินแบบซื้อครั้งเดียวที่เพิ่มในขั้น 2 (tools/econsim.js ใช้ทำรายการของที่อยากได้)
+  const BOAT = { price: 3000 }; // เรือ: ซื้อครั้งเดียวที่ร้านยานพาหนะ (itemInfo 'boat') ใช้ออกทะเลฟรี ขายคืนได้ 70% เหมือนของชิ้นเดียวอื่นๆ
+  const WISH_EXTRA = Object.values(VEHICLES).map(v => ({ k: 'veh', p: v.price })).concat([{ k: 'boat', p: BOAT.price }]); // ที่ใช้เงินแบบซื้อครั้งเดียวที่เพิ่มในขั้น 2 (tools/econsim.js ใช้ทำรายการของที่อยากได้)
   // ร้านแต่ละสาย: buy = สินค้าที่ขาย, sell = คำนำหน้าไอเทมที่ร้านรับซื้อ
   const SHOPS = {
     farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: CROP_IDS().map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
@@ -1198,8 +1199,8 @@
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
     mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3', 'axe_4', 'axe_5'], sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
-    // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือยังไม่เปิด (soon)
-    vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v), sell: [], soon: [{ emoji: '⛵', name: 'เรือ (แล่นในสระ)', price: 3000 }] },
+    // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือ ⛵ (BOAT) ซื้อครั้งเดียว ไม่ได้ขี่บนบก มีเรือ = ออกทะเลฟรีทุกเที่ยว (ไม่มี = จ่าย SEA.fee)
+    vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v).concat(['boat']), sell: [] },
     cloth:  { name: '👕 ร้านเสื้อผ้า',    skill: null,     buy: Object.keys(WEAR).flatMap(c => WEAR[c].filter(i => i.price > 0).map(i => wearKey(c, i.id))), sell: [] },
     food:   { name: '🍜 ร้านอาหาร',      skill: null,     buy: ['meal_bread'], // 2 พ.ย. 2026: ขายแค่ขนมปัง (อาหารฉุกเฉิน + วัตถุดิบเบอร์เกอร์ปลา) อาหารอื่นทำเองที่ครัว เมนูอื่นใน MEALS ยังกินได้และยังแจกจากกองกลาง
                                                         sell: ['dish_'] },
@@ -1247,6 +1248,7 @@
     let m = /^rod_(\d)$/.exec(k);
     if (m && RODS[m[1]] && RODS[m[1]].price) return { name: RODS[m[1]].name, emoji: '🎣', buy: RODS[m[1]].price, lv: RODS[m[1]].lv, skill: 'fish', once: true, cat: 'gear' };
     if (k === 'petfood') return { name: 'อาหารสัตว์เลี้ยง (+' + PETCARE.food + ' อิ่ม)', emoji: '🦴', buy: 8, cat: 'feed' };
+    if (k === 'boat') return { name: 'เรือ (ออกทะเลฟรีทุกเที่ยว)', emoji: '⛵', buy: BOAT.price, once: true, cat: 'gear' };
     m = /^veh_(\w+)$/.exec(k);
     if (m && VEHICLES[m[1]]) { const v = VEHICLES[m[1]]; return { name: `${v.name} (เร็วขึ้น ${Math.round((v.speed - 1) * 100)}%)`, emoji: v.emoji, buy: v.price, once: true, cat: 'gear', veh: m[1] }; }
     m = /^pet_(\w+)$/.exec(k);
@@ -1363,7 +1365,7 @@
   const LIGHTHOUSE = { x0: 48, y0: 36, x1: 49, y1: 39 };                    // ประภาคาร 2x4 ช่อง ตั้งกลางน้ำในสระฝั่งขวา (ฐานหินตัน ยืนจากน้ำได้)
   const ISLAND = { x0: 39, y0: 37, x1: 41, y1: 39, walk: { x: 42, y: 38 } }; // เกาะทราย 3x3 ข้างสะพาน + ทางไม้สั้นๆ ต่อกับสะพาน
   // ออกทะเล: เรือที่ท่าบนเกาะลึกลับ (ช่องท่า = SHOP) พาไปฉากทะเล (ฉากเดียวกับถ้ำแต่ชั้น floor=99) ยืนบนดาดฟ้าเรือแล้วตกปลาทะเลลึก • หมดเวลา ms กัปตันพากลับเกาะ
-  const SEA = { floor: 99, fee: 100, ms: 15 * 60e3, minFishLv: 3, dock: { x: 39, y: 38 }, ret: { x: 40, y: 38 }, deck: { x0: 29, y0: 21, x1: 35, y1: 23 }, exit: { x: 28, y: 22 }, spawn: { x: 32.5 * TS, y: 22.5 * TS } };
+  const SEA = { floor: 99, fee: 200, ms: 15 * 60e3, minFishLv: 3, dock: { x: 39, y: 38 }, ret: { x: 40, y: 38 }, deck: { x0: 29, y0: 21, x1: 35, y1: 23 }, exit: { x: 28, y: 22 }, spawn: { x: 32.5 * TS, y: 22.5 * TS } };
   const isSea = f => f === SEA.floor;
   function makeSeaMap() { // น้ำทะเลทั้งแผ่น มีเรือ (ดาดฟ้า BRIDGE 7×3) กลางฉาก ท้ายเรือเป็นบันไดลงเรือเล็กกลับเกาะ (MOUTH เดินถึง = กลับ)
     const m = Array.from({ length: H }, () => new Array(W).fill(T.WATER)), D = SEA.deck;
@@ -1443,7 +1445,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

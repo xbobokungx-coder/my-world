@@ -2007,14 +2007,16 @@ class World {
     this.toast(p, `⛏️ ขุดได้ ${O.emoji} ${O.name} x${n} (ก้อน${S.ORE_SIZES[ore.s].name})`); this.sfx(p, 'fell'); this.event(p, 'mine');
   }
   // ----- ออกทะเล: เรือที่ท่าบนเกาะลึกลับ (S.SEA) → ฉากทะเล (ฉากเดียวกับถ้ำ ชั้น S.SEA.floor) ตกปลาทะเลลึกด้วยเบ็ด จำกัดเวลา -----
+  seaFee(p) { return p.rec.inv.boat > 0 ? 0 : S.SEA.fee; }
   seaGo(p) {
     if (p.scene) return;
     if (Math.hypot(p.x - (S.SEA.dock.x + 0.5) * TS, p.y - (S.SEA.dock.y + 0.5) * TS) > 3 * TS) return this.toast(p, '⛵ ไปที่เรือบนเกาะลึกลับกลางสระก่อนนะ');
     if (this.lv(p, 'fish') < S.SEA.minFishLv) return this.toast(p, `⛵ ต้องเป็นชาวประมงเลเวล ${S.SEA.minFishLv} ขึ้นไปถึงจะออกทะเลได้`);
-    if ((p.rec.inv.coin || 0) < S.SEA.fee) return this.toast(p, `⛵ ค่าเรือ 🪙 ${S.SEA.fee} เหรียญไม่พอ`);
+    const fee = this.seaFee(p); // มีเรือของตัวเอง = ออกฟรี
+    if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `⛵ ค่าเรือ 🪙 ${fee} เหรียญไม่พอ (ซื้อเรือของตัวเองที่ร้านยานพาหนะ 🪙${S.BOAT.price} ออกทะเลฟรีทุกเที่ยว)`);
     if (p.veh) this.setVeh(p, '');
     this.arcLeave(p); this.tradeCancel(p, 'ผู้เล่นออกทะเล'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
-    this.add(p, 'coin', -S.SEA.fee, 'sea'); this.toPot(S.SEA.fee); // ค่าเรือเข้ากองกลางหวย
+    if (fee) { this.add(p, 'coin', -fee, 'sea'); this.toPot(fee); } // ค่าเรือเข้ากองกลางหวย (คนมีเรือไม่เสีย)
     p.ret = { x: (S.SEA.ret.x + 0.5) * TS, y: (S.SEA.ret.y + 0.5) * TS }; p.seaUntil = Date.now() + S.SEA.ms;
     this.changeScene(p, CAVE + S.SEA.floor, S.SEA.spawn.x, S.SEA.spawn.y);
     this.toast(p, `⛵ ออกทะเล! ตกปลาทะเลลึกด้วยเบ็ดได้ ${Math.round(S.SEA.ms / 60000)} นาที (ใช้เหยื่อเหมือนเดิม) • เดินไปท้ายเรือเพื่อกลับเกาะ`);
@@ -2141,7 +2143,7 @@ class World {
     // 3) ตู้เกม
     if (tt === T.BUILD && S.cinemaAt(tx, ty)) { send(p, { t: 'cin', open: true, st: this.cinemaPub() }); return; } // จอหนังกลางแปลง
     const town = tt === T.SHOP ? S.townAt(tx, ty) : null;
-    if (town) { send(p, { t: 'town', w: town, fee: town === 'sea' ? S.SEA.fee : undefined, min: town === 'sea' ? S.SEA.minFishLv : undefined, ms: town === 'sea' ? S.SEA.ms : undefined }); return; }
+    if (town) { send(p, { t: 'town', w: town, fee: town === 'sea' ? this.seaFee(p) : undefined, boat: town === 'sea' ? p.rec.inv.boat > 0 : undefined, min: town === 'sea' ? S.SEA.minFishLv : undefined, ms: town === 'sea' ? S.SEA.ms : undefined }); return; }
     const cab = tt === T.SHOP ? S.cabinetAt(tx, ty) : null;
     if (cab) { this.arcOpen(p, cab); return; }
     // 4) ร้านค้า
