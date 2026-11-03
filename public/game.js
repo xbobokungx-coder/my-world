@@ -3807,6 +3807,10 @@ function buildClick(sx, sy, hit) {
 }
 
 function frameTail(now, wall) { // กลางวัน/กลางคืน + นาฬิกา + แผนที่ย่อ (ใช้ทั้งในเมืองและในบ้าน)
+  if (fg) { // ตัวชี้เกจตกปลา (เส้นทางเดียวกับที่เซิร์ฟเวอร์คำนวณ) อยู่ที่นี่เพื่อให้ขยับทุกฉาก ทั้งเมือง บ้าน ถ้ำ และทะเล (เดิมอยู่ในรอบวาดเมืองอย่างเดียว ในทะเลตัวชี้เลยค้างอยู่ซ้ายสุด)
+    const pos = gaugePos({ gt0: fg.t0, per: fg.per }, performance.now()), inZ = Math.abs(pos - fg.c) <= fg.half;
+    $('fgmk').style.left = pos * 100 + '%'; $('fgauge').classList.toggle('hit', inZ);
+  }
   const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
   const dark = daylight(hour);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -4062,10 +4066,6 @@ function step(now) {
   // เบ็ด + แอนิเมชันเครื่องมือ
   for (const p of players.values()) {
     if (p.fs) drawFishing(p, performance.now());
-  }
-  if (fg) { // ตัวชี้เกจตกปลา (เส้นทางเดียวกับที่เซิร์ฟเวอร์คำนวณ)
-    const pos = gaugePos({ gt0: fg.t0, per: fg.per }, performance.now()), inZ = Math.abs(pos - fg.c) <= fg.half;
-    $('fgmk').style.left = pos * 100 + '%'; $('fgauge').classList.toggle('hit', inZ);
   }
 
   if (inTown()) drawLighthouse(ctx, now);
