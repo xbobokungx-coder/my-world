@@ -4,7 +4,7 @@ const fs = require('fs'), os = require('os'), path = require('path'), assert = r
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-persist-'));
 const { World } = require('../server.js'), S = require('../public/shared.js');
 const w = new World('main');
-const p = { name: 'tester', key: 'tester', x: 0, y: 0, ws: { readyState: 0, send() {} }, rec: { inv: { coin: 20000 }, pts: 0, arc: { pts: 0, total: 0, wk: 0 } } };
+const p = { name: 'tester', key: 'tester', x: 0, y: 0, ws: { readyState: 0, send() {} }, rec: { inv: { coin: 20000 }, skills: { farm: 0, fish: 0, animal: 0, wood: 0, cook: 0 }, pts: 0, arc: { pts: 0, total: 0, wk: 0 } } };
 const fresh = S.makeMap(), cx = 44 * S.TS, y0 = 33 * S.TS + 16, y1 = 43 * S.TS + 16; // กึ่งกลางสะพาน (รอยต่อสองช่อง) จากฝั่งเหนือถึงฝั่งใต้
 const crossable = m => { for (let y = y0; y <= y1; y += 4) if (S.blockedAt(m, cx, y)) return false; return true; };
 assert.strictEqual(crossable(fresh), false, 'แมพเปล่า (makeMap) ยังไม่มีสะพาน');
@@ -137,8 +137,8 @@ assert.strictEqual(crossable(w2.map), true, 'หลังรีสตาร์�
 const all = S.makeMap(); for (const P of S.PROJECTS) S.applyProject(all, P.id);
 const T = S.T, walk = (x, y) => !S.blockedAt(all, x * S.TS + 16, y * S.TS + 16);
 for (let y = S.LIGHTHOUSE.y0; y <= S.LIGHTHOUSE.y1; y++) for (let x = S.LIGHTHOUSE.x0; x <= S.LIGHTHOUSE.x1; x++) { assert.strictEqual(all[y][x], T.WATER, 'ประภาคารต้องอยู่บนน้ำ'); assert.ok(!walk(x, y), 'ประภาคารต้องเดินทะลุไม่ได้'); }
-for (let y = S.ISLAND.y0; y <= S.ISLAND.y1; y++) for (let x = S.ISLAND.x0; x <= S.ISLAND.x1; x++) assert.ok(walk(x, y), 'เกาะต้องเดินได้');
-for (let x = S.ISLAND.x0; x <= S.BRIDGE.x0; x++) assert.ok(walk(x, S.ISLAND.walk.y), 'ต้องเดินจากสะพานขึ้นเกาะได้');
+for (let y = S.ISLAND.y0; y <= S.ISLAND.y1; y++) for (let x = S.ISLAND.x0; x <= S.ISLAND.x1; x++) if (x === S.SEA.dock.x && y === S.SEA.dock.y) assert.strictEqual(all[y][x], T.SHOP, 'ท่าเรือบนเกาะเป็นช่องร้าน (แตะออกทะเล)'); else assert.ok(walk(x, y), 'เกาะต้องเดินได้');
+for (let x = S.ISLAND.x0 + 1; x <= S.BRIDGE.x0; x++) assert.ok(walk(x, S.ISLAND.walk.y), 'ต้องเดินจากสะพานขึ้นเกาะได้'); // ช่องซ้ายสุดของแถวนี้คือท่าเรือ (ตัน)
 const orig = S.makeMap(); let changed = 0; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (orig[y][x] !== all[y][x]) { changed++; assert.ok([T.WATER, T.GRASS, T.TREE, T.PATH].includes(orig[y][x]), `ทับช่องที่ไม่ควรทับที่ ${x},${y}`); }
 console.log('  โครงการทั้ง 3 แปลงแมพ', changed, 'ช่อง');
 console.log('✓ ผ่าน: ยอดโครงการอยู่ครบหลังโหลดใหม่ และสะพานเดินข้ามได้ทั้งตอนสร้างเสร็จและหลังรีสตาร์ต');
