@@ -107,6 +107,7 @@ class World {
       if (e.code !== 'ENOENT') { try { fs.copyFileSync(this.file, this.file + '.broken-' + Date.now()); console.error('อ่านไฟล์บันทึกไม่ได้ สำรองไว้แล้ว:', e.message); } catch (e2) { /* ไม่มีอะไรให้สำรอง */ } }
     }
     this.mocks = S.sanitizeMocks(this._loadMocks); this.mapOv = S.sanitizeMapOv(this._loadMapOv); delete this._loadMocks; delete this._loadMapOv;
+    for (const rec of Object.values(this.saved)) if (rec && rec.inv) this.achCheck(rec); // ผ่านความสำเร็จสายลงขันให้ผู้เล่นทุกคนที่มีเซฟ (รวมคนที่ออฟไลน์)
     this.loadHouse(houseSaved); this.loadTown(townSaved); for (const P of S.PROJECTS) if (S.projectDone(P.id, this.projects[P.id].coin)) S.applyProject(this.map, P.id); this.initNpcs(); this.initPets();
     if (this.mktDay === -1) this.mktDay = Math.floor(Date.now() / S.DAY_MS);
     this.market = {};
@@ -582,6 +583,9 @@ class World {
     const a = this.achOf(rec), p = [...this.players.values()].find(q => q.rec === rec) || null;
     const val = st => st === 'wealth' ? (rec.inv.coin || 0) : st === 'streak' ? ((rec.streak || {}).n || 0) : (a.cnt[st] || 0);
     let any = false;
+    const waived = []; // ความสำเร็จสายลงขัน (stat 'give'): ตู้เซฟกองกลางถูกยกเลิกแล้ว (3 พ.ย. 2026) ทำให้ไม่มีทางสะสมยอดได้ → ผ่านให้ทุกคนทันที ไม่มีเหรียญ ไม่ประกาศข่าวเมือง
+    for (const d of S.ACH) if (d.stat === 'give' && !a.got[d.id]) { a.got[d.id] = Date.now(); any = true; if (d.title) waived.push(d.title); }
+    if (waived.length && p) this.toast(p, `🏛️ ยกเลิกตู้เซฟกองกลางแล้ว ความสำเร็จสายลงขันผ่านให้ทุกคน • ได้ฉายา ${waived.map(t => `"${t}"`).join(' ')} (เลือกใช้ได้ที่ 🏅)`);
     for (const d of S.ACH) {
       if (a.got[d.id] || val(d.stat) < d.goal) continue;
       a.got[d.id] = Date.now(); any = true;
