@@ -286,6 +286,7 @@ function onAdmin(m) {
   if (m.err && m.mapedit) toast('⚠️ ' + m.err);
   if (m.coinmsg) toast(m.coinmsg);
   if (m.warpmsg) toast(m.warpmsg);
+  if (m.lvmsg) toast(m.lvmsg);
   if (m.kicked) { toast('เตะ ' + m.kicked + ' ออกแล้ว'); setTimeout(() => send({ t: 'admin', a: 'users' }), 700); }
   if (m.banned) toast('🚫 แบน ' + m.banned + ' แล้ว (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)');
   if (m.unbanned) toast('✅ ปลดแบน ' + m.unbanned + ' แล้ว');
@@ -343,12 +344,15 @@ function renderAdmin() {
       + (r.name !== adminSt.current ? `<button class="btn small" data-go="${esc(r.name)}">↪️ ไปห้องนี้</button> ` : '')
       + (!r.main ? `<button class="btn small muted" data-rm="${esc(r.name)}">🗑️ เลิกใช้</button>` : '') + '</span></div>').join('');
     h += `<div class="sec">🪙 เหรียญของตัวเอง</div><div class="row"><span>${me ? esc(me.name) : ''}</span><span><button class="btn small" data-admcoin="100">➕ 100</button> <button class="btn small muted" data-admcoin="-100">➖ 100</button></span></div>`;
+    h += '<div class="sec">🎚️ เลเวลของตัวเอง (ทดสอบ)</div>';
+    h += Object.keys(Shared.SKILLS).map(k => `<div class="row"><span>${Shared.SKILLS[k].emoji} ${esc(Shared.SKILLS[k].name)} <b>Lv ${lvl(k)}</b></span><span><button class="btn small" data-lvskill="${k}" data-d="-1">➖</button> <button class="btn small" data-lvskill="${k}" data-d="1">➕</button> <button class="btn small" data-lvskill="${k}" data-to="${Shared.MAX_LV}">⏫ ${Shared.MAX_LV}</button> <button class="btn small muted" data-lvskill="${k}" data-to="1">⏬ 1</button></span></div>`).join('');
     h += '<div class="sec">👥 ผู้เล่นและ IP <button class="btn small" id="ipRefresh">🔄 รีเฟรช</button></div>';
     h += (adminSt.users || []).map(u => `<div class="arow"><span>${u.online ? '🟢' : '⚪'} <b>${esc(u.name)}</b> <small>ห้อง ${esc(u.room)}</small><br><small>${u.online ? 'IP ตอนนี้: <b>' + esc(u.ip) + '</b>' : 'เข้าล่าสุด ' + ago(u.last)}</small>`
       + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<button class="btn small muted" data-pinreset="${esc(u.name)}" data-proom="${esc(u.room)}">🔓 ล้าง PIN</button> <button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; if (adminTab === 'warp') send({ t: 'admin', a: 'warplist' }); renderAdmin(); });
+  el.querySelectorAll('[data-lvskill]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'lvl', skill: b.dataset.lvskill, d: b.dataset.d ? +b.dataset.d : undefined, to: b.dataset.to ? +b.dataset.to : undefined }));
   el.querySelectorAll('[data-warp]').forEach(b => b.onclick = () => { send({ t: 'admin', a: 'warp', to: b.dataset.warp }); closeAdmin(); });
   const ome = $('openMapEdit'); if (ome) ome.onclick = openMapEdit;
   el.querySelectorAll('[data-bugimg]').forEach(b => b.onclick = () => { b.disabled = true; send({ t: 'admin', a: 'bugimg', id: b.dataset.bugimg }); });

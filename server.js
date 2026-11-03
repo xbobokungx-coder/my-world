@@ -3548,6 +3548,15 @@ function adminHandle(p, world, m) {
     console.log('ผู้ดูแลปรับเหรียญตัวเอง:', p.name, (n > 0 ? '+' : '') + n, '→', p.rec.inv.coin, '(ห้อง ' + world.room + ')');
     return reply({ coinmsg: `🪙 ${p.name}: ${n > 0 ? '+' : ''}${n} (เหลือ ${p.rec.inv.coin})`, users: userList() });
   }
+  if (m.a === 'lvl') { // ผู้ดูแลปรับเลเวลอาชีพของตัวเองเพื่อทดสอบ: d = +1/-1 เลเวล หรือ to = เลเวลที่ต้องการ (ตั้ง XP ให้พอดีขั้นนั้น)
+    const sk = String(m.skill || ''); if (!Object.hasOwn(S.SKILLS, sk)) return reply({ err: 'ไม่รู้จักอาชีพนี้' });
+    const cur = world.lv(p, sk), to = Number.isFinite(+m.to) ? Math.trunc(+m.to) : cur + Math.trunc(+m.d || 0);
+    if (!(to >= 1 && to <= S.MAX_LV)) return reply({ err: `เลเวลต้องอยู่ระหว่าง 1–${S.MAX_LV}` });
+    p.rec.skills[sk] = S.xpFor(to); world.dirty = true;
+    send(p, { t: 'skills', skills: p.rec.skills });
+    console.log('ผู้ดูแลปรับเลเวล:', p.name, S.SKILLS[sk].name, cur, '→', to, '(ห้อง ' + world.room + ')');
+    return reply({ lvmsg: `🎚️ ${S.SKILLS[sk].emoji} ${S.SKILLS[sk].name} เลเวล ${to}` });
+  }
   if (m.a === 'warplist') { // รายการจุดวาปในห้องนี้: บ้านของทุกคนที่เคยเข้าเกมในห้องนี้ + จำนวนชั้นถ้ำ
     const houses = Object.keys(world.saved).map(k => ({ key: k, name: world.saved[k].name || k })).sort((a, b) => a.name.localeCompare(b.name, 'th'));
     return reply({ warp: { houses, floors: S.MINE.floors } });
