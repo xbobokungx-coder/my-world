@@ -279,12 +279,13 @@ const adminShown = () => !$('admin').classList.contains('hidden');
 function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); send({ t: 'admin', a: 'bugs' }); renderAdmin(); }
 function closeAdmin() { $('admin').classList.add('hidden'); }
 function onAdmin(m) {
-  adminSt = { rooms: m.rooms || [], current: m.current || '', err: m.err || '', users: m.users || (adminSt && adminSt.users) || [], bans: m.bans || (adminSt && adminSt.bans) || [], bugs: m.bugs || (adminSt && adminSt.bugs) || [] };
+  adminSt = { rooms: m.rooms || [], current: m.current || '', err: m.err || '', users: m.users || (adminSt && adminSt.users) || [], bans: m.bans || (adminSt && adminSt.bans) || [], bugs: m.bugs || (adminSt && adminSt.bugs) || [], warp: m.warp || (adminSt && adminSt.warp) || null };
   if (m.bugimg) bugImgs[m.bugimg.id] = m.bugimg.uri;
   if (m.bugmark) toast(m.bugmark === 'fixed' ? '✅ ย้ายไปส่วน「แก้แล้ว」' : '↩️ เปิดรายงานใหม่ (กลับไป「ยังไม่แก้」)');
   if (m.created) { const url = roomLink(m.created); try { navigator.clipboard.writeText(url).catch(() => {}); } catch (e) { /* ไม่ได้ก็ไม่เป็นไร */ } toast('สร้างห้อง ' + m.created + ' แล้ว คัดลอกลิงก์ให้แล้ว 🔗'); }
   if (m.err && m.mapedit) toast('⚠️ ' + m.err);
   if (m.coinmsg) toast(m.coinmsg);
+  if (m.warpmsg) toast(m.warpmsg);
   if (m.kicked) { toast('เตะ ' + m.kicked + ' ออกแล้ว'); setTimeout(() => send({ t: 'admin', a: 'users' }), 700); }
   if (m.banned) toast('🚫 แบน ' + m.banned + ' แล้ว (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)');
   if (m.unbanned) toast('✅ ปลดแบน ' + m.unbanned + ' แล้ว');
@@ -309,7 +310,7 @@ function renderAdmin() {
   const banN = (adminSt.bans || []).length;
   const bugAll = adminSt.bugs || [], bugOpen = bugAll.filter(b => !b.fixed), bugFixed = bugAll.filter(b => b.fixed), bugN = bugOpen.length;
   let h = adminSt.err ? `<div class="banner" style="background:#fde0dc">${esc(adminSt.err)}</div>` : '';
-  h += `<div class="chips" style="margin-bottom:10px"><button class="chip${adminTab === 'manage' ? ' sel' : ''}" data-atab="manage">🏠 ห้อง & ผู้เล่น</button><button class="chip${adminTab === 'map' ? ' sel' : ''}" data-atab="map">🗺️ แมพ</button><button class="chip${adminTab === 'blacklist' ? ' sel' : ''}" data-atab="blacklist">🚫 Blacklist${banN ? ' (' + banN + ')' : ''}</button><button class="chip${adminTab === 'bugs' ? ' sel' : ''}" data-atab="bugs">🐞 บั๊ก${bugN ? ' (' + bugN + ')' : ''}</button></div>`;
+  h += `<div class="chips" style="margin-bottom:10px"><button class="chip${adminTab === 'manage' ? ' sel' : ''}" data-atab="manage">🏠 ห้อง & ผู้เล่น</button><button class="chip${adminTab === 'map' ? ' sel' : ''}" data-atab="map">🗺️ แมพ</button><button class="chip${adminTab === 'warp' ? ' sel' : ''}" data-atab="warp">🧭 วาป</button><button class="chip${adminTab === 'blacklist' ? ' sel' : ''}" data-atab="blacklist">🚫 Blacklist${banN ? ' (' + banN + ')' : ''}</button><button class="chip${adminTab === 'bugs' ? ' sel' : ''}" data-atab="bugs">🐞 บั๊ก${bugN ? ' (' + bugN + ')' : ''}</button></div>`;
   if (adminTab === 'map') {
     h += `<p style="font-size:13px;line-height:1.45;margin:0 0 10px">แก้แมพห้องนี้แบบอิสระ: <b>Mock</b> (กล่องวางแผน ขยับ/เพิ่ม/ลบ ได้ — เห็นเฉพาะผู้ดูแล) และ <b>วาดพื้น</b> (เปลี่ยนหญ้า/ทาง/น้ำ/ต้นไม้ ฯลฯ ให้ทุกคนในห้องทันที)</p>`;
     h += `<button class="btn" id="openMapEdit">🗺️ เปิดตัวแก้แมพ</button>`;
@@ -324,6 +325,12 @@ function renderAdmin() {
         + `<div style="margin-top:6px">${b.img && !bugImgs[b.id] ? `<button class="btn small" data-bugimg="${esc(b.id)}">🖼 ดูภาพ</button> ` : ''}`
         + (b.fixed ? `<button class="btn small muted" data-bugreopen="${esc(b.id)}">↩️ เปิดใหม่</button>` : `<button class="btn small" data-bugfix="${esc(b.id)}">✅ แก้แล้ว</button>`) + '</div></div></div>';
     }).join('') : `<p style="opacity:.7">${bugView === 'fixed' ? 'ยังไม่มีบั๊กที่แก้แล้ว' : 'ไม่มีบั๊กค้าง 🎉'}</p>`;
+  } else if (adminTab === 'warp') { // วาปไปฉากต่างๆ ของห้องนี้ (ผู้ดูแลเท่านั้น ข้ามเงื่อนไขเดินและค่าเรือ)
+    const W = adminSt.warp || { houses: [], floors: 0 }, btn = to => `<button class="btn small" data-warp="${esc(to)}">🧭 วาป</button>`;
+    h += '<div class="sec">🏘️ เมือง</div>' + `<div class="arow"><span>ลานกองไฟกลางเมือง</span>${btn('town')}</div>`;
+    h += '<div class="sec">⛏️ ถ้ำเหมือง</div>' + Array.from({ length: W.floors }, (_, i) => `<div class="arow"><span>ชั้น ${i + 1}</span>${btn('cave:' + (i + 1))}</div>`).join('');
+    h += '<div class="sec">🌊 ทะเลลึก</div>' + `<div class="arow"><span>เกาะลึกลับกลางสระ (เรือ)</span>${btn('sea')}</div>`;
+    h += `<div class="sec">🏠 บ้านของผู้เล่น (${W.houses.length})</div>` + W.houses.map(x => `<div class="arow"><span><b>${esc(x.name)}</b></span>${btn('house:' + x.key)}</div>`).join('');
   } else if (adminTab === 'blacklist') {
     h += `<div class="arow"><input type="text" id="banName" maxlength="12" placeholder="พิมพ์ชื่อที่จะแบน (ห้อง ${esc(adminSt.current)})"><button class="btn small" id="banAdd">🚫 แบน</button></div>`;
     h += `<p style="font-size:12px;opacity:.7;margin:4px 0 8px">ชื่อที่ถูกแบนจะเข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น (เตะออกทันทีถ้ากำลังออนไลน์) • แบนแยกตามห้อง</p>`;
@@ -341,7 +348,8 @@ function renderAdmin() {
       + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<button class="btn small muted" data-pinreset="${esc(u.name)}" data-proom="${esc(u.room)}">🔓 ล้าง PIN</button> <button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
   }
   el.innerHTML = h;
-  el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; renderAdmin(); });
+  el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; if (adminTab === 'warp') send({ t: 'admin', a: 'warplist' }); renderAdmin(); });
+  el.querySelectorAll('[data-warp]').forEach(b => b.onclick = () => { send({ t: 'admin', a: 'warp', to: b.dataset.warp }); closeAdmin(); });
   const ome = $('openMapEdit'); if (ome) ome.onclick = openMapEdit;
   el.querySelectorAll('[data-bugimg]').forEach(b => b.onclick = () => { b.disabled = true; send({ t: 'admin', a: 'bugimg', id: b.dataset.bugimg }); });
   el.querySelectorAll('[data-bview]').forEach(b => b.onclick = () => { bugView = b.dataset.bview; renderAdmin(); });

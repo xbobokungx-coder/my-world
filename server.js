@@ -248,6 +248,18 @@ class World {
     const r = this.townPos(p); p.ret = null;
     this.changeScene(p, null, r.x, r.y);
   }
+  warpTo(p, to) { // ผู้ดูแลวาปไปฉากไหนก็ได้ทันที (ข้ามเงื่อนไขเดิน/ค่าเรือ): town | cave:N | sea | house:<ชื่อ>; คืนข้อความผิดพลาด หรือ null
+    const back = p.scene ? this.townPos(p) : { x: p.x, y: p.y };
+    if (p.veh) this.setVeh(p, ''); this.arcLeave(p); this.tradeCancel(p, 'ผู้ดูแลวาป'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
+    p.seaUntil = 0;
+    if (to === 'town') { p.ret = null; this.changeScene(p, null, SPAWN.x, SPAWN.y); return null; }
+    p.ret = { x: back.x, y: back.y }; // กลับจากฉากนี้จะไปยืนตรงที่ยืนอยู่ในเมือง
+    if (to === 'sea') { p.seaUntil = Date.now() + S.SEA.ms; this.changeScene(p, CAVE + S.SEA.floor, S.SEA.spawn.x, S.SEA.spawn.y); return null; }
+    const cave = /^cave:(\d+)$/.exec(to);
+    if (cave) { const f = +cave[1]; if (f < 1 || f > S.MINE.floors) return 'ไม่มีถ้ำชั้นนี้'; const at = this.caveLanding(f); this.changeScene(p, CAVE + f, at.x, at.y); return null; }
+    if (to.startsWith('house:')) { const key = to.slice(6); if (!this.saved[key]) return 'ไม่พบบ้านหลังนี้'; if (!this.houses[key]) this.houses[key] = { items: {}, next: 1 }; this.changeScene(p, key, S.HOUSE_SPAWN.x, S.HOUSE_SPAWN.y); return null; }
+    return 'ไม่รู้จักจุดหมายนี้';
+  }
   caveLanding(f) { // ช่องยืนข้างบันไดลงของชั้น f (ขึ้นมาจากชั้นล่างแล้วไม่ทับบันไดจนลงซ้ำ)
     const F = this.floorOf(f); if (F.landing) return F.landing;
     let best = null;
@@ -3536,6 +3548,11 @@ function adminHandle(p, world, m) {
     console.log('ผู้ดูแลปรับเหรียญตัวเอง:', p.name, (n > 0 ? '+' : '') + n, '→', p.rec.inv.coin, '(ห้อง ' + world.room + ')');
     return reply({ coinmsg: `🪙 ${p.name}: ${n > 0 ? '+' : ''}${n} (เหลือ ${p.rec.inv.coin})`, users: userList() });
   }
+  if (m.a === 'warplist') { // รายการจุดวาปในห้องนี้: บ้านของทุกคนที่เคยเข้าเกมในห้องนี้ + จำนวนชั้นถ้ำ
+    const houses = Object.keys(world.saved).map(k => ({ key: k, name: world.saved[k].name || k })).sort((a, b) => a.name.localeCompare(b.name, 'th'));
+    return reply({ warp: { houses, floors: S.MINE.floors } });
+  }
+  if (m.a === 'warp') { const err = world.warpTo(p, String(m.to || '')); return reply(err ? { err } : { warpmsg: '🧭 วาปแล้ว' }); }
   if (m.a === 'users') { // รายชื่อผู้เล่นทุกห้องพร้อม IP (ออนไลน์ก่อน แล้วเรียงตามเวลาเข้าล่าสุด) + รายชื่อที่ถูกแบน
     return reply({ users: userList(), bans: banList() });
   }
