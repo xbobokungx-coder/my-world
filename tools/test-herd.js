@@ -31,8 +31,4 @@ assert.ok(w.saved.alice.herd.length === nBefore && w.saved.alice.herd.length ===
 const a2 = mk('Alice');
 assert.strictEqual(w.ownerCount(a2.key, 'chicken'), S.ANIMALS.chicken.cap, 'เข้าใหม่สัตว์กลับมาครบ');
 assert.strictEqual(a2.rec.herdGift, 1, 'ไม่แจกไก่ซ้ำ');
-// ไม่มีปุ่มชุบ / ไม่มี dead queue
-assert.strictEqual(Object.keys(w.chest.dead || {}).length, 0);
-w.chestHandle(a2, { a: 'revive', type: 'chicken' }); // no-op
-assert.ok(!w.chest.dead.chicken);
 console.log('ok herd: gift + cap', S.ANIMALS.chicken.cap, '+ despawn/respawn on leave/join');

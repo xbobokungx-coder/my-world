@@ -3,7 +3,7 @@
 const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-  GAME_TITLES, COOK, COOK_FEE, craftFee, COOK_CATS, cookCat, PROJECTS, PROJ_DONATE, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, woodXp, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, CHEST, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, DOLE, playLevel, dolePackage, doleCost, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, SELLABLE } = Shared;
+  GAME_TITLES, COOK, COOK_FEE, craftFee, COOK_CATS, cookCat, PROJECTS, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, woodXp, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, playLevel, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, SELLABLE } = Shared;
 const MAP = makeMap();
 const $ = id => document.getElementById(id);
 const canvas = $('c'), ctx = canvas.getContext('2d'), mainCtx = ctx;
@@ -34,10 +34,9 @@ const players = new Map(), animals = new Map(), npcs = new Map(); const roster =
 const presence = (id, fn) => { for (const p of [players.get(id), roster.get(id)]) if (p) fn(p); }; // roster = ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้รายชื่อและการโทร • players = คนในฉากเดียวกัน (วาดและเสียงรอบตัว) // npcs = ชาวเมือง NPC (ไม่นับเป็นผู้เล่น)
 let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, hunger = 80;
 const furn = new Map();               // เฟอร์นิเจอร์ในบ้านที่เปิดอยู่ (ฉากบ้าน): id -> { i, f, x, y, r, z, on, wl, u } พิกัดหน่วยช่อง
-let townLog = [], chestSt = { coin: 0, dead: {} }, townTab = 'log';
+let townLog = [], townTab = 'log';
 let arcSt = { pts: 0, total: 0, wk: 0 };                               // แต้มตู้เกมของเรา
 let lbSt = { total: [], wk: [], me: null }, hubTab = 'rank';           // Leaderboard + ศูนย์รวมแต้ม/รางวัล
-let projSt = [];
 let questSt = { list: [], total: 0, title: '', pts: { bal: 0, earned: 0 } }, fameSt = {};
 let enSt = { v: 100, ex: false, rate: 0, resume: 10, rareUntil: 0, at: Date.now() }, catSt = { c: {}, recover: 0.04 }, bankSt = { bal: 0, cap: BANK.cap }, villageSt = { n: 0, goal: 0, done: false, left: 0 };
 let villageEnd = 0; // เวลาที่บัฟ Happy Village หมด (ms ของนาฬิกาเครื่องนี้)
@@ -135,6 +134,7 @@ function handle(m) {
       dur = m.dur || {}; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
       if (m.trees) applyTrees(m.trees);
       if (m.mapOv) applyMapOv(m.mapOv);
+      checkProjects(); // สะพาน/ประภาคาร/เกาะ มีให้เลยตั้งแต่ต้น
       if (m.mocks && typeof MapEdit !== 'undefined') MapEdit.setMocks(m.mocks);
       furn.clear();
       players.clear();
@@ -239,12 +239,10 @@ function handle(m) {
     case 'admin': onAdmin(m); break;
     case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break;
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
-    case 'chest': chestSt = m.c; if (townShown()) renderTown(); break;
     case 'en': enSt = Object.assign(m, { at: Date.now(), spentAt: m.spent ? Date.now() : (enSt.spentAt || 0), lastSpent: m.spent || enSt.lastSpent || 0 }); renderEnergy(); break;
     case 'cat': catSt = Object.assign(m, { at: Date.now() }); renderSat(); break;
-    case 'proj': projSt = m.p; checkProjects(); if (townShown()) renderTown(); break;
     case 'quests': {
-      questSt = { list: m.list, total: m.total, title: m.title, pts: m.pts, dole: m.dole, starter: m.starter, streak: m.streak, book: m.book, wk: m.wk, wk1: m.wk1 };
+      questSt = { list: m.list, total: m.total, title: m.title, pts: m.pts, starter: m.starter, streak: m.streak, book: m.book, wk: m.wk, wk1: m.wk1 };
       updateGuide(); updateQuestBadge(); if (questShown()) renderQuestPanel(); if (bagShown() && bagTab === 'book') renderBag();
       for (const id of Object.keys(BUFFS)) buffExp[id] = m.buffs[id] ? Date.now() + m.buffs[id] : 0;
       if (me) me.title = m.title;
@@ -255,7 +253,6 @@ function handle(m) {
     case 'fame': fameSt = m.f; if (townShown()) renderTown(); break;
     case 'title': { const p = players.get(m.id); if (p) p.title = m.title; if (achShown()) renderAch(); break; }
     case 'veh': { const p = players.get(m.id); if (p) p.veh = m.v || ''; if (m.id === myId && !$('shop').classList.contains('hidden')) renderShop(); break; }
-    case 'auc': aucSt = m.a; if (townShown()) renderTown(); break;
     case 'ch': chSt = { ch: m.ch, wet: m.wet, chain: m.chain }; if (questShown()) renderQuestPanel(); break;
     case 'chain': chSt.chain = m.n; break;
     case 'stars': starsSt = m.s || {}; if (bagShown()) renderBag(); break;
@@ -264,11 +261,10 @@ function handle(m) {
     case 'stall': stallSt = m.l || []; if (townShown() && townTab === 'stall') renderTown(); break;
     case 'orders': ordersSt = m.o; if (townShown() && townTab === 'orders') renderTown(); break;
     case 'orders_upd': if (townShown() && townTab === 'orders') send({ t: 'orders', a: 'list' }); break;
-    case 'fest': festSt = m.f; if (townShown()) renderTown(); break;
     case 'rents': rentsSt = m.r || {}; if (!$('shop').classList.contains('hidden')) renderShop(); break;
     case 'arcpts': arcSt = m.arc; if (hubShown()) renderHub(); break;
     case 'lb': lbSt = m; if (hubShown()) renderHub(); break;
-    case 'town': openTown(m.w === 'chest' ? 'chest' : m.w === 'atm' ? 'bank' : 'log'); break;
+    case 'town': openTown(m.w === 'atm' ? 'bank' : 'log'); break;
     case 'scene': applyScene(m); break;
     case 'hboard': hboard = m; if (plotsShown()) renderPlots(); break;
   }
@@ -429,7 +425,7 @@ function eventCard() { // การ์ดอีเวนต์ในข่าว
 }
 setInterval(renderEnergy, 1000);
 // ความสดของสินค้า (Shared.FRESH): อายุของแต่ละกองในกระเป๋าจากเซิร์ฟเวอร์ คิดระดับสด/ค้าง/เก่าตามเวลาปัจจุบัน
-let starsSt = {}, evtSt = null, freshSt = { l: {}, fz: false }, rentsSt = {}, aucSt = null, festSt = null, pinSt = false, stallSt = [], ordersSt = null, chSt = { ch: null, wet: 0, chain: 0 }; // chSt = ชาเลนจ์ถังน้ำ // pinSt = บัญชีนี้ตั้ง PIN แล้ว // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
+let starsSt = {}, evtSt = null, freshSt = { l: {}, fz: false }, rentsSt = {}, pinSt = false, stallSt = [], ordersSt = null, chSt = { ch: null, wet: 0, chain: 0 }; // chSt = ชาเลนจ์ถังน้ำ // pinSt = บัญชีนี้ตั้ง PIN แล้ว // rentsSt = แปลงเช่า (Shared.FARM_RENT) id → { name, until, key }
 const freshMulsOf = (k, q) => Shared.perishable(k) ? Shared.freshMuls(freshSt.l[k], q, Date.now() + timeOffset, freshSt.fz) : null;
 function freshBadge(k) { // 🟢12 🟡3 🔴1 (แสดงเมื่อมีของค้าง/เก่า) • ก่อนวันเริ่มระบบไม่แสดง
   if (!Shared.perishable(k) || !freshSt.l[k] || Date.now() + timeOffset < Shared.FRESH.startAt) return '';
@@ -449,16 +445,6 @@ function renderBankTab(el) {
     + '<p style="font-size:12px;opacity:.65;margin-top:10px">💡 ต้องยืนใกล้ตู้ ATM ที่ลานกองไฟถึงจะฝาก/ถอนได้</p>';
   el.innerHTML = h;
   el.querySelectorAll('[data-bank]').forEach(b => b.onclick = () => { const [a, amt] = b.dataset.bank.split(':'); send({ t: 'bank', a, amt: amt === 'all' ? 'all' : +amt }); });
-}
-function doleSection() {
-  const level = playLevel(skills), done = questSt.list.filter(x => x[2]).length, tier = dolePackage(chestSt.coin, level), claimed = !!questSt.dole;
-  const okQuest = done >= DOLE.needQuests;
-  const meals = t => t.meals.map(id => { const i = itemInfo('meal_' + id); return i.emoji + i.name; }).join(' ');
-  let h = '<div class="sec">🎁 ของแจกกองกลางประจำวัน</div><div class="tabs-note">ยิ่งเงินกองกลางเยอะ ชุดแจกยิ่งใหญ่ แต่ต้อง "เล่นจริง": ระดับการเล่นถึงเกณฑ์ และทำเควสประจำวันสำเร็จก่อน วันละ 1 ครั้ง</div>';
-  h += `<div class="row"><span>⭐ ระดับการเล่นของคุณ <small>(รวมเลเวลทุกอาชีพ)</small></span><b>Lv ${level}</b></div><div class="row"><span>📋 เควสวันนี้ที่ทำสำเร็จ</span><b>${okQuest ? '✅' : '❌'} ${done}/${DOLE.needQuests}</b></div>`;
-  h += DOLE.tiers.map(t => { const chestOk = chestSt.coin >= t.chest, lvOk = level >= t.lv, mine = tier === t; return `<div class="qrow${mine ? '' : ' done'}"><div>${mine ? '👉 ' : ''}🪙${t.coin} + ${meals(t)}</div><small>${chestOk ? '✅' : '🔒'} เงินกองกลาง ≥ ${t.chest} &nbsp; ${lvOk ? '✅' : '🔒'} ระดับการเล่น ≥ Lv ${t.lv}</small></div>`; }).join('');
-  h += `<div class="center" style="margin-top:6px"><button class="btn small" data-claim="1" ${!tier || claimed || !okQuest ? 'disabled' : ''}>${claimed ? 'รับของแจกวันนี้แล้ว ✅' : !okQuest ? 'ทำเควสก่อนถึงจะรับได้' : tier ? '🎁 รับของแจก' : 'ยังไม่ถึงเกณฑ์'}</button></div>`;
-  return h;
 }
 function updateQuestBadge() { // เลขบนไอคอนเควส = เควสวันนี้ที่ยังไม่เสร็จ
   const left = questSt.list.filter(x => !x[2]).length, b = $('questBadge');
@@ -646,21 +632,8 @@ function renderFameTab(el) {
   }
   el.innerHTML = h;
 }
-function projectSection(coin) { // โครงการพัฒนาเมือง: ลงขันเงินก้อนใหญ่ร่วมกัน ทีละโครงการตามลำดับ
-  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  let h = '<div class="sec">🏗️ โครงการพัฒนาเมือง (ลงขันร่วมกันทั้งเมือง)</div>';
-  PROJECTS.forEach((P, i) => {
-    const st = projSt.find(x => x.id === P.id) || { coin: 0, open: i === 0, top: [] }, done = st.coin >= P.goal, pct = Math.min(100, Math.floor(st.coin / P.goal * 100));
-    h += `<div class="qrow${done ? ' done' : ''}"><b>${P.emoji} ${P.name}</b> ${done ? '✅ สร้างเสร็จแล้ว' : st.open ? '' : '🔒 ต้องสร้างโครงการก่อนหน้าให้เสร็จก่อน'}`
-      + `<div style="background:#e9d9b0;border-radius:6px;height:8px;margin:5px 0"><div style="background:#e8a33d;height:8px;border-radius:6px;width:${pct}%"></div></div>`
-      + `<small>🪙 ${st.coin}/${P.goal} (${pct}%)</small>`
-      + (st.top.length ? `<br><small>ผู้ร่วมสร้าง: ${st.top.map(([nm, v], k) => `${['🥇', '🥈', '🥉', '', ''][k]} ${esc(nm)} ${v}`).join(' • ')}</small>` : '')
-      + (!done && st.open ? `<div class="center" style="margin-top:4px">` + PROJ_DONATE.map(a => `<button class="btn small" data-proj="${P.id}" data-amt="${a}" ${coin < a ? 'disabled' : ''}>+${a}</button>`).join(' ') + '</div>' : '') + '</div>';
-  });
-  return h;
-}
 function renderTown() {
-  $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM', chest: '🏦 เงินกองกลาง' })[townTab] || '📰 ข่าวเมือง';
+  $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM' })[townTab] || '📰 ข่าวเมือง';
   document.querySelectorAll('[data-ttab]').forEach(t => t.classList.toggle('on', t.dataset.ttab === townTab));
   const el = $('townBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   if (townTab === 'bank') return renderBankTab(el);
@@ -702,21 +675,6 @@ function renderTown() {
     el.querySelectorAll('[data-wkclaim]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'weekly' }));
     return;
   }
-  const coin = inv.coin || 0;
-  el.innerHTML = `<div class="row"><span>🏦 เงินกองกลาง</span><b>🪙 ${chestSt.coin}</b></div>`
-    + `<p style="font-size:12px;opacity:.7;margin:4px 0 8px">ทุกคนลงขันได้ ใช้กับของแจกและเทศกาลเมือง (ถอนออกเป็นเหรียญไม่ได้) • สัตว์เป็นของคนซื้อ ตายแล้วต้องซื้อใหม่เอง ไม่มีชุบจากกองกลาง</p>`
-    + `<div class="sec">🪙 ลงขัน (ต้องยืนใกล้ตู้เซฟ)</div><div class="center">` + TOWN.donate.map(a => `<button class="btn small" data-donate="${a}" ${coin < a ? 'disabled' : ''}>+${a}</button>`).join(' ') + '</div>'
-    + projectSection(coin)
-    + (festSt && festSt.open ? `<div class="sec">🎪 เทศกาลประจำสัปดาห์</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">ลงขันครบเป้าแล้วทั้งเมืองได้บัฟ Happy Village 24 ชม. เป้าโตตามจำนวนคนที่ช่วยงานเมืองสัปดาห์นี้ เริ่มใหม่ทุกสัปดาห์</p>`
-      + `<div class="row"><span>${festSt.done ? '✅ สัปดาห์นี้จัดแล้ว' : `🪙 ${festSt.coin} / ${festSt.goal}`}</span><span>${festSt.done ? '' : PROJ_DONATE.map(a => `<button class="btn small" data-fest="${a}" ${coin < 1 ? 'disabled' : ''}>+${a}</button>`).join(' ')}</span></div>` : '')
-    + (aucSt ? (() => { const i = itemInfo(aucSt.item); return `<div class="sec">🔨 ประมูลประจำสัปดาห์</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">ของหายาก 1 ชิ้นต่อสัปดาห์ ใครประมูลสูงสุดตอนจบสัปดาห์ได้ไป เงินที่ชนะหายจากระบบ ถูกแซงได้เงินคืนทันที</p>`
-      + `<div class="row"><span>${i.emoji} ${i.name}<br><small>${aucSt.bid ? `สูงสุด 🪙${aucSt.bid} โดย ${esc(aucSt.name)}` : 'ยังไม่มีคนประมูล'}</small></span><span><button class="btn small" data-auc="${aucSt.min}" ${coin < aucSt.min ? 'disabled' : ''}>ประมูล 🪙${aucSt.min}</button></span></div>`; })() : '')
-    + doleSection();
-  el.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'claim' }));
-  el.querySelectorAll('[data-donate]').forEach(b => b.onclick = () => send({ t: 'chest', a: 'donate', amt: +b.dataset.donate }));
-  el.querySelectorAll('[data-proj]').forEach(b => b.onclick = () => send({ t: 'proj', id: b.dataset.proj, amt: +b.dataset.amt }));
-  el.querySelectorAll('[data-fest]').forEach(b => b.onclick = () => send({ t: 'fest', amt: +b.dataset.fest }));
-  el.querySelectorAll('[data-auc]').forEach(b => b.onclick = () => ask(`ประมูล 🪙${b.dataset.auc}? (ถ้ามีคนแซงจะได้เงินคืน)`, () => send({ t: 'auc', amt: +b.dataset.auc })));
 }
 document.querySelectorAll('[data-ttab]').forEach(t => t.onclick = () => { townTab = t.dataset.ttab; if (townTab === 'log') send({ t: 'quest', a: 'fame' }); renderTown(); });
 $('townBtn').onclick = () => (townShown() ? closeTown() : openTown('log'));
@@ -2496,29 +2454,6 @@ function drawStructures(g, gh) {
     g.fillStyle = '#8b5a2b'; g.fillRect(px + 12, py - 8, 14, 12); g.fillStyle = '#c98b4a'; g.fillRect(px + 12, py - 8, 14, 3); g.fillStyle = '#5a3a1c'; g.fillRect(px + 12, py - 1, 14, 1);
     PixelUI.world(gh, '🎣', px + 19, py - 14, 11);
   }
-  // ลานเทศกาลกลางเมือง: เวที (ม่านแดง ป้าย) เต็นท์ลายสองหลัง และธงราวขึงหน้าเวที (พื้นลานเป็นช่องทางเดินจาก ground)
-  if (builtProj.has('festival')) {
-    const F = Shared.FESTIVAL, sg = F.stage, sx = sg.x0 * TS, sy = sg.y0 * TS, sw = (sg.x1 - sg.x0 + 1) * TS, sh = (sg.y1 - sg.y0 + 1) * TS;
-    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(sx + 2, sy + sh - 4, sw - 4, 7);
-    g.fillStyle = '#6b4423'; g.fillRect(sx, sy + 26, sw, sh - 26); g.fillStyle = '#a8703a'; g.fillRect(sx, sy + 26, sw, 6); g.fillStyle = '#c99357'; g.fillRect(sx, sy + 26, sw, 2);
-    g.fillStyle = '#2b2f55'; g.fillRect(sx + 6, sy - 14, sw - 12, 40); g.fillStyle = '#3c4380'; g.fillRect(sx + 6, sy - 14, sw - 12, 6);
-    g.fillStyle = '#c0392b'; g.fillRect(sx + 2, sy - 18, 16, 46); g.fillRect(sx + sw - 18, sy - 18, 16, 46); g.fillStyle = '#e25c4d'; g.fillRect(sx + 2, sy - 18, 5, 46); g.fillRect(sx + sw - 18, sy - 18, 5, 46);
-    g.fillStyle = '#f1c40f'; g.fillRect(sx, sy - 20, sw, 4);
-    gh.textAlign = 'center'; gh.font = `bold 13px ${FONT}`; gh.fillStyle = '#ffe08a'; gh.fillText('เทศกาล', sx + sw / 2, sy + 2); PixelUI.world(gh, '🎪', sx + sw / 2, sy - 10, 13);
-    for (const t of F.tents) {
-      const tx0 = t.x0 * TS, ty0 = t.y0 * TS, tw = (t.x1 - t.x0 + 1) * TS, th = (t.y1 - t.y0 + 1) * TS, mid = tx0 + tw / 2;
-      g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(tx0 + 2, ty0 + th - 5, tw - 4, 7);
-      g.fillStyle = '#efe6cf'; g.fillRect(tx0 + 4, ty0 + 26, tw - 8, th - 30);
-      for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#c0392b' : '#efe6cf'; g.fillRect(tx0 + 4 + i * ((tw - 8) / 4), ty0 + 26, (tw - 8) / 4, th - 30); }
-      for (let r = 0; r < 7; r++) { g.fillStyle = r % 2 ? '#c0392b' : '#e25c4d'; const half = 6 + r * 4.3; g.fillRect(mid - half, ty0 + 2 + r * 4, half * 2, 4); }
-      g.fillStyle = '#3a2418'; g.fillRect(mid - 7, ty0 + th - 22, 14, 18);
-      g.fillStyle = '#f1c40f'; g.fillRect(mid - 1, ty0 - 4, 2, 7); g.fillRect(mid + 1, ty0 - 4, 7, 4);
-    }
-    const y0 = F.plaza.y0 * TS + 5, xa = F.plaza.x0 * TS + 6, xb = (F.plaza.x1 + 1) * TS - 6;
-    g.fillStyle = '#5a3a1c'; g.fillRect(xa - 2, y0 - 2, 3, 22); g.fillRect(xb - 1, y0 - 2, 3, 22); // เสาธงราวสองข้าง
-    const cols = ['#e74c3c', '#f1c40f', '#3498db', '#2ecc71', '#9b59b6'];
-    for (let x = xa, i = 0; x < xb - 8; x += 12, i++) { const sag = Math.round(Math.sin((x - xa) / (xb - xa) * Math.PI) * 7); g.fillStyle = '#3a2418'; g.fillRect(x, y0 + sag, 12, 1); g.fillStyle = cols[i % cols.length]; g.fillRect(x + 1, y0 + sag + 1, 9, 3); g.fillRect(x + 2, y0 + sag + 4, 7, 2); g.fillRect(x + 4, y0 + sag + 6, 3, 2); }
-  }
 }
 // พื้นและผนังข้างในบ้านหลังใหญ่ (ภาพพิกเซลที่ 16 px ต่อช่อง ขยาย 2 เท่าเหมือนพื้นเมือง) • ฟังก์ชันนี้สลับใช้แทน buildBase() ตอนอยู่ในบ้าน
 function buildHouseBase() {
@@ -2815,13 +2750,8 @@ function buildBase() {
     g.fillStyle = '#4b5d73'; g.fillRect(ax + 4, ay - 8, 24, 37); g.fillStyle = '#6c819b'; g.fillRect(ax + 4, ay - 8, 24, 5);
     g.fillStyle = '#12351f'; g.fillRect(ax + 8, ay - 1, 16, 11); g.fillStyle = '#5dff8a'; g.fillRect(ax + 10, ay + 1, 12, 2); g.fillRect(ax + 10, ay + 5, 8, 2);
     g.fillStyle = '#222'; g.fillRect(ax + 9, ay + 13, 14, 6); g.fillStyle = '#f1c40f'; g.fillRect(ax + 11, ay + 15, 10, 2); g.fillStyle = '#111'; g.fillRect(ax + 10, ay + 22, 12, 3); }
-  { const cx = CHEST.x * TS, cy = CHEST.y * TS;
-    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(cx + 2, cy + 27, 28, 5);
-    g.fillStyle = '#7a4a24'; g.fillRect(cx + 3, cy + 8, 26, 21); g.fillStyle = '#a8703a'; g.fillRect(cx + 3, cy + 8, 26, 9);
-    g.fillStyle = '#c98b4a'; g.fillRect(cx + 3, cy + 8, 26, 3); g.fillStyle = '#f1c40f'; g.fillRect(cx + 3, cy + 16, 26, 2); g.fillRect(cx + 13, cy + 14, 6, 7);
-    g.fillStyle = '#5a3a1c'; g.fillRect(cx + 15, cy + 17, 2, 3); PixelUI.world(gh, '🪙', cx + 16, cy + 2, 14); }
   { const tag = (txt, cx, y) => { gh.font = 'bold 8px sans-serif'; const w = gh.measureText(txt).width + 8; g.fillStyle = 'rgba(40,28,14,.85)'; g.fillRect(cx - w / 2, y, w, 11); gh.fillStyle = '#fff'; gh.textAlign = 'center'; gh.textBaseline = 'middle'; gh.fillText(txt, cx, y + 5.5); }; // ป้ายชื่อเหนือกระดานข่าว ATM และตู้กองกลาง
-    tag('ข่าวเมือง', BOARD.x * TS + 16, BOARD.y * TS - 22); tag('ATM', ATM.x * TS + 16, ATM.y * TS - 22); tag('กองกลาง', CHEST.x * TS + 16, CHEST.y * TS - 14); }
+    tag('ข่าวเมือง', BOARD.x * TS + 16, BOARD.y * TS - 22); tag('ATM', ATM.x * TS + 16, ATM.y * TS - 22); }
   // เสาไฟ + กระถางดอกไม้รอบลาน (ภาพพื้นอย่างเดียว ไม่ชนการเดิน/เคาน์เตอร์) ให้หนาแน่นใกล้ภาพอ้างอิง
   { const lamp = (tx, ty) => {
       const px = tx * TS, py = ty * TS;
@@ -2845,13 +2775,11 @@ function buildBase() {
   return oc;
 }
 const builtProj = new Set(); // โครงการที่ครบเป้าและแปลงลง MAP ของหน้านี้แล้ว
-const DEMO_STRUCTS = (new URLSearchParams(location.search).get('demo') || '').split(','); // ?demo=lighthouse,island,festival = ดูภาพสิ่งก่อสร้างบนเครื่องตัวเองก่อนยอดครบ (อ่านตอนโหลดหน้า เพราะ URL ถูกเขียนทับหลังเข้าห้อง • ไม่กระทบคนอื่น/เซิร์ฟเวอร์ เดินจริงอาจสะดุด)
 let base = buildBase();
 function checkProjects() { // โครงการไหนครบเป้า: แปลงช่องบน MAP แล้ววาดพื้นและแผนที่ย่อใหม่ครั้งเดียว (ไม่ว่าจะครบทีละโครงการหรือพร้อมกันตอนเข้าเกม)
   let changed = false;
   for (const P of Shared.PROJECTS) {
-    const st = projSt.find(x => x.id === P.id);
-    if (!builtProj.has(P.id) && ((st && Shared.projectDone(P.id, st.coin)) || DEMO_STRUCTS.includes(P.id))) { builtProj.add(P.id); Shared.applyProject(tmap(), P.id); changed = true; }
+    if (!builtProj.has(P.id)) { builtProj.add(P.id); Shared.applyProject(tmap(), P.id); changed = true; }
   }
   if (changed) { if (!inTown()) townDirty = true; else { base = buildBase(); miniBase = makeMiniBase(); } }
 }

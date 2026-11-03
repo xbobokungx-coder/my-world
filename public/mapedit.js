@@ -1,6 +1,6 @@
 // แก้แมพสำหรับผู้ดูแล: ขยับ/เพิ่ม/ลบ Mock วางแผน + วาดพื้นห้อง (server-authoritative)
 (function (root) {
-  const { W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, BUILDINGS, FIRE, ATM, BOARD, CHEST, CABINETS, HOUSE_BLD, FARM, PENS } = Shared;
+  const { W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, BUILDINGS, FIRE, ATM, BOARD, CABINETS, HOUSE_BLD, FARM, PENS } = Shared;
   let mocks = [], sel = null, mode = 'move', brush = T.WATER, drag = null, dirty = false, cell = 14;
   let sendFn = () => {}, toastFn = () => {}, onClose = () => {}, getMap = () => null;
   let paintQ = [], paintTimer = null, ignoreServerMocksUntil = 0;
@@ -19,14 +19,13 @@
     add('fire', FIRE.x, FIRE.y, 1, 1, 'กองไฟ', '#ff9a2e');
     add('atm', ATM.x, ATM.y, 1, 1, 'ATM', '#7dffb0');
     add('board', BOARD.x, BOARD.y, 1, 1, 'ข่าว', '#ffffff');
-    add('chest', CHEST.x, CHEST.y, 1, 1, 'กองกลาง', '#f1c40f');
     add('farm', FARM.x0, FARM.y0, FARM.x1 - FARM.x0 + 1, FARM.y1 - FARM.y0 + 1, 'แปลงผัก', '#b8f090');
     for (const [k, P] of Object.entries(PENS || {})) add('pen_' + k, P.x0, P.y0, P.x1 - P.x0 + 1, P.y1 - P.y0 + 1, 'คอก ' + k, '#e8b88a');
     CABINETS.forEach((c, i) => add('cab' + i, c.x, c.y, 1, 1, c.label || c.name || 'ตู้', '#b39ddb'));
     return sanitizeMocks(out);
   }
 
-  const MOVABLE = /^(b_[a-z]+|cab[0-9]|fire|atm|board|chest)$/;
+  const MOVABLE = /^(b_[a-z]+|cab[0-9]|fire|atm|board)$/;
   // กล่องที่ลากไปตำแหน่งต่างจากร้าน/ตู้ในเกมจริง (บันทึก Mock อย่างเดียวยังไม่ย้ายของจริง ต้องกด 🚀)
   function pending() { const live = new Map(seedMocks().map(m => [m.id, m])); return mocks.filter(m => MOVABLE.test(m.id) && live.has(m.id) && (live.get(m.id).x !== m.x || live.get(m.id).y !== m.y)).map(m => ({ m, o: live.get(m.id) })); }
 
@@ -120,7 +119,7 @@
     }
     if (a === "apply") {
       const live = seedMocks(), liveById = new Map(live.map(m => [m.id, m])), items = {}, moved = [];
-      for (const m of mocks) { if (!/^(b_[a-z]+|cab[0-9]|fire|atm|board|chest)$/.test(m.id)) continue; items[m.id] = { x: m.x, y: m.y }; const o = liveById.get(m.id); if (o && (o.x !== m.x || o.y !== m.y)) moved.push(m.label || m.id); }
+      for (const m of mocks) { if (!/^(b_[a-z]+|cab[0-9]|fire|atm|board)$/.test(m.id)) continue; items[m.id] = { x: m.x, y: m.y }; const o = liveById.get(m.id); if (o && (o.x !== m.x || o.y !== m.y)) moved.push(m.label || m.id); }
       if (!moved.length) return toastFn("ยังไม่ได้ขยับร้าน/ตู้/กองไฟ (ตำแหน่งตรงกับเกมอยู่แล้ว)");
       if (!confirm("ใช้ผังนี้กับเกมจริง?\n\nจะย้าย: " + moved.join(", ") + "\n\nเกมจะรีสตาร์ท 3–5 วินาที ผู้เล่นทุกคนหลุดชั่วครู่แล้วหน้าเว็บรีเฟรชเอง\n(ขนาดร้านคงเดิม ใช้ตำแหน่งมุมซ้ายบนของกล่อง • ย้อนกลับได้ด้วย ⏪)")) return;
       sendFn({ t: "admin", a: "layoutapply", items }); toastFn("กำลังตรวจผัง…"); return;
