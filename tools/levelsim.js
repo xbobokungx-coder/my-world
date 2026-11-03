@@ -32,7 +32,7 @@ function farm(lv) {
   return best;
 }
 function fishPool(lv, rod, tier) {
-  return S.FISH.filter(f => f.lv <= lv).map(f => ({ f, w: S.fishWeight(f, lv, rod, tier) })).filter(x => x.w > 0);
+  return S.FISH.filter(f => !f.sea && f.lv <= lv).map(f => ({ f, w: S.fishWeight(f, lv, rod, tier) })).filter(x => x.w > 0);
 }
 function fishCpm(lv, rod) { return 60 / (8.75 * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(lv) - 1)) * S.ROD_WAIT[rod] + M.fishOver) * M.fishHit; }
 function fish(lv) {
