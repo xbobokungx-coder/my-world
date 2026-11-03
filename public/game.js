@@ -34,7 +34,7 @@ const players = new Map(), animals = new Map(), npcs = new Map(); const roster =
 const presence = (id, fn) => { for (const p of [players.get(id), roster.get(id)]) if (p) fn(p); }; // roster = ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้รายชื่อและการโทร • players = คนในฉากเดียวกัน (วาดและเสียงรอบตัว) // npcs = ชาวเมือง NPC (ไม่นับเป็นผู้เล่น)
 let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, hunger = 80;
 const furn = new Map();               // เฟอร์นิเจอร์ในบ้านที่เปิดอยู่ (ฉากบ้าน): id -> { i, f, x, y, r, z, on, wl, u } พิกัดหน่วยช่อง
-let townLog = [], townTab = 'log';
+let townLog = [], townTab = 'log', lottoSt = null;
 let arcSt = { pts: 0, total: 0, wk: 0 };                               // แต้มตู้เกมของเรา
 let lbSt = { total: [], wk: [], me: null }, hubTab = 'rank';           // Leaderboard + ศูนย์รวมแต้ม/รางวัล
 let questSt = { list: [], total: 0, title: '', pts: { bal: 0, earned: 0 } }, fameSt = {};
@@ -168,6 +168,7 @@ function handle(m) {
     case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
     case 'ore': { if (cave) { const k = m.x + ',' + m.y; if (m.k) { oreK.set(k, m.k); oreS.set(k, m.s | 0); MAP[m.y][m.x] = T.ORE; oreBurst.delete(k); } else { oreBurst.set(k, { t: performance.now(), k: oreK.get(k), s: oreS.get(k) | 0 }); oreK.delete(k); oreS.delete(k); oreHit.delete(k); MAP[m.y][m.x] = T.CAVE; } } break; } // ก้อนแร่ในถ้ำเกิด/แตก
     case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; if (m.k) treeKinds.set(m.x + ',' + m.y, m.k); } else if (isChoppable(tm, m.x, m.y)) { const tk = m.x + ',' + m.y; if (inTown()) felled.set(tk, { t: performance.now(), k: treeKinds.get(tk), side: me && me.x > (m.x + 0.5) * TS ? -1 : 1 }); tm[m.y][m.x] = T.GRASS; treeKinds.delete(tk); treeHit.delete(tk); } } break; }
+    case 'lotto': lottoSt = m.l; if (townShown()) renderTown(); break;
     case 'mapcell': applyMapCells(m.cells); break;
     case 'reload': { toast('🗺️ ผู้ดูแลเปลี่ยนผังเมือง กำลังรีเฟรช…'); const tryReload = n => fetch('/healthz', { cache: 'no-store' }).then(r => { if (r.ok) location.reload(); else throw 0; }).catch(() => { if (n < 40) setTimeout(() => tryReload(n + 1), 1000); }); setTimeout(() => tryReload(0), 3000); break; }
     case 'mapreset': {
@@ -632,6 +633,33 @@ function renderFameTab(el) {
   }
   el.innerHTML = h;
 }
+function lottoCard() { // หวยประจำวัน: กองกลาง (ค่าบริการ+ภาษีขาย+ค่าตั๋ว) จ่ายรางวัลทุกวัน • เลขชนะสุ่มปิดผนึกไว้ก่อน ตรวจ hash ได้หลังเปิดผล
+  const L = lottoSt, esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), P = Shared.LOTTO;
+  if (!L) return '<div class="vcard"><b>🎟️ หวยประจำวัน</b> — กำลังโหลด…</div>';
+  const left = Math.max(0, L.drawAt - (Date.now() + timeOffset)), hh = Math.floor(left / 3600e3), mm = Math.floor(left % 3600e3 / 60e3);
+  const room = L.max - L.mine.length, tax = L.heat > 0 ? `<br><small>🧾 ยอดขายสะสม (ภาษีขายที่ร้าน) ${L.heat} → เหรียญถัดไปเสียภาษี ${Math.round(L.rate * 100)}% • ยอดจางหมดภายใน 24 ชม.</small>` : '';
+  let h = `<div class="vcard"><b>🎟️ หวยประจำวัน</b> — กองกลาง <b>🪙 ${L.pot}</b><br><small>ออกผลทุกวัน ${Shared.LOTTO.revealHour}:00 น. (อีก <span id="lleft">${hh} ชม. ${mm} นาที</span>) • ตั๋วใบละ 🪙${L.price} ซื้อได้ ${L.max} ใบต่องวด • เงินเข้ากองจากค่าตั๋ว ค่าซ่อม ค่าเตา/ช่างไม้ ค่าเช่าแปลง ค่าบริการตู้เกม ภาษีขาย (ร้านสูงสุด 7%, แผง 7%)</small>`
+    + `<br><small>รางวัลที่ 1 ตรง 3 หลัก = 50% ของกอง (สูงสุด 100,000) • รางวัลที่ 2 / 3 ตรง 2 หลักท้ายของเลขคนละชุด = 25% (50,000) / 10% (20,000) • หลายใบถูกหารเท่ากัน ไม่มีผู้ถูกทบไปงวดหน้า</small>`
+    + `<br><small>🔒 ลายนิ้วมือเลขงวดนี้ (สุ่มไว้แล้ว): <code>${esc(L.hash.slice(0, 16))}…</code></small>${tax}`;
+  h += `<div class="row" style="margin-top:6px"><span>ตั๋วของฉัน (${L.mine.length}/${L.max})</span><span>${L.mine.length ? L.mine.map(n => `<b style="padding:1px 6px;border:1px solid #c9a86a;border-radius:6px">${n}</b>`).join(' ') : '<small style="opacity:.6">ยังไม่มี</small>'}</span></div>`;
+  if (!L.ok) h += `<div class="banner" style="background:#ffe3d6">ซื้อหวยได้เมื่อผ่านคู่มือเริ่มต้นและระดับการเล่นถึง ${L.minLv}</div>`;
+  else if (!L.open) h += '<div class="banner">ปิดรับตั๋วแล้ว เปิดขายอีกครั้งหลังออกผล</div>';
+  else if (room > 0) h += `<div class="center" style="margin-top:6px"><input id="lnum" maxlength="3" inputmode="numeric" placeholder="เลข 3 หลัก" style="width:92px;text-align:center"> <button class="btn small" id="lbuy">ซื้อเลขนี้</button> <button class="btn small" id="lr1">🎲 สุ่ม 1 ใบ</button> <button class="btn small" id="lrall">🎲 สุ่มที่เหลือ (${room})</button></div>`;
+  const lt = L.last;
+  if (lt) h += `<div class="sec" style="margin-top:8px">ผลงวดก่อน</div><div class="qrow"><b>🥇 ${lt.nums[0]}</b> &nbsp; 🥈 ท้าย 2 หลัก <b>${lt.nums[1].slice(1)}</b> &nbsp; 🥉 ท้าย 2 หลัก <b>${lt.nums[2].slice(1)}</b> <small>(ตั๋วทั้งหมด ${lt.n} ใบ กอง 🪙${lt.pot0})</small><br>`
+    + (lt.winners.length ? lt.winners.map(([nm, k, a]) => `<small>${['🥇', '🥈', '🥉'][k - 1]} ${esc(nm)} +🪙${a}</small>`).join(' &nbsp; ') : '<small style="opacity:.7">ไม่มีผู้ถูกรางวัล ทบเข้ากอง</small>')
+    + `<br><small>ตรวจ: sha256(<code>${esc(lt.salt)}</code>:${lt.nums.join(',')}) = <span id="lchk">…</span></small></div>`;
+  return h + '</div>';
+}
+setInterval(() => { const e = $('lleft'); if (e && lottoSt) { const left = Math.max(0, lottoSt.drawAt - (Date.now() + timeOffset)); e.textContent = Math.floor(left / 3600e3) + ' ชม. ' + Math.floor(left % 3600e3 / 60e3) + ' นาที'; } }, 20000);
+function bindLotto(el) {
+  const buy = nums => send({ t: 'lotto', a: 'buy', nums }), room = lottoSt ? lottoSt.max - lottoSt.mine.length : 0;
+  const one = $('lbuy'); if (one) one.onclick = () => { const v = $('lnum').value.trim(); if (!/^\d{3}$/.test(v)) return toast('ใส่เลข 3 หลักก่อนนะ (000–999)'); buy([v]); };
+  const r1 = $('lr1'); if (r1) r1.onclick = () => buy([null]);
+  const ra = $('lrall'); if (ra) ra.onclick = () => buy(Array(room).fill(null));
+  const lt = lottoSt && lottoSt.last, chk = $('lchk');
+  if (lt && chk && window.crypto && crypto.subtle) crypto.subtle.digest('SHA-256', new TextEncoder().encode(lt.salt + ':' + lt.nums.join(','))).then(b => { const hx = [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); chk.textContent = hx === lt.hash ? '✅ ตรงกับลายนิ้วมือที่ประกาศไว้ก่อนขายตั๋ว' : '❌ ไม่ตรง'; });
+}
 function renderTown() {
   $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM' })[townTab] || '📰 ข่าวเมือง';
   document.querySelectorAll('[data-ttab]').forEach(t => t.classList.toggle('on', t.dataset.ttab === townTab));
@@ -670,8 +698,8 @@ function renderTown() {
     return;
   }
   if (townTab === 'log') {
-    el.innerHTML = tabs + eventCard() + villageCard() + weeklyCard() + '<div class="sec">🏆 อันดับวันนี้</div>' + fameHTML() + '<div class="sec">📰 ข่าวล่าสุด (' + TOWN.logMax + ' ข่าว)</div>' + (townLog.length ? townLog.slice().reverse().map(([t, s]) => { const d = new Date(t); return `<div class="logrow"><time>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</time><span>${esc(s)}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีข่าว</p>');
-    bindTabs();
+    el.innerHTML = tabs + lottoCard() + eventCard() + villageCard() + weeklyCard() + '<div class="sec">🏆 อันดับวันนี้</div>' + fameHTML() + '<div class="sec">📰 ข่าวล่าสุด (' + TOWN.logMax + ' ข่าว)</div>' + (townLog.length ? townLog.slice().reverse().map(([t, s]) => { const d = new Date(t); return `<div class="logrow"><time>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</time><span>${esc(s)}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีข่าว</p>');
+    bindTabs(); bindLotto(el);
     el.querySelectorAll('[data-wkclaim]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'weekly' }));
     return;
   }

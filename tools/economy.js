@@ -23,7 +23,7 @@ const players = [], recs = [];
 let chest = 0;
 for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.startsWith('rooms.'))) {
   let d; try { d = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8').replace(/^﻿/, '')); } catch (e) { continue; }
-  chest += (d.chest && d.chest.coin) || 0;
+  chest += (d.lotto && d.lotto.pot) || (d.chest && d.chest.coin) || 0;
   const room = f.replace(/\.json$/, '');
   for (const [k, r] of Object.entries(d.players || {})) recs.push({ room, key: k, rec: r, money: ((r.inv && r.inv.coin) || 0) + ((r.bank && r.bank.bal) || 0), seen: r.lastSeen || 0 });
 }
@@ -37,7 +37,7 @@ const money = players.map(p => p.money), total = money.reduce((a, b) => a + b, 0
 const act7 = players.filter(p => p.seen >= Date.now() - 7 * 864e5).map(p => p.money);
 console.log(`=== เงินในระบบ (ตอนนี้) ===`);
 console.log(`บัญชี ${players.length} | เงินรวม (กระเป๋า+ธนาคาร) ${num(total)} | ค่ากลาง ${med(money) ?? '-'} | Gini ${gini(money).toFixed(2)} | อันดับ 1 ถือ ${pct(sorted[0] || 0, total)} | 5 อันดับแรก ${pct(sorted.slice(0, 5).reduce((a, b) => a + b, 0), total)}`);
-console.log(`เล่นภายใน 7 วัน ${act7.length} คน ค่ากลางเงิน ${med(act7) ?? '-'} | เงินกองกลาง ${num(chest)}`);
+console.log(`เล่นภายใน 7 วัน ${act7.length} คน ค่ากลางเงิน ${med(act7) ?? '-'} | เงินกองกลาง(หวย) ${num(chest)}`);
 
 // ----- 2) เงินเข้า–ออกต่อวัน แยกเหตุผล (ไม่นับฝาก/ถอน ATM) -----
 console.log(`\n=== เงินเข้า–ออกต่อวัน (${days} วันล่าสุด) ===`);
@@ -75,7 +75,7 @@ console.log(`\n=== ตลาดกลาง / กองกลาง / ฝูง�
 if (!snaps.length) console.log('(ยังไม่มีข้อมูล)');
 else {
   const s = snaps[snaps.length - 1], mk = Object.entries(s.mk || {}).sort((a, b) => a[1] - b[1]);
-  console.log(`เวลา ${new Date(s.t).toLocaleString('th-TH')} | ออนไลน์ ${s.online} | กองกลาง ${num(s.chest)} | สัตว์: ${Object.entries(s.an || {}).map(([k, n]) => `${k} ${n}`).join(' ') || 'ไม่มี'} | ตายรอชุบ: ${Object.entries(s.dead || {}).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(' ') || '-'}`);
+  console.log(`เวลา ${new Date(s.t).toLocaleString('th-TH')} | ออนไลน์ ${s.online} | กองกลาง ${num(s.pot != null ? s.pot : s.chest)} | สัตว์: ${Object.entries(s.an || {}).map(([k, n]) => `${k} ${n}`).join(' ') || 'ไม่มี'} | ตายรอชุบ: ${Object.entries(s.dead || {}).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(' ') || '-'}`);
   console.log(`ราคาต่ำสุด: ${mk.slice(0, 5).map(([k, m]) => `${k} ${m}`).join(', ')}`);
   console.log(`ราคาสูงสุด: ${mk.slice(-5).reverse().map(([k, m]) => `${k} ${m}`).join(', ')}`);
   // ชนิดที่ถูกกดต่ำกว่า 0.6 บ่อย (มากกว่าครึ่งของ snap)

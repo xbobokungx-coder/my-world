@@ -100,7 +100,7 @@ class World {
         for (const [x, y, k] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2 && !(x >= S.MINE.hill.x0 && x <= S.MINE.hill.x1 && y <= 7) && !Object.values(S.PENS).some(P => x >= P.x0 - 1 && x <= P.x1 + 1 && y >= P.y0 - 1 && y <= P.y1 + 1)) { this.map[y][x] = T.TREE; if (Object.hasOwn(S.TREE_KINDS, k)) treeKinds[x + ',' + y] = k; }
       }
       mk = d.market || {}; this.mktDay = Number.isInteger(d.mktDay) ? d.mktDay : -1;
-      houseSaved = d.house || {}; townSaved = { evt: d.evt, chain: d.chain, invites: d.invites, stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
+      houseSaved = d.house || {}; townSaved = { evt: d.evt, chain: d.chain, invites: d.invites, stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, lotto: d.lotto, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
       this._loadMocks = d.mocks; this._loadMapOv = d.mapOv;
     } catch (e) {
       // ไม่มีไฟล์ = โลกใหม่ แต่ถ้ามีไฟล์แต่อ่านไม่ได้ ให้สำรองไว้ก่อน ไม่งั้นการบันทึกครั้งต่อไปจะเขียนทับข้อมูลเดิมทิ้ง
@@ -430,7 +430,7 @@ class World {
     this.orders = d.orders && Array.isArray(d.orders.list) ? d.orders : { day: '', list: [], by: {} };
     this.rents = {}; for (const P of S.FARM_RENT.plots) { const r = d.rents && d.rents[P.id]; if (r && typeof r.key === 'string' && Number.isFinite(r.until)) { if (r.until - Date.now() > S.FARM_RENT.ms) { this.dirty = true; continue; } /* เช่าเกิน 1 วันจริง (สัญญาเก่า) ตัดออกเลย */ this.rents[P.id] = { key: r.key, name: String(r.name || r.key).slice(0, 12), until: r.until }; } } // แปลงเช่า
     this.log = (Array.isArray(d.log) ? d.log : []).filter(e => Array.isArray(e) && Number.isFinite(e[0]) && typeof e[1] === 'string').slice(-S.TOWN.logMax).map(e => [e[0], e[1].slice(0, 120)]);
-    this.loadVillage(d.village); this.loadWeek(d.week); this.loadProjects(d.projects);
+    this.loadVillage(d.village); this.loadWeek(d.week); this.loadProjects(d.projects); this.loadLotto(d.lotto);
     this.banned = new Set(Array.isArray(d.banned) ? d.banned.filter(x => typeof x === 'string').map(x => x.toLowerCase().slice(0, 24)) : []); // ชื่อ (key) ที่ผู้ดูแลแบน: เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น
     const st = d.stats || {}; this.stats = { day: typeof st.day === 'string' ? st.day : '', ev: {} };
     for (const ev of Object.keys(S.FAME)) { const m = Object.create(null), o = st.ev && st.ev[ev]; if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) if (Number.isFinite(v)) m[k] = v; this.stats.ev[ev] = m; }
@@ -658,7 +658,7 @@ class World {
     this.snapAt = now + SNAP_MS;
     const mk = {}; for (const k of Object.keys(this.market)) mk[k] = Math.round(this.market[k].m * 100) / 100;
     const an = {}; for (const a of this.animals) if (!a.dead) an[a.type] = (an[a.type] || 0) + 1;
-    logEv(this.room, 'snap', { mk, an, online: this.players.size });
+    logEv(this.room, 'snap', { mk, pot: this.lotto.pot, an, online: this.players.size });
     for (const p of this.players.values()) { this.telFlush(p); this.wealthLog(p); }
   }
   wealthLog(p) { // ความมั่งคั่งของผู้เล่น วันละครั้งต่อคน (ตอนออกจากเกม/รอบ snap): เหรียญ ATM มูลค่าของในกระเป๋า (ราคาฐาน) มูลค่าเฟอร์นิเจอร์ที่วาง
@@ -978,7 +978,7 @@ class World {
   chTick() { const now = Date.now(); for (const p of this.players.values()) { const c = p.rec.ch; if (c && ((c.st === 'run' && now > c.end) || (c.st === 'pending' && now > c.deadline))) this.chExpire(p); } }
   chRedeem(p) {
     if (!(p.rec.wet > Date.now())) return; if ((p.rec.inv.coin || 0) < S.CHALLENGE.redeem) return this.toast(p, 'เหรียญไม่พอ');
-    this.add(p, 'coin', -S.CHALLENGE.redeem, 'donate'); delete p.rec.wet; this.dirty = true;
+    this.add(p, 'coin', -S.CHALLENGE.redeem, 'donate'); this.toPot(S.CHALLENGE.redeem); delete p.rec.wet; this.dirty = true;
     this.broadcast({ t: 'wet', id: p.id, on: 0 }); this.toast(p, '🌞 ไถ่โทษแล้ว ตัวแห้งแล้ว!'); this.chPush(p);
   }
   chJoinInvite(p, code, ip) { // เข้าเกมผ่านลิงก์ท้า: ได้ชาเลนจ์เดียวกับคนท้า มีเวลา 48 ชม.
@@ -1066,7 +1066,7 @@ class World {
       for (const L of x.lots || []) { if (!need) break; const d = Math.min(L[1], need); take.push([L[0], d]); L[1] -= d; need -= d; }
       if (x.lots) x.lots = x.lots.filter(L => L[1] > 0);
       x.n -= q; if (!x.n) this.stall = this.stall.filter(y => y !== x);
-      const got = cost - Math.floor(cost * S.STALL.tax);
+      const got = cost - Math.floor(cost * S.STALL.tax); this.toPot(cost - got); // ภาษีแผง 7% เข้ากองกลาง
       this.add(p, 'coin', -cost, 'stall_buy'); this.add(p, x.item, q, undefined, take.length ? take : undefined);
       const s = [...this.players.values()].find(o => o.key === x.seller);
       if (s) { this.add(s, 'coin', got, 'stall_sell'); this.toast(s, `🛒 ${p.name} ซื้อ ${S.itemInfo(x.item).name} ×${q} ได้ 🪙${got} (หักภาษี ${Math.round(S.STALL.tax * 100)}%)`); }
@@ -1121,7 +1121,7 @@ class World {
     if (cur && cur.key === p.key && cur.until > now) return this.toast(p, 'เช่าได้รอบละ 1 วัน รอให้หมดรอบก่อนแล้วค่อยเช่าใหม่');
     const until = now + S.FARM_RENT.ms;
     if ((p.rec.inv.coin || 0) < S.FARM_RENT.price) return this.toast(p, `เหรียญไม่พอ ค่าเช่า 🪙 ${S.FARM_RENT.price}`);
-    this.add(p, 'coin', -S.FARM_RENT.price, 'rent'); this.rents[id] = { key: p.key, name: p.name, until }; this.dirty = true;
+    this.add(p, 'coin', -S.FARM_RENT.price, 'rent'); this.toPot(S.FARM_RENT.price); this.rents[id] = { key: p.key, name: p.name, until }; this.dirty = true;
     this.broadcast({ t: 'rents', r: this.rentsPub() }); this.sfxTo(p, 'coin');
     this.toast(p, `🏡 เช่าแปลง ${id} ถึง ${new Date(until).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} (ต้นในแปลงนี้ไม่นับเพดานปลูก)`);
     if (!cur || cur.key !== p.key || cur.until <= now) this.addLog(`🏡 ${p.name} เช่าแปลง ${id} ที่แปลงผัก`);
@@ -1159,6 +1159,72 @@ class World {
     for (const k of Object.keys(w.claimed || {})) this.week.claimed[k] = 1;
   }
   wkRoll() { const k = this.weekKey(); if (this.week.key !== k) { this.week = { key: k, n: 0, done: false, by: Object.create(null), claimed: Object.create(null), cnt: Object.create(null) }; } }
+  // ----- กองกลาง + หวยประจำวัน (S.LOTTO, ภาษีขาย S.TAX) -----
+  // เงินเข้ากองกลาง: ค่าซ่อม ค่าเตา ค่าช่างไม้ ค่าเช่าแปลง ค่าบริการตู้เกม ไถ่โทษชาเลนจ์ ภาษีขาย (ร้านและแผง) และค่าตั๋ว • ไม่มีบริจาค
+  toPot(n) { n = Math.floor(n); if (n > 0) { this.lotto.pot += n; this.dirty = true; } }
+  lottoDate(ts) { const d = new Date(ts); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; } // วันตามเวลาเซิร์ฟเวอร์ (TZ=Asia/Bangkok)
+  lottoDrawAt(round) { const [y, m, d] = round.split('-').map(Number); return new Date(y, m - 1, d, S.LOTTO.revealHour, 0, 0).getTime(); }
+  lottoRoundAfter(ts) { const t = new Date(ts), r = this.lottoDate(ts); return ts < this.lottoDrawAt(r) ? r : this.lottoDate(new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1).getTime()); } // งวดที่กำลังขายตั๋วอยู่ ณ เวลา ts
+  lottoHash(nums, salt) { return crypto.createHash('sha256').update(salt + ':' + nums.join(',')).digest('hex'); }
+  lottoSeal() { // สุ่มเลขชนะ 3 ชุดไว้ก่อนเปิดขายตั๋วงวดนั้น ผู้เล่นเห็นแค่ hash จนกว่าจะเปิดผล
+    const nums = [0, 1, 2].map(() => String(crypto.randomInt(1000)).padStart(3, '0')), salt = crypto.randomBytes(8).toString('hex');
+    return { nums, salt, hash: this.lottoHash(nums, salt) };
+  }
+  loadLotto(d) {
+    const o = d && typeof d === 'object' ? d : {}, ok3 = x => typeof x === 'string' && /^\d{3}$/.test(x);
+    this.lotto = { pot: Number.isFinite(o.pot) && o.pot >= 0 ? Math.floor(o.pot) : S.LOTTO.seed, round: typeof o.round === 'string' && /^\d{4}-\d{1,2}-\d{1,2}$/.test(o.round) ? o.round : '', sealed: null, tickets: {}, last: null }; // ครั้งแรก: กองตั้งต้น S.LOTTO.seed
+    const sl = o.sealed; if (sl && Array.isArray(sl.nums) && sl.nums.length === 3 && sl.nums.every(ok3) && typeof sl.salt === 'string') this.lotto.sealed = { nums: sl.nums.slice(), salt: sl.salt.slice(0, 32), hash: this.lottoHash(sl.nums, sl.salt.slice(0, 32)) };
+    if (o.tickets && typeof o.tickets === 'object') for (const [k, v] of Object.entries(o.tickets)) if (Array.isArray(v)) { const l = v.filter(ok3).slice(0, S.LOTTO.maxTickets); if (l.length) this.lotto.tickets[k] = l; }
+    const l = o.last; if (l && Array.isArray(l.nums) && Array.isArray(l.winners)) this.lotto.last = { round: String(l.round || ''), nums: l.nums.filter(ok3), salt: String(l.salt || ''), hash: String(l.hash || ''), n: Number.isFinite(l.n) ? l.n : 0, pot0: Number.isFinite(l.pot0) ? l.pot0 : 0, winners: l.winners.slice(0, 40).filter(w => Array.isArray(w) && w.length === 3) };
+    if (!this.lotto.round || !this.lotto.sealed) { this.lotto.round = this.lotto.round || this.lottoRoundAfter(Date.now()); this.lotto.sealed = this.lottoSeal(); this.dirty = true; }
+  }
+  lottoTick(now) { let n = 0; while (now >= this.lottoDrawAt(this.lotto.round) && n++ < 30) this.lottoDraw(); } // ถึงเวลาแล้วออกผล (ถ้าเซิร์ฟเวอร์ดับข้ามเวลา ออกย้อนหลังด้วยเลขที่ปิดผนึกไว้)
+  lottoDraw() {
+    const L = this.lotto, { nums, salt, hash } = L.sealed, base = L.pot, wins = []; let paid = 0, nTickets = 0;
+    for (const list of Object.values(L.tickets)) nTickets += list.length;
+    S.LOTTO.prize.forEach((P, k) => {
+      const hit = []; for (const [key, list] of Object.entries(L.tickets)) for (const t of list) if (t.slice(3 - P.digits) === nums[k].slice(3 - P.digits)) hit.push(key); // ตั๋วเลขซ้ำถูกกี่ใบ ได้กี่ส่วน
+      if (!hit.length) return;
+      const each = Math.floor(Math.min(Math.floor(base * P.pct), P.cap) / hit.length); if (each <= 0) return;
+      const by = {}; for (const key of hit) by[key] = (by[key] || 0) + each;
+      for (const [key, amt] of Object.entries(by)) { wins.push([key, k + 1, amt]); paid += amt; }
+    });
+    L.pot = Math.max(0, L.pot - paid);
+    const winners = wins.map(([key, k, amt]) => { const rec = this.saved[key]; return [rec && rec.name || key, k, amt]; });
+    for (const [key, k, amt] of wins) {
+      this.creditInv(key, 'coin', amt); logEv(this.room, 'coin', { p: key, n: amt, why: 'lotto' });
+      const q = [...this.players.values()].find(o => o.key === key);
+      if (q) { this.toast(q, `🎟️ ถูกหวยรางวัลที่ ${k}! ได้ 🪙 ${amt}`); this.sfxTo(q, 'levelup'); }
+      else { const rec = this.saved[key]; if (rec) (rec.lottoWins || (rec.lottoWins = [])).push([k, amt]); }
+    }
+    L.last = { round: L.round, nums, salt, hash, n: nTickets, pot0: base, winners };
+    logEv(this.room, 'lotto', { round: L.round, nums, tickets: nTickets, pot: base, paid, winners: wins.length });
+    const prize = [...new Set(wins.map(w => w[1]))];
+    this.addLog(prize.length ? `🎟️ หวย ${nums[0]} / ${nums[1].slice(1)} / ${nums[2].slice(1)} ออกแล้ว มีผู้ถูกรางวัลที่ ${prize.join(', ')} จ่าย 🪙 ${paid} กองกลางเหลือ 🪙 ${L.pot}` : `🎟️ หวย ${nums[0]} / ${nums[1].slice(1)} / ${nums[2].slice(1)} ออกแล้ว ไม่มีผู้ถูกรางวัล ทบกองกลาง 🪙 ${L.pot}`);
+    const nx = new Date(this.lottoDrawAt(L.round)); nx.setDate(nx.getDate() + 1);
+    L.round = this.lottoDate(nx.getTime()); L.sealed = this.lottoSeal(); L.tickets = {}; this.dirty = true; // สุ่มและปิดผนึกเลขงวดถัดไปก่อนเปิดขายตั๋ว
+    for (const p of this.players.values()) send(p, { t: 'lotto', l: this.lottoPub(p) });
+  }
+  lottoOk(p) { return !!this.starterOf(p).final && S.playLevel(p.rec.skills) >= S.LOTTO.minLv; }
+  lottoPub(p) {
+    const L = this.lotto, now = Date.now(), heat = Math.round(S.heatOf(p.rec.sales, now));
+    return { pot: L.pot, drawAt: this.lottoDrawAt(L.round), now, hash: L.sealed.hash, mine: L.tickets[p.key] || [], max: S.LOTTO.maxTickets, price: S.LOTTO.price, minLv: S.LOTTO.minLv, ok: this.lottoOk(p), open: now < this.lottoDrawAt(L.round) - S.LOTTO.closeMs, last: L.last, heat, rate: S.taxRate(heat) };
+  }
+  lottoBuy(p, m) {
+    const L = this.lotto, now = Date.now(), mine = L.tickets[p.key] || [];
+    if (now >= this.lottoDrawAt(L.round) - S.LOTTO.closeMs) return this.toast(p, '🎟️ ปิดรับตั๋วงวดนี้แล้ว เปิดขายอีกครั้งหลังออกรางวัล');
+    if (!this.lottoOk(p)) return this.toast(p, `🎟️ ซื้อหวยได้เมื่อผ่านคู่มือเริ่มต้นและระดับการเล่นถึง ${S.LOTTO.minLv}`);
+    const want = Array.isArray(m.nums) ? m.nums.slice(0, S.LOTTO.maxTickets) : [], n = Math.min(want.length, S.LOTTO.maxTickets - mine.length);
+    if (n <= 0) return this.toast(p, mine.length >= S.LOTTO.maxTickets ? `🎟️ ซื้อครบ ${S.LOTTO.maxTickets} ใบแล้วสำหรับงวดนี้` : '🎟️ ยังไม่ได้เลือกเลข');
+    const cost = n * S.LOTTO.price; if ((p.rec.inv.coin || 0) < cost) return this.toast(p, 'เหรียญไม่พอ');
+    const nums = want.slice(0, n).map(w => typeof w === 'string' && /^\d{3}$/.test(w) ? w : String(crypto.randomInt(1000)).padStart(3, '0')); // เลขที่ไม่ถูกรูปแบบ/ว่าง = สุ่มให้
+    this.add(p, 'coin', -cost, 'lotto'); this.toPot(cost); L.tickets[p.key] = mine.concat(nums); this.dirty = true;
+    this.toast(p, `🎟️ ซื้อหวย ${nums.join(' ')} (🪙 ${cost}) ออกผล ${S.LOTTO.revealHour}:00 น.`); this.sfxTo(p, 'coin');
+  }
+  lottoJoin(p) { // ส่งสถานะหวยตอนเข้าเกม + แจ้งรางวัลที่ถูกตอนออฟไลน์
+    send(p, { t: 'lotto', l: this.lottoPub(p) });
+    const w = p.rec.lottoWins; if (w && w.length) { delete p.rec.lottoWins; this.dirty = true; setTimeout(() => { if (p.ws.readyState === 1) for (const [k, amt] of w) this.toast(p, `🎟️ คุณถูกหวยรางวัลที่ ${k} ขณะออฟไลน์! ได้ 🪙 ${amt}`); }, 3000); }
+  }
   wkGoal() { return S.WEEKLY.base + S.WEEKLY.per * Math.max(1, Object.keys(this.week.by).length); }
   wkBump(p) {
     this.wkRoll(); const w = this.week; w.by[p.name] = (w.by[p.name] || 0) + 1; this.dirty = true; // by = ครั้งที่ช่วยทั้งหมด (ใช้เช็ก minShare) cnt = ครั้งที่นับเข้าเป้า
@@ -1204,7 +1270,7 @@ class World {
     const fee = Math.round(r.sell * S.COOK_FEE); // ค่าเช่าเตา: หายจากระบบทั้งหมด (TOWN.feeShare) กันครัวเป็นช่องสร้างเงินล้วนๆ
     if ((inv.coin || 0) < fee) return this.toast(p, `ค่าเช่าเตา 🪙 ${fee} เหรียญไม่พอ`);
     for (const [k, n] of Object.entries(use)) this.add(p, k, -n);
-    this.add(p, 'coin', -fee, 'cookfee'); this.add(p, r.id, 1);
+    this.add(p, 'coin', -fee, 'cookfee'); this.toPot(fee); this.add(p, r.id, 1);
     this.addXp(p, 'cook', r.xp); p.cookReady = now + r.time;
     this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name} สำเร็จ! (+${r.xp} XP เชฟ • ค่าเตา -🪙${fee} • ขายได้ราว 🪙${r.sell})`); this.sfx(p, 'collect');
     this.event(p, 'cook');
@@ -1216,7 +1282,7 @@ class World {
     for (const [k, n] of Object.entries(r.in)) if ((p.rec.inv[k] || 0) < n) return this.toast(p, 'วัตถุดิบไม่พอ');
     const fee = S.craftFee(r.id); if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `ค่าใช้โรงช่างไม้ 🪙 ${fee} เหรียญไม่พอ`);
     for (const [k, n] of Object.entries(r.in)) this.add(p, k, -n);
-    if (fee) { this.add(p, 'coin', -fee, 'craftfee'); }
+    if (fee) { this.add(p, 'coin', -fee, 'craftfee'); this.toPot(fee); }
     const gain = S.woodXp(r.xp, this.lv(p, 'wood')); this.add(p, r.id, 1); this.addXp(p, 'wood', gain);
     const info = S.itemInfo(r.id); this.toast(p, `🔨 ประดิษฐ์ ${info.emoji} ${info.name} สำเร็จ! (+${gain} XP${fee ? ` • ค่าโรงช่าง -🪙${fee}` : ''})`); this.sfx(p, 'collect');
     if (info.furn) this.bookAdd(p, 'furn', info.furn);
@@ -1389,7 +1455,7 @@ class World {
     send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); this.chPush(p); send(p, { t: 'evt', e: this.evPub() }); send(p, { t: 'stars', s: rec.stars || {} });
     send(p, { t: 'mkt', m: this.mktFor(p) });
     this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
-    send(p, { t: 'chatlog', list: this.chatLog }); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub(p)); send(p, { t: 'log', list: this.log }); send(p, { t: 'chest', c: this.chest });
+    send(p, { t: 'chatlog', list: this.chatLog }); this.lottoJoin(p); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub(p)); send(p, { t: 'log', list: this.log });
     if (rec.gift) send(p, { t: 'gift', item: rec.gift });
     this.awaySummary(p, rec.leftAt || rec.lastSeen);
     if (Date.now() < S.FRESH.startAt && rec.freshNote !== 1) { rec.freshNote = 1; setTimeout(() => { if (p.ws.readyState === 1) this.toast(p, `📢 ตั้งแต่ ${new Date(S.FRESH.startAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ผัก ปลา ไข่ นม อาหาร จะค่อยๆ เสื่อมราคาถ้าเก็บไว้นาน (สด 1 วัน = 100% • 1–3 วัน 70% • เกิน 40%) ของที่มีตอนนี้นับเป็นของสดวันนั้น • มีตู้เย็นในบ้านช่วยชะลอ`); }, 5000); }
@@ -1540,6 +1606,7 @@ class World {
       case 'orders': if (m.a === 'fill') this.orderFill(p, m.id); send(p, { t: 'orders', o: this.ordersPub(p) }); break;
       case 'buy': this.buy(p, m.item, Math.min(10, Math.max(1, m.n | 0))); break;
       case 'sell': this.sell(p, m.item, m.n); break;
+      case 'lotto': if (m.a === 'buy') this.lottoBuy(p, m); send(p, { t: 'lotto', l: this.lottoPub(p) }); break;
     }
   }
 
@@ -1644,7 +1711,7 @@ class World {
     if (cur >= nmx) return this.toast(p, `${D.name}ยังสภาพดีอยู่`);
     const cost = S.repairCost(tool, tier, cur, n);
     if ((p.rec.inv.coin || 0) < cost) return this.toast(p, `เหรียญไม่พอ ค่าซ่อม 🪙 ${cost}`);
-    this.add(p, 'coin', -cost, 'repair'); (p.rec.dur || (p.rec.dur = {}))[tool] = nmx; (p.rec.fix || (p.rec.fix = {}))[tool] = n + 1;
+    this.add(p, 'coin', -cost, 'repair'); this.toPot(cost); (p.rec.dur || (p.rec.dur = {}))[tool] = nmx; (p.rec.fix || (p.rec.fix = {}))[tool] = n + 1;
     send(p, { t: 'dur', d: this.durPub(p) });
     this.toast(p, `🔧 ซ่อม${D.name}เรียบร้อย (-🪙 ${cost}) ความทนทานสูงสุดเหลือ ${nmx}${n + 1 >= S.REPAIR.maxFixes ? ' • ซ่อมได้อีกไม่ได้แล้ว' : ''}`); this.sfxTo(p, 'coin'); this.dirty = true;
   }
@@ -1654,7 +1721,7 @@ class World {
     if (!n && cur > 0) return this.toast(p, `${D.name}ยังใหม่อยู่ ไม่ต้องซื้อใหม่`);
     const cost = S.toolPrice(tool, tier);
     if ((p.rec.inv.coin || 0) < cost) return this.toast(p, `เหรียญไม่พอ ราคา 🪙 ${cost}`);
-    this.add(p, 'coin', -cost, 'repair'); if (p.rec.dur) delete p.rec.dur[tool]; if (p.rec.fix) delete p.rec.fix[tool];
+    this.add(p, 'coin', -cost, 'repair'); this.toPot(cost); if (p.rec.dur) delete p.rec.dur[tool]; if (p.rec.fix) delete p.rec.fix[tool];
     send(p, { t: 'dur', d: this.durPub(p) }); this.toast(p, `🛒 ซื้อ${D.name}อันใหม่แล้ว (-🪙 ${cost}) ความทนทานเต็ม`); this.sfxTo(p, 'coin'); this.dirty = true;
   }
 
@@ -1851,7 +1918,9 @@ class World {
     const quote = S.sellQuote(info.sell, mEff, q, muls); // ขายหลายชิ้นต่อเนื่อง ราคาต่อชิ้นค่อยๆ ลดลง
     const cat = S.sellCat(item), pay = quote.total; // จ่ายต่อชิ้นตามชนิด ลดชิ้นละ 1% ของราคาฐานจนพื้น 20%
     this.add(p, item, -q);
-    this.add(p, 'coin', pay, 'sell');
+    const nowT = Date.now(), sales = p.rec.sales = (p.rec.sales || []).filter(x => nowT - x[0] < S.TAX.fadeMs), tax = S.saleTax(S.heatOf(sales, nowT), pay); // ภาษีขาย: ขั้นบันไดจากยอดขายสะสมที่ค่อยๆ จางใน 24 ชม. (ขายทีละชิ้นหรือรวดเดียวเสียเท่ากัน)
+    const lastS = sales[sales.length - 1]; if (lastS && nowT - lastS[0] < 60000) lastS[1] += pay; else sales.push([nowT, pay]);
+    this.add(p, 'coin', pay, 'sell'); if (tax) { this.add(p, 'coin', -tax, 'tax'); this.toPot(tax); }
     const r = mEff > 0 ? Math.min(1, quote.m / mEff) : 1; // สัดส่วนที่ราคารวมลดลงจากการขายชุดนี้ ตลาดจำไว้เท่ากันไม่ว่าขายรวดหรือทยอย (แบ่งครึ่ง: ชนิด/ส่วนตัว กับ หมวด)
     { // หมวดที่ขายจะตกตามปริมาณที่ขาย ส่วนหมวดอื่นฟื้นเร็วขึ้นตามปริมาณนั้น (ได้ตรงนี้ต้องแลกกับหมวดที่ขาย)
       const ct = p.rec.cat = p.rec.cat || {}; ct[cat] = Math.max(S.CATFAT.min, this.catOf(p, cat) * Math.pow(r, 0.5));
@@ -1867,8 +1936,8 @@ class World {
       for (const q2 of this.players.values()) if (q2 !== p) send(q2, { t: 'mkt', m: { [item]: Math.round(this.effMult(q2, item) * 100) / 100 } });
     }
     const fm = muls ? muls.reduce((a, b) => a + b, 0) / q : 1;
-    logEv(this.room, 'sell', { p: p.key, item, q, coin: pay, m: Math.round(mEff * 100) / 100, cat, base: info.sell * q, fm: Math.round(fm * 100) / 100 });
-    this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${pay}${fm < 0.99 ? ` (ของค้าง/เก่าปนอยู่ ราคาความสดเฉลี่ย ${Math.round(fm * 100)}%)` : ''}${this.catOf(p, cat) < 0.85 ? ` 📉 ตลาด${CAT_NAME[cat] || 'หมวดนี้'}อิ่มตัว (ราคา ${Math.round(this.catOf(p, cat) * 100)}%)` : ''}`); this.catPush(p); this.event(p, 'sell');
+    logEv(this.room, 'sell', { p: p.key, item, q, coin: pay, tax, m: Math.round(mEff * 100) / 100, cat, base: info.sell * q, fm: Math.round(fm * 100) / 100 });
+    this.toast(p, `ขาย ${info.emoji} ${info.name} x${q} ได้ 🪙 ${pay - tax}${tax ? ` (หักภาษี 🪙${tax} • ยอดขายสะสม ${Math.round(S.heatOf(sales, nowT))})` : ''}${fm < 0.99 ? ` (ของค้าง/เก่าปนอยู่ ราคาความสดเฉลี่ย ${Math.round(fm * 100)}%)` : ''}${this.catOf(p, cat) < 0.85 ? ` 📉 ตลาด${CAT_NAME[cat] || 'หมวดนี้'}อิ่มตัว (ราคา ${Math.round(this.catOf(p, cat) * 100)}%)` : ''}`); this.catPush(p); this.event(p, 'sell');
     if (S.SHOPS.animal.sell.includes(item)) this.event(p, 'sellproduct');
     this.sfxTo(p, 'coin');
   }
@@ -2212,7 +2281,7 @@ class World {
         if (W === t.host) { if (got - bet > rem) { got = bet + rem; rake = pot - got; capped = true; } this.botNetAdd(t.host.key, got - bet); }
         else this.botNetAdd(t.host.key, -bet);
       }
-      this.payKey(W, got);
+      this.payKey(W, got); if (!t.bot) this.toPot(rake);
       t.msg = (msg ? `${msg} — ${W.name} ชนะ!` : `${W.name} ชนะ!`) + (bet && (!t.bot || W === t.host) ? ` ได้ 🪙 ${got}${rake ? ` (หักค่าบริการ ${rake})` : ''}${capped ? ' • ครบโควตากำไรจากบอทวันนี้' : ''}` : bet ? ` (เสียเดิมพัน 🪙 ${bet})` : '');
     }
     t.paid = true;
@@ -2501,6 +2570,7 @@ class World {
     if (t.bot && t.bet && humans[0]) { const hk = humans[0].key; if (hw.length) { const rem = this.botRemain(hk); if (pot - t.bet > rem) { pot = t.bet + rem; rake = gross - pot; } this.botNetAdd(hk, pot - t.bet); } else this.botNetAdd(hk, -t.bet); }
     const share = hw.length ? Math.floor(pot / ws.length) : 0;
     for (const q of hw) this.payKey(q, share);
+    if (!t.bot) this.toPot(rake);
     const names = ws.map(q => q.name).join(', ');
     Object.assign(t, { state: 'over', winners: ws.map(q => q.id), winner: names, resetAt: Date.now() + 20000, deadline: 0, botAt: 0 });
     t.msg = (ws.length > 1 ? `เสมอ! ${names} ร่วมชนะ` : ws.length ? `${names} ชนะ!` : 'ไม่มีผู้ชนะ') + (desc ? ` — ${desc}` : '') + (share ? ` ได้ 🪙 ${share}${rake ? ` (หักค่าบริการ ${rake})` : ''}` : '');
@@ -2681,6 +2751,7 @@ class World {
     if (t.bot && t.bet && humans[0]) { const hk = humans[0].key; if (w === humans[0]) { const rem = this.botRemain(hk); if (pot - t.bet > rem) { pot = t.bet + rem; rake = gross - pot; } this.botNetAdd(hk, pot - t.bet); } else this.botNetAdd(hk, -t.bet); }
     Object.assign(t, { state: 'over', winner: w.name, resetAt: Date.now() + 20000, deadline: 0, botAt: 0 });
     if (!w.bot) this.payKey(w, pot);
+    if (!t.bot) this.toPot(rake);
     t.msg = `${w.name} ชนะ!` + (pot ? ` ได้ 🪙 ${pot}${rake ? ` (หักค่าบริการ ${rake})` : ''}` : '');
     for (const q of humans) { const o = this.players.get(q.id); if (o && o.key === q.key) this.sfxTo(o, q === w ? 'win' : 'lose'); }
     if (!t.bot) for (const q of humans) this.arcAward(q.key, S.ARCPTS.play, q === w); // แต้มตู้เกม: เฉพาะเล่นกับคนจริง
@@ -3025,6 +3096,7 @@ class World {
   }
 
   tick(dt, now) {
+    this.lottoTick(now);
     this.arcTick(now);
     this.cinemaTick(now);
     this.telTick(now);
@@ -3162,7 +3234,7 @@ class World {
     if (!this.dirty) return;
     this.dirty = false;
     for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; this.syncHerd(p); } // เซฟฝูงลง rec.herd ก่อนเขียนไฟล์
-    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), treeMix: this.treeMixV | 0, house: { houses: this.houses }, log: this.log, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])], mocks: this.mocks || [], mapOv: this.mapOv || {} }, replacer);
+    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), treeMix: this.treeMixV | 0, house: { houses: this.houses }, log: this.log, lotto: this.lotto, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])], mocks: this.mocks || [], mapOv: this.mapOv || {} }, replacer);
     if (sync) { fs.writeFileSync(this.file, data); return; }
     fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
   }
