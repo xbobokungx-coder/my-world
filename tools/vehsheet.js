@@ -4,7 +4,7 @@
 // ได้ไฟล์:
 //   vehicles-riding.png          ชีตรวม แถว = ยานพาหนะ × ทิศ (ขวา ซ้าย ลง ขึ้น) คอลัมน์ = จอด + เฟรมแล่น 0–3 (มีผู้ขี่ เงา ควัน)
 //   <ยาน>-<ทิศ>-<idle|f0..f3>.png แต่ละเฟรมแยกไฟล์ (ขนาดเกมจริง ×2)
-//   <ยาน>-layers.png             ชั้นดิบของสไปรต์ (หลัง/หน้า แยกกัน) ขนาดพิกเซลศิลป์ 1:1 ไว้แก้ลายเส้น
+//   boat-sheet.png / boat-<ทิศ>-<idle|f0..f3>.png  เรือ (ทะเลใหญ่) ใช้โค้ด drawBoat จริง วาดบนพื้นน้ำ/โปร่งใส (ผู้เล่นถูกวาดทับในเกม ไม่ติดมา)\n//   <ยาน>-layers.png             ชั้นดิบของสไปรต์ (หลัง/หน้า แยกกัน) ขนาดพิกเซลศิลป์ 1:1 ไว้แก้ลายเส้น
 const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib');
 const ROOT = path.join(__dirname, '..'), OUT = path.resolve(process.argv[2] || path.join(ROOT, 'sprites/vehicles'));
 
@@ -16,7 +16,7 @@ function parseColor(s) {
   return [0, 0, 0, 0];
 }
 class Ctx {
-  constructor(c) { this.canvas = c; this.t = [1, 0, 0, 1, 0, 0]; this.stack = []; this.fillStyle = '#000'; this.globalAlpha = 1; this.path = []; this.imageSmoothingEnabled = false; }
+  constructor(c) { this.canvas = c; this.t = [1, 0, 0, 1, 0, 0]; this.stack = []; this.fillStyle = '#000'; this.globalAlpha = 1; this.path = []; this.polys = []; this.imageSmoothingEnabled = false; }
   save() { this.stack.push({ t: this.t.slice(), f: this.fillStyle, a: this.globalAlpha }); }
   restore() { const s = this.stack.pop(); if (s) { this.t = s.t; this.fillStyle = s.f; this.globalAlpha = s.a; } }
   setTransform(a, b, c, d, e, f) { this.t = [a, b, c, d, e, f]; }
@@ -45,9 +45,12 @@ class Ctx {
   }
   getImageData(x, y, w, h) { return { data: this.canvas.data, width: w, height: h }; }
   putImageData() {}
-  beginPath() { this.path = []; }
+  beginPath() { this.path = []; this.polys = []; this.sub = null; }
   ellipse(cx, cy, rx, ry) { this.path.push({ cx, cy, rx, ry, t: this.t.slice() }); }
   arc(cx, cy, rad) { this.path.push({ cx, cy, rx: rad, ry: rad, t: this.t.slice() }); }
+  moveTo(x, y) { this.sub = [this.pt(x, y)]; (this.polys || (this.polys = [])).push(this.sub); }
+  lineTo(x, y) { if (!this.sub) this.moveTo(x, y); else this.sub.push(this.pt(x, y)); }
+  closePath() {}
   fill() {
     const [r, g, b, a] = parseColor(this.fillStyle);
     for (const e of this.path) {
@@ -56,8 +59,24 @@ class Ctx {
         const dx = (xx + .5 - cx) / rx, dy = (yy + .5 - cy) / ry; if (dx * dx + dy * dy <= 1) this.blend(xx, yy, r, g, b, a * this.globalAlpha);
       }
     }
+    for (const poly of this.polys || []) { // ระบายรูปหลายเหลี่ยม (เติมแบบ even-odd ที่กึ่งกลางพิกเซล)
+      if (poly.length < 3) continue;
+      const ys = poly.map(q => q[1]), y0 = Math.floor(Math.min(...ys)), y1 = Math.ceil(Math.max(...ys));
+      for (let yy = y0; yy <= y1; yy++) {
+        const cy = yy + .5, xs = [];
+        for (let i = 0; i < poly.length; i++) { const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % poly.length]; if ((ay <= cy) !== (by <= cy)) xs.push(ax + (cy - ay) / (by - ay) * (bx - ax)); }
+        xs.sort((m, n) => m - n);
+        for (let k = 0; k + 1 < xs.length; k += 2) for (let xx = Math.round(xs[k]); xx < Math.round(xs[k + 1]); xx++) this.blend(xx, yy, r, g, b, a * this.globalAlpha);
+      }
+    }
   }
-  stroke() {} moveTo() {} lineTo() {} closePath() {} fillText() {} strokeText() {}
+  stroke() { // ลากเส้นหนา lineWidth ตามจุดที่ผ่านมา (วงรีวาดเป็นเส้นรอบวง)
+    const [r, g, b, a] = parseColor(this.strokeStyle || '#000'), w = (this.lineWidth || 1) * Math.abs(this.t[0]), hw = Math.max(.5, w / 2);
+    const seg = ([ax, ay], [bx, by]) => { const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 2) + 1; for (let i = 0; i <= n; i++) { const px = ax + (bx - ax) * i / n, py = ay + (by - ay) * i / n; for (let yy = Math.floor(py - hw); yy <= Math.ceil(py + hw); yy++) for (let xx = Math.floor(px - hw); xx <= Math.ceil(px + hw); xx++) if (Math.hypot(xx + .5 - px, yy + .5 - py) <= hw) this.blend(xx, yy, r, g, b, a * this.globalAlpha * .6); } };
+    for (const poly of this.polys || []) for (let i = 0; i + 1 < poly.length; i++) seg(poly[i], poly[i + 1]);
+    for (const e of this.path) { const sx = Math.abs(e.t[0]), sy = Math.abs(e.t[3]), cx = e.t[0] * e.cx + e.t[4], cy = e.t[3] * e.cy + e.t[5]; let prev = null; for (let i = 0; i <= 36; i++) { const an = i / 36 * Math.PI * 2, q = [cx + Math.cos(an) * e.rx * sx, cy + Math.sin(an) * e.ry * sy]; if (prev) seg(prev, q); prev = q; } }
+  }
+  fillText() {} strokeText() {}
 }
 class Canvas {
   constructor(w = 1, h = 1) { this._w = w; this._h = h; this.data = new Uint8ClampedArray(w * h * 4); this.ctx = null; }
@@ -118,4 +137,32 @@ for (const kind of KINDS) {
   items.forEach((row, ri) => row.forEach((s, ci) => { g.fillStyle = (ri + ci) & 1 ? '#e8ecef' : '#d5dbe0'; g.fillRect(ci * cw, ri * ch, cw, ch); g.drawImage(s, ci * cw + 1, ri * ch + 1); }));
   write(`${kind}-layers.png`, c);
 }
+// 3) เรือ: ดึงฟังก์ชัน drawBoat จริงจาก game.js (วาดด้วยเวกเตอร์ ไม่ใช่สไปรต์) มาเรนเดอร์ตามทิศ × จอด/แล่น × 4 เฟรมคลื่น
+const gsrc = fs.readFileSync(path.join(ROOT, 'public/game.js'), 'utf8'), bm = gsrc.match(/function drawBoat\(p, now\) \{[\s\S]*?\n\}\n/);
+if (bm) {
+  const BW = 140, BH = 140, SEA = '#3d8fd1', SEA2 = '#378ac9', BCOLS = [['idle', null], ['f0', 0], ['f1', 1], ['f2', 2], ['f3', 3]];
+  const bsb = { Math, ctx: null }; vm.createContext(bsb); vm.runInContext(bm[0] + '\nthis.drawBoat = drawBoat;', bsb);
+  const bcell = (dir, fr, bg) => {
+    const c = new Canvas(BW, BH), g = c.getContext('2d'); if (bg) { g.fillStyle = bg; g.fillRect(0, 0, BW, BH); }
+    bsb.ctx = g; const now = fr === null ? 9000 : 1000 + fr * 70, p = { id: 1, x: BW / 2, y: BH / 2 - 6, dir, _lx: BW / 2 - (fr === null ? 0 : 1), _ly: BH / 2 - 6 };
+    if (fr !== null) p._mvAt = now; bsb.drawBoat(p, now); return c;
+  };
+  const bs = new Canvas(BW * BCOLS.length, HEAD + BH * DIRS.length), bg2 = bs.getContext('2d');
+  bg2.fillStyle = '#4d5260'; bg2.fillRect(0, 0, bs.width, HEAD);
+  DIRS.forEach(([dir, dn], di) => BCOLS.forEach(([cn, fr], ci) => { bg2.drawImage(bcell(dir, fr, di & 1 ? SEA2 : SEA), ci * BW, HEAD + di * BH); write(`boat-${dn}-${cn}.png`, bcell(dir, fr, null)); }));
+  BCOLS.forEach((_, ci) => { bg2.fillStyle = ci ? '#5dade2' : '#aab2bd'; bg2.fillRect(ci * BW + 2, 4, ci ? 8 + ci * 6 : 8, 6); });
+  write('boat-sheet.png', bs);
+}
+// 4) ชั้นแยกเฟรม 1:1 (ไฟล์ที่ผู้ดูแลแก้แล้วส่งกลับ): layers/<ยาน>-<ทิศ>-<back|front>-<idle|f0..f3>.png • ซ้ายคือภาพขวาพลิก จึงมีเฉพาะ right/down/up
+fs.mkdirSync(path.join(OUT, 'layers'), { recursive: true });
+const meta = { note: 'ชุดยานพาหนะ My World: 1 พิกเซลภาพ = 2 พิกเซลเกม • สไปรต์มีขอบใส 1 พิกเซลรอบด้าน • ax,ay = จุดสัมผัสพื้นกลางตัวรถ • seat = สะโพกผู้ขี่ (พิกเซลภาพ ไม่รวมขอบ) • ทิศซ้าย = พลิกภาพขวา', speedMul: {}, vehicles: {} };
+for (const kind of KINDS) {
+  meta.speedMul[kind] = Shared.VEHICLES[kind].speed; meta.vehicles[kind] = { name: Shared.VEHICLES[kind].name, price: Shared.VEHICLES[kind].price, dirs: {} };
+  for (const [dir, dn] of [[3, 'right'], [0, 'down'], [1, 'up']]) {
+    const v0 = PixelVehicle.sprite(kind, dir, 0, rider.pc, false, rider.color);
+    meta.vehicles[kind].dirs[dn] = { size: [v0.back.width, v0.back.height], ax: v0.ax, ay: v0.ay, seat: v0.seat, lift: v0.lift, puff: v0.puff || null, frames: ['idle', 'f0', 'f1', 'f2', 'f3'] };
+    for (const layer of ['back', 'front']) [null, 0, 1, 2, 3].forEach(fr => { const sp = PixelVehicle.sprite(kind, dir, fr ?? 0, rider.pc, fr === null, rider.color)[layer]; fs.writeFileSync(path.join(OUT, 'layers', `${kind}-${dn}-${layer}-${fr === null ? 'idle' : 'f' + fr}.png`), png(sp)); files++; });
+  }
+}
+fs.writeFileSync(path.join(OUT, 'vehicle-kit.json'), JSON.stringify(meta, null, 1));
 console.log(`เขียน ${files} ไฟล์ที่ ${path.relative(ROOT, OUT) || OUT}`);
