@@ -541,6 +541,7 @@
   // ผังถ้ำแบบธรรมชาติ: โถงโล่งขอบโค้งไม่เรียบ 7–8 โถง ต่อกันด้วยอุโมงค์คดเคี้ยวกว้าง ~3 ช่อง เกลาขอบด้วย cellular automata แล้ววางหินก้อนโดดๆ (ก้อนละ 1–3 ช่อง) ห่างกันเป็นสิ่งกีดขวางบางๆ
   function makeCaveMap(floor) {
     if (floor === SEA.floor) return makeSeaMap(); // ฉากทะเลใช้ระบบฉากเดียวกับถ้ำ
+    if (floor === OCEAN.floor) return makeOceanMap();
     const f = Math.max(1, Math.min(MINE.floors, floor | 0 || 1)), R = rng(20261030 + f * 7919);
     const m = Array.from({ length: H }, () => new Array(W).fill(T.VOID));
     for (let y = CAVE.y0; y <= CAVE.y1; y++) for (let x = CAVE.x0; x <= CAVE.x1; x++) m[y][x] = T.ROCK;
@@ -1248,7 +1249,7 @@
     let m = /^rod_(\d)$/.exec(k);
     if (m && RODS[m[1]] && RODS[m[1]].price) return { name: RODS[m[1]].name, emoji: '🎣', buy: RODS[m[1]].price, lv: RODS[m[1]].lv, skill: 'fish', once: true, cat: 'gear' };
     if (k === 'petfood') return { name: 'อาหารสัตว์เลี้ยง (+' + PETCARE.food + ' อิ่ม)', emoji: '🦴', buy: 8, cat: 'feed' };
-    if (k === 'boat') return { name: 'เรือ (ออกทะเลฟรีทุกเที่ยว)', emoji: '⛵', buy: BOAT.price, once: true, cat: 'gear' };
+    if (k === 'boat') return { name: 'เรือ (ขับออกทะเลใหญ่ ฟรี)', emoji: '⛵', buy: BOAT.price, once: true, cat: 'gear' };
     m = /^veh_(\w+)$/.exec(k);
     if (m && VEHICLES[m[1]]) { const v = VEHICLES[m[1]]; return { name: `${v.name} (เร็วขึ้น ${Math.round((v.speed - 1) * 100)}%)`, emoji: v.emoji, buy: v.price, once: true, cat: 'gear', veh: m[1] }; }
     m = /^pet_(\w+)$/.exec(k);
@@ -1367,6 +1368,46 @@
   // ออกทะเล: เรือที่ท่าบนเกาะลึกลับ (ช่องท่า = SHOP) พาไปฉากทะเล (ฉากเดียวกับถ้ำแต่ชั้น floor=99) ยืนบนดาดฟ้าเรือแล้วตกปลาทะเลลึก • หมดเวลา ms กัปตันพากลับเกาะ
   const SEA = { floor: 99, fee: 200, ms: 15 * 60e3, minFishLv: 3, dock: { x: 39, y: 38 }, ret: { x: 40, y: 38 }, deck: { x0: 29, y0: 21, x1: 35, y1: 23 }, exit: { x: 28, y: 22 }, spawn: { x: 32.5 * TS, y: 22.5 * TS } };
   const isSea = f => f === SEA.floor;
+  // ทะเลใหญ่ (SEA-PLAN ช่วง A): คนมี "เรือ" ขับเรือเองฟรี • ฉากชั้น 98 ใช้ระบบฉากเดียวกับถ้ำ • ช่องแล่นได้ = T.CAVE (วาดเป็นน้ำ เดินได้/โยนเบ็ดได้) เกาะ/หินโสโครกและขอบแมพ = T.ROCK ทางกลับท่า = T.MOUTH (แล่นถึง = กลับเกาะ)
+  // ออกเรือได้ 06:00–15:00 เวลาเกม (hours.from–to) ตะวันตก 19:00 (hours.end) กัปตันพากลับ • 1 ชม.เกม = CLOCK_MS/24 • castRange = ระยะโยนเบ็ดสูงสุดจากเรือ (ช่อง) • speed = ตัวคูณความเร็วเรือ
+  const OCEAN = { floor: 98, spawn: { x: 5.5 * TS, y: 23.5 * TS }, exit: { x: 1, y0: 21, y1: 25 }, speed: 1.35, castRange: 7, hours: { from: 6, to: 15, end: 19 }, anytime: false };
+  const isOcean = f => f === OCEAN.floor, isSeaScene = f => isSea(f) || isOcean(f);
+  const oceanHour = now => ((now % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24; // เวลาเกมตอนนี้ (ชั่วโมง 6–30) สูตรเดียวกับนาฬิกาฝั่งเว็บ
+  function oceanWindow(now) { // { ok, ms, why } ออกเรือได้ไหม และอยู่ได้กี่มิลลิวินาทีจนตะวันตก
+    const H = OCEAN.hours, h = oceanHour(now);
+    if (OCEAN.anytime) return { ok: true, ms: 8 * 60e3 };
+    if (h >= H.end || h < H.from) return { ok: false, why: '🌙 กลางคืนออกเรือไม่ได้ รอเช้า (ออกได้ 06:00–15:00 เวลาเกม ดูนาฬิกามุมขวาบน)' };
+    if (h >= H.to) return { ok: false, why: '🌇 ตะวันใกล้ตกแล้ว ออกเรือตอนนี้ไม่ทัน รอรอบหน้า (ออกได้ 06:00–15:00 เวลาเกม)' };
+    return { ok: true, ms: Math.round((H.end - h) * CLOCK_MS / 24) };
+  }
+  const oceanLayout = (() => { // เกาะและแนวปะการัง สร้างแบบกำหนดผลตายตัว (เซิร์ฟเวอร์กับหน้าเว็บได้เหมือนกัน)
+    let c = null;
+    return () => {
+      if (c) return c;
+      const R = rng(20261103), islands = [], reefs = [], far = (x, y, r, list, gap) => list.every(o => Math.hypot(o.x - x, o.y - y) > o.r + r + gap);
+      for (let t = 0; islands.length < 9 && t < 400; t++) {
+        const x = 14 + Math.floor(R() * (W - 18)), y = 5 + Math.floor(R() * (H - 10)), r = 1.6 + R() * 2.2;
+        if (x < 20 && Math.abs(y - OCEAN.spawn.y / TS) < 9) continue; // เปิดทางหน้าท่าเรือ
+        if (far(x, y, r, islands, 4)) islands.push({ x, y, r });
+      }
+      for (let t = 0; reefs.length < 7 && t < 400; t++) {
+        const x = 15 + Math.floor(R() * 32), y = 6 + Math.floor(R() * (H - 12)), r = 3 + R() * 2.5;
+        if (far(x, y, r, islands, 1) && far(x, y, r, reefs, 1)) reefs.push({ x, y, r });
+      }
+      return (c = { islands, reefs });
+    };
+  })();
+  function makeOceanMap() {
+    const m = Array.from({ length: H }, () => new Array(W).fill(T.CAVE)), L = oceanLayout();
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x === 0 || y === 0 || x === W - 1 || y === H - 1) m[y][x] = T.ROCK; // ขอบแมพ
+    for (const o of L.islands) for (let y = Math.floor(o.y - o.r); y <= Math.ceil(o.y + o.r); y++) for (let x = Math.floor(o.x - o.r); x <= Math.ceil(o.x + o.r); x++) if (m[y] && m[y][x] === T.CAVE && x > 1 && y > 1 && x < W - 2 && y < H - 2 && (x - o.x) ** 2 + (y - o.y) ** 2 <= o.r * o.r) m[y][x] = T.ROCK;
+    for (let y = OCEAN.exit.y0; y <= OCEAN.exit.y1; y++) m[y][OCEAN.exit.x] = T.MOUTH;
+    return m;
+  }
+  // โซนน้ำ (กำหนดปลาที่ตกได้): ตื้น (ใกล้ท่า) • แนวปะการัง • ทะเลเปิด • ทะเลลึก (ฝั่งตะวันออกและขอบนอก)
+  const oceanZone = (tx, ty) => oceanLayout().reefs.some(o => (tx - o.x) ** 2 + (ty - o.y) ** 2 <= o.r * o.r) ? 'reef' : tx <= 14 ? 'shallow' : (tx >= 46 || ty <= 6 || ty >= H - 7) ? 'deep' : 'open';
+  const OCEAN_ZONE = { shallow: { name: 'ทะเลตื้น', lv: [1, 7] }, reef: { name: 'แนวปะการัง', lv: [5, 15] }, open: { name: 'ทะเลเปิด', lv: [7, 13] }, deep: { name: 'ทะเลลึก', lv: [13, 20] } }; // ปลาระดับในช่วง lv ออกบ่อยขึ้นในโซนนั้น
+  const oceanZoneMul = (zone, lv) => { const z = OCEAN_ZONE[zone]; return z && lv >= z.lv[0] && lv <= z.lv[1] ? 5 : 1; };
   function makeSeaMap() { // น้ำทะเลทั้งแผ่น มีเรือ (ดาดฟ้า BRIDGE 7×3) กลางฉาก ท้ายเรือเป็นบันไดลงเรือเล็กกลับเกาะ (MOUTH เดินถึง = กลับ)
     const m = Array.from({ length: H }, () => new Array(W).fill(T.WATER)), D = SEA.deck;
     for (let y = D.y0; y <= D.y1; y++) for (let x = D.x0; x <= D.x1; x++) m[y][x] = T.BRIDGE;
@@ -1445,7 +1486,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

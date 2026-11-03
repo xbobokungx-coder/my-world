@@ -20,6 +20,7 @@ const ROOM = /^[a-z0-9_-]{1,20}$/.test(process.env.ROOM || '') ? process.env.ROO
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const HFAST = Math.max(1, +process.env.HUNGER_FAST || 1);
+if (process.env.OCEAN_ANYTIME) S.OCEAN.anytime = true; // ทดสอบ: ออกเรือใหญ่ได้ทุกเวลา (ปกติ 06:00–15:00 เวลาเกม)
 const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs, RESULT_MS = +process.env.CASINO_RESULT_MS || 8000, EMPTY_MS = +process.env.CIN_EMPTY_MS || 20000; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
 const SNAP_MS = +process.env.SNAP_MS || 60 * 60 * 1000; // ระยะห่างของ event snap (ไว้ทดสอบ)
 if (process.env.FRESH_START) S.FRESH.startAt = +process.env.FRESH_START; // ไว้ทดสอบ: เริ่มระบบความสดเร็วขึ้น (ms)
@@ -197,7 +198,7 @@ class World {
   floorOf(f) {
     let F = this.floors.get(f); if (F) return F;
     const map = S.makeCaveMap(f), ores = new Map();
-    if (!S.isSea(f)) for (const o of S.caveOreSpots(map, f)) { ores.set(o.x + ',' + o.y, { k: o.k, s: o.s }); map[o.y][o.x] = T.ORE; }
+    if (!S.isSeaScene(f)) for (const o of S.caveOreSpots(map, f)) { ores.set(o.x + ',' + o.y, { k: o.k, s: o.s }); map[o.y][o.x] = T.ORE; }
     F = { map, ores, hp: new Map(), wait: [] }; this.floors.set(f, F); return F;
   }
   oresPub(f) { return [...this.floorOf(f).ores].map(([k, o]) => { const [x, y] = k.split(',').map(Number); return [x, y, o.k, o.s]; }); }
@@ -255,6 +256,7 @@ class World {
     if (to === 'town') { p.ret = null; this.changeScene(p, null, SPAWN.x, SPAWN.y); return null; }
     p.ret = { x: back.x, y: back.y }; // กลับจากฉากนี้จะไปยืนตรงที่ยืนอยู่ในเมือง
     if (to === 'sea') { p.seaUntil = Date.now() + S.SEA.ms; this.changeScene(p, CAVE + S.SEA.floor, S.SEA.spawn.x, S.SEA.spawn.y); return null; }
+    if (to === 'ocean') { p.seaUntil = Date.now() + 10 * 60e3; p.seaW = 0; this.changeScene(p, CAVE + S.OCEAN.floor, S.OCEAN.spawn.x, S.OCEAN.spawn.y); return null; } // ผู้ดูแลวาปไปทะเลใหญ่ (ข้ามเงื่อนไขเวลา/เรือ) อยู่ได้ 10 นาที
     const cave = /^cave:(\d+)$/.exec(to);
     if (cave) { const f = +cave[1]; if (f < 1 || f > S.MINE.floors) return 'ไม่มีถ้ำชั้นนี้'; const at = this.caveLanding(f); this.changeScene(p, CAVE + f, at.x, at.y); return null; }
     if (to.startsWith('house:')) { const key = to.slice(6); if (!this.saved[key]) return 'ไม่พบบ้านหลังนี้'; if (!this.houses[key]) this.houses[key] = { items: {}, next: 1 }; this.changeScene(p, key, S.HOUSE_SPAWN.x, S.HOUSE_SPAWN.y); return null; }
@@ -333,7 +335,7 @@ class World {
     p.scene = scene; p.x = x; p.y = y; p.sit = null; p.dir = 0;
     if (p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); }
     this.sceneBroadcast(scene, Object.assign({ t: 'p+', quiet: 1 }, this.pubFull(p)), p);
-    send(p, { t: 'scene', sc: scene, owner: scene && !S.caveFloor(scene) ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene && !S.caveFloor(scene) ? this.houseItemsPub(scene) : [], st: scene && !S.caveFloor(scene) ? this.houseStyle(scene) : null, cave: S.caveFloor(scene), ores: S.caveFloor(scene) ? this.oresPub(S.caveFloor(scene)) : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
+    send(p, { t: 'scene', sc: scene, owner: scene && !S.caveFloor(scene) ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene && !S.caveFloor(scene) ? this.houseItemsPub(scene) : [], st: scene && !S.caveFloor(scene) ? this.houseStyle(scene) : null, cave: S.caveFloor(scene), until: S.isSeaScene(S.caveFloor(scene)) ? p.seaUntil || 0 : 0, ores: S.caveFloor(scene) ? this.oresPub(S.caveFloor(scene)) : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
     this.dirty = true;
   }
   enterHouse(p, key) {
@@ -1518,7 +1520,7 @@ class World {
         if (Math.hypot(x - p.x, y - p.y) > 0.5) p.activeAt = Date.now(); // ขยับจริงถึงนับว่ามีกิจกรรม (กันเงินฟรีตอนทิ้งตัวละครไว้)
         p.x = x; p.y = y;
         if (m.d >= 0 && m.d < 4) p.dir = m.d | 0;
-        { const cf = S.caveFloor(p.scene); if (cf) { const t = this.floorOf(cf).map[Math.floor(y / TS)][Math.floor(x / TS)]; if (t === T.MOUTH) { if (S.isSea(cf)) this.seaLeave(p, '⛵ ลงเรือเล็กกลับเกาะ'); else if (cf === 1) this.leaveCave(p); else this.caveMove(p, cf, cf - 1); } else if (t === T.DOWN) this.caveMove(p, cf, cf + 1); break; } } // เดินถึงทางออก = ขึ้นชั้นบน (ชั้น 1 = กลับเมือง) • เดินลงบันไดลง = ชั้นถัดไป
+        { const cf = S.caveFloor(p.scene); if (cf) { const t = this.floorOf(cf).map[Math.floor(y / TS)][Math.floor(x / TS)]; if (t === T.MOUTH) { if (S.isSeaScene(cf)) this.seaLeave(p, S.isOcean(cf) ? '⛵ เทียบท่ากลับเกาะแล้ว' : '⛵ ลงเรือเล็กกลับเกาะ'); else if (cf === 1) this.leaveCave(p); else this.caveMove(p, cf, cf - 1); } else if (t === T.DOWN) this.caveMove(p, cf, cf + 1); break; } } // เดินถึงทางออก = ขึ้นชั้นบน (ชั้น 1 = กลับเมือง) • เดินลงบันไดลง = ชั้นถัดไป
         if (!p.scene && this.map[Math.floor(y / TS)][Math.floor(x / TS)] === T.MOUTH) { this.enterCave(p); break; } // เดินเข้าปากถ้ำบนหน้าผา
         if (p.scene) { if (Math.floor(y / TS) >= S.HOUSE.y1 && S.HOUSE.door.includes(Math.floor(x / TS))) this.leaveHouse(p); break; } // เดินถึงประตูบ้าน = ออกไปเมือง
         this.arcRangeCheck(p);
@@ -1530,7 +1532,7 @@ class World {
         break;
       }
       case 'act': {
-        if (S.caveFloor(p.scene)) return S.isSea(S.caveFloor(p.scene)) ? this.seaAct(p, m) : this.caveAct(p, m);
+        if (S.caveFloor(p.scene)) return S.isSeaScene(S.caveFloor(p.scene)) ? this.seaAct(p, m) : this.caveAct(p, m);
         if (p.scene) return this.houseAct(p, m);
         const now = Date.now();
         if (now - p.lastAct < 150) return;
@@ -2012,16 +2014,25 @@ class World {
     if (p.scene) return;
     if (Math.hypot(p.x - (S.SEA.dock.x + 0.5) * TS, p.y - (S.SEA.dock.y + 0.5) * TS) > 3 * TS) return this.toast(p, '⛵ ไปที่เรือบนเกาะลึกลับกลางสระก่อนนะ');
     if (this.lv(p, 'fish') < S.SEA.minFishLv) return this.toast(p, `⛵ ต้องเป็นชาวประมงเลเวล ${S.SEA.minFishLv} ขึ้นไปถึงจะออกทะเลได้`);
-    const fee = this.seaFee(p); // มีเรือของตัวเอง = ออกฟรี
-    if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `⛵ ค่าเรือ 🪙 ${fee} เหรียญไม่พอ (ซื้อเรือของตัวเองที่ร้านยานพาหนะ 🪙${S.BOAT.price} ออกทะเลฟรีทุกเที่ยว)`);
+    const boat = p.rec.inv.boat > 0, win = boat ? S.oceanWindow(Date.now()) : null;
+    if (boat && !win.ok) return this.toast(p, win.why); // มีเรือ: ขับเรือเองในทะเลใหญ่ ฟรี แต่ต้องออกช่วงเช้า-บ่าย (กลับก่อนตะวันตก)
+    const fee = this.seaFee(p); // ไม่มีเรือ: จ่ายค่าเรือขึ้นแพ (ดาดฟ้า ตกปลาจากแพ 15 นาที)
+    if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `⛵ ค่าเรือ 🪙 ${fee} เหรียญไม่พอ (ซื้อเรือของตัวเองที่ร้านยานพาหนะ 🪙${S.BOAT.price} ขับเรือออกทะเลใหญ่ได้ฟรี)`);
     if (p.veh) this.setVeh(p, '');
     this.arcLeave(p); this.tradeCancel(p, 'ผู้เล่นออกทะเล'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
     if (fee) { this.add(p, 'coin', -fee, 'sea'); this.toPot(fee); } // ค่าเรือเข้ากองกลางหวย (คนมีเรือไม่เสีย)
-    p.ret = { x: (S.SEA.ret.x + 0.5) * TS, y: (S.SEA.ret.y + 0.5) * TS }; p.seaUntil = Date.now() + S.SEA.ms;
+    p.ret = { x: (S.SEA.ret.x + 0.5) * TS, y: (S.SEA.ret.y + 0.5) * TS }; p.seaW = 0;
+    if (boat) {
+      p.seaUntil = Date.now() + win.ms;
+      this.changeScene(p, CAVE + S.OCEAN.floor, S.OCEAN.spawn.x, S.OCEAN.spawn.y);
+      this.toast(p, `⛵ ออกเรือของคุณ! ขับเรือด้วย WASD/จอยสติ๊ก ล่องทะเลใหญ่ได้ราว ${Math.max(1, Math.round(win.ms / 60000))} นาทีจนตะวันตก • คลิก/แตะน้ำใกล้ๆ โยนเบ็ด (ไกลสุด ${S.OCEAN.castRange} ช่อง) • ปลาแพงอยู่ทะเลลึกทางขวา • แล่นกลับท่า (ซ้ายสุด) เพื่อกลับเกาะ`);
+      return;
+    }
+    p.seaUntil = Date.now() + S.SEA.ms;
     this.changeScene(p, CAVE + S.SEA.floor, S.SEA.spawn.x, S.SEA.spawn.y);
-    this.toast(p, `⛵ ออกทะเล! ตกปลาทะเลลึกด้วยเบ็ดได้ ${Math.round(S.SEA.ms / 60000)} นาที (ใช้เหยื่อเหมือนเดิม) • เดินไปท้ายเรือเพื่อกลับเกาะ`);
+    this.toast(p, `⛵ ขึ้นแพออกทะเล! ตกปลาทะเลลึกด้วยเบ็ดได้ ${Math.round(S.SEA.ms / 60000)} นาที (ใช้เหยื่อเหมือนเดิม) • เดินไปท้ายแพเพื่อกลับเกาะ • อยากขับเรือเองออกทะเลใหญ่ ซื้อเรือที่ร้านยานพาหนะ`);
   }
-  seaLeave(p, msg) { if (!S.isSea(S.caveFloor(p.scene))) return; p.seaUntil = 0; this.leaveCave(p); this.toast(p, msg); }
+  seaLeave(p, msg) { if (!S.isSeaScene(S.caveFloor(p.scene))) return; p.seaUntil = 0; p.seaW = 0; this.leaveCave(p); this.toast(p, msg); }
   seaAct(p, m) { // บนเรือ: ใช้ได้แค่เบ็ด ตกปลาทะเลลึก (ชุดปลาแยกจากสระ)
     const now = Date.now();
     if (now - p.lastAct < 150) return;
@@ -2036,9 +2047,10 @@ class World {
       tx = m.tx; ty = m.ty; const dx = tx - Math.floor(p.x / TS), dy = ty - Math.floor(p.y / TS);
       if (dx || dy) p.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
     }
-    const map = this.floorOf(S.SEA.floor).map;
-    if (!map[ty] || map[ty][tx] !== T.WATER) return this.toast(p, 'ต้องเลือกช่องที่เป็นน้ำ');
-    this.castFish(p, tx, ty, now, true);
+    const cf = S.caveFloor(p.scene), oc = S.isOcean(cf), map = this.floorOf(cf).map;
+    if (!map[ty] || map[ty][tx] !== (oc ? T.CAVE : T.WATER)) return this.toast(p, 'ต้องเลือกช่องที่เป็นน้ำ');
+    if (oc && Math.max(Math.abs(tx - Math.floor(p.x / TS)), Math.abs(ty - Math.floor(p.y / TS))) > S.OCEAN.castRange) return this.toast(p, `ไกลเกินไป โยนเบ็ดได้ไกลสุด ${S.OCEAN.castRange} ช่องจากเรือ`);
+    this.castFish(p, tx, ty, now, true, oc ? S.oceanZone(tx, ty) : '');
   }
   reelFish(p, now) { // กำลังตกปลาอยู่: กดอีกครั้งเพื่อดึงเบ็ด (ทั้งสระและทะเล ต่างกันที่ชุดปลา p.fish.sea)
     if (p.fish.st === 'bite' && !S.gaugeHit(p.fish, now)) { // กดพลาดโซนกลาง ปลาหลุดทันที
@@ -2048,7 +2060,7 @@ class World {
       send(p, { t: 'fg', off: 1 });
       const fl = p.fish.fl, rod = p.fish.rod, G = S.FISH_GAUGE, perfect = S.gaugeCore(p.fish, now); // กดเป๊ะกลางโซน = อัตราปลาเต็ม / โดนแค่ขอบโซน = ปลาแพงเจอยากลง
       const rareCd = (p.rec.rareAt || 0) > Date.now(); // ปลาหายากเพิ่งตกได้ พักรอบก่อน (ยังตกปลาธรรมดาได้)
-      const pool = S.fishPool(!!p.fish.sea).filter(f => f.lv <= fl && !(rareCd && f.sell >= 100)).map(f => ({ f, w: S.fishWeight(f, fl, rod, p.fish.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) })).filter(x => x.w > 0);
+      const pool = S.fishPool(!!p.fish.sea).filter(f => f.lv <= fl && !(rareCd && f.sell >= 100)).map(f => ({ f, w: S.fishWeight(f, fl, rod, p.fish.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) * (p.fish.zone ? S.oceanZoneMul(p.fish.zone, f.lv) : 1) })) // ทะเลใหญ่: ปลาระดับที่ตรงโซนออกบ่อยขึ้น.filter(x => x.w > 0);
       let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
       for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
       const firstFish = !p.fish.sea && !(this.achOf(p.rec).cnt.fish > 0); if (firstFish) f = FISH.find(x => x.id === S.NEWBIE.firstFish) || f; // ปลาตัวแรกในชีวิตการันตีตัวสวย
@@ -2063,7 +2075,7 @@ class World {
     p.fish = null;
     return;
   }
-  castFish(p, tx, ty, now, sea) { // โยนเบ็ด (ตรวจช่องน้ำ/ระยะไว้แล้วที่ผู้เรียก) หักเหยื่อ ตั้งเวลาปลากิน
+  castFish(p, tx, ty, now, sea, zone) { // โยนเบ็ด (ตรวจช่องน้ำ/ระยะไว้แล้วที่ผู้เรียก) หักเหยื่อ ตั้งเวลาปลากิน
     const inv = p.rec.inv;
     const bk = p.baitSel || 'bait', binfo = S.itemInfo(bk), bt = binfo ? binfo.bait : 1;
     if (binfo && binfo.lv && this.lv(p, 'fish') < binfo.lv) return this.toast(p, `ต้องเป็นชาวประมงเลเวล ${binfo.lv} ถึงจะใช้${binfo.name}ได้`);
@@ -2071,7 +2083,7 @@ class World {
     this.add(p, bk, -1);
     const fl = this.lv(p, 'fish'), rod = rodOf(inv);
     const wait = rand(5500, 12000) * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(fl) - 1)) * S.ROD_WAIT[rod] * (this.happyOn(p) ? S.VILLAGE.fishMul : 1);
-    p.fish = { st: 'wait', at: now + wait, fx: tx * TS + 16, fy: ty * TS + 16, fl, rod, bt, sea: !!sea };
+    p.fish = { st: 'wait', at: now + wait, fx: tx * TS + 16, fy: ty * TS + 16, fl, rod, bt, sea: !!sea, zone: zone || '' };
     this.sfx(p, 'cast'); this.durUse(p, 'rod');
   }
   act(p, tool, now, cx, cy) {
@@ -2143,7 +2155,7 @@ class World {
     // 3) ตู้เกม
     if (tt === T.BUILD && S.cinemaAt(tx, ty)) { send(p, { t: 'cin', open: true, st: this.cinemaPub() }); return; } // จอหนังกลางแปลง
     const town = tt === T.SHOP ? S.townAt(tx, ty) : null;
-    if (town) { send(p, { t: 'town', w: town, fee: town === 'sea' ? this.seaFee(p) : undefined, boat: town === 'sea' ? p.rec.inv.boat > 0 : undefined, min: town === 'sea' ? S.SEA.minFishLv : undefined, ms: town === 'sea' ? S.SEA.ms : undefined }); return; }
+    if (town) { send(p, { t: 'town', w: town, fee: town === 'sea' ? this.seaFee(p) : undefined, boat: town === 'sea' ? p.rec.inv.boat > 0 : undefined, win: town === 'sea' && p.rec.inv.boat > 0 ? S.oceanWindow(Date.now()) : undefined, min: town === 'sea' ? S.SEA.minFishLv : undefined, ms: town === 'sea' ? S.SEA.ms : undefined }); return; }
     const cab = tt === T.SHOP ? S.cabinetAt(tx, ty) : null;
     if (cab) { this.arcOpen(p, cab); return; }
     // 4) ร้านค้า
@@ -3159,7 +3171,11 @@ class World {
 
   tick(dt, now) {
     this.lottoTick(now);
-    for (const p of this.players.values()) if (S.isSea(S.caveFloor(p.scene)) && now >= (p.seaUntil || 0)) this.seaLeave(p, '⛵ ครบเวลาออกทะเล กัปตันพากลับเกาะแล้ว');
+    for (const p of this.players.values()) {
+      const cf = S.caveFloor(p.scene); if (!S.isSeaScene(cf)) continue;
+      if (now >= (p.seaUntil || 0)) this.seaLeave(p, S.isOcean(cf) ? '🌇 ตะวันตกดินแล้ว กัปตันพากลับเกาะ' : '⛵ ครบเวลาออกทะเล กัปตันพากลับเกาะแล้ว');
+      else if (S.isOcean(cf)) { const left = p.seaUntil - now; if (left <= 60000 && !(p.seaW & 1)) { p.seaW |= 1; this.toast(p, '🌇 ตะวันใกล้ตกแล้ว อีก 1 นาทีกัปตันจะพากลับ แล่นกลับท่า (ซ้ายสุดของแมพ) ได้ก่อน'); } else if (left <= 15000 && !(p.seaW & 2)) { p.seaW |= 2; this.toast(p, '⛵ เรือกำลังจะกลับท่าแล้ว!'); } }
+    }
     this.arcTick(now);
     this.cinemaTick(now);
     this.telTick(now);

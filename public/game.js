@@ -265,7 +265,13 @@ function handle(m) {
     case 'rents': rentsSt = m.r || {}; if (!$('shop').classList.contains('hidden')) renderShop(); break;
     case 'arcpts': arcSt = m.arc; if (hubShown()) renderHub(); break;
     case 'lb': lbSt = m; if (hubShown()) renderHub(); break;
-    case 'town': if (m.w === 'sea') { ask(`⛵ ออกทะเลตกปลาทะเลลึก? ${m.boat ? 'ใช้เรือของคุณ ออกฟรี' : `ค่าเรือ 🪙${m.fee} (ซื้อเรือของตัวเองที่ร้านยานพาหนะ ออกฟรีทุกเที่ยว)`} • อยู่ได้ ${Math.round(m.ms / 60000)} นาที • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • ใช้เบ็ดและเหยื่อเหมือนเดิม`, () => send({ t: 'sea' })); break; } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : 'log'); break;
+    case 'town': if (m.w === 'sea') {
+      if (m.boat) { // มีเรือ: ขับเรือเองในทะเลใหญ่ (ต้องออกช่วงเช้า-บ่าย)
+        if (m.win && !m.win.ok) { toast(m.win.why); break; }
+        ask(`⛵ ออกเรือของคุณ ล่องทะเลใหญ่ ฟรี? ขับเรือเองได้ราว ${Math.max(1, Math.round(m.win.ms / 60000))} นาทีจนตะวันตก • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • โยนเบ็ดได้ไกล ${Shared.OCEAN.castRange} ช่อง ปลาแพงอยู่ทะเลลึกทางขวา`, () => send({ t: 'sea' })); break;
+      }
+      ask(`🛶 ขึ้นแพออกทะเล? ค่าเรือ 🪙${m.fee} • ตกปลาจากแพได้ ${Math.round(m.ms / 60000)} นาที • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • (ซื้อเรือของตัวเองที่ร้านยานพาหนะ ขับเรือออกทะเลใหญ่ได้ฟรี)`, () => send({ t: 'sea' })); break;
+    } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : 'log'); break;
     case 'scene': applyScene(m); break;
     case 'hboard': hboard = m; if (plotsShown()) renderPlots(); break;
   }
@@ -330,7 +336,7 @@ function renderAdmin() {
     const W = adminSt.warp || { houses: [], floors: 0 }, btn = to => `<button class="btn small" data-warp="${esc(to)}">🧭 วาป</button>`;
     h += '<div class="sec">🏘️ เมือง</div>' + `<div class="arow"><span>ลานกองไฟกลางเมือง</span>${btn('town')}</div>`;
     h += '<div class="sec">⛏️ ถ้ำเหมือง</div>' + Array.from({ length: W.floors }, (_, i) => `<div class="arow"><span>ชั้น ${i + 1}</span>${btn('cave:' + (i + 1))}</div>`).join('');
-    h += '<div class="sec">🌊 ทะเลลึก</div>' + `<div class="arow"><span>เกาะลึกลับกลางสระ (เรือ)</span>${btn('sea')}</div>`;
+    h += '<div class="sec">🌊 ทะเลลึก</div>' + `<div class="arow"><span>เกาะลึกลับกลางสระ (แพ)</span>${btn('sea')}</div><div class="arow"><span>ทะเลใหญ่ (ขับเรือ)</span>${btn('ocean')}</div>`;
     h += `<div class="sec">🏠 บ้านของผู้เล่น (${W.houses.length})</div>` + W.houses.map(x => `<div class="arow"><span><b>${esc(x.name)}</b></span>${btn('house:' + x.key)}</div>`).join('');
   } else if (adminTab === 'blacklist') {
     h += `<div class="arow"><input type="text" id="banName" maxlength="12" placeholder="พิมพ์ชื่อที่จะแบน (ห้อง ${esc(adminSt.current)})"><button class="btn small" id="banAdd">🚫 แบน</button></div>`;
@@ -733,7 +739,9 @@ const furnKeys = () => Object.keys(inv).filter(k => k.startsWith('furn_') && FUR
 let houseSt = { fl: 'oak', wp: 'cream' }, houseBgKey = '', scene = null, houseInfo = null, townRows = null, townDirty = false, hboard = null, houseRects = [], houseBg = null, houseGrid = null;
 let cave = false, caveFlr = 0, townCache = null; const oreK = new Map(), oreS = new Map(); // caveFlr = ชั้นของถ้ำที่อยู่ • oreS = ขนาดก้อนแร่ (0 เล็ก 1 กลาง 2 ใหญ่)  // ถ้ำเหมือง: cave = อยู่ในถ้ำ (แมพบน แต่ MAP ถูกสลับเป็นผังถ้ำ) • oreK = ก้อนแร่ 'x,y' → ชนิด
 const inTown = () => !scene && !cave;
-const inSea = () => cave && caveFlr === Shared.SEA.floor; // ฉากทะเล (ใช้ระบบฉากเดียวกับถ้ำ)
+const inSea = () => cave && Shared.isSeaScene(caveFlr); // ฉากทะเล: แพ (ชั้น 99) หรือทะเลใหญ่ (ชั้น 98) ใช้ระบบฉากเดียวกับถ้ำ
+const inOcean = () => cave && Shared.isOcean(caveFlr); // ทะเลใหญ่: ขับเรือเอง (ช่องแล่นได้ = T.CAVE วาดเป็นน้ำ)
+let seaEnd = 0; // เวลา (เวลาเซิร์ฟเวอร์) ที่กัปตันจะพากลับเกาะ
 const tmap = () => (scene || cave ? townRows : MAP);
 const inMyHouse = () => !!scene && !!houseInfo && houseInfo.mine;
 const setSceneRows = rows => { for (let y = 0; y < H; y++) MAP[y] = rows[y]; };
@@ -778,7 +786,8 @@ function applyScene(m) {
     if (!cave) { townRows = MAP.slice(); townCache = { base, baseHi, mini: miniBase }; }
     setSceneRows(Shared.makeCaveMap(m.cave)); cave = true; caveFlr = m.cave; scene = null; houseInfo = null; build.on = false; build.pick = null;
     oreK.clear(); oreS.clear(); for (const [ox, oy, k, sz] of m.ores || []) { MAP[oy][ox] = T.ORE; oreK.set(ox + ',' + oy, k); oreS.set(ox + ',' + oy, sz | 0); }
-    if (inSea()) { buildSeaBase(); selTool = 'rod'; ls.set('mw_tool', 'rod'); slot = 0; renderHud(); }
+    seaEnd = inSea() ? m.until || 0 : 0;
+    if (inSea()) { if (inOcean()) buildOceanBase(); else buildSeaBase(); selTool = 'rod'; ls.set('mw_tool', 'rod'); slot = 0; renderHud(); }
     else { buildCaveBase();
     if (pickLevel()) { selTool = 'pick'; ls.set('mw_tool', 'pick'); slot = 0; renderHud(); } }
   } else if (m.sc) {
@@ -1317,7 +1326,7 @@ function renderShop() {
       return `<div class="row"><span>${i.emoji} ${i.name}<br><small>${own ? (riding ? 'กำลังขี่อยู่ ✅' : 'มีแล้ว') : `🪙${i.buy}`}</small></span><span>`
         + (own ? `<button class="btn small" data-veh="${riding ? '' : v}">${riding ? 'ลงเดิน' : 'ขี่'}</button> <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sellbackValue(k)}</button>` : `<button class="btn small" data-buy="${k}" data-n="1" ${(inv.coin || 0) < i.buy ? 'disabled' : ''}>ซื้อ</button>`) + '</span></div>'; }).join('');
     const bi = itemInfo('boat'), bown = inv.boat > 0;
-    const brow = `<div class="row"><span>${bi.emoji} ${bi.name}<br><small>${bown ? 'มีแล้ว ✅ ออกทะเลฟรีทุกเที่ยว (แตะเรือที่ท่าบนเกาะลึกลับ)' : `🪙${bi.buy} • ไม่ได้ขี่บนบก • ไม่มีเรือต้องจ่ายค่าเรือ 🪙${Shared.SEA.fee} ทุกเที่ยว`}</small></span><span>`
+    const brow = `<div class="row"><span>${bi.emoji} ${bi.name}<br><small>${bown ? 'มีแล้ว ✅ ขับเรือออกทะเลใหญ่ฟรี (แตะเรือที่ท่าบนเกาะลึกลับ • ออกได้ 06:00–15:00 เวลาเกม)' : `🪙${bi.buy} • ขับเรือเองในทะเลใหญ่ ฟรีทุกเที่ยว • ไม่มีเรือต้องจ่าย 🪙${Shared.SEA.fee} ขึ้นแพตกปลาที่เดียว`}</small></span><span>`
       + (bown ? `<button class="btn small muted" data-sellback="boat">↩️ ขายคืน 🪙${sellbackValue('boat')}</button>` : `<button class="btn small" data-buy="boat" data-n="1" ${(inv.coin || 0) < bi.buy ? 'disabled' : ''}>ซื้อ</button>`) + '</span></div>';
     $('shopBody').innerHTML = '<div class="sec">🚲 ยานพาหนะ (ขี่ได้ในเมือง เดินเร็วขึ้น • กด V ขี่/ลง)</div>' + vrows + '<div class="sec">⛵ ออกทะเล</div>' + brow;
     $('shopBody').querySelectorAll('[data-veh]').forEach(b => b.onclick = () => send({ t: 'veh', v: b.dataset.veh }));
@@ -1495,7 +1504,7 @@ function closeChat() { $('chatHist').classList.add('hidden'); $('chatLog').style
 
 // act() = ใช้กับช่องที่หันหน้าไป (Space / ปุ่ม A), act(tx,ty) = ใช้กับช่องที่คลิก/แตะ
 const FISH_SHORE = 2; // ตกปลาต้องยืนห่างจากน้ำไม่เกิน 2 ช่อง แต่โยนเหยื่อไปไกลแค่ไหนก็ได้
-const reachOf = (tx, ty) => (toolId() === 'rod' && MAP[ty] && MAP[ty][tx] === T.WATER ? 999 : 2); // เบ็ดโยนไกลได้เฉพาะไปที่น้ำ ของอย่างอื่นยังต้องอยู่ใกล้
+const reachOf = (tx, ty) => (toolId() === 'rod' && MAP[ty] && (MAP[ty][tx] === T.WATER || (inOcean() && MAP[ty][tx] === T.CAVE)) ? (inOcean() ? Shared.OCEAN.castRange : 999) : 2); // เบ็ดโยนไกลได้เฉพาะไปที่น้ำ ของอย่างอื่นยังต้องอยู่ใกล้
 const nearWater = (x, y) => { for (let dy = -FISH_SHORE; dy <= FISH_SHORE; dy++) for (let dx = -FISH_SHORE; dx <= FISH_SHORE; dx++) if (MAP[y + dy] && MAP[y + dy][x + dx] === T.WATER) return true; return false; };
 const myTile = () => [Math.floor(me.x / TS), Math.floor(me.y / TS)];
 const cheb = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
@@ -1548,7 +1557,7 @@ function findPath(sx, sy, goal) { // BFS แบบ 4 ทิศ คืนรา�
 const animalAt = (tx, ty) => { for (const a of animals.values()) if (Math.hypot(a.x - (tx + 0.5) * TS, a.y - (ty + 0.5) * TS) < 40) return a; return null; };
 function interactive(tx, ty) { // ช่องนี้มีอะไรให้ทำด้วยเครื่องมือที่ถืออยู่ไหม
   const id = toolId(), t = MAP[ty][tx], f = farm[tx + ',' + ty];
-  if (inSea()) return t === T.WATER && id === 'rod'; // บนเรือตกปลาได้อย่างเดียว
+  if (inSea()) return (t === T.WATER || (inOcean() && t === T.CAVE)) && id === 'rod'; // บนเรือตกปลาได้อย่างเดียว
   if (cave) return t === T.ORE && id === 'pick'; // ในถ้ำมีแค่ก้อนแร่ให้ขุด
   if (t === T.SHOP || (t === T.BUILD && shopAt(tx, ty)) || animalAt(tx, ty) || cinemaAt(tx, ty)) return true;
   if (seatAt(tx, ty)) return true;
@@ -2578,6 +2587,56 @@ function buildSeaBase() { // ฉากทะเล: น้ำเป็นหย�
   g.fillStyle = '#fff'; g.font = 'bold 9px sans-serif'; g.textAlign = 'center'; g.fillText('กลับเกาะ', ex + 16, ey + 8);
   base = oc; baseHi = document.createElement('canvas'); baseHi.width = baseHi.height = 1; caveTorches = [];
 }
+function buildOceanBase() { // ทะเลใหญ่: น้ำตามโซน (ตื้นฟ้าอ่อน → ลึกน้ำเงินเข้ม) แนวปะการัง เกาะทราย ขอบแมพมืด และท่าเรือซ้ายสุด
+  const oc = document.createElement('canvas'); oc.width = W * TS; oc.height = H * TS; const g = oc.getContext('2d'); g.imageSmoothingEnabled = false;
+  const hash = (a, b, c) => PixelArt.hash(a, b, c), at = (x, y) => (MAP[y] && MAP[y][x] !== undefined ? MAP[y][x] : T.ROCK), rock = (x, y) => at(x, y) === T.ROCK;
+  const ZC = { shallow: ['#47b4e4', '#40abdc', '#4dbbea'], open: ['#2f86c0', '#2a7db6', '#348fc8'], deep: ['#1f64a0', '#1b5b95', '#236ba8'], reef: ['#3aa6c4', '#35a0bd', '#41b0cc'] };
+  const border = (x, y) => x === 0 || y === 0 || x === W - 1 || y === H - 1;
+  for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) {
+    const X = tx * TS, Y = ty * TS, t = at(tx, ty), h = hash(tx, ty, 3);
+    if (t !== T.ROCK || border(tx, ty)) { // น้ำ (ขอบแมพเป็นน้ำลึกมืด)
+      const zc = border(tx, ty) ? ['#0f3a5f', '#0d3556', '#113f68'] : ZC[Shared.oceanZone(tx, ty)];
+      g.fillStyle = zc[h < 0.33 ? 0 : h < 0.66 ? 1 : 2]; g.fillRect(X, Y, TS, TS);
+      if (hash(tx, ty, 8) > 0.55) { g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(X + ((hash(tx, ty, 5) * 20) | 0), Y + ((hash(tx, ty, 6) * 24) | 0), 8, 2); }
+    }
+  }
+  for (const o of Shared.oceanLayout().reefs) { // แนวปะการัง: ก้อนปะการังสีชมพู-ส้ม-ม่วงใต้น้ำใส
+    for (let ty = Math.floor(o.y - o.r); ty <= Math.ceil(o.y + o.r); ty++) for (let tx = Math.floor(o.x - o.r); tx <= Math.ceil(o.x + o.r); tx++) {
+      if ((tx - o.x) ** 2 + (ty - o.y) ** 2 > o.r * o.r || at(tx, ty) === T.ROCK) continue;
+      for (let i = 0; i < 3; i++) { const h = hash(tx * 3 + i, ty, 21); if (h < 0.35) continue; const cx = tx * TS + 4 + ((hash(tx, ty * 3 + i, 22) * 22) | 0), cy = ty * TS + 6 + ((hash(tx + i, ty, 23) * 18) | 0), c = ['#e8788a', '#f0a05a', '#b872c8', '#f2c4d0'][(h * 4 | 0) % 4];
+        g.fillStyle = 'rgba(30,60,90,.35)'; g.fillRect(cx - 1, cy + 4, 8, 2); g.fillStyle = c; g.fillRect(cx, cy, 6, 4); g.fillRect(cx + 1, cy - 3, 2, 3); g.fillRect(cx + 4, cy - 2, 2, 2); }
+    }
+  }
+  for (let ty = 1; ty < H - 1; ty++) for (let tx = 1; tx < W - 1; tx++) if (rock(tx, ty)) { // เกาะทราย: ขอบเป็นทราย ใจกลางเป็นหญ้า มีฟองคลื่นรอบเกาะ
+    const X = tx * TS, Y = ty * TS, inner = rock(tx - 1, ty) && rock(tx + 1, ty) && rock(tx, ty - 1) && rock(tx, ty + 1);
+    g.fillStyle = 'rgba(255,255,255,.55)'; if (!rock(tx - 1, ty)) g.fillRect(X - 3, Y + 2, 3, TS - 4); if (!rock(tx + 1, ty)) g.fillRect(X + TS, Y + 2, 3, TS - 4); if (!rock(tx, ty - 1)) g.fillRect(X + 2, Y - 3, TS - 4, 3); if (!rock(tx, ty + 1)) g.fillRect(X + 2, Y + TS, TS - 4, 3);
+    g.fillStyle = inner ? '#5aa05a' : (hash(tx, ty, 4) > 0.5 ? '#ead79c' : '#e3cd8e'); g.fillRect(X, Y, TS, TS);
+    if (!inner) { g.fillStyle = 'rgba(160,120,60,.35)'; g.fillRect(X, Y + TS - 4, TS, 4); }
+    if (inner) { g.fillStyle = '#4a8f4a'; g.fillRect(X + 4 + ((hash(tx, ty, 9) * 14) | 0), Y + 6, 6, 3); if (hash(tx, ty, 12) > 0.5) { g.fillStyle = '#6b3f1c'; g.fillRect(X + 14, Y + 14, 4, 10); g.fillStyle = '#2f7a3a'; g.fillRect(X + 6, Y + 4, 20, 12); g.fillStyle = '#3f9a4a'; g.fillRect(X + 9, Y + 2, 14, 8); } } // ต้นไม้ในเกาะ
+  }
+  const D = Shared.OCEAN.exit, py0 = D.y0 * TS - 6, py1 = (D.y1 + 1) * TS + 6; // ท่าเรือซ้ายสุด: ทางไม้ + เสา + ป้าย
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(2, py0 + 8, 3 * TS + 6, py1 - py0); g.fillStyle = '#7a4a24'; g.fillRect(0, py0, 3 * TS, py1 - py0);
+  for (let i = 0; i < 3 * TS; i += 8) { g.fillStyle = (i / 8) % 2 ? '#c99357' : '#b9834a'; g.fillRect(i, py0 + 2, 7, py1 - py0 - 4); }
+  g.fillStyle = '#4a2a10'; for (let y = py0; y < py1; y += 40) { g.fillRect(3 * TS - 4, y, 6, 8); g.fillRect(0, y, 6, 8); }
+  g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif'; g.textAlign = 'left'; g.fillText('กลับท่า ⚓', 8, py0 - 6);
+  base = oc; baseHi = document.createElement('canvas'); baseHi.width = baseHi.height = 1; caveTorches = [];
+}
+function drawBoat(p, now) { // เรือไม้ใต้ตัวละคร (ทะเลใหญ่): หัวเรือหันตามทิศ โคลงเบาๆ มีฟองคลื่นท้ายเรือตอนแล่น
+  const moved = Math.hypot(p.x - (p._lx == null ? p.x : p._lx), p.y - (p._ly == null ? p.y : p._ly)) > 0.25; p._lx = p.x; p._ly = p.y; if (moved) p._mvAt = now;
+  const moving = now - (p._mvAt || 0) < 260, d = p.dir || 0, hor = d >= 2, s = d === 3 || d === 0 ? 1 : -1, bob = Math.sin(now / 420 + (p.id || 0)) * 1.2;
+  const pt = (u, v) => (hor ? [s * u, v] : [v, s * u]), poly = (list, fill, stroke) => { ctx.beginPath(); list.forEach(([u, v], i) => { const [x, y] = pt(u, v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); } };
+  ctx.save(); ctx.translate(Math.round(p.x), Math.round(p.y + 6 + bob)); ctx.scale(1.4, 1.4);
+  const [sx0, sy0] = pt(-6, 8); ctx.fillStyle = 'rgba(0,30,60,.28)'; ctx.beginPath(); ctx.ellipse(sx0 * 0.2, sy0 * 0.3 + 6, hor ? 28 : 15, hor ? 9 : 22, 0, 0, 7); ctx.fill(); // เงาใต้ท้องเรือ
+  if (moving) for (let i = 0; i < 3; i++) { // ฟองคลื่นท้ายเรือ
+    const ph = (now / 280 + i / 3) % 1, [wx, wy] = pt(-22 - ph * 26, 0); ctx.strokeStyle = `rgba(255,255,255,${(1 - ph) * 0.7})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(wx, wy + 6, hor ? 3 + ph * 5 : 8 + ph * 8, hor ? 8 + ph * 8 : 3 + ph * 5, 0, 0, 7); ctx.stroke();
+  }
+  poly([[-24, -9], [14, -9], [30, 0], [14, 9], [-24, 9]], '#8b5a2b', '#3d2a1a'); // ตัวเรือ
+  poly([[-20, -6], [12, -6], [23, 0], [12, 6], [-20, 6]], '#c99357'); // ดาดฟ้า
+  ctx.strokeStyle = '#7a4a24'; ctx.lineWidth = 1; for (const u of [-12, -2, 8]) { ctx.beginPath(); const [a, b] = pt(u, -6), [c, e] = pt(u, 6); ctx.moveTo(a, b); ctx.lineTo(c, e); ctx.stroke(); }
+  ctx.strokeStyle = '#f3ead0'; ctx.lineWidth = 2; ctx.beginPath(); { const [a, b] = pt(-22, -9), [c, e] = pt(12, -9); ctx.moveTo(a, b); ctx.lineTo(c, e); } ctx.stroke(); // แถบขาวข้างเรือ
+  { const [mx, my] = pt(-16, 0); ctx.fillStyle = '#4a2a10'; ctx.fillRect(mx - 1, my - 15, 3, 15); ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.moveTo(mx + 2, my - 15); ctx.lineTo(mx + 11 + Math.sin(now / 200 + (p.id || 0)) * 1.5, my - 12); ctx.lineTo(mx + 2, my - 9); ctx.closePath(); ctx.fill(); } // ธงท้ายเรือ
+  ctx.restore();
+}
 function buildCaveBase() {
   const oc = document.createElement('canvas'); oc.width = W * TS; oc.height = H * TS; const g = oc.getContext('2d'); g.imageSmoothingEnabled = false;
   g.fillStyle = '#0b0a10'; g.fillRect(0, 0, oc.width, oc.height);
@@ -2683,9 +2742,10 @@ function drawOre(tx, ty, k, now, sz, ctx = mainCtx) {
 const ORE_COL = { stone: ['#a4abb8', '#7c8494'], coal: ['#3a3a44', '#23232b'], copper: ['#e8924a', '#b0602a'], iron: ['#c9b09a', '#8a6a58'], silver: ['#eef2f7', '#aab4c2'], gold: ['#ffe066', '#d9a21e'], amethyst: ['#d9a6ff', '#9a4fd6'], ruby: ['#ff8a98', '#c2223f'], emerald: ['#86ffb4', '#1fa35a'], crystal: ['#8af0ff', '#3aa6d8'], opal: ['#f4f8ff', '#a8b8d8'], topaz: ['#ffe27a', '#d89a1a'], sapphire: ['#7aa8ff', '#2a50c0'], garnet: ['#d27a5a', '#7a2a1c'], jade: ['#7ae0a8', '#1f8a5a'], obsidian: ['#6a5a8a', '#1c1428'], moonstone: ['#d8e4ff', '#7a8ac0'], sunstone: ['#ffb060', '#d85a1a'], mythril: ['#8af4ff', '#4a98c8'], starcore: ['#fff6a0', '#e8a020'] }; // [สว่าง, เข้ม]
 function drawCaveWorld(now) {
   ctx.drawImage(base, 0, 0, W * TS, H * TS);
+  const ocean = inOcean();
   if (inSea()) { // ระลอกคลื่นขยับ + ธงบนเรือ
     const x0s = Math.max(0, Math.floor(camX / TS)), x1s = Math.min(W - 1, Math.ceil((camX + canvas.width / zoom) / TS)), y0s = Math.max(0, Math.floor(camY / TS)), y1s = Math.min(H - 1, Math.ceil((camY + canvas.height / zoom) / TS));
-    for (let ty = y0s; ty <= y1s; ty++) for (let tx = x0s; tx <= x1s; tx++) if (MAP[ty][tx] === T.WATER) { const h = PixelArt.hash(tx, ty, 11); if (h < 0.7) continue; const a = 0.1 + 0.18 * Math.sin(now / 600 + h * 40); ctx.fillStyle = `rgba(255,255,255,${Math.max(0, a)})`; ctx.fillRect(tx * TS + 4 + ((now / 90 + h * 50) % 18), ty * TS + 6 + ((h * 30) | 0), 10, 2); }
+    for (let ty = y0s; ty <= y1s; ty++) for (let tx = x0s; tx <= x1s; tx++) if (MAP[ty][tx] === T.WATER || (ocean && MAP[ty][tx] === T.CAVE)) { const h = PixelArt.hash(tx, ty, 11); if (h < 0.7) continue; const a = 0.1 + 0.18 * Math.sin(now / 600 + h * 40); ctx.fillStyle = `rgba(255,255,255,${Math.max(0, a)})`; ctx.fillRect(tx * TS + 4 + ((now / 90 + h * 50) % 18), ty * TS + 6 + ((h * 30) | 0), 10, 2); }
   }
   const vw = canvas.width / zoom, vh = canvas.height / zoom, x0 = Math.max(0, Math.floor(camX / TS) - 1), x1 = Math.min(W - 1, Math.ceil((camX + vw) / TS) + 1), y0 = Math.max(0, Math.floor(camY / TS) - 1), y1 = Math.min(H - 1, Math.ceil((camY + vh) / TS) + 1);
   const list = [];
@@ -2696,6 +2756,7 @@ function drawCaveWorld(now) {
   }
 
   for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
+  if (ocean) for (const p of players.values()) list.push({ y: p.y + 8, f: () => drawBoat(p, now) }); // เรือไม้ใต้ตัวละคร (ทุกคนในทะเลใหญ่มีเรือของตัวเอง)
   for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   if (inSea()) for (const p of players.values()) if (p.fs) drawFishing(p, now); // เอ็นเบ็ด ทุ่น ระลอกน้ำ น้ำกระเซ็น (เดิมวาดเฉพาะรอบวาดของเมือง ฉากทะเลเลยไม่เห็นแอนิเมชันตกปลา)
@@ -3817,7 +3878,12 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawNight(inSea() ? dark : cave ? 0.6 : scene ? dark * 0.4 : dark, now); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
   if (inTown()) drawGuideArrow(now);
-  if (inSea()) { const t = '⛵ ทะเลลึก • เบ็ด 🎣 ตกปลาทะเล • เดินไปท้ายเรือเพื่อกลับเกาะ'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(10, 62, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#fff'; ctx.fillText(t, 18, 80); }
+  if (inSea()) { // ป้ายทะเล: โซน + นับถอยหลังกลับเกาะ (ตะวันตก/ครบเวลา)
+    const left = seaEnd ? Math.max(0, seaEnd - (Date.now() + timeOffset)) : 0, cd = Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0');
+    const zn = inOcean() && me ? (Shared.OCEAN_ZONE[Shared.oceanZone(Math.floor(me.x / TS), Math.floor(me.y / TS))] || {}).name : '';
+    const t = inOcean() ? `⛵ ทะเลใหญ่${zn ? ' • ' + zn : ''} • ตะวันตกในอีก ${cd} • เบ็ด 🎣 • แล่นซ้ายสุดเพื่อกลับท่า` : `🛶 ทะเลลึก (แพ) • เหลือ ${cd} • เบ็ด 🎣 ตกปลาทะเล • เดินไปท้ายแพเพื่อกลับเกาะ`;
+    ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(10, 62, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#fff'; ctx.fillText(t, 18, 80);
+  }
   else if (cave) { const t = '⛏️ ถ้ำเหมือง ชั้น ' + caveFlr + '/' + Shared.MINE.floors; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(10, 96, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, 18, 115); }
   const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);
   const icon = dark > 0.45 ? '🌙' : hour < 8 || hour >= 17 ? '🌅' : '☀️';
@@ -3853,7 +3919,7 @@ function step(now) {
   me.moving = mag > 0.1;
   if (me.moving) {
     if (mag > 1) { ix /= mag; iy /= mag; }
-    const sp = 110 * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1) * petSpeedMul() * (me.veh && inTown() && Shared.VEHICLES[me.veh] ? Shared.VEHICLES[me.veh].speed : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
+    const sp = 110 * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1) * petSpeedMul() * (inOcean() ? Shared.OCEAN.speed : 1) * (me.veh && inTown() && Shared.VEHICLES[me.veh] ? Shared.VEHICLES[me.veh].speed : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
     if (!blk(me.x + ix * sp, me.y, me.x, me.y)) me.x += ix * sp;
     if (!blk(me.x, me.y + iy * sp, me.x, me.y)) me.y += iy * sp;
     const dsx = scene ? ix - iy : ix, dsy = scene ? (ix + iy) / 2 : iy; // ทิศที่หันตามหน้าจอ
