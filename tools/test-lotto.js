@@ -29,11 +29,13 @@ const draw = () => w.lottoDraw();
 {
   const L = w.lotto, pot0 = L.pot;
   w.lottoBuy(newbie, { nums: ['123'] }); assert.strictEqual(L.tickets.n, undefined, 'คนใหม่ซื้อไม่ได้');
-  w.lottoBuy(a, { nums: ['123', null, 'zz', '12', '4567', '007', '999', '000'] });
+  a.x = (S.LUCKY.x + 0.5) * S.TS; a.y = (S.LUCKY.y + 0.5) * S.TS; b.x = a.x; b.y = a.y; c.x = a.x; c.y = a.y; newbie.x = a.x; newbie.y = a.y; w.lottoBuy(a, { nums: ['123', null, 'zz', '12', '4567', '007', '999', '000'] });
   assert.strictEqual(L.tickets.a.length, S.LOTTO.maxTickets, 'ซื้อได้สูงสุด 6 ใบ');
   assert.ok(L.tickets.a.every(x => /^\d{3}$/.test(x)), 'เลขเสียรูปแบบ = สุ่มให้เป็น 3 หลัก');
   assert.strictEqual(a.rec.inv.coin, 10000 - 6 * 50); assert.strictEqual(L.pot, pot0 + 300, 'ค่าตั๋วเข้ากองกลาง');
   w.lottoBuy(a, { nums: ['111'] }); assert.strictEqual(L.tickets.a.length, 6, 'ใบที่ 7 ซื้อไม่ได้');
+  assert.deepStrictEqual(w.lottoPub(a).buyers, [['A', 6]], 'แสดงว่าใครซื้อกี่ใบ'); assert.ok(!JSON.stringify(w.lottoPub(b)).includes(L.tickets.a[0] + '"'), 'ไม่เผยเลขตั๋วของคนอื่น');
+  const far = mk('Far'); far.x = 0; far.y = 0; w.lottoBuy(far, { nums: ['111'] }); assert.strictEqual(L.tickets.far, undefined, 'ต้องยืนใกล้ตู้ Lucky Lotto ถึงซื้อได้');
   const broke = mk('Poor', 20); w.lottoBuy(broke, { nums: ['111'] }); assert.strictEqual(L.tickets.poor, undefined, 'เหรียญไม่พอซื้อไม่ได้');
   // ปิดรับก่อนออกผล
   const real = Date.now; Date.now = () => w.lottoDrawAt(L.round) - 1000; w.lottoBuy(b, { nums: ['222'] }); Date.now = real;
@@ -75,8 +77,9 @@ const draw = () => w.lottoDraw();
 { // ผู้ชนะออฟไลน์ได้เงินเข้าเซฟ + แจ้งตอนเข้าเกม • บันทึก/โหลดคงที่
   w.players.delete('C'); const L = w.lotto; L.tickets = { c: ['321'] }; seal('321', '000', '000'); L.pot = 10000; const c0 = w.saved.c.inv.coin; draw();
   assert.strictEqual(w.saved.c.inv.coin - c0, 5000); assert.deepStrictEqual(w.saved.c.lottoWins, [[1, 5000]]);
+  assert.ok(w.lotto.hist.length >= 5 && w.lotto.hist[0].nums.length === 3, 'เก็บประวัติเลขที่ออกย้อนหลัง');
   w.dirty = true; w.save(true);
-  const w2 = new World('main'); assert.strictEqual(w2.lotto.pot, w.lotto.pot, 'กองคงอยู่หลังโหลดใหม่'); assert.strictEqual(w2.lotto.round, w.lotto.round);
+  const w2 = new World('main'); assert.strictEqual(w2.lotto.pot, w.lotto.pot, 'กองคงอยู่หลังโหลดใหม่'); assert.strictEqual(w2.lotto.round, w.lotto.round); assert.deepStrictEqual(w2.lotto.hist, w.lotto.hist.map(h => ({ round: h.round, nums: h.nums, n: h.n, pot0: h.pot0, winners: h.winners })), 'ประวัติคงอยู่หลังโหลดใหม่');
   assert.deepStrictEqual(w2.lotto.sealed.nums, w.lotto.sealed.nums, 'เลขปิดผนึกคงเดิมหลังรีสตาร์ต'); assert.strictEqual(w2.lotto.sealed.hash, w.lotto.sealed.hash);
   console.log('  ผู้ชนะออฟไลน์ได้เงิน + บันทึก/โหลดกองและเลขปิดผนึก');
 }
