@@ -346,17 +346,31 @@
     { id: 'sdragon', name: 'มังกรทะเล', emoji: '🐲', sell: 600, xp: 62, w: 0.45, lv: 18, rod: 6 },
     { id: 'unicorn', name: 'ม้าน้ำวิเศษ', emoji: '🦄', sell: 700, xp: 66, w: 0.3, lv: 19, rod: 7 },
     { id: 'star', name: 'ดาวทะเลทอง', emoji: '🌟', sell: 800, xp: 70, w: 0.2, lv: 20, rod: 7 },
-    // ปลาทะเลลึก (sea: true) ตกได้เฉพาะตอนออกเรือจากเกาะลึกลับ (SEA) ราคาเทียบเท่าปลาสระระดับเดียวกัน ไม่ให้ทะเลรวยกว่าสระ
+    // ปลาทะเล (sea: true) 20 ชนิด เป็นชุดแยกจากปลาน้ำจืด มีบันไดเลเวล/เบ็ด/ความหายากของตัวเอง (ตกได้เฉพาะตอนออกเรือ) ราคาเทียบเท่าปลาสระระดับเดียวกัน ไม่ให้ทะเลรวยกว่าสระ
     { id: 'sardine', name: 'ปลาซาร์ดีน', emoji: '🐟', sell: 15, xp: 16, w: 30, lv: 1, sea: true },
-    { id: 'mackerel', name: 'ปลาทู', emoji: '🐟', sell: 24, xp: 19, w: 20, lv: 3, sea: true },
+    { id: 'anchovy', name: 'ปลากะตัก', emoji: '🐟', sell: 19, xp: 17, w: 26, lv: 2, sea: true },
+    { id: 'mackerel', name: 'ปลาทู', emoji: '🐟', sell: 25, xp: 19, w: 20, lv: 3, sea: true },
+    { id: 'snapper', name: 'ปลากะพงแดง', emoji: '🐠', sell: 34, xp: 21, w: 14, lv: 4, sea: true },
+    { id: 'seabass', name: 'ปลากะพงขาว', emoji: '🐠', sell: 48, xp: 24, w: 9, lv: 5, sea: true },
     { id: 'tuna', name: 'ปลาทูน่า', emoji: '🐟', sell: 58, xp: 26, w: 8, lv: 6, sea: true },
+    { id: 'bonito', name: 'ปลาโอ', emoji: '🐟', sell: 68, xp: 27, w: 5, lv: 7, sea: true },
+    { id: 'barracuda', name: 'ปลาสากทะเล', emoji: '🐟', sell: 78, xp: 29, w: 4, lv: 8, sea: true },
     { id: 'puffer', name: 'ปลาปักเป้า', emoji: '🐡', sell: 95, xp: 31, w: 2.5, lv: 9, sea: true },
-    { id: 'hammer', name: 'ฉลามหัวค้อน', emoji: '🦈', sell: 240, xp: 43, w: 1.4, lv: 12, rod: 4, sea: true },
-    { id: 'bluewhale', name: 'วาฬสีน้ำเงิน', emoji: '🐋', sell: 560, xp: 60, w: 0.5, lv: 17, rod: 6, sea: true },
+    { id: 'sword', name: 'ปลากระโทงแทง', emoji: '🐟', sell: 145, xp: 36, w: 1.8, lv: 10, sea: true },
+    { id: 'manta', name: 'ปลากระเบนราหู', emoji: '🐟', sell: 215, xp: 41, w: 1.6, lv: 11, rod: 4, sea: true },
+    { id: 'hammer', name: 'ฉลามหัวค้อน', emoji: '🦈', sell: 245, xp: 43, w: 1.4, lv: 12, rod: 4, sea: true },
+    { id: 'turtle', name: 'เต่าทะเล', emoji: '🐢', sell: 285, xp: 46, w: 1.2, lv: 13, rod: 5, sea: true },
+    { id: 'seal', name: 'แมวน้ำ', emoji: '🦭', sell: 325, xp: 48, w: 1, lv: 14, rod: 5, sea: true },
+    { id: 'orca', name: 'วาฬเพชฌฆาต', emoji: '🐳', sell: 380, xp: 51, w: 0.8, lv: 15, rod: 5, sea: true },
+    { id: 'whaleshark', name: 'ฉลามวาฬ', emoji: '🦈', sell: 450, xp: 54, w: 0.65, lv: 16, rod: 6, sea: true },
+    { id: 'bluewhale', name: 'วาฬสีน้ำเงิน', emoji: '🐋', sell: 560, xp: 59, w: 0.5, lv: 17, rod: 6, sea: true },
+    { id: 'kraken', name: 'คราเคนน้อย', emoji: '🦑', sell: 620, xp: 61, w: 0.4, lv: 18, rod: 6, sea: true },
+    { id: 'angler', name: 'ปลาแองเกลอร์', emoji: '🐡', sell: 710, xp: 64, w: 0.28, lv: 19, rod: 7, sea: true },
+    { id: 'pearl', name: 'หอยมุกทอง', emoji: '🐚', sell: 820, xp: 67, w: 0.18, lv: 20, rod: 7, sea: true },
   ];
-  // ชนิดที่อยู่ในทะเลด้วย (นอกจากปลา sea-only) • สระ = ทุกชนิดที่ไม่ใช่ sea-only • ทะเล = sea-only + ชนิดทะเลเหล่านี้
+  // สระ = ปลาที่ไม่ใช่ sea • ทะเล = ปลา sea เท่านั้น (ชุดแยกเด็ดขาด) • MARINE คือชื่อสัตว์ทะเลในสระที่ค้างไว้ก่อน (ย้ายออกในเฟส B)
   const MARINE = new Set(['shrimp', 'crab', 'lobster', 'squid', 'octopus', 'shark', 'dolphin', 'jelly', 'coral']);
-  const fishPool = sea => FISH.filter(f => (sea ? f.sea || MARINE.has(f.id) : !f.sea));
+  const fishPool = sea => FISH.filter(f => (sea ? !!f.sea : !f.sea));
   const LEGACY_FISH = [
     { id: 'catfish', name: 'ปลาดุก',      emoji: '🐡', sell: 16,  xp: 16,  w: 25, lv: 1 },
     { id: 'shell',   name: 'หอยเชลล์',     emoji: '🐚', sell: 18,  xp: 17,   w: 22, lv: 2 },
@@ -1185,7 +1199,7 @@
     mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3', 'axe_4', 'axe_5'], sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
     // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือยังไม่เปิด (soon)
-    vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v), sell: [], soon: [{ emoji: '⛵', name: 'เรือ (แล่นในสระ)', price: 4000 }] },
+    vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v), sell: [], soon: [{ emoji: '⛵', name: 'เรือ (แล่นในสระ)', price: 3000 }] },
     cloth:  { name: '👕 ร้านเสื้อผ้า',    skill: null,     buy: Object.keys(WEAR).flatMap(c => WEAR[c].filter(i => i.price > 0).map(i => wearKey(c, i.id))), sell: [] },
     food:   { name: '🍜 ร้านอาหาร',      skill: null,     buy: ['meal_bread'], // 2 พ.ย. 2026: ขายแค่ขนมปัง (อาหารฉุกเฉิน + วัตถุดิบเบอร์เกอร์ปลา) อาหารอื่นทำเองที่ครัว เมนูอื่นใน MEALS ยังกินได้และยังแจกจากกองกลาง
                                                         sell: ['dish_'] },
