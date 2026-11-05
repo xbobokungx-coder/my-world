@@ -202,17 +202,18 @@ class World {
     F = { map, ores, hp: new Map(), wait: [] }; this.floors.set(f, F); return F;
   }
   oresPub(f) { return [...this.floorOf(f).ores].map(([k, o]) => { const [x, y] = k.split(',').map(Number); return [x, y, o.k, o.s]; }); }
-  oreSpot(F, f, mates, old) { // ช่องสุ่มสำหรับก้อนแร่ใหม่ในชั้น f (ไม่ใช่ช่องเดิม old): เป็นพื้นว่าง ไม่ใกล้ทางออก/บันไดลง/ผู้เล่น และพื้นที่เดินที่เหลือยังต่อถึงกันหมด ทุกก้อนยังมีที่ยืนขุด (กติกาเดียวกับตอนวางครั้งแรก) • ไม่พบ = null
+  oreSpot(F, f, mates, old) { // ช่องสำหรับก้อนแร่ใหม่ในชั้น f (ช่องเดิม old ก่อน ไม่ได้ค่อยสุ่ม): เป็นพื้นว่าง ไม่ใกล้ทางออก/บันไดลง/ผู้เล่น และพื้นที่เดินที่เหลือยังต่อถึงกันหมด ทุกก้อนยังมีที่ยืนขุด (กติกาเดียวกับตอนวางครั้งแรก) • ไม่พบ = null
     if (F.open === undefined) { let n = 0; for (const r of F.map) for (const c of r) if (S.caveOpen(c)) n++; F.open = n + F.ores.size; } // พื้นเดินได้ทั้งหมดถ้าไม่มีก้อนแร่
     const m = F.map, free = (x, y) => S.DIRS.filter(([dx, dy]) => S.caveOpen(m[y + dy][x + dx])).length;
     const cand = []; // ทุกช่องที่ผ่านเงื่อนไขเบื้องต้น แล้วสุ่มลำดับ (แร่ห่างกันหลายช่อง ช่องที่ใช้ได้มีน้อย สุ่มเดาจะพลาดบ่อย)
     for (let y = S.CAVE.y0 + 1; y < S.CAVE.y1; y++) for (let x = S.CAVE.x0 + 1; x < S.CAVE.x1; x++) {
-      if (m[y][x] !== T.CAVE || (old && old.x === x && old.y === y) || Math.hypot(x - 31, y - (S.CAVE.y1 - 1)) < 5 || !free(x, y) || S.oreNear(m, x, y)) continue; // ห่างก้อนอื่นอย่างน้อย MINE.oreGap ช่อง
+      if (m[y][x] !== T.CAVE || Math.hypot(x - 31, y - (S.CAVE.y1 - 1)) < 5 || !free(x, y) || S.oreNear(m, x, y)) continue; // ห่างก้อนอื่นอย่างน้อย MINE.oreGap ช่อง
       if ([-1, 0, 1].some(dy => [-1, 0, 1].some(dx => m[y + dy][x + dx] === S.T.DOWN))) continue;
       if (mates.some(q => Math.abs(q.x - (x + 0.5) * TS) < TS * 1.5 && Math.abs(q.y - (y + 0.5) * TS) < TS * 1.5)) continue;
       cand.push([x, y]);
     }
     for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
+    const at = old ? cand.findIndex(([x, y]) => x === old.x && y === old.y) : -1; if (at > 0) cand.unshift(cand.splice(at, 1)[0]); // ช่องเดิมที่เพิ่งขุด (old) ลองก่อน ถ้าไม่ผ่านเงื่อนไขค่อยใช้ช่องสุ่มอื่น
     for (const [x, y] of cand.slice(0, 40)) {
       m[y][x] = T.ORE;
       const ok = S.caveReach(m) === F.open - F.ores.size - 1 && !S.DIRS.some(([dx, dy]) => m[y + dy][x + dx] === T.ORE && !free(x + dx, y + dy));
@@ -221,7 +222,7 @@ class World {
     }
     return null;
   }
-  oreTick(now) { // ก้อนแร่ที่ขุดไปครบเวลา MINE.respawnMs เกิดใหม่ที่ช่องสุ่มใหม่ในชั้นเดิม (สุ่มชนิด/ขนาดใหม่ตามชั้น ไม่มีช่องใหม่ = เกิดที่เดิม)
+  oreTick(now) { // ก้อนแร่ที่ขุดไปครบเวลา MINE.respawnMs เกิดใหม่ที่ช่องเดิม (ถ้าไม่ว่างค่อยสุ่มช่องใหม่) ในชั้นเดิม (สุ่มชนิด/ขนาดใหม่ตามชั้น ไม่มีช่องใหม่ = เกิดที่เดิม)
     for (const [f, F] of this.floors) {
       if (!F.wait.length) continue;
       const rest = [], mates = this.sceneMates(CAVE + f);

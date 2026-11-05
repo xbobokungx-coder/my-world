@@ -112,13 +112,13 @@ assert.strictEqual(a.rec.ach && a.rec.ach.cnt.mine, 1, 'นับสถิติ
 { const c = find('copper'); const [cx, cy] = c[0].split(',').map(Number); stand(a, [cx, cy]); act(a, cx, cy);
   assert.ok(F1.ores.has(c[0]) && !F1.hp.has(c[0]), 'เลเวล/อีเต้อไม่ถึง ขุดไม่ได้ ไม่ลด HP'); }
 
-// แร่เกิดใหม่เมื่อครบ MINE.respawnMs (1/3 วันในเกม) ที่ช่องสุ่มใหม่ในชั้นเดิม (ไม่ใช่ที่เดิม) โดยไม่ปิดทางเดิน
+// แร่เกิดใหม่เมื่อครบ MINE.respawnMs (1/3 วันในเกม) ที่ช่องเดิมที่ขุด (ถ้าไม่ว่างค่อยสุ่มช่องใหม่ในชั้นเดิม) โดยไม่ปิดทางเดิน
 assert.ok(F1.wait.length >= 1); const waitN = F1.wait.length, oresN = F1.ores.size; w.oreTick(Date.now() + 1000); assert.strictEqual(F1.wait.length, waitN, 'ยังไม่ครบวัน');
 assert.strictEqual(S.MINE.respawnMs, S.DAY_MS / 3);
 { const before = new Set(F1.ores.keys()); w.oreTick(Date.now() + S.MINE.respawnMs + 1000);
   assert.ok(!F1.wait.length && F1.ores.size === oresN + waitN, 'ครบเวลาเกิดใหม่ครบทุกก้อน');
   const fresh = [...F1.ores.keys()].filter(k => !before.has(k)); assert.strictEqual(fresh.length, waitN);
-  assert.ok(fresh.some(k => k !== sk), 'เกิดที่ช่องสุ่มใหม่ ไม่ใช่ที่เดิมทั้งหมด');
+  assert.ok(fresh.includes(sk), 'ก้อนที่ขุดไป เกิดใหม่ที่ช่องเดิม');
   for (const k of fresh) { const [x, y] = k.split(',').map(Number); assert.strictEqual(F1.map[y][x], T.ORE); assert.ok(Object.keys(S.floorMix(1)).includes(F1.ores.get(k).k), 'ชนิดที่เกิดใหม่ตามชั้น');
     const m = wb.msgs.filter(z => z.t === 'ore' && z.x === x && z.y === y).pop(); assert.ok(m && m.k === F1.ores.get(k).k && m.s === F1.ores.get(k).s, 'คนในถ้ำเห็นแร่เกิดใหม่ พร้อมชนิดและขนาด'); }
   assert.ok(F1.map[oy][ox] === T.CAVE || F1.ores.has(sk));
