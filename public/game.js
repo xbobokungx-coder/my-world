@@ -1373,7 +1373,7 @@ function renderShop() {
   if (shopKind === 'mine') { // ตั๋วลงเหมือง: จ่ายลงตรงไปชั้นที่เคยเดินลงถึง (ลงเดินเองฟรีเหมือนเดิม)
     const fees = Shared.MINE.fee, coin = inv.coin || 0; let rows = '';
     for (let f = 2; f <= Shared.MINE.floors; f++) {
-      const ok = f <= deepFloor, kind = Shared.ORE_ORDER[f - 1], O = ORES[kind];
+      const ok = f <= deepFloor, kind = Shared.ORE_ORDER[f - 1], O = Shared.ORES[kind];
       rows += `<div class="row${ok ? '' : ' lock'}"><span>🎫 ชั้น ${f} ${O ? O.emoji : ''}<br><small>${ok ? 'ลงตรงไปชั้นนี้' : '🔒 ยังไม่เคยลงถึง (เดินลงเองให้ถึงก่อนครั้งแรก)'}</small></span><span>🪙${fees[f]} <button class="btn small" data-ticket="${f}" ${!ok || coin < fees[f] ? 'disabled' : ''}>ซื้อตั๋ว</button></span></div>`;
     }
     h += `<div class="sec">🎫 ตั๋วลงเหมือง (ข้ามการเดินหาบันได • ไม่อยากเสียเงินก็เดินลงเองได้ฟรี • ลงถึงชั้นลึกสุดที่เคยไปแล้ว: ชั้น ${deepFloor})</div>` + rows;
