@@ -74,6 +74,15 @@
   #fgauge .core { position:absolute; top:0; bottom:0; background:#2fb64a; box-shadow:inset 0 0 0 2px #1d7a30; }
   #fgauge .mk { position:absolute; top:-2px; bottom:-2px; width:6px; margin-left:-3px; background:#fff; border:2px solid #3d2a1a; box-sizing:border-box; }
   #fgauge.hit .mk { background:#ffe06a; }
+  #ffight { position:fixed; left:50%; bottom:96px; transform:translateX(-50%); width:min(360px,86vw); z-index:6; padding:6px 10px 8px; text-align:center; font-weight:700; font-size:13px; background:#e9f6ff; border:3px solid #3d2a1a; cursor:pointer; touch-action:none; user-select:none; -webkit-user-select:none; }
+  #ffight .tl, #ffight .dl { text-align:left; font-size:11px; margin-top:4px; } #ffight .hnt { font-size:11px; font-weight:400; margin-top:4px; opacity:.8; }
+  #ffight .tbar, #ffight .dbar { position:relative; height:16px; background:#4a6a85; border:2px solid #3d2a1a; overflow:hidden; }
+  #ffight .tbar .safe { position:absolute; top:0; bottom:0; left:40%; width:35%; background:#5fd16f; opacity:.55; } #ffight .tbar .red { position:absolute; top:0; bottom:0; left:85%; right:0; background:#e0503a; opacity:.7; }
+  #ffight .tbar .fill { position:absolute; top:3px; bottom:3px; left:0; width:0; background:#fff; box-shadow:0 0 0 1px #3d2a1a; } #ffight.hold .tbar .fill { background:#ffe06a; } #ffight.danger .tbar .fill { background:#ff6a5a; }
+  #ffight .dbar .fillb { position:absolute; top:0; bottom:0; left:0; width:0; background:#79c7ff; } #ffight .dbar .fk { position:absolute; top:-1px; margin-left:-8px; font-size:14px; line-height:16px; }
+  #ffight.warn { background:#fff0c9; animation:ffshake .18s infinite; } #ffight.danger { background:#ffd9d2; }
+  @keyframes ffshake { 0%,100% { transform:translateX(-50%) } 25% { transform:translateX(calc(-50% - 2px)) } 75% { transform:translateX(calc(-50% + 2px)) } }
+  body.touch #ffight { bottom:calc(86px + var(--sab)); }
   body.touch #fgauge { bottom:calc(86px + var(--sab)); }
   #shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
   #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; max-height:92dvh; overflow:auto; }
@@ -264,7 +273,7 @@
   #build .btn.on { outline:3px solid #fff; box-shadow:0 0 0 4px var(--accent); }
   @media (max-width:700px) { #build .blbl { display:none; } #build .bhint { display:none; } #build .bitems { grid-template-columns:1fr 1fr 1fr; } #build .btools { flex-direction:row; flex-wrap:wrap; } #build .btools .btn { width:auto; flex:1 1 30%; text-align:center; } }
   /* โหมดตกแต่งบ้าน: ซ่อนปุ่มเดิน/เครื่องมือฟาร์มที่ไม่ได้ใช้ ให้ห้องเห็นเต็มที่ */
-  body.building :is(#joy,#abtn,#hotbar,#picker,#guide,#fgauge) { display:none !important; }
+  body.building :is(#joy,#abtn,#hotbar,#picker,#guide,#fgauge,#ffight) { display:none !important; }
   #build { touch-action:pan-y; }
   #build.dragging { opacity:.5; }
   #build .bhint { min-height:2.6em; line-height:1.3; }
@@ -407,7 +416,7 @@
   body:not(.touch) #hudMenu .mtouch { display:none !important; }
   #hudMenu .spk { margin-left:0; color:inherit; }
   /* คอมจอใหญ่: ขยาย UI ตามสเกลจอ (--ui คำนวณใน game.js resize) ให้สัดส่วนกับโลกในเกมเท่ากับจอเล็ก */
-  body:not(.touch) :is(#hudTop,#hotbar,#inv,#chat,#mini,#guide,#toast,#picker,#build,#fgauge,#callBox) { zoom:var(--ui,1); }
+  body:not(.touch) :is(#hudTop,#hotbar,#inv,#chat,#mini,#guide,#toast,#picker,#build,#fgauge,#ffight,#callBox) { zoom:var(--ui,1); }
   body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#ask,#homeChoice) > .panel { zoom:var(--ui,1); }
   body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots) > .panel { max-height:calc(92dvh / var(--ui,1)); }
   body:not(.touch) #hudMenu { max-height:calc((100dvh - 90px) / var(--ui,1)); }
@@ -499,6 +508,7 @@
 </div>
 <div id="guide" class="panel hidden" title="คู่มือเริ่มต้น: แตะเพื่อดูทั้งหมด"></div>
 <div id="fgauge" class="hidden"><div id="fgtxt">🎣 กดตอนตัวชี้อยู่ในโซนเขียว (ยิ่งใกล้กลางยิ่งได้ปลาดี)!</div><div class="bar"><div class="zone" id="fgzone"></div><div class="core" id="fgcore"></div><div class="mk" id="fgmk"></div></div></div>
+<div id="ffight" class="hidden" title="กดค้าง Space / ปุ่ม A / แตะค้างที่นี่ เพื่อกรอสาย"><div id="ftxt">🎣 กดค้างเพื่อกรอสาย!</div><div class="tl">ความตึงสาย <small>(ปล่อยก่อนแดง!)</small></div><div class="tbar"><div class="safe"></div><div class="red"></div><div class="fill" id="ftten"></div></div><div class="dl">ปลา 🐟 ➜ ฝั่ง</div><div class="dbar"><div class="fillb" id="ftdist"></div><div class="fk" id="ftfish">🐟</div></div><div class="hnt">กดค้าง <b>Space</b> / ปุ่ม <b>A</b> / แตะค้างที่นี่ = กรอ • ปล่อย = ผ่อนสาย</div></div>
 <div id="hotbar" class="panel hidden"></div>
 <div id="picker" class="panel hidden"></div>
 <div id="build" class="panel hidden"></div>

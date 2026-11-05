@@ -34,13 +34,16 @@ function farm(lv) {
 function fishPool(lv, rod, tier) {
   return S.FISH.filter(f => !f.sea && f.lv <= lv).map(f => ({ f, w: S.fishWeight(f, lv, rod, tier) })).filter(x => x.w > 0);
 }
-function fishCpm(lv, rod) { return 60 / (8.75 * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(lv) - 1)) * S.ROD_WAIT[rod] + M.fishOver) * M.fishHit; }
+// ชักเย่อกับปลา (5 พ.ย. 2026): เวลาต่อสู้เฉลี่ย/โอกาสชนะ ตามกลุ่มราคาปลา 0–3 (จากบอทมือคน tools/test-fight.js ตอบสนอง 250 ms คันที่ปลากลุ่มนั้นออกได้) ถ่วงด้วยน้ำหนักปลาที่ตกได้ ณ เลเวลนั้น
+const FIGHT_SEC = [1.0, 3.4, 5.6, 7.5], FIGHT_WIN = [1, 1, 0.97, 0.8];
+function fightMix(lv, rod) { const pool = fishPool(lv, rod, 1), W = pool.reduce((a, x) => a + x.w, 0) || 1; let sec = 0, win = 0; for (const x of pool) { const c = S.fishClass(x.f); sec += x.w * FIGHT_SEC[c]; win += x.w * FIGHT_WIN[c]; } return { sec: sec / W, win: win / W }; }
+function fishCpm(lv, rod) { const fm = fightMix(lv, rod); return 60 / (8.75 * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(lv) - 1)) * S.ROD_WAIT[rod] + M.fishOver + fm.sec) * M.fishHit * fm.win; }
 function fish(lv) {
   const rod = lv >= 18 ? 7 : lv >= 15 ? 6 : lv >= 12 ? 5 : lv >= 9 ? 4 : lv >= 6 ? 3 : lv >= 3 ? 2 : 1, cpm = fishCpm(lv, rod);
   let best = null;
   for (const t of [1, 2, 3]) {
     const b = S.BAITS[t]; if (b.lv && lv < b.lv) continue;
-    const pool = fishPool(lv, rod, t), W = pool.reduce((a, x) => a + x.w, 0);
+    const pool = fishPool(lv, rod, t).map(x => ({ f: Object.assign({}, x.f, { xp: x.f.xp * S.FIGHT.xpMul[S.fishClass(x.f)] }), w: x.w })), W = pool.reduce((a, x) => a + x.w, 0); // XP คูณตามกลุ่มปลา (ชักเย่อ)
     // ปลาราคา ≥ 100 ติดคูลดาวน์ RARE_CD_MS หลังได้หนึ่งตัว (ตัวถัดไปรอเวลา + รอสุ่มโดน): อัตราปลาหายาก/ชม. = 1 / (1/(ครั้งตกที่สุ่มโดน/ชม.) + คูลดาวน์) ส่วนที่เหลือเป็นปลาทั่วไป
     const WR = pool.filter(x => x.f.sell >= 100).reduce((a, x) => a + x.w, 0), N = cpm * 60, cd = S.RARE_CD_MS / 3600000;
     const rare = pool.filter(x => x.f.sell >= 100), com = pool.filter(x => x.f.sell < 100), WC = com.reduce((a, x) => a + x.w, 0) || 1;

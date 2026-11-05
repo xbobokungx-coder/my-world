@@ -389,7 +389,7 @@
   // ช่างไม้: ตัดต้นไม้ด้วยขวาน (ขวานแรงกว่าตัดเร็วกว่า) ได้ไม้ท่อน หายากได้ไม้เนื้อแข็งราคาแพง
   const AXES = { 1: { name: 'ขวานหิน', price: 50, power: 1 }, 2: { name: 'ขวานเหล็ก', price: 220, lv: 3, power: 1.5 }, 3: { name: 'ขวานเหล็กกล้า', price: 700, lv: 6, power: 2 }, 4: { name: 'ขวานทองคำ', price: 2000, lv: 11, power: 2.5 }, 5: { name: 'ขวานเพชร', price: 5500, lv: 16, power: 3 } }; // power ปรับ 31 ต.ค. 2026 (เดิม 1–5) ให้ต้นไม้ธรรมดาไม่ล้มในครั้งเดียวเมื่อมีขวานดี
   const axeTier = inv => { for (let t = 5; t >= 1; t--) if (inv && inv['axe_' + t]) return t; return 0; }; // ระดับขวานสูงสุดที่มี (0 = ไม่มี)
-  const ACTION_TUNE = { wood: { swings: 5, perLv: 0.15 }, fish: 1.15, mine: 0.46 }; // ตัวคูณ "เวลาต่อการกระทำ" (31 ต.ค. 2026; ตัดไม้/ขุดแร่ปรับใหม่รอบสอง): ตัดไม้ = จำนวนครั้งที่ฟันต้นไม้ด้วยขวานขั้นต่ำที่ต้องใช้ (swings + perLv × (เลเวลที่ปลดล็อก−1)) แทนตัวคูณ HP, ตกปลารอปลากินเบ็ด ×1.15, ขุดแร่ HP ก้อนแร่ ×0.85 ให้สามอาชีพสมดุลกัน
+  const ACTION_TUNE = { wood: { swings: 5, perLv: 0.15 }, fish: 0.9, mine: 0.46 }; // ตัวคูณ "เวลาต่อการกระทำ" (31 ต.ค. 2026; ตัดไม้/ขุดแร่ปรับใหม่รอบสอง): ตัดไม้ = จำนวนครั้งที่ฟันต้นไม้ด้วยขวานขั้นต่ำที่ต้องใช้ (swings + perLv × (เลเวลที่ปลดล็อก−1)) แทนตัวคูณ HP, ตกปลารอปลากินเบ็ด ×1.15, ขุดแร่ HP ก้อนแร่ ×0.85 ให้สามอาชีพสมดุลกัน
   const TREE_HP = 4;                       // ต้องฟันกี่แต้มถึงล้ม (ขวานหิน = 4 ครั้ง, เหล็ก 2, เหล็กกล้า 2)
   const WOOD = { log: { sell: 18, xp: 9 }, hardwood: { sell: 66, xp: 14, chance: 0.22 }, xpPerLv: 0.075 }; // xpPerLv (0.15 → 0.1 เมื่อมีต้นไม้หลายชนิด 25 ต.ค. 2026): XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
   const woodXp = (xp, lv) => Math.round(xp * (1 + WOOD.xpPerLv * (perkLv(lv) - 1)));
@@ -822,10 +822,46 @@
   };
   const canTier = inv => (inv.can_3 ? 3 : inv.can_2 ? 2 : 1);
   // มินิเกมเกจตอนปลากินเบ็ด: ตัวชี้วิ่ง 0→1→0 ไป-กลับ (per = เวลาวิ่งทางเดียว ms) กดตอนอยู่ในโซนกลาง |ตำแหน่ง-0.5| <= half ถึงจะได้ปลา
-  const FISH_GAUGE = { per: 1000, perRod: 70, half: 0.07, halfRod: 0.015, window: 4200, lag: 60,
+  const FISH_GAUGE = { per: 1000, perRod: 70, half: 0.10, halfRod: 0.018, window: 4200, lag: 60, // 5 พ.ย. 2026: โซนกว้างขึ้น (เดิม 0.07/0.015: คัน 1 โซนแค่ 140 ms โดนจริง ~50%) เพราะมีชักเย่อเป็นด่านที่สองแล้ว
     // สุ่มใหม่ทุกครั้งที่ปลากินเบ็ด: จุดกึ่งกลางโซน cMin–cMax, ความเร็วตัวชี้ ×perVar, ความกว้างโซน ×halfVar, จุดเริ่มของตัวชี้ (จับทางไม่ได้)
     // กดโดนกลางโซนจริงๆ (ในระยะ perfect × ครึ่งโซน) = ได้ปลาตามอัตราปกติเต็มที่ ถ้าโดนแค่ขอบโซนปลาแพงจะเจอยากลง (edgeMul ตามกลุ่มราคาปลา 0–3)
-    cMin: 0.2, cMax: 0.8, perVar: [0.75, 1.2], halfVar: [0.85, 1.1], perfect: 0.4, edgeMul: [1, 0.75, 0.45, 0] };
+    cMin: 0.2, cMax: 0.8, perVar: [0.75, 1.2], halfVar: [0.85, 1.1], perfect: 0.45, edgeMul: [1, 0.85, 0.6, 0.25] };
+  // ชักเย่อกับปลา (5 พ.ย. 2026): กดเกจโดน = ตั้งเบ็ดติด แล้วต่อสู้ต่อ • กดค้าง (Space/ปุ่ม A/แตะค้าง) = กรอสาย เสายตึง (ten) ขึ้น ปล่อย = สายหย่อนลง • กรอจนปลาเข้าฝั่ง (dist → 0) ชนะ • ตึงถึง 100 ค้าง snapMs = สายขาด • ปลาว่ายหนีสุด (dist → 100) = ปลาหลุด
+  // ปลาจะ "กระชาก" (surge) เป็นช่วงๆ มีสัญญาณเตือนก่อน (warn) ช่วงกระชากสายตึงพุ่งเองและปลาว่ายหนี ต้องปล่อยหย่อนก่อนถึง • กระชากครบแล้วปลาอ่อนแรง (tired) กรอเร็วขึ้น • ปลายิ่งแพง (class 0–3) ยิ่งกระชากบ่อยและแรง • คันเบ็ด/เลเวลช่วยลดแรงกระชากและกรอเร็วขึ้น
+  // ใช้ฟังก์ชันล้วนชุดเดียวกันทั้งเซิร์ฟเวอร์ (ตัดสินผล) และเว็บ (ทำนายล่วงหน้าให้ภาพลื่น) • dt เดินทีละ ≤ 25 ms ให้ผลตรงกัน
+  const FIGHT = {
+    start: { dist: 55, ten: 20 }, perfect: { dist: 38, ten: 28 },        // จุดเริ่ม (ตั้งเบ็ดเป๊ะ = ปลาเข้าใกล้กว่าและสายตึงพร้อมแล้ว)
+    rise: 38, fall: 55, snapAt: 100, snapMs: 300, timeoutMs: 24000,        // ตึงขึ้น/วินาทีตอนกรอ • หย่อนลง/วินาทีตอนปล่อย • สายขาดเมื่อ ≥ snapAt ค้าง snapMs • เกินเวลา = ปลาหลุด
+    speed: [40, 30, 24, 20], drift: 4, sweet: [40, 75], sweetMul: 1.3, tiredMul: 1.6, // กรอ dist/วินาที ตามกลุ่มปลา 0–3 • ปล่อยแล้วปลาว่ายหนี dist/วินาที • ช่วงตึงพอดี กรอเร็วขึ้น
+    surges: [[0, 0], [1, 1], [1, 2], [2, 3]], str: [0, 62, 96, 90], run: [0, 16, 24, 26], // จำนวนครั้งกระชาก [ต่ำสุด, สูงสุด] • แรงกระชาก (ตึง/วินาที) • ปลาว่ายหนี (dist/วินาที) ระหว่างกระชาก
+    xpMul: [1, 1, 1.15, 1.35], // XP ตามกลุ่มปลา: ปลาใหญ่ต้องสู้นานกว่า ได้ XP คูณเพิ่ม (เหรียญไม่เปลี่ยน) ชดเชยเวลาชักเย่อให้ XP/ชม. ชาวประมงอยู่ในเป้า (ดู tools/levelsim.js)
+    cleanBelow: 88, cleanXp: 1.15, // ชักเย่อสะอาด (สายไม่เคยตึงถึง cleanBelow) ได้ XP เพิ่ม 15%
+    warnMs: 600, surgeMs: [800, 1200], gapMs: [900, 1500], firstMs: 1100, // เตือนก่อนกระชาก • ความยาวกระชาก • ช่วงพักระหว่างกระชาก • กระชากครั้งแรกหลังเริ่ม
+  };
+  function fightNew(cls, rod, perk, perfect, rnd) { // cls = fishClass 0–3 • คืนสถานะการต่อสู้ (sched = ตารางกระชากทั้งหมด ส่งให้เว็บทำนาย)
+    const F = FIGHT, c = Math.max(0, Math.min(3, cls | 0)), n = F.surges[c][0] + Math.floor(rnd() * (F.surges[c][1] - F.surges[c][0] + 1)), sched = [];
+    let at = F.firstMs; for (let i = 0; i < n; i++) { const dur = F.surgeMs[0] + rnd() * (F.surgeMs[1] - F.surgeMs[0]); sched.push([Math.round(at), Math.round(dur)]); at += dur + F.gapMs[0] + rnd() * (F.gapMs[1] - F.gapMs[0]); }
+    const st = perfect ? F.perfect : F.start;
+    return { cls: c, dist: st.dist, ten: st.ten, t: 0, snapT: 0, peak: st.ten, sched, str: F.str[c] * Math.max(0.5, 1 - 0.04 * (rod - 1)), run: F.run[c], spd: F.speed[c] * (1 + 0.05 * (rod - 1) + 0.01 * (perk - 1)), rise: F.rise * Math.max(0.6, 1 - 0.03 * (rod - 1)), end: '' };
+  }
+  function fightPhase(f) { // 'calm' | 'warn' | 'surge' | 'tired'
+    for (const [at, dur] of f.sched) { if (f.t >= at && f.t < at + dur) return 'surge'; if (f.t >= at - FIGHT.warnMs && f.t < at) return 'warn'; }
+    const last = f.sched.length ? f.sched[f.sched.length - 1] : null; return !last || f.t >= last[0] + last[1] ? 'tired' : 'calm'; // ไม่มีกระชากเลย (ปลาเล็ก) นับเป็นอ่อนแรงตั้งแต่ต้น = กรอเร็ว
+  }
+  function fightStep(f, ms, reeling) { // เดินเวลา ms มิลลิวินาที (แบ่งก้าว ≤ 25 ms) reeling = กำลังกรอ (กดค้าง) • ตั้ง f.end เป็น 'win' | 'snap' | 'lost' เมื่อจบ
+    const F = FIGHT; let left = ms;
+    while (left > 0 && !f.end) {
+      const d = Math.min(25, left), dt = d / 1000; left -= d; f.t += d; const ph = fightPhase(f);
+      const sweet = f.ten >= F.sweet[0] && f.ten <= F.sweet[1];
+      if (reeling) { f.dist -= f.spd * (ph === 'tired' ? F.tiredMul : 1) * (sweet ? F.sweetMul : 1) * dt; f.ten += f.rise * (ph === 'tired' ? 0.8 : 1) * dt; }
+      else { f.dist += F.drift * dt; f.ten -= F.fall * dt; }
+      if (ph === 'surge') { f.ten += f.str * dt; f.dist += f.run * dt; }
+      f.ten = Math.max(0, Math.min(105, f.ten)); if (f.ten > f.peak) f.peak = f.ten;
+      if (f.ten >= F.snapAt) f.snapT += d; else f.snapT = Math.max(0, f.snapT - d * 2);
+      if (f.dist <= 0) { f.dist = 0; f.end = 'win'; } else if (f.snapT >= F.snapMs) f.end = 'snap'; else if (f.dist >= 100 || f.t >= F.timeoutMs) { f.dist = Math.min(100, f.dist); f.end = 'lost'; }
+    }
+    return f;
+  }
   const gaugePos = (f, t) => { const ph = ((t - f.gt0) / f.per) % 2; return ph < 1 ? ph : 2 - ph; };
   // lag: ชดเชยเวลาส่งข้อมูล (เช็คทั้งตอนกดจริงและย้อนหลังเล็กน้อย) ให้คนเน็ตช้าไม่เสียเปรียบ
   const gaugeDist = (f, t) => { const c = f.c === undefined ? 0.5 : f.c; return Math.min(Math.abs(gaugePos(f, t) - c), Math.abs(gaugePos(f, t - FISH_GAUGE.lag) - c)); };
@@ -1503,7 +1539,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

@@ -44,7 +44,7 @@ const happyOn = () => villageEnd > Date.now();
 const buffExp = {}; // บัฟที่ยังมีผลอยู่: id -> เวลาหมด (ms ของนาฬิกาเครื่องนี้)
 const buffOn = id => (buffExp[id] || 0) > Date.now();
 const build = { on: false, sel: null, erase: false, pick: null, rot: 0 }; // sel = ชนิดที่จะวาง • erase = เก็บคืน • pick = id ของชิ้นที่เลือกไว้จะย้าย/หมุน • rot = ทิศของชิ้นที่จะวาง
-let fg = null, wtr = 10, dur = {}, cin = null, cinAt = 0, cinWatching = false, tradeSt = null, tradeReq = null;
+let fg = null, ft = null, ftHold = false, wtr = 10, dur = {}, cin = null, cinAt = 0, cinWatching = false, tradeSt = null, tradeReq = null;
 const mult = k => market[k] || 1;
 let timeOffset = 0, lastSend = 0, lastSent = '', swing = 0, lastAct = 0, actGap = 200, shopKind = null, bagTab = 'status', flash = null;
 let miniState = ls.get('mw_mini') || 'small'; // small | big | off
@@ -191,6 +191,7 @@ function handle(m) {
         const p = players.get(id); if (!p) continue;
         if (fs && !p.fs) p.castAt = performance.now(); // เพิ่งเหวี่ยงเบ็ด: เริ่มแอนิเมชันทุ่นลอยเป็นวงโค้ง
         if (!fs && p.fs && id === myId && fg) { fg = null; $('fgauge').classList.add('hidden'); }
+        if (!fs && p.fs && id === myId && ft && !ft.end) { ft = null; ftHold = false; $('ffight').classList.add('hidden'); } // ยกเลิกตกปลา (เดินหนี ฯลฯ) ปิดแผงชักเย่อด้วย
         p.fs = fs; p.fx = fx; p.fy = fy; p.sit = !!sit; p.lie = sit === 2; p.bt = bt || 1;
         if (id !== myId) { p.tx = x; p.ty = y; p.dir = d; }
       }
@@ -229,8 +230,11 @@ function handle(m) {
     case 'arc': onArc(m); break;
     case 'dur': dur = m.d; refreshOpen(); break;
     case 'wtr': wtr = m.n; renderHud(); break;
+    case 'fight': { ft = { cls: m.cls, sched: m.sched, dist: m.dist, ten: m.ten, peak: m.ten, t: 0, snapT: 0, str: m.str, run: m.run, spd: m.spd, rise: m.rise, end: '', last: performance.now(), perfect: !!m.perfect }; ftHold = false; $('ffight').classList.remove('hidden'); fightUI(); break; } // ชักเย่อเริ่ม: เว็บทำนายด้วยสูตรเดียวกับเซิร์ฟเวอร์ ตามค่าที่ได้รับ
+    case 'fs': if (ft && !ft.end) { ft.ten = m.ten; ft.dist = m.dist; ft.t = m.el; ft.last = performance.now(); } break; // เซิร์ฟเวอร์ส่งสถานะจริงทุก 150 ms ปรับตามทันที
+    case 'fe': { const r = m.r; if (ft) { ft.end = r; ft.shown = performance.now(); $('ftxt').textContent = r === 'win' ? '🎉 ดึงขึ้นมาได้แล้ว!' : r === 'snap' ? '💥 สายเอ็นขาด!' : '🐟 ปลาหนีไปแล้ว...'; } ftHold = false; setTimeout(() => { if (ft && ft.end) { ft = null; $('ffight').classList.add('hidden'); } }, 900); break; }
     case 'fg': { // เกจตกปลา: เริ่ม/ปิด (ตัวชี้คำนวณจากเวลาที่ได้รับ ชดเชยหน่วงเล็กน้อย)
-      if (m.off) fg = null; else { const c = m.c === undefined ? 0.5 : m.c; fg = { per: m.per, half: m.half, c, t0: performance.now() - 40 - (m.ph || 0), win: m.win }; $('fgzone').style.cssText = `left:${(c - m.half) * 100}%;width:${m.half * 200}%`; /* กันหน้าเว็บเก่าค้างแคช: ไม่มีแกนกลางก็สร้างให้ */ let core = $('fgcore'); if (!core) { core = document.createElement('div'); core.id = 'fgcore'; core.className = 'core'; core.style.cssText = 'position:absolute;top:0;bottom:0;background:#2fb64a'; $('fgzone').after(core); } core.style.left = (c - m.half * FISH_GAUGE.perfect) * 100 + '%'; core.style.width = m.half * FISH_GAUGE.perfect * 200 + '%'; }
+      if (m.off) { fg = null; if (ft && !ft.end) { ft = null; ftHold = false; $('ffight').classList.add('hidden'); } } else { const c = m.c === undefined ? 0.5 : m.c; fg = { per: m.per, half: m.half, c, t0: performance.now() - 40 - (m.ph || 0), win: m.win }; $('fgzone').style.cssText = `left:${(c - m.half) * 100}%;width:${m.half * 200}%`; /* กันหน้าเว็บเก่าค้างแคช: ไม่มีแกนกลางก็สร้างให้ */ let core = $('fgcore'); if (!core) { core = document.createElement('div'); core.id = 'fgcore'; core.className = 'core'; core.style.cssText = 'position:absolute;top:0;bottom:0;background:#2fb64a'; $('fgzone').after(core); } core.style.left = (c - m.half * FISH_GAUGE.perfect) * 100 + '%'; core.style.width = m.half * FISH_GAUGE.perfect * 200 + '%'; }
       $('fgauge').classList.toggle('hidden', !fg); break;
     }
     case 'trade': onTrade(m); break;
@@ -781,7 +785,7 @@ function resetScene() { // กลับไปแมพเมืองฝั่�
   if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; }
 }
 function applyScene(m) {
-  walk = null; fg = null; $('fgauge').classList.add('hidden'); hidePicker();
+  walk = null; fg = null; $('fgauge').classList.add('hidden'); ft = null; ftHold = false; $('ffight').classList.add('hidden'); hidePicker();
   if (m.cave) { // ถ้ำเหมือง: แมพบนลงมุมสูงเหมือนเมือง ใช้พื้น/ผนังวาดเอง (ไม่ใช่ไอโซเมตริกแบบบ้าน)
     if (!cave) { townRows = MAP.slice(); townCache = { base, baseHi, mini: miniBase }; }
     setSceneRows(Shared.makeCaveMap(m.cave)); cave = true; caveFlr = m.cave; scene = null; houseInfo = null; build.on = false; build.pick = null;
@@ -1484,7 +1488,7 @@ addEventListener('keydown', e => {
   if (c === 'KeyM') { setMini(miniState === 'off' ? 'small' : miniState === 'small' ? 'big' : 'off'); return; }
   const dg = /^(?:Digit|Numpad)([1-9])$/.exec(c);
   if (dg && +dg[1] <= SLOTS.length) { pickSlot(+dg[1] - 1); return; }
-  if (c === 'Space') { e.preventDefault(); act(); return; }
+  if (c === 'Space') { e.preventDefault(); if (ft) { setReel(true); return; } act(); return; } // ชักเย่ออยู่ = กดค้างกรอสาย
   if (c.startsWith('Arrow')) e.preventDefault();
   keys[c] = true;
   mouse.active = false;
@@ -1492,7 +1496,7 @@ addEventListener('keydown', e => {
 // กันปุ่มเดินค้าง (ตัวละครเดินเองและยกเลิกการคลิกเดิน): ถ้าไม่ได้รับ keyup (เช่น เปิดเมนูคลิกขวา/สลับหน้าต่าง/IME ภาษาไทย) ปุ่มจะค้างจนรีเฟรช
 const keyName = {};
 const clearKeys = () => { for (const k in keys) keys[k] = false; };
-addEventListener('keyup', e => { keys[e.code] = false; for (const k in keyName) if (keyName[k] === e.key.toLowerCase()) keys[k] = false; delete keyName[e.code]; });
+addEventListener('keyup', e => { if (e.code === 'Space') setReel(false); keys[e.code] = false; for (const k in keyName) if (keyName[k] === e.key.toLowerCase()) keys[k] = false; delete keyName[e.code]; });
 addEventListener('keydown', e => { keyName[e.code] = String(e.key).toLowerCase(); }, true);
 addEventListener('blur', clearKeys);
 addEventListener('focusout', e => { if (!e.relatedTarget) clearKeys(); });
@@ -1644,7 +1648,11 @@ const endPtr = e => {
 };
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
-$('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk(); act(); });
+$('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk(); if (ft) { setReel(true); return; } act(); });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) { $('abtn').addEventListener(ev, () => setReel(false)); $('ffight').addEventListener(ev, () => setReel(false)); }
+$('ffight').addEventListener('pointerdown', e => { e.preventDefault(); setReel(true); }); // แตะ/คลิกค้างที่แผงชักเย่อ = กรอสาย (เมาส์และมือถือ)
+addEventListener('blur', () => setReel(false));
+function setReel(on) { if (!ft || ft.end || ftHold === on) return; ftHold = on; send({ t: 'reel', on }); } // ส่งเฉพาะตอนสถานะเปลี่ยน (กด/ปล่อย) เซิร์ฟเวอร์เดินเวลาตามสถานะนี้
 
 // จอยสติ๊กมือถือ
 (() => {
@@ -3158,8 +3166,8 @@ function drawFishing(p, t) {
   let sx = p.x + (p.dir === 2 ? -8 : p.dir === 3 ? 8 : 0), sy = p.y - 8;       // ปลายคันเบ็ด (ไม่ได้ถือเบ็ดอยู่: ใช้ตำแหน่งเดิม)
   if (isRodHeld(p)) [sx, sy] = rodTip(p);                                        // ถือเบ็ดอยู่: สายออกจากปลายคันจริง ไม่ออกจากหน้าตัวละคร
   const k = Math.min(1, (t - (p.castAt || 0)) / 480), e = 1 - (1 - k) * (1 - k); // ease-out
-  const bite = p.fs === 2, ph = (p.id || 0) * 1.7;
-  const bob = bite ? Math.sin(t / 45) * 3.5 + 3 : Math.sin(t / 420 + ph) * 1.6;
+  const fight = p.fs === 3, bite = p.fs === 2 || fight, ph = (p.id || 0) * 1.7; // fs 3 = กำลังชักเย่อ: สายตึง ทุ่นดิ้น น้ำกระเซ็น
+  const bob = fight ? Math.sin(t / 60 + ph) * 4 + Math.sin(t / 23) * 1.5 + 2 : bite ? Math.sin(t / 45) * 3.5 + 3 : Math.sin(t / 420 + ph) * 1.6;
   const bx = sx + (p.fx - sx) * e + (bite ? Math.sin(t / 38) * 1.5 : 0);
   const by = sy + (p.fy - sy) * e - Math.sin(Math.PI * k) * 34 + (k >= 1 ? bob : 0);
   const sag = k < 1 ? 6 : bite ? 2 : 9 + Math.sin(t / 700 + ph) * 3;             // ตึงตอนกัด หย่อนตอนรอ
@@ -3191,7 +3199,8 @@ function drawFishing(p, t) {
     ctx.fillStyle = '#fff3b0'; ctx.fillRect(bx - 2.5, by - 3, 2, 2);
     const a = t / 300 + ph; ctx.fillStyle = '#fff'; for (let i = 0; i < 3; i++) { const aa = a + i * 2.09; ctx.fillRect(Math.round(bx + Math.cos(aa) * 8) - 1, Math.round(by + Math.sin(aa) * 6) - 1, 2, 2); }
   }
-  if (bite) { ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3d2a1a'; ctx.lineWidth = 3; ctx.strokeText('❗', p.fx, p.fy - 14); ctx.fillText('❗', p.fx, p.fy - 14 + Math.sin(t / 60) * 1.5); }
+  if (fight) PixelAction.burst(ctx, 'splash', p.fx + Math.sin(t / 330 + ph) * 10, p.fy, t % 520, (Math.floor(t / 520) * 7 + (p.id || 0)) | 0); // ปลาดิ้นน้ำกระเซ็นเป็นระยะ
+  if (p.fs === 2) { ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3d2a1a'; ctx.lineWidth = 3; ctx.strokeText('❗', p.fx, p.fy - 14); ctx.fillText('❗', p.fx, p.fy - 14 + Math.sin(t / 60) * 1.5); }
 }
 function drawPlayer(p, now, cx) {
   const ctx = cx || mainCtx, x = p.x, riding = !!(p.veh && !p.sit && Shared.VEHICLES[p.veh] && PixelVehicle.sprite);
@@ -3868,7 +3877,16 @@ function buildClick(sx, sy, hit) {
   toast(isTouch ? 'ลากของในห้องเพื่อย้าย หรือลากของจากรายการลงห้อง' : 'คลิกของในห้องเพื่อหยิบ แล้วคลิกอีกครั้งเพื่อวาง');
 }
 
+const FT_TXT = { calm: '🎣 กดค้างเพื่อกรอสาย!', warn: '⚠️ ปลากำลังจะกระชาก! ปล่อยสายผ่อนไว้!', surge: '💢 ปลากระชากแรง! ปล่อยสาย!', tired: '😮‍💨 ปลาอ่อนแรงแล้ว! กรอเลย!' }, FT_SIZE = ['🐟 ตัวเล็ก', '🐠 ตัวกลาง', '🦈 ตัวใหญ่', '🐋 ตัวยักษ์!'];
+function fightUI() { // อัปเดตแผงชักเย่อ: หลอดความตึงสาย (เขียว = กรอเร็ว แดง = ใกล้ขาด) หลอดระยะปลา และข้อความตามช่วงของปลา
+  if (!ft) return;
+  const ph = Shared.fightPhase(ft), F = Shared.FIGHT;
+  $('ftten').style.width = Math.min(100, ft.ten) + '%'; $('ffight').classList.toggle('danger', ft.ten >= 85 && !ft.end); $('ffight').classList.toggle('warn', ph === 'warn' || ph === 'surge'); $('ffight').classList.toggle('hold', ftHold);
+  $('ftdist').style.width = Math.max(0, Math.min(100, 100 - ft.dist)) + '%'; $('ftfish').style.left = Math.max(0, Math.min(100, 100 - ft.dist)) + '%';
+  if (!ft.end) $('ftxt').textContent = `${FT_SIZE[ft.cls] || ''}  ${ft.ten >= 85 ? '🔥 สายใกล้ขาด! ปล่อย!' : FT_TXT[ph]}`;
+}
 function frameTail(now, wall) { // กลางวัน/กลางคืน + นาฬิกา + แผนที่ย่อ (ใช้ทั้งในเมืองและในบ้าน)
+  if (ft && !ft.end) { const n = performance.now(); Shared.fightStep(ft, Math.min(250, n - ft.last), ftHold); ft.last = n; fightUI(); if (ft.end) fightUI(); } // ทำนายล่วงหน้า (ผลจริงตัดสินที่เซิร์ฟเวอร์ ส่งสถานะมาปรับทุก 150 ms)
   if (fg) { // ตัวชี้เกจตกปลา (เส้นทางเดียวกับที่เซิร์ฟเวอร์คำนวณ) อยู่ที่นี่เพื่อให้ขยับทุกฉาก ทั้งเมือง บ้าน ถ้ำ และทะเล (เดิมอยู่ในรอบวาดเมืองอย่างเดียว ในทะเลตัวชี้เลยค้างอยู่ซ้ายสุด)
     const pos = gaugePos({ gt0: fg.t0, per: fg.per }, performance.now()), inZ = Math.abs(pos - fg.c) <= fg.half;
     $('fgmk').style.left = pos * 100 + '%'; $('fgauge').classList.toggle('hit', inZ);

@@ -1532,6 +1532,10 @@ class World {
         if (p.scene) this.sceneBroadcast(p.scene, { t: 'use', id: p.id }, p); else this.broadcast({ t: 'use', id: p.id }, p);
         break;
       }
+      case 'reel': { // ชักเย่อ: on = กำลังกดค้าง (กรอสาย) off = ปล่อย • เดินการต่อสู้ถึงตอนนี้ด้วยสถานะเดิมก่อนค่อยเปลี่ยน
+        if (p.fish && p.fish.st === 'fight') { this.fightAdvance(p, Date.now()); if (p.fish && p.fish.st === 'fight') p.fish.hold = !!m.on; }
+        break;
+      }
       case 'act': {
         if (S.caveFloor(p.scene)) return S.isSeaScene(S.caveFloor(p.scene)) ? this.seaAct(p, m) : this.caveAct(p, m);
         if (p.scene) return this.houseAct(p, m);
@@ -2054,27 +2058,48 @@ class World {
     this.castFish(p, tx, ty, now, true, oc ? S.oceanZone(tx, ty) : '');
   }
   reelFish(p, now) { // กำลังตกปลาอยู่: กดอีกครั้งเพื่อดึงเบ็ด (ทั้งสระและทะเล ต่างกันที่ชุดปลา p.fish.sea)
-    if (p.fish.st === 'bite' && !S.gaugeHit(p.fish, now)) { // กดพลาดโซนกลาง ปลาหลุดทันที
+    const fi = p.fish;
+    if (fi.st === 'fight') return; // กำลังชักเย่อ: กรอผ่านข้อความ reel (กดค้าง) ไม่ใช่การกดดึงครั้งเดียว
+    if (fi.st === 'wait') { // ดึงเบ็ดก่อนปลากิน: คืนเหยื่อให้ (เดิมเสียเหยื่อฟรี มือใหม่กดซ้ำแล้วเสียของ)
+      if (fi.bk) this.add(p, fi.bk, 1);
+      this.toast(p, 'ดึงเบ็ดกลับ ยังไม่มีปลากิน (ได้เหยื่อคืน)'); this.sfx(p, 'miss'); p.fish = null; return;
+    }
+    if (!S.gaugeHit(fi, now)) { // กดพลาดโซนกลาง ปลาหลุดทันที
       this.toast(p, '❌ กดไม่ตรงกลาง ปลาหลุดไปแล้ว!'); this.sfx(p, 'miss'); send(p, { t: 'fg', off: 1 }); p.fish = null; return;
     }
-    if (p.fish.st === 'bite') {
-      send(p, { t: 'fg', off: 1 });
-      const fl = p.fish.fl, rod = p.fish.rod, G = S.FISH_GAUGE, perfect = S.gaugeCore(p.fish, now); // กดเป๊ะกลางโซน = อัตราปลาเต็ม / โดนแค่ขอบโซน = ปลาแพงเจอยากลง
-      const rareCd = (p.rec.rareAt || 0) > Date.now(); // ปลาหายากเพิ่งตกได้ พักรอบก่อน (ยังตกปลาธรรมดาได้)
-      const pool = S.fishPool(!!p.fish.sea).filter(f => f.lv <= fl && !(rareCd && f.sell >= 100)).map(f => ({ f, w: S.fishWeight(f, fl, rod, p.fish.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) * (p.fish.zone ? S.oceanZoneMul(p.fish.zone, f.lv) : 1) })) // ทะเลใหญ่: ปลาระดับที่ตรงโซนออกบ่อยขึ้น.filter(x => x.w > 0);
-      let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
-      for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
-      const firstFish = !p.fish.sea && !(this.achOf(p.rec).cnt.fish > 0); if (firstFish) f = FISH.find(x => x.id === S.NEWBIE.firstFish) || f; // ปลาตัวแรกในชีวิตการันตีตัวสวย
+    // กดเกจโดน = ตั้งเบ็ดติด → เลือกปลาตัวนี้เลย (ความแรงของปลาขึ้นกับกลุ่มราคา) แล้วเริ่มชักเย่อ (ชนะแล้วถึงได้ปลา)
+    send(p, { t: 'fg', off: 1 });
+    const fl = fi.fl, rod = fi.rod, G = S.FISH_GAUGE, perfect = S.gaugeCore(fi, now); // กดเป๊ะกลางโซน = อัตราปลาเต็ม / โดนแค่ขอบโซน = ปลาแพงเจอยากลง
+    const rareCd = (p.rec.rareAt || 0) > Date.now(); // ปลาหายากเพิ่งตกได้ พักรอบก่อน (ยังตกปลาธรรมดาได้)
+    const pool = S.fishPool(!!fi.sea).filter(f => f.lv <= fl && !(rareCd && f.sell >= 100)).map(f => ({ f, w: S.fishWeight(f, fl, rod, fi.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) * (fi.zone ? S.oceanZoneMul(fi.zone, f.lv) : 1) })).filter(x => x.w > 0); // ทะเลใหญ่: ปลาระดับที่ตรงโซนออกบ่อยขึ้น
+    let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
+    for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
+    const firstFish = !fi.sea && !(this.achOf(p.rec).cnt.fish > 0); if (firstFish) f = FISH.find(x => x.id === S.NEWBIE.firstFish) || f; // ปลาตัวแรกในชีวิตการันตีตัวสวย
+    const ft = S.fightNew(S.fishClass(f), rod, S.perkLv(fl), perfect, Math.random);
+    Object.assign(fi, { st: 'fight', pick: f, perfect, firstFish, ft, hold: false, last: now, sync: now, at: now + S.FIGHT.timeoutMs + 5000 });
+    send(p, { t: 'fight', cls: ft.cls, sched: ft.sched, dist: ft.dist, ten: ft.ten, str: ft.str, run: ft.run, spd: ft.spd, rise: ft.rise, perfect: !!perfect });
+    this.toast(p, perfect ? '🎯 ตั้งเบ็ดเป๊ะ! ปลาติดแล้ว กดค้างเพื่อกรอสาย' : '🎣 ปลาติดเบ็ด! กดค้างเพื่อกรอสาย ปล่อยเมื่อสายตึงเกินไป');
+  }
+  fightAdvance(p, now) { // เดินการชักเย่อของผู้เล่นไปถึงเวลา now ตามสถานะกรอล่าสุด (เรียกตอนรับ input และทุก tick) จบแล้วตัดสินผล
+    const fi = p.fish; if (!fi || fi.st !== 'fight') return;
+    const ms = Math.max(0, Math.min(2000, now - fi.last)); fi.last = now; S.fightStep(fi.ft, ms, fi.hold);
+    if (fi.ft.end) this.fightEnd(p, now);
+  }
+  fightEnd(p, now) {
+    const fi = p.fish, r = fi.ft.end; send(p, { t: 'fe', r });
+    if (r === 'win') return this.landFish(p, fi.pick, fi.perfect, fi.firstFish, fi.ft.peak < S.FIGHT.cleanBelow);
+    this.toast(p, r === 'snap' ? '💥 สายเอ็นขาด! ปลาหลุดไปแล้ว (อย่ากรอค้างตอนสายตึงจัด)' : '🐟 ปลาหนีไปได้... (ปล่อยสายนานเกินไป)'); this.sfx(p, 'miss'); p.fish = null;
+  }
+  landFish(p, f, perfect, firstFish, clean) { // ชนะการชักเย่อ: ให้ปลา XP ตามเดิม (ชักเย่อสะอาด = สายไม่เคยตึงจัด ได้ XP เพิ่ม)
+    const xpMul = (clean ? S.FIGHT.cleanXp : 1) * S.FIGHT.xpMul[S.fishClass(f)];
       this.add(p, 'fish_' + f.id, 1);
-      this.addXp(p, 'fish', f.xp); this.tire(p, 'fish', f.sell);
+      this.addXp(p, 'fish', Math.round(f.xp * xpMul)); this.tire(p, 'fish', f.sell);
       if (this.petLuck(p, f.emoji + ' ' + f.name)) this.add(p, 'fish_' + f.id, 1);
       if (f.sell >= 100) { p.rec.rareAt = Date.now() + S.RARE_CD_MS; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.RARE_CD_MS / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
-      this.toast(p, firstFish ? `🎉 ปลาตัวแรกของคุณเป็น ${f.emoji} ${f.name}! โชคดีสุดๆ` : `${perfect ? '🎯 เป๊ะ! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (firstFish) this.addLog(`🎣 ${p.name} ตกปลาครั้งแรกได้${f.emoji} ${f.name}!`); if (f.sell >= 100) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
+      this.toast(p, firstFish ? `🎉 ปลาตัวแรกของคุณเป็น ${f.emoji} ${f.name}! โชคดีสุดๆ` : `${perfect ? '🎯 เป๊ะ! ' : ''}${clean ? '✨ ชักเย่อสวย! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (firstFish) this.addLog(`🎣 ${p.name} ตกปลาครั้งแรกได้${f.emoji} ${f.name}!`); if (f.sell >= 100) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
       this.event(p, 'fish', f.sell); this.bookAdd(p, 'fish', f.id); this.broadcast({ t: 'catch', id: p.id, f: f.id }); // ทุกคนเห็นปลากระโดดขึ้นมาอยู่เหนือหัว
       this.sfx(p, f.sell >= 100 ? 'catch_big' : 'catch');
-    } else { this.toast(p, 'ดึงเบ็ดเร็วไป ปลาไม่ทันกิน'); this.sfx(p, 'miss'); }
     p.fish = null;
-    return;
   }
   castFish(p, tx, ty, now, sea, zone) { // โยนเบ็ด (ตรวจช่องน้ำ/ระยะไว้แล้วที่ผู้เรียก) หักเหยื่อ ตั้งเวลาปลากิน
     const inv = p.rec.inv;
@@ -2084,7 +2109,7 @@ class World {
     this.add(p, bk, -1);
     const fl = this.lv(p, 'fish'), rod = rodOf(inv);
     const wait = rand(5500, 12000) * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(fl) - 1)) * S.ROD_WAIT[rod] * (this.happyOn(p) ? S.VILLAGE.fishMul : 1);
-    p.fish = { st: 'wait', at: now + wait, fx: tx * TS + 16, fy: ty * TS + 16, fl, rod, bt, sea: !!sea, zone: zone || '' };
+    p.fish = { st: 'wait', at: now + wait, fx: tx * TS + 16, fy: ty * TS + 16, fl, rod, bt, bk, sea: !!sea, zone: zone || '' };
     this.sfx(p, 'cast'); this.durUse(p, 'rod');
   }
   act(p, tool, now, cx, cy) {
@@ -3288,12 +3313,16 @@ class World {
         this.toast(p, '🎣 ปลากินเบ็ดแล้ว! กดตอนตัวชี้อยู่ตรงกลาง!'); this.sfx(p, 'bite');
       }
       else if (f.st === 'bite' && now >= f.at) { p.fish = null; send(p, { t: 'fg', off: 1 }); this.toast(p, 'ปลาหนีไปแล้ว...'); }
+      else if (f.st === 'fight') { // ชักเย่อ: เดินเวลาตามสถานะกรอ + ส่งสถานะจริงให้เว็บปรับ (เว็บทำนายเองระหว่างนั้น)
+        this.fightAdvance(p, now);
+        const g = p.fish; if (g && g.st === 'fight' && now - g.sync >= 150) { g.sync = now; send(p, { t: 'fs', ten: +g.ft.ten.toFixed(1), dist: +g.ft.dist.toFixed(1), el: Math.round(g.ft.t) }); }
+      }
     }
     if (!this.players.size) return;
     const groups = new Map(); // ส่งตำแหน่งแยกตามฉาก: คนในบ้านเห็นเฉพาะคนในบ้านเดียวกัน
     for (const q of this.players.values()) { const k = q.scene || ''; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(q); }
     for (const [k, ps] of groups) {
-      const msg = { t: 's', p: ps.map(p => [p.id, Math.round(p.x), Math.round(p.y), p.dir, p.fish ? (p.fish.st === 'bite' ? 2 : 1) : 0, p.fish ? p.fish.fx : 0, p.fish ? p.fish.fy : 0, p.sit ? (p.sit.lie ? 2 : 1) : 0, p.fish ? p.fish.bt || 1 : 1]), n: [], pt: [], c: [] };
+      const msg = { t: 's', p: ps.map(p => [p.id, Math.round(p.x), Math.round(p.y), p.dir, p.fish ? (p.fish.st === 'bite' ? 2 : p.fish.st === 'fight' ? 3 : 1) : 0, p.fish ? p.fish.fx : 0, p.fish ? p.fish.fy : 0, p.sit ? (p.sit.lie ? 2 : 1) : 0, p.fish ? p.fish.bt || 1 : 1]), n: [], pt: [], c: [] };
       if (!k) {
         msg.n = this.npcs.map(n => [n.id, Math.round(n.x), Math.round(n.y), n.dir]);
         msg.pt = this.pets.map(q => [q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? 1 : 0]);
