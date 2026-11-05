@@ -103,7 +103,7 @@ assert.strictEqual(a.rec.ach && a.rec.ach.cnt.mine, 1, 'นับสถิติ
     { const oh = wb.msgs.filter(z => z.t === 'oh' && z.x === bx && z.y === by).pop(); assert.ok(oh && oh.f > 0 && oh.f < 1, 'คนในถ้ำเห็นก้อนแร่ร้าว (HP ที่เหลือ 0–1)'); }
     a.lastAct = 0; w.handle(a, { t: 'act', tool: 'pick', tx: bx, ty: by }); assert.ok(F1.ores.has(bk), 'ฟาดถี่กว่าความยาวท่า (SWING_MS) ไม่นับ');
     act(a, bx, by);
-    const got = a.rec.inv.stone - before; assert.ok(!F1.ores.has(bk) && got >= 5 && got <= 8, 'ก้อนใหญ่ได้ 5–8 ชิ้น ได้ ' + got); } }
+    const got = a.rec.inv.stone - before; assert.ok(!F1.ores.has(bk) && got >= S.ORE_SIZES[2].drop[0] && got <= S.ORE_SIZES[2].drop[1], `ก้อนใหญ่ได้ ${S.ORE_SIZES[2].drop.join('–')} ชิ้น ได้ ` + got); } }
 
 // เริ่มเงื้อ (sw): คนในชั้นเดียวกันเห็นท่าทันที ก่อนผลจริงจะมาตอนกระทบ
 { wb.msgs.length = 0; a.swAt = 0; w.handle(a, { t: 'sw' }); assert.ok(wb.msgs.some(z => z.t === 'use' && z.id === a.id), 'sw = คนอื่นเห็นท่าเงื้อ'); }
@@ -112,9 +112,9 @@ assert.strictEqual(a.rec.ach && a.rec.ach.cnt.mine, 1, 'นับสถิติ
 { const c = find('copper'); const [cx, cy] = c[0].split(',').map(Number); stand(a, [cx, cy]); act(a, cx, cy);
   assert.ok(F1.ores.has(c[0]) && !F1.hp.has(c[0]), 'เลเวล/อีเต้อไม่ถึง ขุดไม่ได้ ไม่ลด HP'); }
 
-// แร่เกิดใหม่เมื่อครบ MINE.respawnMs (1/3 วันในเกม) ที่ช่องเดิมที่ขุด (ถ้าไม่ว่างค่อยสุ่มช่องใหม่ในชั้นเดิม) โดยไม่ปิดทางเดิน
+// แร่เกิดใหม่เมื่อครบ MINE.respawnMs (1/5 วันในเกม) ที่ช่องเดิมที่ขุด (ถ้าไม่ว่างค่อยสุ่มช่องใหม่ในชั้นเดิม) โดยไม่ปิดทางเดิน
 assert.ok(F1.wait.length >= 1); const waitN = F1.wait.length, oresN = F1.ores.size; w.oreTick(Date.now() + 1000); assert.strictEqual(F1.wait.length, waitN, 'ยังไม่ครบวัน');
-assert.strictEqual(S.MINE.respawnMs, S.DAY_MS / 3);
+assert.strictEqual(S.MINE.respawnMs, S.DAY_MS / 5);
 { const before = new Set(F1.ores.keys()); w.oreTick(Date.now() + S.MINE.respawnMs + 1000);
   assert.ok(!F1.wait.length && F1.ores.size === oresN + waitN, 'ครบเวลาเกิดใหม่ครบทุกก้อน');
   const fresh = [...F1.ores.keys()].filter(k => !before.has(k)); assert.strictEqual(fresh.length, waitN);
