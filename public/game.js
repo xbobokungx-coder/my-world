@@ -44,7 +44,7 @@ const happyOn = () => villageEnd > Date.now();
 const buffExp = {}; // บัฟที่ยังมีผลอยู่: id -> เวลาหมด (ms ของนาฬิกาเครื่องนี้)
 const buffOn = id => (buffExp[id] || 0) > Date.now();
 const build = { on: false, sel: null, erase: false, pick: null, rot: 0 }; // sel = ชนิดที่จะวาง • erase = เก็บคืน • pick = id ของชิ้นที่เลือกไว้จะย้าย/หมุน • rot = ทิศของชิ้นที่จะวาง
-let fg = null, ft = null, ftHold = false, wtr = 10, dur = {}, cin = null, cinAt = 0, cinWatching = false, tradeSt = null, tradeReq = null;
+let deepFloor = 1, fg = null, ft = null, ftHold = false, wtr = 10, dur = {}, cin = null, cinAt = 0, cinWatching = false, tradeSt = null, tradeReq = null;
 const mult = k => market[k] || 1;
 let timeOffset = 0, lastSend = 0, lastSent = '', swing = 0, lastAct = 0, actGap = 200, shopKind = null, bagTab = 'status', flash = null;
 let miniState = ls.get('mw_mini') || 'small'; // small | big | off
@@ -131,7 +131,7 @@ function handle(m) {
     case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'pin') $('pin').focus(); if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
     case 'w':
       resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; if (m.fr) freshSt = m.fr; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
-      dur = m.dur || {}; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
+      dur = m.dur || {}; deepFloor = m.deep || 1; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
       if (m.trees) applyTrees(m.trees);
       if (m.mapOv) applyMapOv(m.mapOv);
       checkProjects(); // สะพาน/ประภาคาร/เกาะ มีให้เลยตั้งแต่ต้น
@@ -209,7 +209,8 @@ function handle(m) {
       break;
     }
     case 'tile': if (m.v) farm[m.k] = m.v; else delete farm[m.k]; break;
-    case 'inv': inv = m.inv; if (m.fr) freshSt = m.fr; renderHud(); refreshOpen(); updateLampBtn(); updatePetBtn(); break;
+    case 'deep': deepFloor = m.n | 0 || 1; refreshOpen(); break;
+    case 'inv': inv = m.inv; if (m.deep) deepFloor = m.deep; if (m.fr) freshSt = m.fr; renderHud(); refreshOpen(); updateLampBtn(); updatePetBtn(); break;
     case 'skills': skills = m.skills; refreshOpen(); break;
     case 'msg': toast(m.text); break;
     case 'gift': showGift(m.item); break;
@@ -1369,6 +1370,14 @@ function renderShop() {
       h += `<div class="row"><span>🏡 แปลง ${P.id}<br><small>${active ? (mine ? `ของคุณ • เหลือ ${left}` : `${r.name} เช่าอยู่ • เหลือ ${left}`) : 'ว่าง (ล็อกไว้ ยังไม่มีคนเช่า)'}</small></span><span>${active && !mine ? '' : `<button class="btn small" data-rent="${P.id}" ${(inv.coin || 0) < R.price ? 'disabled' : ''}>${mine ? 'ต่อเวลา' : 'เช่า'} 🪙${R.price}</button>`}</span></div>`;
     }
   }
+  if (shopKind === 'mine') { // ตั๋วลงเหมือง: จ่ายลงตรงไปชั้นที่เคยเดินลงถึง (ลงเดินเองฟรีเหมือนเดิม)
+    const fees = Shared.MINE.fee, coin = inv.coin || 0; let rows = '';
+    for (let f = 2; f <= Shared.MINE.floors; f++) {
+      const ok = f <= deepFloor, kind = Shared.ORE_ORDER[f - 1], O = ORES[kind];
+      rows += `<div class="row${ok ? '' : ' lock'}"><span>🎫 ชั้น ${f} ${O ? O.emoji : ''}<br><small>${ok ? 'ลงตรงไปชั้นนี้' : '🔒 ยังไม่เคยลงถึง (เดินลงเองให้ถึงก่อนครั้งแรก)'}</small></span><span>🪙${fees[f]} <button class="btn small" data-ticket="${f}" ${!ok || coin < fees[f] ? 'disabled' : ''}>ซื้อตั๋ว</button></span></div>`;
+    }
+    h += `<div class="sec">🎫 ตั๋วลงเหมือง (ข้ามการเดินหาบันได • ไม่อยากเสียเงินก็เดินลงเองได้ฟรี • ลงถึงชั้นลึกสุดที่เคยไปแล้ว: ชั้น ${deepFloor})</div>` + rows;
+  }
   if (shopKind === 'pet') h += petPanelHtml();
   const tierOf = t => (t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : 1);
   const fixable = tabs && farmTab !== 'gear' ? [] : Object.keys(DURABILITY).filter(t => DURABILITY[t].shop === shopKind && tierOf(t) > 0);
@@ -1429,6 +1438,7 @@ function renderShop() {
   body.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => send({ t: 'sell', item: b.dataset.sell, n: b.dataset.n === 'all' ? 'all' : 1 }));
   body.querySelectorAll('[data-eat]').forEach(b => b.onclick = () => send({ t: 'eat', item: b.dataset.eat }));
   body.querySelectorAll('[data-repair]').forEach(b => b.onclick = () => send({ t: 'repair', tool: b.dataset.repair }));
+  body.querySelectorAll('[data-ticket]').forEach(b => b.onclick = () => { const f = +b.dataset.ticket; ask(`ซื้อตั๋วลงเหมืองชั้น ${f} 🪙${Shared.MINE.fee[f]}? (ลงเดินเองฟรี)`, () => { send({ t: 'mineticket', f }); closeShop && closeShop(); }); });
   body.querySelectorAll('[data-rebuy]').forEach(b => b.onclick = () => send({ t: 'rebuy', tool: b.dataset.rebuy }));
   body.querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask(`ขายคืนได้ 🪙${sellbackValue(b.dataset.sellback)} (70% ของราคาซื้อ หัก 30%) ยืนยัน?`, () => send({ t: 'sellback', item: b.dataset.sellback })));
 }
@@ -2725,6 +2735,15 @@ function buildCaveBase() {
   for (let ty = 0; ty < H; ty++) for (let tx = 1; tx < W - 1; tx++) if (MAP[ty][tx] === T.DOWN && MAP[ty][tx - 1] !== T.DOWN && MAP[ty][tx + 1] === T.DOWN && MAP[ty][tx + 2] === T.DOWN) { const ax = (tx + 1.5) * TS, ay = (ty + 0.5) * TS; gh.fillStyle = '#e8f0ff'; gh.beginPath(); gh.moveTo(ax, ay + 7); gh.lineTo(ax + 7, ay - 3); gh.lineTo(ax + 3, ay - 3); gh.lineTo(ax + 3, ay - 7); gh.lineTo(ax - 3, ay - 7); gh.lineTo(ax - 3, ay - 3); gh.lineTo(ax - 7, ay - 3); gh.closePath(); gh.fill(); } // ลูกศรลงบนบันไดกลาง
 }
 const ORE_SCALE = [2, 3, 4]; // ขยายสไปรต์แร่ (ช่อง 16×16) ตามขนาดก้อน: เล็ก 32 px • กลาง 48 px • ใหญ่ 64 px
+// ก้อนที่ขุดไม่ได้ตอนนี้ (เลเวลนักขุดไม่ถึง หรืออีเต้อต่ำกว่าแร่เกิน 1 ระดับ) ทำให้หม่นและมี 🔒 ให้ผู้เล่นใหม่แยกออก • อีเต้อต่ำกว่า 1 ระดับ (ขุดได้แต่ช้า) ขึ้น 🐌
+function drawOreLock(tx, ty, k) {
+  const O = Shared.ORES[k]; if (!O) return; const pk = pickLevel(), lockedLv = lvl('mine') < O.lv, lockedPick = !pk || pk < O.pick - 1, slow = !lockedLv && !lockedPick && pk < O.pick;
+  if (!lockedLv && !lockedPick && !slow) return;
+  const x = tx * TS, y = ty * TS;
+  if (!slow) { ctx.fillStyle = 'rgba(16,20,34,.42)'; ctx.fillRect(x + 3, y + 5, TS - 6, TS - 9); }
+  ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#2a1b14'; ctx.lineWidth = 3;
+  const t = slow ? '🐌' : '🔒', ty2 = y + 12; ctx.strokeText(t, x + TS / 2, ty2); ctx.fillText(t, x + TS / 2, ty2);
+}
 function drawOre(tx, ty, k, now, sz, ctx = mainCtx) {
   const spr = PixelOre.has(k) && PixelOre.get(k, sz | 0, (now / 500 | 0) & 1); // สไปรต์พิกเซลวาดมือ (ชนิดที่ยังไม่มีใช้แบบเดิมด้านล่าง)
   if (spr) {
@@ -2761,7 +2780,7 @@ function drawCaveWorld(now) {
   }
   const vw = canvas.width / zoom, vh = canvas.height / zoom, x0 = Math.max(0, Math.floor(camX / TS) - 1), x1 = Math.min(W - 1, Math.ceil((camX + vw) / TS) + 1), y0 = Math.max(0, Math.floor(camY / TS) - 1), y1 = Math.min(H - 1, Math.ceil((camY + vh) / TS) + 1);
   const list = [];
-  for (const [k, id] of oreK) { const [tx, ty] = k.split(',').map(Number); if (tx >= x0 && tx <= x1 && ty >= y0 && ty <= y1) list.push({ y: (ty + 1) * TS - 2, f: () => drawOre(tx, ty, id, now, oreS.get(k)) }); }
+  for (const [k, id] of oreK) { const [tx, ty] = k.split(',').map(Number); if (tx >= x0 && tx <= x1 && ty >= y0 && ty <= y1) list.push({ y: (ty + 1) * TS - 2, f: () => { drawOre(tx, ty, id, now, oreS.get(k)); drawOreLock(tx, ty, id); } }); }
   for (const [k, b] of oreBurst) { // ก้อนแร่แตก: สไปรต์ชีตแตกกระจาย (PixelAction.shatter ~0.65 วินาที)
     const t = now - b.t; if (t >= 650) { oreBurst.delete(k); continue; }
     const [tx, ty] = k.split(',').map(Number); list.push({ y: (ty + 1) * TS + 20, f: () => PixelAction.shatter(ctx, tx * TS + 16, ty * TS + 18, t, b.k && ORE_COL[b.k], tx * 7 + ty, b.s === 2) });

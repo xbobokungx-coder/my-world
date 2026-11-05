@@ -13,6 +13,7 @@ const M = {
   fishOver: 3,     // วินาทีนอกเวลารอปลาต่อการเหวี่ยง 1 ครั้ง (เหวี่ยง กดเกจ เก็บ)
   fishHit: 0.8,    // สัดส่วนที่กดเกจโดน
   treeWalk: 5,     // วินาทีเดินระหว่างต้นไม้ + ฟันครั้งละ 0.7 วินาที
+  mineGear: !process.env.NO_GEAR,  // นักขุดแร่ซื้อถุงมือ/ค้อนตามเลเวลที่ปลดแล้ว (เพดานบน) ตั้ง false ดูแบบไม่มีอุปกรณ์เสริม (NO_GEAR=1 ก็ได้)
   oreWalk: 6,      // วินาทีเดินหาก้อนแร่ถัดไปในถ้ำ (ชั้นละ ~30–40 ก้อน ห่างกัน ≥ 3 ช่อง) + ขุดครั้งละ 0.7 วินาที
   treeRegen: 60000 / S.TREE.growMs, // ต้นไม้งอกใหม่ต่อนาทีทั้งห้อง (เพดานระยะยาวของการตัดไม้คนเดียว)
   EFF: 0.5,        // ผู้เล่นจริงทำได้กี่เท่าของเพดานนี้
@@ -104,17 +105,19 @@ function cook(lv) {
 
 // ขุดเหมือง (ถ้ำ 10 ชั้น): ผู้เล่นเลเวล n ลงชั้น n ขุดได้เฉพาะแร่ที่เลเวลถึง (ส่วนที่เหลือของชั้นข้าม) ใช้อีเต้อดีสุดที่ซื้อได้ ก้อนมี 3 ขนาด (HP/ชิ้นต่างกัน) • อีเต้อสึก 1 ครั้งต่อก้อน
 // เพดานคนเดียว: ชั้นละ ~30–40 ก้อนเกิดใหม่ทุก 4 นาที (~8 ก้อน/นาที) มากกว่าที่คนเดียวขุดทัน จึงติดความเร็วขุด+เดินหา ไม่ติดซัพพลาย
-function mine(lv) {
-  const pk = S.pickTier(Object.fromEntries(Object.entries(S.PICKS).filter(([, p]) => !p.lv || p.lv <= lv).map(([t]) => ['pick_' + t, 1]))), power = S.PICKS[pk].power, wl = 1 + S.MINE.xpPerLv * (S.perkLv(lv) - 1);
-  const wear = S.TOOL_PRICE.pick[pk] / S.DURABILITY.pick.max[pk] * S.WEAR_RATE.base * 1.35; // ต่อก้อน (1.35 = ซ่อม/ซื้อใหม่เฉลี่ย)
-  const mix = Object.entries(S.floorMix(Math.min(Math.ceil(lv / 2), S.MINE.floors))).filter(([k]) => S.ORES[k].lv <= lv && S.ORES[k].pick <= pk), share = mix.reduce((a, [, w]) => a + w, 0) / 100;
-  let val = 0, xp = 0, pcs = 0, secs = 0;
+function mine(lv, gear = M.mineGear) { // 6 พ.ย. 2026: ใช้ S.mineHit จริง (ถุงมือ ค้อน ขุดช้าเมื่ออีเต้อต่ำกว่าแร่ 1 ระดับ แรงเกินแร่ได้ชิ้นเพิ่ม) • gear = ผู้เล่นซื้อถุงมือ/ค้อนสูงสุดที่เลเวลนี้ปลดแล้ว (เพดานบน)
+  const inv = {}; for (const [t, p] of Object.entries(S.PICKS)) if (!p.lv || p.lv <= lv) inv['pick_' + t] = 1;
+  if (gear) { for (const [t, g] of Object.entries(S.GLOVES)) if (g.lv <= lv) inv['glove_' + t] = 1; for (const [t, h] of Object.entries(S.HAMMERS)) if (h.lv <= lv) inv['hammer_' + t] = 1; }
+  const pk = S.pickTier(inv), wl = 1 + S.MINE.xpPerLv * (S.perkLv(lv) - 1), fl = Math.min(Math.ceil(lv / 2), S.MINE.floors);
+  const mix = Object.entries(S.floorMix(fl)).filter(([k]) => S.ORES[k].lv <= lv && S.mineHit(inv, k, 0)), share = mix.reduce((a, [, w]) => a + w, 0) / 100;
+  let val = 0, xp = 0, pcs = 0, secs = 0, wearC = 0;
   for (const [k, w] of mix) { const o = S.ORES[k], f = w / 100 / share; // สัดส่วนในกลุ่มที่ขุดได้
-    for (let i = 0; i < S.ORE_SIZES.length; i++) { const z = S.ORE_SIZES[i], p = f * S.sizeMix(Math.min(Math.ceil(lv / 2), S.MINE.floors))[i] / 100, n = (z.drop[0] + z.drop[1]) / 2;
-      val += p * n * o.sell; xp += p * n * o.xp; pcs += p * n; secs += p * Math.ceil(S.oreHp(k, i) / power) * 0.7; } }
+    for (let i = 0; i < S.ORE_SIZES.length; i++) { const z = S.ORE_SIZES[i], p = f * S.sizeMix(fl)[i] / 100, n = (z.drop[0] + z.drop[1]) / 2, mh = S.mineHit(inv, k, i);
+      val += p * (n + mh.extra) * o.sell; xp += p * n * o.xp; pcs += p * (n + mh.extra); secs += p * mh.hits * 0.7;
+      wearC += p * S.TOOL_PRICE.pick[pk] / S.DURABILITY.pick.max[pk] * S.WEAR_RATE.base * 1.35 * mh.wear; } } // ซ่อม/ซื้อใหม่เฉลี่ยต่อก้อน (ตัวคูณ 1.35) × ตัวคูณการสึก
   secs += M.oreWalk / Math.sqrt(share); // ก้อนที่ขุดไม่ได้ (เลเวลไม่ถึง) ทำให้ต้องเดินหาไกลขึ้น
   const npm = 60 / secs;
-  return { pick: mix.slice(-1)[0][0], coin: npm * (val - wear) * 60, xp: npm * xp * wl * 60, gross: npm * val * 60, cost: npm * wear * 60, pieces: npm * pcs * 60, cat: 'ore' };
+  return { pick: mix.slice(-1)[0][0], coin: npm * (val - wearC) * 60, xp: npm * xp * wl * 60, gross: npm * val * 60, cost: npm * wearC * 60, pieces: npm * pcs * 60, cat: 'ore' };
 }
 const SIMS = { farm, fish, animal, wood, cook, mine };
 function simulate() {

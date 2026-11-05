@@ -11,7 +11,7 @@ const last = (ws, t) => { for (let i = ws.msgs.length - 1; i >= 0; i--) if (ws.m
   assert.deepStrictEqual(S.floorMix(1), { stone: 80, copper: 20 }); // ชั้น 1 พิเศษ (MINE.mix1) ไม่มีเงิน
   assert.deepStrictEqual(S.floorMix(5), { emerald: 70, opal: 20, sapphire: 10 });
   assert.deepStrictEqual(S.floorMix(9), { moonstone: 70, mythril: 30 });
-  assert.deepStrictEqual(S.floorMix(10), { mythril: 100 });
+  assert.deepStrictEqual(S.floorMix(10), { mythril: 70, moonstone: 30 }); // ชั้นลึกสุดมีมูนสโตนปนให้ Lv17–18 ขุดได้บ้าง
   assert.strictEqual(S.ORE_ORDER.length, S.MINE.floors, 'แร่ 1 ระดับต่อ 1 ชั้น');
   assert.strictEqual(S.pickTier({ pick_2: 1, pick_5: 1 }), 5); assert.strictEqual(S.pickTier({}), 0);
   assert.strictEqual(S.caveFloor('@cave7'), 7); assert.strictEqual(S.caveFloor('alice'), 0); assert.strictEqual(S.caveFloor(null), 0);

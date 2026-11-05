@@ -273,8 +273,19 @@ class World {
   }
   caveMove(p, f, to) { // ย้ายชั้น (to = ชั้นใหม่) ขึ้นมาจากชั้นล่างยืนข้างบันไดลง ลงมาจากชั้นบนยืนที่จุดเกิด
     const at = to < f ? this.caveLanding(to) : S.CAVE.spawn;
+    if (!S.isSeaScene(to) && to > (p.rec.deep || 1) && to <= S.MINE.floors) { p.rec.deep = to; send(p, { t: 'deep', n: to }); this.dirty = true; } // จำชั้นลึกสุดที่เดินลงถึง (ไว้ซื้อตั๋วลงตรง)
     this.changeScene(p, CAVE + to, at.x, at.y);
-    this.toast(p, `⛏️ ถ้ำเหมือง ชั้น ${to}${to === S.MINE.floors ? ' (ชั้นลึกสุด มิทริลล้วน)' : ''} • แร่ส่วนใหญ่ระดับ ${to}`);
+    this.toast(p, `⛏️ ถ้ำเหมือง ชั้น ${to}${to === S.MINE.floors ? ' (ชั้นลึกสุด มิทริล 70% มูนสโตน 30%)' : ''} • แร่ส่วนใหญ่ระดับ ${to}`);
+  }
+  mineTicket(p, f) { // ตั๋วลงเหมือง: จ่ายเหรียญลงตรงไปชั้น f (≤ ชั้นลึกสุดที่เดินลงถึงเอง) ต้องอยู่ในเมืองใกล้ร้านช่างเหมือง • เงินจมล้วน (ลงเดินเองฟรีเหมือนเดิม)
+    if (!Number.isInteger(f) || f < 2 || f > S.MINE.floors) return;
+    if (p.scene) return this.toast(p, 'ซื้อตั๋วลงเหมืองได้ตอนอยู่ในเมือง');
+    if (this.nearShopKind(p) !== 'mine') return this.toast(p, 'ต้องยืนใกล้ร้านช่างเหมือง ⚒️ ถึงซื้อตั๋วได้');
+    if (f > (p.rec.deep || 1)) return this.toast(p, `ยังไม่เคยลงถึงชั้น ${f} ลงเดินเองให้ถึงชั้นนี้ก่อนครั้งแรก แล้วค่อยซื้อตั๋วได้`);
+    const fee = S.MINE.fee[f]; if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `เหรียญไม่พอ ตั๋วลงชั้น ${f} ราคา 🪙${fee}`);
+    this.add(p, 'coin', -fee, 'mineticket'); logEv(this.room, 'mineticket', { p: p.key, f, fee });
+    this.enterCave(p); if (S.caveFloor(p.scene) !== 1) { this.add(p, 'coin', fee, 'mineticket'); return; } // เข้าถ้ำไม่ได้ (เช่นมีเงื่อนไขอื่นขวาง) คืนเงิน
+    this.caveMove(p, 1, f); this.toast(p, `🎫 ใช้ตั๋วลงชั้น ${f} (-🪙${fee})`); this.sfxTo(p, 'coin');
   }
   houseMap() { return this.hmap; } // แมพบ้านเป็นผนัง/พื้นเหมือนกันทุกหลัง (ของตกแต่งอยู่นอกตาราง ดู houseRects)
   houseRects(key) { let r = this.hrects.get(key); if (!r) { r = S.houseSolidRects(this.houses[key] ? this.houses[key].items : {}); this.hrects.set(key, r); } return r; }
@@ -1408,7 +1419,7 @@ class World {
     if (S.perishable(key) && n) { if (n > 0) this.lotPut(p.rec, key, lots || [[Date.now(), n]]); else taken = this.lotTake(p.rec, key, -n); }
     inv[key] = Math.max(0, (inv[key] || 0) + n);
     if (!inv[key] && key !== 'coin') delete inv[key];
-    send(p, { t: 'inv', inv, fr: this.freshPub(p.rec, p.key) });
+    send(p, { t: 'inv', inv, fr: this.freshPub(p.rec, p.key), deep: p.rec.deep || 1 });
     this.dirty = true;
     return taken;
   }
@@ -1469,7 +1480,7 @@ class World {
     const now = Date.now(), farm = {};
     for (const k in this.farm) farm[k] = this.pub(this.farm[k], now);
     send(p, {
-      t: 'w', first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, fr: this.freshPub(rec, key), skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
+      t: 'w', deep: rec.deep || 1, first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, fr: this.freshPub(rec, key), skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
       players: [...this.players.values()].filter(q => !q.scene).map(q => this.pubFull(q)),
       roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
@@ -1633,6 +1644,7 @@ class World {
       case 'ch': if (m.a === 'start') this.chStart(p); else if (m.a === 'redeem') this.chRedeem(p); else this.chPush(p); break;
       case 'stall': if (m.a === 'list') send(p, { t: 'stall', l: this.stallPub() }); else this.stallHandle(p, m); break;
       case 'orders': if (m.a === 'fill') this.orderFill(p, m.id); send(p, { t: 'orders', o: this.ordersPub(p) }); break;
+      case 'mineticket': this.mineTicket(p, m.f | 0); break;
       case 'buy': this.buy(p, m.item, Math.min(10, Math.max(1, m.n | 0))); break;
       case 'sell': this.sell(p, m.item, m.n); break;
       case 'sea': this.seaGo(p); break;
@@ -1997,21 +2009,28 @@ class World {
     const key = tx + ',' + ty, ore = F.ores.get(key);
     if (!ore) return this.toast(p, 'ใช้อีเต้อขุดก้อนแร่ในถ้ำ 🪨 (หันหน้าหาก้อนแร่ หรือแตะที่ก้อนแร่)');
     const kid = ore.k, O = S.ORES[kid], ml = this.lv(p, 'mine');
-    if (ml < O.lv || pick < O.pick) return this.toast(p, `🔒 ${O.emoji} ${O.name}ต้องเป็นนักขุดแร่ Lv${O.lv} และใช้${S.PICKS[O.pick].name}ขึ้นไป`);
+    if (ml < O.lv) return this.toast(p, `🔒 ${O.emoji} ${O.name}ต้องเป็นนักขุดแร่ Lv${O.lv} ขึ้นไป`);
+    const mh = S.mineHit(inv, kid, ore.s); // ดาเมจ/สึก/โบนัสตามอีเต้อ ถุงมือ ค้อน เทียบแร่ (ต่ำกว่าแร่ 1 ระดับ = ขุดได้แต่ช้า)
+    if (!mh) return this.toast(p, `🔒 ${O.emoji} ${O.name}ต้องใช้${S.PICKS[Math.max(1, O.pick - 1)].name}ขึ้นไป (ต่ำกว่านี้ขุดไม่ได้)`);
     let h = F.hp.get(key);
     if (!h || now - h.t > 20000) h = { hp: S.oreHp(kid, ore.s), t: now };
-    h.hp -= S.PICKS[pick].power; h.t = now;
+    if (!h.slowWarn && mh.slow) { h.slowWarn = true; this.toast(p, `🐌 ${S.PICKS[pick].name}ต่ำกว่าที่${O.name}ต้องการ ขุดได้แต่ช้าและอีเต้อสึกไว`); }
+    h.hp -= mh.dmg; h.t = now; h.n = (h.n || 0) + 1;
     this.sfx(p, 'chop');
-    if (h.hp > 0) { F.hp.set(key, h); this.sceneBroadcast(p.scene, { t: 'oh', x: tx, y: ty, f: +(h.hp / S.oreHp(kid, ore.s)).toFixed(2) }); const left = Math.ceil(h.hp / S.PICKS[pick].power); if (left <= 3 || left % 5 === 0) this.toast(p, `⚒️ ${O.emoji} ${O.name}ก้อน${S.ORE_SIZES[ore.s].name} อีก ${left} ครั้ง`); return; }
-    this.durUse(p, 'pick'); // ขุดแตก 1 ก้อน = อีเต้อสึก 1 ครั้ง (ไม่นับทุกครั้งที่ฟาด)
+    if (h.hp > 0) { F.hp.set(key, h); this.sceneBroadcast(p.scene, { t: 'oh', x: tx, y: ty, f: +(h.hp / S.oreHp(kid, ore.s)).toFixed(2) }); const left = Math.ceil(h.hp / mh.dmg - 1e-9); if (left <= 3 || left % 5 === 0) this.toast(p, `⚒️ ${O.emoji} ${O.name}ก้อน${S.ORE_SIZES[ore.s].name} อีก ${left} ครั้ง`); return; }
+    { const wf = Math.floor(mh.wear), wn = wf + (Math.random() < mh.wear - wf ? 1 : 0); for (let i = 0; i < wn; i++) { if (!this.durCur(p, 'pick')) break; this.durUse(p, 'pick'); } } // ขุดแตก 1 ก้อน = อีเต้อสึก ~1 ครั้ง (ไม่นับทุกครั้งที่ฟาด) ×ตัวคูณ: ต่ำกว่าแร่ ×2 / สูงกว่าแร่และถุงมือสึกน้อยลง
     F.hp.delete(key); F.ores.delete(key); F.map[ty][tx] = T.CAVE;
     F.wait.push({ x: tx, y: ty, at: now + S.MINE.respawnMs });
     this.sceneBroadcast(p.scene, { t: 'ore', x: tx, y: ty, k: '' });
-    const n = S.rollDrop(ore.s, Math.random), xp = O.xp * n, val = O.sell * n;
+    let n = S.rollDrop(ore.s, Math.random); const xp = O.xp * n; let bonus = false; // XP นับจากชิ้นปกติ (อีเต้อแรงเกินแร่ไม่ได้ XP เพิ่ม)
+    if (Math.random() < mh.extra) { n++; bonus = true; }
+    const val = O.sell * n;
     this.add(p, kid, n);
     this.addXp(p, 'mine', S.oreXp(xp, ml)); this.tire(p, 'mine', val);
+    if (!this.bookOf(p).ore[kid]) { const dx = Math.round(O.xp * S.MINE.discover); this.addXp(p, 'mine', dx); this.toast(p, `✨ ค้นพบแร่ใหม่ ${O.emoji} ${O.name}! โบนัส XP +${dx}`); this.bookAdd(p, 'ore', kid); } // ครั้งแรกของแร่ชนิดนี้
     if (this.petLuck(p, O.emoji + ' ' + O.name)) this.add(p, kid, 1);
-    this.toast(p, `⛏️ ขุดได้ ${O.emoji} ${O.name} x${n} (ก้อน${S.ORE_SIZES[ore.s].name})`); this.sfx(p, 'fell'); this.event(p, 'mine');
+    this.toast(p, `⛏️ ขุดได้ ${O.emoji} ${O.name} x${n} (ก้อน${S.ORE_SIZES[ore.s].name})${bonus ? ' ✨ อีเต้อแรง ได้เพิ่ม' : ''}`); this.sfx(p, 'fell'); this.event(p, 'mine');
+    logEv(this.room, 'mine', { p: p.key, f: cf, k: kid, s: ore.s, n, hits: h.n, pk: pick, gl: S.gloveTier(inv), hm: S.hammerTier(inv), slow: mh.slow ? 1 : 0, ml }); // บันทึกการขุดละเอียด (ชนิด ขนาด ชั้น อีเต้อ ครั้งที่ฟาด) ไว้วัดก้อน/ชม. และเวลาต่อเลเวล • tools/stats.js สรุป
   }
   // ----- ออกทะเล: เรือที่ท่าบนเกาะลึกลับ (S.SEA) → ฉากทะเล (ฉากเดียวกับถ้ำ ชั้น S.SEA.floor) ตกปลาทะเลลึกด้วยเบ็ด จำกัดเวลา -----
   seaFee(p) { return p.rec.inv.boat > 0 ? 0 : S.SEA.fee; }
