@@ -3228,7 +3228,7 @@ class World {
       this.treeTimer += dt;
       if (this.treeTimer >= S.TREE.growMs / 1000) { // ต้นไม้งอกใหม่ (เพดานตาม S.TREE.cap)
         this.treeTimer = 0;
-        let n = this.treeList().length;
+        const tl = this.treeList(), counts = {}; for (const t of tl) counts[t[2]] = (counts[t[2]] || 0) + 1; let n = tl.length;
         // ถ้าน้อยกว่าครึ่งเพดาน งอกทีละหลายต้น (ไล่ทันหลังถูกตัดเกลี้ยง/นาฬิกาพัง) ไม่เกิน 8 ต้น/รอบ
         const want = n >= this.treeCap ? 0 : Math.min(n * 2 < this.treeCap ? 8 : 1, this.treeCap - n);
         for (let spawned = 0; spawned < want; spawned++) {
@@ -3239,9 +3239,13 @@ class World {
             if (this.animals.some(a => Math.hypot(a.x - (x + 0.5) * TS, a.y - (y + 0.5) * TS) < 3 * TS)) continue;
             spots.push([x, y]);
           }
-          const pick = S.pickTreeSpawn(this.map, Math.random, spots); if (!pick) break;
-          const { x, y, k } = pick; this.treeKind.set(x + ',' + y, k);
+          const pick = S.pickTreeSpawn(this.map, Math.random, spots, counts, this.treeCap); if (!pick) break; if (pick.skip) continue; // ชนิดที่สุ่มได้เต็มโควตาแล้ว รอบนี้ไม่งอก
+          const { x, y, k } = pick; this.treeKind.set(x + ',' + y, k); counts[k] = (counts[k] || 0) + 1;
           this.map[y][x] = T.TREE; this.dirty = true; this.broadcast({ t: 'tree', x, y, on: true, k }); n++;
+        }
+        { // ถอนต้นที่เกินโควตาทีละต้นต่อรอบ (ไม่ถอนต้นที่มีคนอยู่ใกล้หรือกำลังฟัน) เพื่อเปิดที่ให้ชนิดที่ขาด • ปกติไม่มีต้นเกินโควตา (งอกกันไว้แล้ว) ใช้เคลียร์แมพเก่าที่ต้นแพงสะสมไว้
+          const pl = [...this.players.values()], cut = S.pickTreeTrim(this.treeList(), this.treeCap, Math.random, (x, y) => !(this.treeHp && this.treeHp.has(x + ',' + y)) && !pl.some(q => Math.hypot(q.x - (x + 0.5) * TS, q.y - (y + 0.5) * TS) < 4 * TS));
+          if (cut) { const [x, y] = cut; this.map[y][x] = T.GRASS; this.treeKind.delete(x + ',' + y); this.dirty = true; this.broadcast({ t: 'tree', x, y, on: false }); }
         }
       }
       const died = this.animals.filter(a => a.dead);

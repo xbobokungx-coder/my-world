@@ -627,10 +627,20 @@
   };
   // ต้นไม้งอกใหม่: สุ่มชนิดตามสัดส่วน % (pct) เฉพาะชนิดที่ตอนนี้มีช่องให้เกิด แล้วเลือกช่องที่ชนิดนั้นเกิดได้ • spots = [[x,y]] ช่องที่งอกได้ • คืน {x,y,k} หรือ null
   // (ชนิดที่ถูกตัดไปไม่ได้งอกคืนเร็วกว่าสัดส่วนของมัน ไม่ใช่ทางลัดฟาร์มไม้หายาก: อัตราที่ไม้หายากงอก = งอกรวม × pct ของมัน)
-  function pickTreeSpawn(m, rnd, spots) {
+  // โควตาต่อชนิด = pct × เพดาน (อย่างน้อย 1 ต้น) • ชนิดที่ถึงโควตาแล้วไม่งอกเพิ่ม (กันต้นแพงที่คนเลเวลต่ำตัดไม่ได้สะสมจนเต็มเพดาน 132 แล้วไม่เหลือต้นให้มือใหม่ตัด • 5 พ.ย. 2026)
+  const treeQuota = (id, cap) => Math.max(1, Math.ceil(TREE_KINDS[id].pct * cap / 100 - 1e-9));
+  // counts = { ชนิด: จำนวนต้นที่มีอยู่ } • สุ่มชนิดตาม pct เหมือนเดิม (อัตรางอกต่อชนิด = งอกรวม × pct ไม่ขึ้นกับว่าชนิดอื่นเต็ม) ถ้าสุ่มได้ชนิดที่เต็มโควตาแล้วคืน { skip: true } (รอบนี้ไม่งอก)
+  function pickTreeSpawn(m, rnd, spots, counts, cap) {
     const kinds = Object.entries(TREE_KINDS).map(([id, K]) => ({ id, pct: K.pct, ok: spots.filter(([x, y]) => treeWhereOk(m, x, y, K.where)) })).filter(o => o.ok.length);
     let t = rnd() * kinds.reduce((a, o) => a + o.pct, 0);
-    for (const o of kinds) if ((t -= o.pct) < 0) { const [x, y] = o.ok[Math.floor(rnd() * o.ok.length)]; return { x, y, k: o.id }; }
+    for (const o of kinds) if ((t -= o.pct) < 0) { if (counts && (counts[o.id] || 0) >= treeQuota(o.id, cap)) return { skip: true }; const [x, y] = o.ok[Math.floor(rnd() * o.ok.length)]; return { x, y, k: o.id }; }
+    return null;
+  }
+  // ต้นที่ควรถอน 1 ต้นเมื่อแมพเต็ม: ชนิดที่เกินโควตามากสุด (ok(x,y) = ช่องที่ถอนได้ เช่นไม่มีผู้เล่นอยู่ใกล้) คืน [x,y,ชนิด] หรือ null • list = [[x,y,ชนิด]]
+  function pickTreeTrim(list, cap, rnd, ok) {
+    const counts = {}; for (const t of list) counts[t[2]] = (counts[t[2]] || 0) + 1;
+    const over = Object.keys(counts).filter(id => TREE_KINDS[id] && counts[id] > treeQuota(id, cap)).sort((a, b) => (counts[b] - treeQuota(b, cap)) - (counts[a] - treeQuota(a, cap)));
+    for (const id of over) { const c = list.filter(t => t[2] === id && (!ok || ok(t[0], t[1]))); if (c.length) return c[Math.floor(rnd() * c.length)]; }
     return null;
   }
   // ปรับสัดส่วนชนิดต้นไม้ที่มีอยู่แล้วให้ได้ตามโควตา % (ใช้ครั้งเดียวตอนย้ายระบบ) • list = [[x,y]] • คืน { kinds: Map 'x,y' → ชนิด, add: [[x,y]] ต้องปลูกเพิ่ม, drop: [[x,y]] ต้องถอน } จำนวนต้นรวมเท่าเดิม
@@ -1489,7 +1499,7 @@
 
   const api = { OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
+    SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
