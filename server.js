@@ -199,7 +199,7 @@ class World {
     let F = this.floors.get(f); if (F) return F;
     const map = S.makeCaveMap(f), ores = new Map();
     if (!S.isSeaScene(f)) for (const o of S.caveOreSpots(map, f)) { ores.set(o.x + ',' + o.y, { k: o.k, s: o.s }); map[o.y][o.x] = T.ORE; }
-    F = { map, ores, hp: new Map(), wait: [] }; this.floors.set(f, F); return F;
+    F = { map, ores, hp: new Map(), wait: [], cap: Math.max(1, ores.size) }; this.floors.set(f, F); return F; // cap = จำนวนก้อนเต็มของชั้น (ไว้คิดโควตาชนิดแร่ตอนเกิดใหม่)
   }
   oresPub(f) { return [...this.floorOf(f).ores].map(([k, o]) => { const [x, y] = k.split(',').map(Number); return [x, y, o.k, o.s]; }); }
   oreSpot(F, f, mates, old) { // ช่องสำหรับก้อนแร่ใหม่ในชั้น f (ช่องเดิม old ก่อน ไม่ได้ค่อยสุ่ม): เป็นพื้นว่าง ไม่ใกล้ทางออก/บันไดลง/ผู้เล่น และพื้นที่เดินที่เหลือยังต่อถึงกันหมด ทุกก้อนยังมีที่ยืนขุด (กติกาเดียวกับตอนวางครั้งแรก) • ไม่พบ = null
@@ -225,12 +225,12 @@ class World {
   oreTick(now) { // ก้อนแร่ที่ขุดไปครบเวลา MINE.respawnMs เกิดใหม่ที่ช่องเดิม (ถ้าไม่ว่างค่อยสุ่มช่องใหม่) ในชั้นเดิม (สุ่มชนิด/ขนาดใหม่ตามชั้น ไม่มีช่องใหม่ = เกิดที่เดิม)
     for (const [f, F] of this.floors) {
       if (!F.wait.length) continue;
-      const rest = [], mates = this.sceneMates(CAVE + f);
+      const rest = [], mates = this.sceneMates(CAVE + f), counts = {}; for (const o of F.ores.values()) counts[o.k] = (counts[o.k] || 0) + 1;
       for (const w of F.wait) {
         if (now < w.at) { rest.push(w); continue; }
         const spot = this.oreSpot(F, f, mates, w) || (S.oreNear(F.map, w.x, w.y) || mates.some(q => Math.abs(q.x - (w.x + 0.5) * TS) < TS && Math.abs(q.y - (w.y + 0.5) * TS) < TS) ? null : [w.x, w.y]);
         if (!spot) { w.at = now + 5000; rest.push(w); continue; } // ไม่มีที่ให้เกิด/มีคนยืนทับที่เดิม รอรอบหน้า
-        const [x, y] = spot, o = { k: S.rollOre(f, Math.random), s: S.rollSize(Math.random, f) };
+        const [x, y] = spot, o = { k: S.rollOreQuota(f, Math.random, counts, F.cap), s: S.rollSize(Math.random, f) }; counts[o.k] = (counts[o.k] || 0) + 1;
         F.ores.set(x + ',' + y, o); F.map[y][x] = T.ORE;
         this.sceneBroadcast(CAVE + f, { t: 'ore', x, y, k: o.k, s: o.s });
       }

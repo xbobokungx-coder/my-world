@@ -526,6 +526,11 @@
   const oreHp = (kind, size) => Math.round(ORES[kind].hp * ORE_SIZES[size].hp);
   const floorMix = f => { const d = {}; (f === 1 ? MINE.mix1 : MINE.mix).forEach((w, i) => { const k = ORE_ORDER[Math.min(ORE_ORDER.length, f + i) - 1]; d[k] = (d[k] || 0) + w; }); return d; }; // สัดส่วน % ของแร่แต่ละชนิดในชั้น f
   const rollOre = (f, R) => { let t = R() * 100, k = ORE_ORDER[ORE_ORDER.length - 1]; for (const [id, w] of Object.entries(floorMix(f))) { if ((t -= w) < 0) { k = id; break; } } return k; };
+  // แร่เกิดใหม่แบบมีโควตาต่อชนิด (5 พ.ย. 2026): สุ่มเฉพาะชนิดที่ยังไม่ถึงโควตา = สัดส่วนของชั้น × จำนวนก้อนของชั้น • กันแร่ที่ผู้เล่นขุดไม่ได้ (เลเวล/อีเต้อไม่ถึง) สะสมจนเต็มชั้นแล้วแร่ที่ขุดได้ไม่เหลือ (เดิมชั้น 1 กลายเป็นทองแดงล้วนใน ~100 รอบขุด)
+  const rollOreQuota = (f, R, counts, cap) => {
+    const ent = Object.entries(floorMix(f)), under = ent.filter(([id, w]) => (counts[id] || 0) < Math.max(1, Math.ceil(w * cap / 100 - 1e-9))), pool = under.length ? under : ent;
+    let t = R() * pool.reduce((a, [, w]) => a + w, 0); for (const [id, w] of pool) if ((t -= w) < 0) return id; return pool[pool.length - 1][0];
+  };
   const sizeMix = f => SIZE_MIX[Math.max(1, Math.min(SIZE_MIX.length, f | 0)) - 1] || ORE_SIZES.map(z => z.w); // สัดส่วนขนาด % ของชั้น f (ไม่ระบุชั้น = ฐาน)
   const rollSize = (R, f) => { const mx = f ? sizeMix(f) : ORE_SIZES.map(z => z.w); let t = R() * 100; for (let i = 0; i < mx.length; i++) if ((t -= mx[i]) < 0) return i; return mx.length - 1; };
   const rollDrop = (size, R) => { const d = ORE_SIZES[size].drop; return d[0] + Math.floor(R() * (d[1] - d[0] + 1)); };
@@ -607,8 +612,9 @@
       if (!free(x, y) || oreNear(m, x, y)) continue;
       m[y][x] = T.ORE;
       if (caveReach(m) !== total - out.length - 1) { m[y][x] = T.CAVE; continue; }
-      out.push({ x, y, k: rollOre(f, R), s: rollSize(R, f) });
+      out.push({ x, y, k: '', s: rollSize(R, f) });
     }
+    const counts = {}; for (const o of out) { o.k = rollOreQuota(f, R, counts, out.length); counts[o.k] = (counts[o.k] || 0) + 1; } // ชนิดแร่เริ่มต้นก็ตามโควตา (ไม่เหวี่ยงตามดวงจนชนิดรองล้น)
     for (const o of out) m[o.y][o.x] = T.CAVE;
     return out;
   }
@@ -1499,7 +1505,7 @@
 
   const api = { OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
+    SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, CASINO, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
