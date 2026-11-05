@@ -75,6 +75,7 @@
   #fgauge .mk { position:absolute; top:-2px; bottom:-2px; width:6px; margin-left:-3px; background:#fff; border:2px solid #3d2a1a; box-sizing:border-box; }
   #fgauge.hit .mk { background:#ffe06a; }
   #ffight { position:fixed; left:50%; bottom:96px; transform:translateX(-50%); width:min(360px,86vw); z-index:6; padding:6px 10px 8px; text-align:center; font-weight:700; font-size:13px; background:#e9f6ff; border:3px solid #3d2a1a; cursor:pointer; touch-action:none; user-select:none; -webkit-user-select:none; }
+  #abtn, #ffight, #ffight * { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; touch-action:none; } /* กดค้างบนมือถือต้องไม่เลือกข้อความ/เด้งเมนูคัดลอก */
   #ffight .tl, #ffight .dl { text-align:left; font-size:11px; margin-top:4px; } #ffight .hnt { font-size:11px; font-weight:400; margin-top:4px; opacity:.8; }
   #ffight .tbar, #ffight .dbar { position:relative; height:16px; background:#4a6a85; border:2px solid #3d2a1a; overflow:hidden; }
   #ffight .tbar .safe { position:absolute; top:0; bottom:0; left:40%; width:35%; background:#5fd16f; opacity:.55; } #ffight .tbar .red { position:absolute; top:0; bottom:0; left:85%; right:0; background:#e0503a; opacity:.7; }

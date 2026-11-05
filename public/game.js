@@ -1652,7 +1652,11 @@ $('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk();
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) { $('abtn').addEventListener(ev, () => setReel(false)); $('ffight').addEventListener(ev, () => setReel(false)); }
 $('ffight').addEventListener('pointerdown', e => { e.preventDefault(); setReel(true); }); // แตะ/คลิกค้างที่แผงชักเย่อ = กรอสาย (เมาส์และมือถือ)
 addEventListener('blur', () => setReel(false));
-function setReel(on) { if (!ft || ft.end || ftHold === on) return; ftHold = on; send({ t: 'reel', on }); } // ส่งเฉพาะตอนสถานะเปลี่ยน (กด/ปล่อย) เซิร์ฟเวอร์เดินเวลาตามสถานะนี้
+// กดค้างบนมือถือ (ปุ่ม A / แผงชักเย่อ) ห้ามเบราว์เซอร์เริ่มเลือกข้อความหรือเด้งเมนูคัดลอก: กัน touchstart/selectstart/contextmenu และล้างการเลือกที่หลุดมา
+for (const el of [$('abtn'), $('ffight')]) { for (const ev of ['touchstart', 'touchmove']) el.addEventListener(ev, e => { if (e.cancelable) e.preventDefault(); }, { passive: false }); for (const ev of ['contextmenu', 'selectstart', 'dragstart']) el.addEventListener(ev, e => e.preventDefault()); }
+document.addEventListener('selectstart', e => { if (ft && !(e.target.closest && e.target.closest('input,textarea'))) e.preventDefault(); }); // ระหว่างชักเย่อไม่ให้เลือกข้อความที่ไหนเลย (นิ้วอาจเลื่อนไปโดนตัวอักษรอื่น)
+const clearSel = () => { try { const s = getSelection(); if (s && s.rangeCount) s.removeAllRanges(); } catch (e) {} };
+function setReel(on) { if (on) clearSel(); if (!ft || ft.end || ftHold === on) return; ftHold = on; send({ t: 'reel', on }); } // ส่งเฉพาะตอนสถานะเปลี่ยน (กด/ปล่อย) เซิร์ฟเวอร์เดินเวลาตามสถานะนี้
 
 // จอยสติ๊กมือถือ
 (() => {
