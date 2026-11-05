@@ -8,7 +8,7 @@ const last = (ws, t) => { for (let i = ws.msgs.length - 1; i >= 0; i--) if (ws.m
 
 // สัดส่วนแร่ต่อชั้น: ชั้น f = แร่ลำดับ f 70% / f+1 20% / f+2 10% ชั้น 10 มิทริลล้วน (แร่ 10 ชนิด ปลดทุก 2 เลเวล)
 {
-  assert.deepStrictEqual(S.floorMix(1), { stone: 70, copper: 20, silver: 10 });
+  assert.deepStrictEqual(S.floorMix(1), { stone: 80, copper: 20 }); // ชั้น 1 พิเศษ (MINE.mix1) ไม่มีเงิน
   assert.deepStrictEqual(S.floorMix(5), { emerald: 70, opal: 20, sapphire: 10 });
   assert.deepStrictEqual(S.floorMix(9), { moonstone: 70, mythril: 30 });
   assert.deepStrictEqual(S.floorMix(10), { mythril: 100 });

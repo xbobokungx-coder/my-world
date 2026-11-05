@@ -474,6 +474,7 @@
     xpPerLv: 0.1,                                  // XP นักขุดแร่ ×(1 + xpPerLv×(เลเวล−1)) เหมือนช่างไม้ (ก้อนแร่มีจำกัด จึงโตตามเลเวลด้วยตัวคูณ)
     floors: 10,                                    // จำนวนชั้นของถ้ำ (ชั้น f = แร่ระดับ f เป็นหลัก)
     mix: [70, 20, 10],                             // ชั้น f: แร่ระดับ f 70% / f+1 20% / f+2 10% (เกินชนิดสุดท้ายนับเป็นชนิดสุดท้าย → ชั้น 10 เป็นคริสตัลล้วน)
+    mix1: [80, 20],                                // ชั้น 1 (ผู้เล่นใหม่ Lv1–2 ขุดได้แค่หิน): หิน 80% / ทองแดง 20% ไม่มีเงิน (เงินต้อง Lv5) ขุดได้ 80% ของก้อน เดิม 70%
     maxOres: 60,                                    // ก้อนแร่สูงสุดต่อชั้น (ปกติราว 1 ก้อนต่อพื้น orePer ช่อง ≈ 50–63 ก้อน • ปรับจาก 45 เมื่อ 5 พ.ย. 2026: ผู้เล่นคนเดียวขุดเร็วกว่าแร่เกิดใหม่)
     orePer: 12,                                    // พื้นเดินได้กี่ช่องต่อแร่ 1 ก้อน (ยิ่งมาก แร่ยิ่งบาง ต้องเดินหา) • เพดานจริงอยู่ที่ oreGap
     oreGap: 2,                                     // ก้อนแร่ห่างกันอย่างน้อย 2 ช่อง (ไม่เกาะกันเป็นพืด) • เดิม 3 ทำให้ชั้นหนึ่งลงได้แค่ 31–38 ก้อน ต่อให้ลด orePer ก็ไม่เพิ่ม
@@ -523,7 +524,7 @@
   for (const o of Object.values(ORES)) o.hp = Math.round(MINE.hpBase * ACTION_TUNE.mine * o.pick * (o.hpm || 1));
   const oreXp = (xp, lv) => Math.round(xp * (1 + MINE.xpPerLv * (perkLv(lv) - 1)));
   const oreHp = (kind, size) => Math.round(ORES[kind].hp * ORE_SIZES[size].hp);
-  const floorMix = f => { const d = {}; MINE.mix.forEach((w, i) => { const k = ORE_ORDER[Math.min(ORE_ORDER.length, f + i) - 1]; d[k] = (d[k] || 0) + w; }); return d; }; // สัดส่วน % ของแร่แต่ละชนิดในชั้น f
+  const floorMix = f => { const d = {}; (f === 1 ? MINE.mix1 : MINE.mix).forEach((w, i) => { const k = ORE_ORDER[Math.min(ORE_ORDER.length, f + i) - 1]; d[k] = (d[k] || 0) + w; }); return d; }; // สัดส่วน % ของแร่แต่ละชนิดในชั้น f
   const rollOre = (f, R) => { let t = R() * 100, k = ORE_ORDER[ORE_ORDER.length - 1]; for (const [id, w] of Object.entries(floorMix(f))) { if ((t -= w) < 0) { k = id; break; } } return k; };
   const sizeMix = f => SIZE_MIX[Math.max(1, Math.min(SIZE_MIX.length, f | 0)) - 1] || ORE_SIZES.map(z => z.w); // สัดส่วนขนาด % ของชั้น f (ไม่ระบุชั้น = ฐาน)
   const rollSize = (R, f) => { const mx = f ? sizeMix(f) : ORE_SIZES.map(z => z.w); let t = R() * 100; for (let i = 0; i < mx.length; i++) if ((t -= mx[i]) < 0) return i; return mx.length - 1; };
