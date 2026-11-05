@@ -674,7 +674,7 @@
     return { kinds, add, drop };
   }
   // สัตว์ป่วย: ป่วยได้พร้อมกันไม่เกิน max ตัว (รวมทุกชนิด) รักษาด้วยยาตัวเดียวกัน ป่วยแล้วถ้าไม่รักษาจะตายเร็วกว่าหิวปกติ
-  const SICK = { max: 1, graceMs: 150000, checkMs: DAY_MS, chance: 0.3 }; // สัตว์ป่วยทีละ 1 ตัวเท่านั้น สุ่มวันละครั้ง (1 วันในเกม = 12 นาทีที่มีคนออนไลน์) โอกาส 30% วันไหนไม่ป่วยก็ข้ามไปวันถัดไปเลย
+  const SICK = { max: 1, graceMs: 600000, checkMs: DAY_MS, chance: 0.15 }; // graceMs = เวลารักษาก่อนตาย 10 นาที (เดิม 2.5 นาที สั้นเกินกว่าจะเห็นข้อความ เดินไปซื้อยา แล้วกลับมา • 5 พ.ย. 2026) • สัตว์ป่วยทีละ 1 ตัวเท่านั้น สุ่มวันละครั้ง (1 วันในเกม = 12 นาทีที่มีคนออนไลน์) โอกาส 15% (เดิม 30% ป่วยบ่อยเกิน • 5 พ.ย. 2026) วันไหนไม่ป่วยก็ข้ามไปวันถัดไปเลย
   const SELLBACK = 0.7;                    // ขายของที่ซื้อมา (เสื้อผ้า คันเบ็ด ขวาน ตะเกียง) คืนร้านได้ 70% ของราคาซื้อ (หัก 30%)
   const CASINO = { bets: [10, 25, 50, 100], perRound: 0.04, recoverPerHour: 0.15 }; // คาสิโน: ความล้า/โชคของผู้เล่น (ซ่อนจากผู้เล่น)
   // เศรษฐกิจ: ตลาดรับซื้อมีราคาขึ้นลง (ขายเยอะราคาตก ปล่อยไว้ราคากลับมา) ค่าบริการตู้เกม 5% ของเงินรางวัลเป็นตัวดูดเหรียญออกจากระบบ
@@ -776,17 +776,17 @@
   // สัตว์ฟาร์ม: เป็นของคนซื้อ (owner) • cap = สูงสุดต่อชนิดต่อคน • โผล่ในเล้าเฉพาะตอนเจ้าของออนไลน์ (ออฟ = หายจากเล้า + แช่แข็งไม่หิว/ไม่ผลิต)
   // init ไม่ใช้แล้ว (เคยเป็นฝูงกลาง) • มือใหม่ได้ไก่ตัวแรกใน rec.herd • ตายแล้วจบ ไม่มีชุบจากกองกลาง
   const ANIMALS = {
-    // starveMin = กี่นาที (เจ้าของออนไลน์) ที่สัตว์หิวจากอิ่มเต็มจนหมด, หลังหมดแล้วเหลือเวลาอีก ANIMAL_GRACE_MS ก่อนจะตาย
-    chicken: { name: 'ไก่', emoji: '🐔', product: 'egg',  feedItem: 'feed', price: 120, lv: 1, cap: 4, init: 0, time: [25000, 45000], xp: 4, starveMin: 25 },
-    cow:     { name: 'วัว', emoji: '🐄', product: 'milk', feedItem: 'hay',  price: 600, lv: 3, cap: 4, init: 0, time: [45000, 75000], xp: 8, starveMin: 35 },
-    duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 4, init: 0, time: [30000, 50000], xp: 5, starveMin: 25 },
-    sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 850, lv: 4, cap: 4, init: 0, time: [50000, 80000], xp: 10, starveMin: 35 },
-    pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1100, lv: 5, cap: 4, init: 0, time: [60000, 90000], xp: 12, starveMin: 35 },
+    // starveMin = กี่นาที (เจ้าของออนไลน์และอยู่ในเมือง) ที่สัตว์หิวจากอิ่มเต็มจนหมด (ปรับขึ้น 5 พ.ย. 2026: ไก่/เป็ด 25→40 ผึ้ง 30→45 ตัวอื่น 35→50 ไม่กระทบรายได้ เพราะป้อนอาหารตามรอบผลิต ไม่ใช่ตามความหิว), หลังหมดแล้วเหลือเวลาอีก ANIMAL_GRACE_MS ก่อนจะตาย
+    chicken: { name: 'ไก่', emoji: '🐔', product: 'egg',  feedItem: 'feed', price: 120, lv: 1, cap: 4, init: 0, time: [25000, 45000], xp: 4, starveMin: 40 },
+    cow:     { name: 'วัว', emoji: '🐄', product: 'milk', feedItem: 'hay',  price: 600, lv: 3, cap: 4, init: 0, time: [45000, 75000], xp: 8, starveMin: 50 },
+    duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 4, init: 0, time: [30000, 50000], xp: 5, starveMin: 40 },
+    sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 850, lv: 4, cap: 4, init: 0, time: [50000, 80000], xp: 10, starveMin: 50 },
+    pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1100, lv: 5, cap: 4, init: 0, time: [60000, 90000], xp: 12, starveMin: 50 },
     // เลเวล 11–20 (30 ต.ค. 2026): คอกแถวที่ 3 (PENS ด้านล่าง) ราคาสัตว์สูง ผลผลิตแพงตามเลเวล
-    alpaca:  { name: 'อัลปากา', emoji: '🦙', product: 'alpaca_wool', feedItem: 'hay', price: 2400, lv: 12, cap: 4, init: 0, time: [70000, 100000], xp: 14, starveMin: 35 },
-    horse:   { name: 'ม้าด่าง', emoji: '🐴', product: 'horse_milk', feedItem: 'hay', price: 4200, lv: 15, cap: 4, init: 0, time: [80000, 110000], xp: 17, starveMin: 35 },
-    boar:    { name: 'หมูป่า', emoji: '🐗', product: 'chestnut', feedItem: 'slop', price: 7000, lv: 18, cap: 4, init: 0, time: [90000, 120000], xp: 20, starveMin: 35 },
-    bee:     { name: 'ผึ้ง', emoji: '🐝', product: 'honey', feedItem: 'nectar', price: 360, lv: 2, cap: 4, init: 0, time: [40000, 60000], xp: 6, starveMin: 30 },
+    alpaca:  { name: 'อัลปากา', emoji: '🦙', product: 'alpaca_wool', feedItem: 'hay', price: 2400, lv: 12, cap: 4, init: 0, time: [70000, 100000], xp: 14, starveMin: 50 },
+    horse:   { name: 'ม้าด่าง', emoji: '🐴', product: 'horse_milk', feedItem: 'hay', price: 4200, lv: 15, cap: 4, init: 0, time: [80000, 110000], xp: 17, starveMin: 50 },
+    boar:    { name: 'หมูป่า', emoji: '🐗', product: 'chestnut', feedItem: 'slop', price: 7000, lv: 18, cap: 4, init: 0, time: [90000, 120000], xp: 20, starveMin: 50 },
+    bee:     { name: 'ผึ้ง', emoji: '🐝', product: 'honey', feedItem: 'nectar', price: 360, lv: 2, cap: 4, init: 0, time: [40000, 60000], xp: 6, starveMin: 45 },
   };
   // สัตว์เลี้ยงคู่ใจ (ซื้อที่ร้านสัตว์เลี้ยง): เดินตามเจ้าของ ทุกคนเห็น ไม่ต้องให้อาหาร • ซื้อได้หลายตัว แต่พาไปได้ทีละตัว (เลือกในร้าน)
   const COMPANIONS = {
@@ -806,7 +806,7 @@
   const ANIMAL_XP = { from: 5, perLv: 0.2 }; // XP เลี้ยงสัตว์ ×(1 + perLv × (เลเวล − from)) เมื่อเลเวลเกิน from (สัตว์ปลดครบที่ Lv5 แล้ว XP/ชม. ตันที่ 52% ของชาวนา ดู tools/levelsim.js)
   const animalXp = (xp, lv) => Math.round(xp * (1 + ANIMAL_XP.perLv * Math.max(0, perkLv(lv) - ANIMAL_XP.from)));
   const ANIMAL_BONUS = 0.25; // โอกาสได้ผลผลิต ×2 เมื่อเก็บจากสัตว์ที่ตัวเองเลี้ยง (เดิม 0.5 ลดเมื่อ 25 ต.ค. 2026: เลี้ยงสัตว์ได้มากกว่าอาชีพอื่นใน tools/econsim.js)
-  const ANIMAL_GRACE_MS = 4 * 60 * 1000;   // สัตว์ที่หิวจนหมดแล้ว ถ้าไม่มีใครให้อาหารภายใน 4 นาทีจะตาย
+  const ANIMAL_GRACE_MS = 8 * 60 * 1000;   // สัตว์ที่หิวจนหมดแล้ว ถ้าไม่มีใครให้อาหารภายใน 8 นาทีจะตาย (เดิม 4 นาที • 5 พ.ย. 2026)
   const PLAYER_HUNGER = { tickMs: 15000, start: 80, sitMs: 5000, sitGain: 1, workMul: 1.8, idleMul: 0.5, workMs: 20000 }; // ทำกิจกรรม (ตัดไม้/ตกปลา/ปลูก/ให้อาหารสัตว์ ฯลฯ ภายใน workMs) หิวเร็ว ×workMul • เดินเฉยๆ/ไม่ทำอะไร หิวช้า ×idleMul • // ผู้เล่นหิวลง 1 แต้มทุก 15 วินาที (เต็ม 100 อยู่ได้ ~25 นาที) ออฟไลน์ไม่ลด
   // บัวรดน้ำ 3 ระดับ: cap = ตักน้ำได้ครั้งละกี่ครั้งรด (หมดต้องกลับไปตักที่สระ), wet = ดินเปียกนานแค่ไหนหลังรด (ms), ต้องมีเลเวลชาวนาตามกำหนดถึงซื้อได้
   const CANS = {

@@ -3194,20 +3194,24 @@ class World {
       this.sitTick = (this.sitTick || 0) + dt * 1000;
       if (this.sitTick >= S.PLAYER_HUNGER.sitMs) { this.sitTick = 0; for (const p of this.players.values()) if (p.sit && p.rec.hunger < 100) this.setHunger(p, p.rec.hunger + S.PLAYER_HUNGER.sitGain, true); } // นั่งพักค่อยๆ อิ่มขึ้นทีละนิด
       this.energyTick(dt); this.chAcc = (this.chAcc || 0) + dt; if (this.chAcc >= 2) { this.chAcc = 0; this.chTick(); this.evTick(); }
+      const byKey = new Map(); for (const q of this.players.values()) byKey.set(q.key, q); // เจ้าของสัตว์ที่ออนไลน์
+      const away = a => { const o = byKey.get(a.owner); return !!(o && o.scene); }; // เจ้าของอยู่ในบ้าน/ถ้ำ/ทะเล = ไม่อยู่เล้า หยุดนับหิว/ป่วย (เดิมนับต่อ ขุดแร่นานๆ สัตว์ตายโดยไม่รู้ตัว • 5 พ.ย. 2026)
       for (const a of this.animals) {
         const A = ANIMALS[a.type];
+        if (away(a)) continue;
         a.hunger = Math.max(0, a.hunger - dt * HFAST * 100 / (A.starveMin * 60));
         if (a.hunger <= 0) {
           a.zero = (a.zero || 0) + dt * 1000;
           if (!a.warned && a.zero > 1000) { a.warned = true; this.broadcast({ t: 'msg', text: `⚠️ ${A.emoji} ${A.name}ของ ${a.on || 'ใครบางคน'} หิวจนไม่มีแรงแล้ว! รีบให้อาหารก่อนจะตาย` }); }
           if (a.zero > S.ANIMAL_GRACE_MS / HFAST) {
             a.dead = true;
+            logEv(this.room, 'animal_die', { p: a.owner, type: a.type, why: 'hunger' });
             this.broadcast({ t: 'msg', text: `💀 ${A.emoji} ${A.name}ของ ${a.on || 'ใครบางคน'} หิวตายแล้ว (ต้องซื้อใหม่ที่ร้านปศุสัตว์)` }); this.addLog(`💀 ${A.emoji} ${A.name}ของ ${a.on || '?'} หิวตาย`);
             this.broadcast({ t: 'sfx', k: 'die', id: 0, x: Math.round(a.x), y: Math.round(a.y) });
           }
         } else { a.zero = 0; a.warned = false; }
         if (a.sick && (a.sickMs = (a.sickMs || 0) + dt * 1000 * HFAST) > SICK_GRACE) {
-          a.dead = true;
+          a.dead = true; logEv(this.room, 'animal_die', { p: a.owner, type: a.type, why: 'sick' });
           this.broadcast({ t: 'msg', text: `💀 ${A.emoji} ${A.name}ของ ${a.on || 'ใครบางคน'} ป่วยตายแล้ว ครั้งหน้ารีบรักษาด้วยยา 💊 นะ` }); this.addLog(`💀 ${A.emoji} ${A.name}ของ ${a.on || '?'} ป่วยตาย`);
           this.broadcast({ t: 'sfx', k: 'die', id: 0, x: Math.round(a.x), y: Math.round(a.y) });
         }
@@ -3216,11 +3220,12 @@ class World {
       this.sickTimer += dt * 1000 * HFAST;
       if (this.sickTimer >= SICK_CHECK) {
         this.sickTimer = 0;
-        const healthy = this.animals.filter(a => !a.sick && !a.dead);
+        const healthy = this.animals.filter(a => !a.sick && !a.dead && !away(a)); // ไม่สุ่มตัวที่เจ้าของไม่อยู่เล้า (จะได้ทันรักษา)
         if (this.animals.filter(a => a.sick).length < S.SICK.max && healthy.length && Math.random() < S.SICK.chance) {
           const a = healthy[Math.floor(Math.random() * healthy.length)], A = ANIMALS[a.type];
           a.sick = true; a.sickMs = 0; this.addLog(`🤒 ${A.emoji} ${A.name}ของ ${a.on || '?'} ป่วย`);
           this.broadcast({ t: 'msg', text: `🤒 ${A.emoji} ${A.name}ของ ${a.on || 'ใครบางคน'} ป่วยแล้ว! รีบรักษาด้วยยา 💊 (ซื้อที่ร้านปศุสัตว์)` });
+          const so = byKey.get(a.owner); if (so) this.toast(so, `🤒 ${A.emoji} ${A.name}ของคุณป่วย! รักษาด้วยยา 💊 ภายใน ${Math.round(SICK_GRACE / 60000)} นาที (ซื้อที่ร้านปศุสัตว์)`);
         }
       }
       // ต้นไม้งอกใหม่ในที่โล่งสีเขียวที่ห่างจากสิ่งปลูกสร้าง
