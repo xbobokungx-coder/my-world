@@ -494,54 +494,6 @@ class World {
   }
   // ----- เควสประจำวัน + แต้มความดี + บัฟ + สถิติประจำวัน (Hall of Fame) -----
   today() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
-  questPick(p, r, have) { // สุ่มเควสให้ครบ QUEST_PER_DAY ข้อ: กระจายหลายหมวดก่อน แล้วค่อยเติมให้เต็ม • have = id ที่มีอยู่แล้ว (ไม่ซ้ำ)
-    const inv = p.rec.inv, newbie = (p.rec.qtotal || 0) < S.QUEST_NEWBIE, hasAxe = S.axeTier(inv) > 0;
-    const ids = Object.keys(S.QUESTS).filter(id => { const d = S.QUESTS[id]; return !have.includes(id) && !(newbie && (d.adv || d.cat === 'cook')) && !(d.cat === 'wood' && !hasAxe); }); // มือใหม่: ข้อง่ายเท่านั้น • เควสไม้ต้องมีขวาน
-    const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-    const out = [];
-    for (const c of shuffle([...new Set(ids.map(id => S.QUESTS[id].cat))])) {
-      if (out.length + have.length >= S.QUEST_PER_DAY) break;
-      const pool = ids.filter(id => S.QUESTS[id].cat === c); out.push(pool[Math.floor(r() * pool.length)]);
-    }
-    const rest = shuffle(ids.filter(id => !out.includes(id)));
-    while (out.length + have.length < S.QUEST_PER_DAY && rest.length) out.push(rest.pop());
-    return out;
-  }
-  questsOf(p) { // เควสของวันนี้ (สุ่มจากชื่อ+วัน ได้ชุดเดิมทั้งวันแม้ออกแล้วเข้าใหม่) • ถ้าเคยได้น้อยกว่าที่กำหนด (ปรับจำนวนเควสกลางวัน) จะเติมให้ครบโดยไม่ล้างความคืบหน้า
-    const day = this.today(); let q = p.rec.quest;
-    const valid = !!(q && q.day === day && q.list.every(it => S.QUESTS[it.id]));
-    if (valid && q.list.length >= S.QUEST_PER_DAY) return q;
-    let h = 2166136261; for (const ch of p.key + day + (valid ? q.list.length : '')) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-    const r = S.rng(h >>> 0), mk = id => ({ id, n: 0, done: false, seen: [] });
-    if (valid) { for (const id of this.questPick(p, r, q.list.map(it => it.id))) q.list.push(mk(id)); delete q.bonus; this.dirty = true; return q; }
-    q = p.rec.quest = { day, list: this.questPick(p, r, []).map(mk) };
-    return q;
-  }
-  ptsOf(p) { const day = this.today(), o = p.rec.pts = p.rec.pts || { bal: 0, earned: 0, day }; if (o.day !== day) { o.day = day; o.earned = 0; } return o; }
-  buffOn(p, id) { return !!(p.rec.buffs && p.rec.buffs[id] > Date.now()); }
-  questPush(p) {
-    const q = this.questsOf(p), pts = this.ptsOf(p), now = Date.now(), buffs = {};
-    for (const id of Object.keys(S.BUFFS)) if (this.buffOn(p, id)) buffs[id] = p.rec.buffs[id] - now;
-    send(p, { t: 'quests', wk1: this.wk1Pub(p.rec), list: q.list.map(it => [it.id, it.n, it.done ? 1 : 0]), total: p.rec.qtotal || 0, title: this.titleOf(p.rec),
-      starter: { done: Object.keys(this.starterOf(p).done), final: !!this.starterOf(p).final, c2: { done: Object.keys(this.starterOf(p).c2.done), final: !!this.starterOf(p).c2.final } }, streak: { n: (p.rec.streak || {}).n || 0 },
-      book: Object.fromEntries(Object.keys(S.BOOK).map(c => [c, Object.keys(this.bookOf(p)[c])])),
-      wk: (this.wkRoll(), { mine: this.week.by[p.name] || 0, claimed: !!this.week.claimed[p.key] }), pts: { bal: pts.bal, earned: pts.earned }, buffs });
-  }
-  addPts(p, n) {
-    const o = this.ptsOf(p); n = Math.min(n, S.POINTS.dailyCap - o.earned);
-    if (n <= 0) return;
-    o.bal += n; o.earned += n; this.dirty = true; this.wk1Step(p, 'help'); this.questPush(p); this.toast(p, `💛 แต้มความดี +${n}`);
-  }
-  statDay() { // วันใหม่: ประกาศผู้นำของเมื่อวานลงข่าวเมือง แล้วเริ่มนับใหม่
-    const day = this.today();
-    if (this.stats.day === day) return;
-    for (const [ev, [emoji, label]] of Object.entries(S.FAME)) {
-      const top = Object.entries(this.stats.ev[ev] || {}).sort((a, b) => b[1] - a[1])[0];
-      if (top && this.stats.day) this.addLog(`🏆 ${emoji} ${label}ประจำเมื่อวาน: ${top[0]} (${top[1]} ครั้ง)`);
-    }
-    this.stats = { day, ev: {} }; this.dirty = true;
-  }
-  famePub() { const o = {}; for (const ev of Object.keys(S.FAME)) o[ev] = Object.entries(this.stats.ev[ev] || {}).sort((a, b) => b[1] - a[1]).slice(0, 3); return o; }
   event(p, ev, arg) { // เหตุการณ์ที่นับทั้งเควสและสถิติประจำวัน
     this.statDay(); this.starterStep(p, ev);
     if (ev === 'feed' || ev === 'collect' || ev === 'cook' || ev === 'craft') this.telAdd(p, ev, 0);
@@ -572,53 +524,6 @@ class World {
     if (changed) { this.dirty = true; this.questPush(p); }
     this.achCheck(p.rec);
     if (doneNow) this.event(p, 'questdone');
-  }
-  // ----- ความสำเร็จ (Achievement) + ฉายา: ตัวนับสะสมเก็บใน rec.ach.cnt (นับจาก event ในเกม) • ครบเป้า = ได้เหรียญ + (บางข้อ) ปลดล็อกฉายาให้เลือกใช้ (rec.ttl) -----
-  achOf(rec) { const a = rec.ach = rec.ach && typeof rec.ach === 'object' ? rec.ach : {}; if (!a.cnt || typeof a.cnt !== 'object') a.cnt = {}; if (!a.got || typeof a.got !== 'object') a.got = {}; return a; }
-  titleOf(rec) { // ฉายาที่แสดงเหนือหัว: ที่เลือกไว้ (ต้องปลดล็อกแล้ว) ไม่งั้นใช้ฉายาตามจำนวนเควสสะสม
-    if (rec.ttl === 'wk1' && rec.wk1 && rec.wk1.final) return S.WEEK1.final.title;
-    if (typeof rec.ttl === 'string' && rec.ttl.startsWith('star:')) { const sk = rec.ttl.slice(5); if (S.SKILLS[sk] && this.starOf(rec, sk) >= S.MASTERY.max) return 'ปรมาจารย์' + S.SKILLS[sk].name; }
-    if (typeof rec.ttl === 'string' && rec.ttl.startsWith('arc:')) { const x = S.ARC_SHOP.find(y => 'arc:' + y.id === rec.ttl); if (x && rec.arc && (rec.arc.tt || []).includes(x.id)) return x.title; } // ฉายาจากร้านแต้มตู้เกม
-    const d = rec.ttl && S.ACH.find(x => x.id === rec.ttl), a = rec.ach;
-    return d && d.title && a && a.got && a.got[d.id] ? d.title : S.titleFor(rec.qtotal);
-  }
-  achAdd(rec, stat, n = 1) { const a = this.achOf(rec); a.cnt[stat] = (a.cnt[stat] || 0) + n; this.dirty = true; this.achCheck(rec); }
-  achCheck(rec) {
-    const a = this.achOf(rec), p = [...this.players.values()].find(q => q.rec === rec) || null;
-    const val = st => st === 'wealth' ? (rec.inv.coin || 0) : st === 'streak' ? ((rec.streak || {}).n || 0) : (a.cnt[st] || 0);
-    let any = false;
-    const waived = []; // ความสำเร็จสายลงขัน (stat 'give'): ตู้เซฟกองกลางถูกยกเลิกแล้ว (3 พ.ย. 2026) ทำให้ไม่มีทางสะสมยอดได้ → ผ่านให้ทุกคนทันที ไม่มีเหรียญ ไม่ประกาศข่าวเมือง
-    for (const d of S.ACH) if (d.stat === 'give' && !a.got[d.id]) { a.got[d.id] = Date.now(); any = true; if (d.title) waived.push(d.title); }
-    if (waived.length && p) this.toast(p, `🏛️ ยกเลิกตู้เซฟกองกลางแล้ว ความสำเร็จสายลงขันผ่านให้ทุกคน • ได้ฉายา ${waived.map(t => `"${t}"`).join(' ')} (เลือกใช้ได้ที่ 🏅)`);
-    for (const d of S.ACH) {
-      if (a.got[d.id] || val(d.stat) < d.goal) continue;
-      a.got[d.id] = Date.now(); any = true;
-      if (d.coin) { if (p) this.add(p, 'coin', d.coin, 'ach'); else rec.inv.coin = (rec.inv.coin || 0) + d.coin; }
-      if (p) {
-        this.toast(p, `🏆 ความสำเร็จใหม่: ${d.e} ${d.name}${d.coin ? ` (+🪙${d.coin})` : ''}${d.title ? ` • ปลดล็อกฉายา "${d.title}"` : ''}`); this.sfxTo(p, 'levelup');
-        if (d.title) this.addLog(`🏆 ${p.name} ได้ความสำเร็จ "${d.name}" ปลดล็อกฉายา "${d.title}"`);
-      }
-    }
-    if (any) { this.dirty = true; if (p) this.achPush(p); }
-  }
-  achPush(p) { const a = this.achOf(p.rec); send(p, { t: 'ach', cnt: Object.assign({}, a.cnt, { wealth: p.rec.inv.coin || 0, streak: (p.rec.streak || {}).n || 0 }), got: a.got, sel: p.rec.ttl || '' }); }
-  questHandle(p, m) {
-    if (m.a === 'ach') return this.achPush(p);
-    if (m.a === 'title') { // เลือกฉายาที่ปลดล็อกแล้ว ('' = กลับไปใช้ฉายาตามเควส)
-      const id = typeof m.id === 'string' ? m.id : '';
-      if (id) { const d = S.ACH.find(x => x.id === id); if (!d || !d.title || !(p.rec.ach && p.rec.ach.got[id])) return; p.rec.ttl = id; } else delete p.rec.ttl;
-      p.title = this.titleOf(p.rec); this.broadcast({ t: 'title', id: p.id, title: p.title }); this.dirty = true; this.achPush(p);
-      return this.toast(p, p.title ? `🏅 ใช้ฉายา "${p.title}"` : 'เอาฉายาออกแล้ว');
-    }
-    if (m.a === 'buff') {
-      const id = typeof m.id === 'string' && Object.hasOwn(S.BUFFS, m.id) ? m.id : null, B = id && S.BUFFS[id];
-      if (!B) return;
-      if (this.buffOn(p, id)) return this.toast(p, `${B.emoji} ${B.name} ยังมีผลอยู่`);
-      const o = this.ptsOf(p); if (o.bal < B.cost) return this.toast(p, 'แต้มความดีไม่พอ');
-      o.bal -= B.cost; (p.rec.buffs || (p.rec.buffs = {}))[id] = Date.now() + B.ms; this.dirty = true;
-      this.questPush(p); this.toast(p, `${B.emoji} ${B.name}: ${B.desc} (${Math.round(B.ms / 60000)} นาที)`); this.sfxTo(p, 'levelup');
-    } else if (m.a === 'weekly') { this.weeklyClaim(p);
-    } else if (m.a === 'fame') { this.statDay(); send(p, { t: 'fame', f: this.famePub() }); }
   }
 
   catJoin(p) { // ความอิ่มตัวของตลาดหมวดฟื้นตามเวลาจริงที่ผ่านไปแม้ออฟไลน์ (เหมือนพลังงาน) catAt = ครั้งล่าสุดที่คิดการฟื้น
@@ -674,19 +579,6 @@ class World {
     this.dirty = true; this.questPush(p);
   }
 
-  // ----- ความชำนาญหลัง Lv10 (S.MASTERY) -----
-  starOf(rec, sk) { return (rec.stars && rec.stars[sk]) || 0; }
-  starClaim(p, sk) {
-    if (!Object.hasOwn(S.SKILLS, sk)) return; const n = this.starOf(p.rec, sk) + 1, M = S.MASTERY;
-    if (n > M.max) return this.toast(p, 'ได้ดาวครบแล้ว');
-    const need = S.xpFor(S.MAX_LV) + n * M.xpPer, cost = M.costBase * n;
-    if ((p.rec.skills[sk] || 0) < need) return this.toast(p, `ต้องมี XP ${S.SKILLS[sk].name} ${need.toLocaleString()} ก่อน`);
-    if ((p.rec.inv.coin || 0) < cost) return this.toast(p, `เหรียญไม่พอ (ดาวที่ ${n} ใช้ 🪙${cost})`);
-    this.add(p, 'coin', -cost, 'mastery'); (p.rec.stars || (p.rec.stars = {}))[sk] = n; this.dirty = true;
-    this.toast(p, `⭐ ${S.SKILLS[sk].emoji} ${S.SKILLS[sk].name} ดาวที่ ${n}!`); this.sfxTo(p, 'levelup'); this.addLog(`⭐ ${p.name} ได้ดาวความชำนาญ${S.SKILLS[sk].name} ${'⭐'.repeat(n)}`);
-    if (n >= M.max) { p.rec.ttl = 'star:' + sk; p.title = this.titleOf(p.rec); this.broadcast({ t: 'title', id: p.id, title: p.title }); }
-    send(p, { t: 'stars', s: p.rec.stars });
-  }
   // ----- ภารกิจสัปดาห์แรก (S.WEEK1) -----
   wk1Of(rec) { if (!rec.firstSeen || rec.firstSeen < S.WEEK1.since) return null; return rec.wk1 || (rec.wk1 = { n: {}, done: {}, final: false }); }
   wk1Day(rec) { const a = new Date(rec.firstSeen), b = new Date(); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0); return Math.round((b - a) / 864e5) + 1; }
@@ -755,20 +647,6 @@ class World {
     this.broadcast({ t: 'rents', r: this.rentsPub() }); this.sfxTo(p, 'coin');
     this.toast(p, `🏡 เช่าแปลง ${id} ถึง ${new Date(until).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} (ต้นในแปลงนี้ไม่นับเพดานปลูก)`);
     if (!cur || cur.key !== p.key || cur.until <= now) this.addLog(`🏡 ${p.name} เช่าแปลง ${id} ที่แปลงผัก`);
-  }
-  bookOf(p) { const b = p.rec.book = p.rec.book || {}; for (const c of Object.keys(S.BOOK)) if (!b[c] || typeof b[c] !== 'object') b[c] = {}; return b; }
-  bookAdd(p, cat, id) {
-    const def = Object.hasOwn(S.BOOK, cat) && S.BOOK[cat]; if (!def || !def.ids.includes(id)) return;
-    const b = this.bookOf(p); if (b[cat][id]) return;
-    b[cat][id] = 1; this.dirty = true; this.add(p, 'coin', S.BOOK_ENTRY_COIN, 'book');
-    const n = Object.keys(b[cat]).length;
-    this.toast(p, `📖 สมุดสะสม${def.name}: ${n}/${def.ids.length} (+🪙${S.BOOK_ENTRY_COIN})`);
-    if (n === def.ids.length) {
-      const r = def.rare && S.FURN[def.rare]; this.add(p, 'coin', def.coin, 'book'); if (r) this.add(p, 'furn_' + def.rare, 1);
-      this.addLog(`📖 ${p.name} สะสม${def.name}ครบทุกชนิด!`);
-      this.toast(p, `🏅 สมุดสะสม${def.name}ครบ! รับ 🪙${def.coin}${r ? ` + ${r.emoji} ${r.name}` : ''}`); this.sfxTo(p, 'levelup');
-    }
-    this.questPush(p);
   }
 
   streakOnJoin(p) { // เข้าเกมติดต่อกัน: ได้เหรียญทุกวันที่เข้า ครบทุก 7 วันได้ของตกแต่งหายาก ขาดวันแล้วเริ่มนับใหม่
@@ -2410,6 +2288,8 @@ mix(World, require('./server/systems/energy.js')); // พลังงานแ�
 mix(World, require('./server/systems/tools.js')); // ความทนทานเครื่องมือและบัวรดน้ำ (ย้ายไป server/systems/tools.js)
 mix(World, require('./server/systems/hunger.js')); // ความหิวและการกิน (ย้ายไป server/systems/hunger.js)
 mix(World, require('./server/systems/pets.js')); // สัตว์เลี้ยงของผู้เล่น (ย้ายไป server/systems/pets.js)
+mix(World, require('./server/systems/quests.js')); // เควสประจำวัน แต้ม บัฟ ข่าวชื่อเสียง (ย้ายไป server/systems/quests.js)
+mix(World, require('./server/systems/achievements.js')); // ความสำเร็จ ฉายา ดาว สมุดสะสม (ย้ายไป server/systems/achievements.js)
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
 if (require.main !== module) { module.exports = { World }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)
