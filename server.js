@@ -22,7 +22,6 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const { HFAST } = require('./server/consts.js'); // ย้ายไป server/consts.js
 if (process.env.OCEAN_ANYTIME) S.OCEAN.anytime = true; // ทดสอบ: ออกเรือใหญ่ได้ทุกเวลา (ปกติ 06:00–15:00 เวลาเกม)
 const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
-const SNAP_MS = +process.env.SNAP_MS || 60 * 60 * 1000; // ระยะห่างของ event snap (ไว้ทดสอบ)
 if (process.env.FRESH_START) S.FRESH.startAt = +process.env.FRESH_START; // ไว้ทดสอบ: เริ่มระบบความสดเร็วขึ้น (ms)
 if (process.env.EVENT_NOW) { const d = new Date(Date.now() + 3000); S.EVENTS.list.unshift(Object.assign({}, S.EVENTS.list[0], { dow: d.getDay(), hour: d.getHours(), min: d.getMinutes(), mins: 1 })); } // ไว้ทดสอบ: อีเวนต์ตกปลาเริ่มภายในนาทีนี้ ยาว 1 นาที
 const { rand, EVENT_DIR, logEv, replacer, send } = require('./server/util.js'); // ย้ายไป server/util.js (mkdir events ทำตอนโหลด ตำแหน่งเดิม)
@@ -622,14 +621,6 @@ class World {
     } else if (m.a === 'fame') { this.statDay(); send(p, { t: 'fame', f: this.famePub() }); }
   }
 
-  // ----- ธนาคาร (ATM) + Happy Village (บัฟร่วมของทั้งเมือง) -----
-  bankOf(p) {
-    const b = p.rec.bank = p.rec.bank || { bal: 0 };
-    if (!Number.isFinite(b.bal) || b.bal < 0) b.bal = 0;
-    b.bal = Math.floor(b.bal);
-    delete b.acc; // ตัวนับเวลาดอกเบี้ยเดิม (ยกเลิกแล้ว)
-    return b;
-  }
   // ----- พลังงาน ⚡ (Phase 2) -----
   enOf(p) { const e = p.rec.en = p.rec.en && typeof p.rec.en === 'object' ? p.rec.en : {}; if (!Number.isFinite(e.v)) e.v = S.ENERGY.max; e.v = Math.max(-S.ENERGY.max, Math.min(S.ENERGY.max, e.v)); if (!Number.isFinite(e.at)) e.at = Date.now(); e.ex = !!e.ex; return e; }
   enJoin(p) { const e = this.enOf(p), now = Date.now(); e.v = Math.min(S.ENERGY.max, e.v + Math.max(0, now - e.at) / S.ENERGY.regenMs); e.at = now; if (e.ex && e.v >= S.ENERGY.resume) e.ex = false; } // ฟื้นระหว่างออฟไลน์ด้วย
@@ -658,24 +649,6 @@ class World {
     }
     this.dirty = true; this.enPush(p, cost); this.telAdd(p, kind, cost);
   }
-  // ----- telemetry: นับจำนวนการกระทำ + พลังงานที่ใช้ต่อคน รวมไว้ในหน่วยความจำ แล้วเขียนเป็น event 'act' ตอนออกจากเกม/ทุกชั่วโมง (ไม่เขียนทุกคลิก) -----
-  telAdd(p, kind, en) { const t = p.tel || (p.tel = { n: {}, en: {} }); t.n[kind] = (t.n[kind] || 0) + 1; if (en) t.en[kind] = (t.en[kind] || 0) + en; }
-  telFlush(p, sync) { const t = p.tel; if (!t || !Object.keys(t.n).length) return; p.tel = null; logEv(this.room, 'act', { p: p.key, n: t.n, en: t.en }, sync); }
-  telTick(now) { // ทุกชั่วโมง: ภาพรวมตลาดกลาง/ฝูงสัตว์ + เทการกระทำของคนที่ออนไลน์ค้างอยู่
-    if (!this.snapAt) this.snapAt = now + Math.min(5 * 60 * 1000, SNAP_MS);
-    if (now < this.snapAt) return;
-    this.snapAt = now + SNAP_MS;
-    const mk = {}; for (const k of Object.keys(this.market)) mk[k] = Math.round(this.market[k].m * 100) / 100;
-    const an = {}; for (const a of this.animals) if (!a.dead) an[a.type] = (an[a.type] || 0) + 1;
-    logEv(this.room, 'snap', { mk, pot: this.lotto.pot, an, online: this.players.size });
-    for (const p of this.players.values()) { this.telFlush(p); this.wealthLog(p); }
-  }
-  wealthLog(p) { // ความมั่งคั่งของผู้เล่น วันละครั้งต่อคน (ตอนออกจากเกม/รอบ snap): เหรียญ ATM มูลค่าของในกระเป๋า (ราคาฐาน) มูลค่าเฟอร์นิเจอร์ที่วาง
-    const day = this.today(); if (p.rec.wDay === day) return; p.rec.wDay = day;
-    let goods = 0; for (const [k, n] of Object.entries(p.rec.inv)) { if (k === 'coin') continue; const i = S.itemInfo(k); if (i && i.sell) goods += i.sell * n; }
-    const h = this.houses[p.key];
-    logEv(this.room, 'wealth', { p: p.key, coin: p.rec.inv.coin || 0, bank: this.bankOf(p).bal, goods, house: h ? S.houseScore(h.items).value : 0, lv: S.playLevel(p.rec.skills) });
-  }
   exhausted(p) { return S.ENERGY.on && this.enOf(p).ex; }
   heavyAction(tool, k) { return ['hoe', 'water', 'axe', 'rod'].includes(tool) || (typeof tool === 'string' && tool.startsWith('seed_')) || (tool === 'hand' && !!(this.farm[k] && this.farm[k].c)); } // เครื่องมือ/การกระทำที่ถูกหยุดเมื่อเหนื่อย (นั่ง/เก็บไข่/ร้านค้า/ให้อาหารสัตว์ไม่ถูกหยุด)
   energyTick(dt) { // ฟื้นพลังงานทุกคนที่ออนไลน์ + ส่งค่าให้ client ทุก ~1 วินาทีเฉพาะคนที่ยังไม่เต็ม
@@ -696,23 +669,6 @@ class World {
   catOf(p, cat) { const o = p.rec.cat; return o && Number.isFinite(o[cat]) ? o[cat] : 1; }
   catPub(p) { const o = p.rec.cat || {}, c = {}; for (const k of Object.keys(o)) if (o[k] < 0.995) c[k] = Math.round(o[k] * 1000) / 1000; return { t: 'cat', c, recover: S.CATFAT.recover }; }
   catPush(p) { send(p, this.catPub(p)); }
-  bankPush(p) { const b = this.bankOf(p); send(p, { t: 'bank', bal: b.bal, cap: S.BANK.cap }); }
-  nearAtm(p) { return Math.hypot(p.x - (S.ATM.x + 0.5) * TS, p.y - (S.ATM.y + 0.5) * TS) < 4.5 * TS; }
-  bankHandle(p, m) {
-    if (!this.nearAtm(p)) return this.toast(p, 'ต้องอยู่ใกล้ตู้ ATM ที่ลานกองไฟ');
-    const b = this.bankOf(p), want = m.amt === 'all' ? Infinity : m.amt | 0;
-    if (!(want > 0)) return;
-    if (m.a === 'dep') {
-      const n = Math.min(want, p.rec.inv.coin || 0, S.BANK.cap - b.bal);
-      if (n <= 0) return this.toast(p, b.bal >= S.BANK.cap ? `บัญชีเต็มแล้ว (เพดาน 🪙 ${S.BANK.cap})` : 'เหรียญไม่พอ');
-      this.add(p, 'coin', -n, 'bank'); b.bal += n; this.toast(p, `ฝาก 🪙 ${n} เข้าบัญชีแล้ว (ยอดฝาก ${b.bal})`);
-    } else if (m.a === 'wd') {
-      const n = Math.min(want, b.bal);
-      if (n <= 0) return this.toast(p, 'ไม่มีเงินให้ถอน');
-      b.bal -= n; this.add(p, 'coin', n, 'bank'); this.toast(p, `ถอน 🪙 ${n} แล้ว (ยอดฝาก ${b.bal})`);
-    } else return;
-    this.sfxTo(p, 'coin'); this.dirty = true; this.bankPush(p);
-  }
   loadVillage(d) {
     const v = d || {};
     this.village = { day: typeof v.day === 'string' ? v.day : '', n: Number.isFinite(v.n) ? Math.max(0, Math.floor(v.n)) : 0, peak: Number.isFinite(v.peak) ? Math.max(1, Math.floor(v.peak)) : 1, done: !!v.done, until: Number.isFinite(v.until) ? v.until : 0, doneAt: Number.isFinite(v.doneAt) ? v.doneAt : 0, open: Number.isFinite(v.open) ? v.open : 0, by: Object.create(null), prev: Object.create(null) };
@@ -742,8 +698,6 @@ class World {
     }
     this.villageSend();
   }
-
-
 
   // ----- เติบโต/ดึงให้กลับมาเล่น: คู่มือเริ่มต้น + สมุดสะสม + เข้าเกมติดต่อกัน + เป้าหมายรายสัปดาห์ของเมือง -----
   dayStr(offset) { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
@@ -1077,48 +1031,6 @@ class World {
     this.add(p, 'coin', S.WEEKLY.coin, 'weekly'); this.add(p, 'furn_' + rare, 1); this.dirty = true;
     this.addLog(`🎁 ${p.name} รับรางวัลเป้าหมายรายสัปดาห์ ${r.emoji} ${r.name}`);
     this.toast(p, `🎁 รางวัลสัปดาห์: 🪙${S.WEEKLY.coin} + ${r.emoji} ${r.name}`); this.sfxTo(p, 'levelup'); this.questPush(p);
-  }
-
-  cook(p, id) { // เชฟ (อาชีพที่ 5): ใช้วัตถุดิบข้ามสาย (ชนิดที่ถูกที่สุดก่อน) ทำอาหารขายได้แพงกว่าของดิบ ปลดสูตรตามเลเวลเชฟ ได้ XP เชฟ เตาต้องพักระหว่างจาน
-    const r = typeof id === 'string' ? S.COOK.find(x => x.id === id) : null; if (!r) return;
-    if (this.nearShopKind(p) !== 'food') return this.toast(p, 'ต้องยืนใกล้ประตูร้านอาหารถึงจะทำอาหารได้');
-    if (this.lv(p, 'cook') < r.lv) return this.toast(p, `สูตรนี้ปลดล็อกที่เชฟเลเวล ${r.lv} (ตอนนี้ ${this.lv(p, 'cook')}) — ทำเมนูง่ายขึ้นก่อนเพื่อเก็บเลเวล`);
-    const now = Date.now();
-    if (now < (p.cookReady || 0)) return this.toast(p, `เตายังร้อนอยู่ รออีก ${Math.ceil((p.cookReady - now) / 1000)} วินาที`);
-    const inv = p.rec.inv, use = {};
-    for (const need of r.in) {
-      if (need.k) { if ((inv[need.k] || 0) < need.n) return this.toast(p, 'วัตถุดิบไม่พอ'); use[need.k] = (use[need.k] || 0) + need.n; continue; }
-      if (need.u) { // ต้องเป็นปลาคนละชนิดกัน ชนิดละ 1 ตัว เริ่มจากชนิดที่ถูกที่สุด
-        const kinds = Object.keys(inv).filter(k => inv[k] - (use[k] || 0) > 0 && S.cookCat(need.c, k)).sort((x, y) => S.itemInfo(x).sell - S.itemInfo(y).sell);
-        if (kinds.length < need.n) return this.toast(p, `วัตถุดิบไม่พอ ต้องใช้ปลาคนละชนิดอย่างน้อย ${need.n} ชนิด`);
-        for (const k of kinds.slice(0, need.n)) use[k] = (use[k] || 0) + 1;
-        continue;
-      }
-      const own = Object.keys(inv).filter(k => inv[k] > 0 && S.cookCat(need.c, k)).sort((x, y) => S.itemInfo(x).sell - S.itemInfo(y).sell);
-      let left = need.n;
-      for (const k of own) { const take = Math.min(left, inv[k] - (use[k] || 0)); if (take > 0) { use[k] = (use[k] || 0) + take; left -= take; } if (!left) break; }
-      if (left) return this.toast(p, 'วัตถุดิบไม่พอ');
-    }
-    const fee = Math.round(r.sell * S.COOK_FEE); // ค่าเช่าเตา: หายจากระบบทั้งหมด (TOWN.feeShare) กันครัวเป็นช่องสร้างเงินล้วนๆ
-    if ((inv.coin || 0) < fee) return this.toast(p, `ค่าเช่าเตา 🪙 ${fee} เหรียญไม่พอ`);
-    for (const [k, n] of Object.entries(use)) this.add(p, k, -n);
-    this.add(p, 'coin', -fee, 'cookfee'); this.toPot(fee); this.add(p, r.id, 1);
-    this.addXp(p, 'cook', r.xp); p.cookReady = now + r.time;
-    this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name} สำเร็จ! (+${r.xp} XP เชฟ • ค่าเตา -🪙${fee} • ขายได้ราว 🪙${r.sell})`); this.sfx(p, 'collect');
-    this.event(p, 'cook');
-  }
-  craft(p, id) { // ประดิษฐ์ที่ร้านช่างไม้: ใช้ไม้ที่หามาได้ ได้ของ + XP ช่างไม้
-    const r = typeof id === 'string' ? S.CRAFT.find(x => x.id === id) : null; if (!r) return;
-    if (this.nearShopKind(p) !== 'wood') return this.toast(p, 'ต้องยืนใกล้ประตูร้านช่างไม้ถึงจะประดิษฐ์ได้');
-    if (this.lv(p, 'wood') < r.lv) return this.toast(p, `ต้องเป็นช่างไม้เลเวล ${r.lv} ก่อน`);
-    for (const [k, n] of Object.entries(r.in)) if ((p.rec.inv[k] || 0) < n) return this.toast(p, 'วัตถุดิบไม่พอ');
-    const fee = S.craftFee(r.id); if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `ค่าใช้โรงช่างไม้ 🪙 ${fee} เหรียญไม่พอ`);
-    for (const [k, n] of Object.entries(r.in)) this.add(p, k, -n);
-    if (fee) { this.add(p, 'coin', -fee, 'craftfee'); this.toPot(fee); }
-    const gain = S.woodXp(r.xp, this.lv(p, 'wood')); this.add(p, r.id, 1); this.addXp(p, 'wood', gain);
-    const info = S.itemInfo(r.id); this.toast(p, `🔨 ประดิษฐ์ ${info.emoji} ${info.name} สำเร็จ! (+${gain} XP${fee ? ` • ค่าโรงช่าง -🪙${fee}` : ''})`); this.sfx(p, 'collect');
-    if (info.furn) this.bookAdd(p, 'furn', info.furn);
-    this.event(p, 'craft');
   }
 
   // ----- ตลาดราคาไดนามิก: ขายเยอะราคาตก ปล่อยไว้ราคาค่อยๆ กลับ และทุก 1 วันในเกมราคาเป้าหมายสุ่มใหม่ (มีข่าวราคาพุ่ง/ตก) -----
@@ -2927,6 +2839,9 @@ const { mix } = require('./server/mixin.js');
 mix(World, require('./server/systems/lotto.js')); // ระบบหวย (ย้ายไป server/systems/lotto.js)
 mix(World, require('./server/systems/cinema.js')); // ระบบโรงหนัง (ย้ายไป server/systems/cinema.js)
 mix(World, require('./server/systems/npc.js')); // ชาวเมืองและสัตว์ประกอบฉาก (ย้ายไป server/systems/npc.js)
+mix(World, require('./server/systems/telemetry.js')); // สถิติการกระทำ/ความมั่งคั่ง (ย้ายไป server/systems/telemetry.js)
+mix(World, require('./server/systems/bank.js')); // ธนาคาร ATM (ย้ายไป server/systems/bank.js)
+mix(World, require('./server/systems/crafting.js')); // เชฟและคราฟต์ (ย้ายไป server/systems/crafting.js)
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
 if (require.main !== module) { module.exports = { World }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)
