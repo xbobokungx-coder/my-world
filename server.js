@@ -669,35 +669,6 @@ class World {
   catOf(p, cat) { const o = p.rec.cat; return o && Number.isFinite(o[cat]) ? o[cat] : 1; }
   catPub(p) { const o = p.rec.cat || {}, c = {}; for (const k of Object.keys(o)) if (o[k] < 0.995) c[k] = Math.round(o[k] * 1000) / 1000; return { t: 'cat', c, recover: S.CATFAT.recover }; }
   catPush(p) { send(p, this.catPub(p)); }
-  loadVillage(d) {
-    const v = d || {};
-    this.village = { day: typeof v.day === 'string' ? v.day : '', n: Number.isFinite(v.n) ? Math.max(0, Math.floor(v.n)) : 0, peak: Number.isFinite(v.peak) ? Math.max(1, Math.floor(v.peak)) : 1, done: !!v.done, until: Number.isFinite(v.until) ? v.until : 0, doneAt: Number.isFinite(v.doneAt) ? v.doneAt : 0, open: Number.isFinite(v.open) ? v.open : 0, by: Object.create(null), prev: Object.create(null) };
-    for (const [k, x] of Object.entries(v.by || {})) if (Number.isFinite(x)) this.village.by[k] = x;
-    for (const [k, x] of Object.entries(v.prev || {})) if (Number.isFinite(x)) this.village.prev[k] = x;
-  }
-  villageRoll() { const day = this.today(); if (this.village.day !== day) this.village = { day, n: 0, peak: Math.max(1, this.players.size), done: false, until: this.village.until, doneAt: this.village.doneAt, open: this.village.open, by: Object.create(null), prev: this.village.by }; } // prev = คนที่ช่วยเมื่อวาน (บัฟที่ข้ามเที่ยงคืนยังเต็ม)
-  villageGoal() { return S.VILLAGE.base + S.VILLAGE.per * Math.max(1, this.village.peak); }
-  happyEnd(p) { // บัฟเต็มเวลาเฉพาะคนที่ช่วยงานเมือง ≥ fullMin ครั้ง คนที่ไม่ได้ช่วยได้แค่ shortMs แรก
-    const v = this.village, name = p ? p.name : '';
-    if (!p || (v.open || 0) > Date.now() || Math.max(v.by[name] || 0, (v.prev || {})[name] || 0) >= S.VILLAGE.fullMin) return v.until;
-    return Math.min(v.until, (v.doneAt || 0) + S.VILLAGE.shortMs);
-  }
-  happyOn(p) { return this.happyEnd(p) > Date.now(); }
-  villageSend() { for (const q of this.players.values()) send(q, this.villagePub(q)); }
-  villagePub(p) { this.villageRoll(); this.wkRoll(); return { wn: this.week.n, wgoal: this.wkGoal(), wdone: this.week.done, t: 'village', n: this.village.n, goal: this.villageGoal(), done: this.village.done, left: Math.max(0, this.happyEnd(p) - Date.now()), mine: p ? this.village.by[p.name] || 0 : 0, full: S.VILLAGE.fullMin }; }
-  villageBump(p) { if (p) this.wkBump(p); // ทุกครั้งที่ใครช่วยงานของเมือง (นับรวมทุกคน) ครบเป้าของวัน = ทั้งเมืองติดบัฟ
-    this.villageRoll(); const v = this.village; this.dirty = true;
-    // มีคนเล่นวันนี้ ≥ 2 คน = คนเดียวนับได้ไม่เกิน maxShare ของเป้า ต้องมีผู้ช่วยจึงครบ (ถ้าวันนี้เล่นคนเดียวตลอด ไม่จำกัด)
-    const cap = v.peak >= 2 ? Math.ceil(this.villageGoal() * S.VILLAGE.maxShare) : Infinity, who = p ? p.name : '';
-    if (!p || (v.by[who] || 0) < cap) { v.n++; if (p) v.by[who] = (v.by[who] || 0) + 1; }
-    if (!v.done && v.n >= this.villageGoal()) {
-      v.done = true; v.until = Date.now() + S.VILLAGE.ms; v.doneAt = Date.now();
-      const mins = Math.round(S.VILLAGE.ms / 60000);
-      this.broadcast({ t: 'msg', text: `🎉 Happy Village! ทุกคนช่วยกันครบเป้าแล้ว ตกปลาไวขึ้นและหาไม้เนื้อแข็งง่ายขึ้นเป็นเวลา ${mins} นาที` });
-      this.addLog(`🎉 Happy Village! เมืองช่วยกันทำงานครบ ${v.n} ครั้ง ติดบัฟร่วม ${mins} นาที`);
-    }
-    this.villageSend();
-  }
 
   // ----- เติบโต/ดึงให้กลับมาเล่น: คู่มือเริ่มต้น + สมุดสะสม + เข้าเกมติดต่อกัน + เป้าหมายรายสัปดาห์ของเมือง -----
   dayStr(offset) { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
@@ -706,7 +677,6 @@ class World {
     const w1 = new Date(d.getFullYear(), 0, 4);
     return `${d.getFullYear()}-W${1 + Math.round(((d - w1) / 864e5 - 3 + (w1.getDay() + 6) % 7) / 7)}`;
   }
-  rareOfWeek() { return S.RARE[Math.floor(Date.now() / (7 * 864e5)) % S.RARE.length]; }
 
   starterOf(p) { // ผู้เล่นเก่าที่เล่นมานานแล้ว (ระดับการเล่น ≥ 8) ข้ามคู่มือเริ่มต้น
     const st = p.rec.starter || (p.rec.starter = { done: {}, final: S.playLevel(p.rec.skills) >= 8 });
@@ -756,88 +726,6 @@ class World {
     this.toast(p, `⭐ ${S.SKILLS[sk].emoji} ${S.SKILLS[sk].name} ดาวที่ ${n}!`); this.sfxTo(p, 'levelup'); this.addLog(`⭐ ${p.name} ได้ดาวความชำนาญ${S.SKILLS[sk].name} ${'⭐'.repeat(n)}`);
     if (n >= M.max) { p.rec.ttl = 'star:' + sk; p.title = this.titleOf(p.rec); this.broadcast({ t: 'title', id: p.id, title: p.title }); }
     send(p, { t: 'stars', s: p.rec.stars });
-  }
-  // ----- อีเวนต์ประจำสัปดาห์ (S.EVENTS) -----
-  evWindow(now = Date.now()) { // อีเวนต์ที่กำลังเล่น หรือครั้งถัดไป (ภายใน 7 วัน) → { E, start, end }
-    let next = null;
-    for (const E of S.EVENTS.list) for (let k = -1; k < 8; k++) {
-      const d = new Date(now); d.setDate(d.getDate() + k); if (d.getDay() !== E.dow) continue;
-      d.setHours(E.hour, E.min, 0, 0); const start = d.getTime(), end = start + E.mins * 60000;
-      if (end <= now) continue; if (!next || start < next.start) next = { E, start, end };
-    }
-    return next;
-  }
-  evPub() { const w = this.evWindow(), on = w && w.start <= Date.now(), sc = this.evt.key === (w && w.E.id + w.start) ? this.evt.scores : {};
-    const top = nb => Object.values(sc).filter(x => !!x.nb === nb && x.s > 0).sort((a, b) => b.s - a.s || b.n - a.n).slice(0, 3).map(x => [x.name, x.s]);
-    return w ? { id: w.E.id, start: w.start, end: w.end, on, top: top(false), topNb: top(true) } : null; }
-  evTick() {
-    const now = Date.now(), w = this.evWindow(now), ev = this.evt;
-    if (ev.key && !ev.done && ev.end <= now) this.evSettle();
-    if (!w) return;
-    const key = w.E.id + w.start;
-    if (w.start <= now && ev.key !== key) { this.evt = { key, id: w.E.id, end: w.end, scores: {}, done: false }; this.dirty = true; const m = `${w.E.emoji} อีเวนต์ "${w.E.name}" เริ่มแล้ว! ${w.E.mins} นาที แข่งกันที่${w.E.unit} (มือใหม่แยกอันดับ)`; this.broadcast({ t: 'msg', text: m }); this.addLog(m); this.broadcast({ t: 'evt', e: this.evPub() }); }
-    else if (w.start > now && w.start - now <= 60 * 60000 && this.evWarned !== key) { this.evWarned = key; this.broadcast({ t: 'msg', text: `${w.E.emoji} อีก ${Math.ceil((w.start - now) / 60000)} นาที อีเวนต์ "${w.E.name}" จะเริ่ม! มาลานกลางเมืองกัน` }); this.broadcast({ t: 'evt', e: this.evPub() }); }
-  }
-  evHit(p, ev, arg) { // นับคะแนนระหว่างอีเวนต์
-    const e = this.evt; if (!e.key || e.done || Date.now() > e.end) return; const E = S.EVENTS.list.find(x => x.id === e.id); if (!E || E.ev !== ev) return;
-    const s = e.scores[p.key] || (e.scores[p.key] = { name: p.name, s: 0, n: 0, nb: S.playLevel(p.rec.skills) < S.EVENTS.newbieLv, seen: [] });
-    s.n++; if (E.score === 'max') s.s = Math.max(s.s, +arg || 0); else if (E.score === 'distinct') { if (!s.seen.includes(arg)) { s.seen.push(arg); s.s = s.seen.length; } } else s.s++;
-    this.dirty = true; this.evPushAcc = (this.evPushAcc || 0) + 1; if (this.evPushAcc % 3 === 1) this.broadcast({ t: 'evt', e: this.evPub() });
-  }
-  evSettle() { // จบอีเวนต์: ให้รางวัลแต่ละกลุ่ม (ทั่วไป / มือใหม่)
-    const e = this.evt; e.done = true; this.dirty = true; const E = S.EVENTS.list.find(x => x.id === e.id); if (!E) return;
-    const lines = [];
-    for (const nb of [false, true]) {
-      const rank = Object.entries(e.scores).filter(([, x]) => !!x.nb === nb && x.s > 0).sort((a, b) => b[1].s - a[1].s || b[1].n - a[1].n).slice(0, 3);
-      rank.forEach(([key, x], i) => { if (!i) this.creditInv(key, S.EVENTS.prize.item, 1); const rec = this.saved[key]; if (rec) { const a = this.arcOf(rec); a.pts += S.EVENTS.prize.pts[i]; a.total += S.EVENTS.prize.pts[i]; const q = [...this.players.values()].find(o => o.key === key); if (q) { send(q, { t: 'arcpts', arc: this.arcPub(rec) }); this.toast(q, `${E.emoji} ได้อันดับ ${i + 1}${nb ? ' (มือใหม่)' : ''}! +${S.EVENTS.prize.pts[i]} แต้มตู้เกม${i ? '' : ' + 🏆 ถ้วยรางวัล'}`); } } });
-      if (rank.length) lines.push((nb ? '🌱 มือใหม่: ' : '') + rank.map(([, x], i) => `${['🥇', '🥈', '🥉'][i]} ${x.name} (${x.s})`).join(' '));
-    }
-    const m = `${E.emoji} จบอีเวนต์ "${E.name}" ${lines.length ? lines.join(' • ') : 'ไม่มีผู้ร่วมแข่ง'}`; this.broadcast({ t: 'msg', text: m }); this.addLog(m); logEv(this.room, 'event', { id: E.id, n: Object.keys(e.scores).length });
-    this.broadcast({ t: 'evt', e: this.evPub() });
-  }
-  // ----- ชาเลนจ์ถังน้ำ 🪣 (S.CHALLENGE) -----
-  chDef(id) { return S.CHALLENGE.list.find(c => c.id === id); }
-  chPub(rec) { const c = rec.ch; return { ch: c ? { id: c.id, st: c.st, n: c.n || 0, end: c.end || 0, by: c.byName || '', code: c.code || '', ms: c.ms || 0 } : null, wet: rec.wet > Date.now() ? rec.wet : 0, chain: this.chain }; }
-  chPush(p) { send(p, Object.assign({ t: 'ch' }, this.chPub(p.rec))); }
-  chStart(p) {
-    const rec = p.rec, c = rec.ch, now = Date.now();
-    if (c && c.st === 'run') return this.toast(p, 'กำลังทำชาเลนจ์อยู่');
-    if (c && c.st === 'pending') { c.st = 'run'; c.start = now; c.end = now + S.CHALLENGE.ms; c.n = 0; }
-    else { if (rec.chAt && now - rec.chAt < S.CHALLENGE.retryMs) return this.toast(p, `รับชาเลนจ์ใหม่ได้อีกครั้งใน ${Math.ceil((S.CHALLENGE.retryMs - (now - rec.chAt)) / 60000)} นาที`);
-      const d = S.CHALLENGE.list[Math.floor(Math.random() * S.CHALLENGE.list.length)]; rec.ch = { id: d.id, st: 'run', start: now, end: now + S.CHALLENGE.ms, n: 0 }; }
-    rec.chAt = now; this.dirty = true; const d = this.chDef(rec.ch.id);
-    this.toast(p, `🪣 เริ่มชาเลนจ์! ${d.emoji} ${d.text} ภายใน ${Math.round(S.CHALLENGE.ms / 60000)} นาที`); this.chPush(p);
-  }
-  chEvent(p, ev) {
-    const c = p.rec.ch; if (!c || c.st !== 'run') return; const d = this.chDef(c.id); if (!d || d.ev !== ev) return;
-    if (Date.now() > c.end) return this.chExpire(p);
-    c.n = (c.n || 0) + 1; this.dirty = true;
-    if (c.n < d.goal) return this.chPush(p);
-    c.st = 'won'; c.ms = Date.now() - c.start; this.chain++; delete p.rec.wet;
-    let code; do { code = crypto.randomBytes(4).toString('hex'); } while (this.invites[code]);
-    this.invites[code] = { by: p.key, name: p.name, ch: c.id, t: Date.now() }; c.code = code;
-    for (const [k, v] of Object.entries(this.invites)) if (Date.now() - v.t > 7 * 864e5) delete this.invites[k]; // ลิงก์ใช้ได้ 7 วัน
-    this.toast(p, `🎉 ชาเลนจ์ถังน้ำสำเร็จใน ${Math.ceil(c.ms / 60000)} นาที! แชร์การ์ดแล้วท้าเพื่อนต่อได้เลย`); this.sfxTo(p, 'levelup');
-    this.addLog(`🪣 ${p.name} ทำชาเลนจ์ถังน้ำ "${d.text}" สำเร็จ! (ต้นไม้แห่งการส่งต่อ ${this.chain} ใบ)`);
-    this.broadcast({ t: 'chain', n: this.chain }); this.chPush(p);
-  }
-  chExpire(p) { // หมดเวลา: คนที่ถูกเพื่อนท้ามาแล้วทำไม่ทัน = โดนราดน้ำ • รับเองแล้วไม่ทันแค่จบไป
-    const c = p.rec.ch; if (!c) return; const d = this.chDef(c.id);
-    if (c.by) { p.rec.wet = Date.now() + S.CHALLENGE.wetMs; this.broadcast({ t: 'wet', id: p.id, on: 1 }); this.addLog(`💦 ${p.name} ทำชาเลนจ์ที่ ${c.byName} ท้าไม่ทัน โดนราดน้ำ!`); this.toast(p, `💦 ไม่ทันเวลา! โดนราดน้ำ 🪣 (ตัวเปียก ${Math.round(S.CHALLENGE.wetMs / 3600e3)} ชม. ไถ่โทษได้ด้วยการจ่ายเหรียญ 🪙${S.CHALLENGE.redeem})`); }
-    else this.toast(p, `⏰ ชาเลนจ์ "${d ? d.text : ''}" หมดเวลา ลองใหม่ได้ภายหลัง`);
-    p.rec.ch = null; this.dirty = true; this.chPush(p);
-  }
-  chTick() { const now = Date.now(); for (const p of this.players.values()) { const c = p.rec.ch; if (c && ((c.st === 'run' && now > c.end) || (c.st === 'pending' && now > c.deadline))) this.chExpire(p); } }
-  chRedeem(p) {
-    if (!(p.rec.wet > Date.now())) return; if ((p.rec.inv.coin || 0) < S.CHALLENGE.redeem) return this.toast(p, 'เหรียญไม่พอ');
-    this.add(p, 'coin', -S.CHALLENGE.redeem, 'donate'); this.toPot(S.CHALLENGE.redeem); delete p.rec.wet; this.dirty = true;
-    this.broadcast({ t: 'wet', id: p.id, on: 0 }); this.toast(p, '🌞 ไถ่โทษแล้ว ตัวแห้งแล้ว!'); this.chPush(p);
-  }
-  chJoinInvite(p, code, ip) { // เข้าเกมผ่านลิงก์ท้า: ได้ชาเลนจ์เดียวกับคนท้า มีเวลา 48 ชม.
-    const inv = typeof code === 'string' && this.invites[code]; if (!inv || inv.by === p.key || (p.rec.ch && p.rec.ch.st === 'run')) return;
-    const by = this.saved[inv.by]; if (by && (by.ips || []).some(x => x.ip === ip)) return; // เครื่องเดียวกับคนท้า ไม่นับ
-    p.rec.ch = { id: inv.ch, st: 'pending', by: inv.by, byName: inv.name, deadline: Date.now() + S.CHALLENGE.inviteMs, n: 0 }; if (p.rec.joins === 1) p.rec.invBy = inv.by; this.dirty = true;
-    const d = this.chDef(inv.ch); setTimeout(() => { if (p.ws.readyState === 1) { this.toast(p, `🪣 ${inv.name} ท้าคุณ! "${d.text}" ภายใน 15 นาที (เริ่มเมื่อไหร่ก็ได้ใน 48 ชม.) ไม่งั้นโดนราดน้ำ 💦 • ดูที่ 📋 เควส → 🪣`); this.chPush(p); } }, 4000);
   }
   // ----- ภารกิจสัปดาห์แรก (S.WEEK1) -----
   wk1Of(rec) { if (!rec.firstSeen || rec.firstSeen < S.WEEK1.since) return null; return rec.wk1 || (rec.wk1 = { n: {}, done: {}, final: false }); }
@@ -931,36 +819,6 @@ class World {
     if (o.n % 7 === 0) { const rare = S.RARE[(o.n / 7 - 1) % S.RARE.length], r = S.FURN[rare]; coin += 100; this.add(p, 'furn_' + rare, 1); extra = ` + ${r.emoji} ${r.name}`; }
     this.add(p, 'coin', coin, 'streak');
     setTimeout(() => { if (p.ws.readyState === 1) this.toast(p, `🔥 เข้าเกมติดต่อกัน ${o.n} วัน! +🪙${coin}${extra}`); }, 2500);
-  }
-
-  loadWeek(d) {
-    const w = d || {};
-    this.week = { key: typeof w.key === 'string' ? w.key : '', n: Number.isFinite(w.n) ? Math.max(0, Math.floor(w.n)) : 0, done: !!w.done, by: Object.create(null), claimed: Object.create(null), cnt: Object.create(null) };
-    for (const [k, v] of Object.entries(w.by || {})) if (Number.isFinite(v)) this.week.by[k] = v;
-    for (const [k, v] of Object.entries(w.cnt || {})) if (Number.isFinite(v)) this.week.cnt[k] = v;
-    for (const k of Object.keys(w.claimed || {})) this.week.claimed[k] = 1;
-  }
-  wkRoll() { const k = this.weekKey(); if (this.week.key !== k) { this.week = { key: k, n: 0, done: false, by: Object.create(null), claimed: Object.create(null), cnt: Object.create(null) }; } }
-  wkGoal() { return S.WEEKLY.base + S.WEEKLY.per * Math.max(1, Object.keys(this.week.by).length); }
-  wkBump(p) {
-    this.wkRoll(); const w = this.week; w.by[p.name] = (w.by[p.name] || 0) + 1; this.dirty = true; // by = ครั้งที่ช่วยทั้งหมด (ใช้เช็ก minShare) cnt = ครั้งที่นับเข้าเป้า
-    const cap = Object.keys(w.by).length >= 2 ? Math.ceil(this.wkGoal() * S.WEEKLY.maxShare) : Infinity;
-    if ((w.cnt[p.name] || 0) < cap) { w.n++; w.cnt[p.name] = (w.cnt[p.name] || 0) + 1; }
-    if (!w.done && w.n >= this.wkGoal()) {
-      w.done = true;
-      this.broadcast({ t: 'msg', text: '🏆 เป้าหมายรายสัปดาห์ของเมืองสำเร็จแล้ว! ใครมีส่วนร่วมไปรับรางวัลที่ 📰 ได้เลย' });
-      this.addLog(`🏆 เมืองทำเป้าหมายรายสัปดาห์สำเร็จ (${w.n} ครั้ง)`);
-    }
-  }
-  weeklyClaim(p) {
-    this.wkRoll(); const w = this.week;
-    if (!w.done) return this.toast(p, 'เป้าหมายรายสัปดาห์ยังไม่สำเร็จ ช่วยกันต่อนะ');
-    if (w.claimed[p.key]) return this.toast(p, 'คุณรับรางวัลสัปดาห์นี้ไปแล้ว');
-    if ((w.by[p.name] || 0) < S.WEEKLY.minShare) return this.toast(p, `ต้องช่วยงานอย่างน้อย ${S.WEEKLY.minShare} ครั้งในสัปดาห์นี้ถึงรับรางวัลได้ (คุณทำไป ${w.by[p.name] || 0})`);
-    w.claimed[p.key] = 1; const rare = this.rareOfWeek(), r = S.FURN[rare];
-    this.add(p, 'coin', S.WEEKLY.coin, 'weekly'); this.add(p, 'furn_' + rare, 1); this.dirty = true;
-    this.addLog(`🎁 ${p.name} รับรางวัลเป้าหมายรายสัปดาห์ ${r.emoji} ${r.name}`);
-    this.toast(p, `🎁 รางวัลสัปดาห์: 🪙${S.WEEKLY.coin} + ${r.emoji} ${r.name}`); this.sfxTo(p, 'levelup'); this.questPush(p);
   }
 
   // ----- ตลาดราคาไดนามิก: ขายเยอะราคาตก ปล่อยไว้ราคาค่อยๆ กลับ และทุก 1 วันในเกมราคาเป้าหมายสุ่มใหม่ (มีข่าวราคาพุ่ง/ตก) -----
@@ -2714,6 +2572,9 @@ mix(World, require('./server/systems/crafting.js')); // เชฟและคร
 mix(World, require('./server/systems/orders.js')); // ใบงาน NPC (ย้ายไป server/systems/orders.js)
 mix(World, require('./server/systems/stall.js')); // แผงฝากขาย (ย้ายไป server/systems/stall.js)
 mix(World, require('./server/systems/trade.js')); // เทรดระหว่างผู้เล่น (ย้ายไป server/systems/trade.js)
+mix(World, require('./server/systems/events.js')); // อีเวนต์ประจำสัปดาห์ (ย้ายไป server/systems/events.js)
+mix(World, require('./server/systems/challenge.js')); // ชาเลนจ์ถังน้ำ (ย้ายไป server/systems/challenge.js)
+mix(World, require('./server/systems/village.js')); // หมู่บ้านและสัปดาห์เมือง (ย้ายไป server/systems/village.js)
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
 if (require.main !== module) { module.exports = { World }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)

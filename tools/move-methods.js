@@ -21,7 +21,7 @@ const src = raw.split('\n');
 const SKIP = new Set(['if', 'for', 'while', 'switch', 'catch', 'function', 'return']);
 function headerName(line) {
   const m = /^  (static\s+|async\s+|get\s+|set\s+)*\*?([A-Za-z_$][\w$]*)\s*\(/.exec(line);
-  if (!m || SKIP.has(m[2]) || !/^\s+[^;=]*\)\s*\{/.test(line)) return null;
+  if (!m || SKIP.has(m[2]) || !/^\s+(?:[^;=]|= Date\.now\(\))*\)\s*\{/.test(line)) return null;
   return m[2];
 }
 
@@ -56,7 +56,7 @@ for (const h of picked) {
   const body = src.slice(a, b);
   const last = body[body.length - 1];
   if (!/\}(\s*\/\/.*)?$/.test(last)) die(`เมธอด ${h.name}: บรรทัดสุดท้ายของบล็อก (server.js:${b}) ไม่ใช่ '}' ปิดเมธอด`);
-  if (b - 1 > h.line && !/^  \}/.test(last)) die(`เมธอด ${h.name}: '}' ปิดเมธอดไม่เยื้อง 2 ช่องตามที่คาด (server.js:${b})`);
+  if (b - 1 > h.line && !/^  \}/.test(last) && !/; \}(\s*\/\/.*)?$/.test(last)) die(`เมธอด ${h.name}: '}' ปิดเมธอดไม่เยื้อง 2 ช่องตามที่คาด (server.js:${b})`);
   if (b - 1 === h.line && !/^  /.test(last)) die(`เมธอด ${h.name}: รูปแบบบรรทัดเดียวไม่ตรงที่คาด`);
   if (/^\s*\/\//.test(last)) die(`เมธอด ${h.name}: บรรทัดสุดท้ายเป็นคอมเมนต์`);
   body[body.length - 1] = last.replace(/\}(\s*\/\/.*)?$/, (m, c) => '},' + (c || ''));
