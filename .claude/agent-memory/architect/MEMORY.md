@@ -1,1 +1,1 @@
-- [Refactor decisions](refactor-decisions.md) — shared/ root, service names, mix(), golden stubs, weekKey ISO, consts.js + check-moved, step-1 order
+- [Refactor decisions](refactor-decisions.md) — shared/ root, mix(), golden stubs, consts.js, step-1 order; step 2–3: msg_ dispatch, act chain, classic-script client, shared parts
