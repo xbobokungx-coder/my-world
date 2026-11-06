@@ -884,77 +884,7 @@ class World {
     this.addPts(p, S.NEWBIE.greetPts);
     logEv(this.room, 'welcome', { p: q.key, by: p.key, k: k === 'flower' ? 'flower' : 'wave', sec: Math.round((now - q.rec.firstSeen) / 1000), n: q.greeted.size });
   }
-  // ----- แผงฝากขาย (S.STALL): ผู้เล่นขายของให้กันด้วยเหรียญ -----
-  stallPub() { this.stallExpire(); return this.stall.map(x => ({ id: x.id, item: x.item, n: x.n, price: x.price, name: x.name, mine: x.seller })); }
-  stallPush() { this.dirty = true; this.broadcast({ t: 'stall', l: this.stallPub() }); }
-  stallExpire() { const now = Date.now(), keep = []; for (const x of this.stall) { if (now - x.t < S.STALL.days * 864e5) { keep.push(x); continue; } this.stallReturn(x); } if (keep.length !== this.stall.length) { this.stall = keep; this.dirty = true; } }
-  stallReturn(x) { // คืนของให้คนขาย (ออนไลน์/ออฟไลน์) พร้อมอายุของเดิม
-    const q = [...this.players.values()].find(o => o.key === x.seller);
-    if (q) { this.add(q, x.item, x.n, undefined, x.lots); this.toast(q, `🛒 ของบนแผง ${S.itemInfo(x.item).name} ×${x.n} คืนกระเป๋าแล้ว`); }
-    else { const rec = this.saved[x.seller]; if (rec) { rec.inv[x.item] = (rec.inv[x.item] || 0) + x.n; if (S.perishable(x.item) && x.lots) this.lotPut(rec, x.item, x.lots); this.dirty = true; } }
-  }
-  stallHandle(p, m) {
-    if (!p.rec.pin) return this.toast(p, '🔐 ต้องตั้ง PIN ก่อนถึงจะซื้อขายที่แผงได้ (📊 ข้อมูลฉัน → ตั้ง PIN)');
-    this.stallExpire();
-    if (m.a === 'post') {
-      const item = String(m.item || ''), n = Math.floor(+m.n), price = Math.floor(+m.price), base = S.tradeValue(item);
-      if (!S.isTradable(item) || !base) return this.toast(p, 'ของชิ้นนี้วางขายที่แผงไม่ได้');
-      if (!(n > 0) || n > S.STALL.maxN || (p.rec.inv[item] || 0) < n) return this.toast(p, 'จำนวนไม่ถูกต้อง');
-      const lo = Math.max(1, Math.ceil(base * S.STALL.min)), hi = Math.floor(base * S.STALL.max);
-      if (!(price >= lo && price <= hi)) return this.toast(p, `ราคาต่อชิ้นต้องอยู่ระหว่าง 🪙${lo}–${hi}`);
-      if (this.stall.filter(x => x.seller === p.key).length >= S.STALL.slots) return this.toast(p, `วางขายได้คนละไม่เกิน ${S.STALL.slots} รายการ`);
-      const lots = this.add(p, item, -n);
-      this.stall.push({ id: this.stallNext++, seller: p.key, name: p.name, item, n, price, lots, t: Date.now() });
-      const i = S.itemInfo(item); this.toast(p, `🛒 วาง ${i.emoji} ${i.name} ×${n} ชิ้นละ 🪙${price} แล้ว`); this.addLog(`🛒 ${p.name} วางขาย ${i.emoji} ${i.name} ×${n} ชิ้นละ 🪙${price}`);
-      return this.stallPush();
-    }
-    const x = this.stall.find(y => y.id === (m.id | 0)); if (!x) return this.toast(p, 'รายการนี้ขายไปแล้วหรือหมดเวลา');
-    if (m.a === 'cancel') { if (x.seller !== p.key) return; this.stall = this.stall.filter(y => y !== x); this.stallReturn(x); return this.stallPush(); }
-    if (m.a === 'buy') {
-      if (x.seller === p.key) return this.toast(p, 'ซื้อของตัวเองไม่ได้');
-      const q = Math.min(x.n, Math.max(1, Math.floor(+m.n) || 1)), cost = q * x.price;
-      if ((p.rec.inv.coin || 0) < cost) return this.toast(p, 'เหรียญไม่พอ');
-      const take = []; let need = q; // แบ่งกองอายุของตามจำนวนที่ซื้อ (ของเก่าออกก่อน)
-      for (const L of x.lots || []) { if (!need) break; const d = Math.min(L[1], need); take.push([L[0], d]); L[1] -= d; need -= d; }
-      if (x.lots) x.lots = x.lots.filter(L => L[1] > 0);
-      x.n -= q; if (!x.n) this.stall = this.stall.filter(y => y !== x);
-      const got = cost - Math.floor(cost * S.STALL.tax); this.toPot(cost - got); // ภาษีแผง 7% เข้ากองกลาง
-      this.add(p, 'coin', -cost, 'stall_buy'); this.add(p, x.item, q, undefined, take.length ? take : undefined);
-      const s = [...this.players.values()].find(o => o.key === x.seller);
-      if (s) { this.add(s, 'coin', got, 'stall_sell'); this.toast(s, `🛒 ${p.name} ซื้อ ${S.itemInfo(x.item).name} ×${q} ได้ 🪙${got} (หักภาษี ${Math.round(S.STALL.tax * 100)}%)`); }
-      else { this.creditInv(x.seller, 'coin', got); logEv(this.room, 'coin', { p: x.seller, n: got, why: 'stall_sell' }); }
-      logEv(this.room, 'stall', { buyer: p.key, seller: x.seller, item: x.item, q, coin: cost, tax: cost - got });
-      const i = S.itemInfo(x.item); this.toast(p, `🛒 ซื้อ ${i.emoji} ${i.name} ×${q} จาก ${x.name} (🪙${cost})`); this.sfxTo(p, 'coin'); this.event(p, 'trade');
-      return this.stallPush();
-    }
-  }
-  // ----- ใบงาน NPC (S.ORDERS): ใบละ 2–3 หมวด จ่ายเกินราคามาตรฐานเล็กน้อย ทุกวันใหม่ จำนวนใบตามคนที่เข้าเกม -----
-  ordersRoll() {
-    const day = this.today(), o = this.orders; if (o.day === day) return o;
-    const today = new Set(Object.entries(this.saved).filter(([, r]) => r.lastSeen && this.dayOf(r.lastSeen) === day).map(([k]) => k));
-    const n = Math.max(S.ORDERS.minN, Math.min(S.ORDERS.maxN, Math.round(S.ORDERS.perPlayer * Math.max(1, today.size, this.players.size))));
-    const NPCN = NPC_DEFS.map(d => d.name), byCat = {}; for (const k of SELLABLE) { const c = S.sellCat(k), i = S.itemInfo(k); if (i && i.sell <= 90 && c !== 'dish') (byCat[c] = byCat[c] || []).push(k); }
-    const cats = Object.keys(byCat), list = [];
-    for (let i = 0; i < n; i++) {
-      const pick = cats.slice().sort(() => Math.random() - 0.5).slice(0, 2 + (Math.random() < 0.4 ? 1 : 0));
-      const need = pick.map(c => { const arr = byCat[c], k = arr[Math.floor(Math.random() * arr.length)], q = S.ORDERS.qty[0] + Math.floor(Math.random() * (S.ORDERS.qty[1] - S.ORDERS.qty[0] + 1)); return [k, q]; });
-      const pay = Math.round(need.reduce((a, [k, q]) => a + S.itemInfo(k).sell * q, 0) * S.ORDERS.pay);
-      list.push({ id: i + 1, npc: NPCN[i % NPCN.length], need, pay, done: '' });
-    }
-    this.orders = { day, list, by: {} }; this.dirty = true; return this.orders;
-  }
   dayOf(t) { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
-  ordersPub(p) { const o = this.ordersRoll(); return { list: o.list.map(x => ({ id: x.id, npc: x.npc, need: x.need, pay: x.pay, done: x.done })), mine: (o.by[p.key] || 0), max: S.ORDERS.perDay }; }
-  orderFill(p, id) {
-    const o = this.ordersRoll(), x = o.list.find(y => y.id === (id | 0)); if (!x) return;
-    if (x.done) return this.toast(p, `ใบงานนี้ ${x.done} ส่งไปแล้ว`);
-    if ((o.by[p.key] || 0) >= S.ORDERS.perDay) return this.toast(p, `วันนี้ส่งใบงานครบ ${S.ORDERS.perDay} ใบแล้ว เหลือให้คนอื่นบ้างนะ`);
-    for (const [k, q] of x.need) if ((p.rec.inv[k] || 0) < q) return this.toast(p, `ของไม่พอ: ${S.itemInfo(k).name} ต้องการ ${q}`);
-    for (const [k, q] of x.need) this.add(p, k, -q);
-    this.add(p, 'coin', x.pay, 'order_fill'); x.done = p.name; o.by[p.key] = (o.by[p.key] || 0) + 1; this.dirty = true;
-    this.toast(p, `📋 ส่งใบงานของ${x.npc}สำเร็จ! ได้ 🪙${x.pay}`); this.addLog(`📋 ${p.name} ส่งใบงานของ${x.npc} ได้ 🪙${x.pay}`); this.sfxTo(p, 'levelup'); this.event(p, 'trade');
-    this.broadcast({ t: 'orders_upd' });
-  }
   // ----- แปลงเช่า (S.FARM_RENT) -----
   rentAt(x, y) { const P = S.rentPlotAt(x, y), r = P && this.rents[P.id]; return r && r.until > Date.now() ? r : null; }
   rentBlock(x, y, p) { // แปลงเช่าใช้ได้เฉพาะคนที่เช่าอยู่ แปลงว่างล็อกไว้ (คืนข้อความที่ต้องบล็อก หรือ null)
@@ -1473,67 +1403,6 @@ class World {
     if ((p.rec.inv.coin || 0) < cost) return this.toast(p, `เหรียญไม่พอ ราคา 🪙 ${cost}`);
     this.add(p, 'coin', -cost, 'repair'); this.toPot(cost); if (p.rec.dur) delete p.rec.dur[tool]; if (p.rec.fix) delete p.rec.fix[tool];
     send(p, { t: 'dur', d: this.durPub(p) }); this.toast(p, `🛒 ซื้อ${D.name}อันใหม่แล้ว (-🪙 ${cost}) ความทนทานเต็ม`); this.sfxTo(p, 'coin'); this.dirty = true;
-  }
-
-  // ---------- เทรดของระหว่างผู้เล่น: ของเท่านั้น (ไม่มีเหรียญ) มูลค่าฝั่งละไม่เกิน 1000 ต่อรอบ ทั้งสองฝ่ายต้องกดยืนยัน ----------
-  tradeOf(p) { return p.tradeId ? this.trades.get(p.tradeId) : null; }
-  tradeValue(offer) { let v = 0; for (const k in offer) v += S.tradeValue(k) * offer[k]; return v; }
-  tradePub(tr, side) {
-    const me = tr[side], ot = tr[side === 'a' ? 'b' : 'a'];
-    return { t: 'trade', ev: 'state', open: tr.open, max: S.TRADE.maxValue, me: { offer: me.offer, ok: me.ok, value: this.tradeValue(me.offer) }, other: { id: ot.id, name: ot.name, offer: ot.offer, ok: ot.ok, value: this.tradeValue(ot.offer) } };
-  }
-  tradePush(tr) { for (const side of ['a', 'b']) { const q = this.players.get(tr[side].id); if (q) send(q, this.tradePub(tr, side)); } }
-  tradeCancel(p, why) {
-    const tr = this.tradeOf(p); if (!tr) return;
-    this.trades.delete(tr.id);
-    for (const side of ['a', 'b']) { const q = this.players.get(tr[side].id); if (q) { q.tradeId = 0; send(q, { t: 'trade', ev: 'closed', why: why || 'ยกเลิกการเทรด' }); } }
-  }
-  tradeHandle(p, m) {
-    const tr = this.tradeOf(p), side = tr && tr.a.id === p.id ? 'a' : 'b';
-    switch (m.a) {
-      case 'req': {
-        const q = this.players.get(m.to | 0);
-        if (!q || q === p || tr || q.tradeId) return this.toast(p, !q ? 'ไม่พบผู้เล่นคนนั้น' : q.tradeId ? 'อีกฝ่ายกำลังเทรดกับคนอื่นอยู่' : 'คุณกำลังเทรดอยู่');
-        if (Math.hypot(p.x - q.x, p.y - q.y) > S.TRADE.range * TS) return this.toast(p, `ต้องอยู่ใกล้กัน (ไม่เกิน ${S.TRADE.range} ช่อง) ถึงจะเทรดได้`);
-        const t2 = { id: this.nextTrade++, a: { id: p.id, key: p.key, name: p.name, offer: {}, ok: false }, b: { id: q.id, key: q.key, name: q.name, offer: {}, ok: false }, open: false, t0: Date.now() };
-        this.trades.set(t2.id, t2); p.tradeId = q.tradeId = t2.id; // จองคู่ไว้ก่อน (ยังไม่เปิดจนกว่าอีกฝ่ายตอบรับ)
-        send(q, { t: 'trade', ev: 'req', from: { id: p.id, name: p.name } }); send(p, { t: 'trade', ev: 'wait', to: q.name });
-        break;
-      }
-      case 'accept': if (tr && !tr.open && side === 'b') { tr.open = true; this.tradePush(tr); } break;
-      case 'decline': case 'cancel': this.tradeCancel(p, m.a === 'decline' ? `${p.name} ปฏิเสธการเทรด` : `${p.name} ยกเลิกการเทรด`); break;
-      case 'offer': {
-        if (!tr || !tr.open) return;
-        const k = m.item, q = Math.max(0, Math.min(9999, m.qty | 0)), me = tr[side];
-        if (!S.isTradable(k)) return this.toast(p, 'ของชิ้นนี้เทรดไม่ได้ (เหรียญ/เสื้อผ้า/อุปกรณ์ผูกกับตัว)');
-        const have = p.rec.inv[k] || 0, qty = Math.min(q, have);
-        const next = Object.assign({}, me.offer); if (qty > 0) next[k] = qty; else delete next[k];
-        if (this.tradeValue(next) > S.TRADE.maxValue) return this.toast(p, `มูลค่ารวมเกิน ${S.TRADE.maxValue} เหรียญต่อรอบ`);
-        me.offer = next; tr.a.ok = tr.b.ok = false; // แก้ข้อเสนอแล้วต้องยืนยันใหม่ทั้งคู่
-        this.tradePush(tr);
-        break;
-      }
-      case 'ok': {
-        if (!tr || !tr.open) return;
-        tr[side].ok = !!m.on; this.tradePush(tr);
-        if (tr.a.ok && tr.b.ok) this.tradeExecute(tr);
-        break;
-      }
-    }
-  }
-  tradeExecute(tr) {
-    const pa = this.players.get(tr.a.id), pb = this.players.get(tr.b.id);
-    if (!pa || !pb) return this.tradeCancel(pa || pb, 'อีกฝ่ายหลุดจากเกม');
-    for (const [p, offer] of [[pa, tr.a.offer], [pb, tr.b.offer]]) {
-      if (this.tradeValue(offer) > S.TRADE.maxValue) return this.tradeCancel(pa, 'มูลค่าเกินลิมิต');
-      for (const k in offer) if (!S.isTradable(k) || (p.rec.inv[k] || 0) < offer[k]) { tr.a.ok = tr.b.ok = false; this.toast(pa, 'ของในกระเป๋าเปลี่ยนไป กรุณาตรวจข้อเสนอใหม่'); this.toast(pb, 'ของในกระเป๋าเปลี่ยนไป กรุณาตรวจข้อเสนอใหม่'); return this.tradePush(tr); }
-    }
-    for (const k in tr.a.offer) { const lots = this.add(pa, k, -tr.a.offer[k]); this.add(pb, k, tr.a.offer[k], undefined, lots); } // อายุของติดไปด้วย (เทรดไม่ทำให้ของกลับมาสด)
-    for (const k in tr.b.offer) { const lots = this.add(pb, k, -tr.b.offer[k]); this.add(pa, k, tr.b.offer[k], undefined, lots); }
-    this.trades.delete(tr.id); pa.tradeId = pb.tradeId = 0;
-    send(pa, { t: 'trade', ev: 'done', with: pb.name }); send(pb, { t: 'trade', ev: 'done', with: pa.name });
-    this.sfxTo(pa, 'collect'); this.sfxTo(pb, 'collect'); this.dirty = true;
-    this.event(pa, 'trade'); this.event(pb, 'trade');
   }
 
   // ขายของที่ซื้อมาคืนร้าน ได้ 70% ของราคาซื้อ (หัก 30%)
@@ -2842,6 +2711,9 @@ mix(World, require('./server/systems/npc.js')); // ชาวเมืองแ�
 mix(World, require('./server/systems/telemetry.js')); // สถิติการกระทำ/ความมั่งคั่ง (ย้ายไป server/systems/telemetry.js)
 mix(World, require('./server/systems/bank.js')); // ธนาคาร ATM (ย้ายไป server/systems/bank.js)
 mix(World, require('./server/systems/crafting.js')); // เชฟและคราฟต์ (ย้ายไป server/systems/crafting.js)
+mix(World, require('./server/systems/orders.js')); // ใบงาน NPC (ย้ายไป server/systems/orders.js)
+mix(World, require('./server/systems/stall.js')); // แผงฝากขาย (ย้ายไป server/systems/stall.js)
+mix(World, require('./server/systems/trade.js')); // เทรดระหว่างผู้เล่น (ย้ายไป server/systems/trade.js)
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
 if (require.main !== module) { module.exports = { World }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)
