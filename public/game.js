@@ -213,6 +213,7 @@ function handle(m) {
     case 'inv': inv = m.inv; if (m.deep) deepFloor = m.deep; if (m.fr) freshSt = m.fr; renderHud(); refreshOpen(); updateLampBtn(); updatePetBtn(); break;
     case 'skills': { const old = skillBarKey(); const ox = old ? skills[old] || 0 : 0; skills = m.skills; refreshOpen(); if (old && (skills[old] || 0) > ox) showSkillBar(); break; }
     case 'msg': toast(m.text); break;
+    case 'lvup': onLvUp(m); break; // ใครสักคนเลเวลอัพ: ฉลอง (เรา = แบนเนอร์ใหญ่, คนอื่น = ประกายเล็ก)
     case 'gift': showGift(m.item); break;
     case 'pinask': pinSt = !!m.has; if (m.show) showPinBox(pinSt); break;
     case 'newbie': showGreet(m.id, m.name); break;
@@ -1904,6 +1905,7 @@ const SFX = {
   feed_duck: k => SFX.feed_chicken(k), feed_sheep: k => SFX.feed_cow(k),
   collect: k => { tone(880, 0.1, { type: 'triangle', vol: 0.28, k }); tone(1320, 0.18, { type: 'triangle', vol: 0.25, k, delay: 0.08 }); },
   coin: k => { tone(1319, 0.09, { type: 'square', vol: 0.12, lp: 3000, k }); tone(1976, 0.22, { type: 'square', vol: 0.12, lp: 3500, k, delay: 0.08 }); },
+  lvsparkle: k => { [1568, 2093, 2637].forEach((f, i) => tone(f, 0.28, { type: 'sine', vol: 0.09, k, delay: 0.15 + i * 0.09 })); }, // ติ๊งวิบวับซ้อนเบาๆ ตอนแบนเนอร์เด้ง
   levelup: k => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.2, { type: 'triangle', vol: 0.3, k, delay: i * 0.1 })); },
   win: k => { [659, 784, 988, 1319].forEach((f, i) => tone(f, 0.18, { type: 'square', vol: 0.15, lp: 3000, k, delay: i * 0.1 })); },
   lose: k => { [392, 330, 262].forEach((f, i) => tone(f, 0.25, { type: 'sawtooth', vol: 0.12, lp: 900, k, delay: i * 0.16 })); },
@@ -3226,16 +3228,64 @@ function drawFishing(p, t) {
   if (fight) PixelAction.burst(ctx, 'splash', p.fx + Math.sin(t / 330 + ph) * 10, p.fy, t % 520, (Math.floor(t / 520) * 7 + (p.id || 0)) | 0); // ปลาดิ้นน้ำกระเซ็นเป็นระยะ
   if (p.fs === 2) { ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3d2a1a'; ctx.lineWidth = 3; ctx.strokeText('❗', p.fx, p.fy - 14); ctx.fillText('❗', p.fx, p.fy - 14 + Math.sin(t / 60) * 1.5); }
 }
+// ===== เอฟเฟกต์เลเวลอัพ (ตกแต่งล้วน: ตารางสีตามช่วงเลเวล) =====
+const LV_TIERS = [ // ใช้ช่วง from ที่ใหญ่สุดที่ไม่เกินเลเวล • เลเวลสูงสุด (MAX_LV) = สายรุ้ง
+  { from: 1, cols: ['#e0955a', '#ffd2a8', '#8fd3f4', '#fff3d6'], n: 14, rings: 1 },
+  { from: 5, cols: ['#e8eef5', '#b9c7d8', '#8fd3f4', '#ffffff'], n: 22, rings: 1 },
+  { from: 10, cols: ['#ffd24a', '#fff1a0', '#ffb02e', '#ffffff'], n: 32, rings: 2 },
+];
+const LV_RAINBOW = { cols: ['#ff5a5a', '#ffb02e', '#ffe14a', '#4ad66d', '#4ab8ff', '#b06bff'], n: 44, rings: 3, rb: true };
+const lvReduced = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const lvRnd = (i, s) => { const v = Math.sin(i * 127.1 + s * 311.7) * 43758.5453; return v - Math.floor(v); };
+function lvTier(lv) { if (lv >= MAX_LV) return LV_RAINBOW; let t = LV_TIERS[0]; for (const x of LV_TIERS) if (lv >= x.from) t = x; return t; }
+function lvHop(p) { const f = p.lvFx; if (!f || !f.hop) return 0; const t = performance.now() - f.t, d = 340 * f.hop; return t >= 0 && t < d ? -Math.round(Math.abs(Math.sin(t / 340 * Math.PI)) * 7) : 0; } // กระโดดดีใจ 1–2 จังหวะ (ของเรา)
+function onLvUp(m) {
+  const p = players.get(m.id), lv = Math.max(1, m.lv | 0), n = Math.max(1, m.n | 0), mine = m.id === myId;
+  if (!p) return; // ไม่อยู่ในฉากเดียวกัน = ข้าม
+  const T = lvTier(lv), mile = lv % 5 === 0, red = lvReduced(), sc = (mine ? 1 : 0.5) * (mile ? 1.25 : 1) * (1 + 0.12 * Math.min(4, n - 1));
+  let cnt = Math.min(mine ? 60 : 8, Math.round(T.n * (mile ? 1.5 : 1) * (mine ? 1 : 0.25) * (1 + 0.2 * (n - 1)))); if (red) cnt = Math.ceil(cnt / 3);
+  p.lvFx = { t: performance.now(), lv, tier: T, n: cnt, rings: mine ? T.rings + (mile ? 1 : 0) : 1, sc, mine, dur: mine ? 1900 : 1300, hop: mine && !red ? (mile ? 2 : 1) : 0, seed: lv * 13 + (m.id | 0) };
+  if (!mine) return;
+  const sk = SKILLS[m.skill], b = $('lvBanner'), fl = $('lvFlash'); if (!b) return;
+  b.className = T.rb ? 'rb' : ''; b.style.setProperty('--lc1', T.cols[0]); b.style.setProperty('--lc2', T.cols[1]); b.style.setProperty('--ls', String(Math.min(1.5, 1 + 0.1 * (n - 1) + (mile ? 0.12 : 0))));
+  b.querySelector('.lvK').textContent = sk ? `${sk.emoji} ${sk.name}` : '✨'; b.querySelector('.lvN').textContent = n > 1 ? `Lv ${Math.max(1, lv - n)} → ${lv}` : `Lv ${lv}`;
+  b.querySelector('.lvX').textContent = lv >= MAX_LV ? '🌈 สูงสุดแล้ว! สุดยอดเลย' : mile ? '⭐ ก้าวสำคัญ! เก่งสุดๆ' : n > 1 ? `ขึ้นรวดเดียว ${n} เลเวล!` : 'เก่งขึ้นอีกขั้นแล้ว';
+  void b.offsetWidth; b.classList.add('go'); // เริ่มแอนิเมชันใหม่ทุกครั้ง
+  if (fl && !red) { fl.className = ''; fl.style.setProperty('--lc1', T.cols[1]); void fl.offsetWidth; fl.classList.add('go'); }
+  playSfx('lvsparkle', mile ? 1 : 0.7);
+}
+function drawLvFx(p, ctx, y) {
+  const f = p.lvFx, t = performance.now() - f.t; if (t > f.dur) { p.lvFx = null; return; }
+  const x = p.x, T = f.tier, c0 = T.cols[0], cy = y - 6, u = t / f.dur;
+  ctx.save();
+  const R = 34 * f.sc, gr = ctx.createRadialGradient(x, cy, 2, x, cy, R); gr.addColorStop(0, T.rb ? '#ffffff' : c0); gr.addColorStop(1, (T.rb ? '#ffffff' : c0) + '00'); // แสงเรืองรอบตัว
+  ctx.globalAlpha = Math.max(0, (1 - u) * (0.55 + 0.15 * Math.sin(t / 70))); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, cy, R, 0, 7); ctx.fill();
+  for (let r = 0; r < f.rings; r++) { // วงแหวนขยายออกจากเท้า
+    const s = (t - r * 220) / 750; if (s <= 0 || s >= 1) continue; const rad = (10 + s * 40) * f.sc;
+    ctx.globalAlpha = 1 - s; ctx.lineWidth = 1 + 2.5 * (1 - s); ctx.strokeStyle = T.rb ? `hsl(${(r * 90 + t / 4) % 360},90%,65%)` : T.cols[r % T.cols.length]; ctx.beginPath(); ctx.ellipse(x, y + 10, rad, rad * 0.4, 0, 0, 7); ctx.stroke();
+  }
+  for (let i = 0; i < f.n; i++) { // ประกายดาว/คอนเฟตติพุ่งขึ้นแล้วร่วงเป็นโค้ง
+    const s = (t - lvRnd(i, f.seed) * 260) / 1100; if (s < 0 || s > 1) continue;
+    const a = -Math.PI / 2 + (lvRnd(i, f.seed + 1) - 0.5) * 2.6, sp = (45 + lvRnd(i, f.seed + 2) * 75) * f.sc;
+    const px = Math.round(x + Math.cos(a) * sp * s), py = Math.round(cy + Math.sin(a) * sp * s + 0.5 * 150 * s * s * f.sc), sz = 2 + Math.floor(lvRnd(i, f.seed + 3) * 3);
+    ctx.globalAlpha = Math.min(1, (1 - s) * 1.6); ctx.fillStyle = T.rb ? `hsl(${(i * 47 + t / 5) % 360},90%,62%)` : T.cols[i % T.cols.length];
+    if (i % 3 === 0) { ctx.fillRect(px - sz - 1, py, 2 * sz + 2, 2); ctx.fillRect(px - 1, py - sz - 1, 2, 2 * sz + 2); } // ดาวสี่แฉก
+    else { const w = Math.max(1, Math.round(sz * 2 * Math.abs(Math.cos(s * 9 + i)))); ctx.fillRect(px, py, w, sz + 1); } // คอนเฟตติพลิกหมุน
+  }
+  if (!f.mine) { ctx.globalAlpha = Math.min(1, (1 - u) * 2); ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = PixelArt.OUT; const txt = `⭐ Lv ${f.lv}`, ty = y - 54 - u * 14; ctx.strokeText(txt, x, ty); ctx.fillStyle = '#ffe266'; ctx.fillText(txt, x, ty); } // คนอื่นเลเวลอัพ: ตัวอักษรลอย
+  ctx.restore();
+}
 function drawPlayer(p, now, cx) {
   const ctx = cx || mainCtx, x = p.x, riding = !!(p.veh && !p.sit && Shared.VEHICLES[p.veh] && PixelVehicle.sprite);
   let y = p.y;
   if (riding) PixelVehicle.draw(ctx, p, now, PixelChar); // ผู้ขี่นั่งบนยานพาหนะพิกเซล (ล้อหมุน 4 ทิศ ขาปั่น ควันท่อ) ใน pixelchar.js
-  const F = !riding && PixelAction.frame(p, performance.now()), bx = F && (p.dir || 0) >= 2 ? F.lean * (p.dir === 2 ? -1 : 1) : 0, ct = p.catchFx ? performance.now() - p.catchFx.t : -1, by = (F ? F.bob : 0) + (ct > 550 && ct < 750 ? -Math.round(Math.sin((ct - 550) / 200 * Math.PI) * 4) : 0); // ได้ปลา: กระโดดดีใจตอนรับปลา // ท่าทำงาน: ตัวโน้ม/ยุบตามเฟรม
+  const F = !riding && PixelAction.frame(p, performance.now()), bx = F && (p.dir || 0) >= 2 ? F.lean * (p.dir === 2 ? -1 : 1) : 0, ct = p.catchFx ? performance.now() - p.catchFx.t : -1, by = (F ? F.bob : 0) + lvHop(p) + (ct > 550 && ct < 750 ? -Math.round(Math.sin((ct - 550) / 200 * Math.PI) * 4) : 0); // ได้ปลา: กระโดดดีใจตอนรับปลา // ท่าทำงาน: ตัวโน้ม/ยุบตามเฟรม
   if (!riding) { ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + 12, 9, 3.5, 0, 0, 7); ctx.fill();
     if (p.lie) { // นอนบนเตียง: หมุนตัวละครยืนเป็นท่านอนราบ (ชื่อ/ฟองแชทไม่หมุน)
       ctx.save(); ctx.translate(bx, by); ctx.translate(x, y - 8); ctx.rotate(p.lieRot || Math.PI / 2); ctx.translate(-x, -(y - 8));
       PixelChar.draw(ctx, Object.assign({}, p, { sit: false, moving: false }), now); ctx.restore();
     } else { ctx.save(); ctx.translate(bx, by); PixelChar.draw(ctx, p, now); ctx.restore(); } } // ตัวละครพิกเซล chibi (pixelchar.js)
+  if (p.lvFx) drawLvFx(p, ctx, y);
   if (riding) y -= PixelVehicle.lift(p.veh); // ผู้ขี่ตัวสูงขึ้น ป้ายชื่อ/ฟองแชท/ไอคอนเลื่อนตาม
   if (p.wet) { PixelUI.world(ctx, '🪣', x, y - 20, 16); ctx.fillStyle = 'rgba(120,190,255,.85)'; for (let i = 0; i < 4; i++) { const t = (now / 600 + i / 4) % 1; ctx.fillRect(x - 10 + i * 7, y - 14 + t * 24, 2, 4); } } // โดนราดน้ำจากชาเลนจ์
   if (p.lamp) drawHeldLamp(p, now);

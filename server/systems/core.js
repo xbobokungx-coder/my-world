@@ -120,7 +120,7 @@ module.exports = {
     r[skill] = (r[skill] || 0) + n;
     send(p, { t: 'skills', skills: r });
     const after = S.levelOf(r[skill], skill);
-    if (after > before) { logEv(this.room, 'level', { p: p.key, skill, lv: after }); this.toast(p, `🎉 ${S.SKILLS[skill].emoji} ${S.SKILLS[skill].name} เลเวล ${after}!`); this.addLog(`⭐ ${p.name} เลื่อนเป็น ${S.SKILLS[skill].emoji} ${S.SKILLS[skill].name} เลเวล ${after}`); this.sfxTo(p, 'levelup'); }
+    if (after > before) { logEv(this.room, 'level', { p: p.key, skill, lv: after }); this.toast(p, `🎉 ${S.SKILLS[skill].emoji} ${S.SKILLS[skill].name} เลเวล ${after}!`); this.addLog(`⭐ ${p.name} เลื่อนเป็น ${S.SKILLS[skill].emoji} ${S.SKILLS[skill].name} เลเวล ${after}`); this.sfxTo(p, 'levelup'); this.broadcast(after - before > 1 ? { t: 'lvup', id: p.id, skill, lv: after, n: after - before } : { t: 'lvup', id: p.id, skill, lv: after }); }
     this.dirty = true;
   },
   setVeh(p, v) { // ขี่/ลงยานพาหนะ (ต้องมีของ อยู่ในเมือง)

@@ -68,6 +68,19 @@
   #chatIn { pointer-events:auto; margin-top:4px; width:100%; padding:6px 10px; border-radius:10px; border:3px solid var(--edge); font:inherit; font-size:14px; user-select:text; }
   #toast { position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:50; max-width:min(92vw,460px); box-sizing:border-box; padding:8px 16px; font-weight:700; line-height:1.4; text-align:center; box-shadow:0 4px 0 rgba(0,0,0,.25); pointer-events:none; opacity:0; transition:opacity .25s; }
   #toast.show { opacity:1; }
+  /* เอฟเฟกต์เลเวลอัพ: แบนเนอร์กลางจอเด้งสปริง + แฟลชขอบจอ (ไม่ขวางการเล่น) */
+  #lvBanner { position:fixed; left:50%; top:20%; z-index:55; transform:translate(-50%,0) scale(0); opacity:0; pointer-events:none; text-align:center; font-weight:800; color:#fff; text-shadow:0 3px 0 rgba(61,42,26,.9),0 0 14px var(--lc2,#ffd24a); max-width:94vw; }
+  #lvBanner .lvT { font-size:clamp(26px,7vw,46px); letter-spacing:2px; -webkit-text-stroke:2px #3d2a1a; paint-order:stroke fill; color:var(--lc1,#ffd24a); }
+  #lvBanner .lvS { white-space:nowrap; margin-top:2px; font-size:clamp(18px,5vw,28px); -webkit-text-stroke:1.5px #3d2a1a; paint-order:stroke fill; }
+  #lvBanner .lvX { margin-top:2px; font-size:clamp(13px,3.6vw,18px); color:var(--lc1,#ffd24a); -webkit-text-stroke:1.5px #3d2a1a; paint-order:stroke fill; }
+  #lvBanner.rb .lvT { background:linear-gradient(90deg,#ff5a5a,#ffb02e,#ffe14a,#4ad66d,#4ab8ff,#b06bff,#ff5a5a); background-size:200% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-stroke:0; text-shadow:none; filter:drop-shadow(0 2px 0 #3d2a1a) drop-shadow(0 0 8px #fff8); animation:lvRb 1.2s linear infinite; }
+  #lvBanner.go { animation:lvPop 2.3s cubic-bezier(.2,.8,.3,1) forwards; }
+  @keyframes lvPop { 0% { transform:translate(-50%,10px) scale(.2); opacity:0 } 14% { transform:translate(-50%,0) scale(calc(var(--ls,1)*1.3)); opacity:1 } 26% { transform:translate(-50%,0) scale(calc(var(--ls,1)*.92)) } 38% { transform:translate(-50%,0) scale(calc(var(--ls,1)*1.05)) } 50% { transform:translate(-50%,0) scale(var(--ls,1)); opacity:1 } 82% { transform:translate(-50%,0) scale(var(--ls,1)); opacity:1 } 100% { transform:translate(-50%,-18px) scale(var(--ls,1)); opacity:0 } }
+  @keyframes lvRb { to { background-position:200% 0 } }
+  #lvFlash { position:fixed; inset:0; z-index:54; pointer-events:none; opacity:0; box-shadow:inset 0 0 70px 18px var(--lc1,#fff); }
+  #lvFlash.go { animation:lvFl .5s ease-out forwards; }
+  @keyframes lvFl { 0% { opacity:.65 } 100% { opacity:0 } }
+  @media (prefers-reduced-motion:reduce) { #lvBanner.go { animation:lvFade 2.3s forwards; } #lvBanner.rb .lvT { animation:none; } @keyframes lvFade { 0% { opacity:0; transform:translate(-50%,0) scale(var(--ls,1)) } 10%,80% { opacity:1; transform:translate(-50%,0) scale(var(--ls,1)) } 100% { opacity:0; transform:translate(-50%,0) scale(var(--ls,1)) } } }
   #fgauge { position:fixed; left:50%; bottom:96px; transform:translateX(-50%); width:min(320px,80vw); z-index:6; padding:6px 10px 8px; text-align:center; font-weight:700; font-size:13px; pointer-events:none; background:#fff3cf; border:3px solid #3d2a1a; }
   #fgauge .bar { position:relative; height:20px; margin-top:4px; background:#4a6a85; border:2px solid #3d2a1a; overflow:hidden; }
   #fgauge .zone { position:absolute; top:0; bottom:0; background:#5fd16f; box-shadow:inset 0 0 0 2px #2e9a43; }
@@ -521,6 +534,8 @@
 <div id="build" class="panel hidden"></div>
 <div id="chat" class="hidden"><div id="chatHist" class="hidden"></div><div id="chatLog"></div><input id="chatIn" class="hidden" maxlength="80" enterkeyhint="send" placeholder="พิมพ์ข้อความ แล้วกด Enter"></div>
 <div id="toast" class="panel"></div>
+<div id="lvFlash"></div>
+<div id="lvBanner" aria-hidden="true"><div class="lvT">LEVEL UP!</div><div class="lvS"><span class="lvK"></span> <b class="lvN"></b></div><div class="lvX"></div></div>
 <div id="shop" class="hidden"><div class="panel">
   <h2><span id="shopTitle">🏪 ร้านค้า</span> <button class="btn small" id="shopClose">ปิด</button></h2>
   <div id="shopInfo" style="font-size:13px;opacity:.75;margin-bottom:4px"></div>
