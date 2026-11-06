@@ -49,7 +49,7 @@ for (let k = 0; k < heads.length; k++) heads[k].to = k + 1 < heads.length ? head
 
 const picked = [];
 for (const n of names) {
-  const hit = heads.filter(h => h.narrow && h.name === n);
+  const hit = heads.filter(h => h.name === n);
   if (!hit.length) die('ไม่เจอเมธอด ' + n + ' ใน class World');
   if (hit.length > 1) die('เจอเมธอดชื่อ ' + n + ' ซ้ำ ' + hit.length + ' ที่ (บรรทัด ' + hit.map(h => h.line + 1).join(', ') + ')');
   picked.push(hit[0]);
@@ -88,7 +88,7 @@ if (fs.existsSync(target)) {
   tsrc = fs.readFileSync(target, 'utf8');
   if (tsrc.includes('\r')) die('ไฟล์เป้ามี CRLF ไม่รองรับ');
   const tl = tsrc.split('\n');
-  for (let i = 0; i < tl.length; i++) { const n = headerName(tl[i]); if (n && names.includes(n)) die('ไฟล์เป้ามีเมธอดชื่อ ' + n + ' อยู่แล้ว (บรรทัด ' + (i + 1) + ')'); }
+  for (let i = 0; i < tl.length; i++) { const n = broadName(tl[i]); if (n && names.includes(n)) die('ไฟล์เป้ามีเมธอดชื่อ ' + n + ' อยู่แล้ว (บรรทัด ' + (i + 1) + ')'); }
   let e = tl.length - 1; while (e >= 0 && tl[e].trim() === '') e--;
   if (e < 0 || !/^\};?\s*$/.test(tl[e])) die("ท้ายไฟล์เป้าไม่ใช่ '};' ของ module.exports");
   let p = e - 1; while (p >= 0 && tl[p].trim() === '') p--;

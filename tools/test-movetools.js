@@ -95,9 +95,14 @@ assert.ok(!fs.existsSync(dup + '.tmp') && !fs.existsSync(srv + '.tmp'), 'ต้�
   assert.ok(/^  nearWater\(p, r = 2\)/m.test(sv) && /^  other\(a\)/m.test(sv) && !/^  eat\(/m.test(sv), 'เมธอดถัดไปต้องอยู่ใน server.js');
   assert.strictEqual(cp.spawnSync(process.execPath, ['--check', path.join(d, 'server/systems/e.js')]).status, 0, 'ไฟล์เป้าต้อง syntax ถูก');
   assert.strictEqual(cp.spawnSync(process.execPath, ['--check', path.join(d, 'server.js')]).status, 0, 'server.js ต้อง syntax ถูก');
-  // ย้ายตัวที่มี default param เอง (ตัวถัดไปคือ other) ก็ต้องไม่ลากต่อ
+  // ย้ายตัวที่มี default param เอง (ตัวถัดไปคือ other) ต้องสำเร็จและไม่ลากต่อ
   d = fx('fx2'); fs.writeFileSync(path.join(d, 'server.js'), FX);
-  assert.strictEqual(go(d, 'server/systems/n.js', 'nearWater').status, 1, 'หัวแบบ default param ไม่อยู่ในรายชื่อที่ย้ายได้ ต้อง exit 1');
+  r = go(d, 'server/systems/n.js', 'nearWater');
+  assert.strictEqual(r.status, 0, 'ย้าย nearWater ตรงๆ ต้องผ่าน: ' + r.stderr);
+  t = fs.readFileSync(path.join(d, 'server/systems/n.js'), 'utf8'); sv = fs.readFileSync(path.join(d, 'server.js'), 'utf8');
+  assert.ok(/^  nearWater\(p, r = 2\) \{/m.test(t) && /^  \},$/m.test(t) && !/other|eat/.test(t), 'ต้องได้เฉพาะ nearWater');
+  assert.ok(/^  other\(a\)/m.test(sv) && /^  eat\(/m.test(sv), 'เมธอดข้างเคียงต้องอยู่ใน server.js');
+  assert.strictEqual(cp.spawnSync(process.execPath, ['--check', path.join(d, 'server/systems/n.js')]).status, 0);
   // เนื้อที่ตัดมีเมธอดอื่นปน (หัวหลายบรรทัดไม่รู้จัก ทำให้ '}' ปิดไม่ชัด) = exit 1 ไม่แก้ไฟล์
   d = fx('fx3'); const BAD = FX.replace("  other(a) {\n    return a;\n  }\n", "  other(a,\n    b) {\n    return a;\n  }\n");
   fs.writeFileSync(path.join(d, 'server.js'), BAD);
@@ -114,6 +119,12 @@ assert.ok(!fs.existsSync(dup + '.tmp') && !fs.existsSync(srv + '.tmp'), 'ต้�
     assert.ok(!/nearWater/.test(fs.readFileSync(path.join(d, 'server/systems/e.js'), 'utf8')), 'eat จริงต้องไม่ดึง nearWater');
     assert.ok(/^  nearWater\(p, r = 2\)/m.test(fs.readFileSync(path.join(d, 'server.js'), 'utf8')));
     assert.strictEqual(cp.spawnSync(process.execPath, ['--check', path.join(d, 'server/systems/e.js')]).status, 0);
+    r = go(d, 'server/systems/e.js', 'nearWater');
+    assert.strictEqual(r.status, 0, 'ย้าย nearWater จริงต้องผ่าน: ' + r.stderr);
+    const t4 = fs.readFileSync(path.join(d, 'server/systems/e.js'), 'utf8');
+    assert.ok(/^  eat\(/m.test(t4) && /^  nearWater\(p, r = 2\)/m.test(t4) && !/^  nearWater\(/m.test(fs.readFileSync(path.join(d, 'server.js'), 'utf8')));
+    assert.strictEqual(cp.spawnSync(process.execPath, ['--check', path.join(d, 'server/systems/e.js')]).status, 0);
+    assert.strictEqual(cp.spawnSync(process.execPath, ['--check', path.join(d, 'server.js')]).status, 0);
   }
 }
 console.log('ok test-movetools');
