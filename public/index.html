@@ -183,6 +183,11 @@
   .swrow { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 12px; }
   .swrow .sw { width:34px; height:34px; }
   .swrow input[type=color] { width:38px; height:38px; border:0; padding:0; background:none; }
+  #skillbar { position:fixed; bottom:84px; left:50%; transform:translateX(-50%); width:min(86vw,240px); box-sizing:border-box; padding:5px 10px 6px; font-size:13px; font-weight:700; z-index:6; pointer-events:none; opacity:0; transition:opacity .6s; }
+  #skillbar.show { opacity:1; transition:opacity .15s; }
+  #skillbar .r { display:flex; justify-content:space-between; gap:8px; white-space:nowrap; }
+  #skillbar .bar { margin:3px 0 1px; }
+  #skillbar small { font-size:11px; opacity:.8; }
   #picker { position:fixed; bottom:84px; left:50%; transform:translateX(-50%); padding:6px; display:flex; gap:6px; flex-wrap:wrap; max-width:94vw; justify-content:center; z-index:7; }
   .opt { min-width:56px; border:2px solid var(--edge); border-radius:10px; background:#fffdf5; padding:4px 6px; font-size:12px; text-align:center; }
   .opt b { display:block; font-size:22px; font-weight:400; }
@@ -237,9 +242,9 @@
   body.touch .chip { padding:9px 16px; }
   body.touch #shop .row,body.touch #bag .row,body.touch #people .row,body.touch #trade .row,body.touch #cinema .row,body.touch #town .row { padding:9px 0; }
   body.touch #shop .btn.small,body.touch #bag .btn.small,body.touch #people .btn.small,body.touch #trade .btn.small,body.touch #cinema .btn.small,body.touch #town .btn.small { padding:8px 14px; font-size:15px; }
-  body.touch #picker { bottom:calc(76px + var(--sab)); }
-  @media (orientation:landscape) and (max-height:520px) { body.touch #picker { bottom:calc(58px + var(--sab)); } }
-  @media (min-width:700px) and (min-height:600px) { body.touch #picker { bottom:calc(100px + var(--sab)); } }
+  body.touch :is(#picker,#skillbar) { bottom:calc(76px + var(--sab)); }
+  @media (orientation:landscape) and (max-height:520px) { body.touch :is(#picker,#skillbar) { bottom:calc(58px + var(--sab)); } }
+  @media (min-width:700px) and (min-height:600px) { body.touch :is(#picker,#skillbar) { bottom:calc(100px + var(--sab)); } }
   /* มือถือแนวนอน: จอเตี้ย ให้ปุ่มอยู่ล่างสุดข้างๆ hotbar */
   @media (orientation:landscape) and (max-height:520px) {
     body.touch #joy { bottom:calc(10px + var(--sab)); width:116px; height:116px; }
@@ -274,7 +279,7 @@
   #build .btn.on { outline:3px solid #fff; box-shadow:0 0 0 4px var(--accent); }
   @media (max-width:700px) { #build .blbl { display:none; } #build .bhint { display:none; } #build .bitems { grid-template-columns:1fr 1fr 1fr; } #build .btools { flex-direction:row; flex-wrap:wrap; } #build .btools .btn { width:auto; flex:1 1 30%; text-align:center; } }
   /* โหมดตกแต่งบ้าน: ซ่อนปุ่มเดิน/เครื่องมือฟาร์มที่ไม่ได้ใช้ ให้ห้องเห็นเต็มที่ */
-  body.building :is(#joy,#abtn,#hotbar,#picker,#guide,#fgauge,#ffight) { display:none !important; }
+  body.building :is(#joy,#abtn,#hotbar,#picker,#skillbar,#guide,#fgauge,#ffight) { display:none !important; }
   #build { touch-action:pan-y; }
   #build.dragging { opacity:.5; }
   #build .bhint { min-height:2.6em; line-height:1.3; }
@@ -417,7 +422,7 @@
   body:not(.touch) #hudMenu .mtouch { display:none !important; }
   #hudMenu .spk { margin-left:0; color:inherit; }
   /* คอมจอใหญ่: ขยาย UI ตามสเกลจอ (--ui คำนวณใน game.js resize) ให้สัดส่วนกับโลกในเกมเท่ากับจอเล็ก */
-  body:not(.touch) :is(#hudTop,#hotbar,#inv,#chat,#mini,#guide,#toast,#picker,#build,#fgauge,#ffight,#callBox) { zoom:var(--ui,1); }
+  body:not(.touch) :is(#hudTop,#hotbar,#inv,#chat,#mini,#guide,#toast,#picker,#skillbar,#build,#fgauge,#ffight,#callBox) { zoom:var(--ui,1); }
   body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#ask,#homeChoice) > .panel { zoom:var(--ui,1); }
   body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots) > .panel { max-height:calc(92dvh / var(--ui,1)); }
   body:not(.touch) #hudMenu { max-height:calc((100dvh - 90px) / var(--ui,1)); }
@@ -512,6 +517,7 @@
 <div id="ffight" class="hidden" title="กดค้าง Space / ปุ่ม A / แตะค้างที่นี่ เพื่อกรอสาย"><div id="ftxt">🎣 กดค้างเพื่อกรอสาย!</div><div class="tl">ความตึงสาย <small>(ปล่อยก่อนแดง!)</small></div><div class="tbar"><div class="safe"></div><div class="red"></div><div class="fill" id="ftten"></div></div><div class="dl">ปลา 🐟 ➜ ฝั่ง</div><div class="dbar"><div class="fillb" id="ftdist"></div><div class="fk" id="ftfish">🐟</div></div><div class="hnt">กดค้าง <b>Space</b> / ปุ่ม <b>A</b> / แตะค้างที่นี่ = กรอ • ปล่อย = ผ่อนสาย</div></div>
 <div id="hotbar" class="panel hidden"></div>
 <div id="picker" class="panel hidden"></div>
+<div id="skillbar" class="panel"></div>
 <div id="build" class="panel hidden"></div>
 <div id="chat" class="hidden"><div id="chatHist" class="hidden"></div><div id="chatLog"></div><input id="chatIn" class="hidden" maxlength="80" enterkeyhint="send" placeholder="พิมพ์ข้อความ แล้วกด Enter"></div>
 <div id="toast" class="panel"></div>

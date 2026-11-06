@@ -211,7 +211,7 @@ function handle(m) {
     case 'tile': if (m.v) farm[m.k] = m.v; else delete farm[m.k]; break;
     case 'deep': deepFloor = m.n | 0 || 1; refreshOpen(); break;
     case 'inv': inv = m.inv; if (m.deep) deepFloor = m.deep; if (m.fr) freshSt = m.fr; renderHud(); refreshOpen(); updateLampBtn(); updatePetBtn(); break;
-    case 'skills': skills = m.skills; refreshOpen(); break;
+    case 'skills': { const old = skillBarKey(); const ox = old ? skills[old] || 0 : 0; skills = m.skills; refreshOpen(); if (old && (skills[old] || 0) > ox) showSkillBar(); break; }
     case 'msg': toast(m.text); break;
     case 'gift': showGift(m.item); break;
     case 'pinask': pinSt = !!m.has; if (m.show) showPinBox(pinSt); break;
@@ -1051,6 +1051,23 @@ function renderHud() {
     d.onpointerdown = e => { e.stopPropagation(); pickSlot(i); };
     hb.appendChild(d);
   });
+  const sk = slot + '|' + (SLOTS[slot].id === 'tool' ? selTool : SLOTS[slot].id === 'seed' ? selSeed : selFeed);
+  if (sbSel !== null && sk !== sbSel) showSkillBar(); sbSel = sk; // เลือกอุปกรณ์/ช่องใหม่ → โชว์แถบอาชีพ
+}
+// แถบอาชีพลอยเหนือ hotbar: โชว์ตอนเลือกอุปกรณ์ที่ผูกอาชีพ และตอน XP อาชีพนั้นเพิ่ม แล้วค่อยๆ จางใน ~4 วิ (ตัวเลขเดียวกับแผงสถานะ)
+const TOOL_SKILL = { hoe: 'farm', water: 'farm', rod: 'fish', axe: 'wood', pick: 'mine' };
+function skillBarKey() { const s = SLOTS[slot].id; return s === 'tool' ? (toolLocked(selTool) ? '' : TOOL_SKILL[selTool] || '') : s === 'seed' ? 'farm' : s === 'feed' ? 'animal' : ''; }
+let sbTimer = 0, sbSel = null;
+function showSkillBar() {
+  const k = skillBarKey(), el = $('skillbar'); if (!k) el.classList.remove('show'); if (!k || !SKILLS[k] || !$('picker').classList.contains('hidden')) return;
+  const L = lvl(k), xp = skills[k] || 0, base = xpFor(L, k), need = L >= MAX_LV ? 0 : xpFor(L + 1, k) - base;
+  const st = starsSt[k] || 0, M = Shared.MASTERY, nxt = st < M.max && L >= MAX_LV ? xpFor(MAX_LV, k) + (st + 1) * Shared.masteryXp(k) : 0;
+  const pct = need ? Math.min(100, Math.round((xp - base) / need * 100)) : nxt ? Math.min(100, Math.round((xp - xpFor(MAX_LV, k) - st * Shared.masteryXp(k)) / Shared.masteryXp(k) * 100)) : 100;
+  const num = need ? `${xp - base}/${need}` : nxt ? `XP ${xp.toLocaleString()}/${nxt.toLocaleString()}` : 'เต็ม';
+  el.innerHTML = `<div class="r"><span><span class="e"></span> <span class="nm"></span></span><span class="lv"></span></div><div class="bar"><i style="width:${pct}%"></i></div><small class="num"></small>`;
+  el.querySelector('.e').textContent = SKILLS[k].emoji; el.querySelector('.nm').textContent = SKILLS[k].name;
+  el.querySelector('.lv').textContent = `Lv ${L}${L >= MAX_LV ? ' (สูงสุด)' : ''}${'⭐'.repeat(st)}`; el.querySelector('.num').textContent = num;
+  el.classList.add('show'); clearTimeout(sbTimer); sbTimer = setTimeout(() => el.classList.remove('show'), 4000);
 }
 let lastHeld = null;
 function heldEmoji() { const s = SLOTS[slot]; if (!s || s.id === 'hand' || (s.id === 'tool' && toolLocked(selTool))) return ''; return slotInfo(slot).e || ''; } // ช่องที่เลือกอยู่ → อีโมจิที่ถือ (ขวานที่ยังไม่มีไม่ถือ)
@@ -1061,13 +1078,13 @@ function pickSlot(i) {
 }
 function hidePicker() { $('picker').classList.add('hidden'); }
 function showPicker() {
-  const s = SLOTS[slot].id, el = $('picker');
+  const s = SLOTS[slot].id, el = $('picker'); $('skillbar').classList.remove('show');
   if (s === 'tool') { // เมนูเครื่องมือ: จอบ/บัวรดน้ำ/เบ็ด/ขวาน/มือเปล่า + แถวเหยื่อตกปลา (เลือกเหยื่อ = ถือเบ็ดให้เลย)
     el.innerHTML = '';
     for (const t of TOOL_LIST) {
       const inf = toolInfo(t), locked = toolLocked(t), b = document.createElement('button');
       b.className = 'opt' + (selTool === t ? ' sel' : ''); b.disabled = locked; b.innerHTML = `<b>${inf.e}</b>${TOOL_SHORT[t]}<br>${locked ? '🔒 ยังไม่มี' : inf.sub}`;
-      b.onclick = e => { e.stopPropagation(); selTool = t; ls.set('mw_tool', t); hidePicker(); renderHud(); toast(`${inf.e} ${TOOL_SHORT[t]}`); playSfx('click'); };
+      b.onclick = e => { e.stopPropagation(); selTool = t; ls.set('mw_tool', t); hidePicker(); renderHud(); showSkillBar(); toast(`${inf.e} ${TOOL_SHORT[t]}`); playSfx('click'); };
       el.appendChild(b);
     }
     const hd = document.createElement('div'); hd.textContent = '🎣 เหยื่อตกปลา'; hd.style.cssText = 'width:100%;flex-basis:100%;font-weight:700;font-size:12px;margin-top:4px'; el.appendChild(hd);
