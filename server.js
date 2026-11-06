@@ -19,7 +19,7 @@ const PUB = path.join(__dirname, 'public');
 const ROOM = /^[a-z0-9_-]{1,20}$/.test(process.env.ROOM || '') ? process.env.ROOM : 'main';
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const HFAST = Math.max(1, +process.env.HUNGER_FAST || 1);
+const { HFAST } = require('./server/consts.js'); // ย้ายไป server/consts.js
 if (process.env.OCEAN_ANYTIME) S.OCEAN.anytime = true; // ทดสอบ: ออกเรือใหญ่ได้ทุกเวลา (ปกติ 06:00–15:00 เวลาเกม)
 const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
 const SNAP_MS = +process.env.SNAP_MS || 60 * 60 * 1000; // ระยะห่างของ event snap (ไว้ทดสอบ)
@@ -30,24 +30,17 @@ const PET_DEFS = [{ kind: 'cat', v: 0, max: 15, speed: 36 }, { kind: 'dog', v: 0
 const HEX = /^#[0-9a-f]{6}$/i;
 const DEFAULT_HAT = '#e8c66a';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
-const PARTY = new Set(['pok', 'react', 'rps']); // เกมห้องหลายคน (ผู้เล่นหลายคน/บอท) — ดู partyHandle
+const { PARTY } = require('./server/consts.js'); // เกมห้องหลายคน (ย้ายไป server/consts.js)
 const TOOLS = new Set(['hand', 'hoe', 'water', 'rod', 'axe', 'pick', 'medicine', ...Object.values(ANIMALS).map(a => a.feedItem), ...Object.keys(CROPS).map(c => 'seed_' + c)]);
 // ของที่ตลาดรับซื้อทั้งหมด (ราคาขึ้นลงตามอุปสงค์-อุปทาน)
 const SELLABLE = S.SELLABLE; // รายการเดียวกับ shared.js (เคยก๊อปไว้สองที่แล้วตกหล่น เช่น น้ำผึ้ง)
 const rodOf = inv => S.rodTier(inv);
 
 // ชาวเมือง NPC: เดินท่องไปทั่วแมพ (หาทางด้วย BFS) และพิมพ์ข้อความสั้นๆ แนะนำเกม ขึ้นเป็นฟองเหนือหัวเท่านั้น (ไม่เข้าแชท)
-const NPC_DEFS = [
-  { name: 'ป้าแก้ว', title: '🏘️ ชาวเมือง', color: '#d6559a', hat: '#e8c66a', pc: '#6b4a8a', wear: { shirt: 'dots', pants: 'skirt', hat: 'flower' }, home: [27, 28],
-    lines: ['ปลูกผักแล้วรดน้ำด้วยนะ 💧', 'นั่งพักแล้วหิวไม่ลดนะ 🪑', 'ทำเควสประจำวันที่เมนู 🎒 สิ', 'กลางคืนมืด ซื้อตะเกียง 🏮', 'ซื้อที่ดินสร้างบ้านได้ 🏠', 'สัตว์หิว รีบให้อาหารนะ 🐔']},
-  { name: 'ลุงสมชาย', title: '🏘️ ชาวเมือง', color: '#7a9a3a', hat: '#e8c66a', pc: '#4a5b3a', wear: { shirt: 'farmer', pants: 'overall', hat: 'straw' }, home: [41, 32],
-    lines: ['ตกปลาต้องมีเหยื่อ 🪱', 'ยืนใกล้สระ แล้วโยนเบ็ดไกลๆ 🎣', 'ตัดไม้ต้องมีขวาน 🪓', 'ขายเยอะๆ ราคาตกนะ 📉', 'อัปเลเวลปลดล็อกของใหม่ ⭐', 'ฝากเงิน ATM ได้ดอกเบี้ย 💳', 'ขวานเบ็ดพังต้องซ่อมนะ 🔧']},
-  { name: 'น้องมิ้นท์', title: '🏘️ ชาวเมือง', color: '#3aa0d6', hat: '#ffffff', pc: '#2c3e50', wear: { shirt: 'hoodie', pants: 'shorts', hat: 'cap' }, home: [33, 21],
-    lines: ['ตู้เกมเล่นกับบอทได้ 🤖', 'ท้าเพื่อนเล่น XO ไหม ❌⭕', 'ชวนเพื่อนกด 🔗 มาเล่น', 'ช่วยกันทำงาน ติดบัฟ 🎉', 'กด 📰 ดูข่าวเมืองนะ', 'กด H ตกแต่งบ้านได้ 🛋️']},
-];
+const { NPC_DEFS } = require('./server/consts.js'); // ย้ายไป server/consts.js
 
 const CAT_NAME = { fish: 'ปลา', crop: 'ผัก/ผลไม้', animal: 'ผลผลิตสัตว์', wood: 'ไม้', ore: 'แร่', dish: 'อาหาร' }; // ชื่อหมวดในข้อความแจ้งผู้เล่น
-const CAVE = '@cave'; // ฉากถ้ำเหมือง (p.scene) ร่วมกันทั้งห้อง: ชื่อผู้เล่นไม่มี @ จึงไม่ชนกับคีย์บ้าน
+const { CAVE, ADMIN_NAME } = require('./server/consts.js'); // ฉากถ้ำเหมือง (ย้ายไป server/consts.js)
 const HOUSE_MSG = new Set(['m', 'act', 'sw', 'held', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'house', 'gift', 'greet']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
 class World {
   constructor(room) {
@@ -3047,7 +3040,6 @@ mix(World, require('./server/systems/lotto.js')); // ระบบหวย (ย�
 mix(World, require('./server/systems/cinema.js')); // ระบบโรงหนัง (ย้ายไป server/systems/cinema.js)
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
-const ADMIN_NAME = (process.env.ADMIN_NAME || 'Sira').trim();
 if (require.main !== module) { module.exports = { World }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)
 
 const worlds = new Map();
