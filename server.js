@@ -482,7 +482,6 @@ class World {
     else { const rec = this.saved[key]; if (rec && rec.skills) { rec.skills.animal = (rec.skills.animal || 0) + xp; this.dirty = true; } }
   }
   // ----- แต้มตู้เกม (arcade points): เล่นจบ/ชนะคนจริงได้แต้ม ใช้แลกของโชว์ + จัดอันดับ Leaderboard -----
-  weekKey() { return Math.floor(Date.now() / (7 * 86400000)); } // บัคเก็ตสัปดาห์ (Leaderboard รายสัปดาห์รีเซ็ตทุก 7 วัน)
   arcOf(rec) {
     if (!rec.arc || typeof rec.arc !== 'object') rec.arc = { pts: 0, total: 0, wk: 0, wkKey: 0 };
     const wk = this.weekKey(); if (rec.arc.wkKey !== wk) { rec.arc.wk = 0; rec.arc.wkKey = wk; }
