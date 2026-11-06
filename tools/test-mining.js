@@ -74,14 +74,14 @@ const spot = [...F.ores.keys()][0].split(',').map(Number); F.ores.clear(); F.hp.
   assert.strictEqual(S.BOOK.ore.ids.length, 10); assert.strictEqual(S.bookInfo('ore', 'copper').name, 'ทองแดง');
 }
 { // ตั๋วลงเหมือง: ต้องเคยเดินลงถึงชั้นนั้นเอง จ่ายตามตาราง ลงตรงไปชั้นนั้น เงินจมล้วน
-  const wb = mkWs(), b = w.join(wb, 'bob', '#3498db').p; w.nearShopKind = () => 'mine'; b.rec.inv.coin = 10000; b.scene = null;
+  const wb = mkWs(), b = w.join(wb, 'bob', '#3498db').p; const LX = (S.MINE.lift.x + 0.5) * S.TS, LY = (S.MINE.lift.y + 0.5) * S.TS; b.x = LX; b.y = LY; w.nearShopKind = () => 'farm'; b.rec.inv.coin = 10000; b.scene = null;
   w.mineTicket(b, 3); assert.strictEqual(b.rec.inv.coin, 10000, 'ยังไม่เคยลงถึงชั้น 3 ซื้อไม่ได้'); assert.strictEqual(b.scene, null);
   b.rec.deep = 3; w.mineTicket(b, 4); assert.strictEqual(b.rec.inv.coin, 10000, 'ชั้นลึกกว่าที่เคยลง ซื้อไม่ได้');
   w.mineTicket(b, 1); assert.strictEqual(b.rec.inv.coin, 10000, 'ชั้น 1 ไม่ต้องใช้ตั๋ว');
   w.mineTicket(b, 3); assert.strictEqual(b.scene, '@cave3', 'ลงตรงไปชั้น 3'); assert.strictEqual(b.rec.inv.coin, 10000 - S.MINE.fee[3], 'จ่ายตามตาราง');
   w.mineTicket(b, 2); assert.strictEqual(b.rec.inv.coin, 10000 - S.MINE.fee[3], 'อยู่ในถ้ำแล้วซื้อตั๋วไม่ได้');
   b.scene = null; b.rec.inv.coin = S.MINE.fee[3] - 1; w.mineTicket(b, 3); assert.strictEqual(b.scene, null, 'เหรียญไม่พอ ไม่ลง');
-  b.rec.inv.coin = 99999; w.nearShopKind = () => 'farm'; w.mineTicket(b, 3); assert.strictEqual(b.scene, null, 'ต้องยืนใกล้ร้านช่างเหมือง'); w.nearShopKind = () => 'mine';
+  b.rec.inv.coin = 99999; b.x = LX + S.MINE.lift.range + 5; w.nearShopKind = () => 'mine'; w.mineTicket(b, 3); assert.strictEqual(b.scene, null, 'ใกล้แต่ร้านช่างเหมือง ไม่ใช่ลิฟต์ ซื้อไม่ได้'); assert.strictEqual(b.rec.inv.coin, 99999); b.x = LX; assert.ok(S.nearLift(LX, LY) && !S.nearLift(0, 0) && !S.nearLift(NaN, LY));
   // เดินลงถึงชั้นใหม่เอง = จำชั้นลึกสุด
   b.scene = null; w.enterCave(b); w.caveMove(b, 1, 2); assert.strictEqual(b.rec.deep, 3, 'ชั้น 2 ตื้นกว่า deep เดิมไม่ลด'); w.caveMove(b, 3, 4); assert.strictEqual(b.rec.deep, 4, 'ลงถึงชั้น 4 จำเป็นชั้นลึกสุดใหม่');
   assert.strictEqual(S.MINE.fee.length, S.MINE.floors + 1); for (let f = 3; f <= S.MINE.floors; f++) assert.ok(S.MINE.fee[f] > S.MINE.fee[f - 1], 'ราคาตั๋วเพิ่มตามความลึก');

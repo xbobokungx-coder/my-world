@@ -1307,6 +1307,18 @@ function bindPet(body) {
   body.querySelectorAll('[data-petmode]').forEach(b => b.onclick = () => send({ t: 'pet', pet: b.dataset.pet, mode: b.dataset.petmode }));
   body.querySelectorAll('[data-petcare]').forEach(b => b.onclick = () => send({ t: 'petcare', a: b.dataset.petcare }));
 }
+// ลิฟต์เหมืองที่ปากถ้ำ: จ่ายเหรียญลงตรงไปชั้นที่เคยเดินลงถึง (ลงเดินเองฟรีเหมือนเดิม) เซิร์ฟเวอร์เช็กระยะ/เหรียญ/ชั้นเอง
+function openLift() { shopKind = 'lift'; $('shop').classList.remove('hidden'); renderShop(); }
+function renderLift() {
+  const fees = Shared.MINE.fee, coin = inv.coin || 0; let rows = '';
+  for (let f = 2; f <= Shared.MINE.floors; f++) {
+    const ok = f <= deepFloor, kind = Shared.ORE_ORDER[f - 1], O = Shared.ORES[kind];
+    rows += `<div class="row${ok ? '' : ' lock'}"><span>🎫 ชั้น ${f} ${O ? O.emoji : ''}<br><small>${ok ? 'ลงตรงไปชั้นนี้' : '🔒 ยังไม่เคยลงถึง (เดินลงเองให้ถึงก่อนครั้งแรก)'}</small></span><span>🪙${fees[f]} <button class="btn small" data-ticket="${f}" ${!ok || coin < fees[f] ? 'disabled' : ''}>ลงเลย</button></span></div>`;
+  }
+  $('shopTitle').textContent = '🛗 ลิฟต์เหมือง'; $('shopInfo').textContent = '🪙 ' + coin;
+  const body = $('shopBody'); body.innerHTML = `<div class="sec">จ่ายเหรียญลงชั้นลึกได้เลย ข้ามการเดินหาบันได (ไม่อยากเสียเงินก็เดินลงเองฟรี • ลงถึงชั้นลึกสุดที่เคยไปแล้ว: ชั้น ${deepFloor})</div>` + rows;
+  body.querySelectorAll('[data-ticket]').forEach(b => b.onclick = () => { const f = +b.dataset.ticket; ask(`จ่าย 🪙${Shared.MINE.fee[f]} ลงลิฟต์ไปชั้น ${f}? (ไม่อยากเสียเงินก็เดินลงเองฟรี)`, () => { send({ t: 'mineticket', f }); closeShop(); }); });
+}
 function openPetMenu() { shopKind = 'petmenu'; $('shop').classList.remove('hidden'); renderShop(); }
 function petSpeedMul() { // 🏃 สัตว์เลี้ยงที่พาออกมา เดินเร็วขึ้นตามค่าสถานะ (ไม่ป่วย/อิ่มพอ)
   const c = me && me.pet; if (!c || !COMPANIONS[c]) return 1;
@@ -1323,6 +1335,7 @@ function updatePetBtn() {
 }
 function renderShop() {
   if (shopKind === 'petmenu') { $('shopTitle').textContent = '🐾 สัตว์เลี้ยง'; $('shopInfo').textContent = '🪙 ' + (inv.coin || 0); $('shopBody').innerHTML = petPanelHtml(); bindPet($('shopBody')); updatePetBtn(); return; }
+  if (shopKind === 'lift') { renderLift(); return; }
   const sh = SHOPS[shopKind]; if (!sh) return;
   $('shopTitle').textContent = sh.name;
   $('shopInfo').textContent = (sh.skill ? `${SKILLS[sh.skill].emoji} ${SKILLS[sh.skill].name} เลเวล ${lvl(sh.skill)} • ` : '') + `🪙 ${inv.coin || 0}` + (shopKind === 'food' ? ` • 🍖 ความอิ่ม ${hunger}/100` : '');
@@ -1370,14 +1383,6 @@ function renderShop() {
       const r = rentsSt[P.id], active = r && r.until > now, mine = active && r.key === myKey, left = active ? fmtLeft(r.until - now) : '';
       h += `<div class="row"><span>🏡 แปลง ${P.id}<br><small>${active ? (mine ? `ของคุณ • เหลือ ${left}` : `${r.name} เช่าอยู่ • เหลือ ${left}`) : 'ว่าง (ล็อกไว้ ยังไม่มีคนเช่า)'}</small></span><span>${active && !mine ? '' : `<button class="btn small" data-rent="${P.id}" ${(inv.coin || 0) < R.price ? 'disabled' : ''}>${mine ? 'ต่อเวลา' : 'เช่า'} 🪙${R.price}</button>`}</span></div>`;
     }
-  }
-  if (shopKind === 'mine') { // ตั๋วลงเหมือง: จ่ายลงตรงไปชั้นที่เคยเดินลงถึง (ลงเดินเองฟรีเหมือนเดิม)
-    const fees = Shared.MINE.fee, coin = inv.coin || 0; let rows = '';
-    for (let f = 2; f <= Shared.MINE.floors; f++) {
-      const ok = f <= deepFloor, kind = Shared.ORE_ORDER[f - 1], O = Shared.ORES[kind];
-      rows += `<div class="row${ok ? '' : ' lock'}"><span>🎫 ชั้น ${f} ${O ? O.emoji : ''}<br><small>${ok ? 'ลงตรงไปชั้นนี้' : '🔒 ยังไม่เคยลงถึง (เดินลงเองให้ถึงก่อนครั้งแรก)'}</small></span><span>🪙${fees[f]} <button class="btn small" data-ticket="${f}" ${!ok || coin < fees[f] ? 'disabled' : ''}>ซื้อตั๋ว</button></span></div>`;
-    }
-    h += `<div class="sec">🎫 ตั๋วลงเหมือง (ข้ามการเดินหาบันได • ไม่อยากเสียเงินก็เดินลงเองได้ฟรี • ลงถึงชั้นลึกสุดที่เคยไปแล้ว: ชั้น ${deepFloor})</div>` + rows;
   }
   if (shopKind === 'pet') h += petPanelHtml();
   const tierOf = t => (t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : 1);
@@ -1439,7 +1444,6 @@ function renderShop() {
   body.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => send({ t: 'sell', item: b.dataset.sell, n: b.dataset.n === 'all' ? 'all' : 1 }));
   body.querySelectorAll('[data-eat]').forEach(b => b.onclick = () => send({ t: 'eat', item: b.dataset.eat }));
   body.querySelectorAll('[data-repair]').forEach(b => b.onclick = () => send({ t: 'repair', tool: b.dataset.repair }));
-  body.querySelectorAll('[data-ticket]').forEach(b => b.onclick = () => { const f = +b.dataset.ticket; ask(`ซื้อตั๋วลงเหมืองชั้น ${f} 🪙${Shared.MINE.fee[f]}? (ลงเดินเองฟรี)`, () => { send({ t: 'mineticket', f }); closeShop && closeShop(); }); });
   body.querySelectorAll('[data-rebuy]').forEach(b => b.onclick = () => send({ t: 'rebuy', tool: b.dataset.rebuy }));
   body.querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask(`ขายคืนได้ 🪙${sellbackValue(b.dataset.sellback)} (70% ของราคาซื้อ หัก 30%) ยืนยัน?`, () => send({ t: 'sellback', item: b.dataset.sellback })));
 }
@@ -1592,6 +1596,7 @@ function onTileClick(tx, ty) {
     const [px, py] = myTile(); if (px === Shared.HOUSE_DOOR.x && py === Shared.HOUSE_DOOR.y) { openHomeChoice(); return; }
     tx = Shared.HOUSE_DOOR.x; ty = Shared.HOUSE_DOOR.y;
   }
+  if (inTown() && tx === Shared.MINE.lift.x && ty === Shared.MINE.lift.y) { stopWalk(); if (Shared.nearLift(me.x, me.y)) openLift(); else toast('เดินไปยืนใกล้ลิฟต์เหมือง 🛗 ที่ปากถ้ำก่อน'); return; } // แตะลิฟต์ = เปิดพาเนลตั๋ว (ไกลไป = บอกให้เดินไป)
   if (inTown() && hubSignAt(tx, ty)) { stopWalk(); openHub(); return; } // กดป้าย Arcade Hub = เปิดแต้ม/อันดับ
   const [px, py] = myTile();
   if (interactive(tx, ty)) {
@@ -2760,6 +2765,18 @@ function drawCliffs(gx) {
   const HL = Shared.MINE.hill, hill = PixelArt.caveHill(Shared.hillTop, HL.peaks, (HL.x1 - HL.x0 + 1) * 16, (Shared.MINE.door[0] - HL.x0) * 16 + 8), sm = gx.imageSmoothingEnabled, at = p => [HL.x0 * TS + p.x * 2, p.y * 2]; // พิกเซลภาพ → พิกเซลเกม (ภาพมีขอบ 1 วางที่ −2)
   gx.imageSmoothingEnabled = false; gx.drawImage(hill, HL.x0 * TS - 2, -2, hill.width * 2, hill.height * 2); gx.imageSmoothingEnabled = sm;
   PixelUI.world(gx, '⚒️', ...at(hill.sign), 9); caveLamp = at(hill.lamp);
+  { // ลิฟต์เหมือง: ตู้เหล็ก+ไม้ติดหน้าผาข้างปากถ้ำ ประตูตะแกรง ลูกศรลง + ป้ายไม้บอกว่าจ่ายเหรียญลงชั้นล่างได้ (ตำแหน่งตาม Shared.MINE.lift)
+    const L = Shared.MINE.lift, X = L.x * TS, Y = L.y * TS, c = (col, x, y, w, h) => { gx.fillStyle = col; gx.fillRect(X + x, Y + y, w, h); };
+    c('rgba(0,0,0,.25)', 1, 29, 30, 3); c('#2b2b33', 2, 2, 28, 28); c('#7d8794', 3, 3, 26, 26); c('#5a4630', 5, 5, 22, 22); c('#14121a', 7, 7, 18, 20);
+    for (let i = 0; i < 5; i++) c('#9aa4b0', 8 + i * 4, 7, 2, 20); for (let i = 0; i < 4; i++) c('#6b7480', 7, 10 + i * 5, 18, 2);
+    c('#2b2b33', 2, 2, 28, 3); c('#f1c40f', 4, 3, 4, 2); c('#f1c40f', 24, 3, 4, 2); c('#c0392b', 13, 27, 6, 2);
+    c('#6b4a2a', 34, -26, 116, 26); c('#2b1b0e', 34, -26, 116, 2); c('#2b1b0e', 34, -2, 116, 2); c('#2b1b0e', 34, -26, 2, 26); c('#2b1b0e', 148, -26, 2, 26); c('#8a6a3e', 36, -24, 112, 2); // ป้ายไม้ ติดผนังหน้าผาขวาของลิฟต์ (เลี่ยงต้นไม้ซ้าย)
+    c('#2b1b0e', 30, 2, 4, 3); // ขอเกี่ยวป้ายติดตู้
+    gx.font = 'bold 12px sans-serif'; gx.textAlign = 'center'; gx.textBaseline = 'middle'; gx.fillStyle = '#2b1b0e'; gx.fillText('ลิฟต์เหมือง', X + 101, Y - 17); gx.fillStyle = '#ffe9a8'; gx.fillText('ลิฟต์เหมือง', X + 100, Y - 18);
+    gx.font = '9px sans-serif'; gx.fillStyle = '#f1c40f'; gx.fillText('จ่ายเหรียญลงชั้นล่าง', X + 100, Y - 6);
+    PixelUI.world(gx, '🛗', X + 49, Y - 13, 14);
+    c('#f1c40f', 14, 14, 4, 6); c('#f1c40f', 11, 19, 10, 2); c('#f1c40f', 12, 21, 8, 2); c('#f1c40f', 14, 23, 4, 2); // ลูกศรลง
+  }
 }
 function buildBase() {
   const U = PixelArt.U, K = PixelArt.GK, GU = U * K, oc = document.createElement('canvas'); oc.width = W * GU; oc.height = H * GU; // พื้นโลกละเอียด K เท่า (GU = 32 px ต่อช่อง = พิกเซลเกม)
