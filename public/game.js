@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
-  WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable, CASINO,
+  WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
   GAME_TITLES, COOK, COOK_FEE, craftFee, COOK_CATS, cookCat, PROJECTS, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, woodXp, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, LUCKY, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, playLevel, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, SELLABLE } = Shared;
 const MAP = makeMap();
@@ -1905,10 +1905,10 @@ function onArc(m) {
   if (m.close) { if (arcTable && arcTable.id === m.close) { arcTable = null; closeArcade(); } return; } // เดินห่างตู้เกินระยะ: เซิร์ฟเวอร์พาออกจากโต๊ะแล้ว
   const t = m.table, was = arcLast[t.id]; arcLast[t.id] = t.state;
   if (t.game === 'react' && t.g) { const ph = arcLast[t.id + ':ph']; arcLast[t.id + ':ph'] = t.g.phase; if (t.g.phase === 'go' && ph !== 'go' && arcOpenNow()) playSfx('go'); }
-  const uno = t.game === 'uno', casino = t.game === 'bacc' || t.game === 'bj', party = PARTY_GAMES.has(t.game);
-  const amPlayer = (uno || casino || party) ? t.players.some(p => p.id === myId && !p.out) : (t.xId === myId || t.oId === myId);
+  const uno = t.game === 'uno', party = PARTY_GAMES.has(t.game);
+  const amPlayer = (uno || party) ? t.players.some(p => p.id === myId && !p.out) : (t.xId === myId || t.oId === myId);
   if (m.open) { arcTable = t; unoWild = -1; openArcade(); return; }
-  if (t.state === 'playing' && was !== 'playing' && amPlayer) { arcTable = t; unoWild = -1; openArcade(); toast(uno ? '🃏 เกม UNO เริ่มแล้ว!' : casino ? '🎰 โต๊ะเริ่มแล้ว วางเดิมพันได้เลย!' : party ? '🎮 เกมเริ่มแล้ว!' : '🎮 เกม XO เริ่มแล้ว!'); return; }
+  if (t.state === 'playing' && was !== 'playing' && amPlayer) { arcTable = t; unoWild = -1; openArcade(); toast(uno ? '🃏 เกม UNO เริ่มแล้ว!' : party ? '🎮 เกมเริ่มแล้ว!' : '🎮 เกม XO เริ่มแล้ว!'); return; }
   if (arcTable && arcTable.id === t.id) { if (uno && t.cur !== myId) unoWild = -1; arcTable = t; if (arcOpenNow()) renderArcade(); }
 }
 // ----- เกมหลายคน: ไพ่ป๊อก / ใครกดเร็วกว่า / เป่ายิ้งฉุบ (ห้องแบบ UNO: 2–8 คน เริ่มเมื่อ ≥2 • เล่นคนเดียวกับบอท • เติมบอทได้) -----
@@ -1979,58 +1979,6 @@ const cardLabel = c => (c[1] === 'S' ? '⛔' : c[1] === 'R' ? '🔄' : c[1] === 
 const cardTag = (c, cls = '', attrs = '') => `<button class="uc c${c[0]} ${cls}" ${attrs}>${cardLabel(c)}</button>`;
 const unoOk = (t, c) => c[0] === 'W' || c[0] === t.color || (t.top[0] !== 'W' && c[1] === t.top[1]);
 const UCOL = { R: '#e04b4b', Y: '#f1c40f', G: '#3fae52', B: '#2b7bd6' };
-// ----- คาสิโน: บาคาร่า / แบล็คแจ็ค (เล่นกับเจ้ามือ 1-3 คนต่อโต๊ะ) -----
-let cMax = 1, cBet = 25, cSide = 'P';
-const bjTotalC = h => { let t = 0, a = 0; for (const c of h) { const r = c.slice(1); if (r === 'A') { a++; t += 11; } else if (r !== '?') t += ['10', 'J', 'Q', 'K'].includes(r) ? 10 : +r; } while (t > 21 && a > 0) { t -= 10; a--; } return t; };
-const cardsHTML = (h, hide) => (h || []).map(c => (c === '??' ? pokCard('', true) : pokCard(c))).join('');
-function renderCasino() {
-  const t = arcTable, coin = inv.coin || 0, bacc = t.game === 'bacc', bets = CASINO.bets;
-  if (!bets.includes(cBet)) cBet = bets[1];
-  const mine = t.players.find(p => p.id === myId), isHost = t.hostId === myId;
-  let h = `<div class="center" style="font-size:13px;opacity:.75">🪙 เหรียญของคุณ ${coin}${t.practice ? ' • 🧪 โหมดซ้อม (ไม่ใช้เหรียญจริง)' : ''}</div>`;
-  const rules = bacc ? 'ทายว่าฝั่งไหนจะได้แต้มใกล้ 9 ที่สุด: 🔵 ผู้เล่น จ่าย 1:1 • 🔴 เจ้ามือ จ่าย 0.95:1 • 🟢 เสมอ จ่าย 8:1 (เสมอคืนเดิมพันฝั่งผู้เล่น/เจ้ามือ)'
-    : 'แต้มรวมใกล้ 21 ที่สุดโดยไม่เกิน ชนะเจ้ามือจ่าย 1:1 • แบล็คแจ็ค (21 ด้วยไพ่ 2 ใบ) จ่าย 3:2 • ดับเบิ้ลได้ตอนมีไพ่ 2 ใบ • เจ้ามือจั่วจนถึง 17';
-  if (t.state === 'idle') {
-    h += `<div class="sec">เลือกวิธีเล่น</div>`
-      + `<button class="btn" data-arc="solo" style="width:100%">🎰 เล่นคนเดียวกับเจ้ามือ (ใช้เหรียญจริง)</button>`
-      + `<button class="btn" data-arc="create" style="width:100%;margin-top:8px">👥 เปิดโต๊ะหลายคน (รอเพื่อน แล้วกดเริ่ม • เล่นได้หลายคน)</button>`
-      + `<button class="btn" data-arc="practice" style="width:100%;margin-top:8px;background:#8a6fd1;border-bottom-color:#5d47a1">🧪 ซ้อมเล่นคนเดียว (ไม่ใช้เหรียญ)</button>`
-      + `<p style="font-size:12px;opacity:.7">${rules}<br>เดิมพันต่อรอบ ${bets.join(' / ')} เหรียญ • เปิดโต๊ะหลายคน: คนแรก (เจ้าของโต๊ะ) กดเริ่มได้เมื่อมี ≥2 คน • ผลเป็นการสุ่ม เล่นเพื่อความสนุก ไม่ควรเล่นนานติดต่อกัน 🙏</p>`;
-  } else if (t.state === 'waiting') {
-    h += `<div class="banner" style="background:#e9e0ff">⏳ รอผู้เล่น • ตอนนี้ ${t.players.length} คน</div><div class="opps">${t.players.map(p => `<div class="opp">${p.id === t.hostId ? '👑 ' : ''}${esc(p.name)}</div>`).join('')}</div>`;
-    if (isHost) h += (t.players.length >= 2 ? `<button class="btn" data-arc="startnow" style="width:100%;margin-top:8px">▶️ เริ่มเลย (${t.players.length} คน)</button>` : '<p class="center" style="font-size:13px">ให้เพื่อนเดินมาที่ตู้นี้แล้วกด "เข้าร่วม" (ต้องมีอย่างน้อย 2 คนถึงเริ่มได้)</p>')
-      + `<button class="btn" data-arc="cancel" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ยกเลิกโต๊ะ</button>`;
-    else if (mine) h += `<button class="btn" data-arc="leave" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ลุกจากโต๊ะ</button>`;
-    else h += `<button class="btn" data-arc="join" style="width:100%;margin-top:8px" ${t.players.length >= t.max ? 'disabled' : ''}>🎰 เข้าร่วมโต๊ะ</button>`;
-  } else {
-    h += `<div class="opps">${t.players.map(p => `<div class="opp${t.cur === p.id ? ' cur' : ''}">${p.id === myId ? '⭐ ' : ''}${esc(p.name)}<br><small>${p.bet ? '🪙 ' + p.bet.amt + (bacc ? ' ' + ({ P: '🔵', B: '🔴', T: '🟢' })[p.bet.side] : '') : t.phase === 'bet' ? 'กำลังเลือก...' : 'ข้ามรอบ'}${t.phase === 'result' && p.bet ? `<br><b style="color:${p.net > 0 ? '#1e8f4e' : p.net < 0 ? '#c0392b' : '#666'}">${p.net > 0 ? '+' : ''}${p.net}</b>` : ''}</small></div>`).join('')}</div>`;
-    h += `<div class="ulog">รอบที่ ${t.round}${t.msg ? ' • ' + esc(t.msg) : ''}</div>`;
-    if (bacc && t.hands) {
-      const wn = t.hands.win;
-      h += `<div class="sec center">🔵 ผู้เล่น — ${t.hands.pt} แต้ม ${wn === 'P' ? '👑' : ''}</div><div class="center">${cardsHTML(t.hands.P)}</div><div class="sec center">🔴 เจ้ามือ — ${t.hands.bt} แต้ม ${wn === 'B' ? '👑' : ''}</div><div class="center">${cardsHTML(t.hands.B)}</div>`;
-    }
-    if (!bacc && t.dealer) {
-      h += `<div class="sec center">เจ้ามือ${t.dealer.reveal ? ' — ' + t.dealer.total + ' แต้ม' : ''}</div><div class="center">${cardsHTML(t.dealer.hand)}</div>`;
-      for (const p of t.players) if (p.hand) h += `<div class="sec center">${p.id === myId ? '⭐ ' : ''}${esc(p.name)} — ${bjTotalC(p.hand)} แต้ม ${({ bust: '💥 ไหม้', blackjack: '🂡 แบล็คแจ็ค!', stand: '', win: '🎉 ชนะ', lose: '😢 แพ้', push: '🤝 เสมอ' })[p.status] || ''}</div><div class="center">${cardsHTML(p.hand)}</div>`;
-    }
-    const iAmCur = t.phase === 'play' && t.cur === myId;
-    if (t.phase === 'bet') {
-      h += `<div class="center" style="font-weight:700;margin-top:6px">วางเดิมพัน <span id="arcTimer"></span></div>`;
-      if (mine && !mine.bet) {
-        if (bacc) h += `<div class="chips" style="justify-content:center">${[['P', '🔵 ผู้เล่น 1:1'], ['B', '🔴 เจ้ามือ 0.95:1'], ['T', '🟢 เสมอ 8:1']].map(([s, n]) => `<button class="chip${cSide === s ? ' sel' : ''}" data-cside="${s}">${n}</button>`).join('')}</div>`;
-        h += `<div class="chips" style="justify-content:center">${bets.map(b => `<button class="chip${cBet === b ? ' sel' : ''}" data-cbet="${b}" ${!t.practice && coin < b ? 'disabled' : ''}>🪙 ${b}</button>`).join('')}</div>`
-          + `<div class="center"><button class="btn" data-cplace="1" ${!t.practice && coin < cBet ? 'disabled' : ''}>✅ วางเดิมพัน ${cBet}${bacc ? ' ' + ({ P: '🔵', B: '🔴', T: '🟢' })[cSide] : ''}</button></div>`;
-      } else if (mine) h += `<div class="center">วางเดิมพันแล้ว ⏳ รอผู้เล่นคนอื่น</div>`;
-      else h += `<div class="center">👀 กำลังดูอยู่</div>` + (t.players.length < t.max && !t.practice ? `<div class="center"><button class="btn small" data-arc="join">เข้าร่วมโต๊ะ</button></div>` : '');
-    } else if (t.phase === 'play') {
-      h += `<div class="center" style="font-weight:700;margin-top:6px">${iAmCur ? '👉 ตาของคุณ' : '⏳ รอ ' + esc((t.players.find(p => p.id === t.cur) || {}).name || '') + '...'} <span id="arcTimer"></span></div>`;
-      if (iAmCur) { const mp = t.players.find(p => p.id === myId); h += `<div class="center" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px"><button class="btn" data-arc="hit">🃏 จั่ว</button><button class="btn" data-arc="stand" style="background:#8a6fd1;border-bottom-color:#5d47a1">✋ อยู่</button>${mp.hand && mp.hand.length === 2 && !mp.bet.dbl ? `<button class="btn" data-arc="double" ${!t.practice && coin < mp.bet.amt ? 'disabled' : ''}>✖️2 ดับเบิ้ล</button>` : ''}</div>`; }
-    } else if (t.phase === 'result') h += `<div class="center" style="font-size:13px;opacity:.75;margin-top:6px">รอบถัดไปเริ่มเร็วๆ นี้...</div>`;
-    if (mine) h += `<div class="center" style="margin-top:10px"><button class="btn small muted" data-arc="leave">🚪 ลุกจากโต๊ะ</button></div>`;
-  }
-  $('arcBody').innerHTML = h;
-  updateArcTimer();
-}
 function renderUno() {
   const t = arcTable, coin = inv.coin || 0;
   if (arcBet > coin) arcBet = [...BETS].reverse().find(b => b <= coin) || 0;
@@ -2086,7 +2034,6 @@ function renderArcade() {
   $('arcTitle').textContent = '🎮 ตู้เกม ' + (GAME_TITLES[t.game] || '');
   if (t.game === 'uno') return renderUno();
   if (PARTY_GAMES.has(t.game)) return renderParty();
-  if (t.game === 'bacc' || t.game === 'bj') return renderCasino();
   const coin = inv.coin || 0;
   if (arcBet > coin) arcBet = [...BETS].reverse().find(b => b <= coin) || 0;
   if (arcBotBet > coin) arcBotBet = [...BOTBET.bets].reverse().find(b => b <= coin) || 0;
@@ -2163,11 +2110,7 @@ $('arcBody').addEventListener('click', e => {
   }
   if (b.dataset.color) { const i = unoWild; unoWild = -1; send({ t: 'arc', a: 'play', id: arcTable.id, i, color: b.dataset.color }); return; }
   if (b.dataset.unocancel) { unoWild = -1; renderArcade(); return; }
-  if (b.dataset.cmax !== undefined) { cMax = +b.dataset.cmax; renderArcade(); return; }
-  if (b.dataset.cbet !== undefined) { cBet = +b.dataset.cbet; renderArcade(); return; }
-  if (b.dataset.cside) { cSide = b.dataset.cside; renderArcade(); return; }
-  if (b.dataset.cplace) { send({ t: 'arc', a: 'bet', id: arcTable.id, side: cSide, amt: cBet }); playSfx('coin'); return; }
-  if (b.dataset.arc) send({ t: 'arc', a: b.dataset.arc, id: arcTable.id, bet: b.dataset.arc === 'bot' ? arcBotBet : arcBet, max: (arcTable.game === 'bacc' || arcTable.game === 'bj') ? cMax : arcMax });
+  if (b.dataset.arc) send({ t: 'arc', a: b.dataset.arc, id: arcTable.id, bet: b.dataset.arc === 'bot' ? arcBotBet : arcBet, max: arcMax });
 });
 // ปุ่ม "กด" ของเกมใครกดเร็วกว่า ใช้ pointerdown เพื่อให้ตอบสนองทันที (ไม่รอปล่อยนิ้ว)
 $('arcBody').addEventListener('pointerdown', e => {
@@ -4160,7 +4103,7 @@ function step(now) {
   CABINETS.forEach((c, i) => {
     if (scene || !c.game || c.x < x0 - 1 || c.x > x1 + 1 || c.y < y0 - 1 || c.y > y1 + 1) return;
     const s = arcStatus[i]; if (!s) return;
-    const uno = ['uno', 'bacc', 'bj', 'pok', 'react', 'rps'].includes(s[7]);
+    const uno = ['uno', 'pok', 'react', 'rps'].includes(s[7]);
     const txt = s[2] === 'waiting' ? `⏳ ${s[4]}${uno ? ' ' + s[5] : ''}${s[3] ? ' 🪙' + s[3] : ''}` : s[2] === 'playing' ? (uno ? `${s[7] === 'uno' ? '🃏 กำลังเล่น' : PARTY_GAMES.has(s[7]) ? '🎮 กำลังเล่น' : '🎰 เล่นอยู่'} ${s[5]}` : `⚔️ ${s[4]} vs ${s[5]}`) : s[2] === 'over' ? '🏁 จบเกม' : '🎮 ว่าง';
     if (s[2] === 'idle') { // ว่าง = จุดสีเขียวบนป้ายตู้ (ไม่ใช้คำว่าว่าง)
       ctx.fillStyle = '#1b5e20'; ctx.beginPath(); ctx.arc(c.x * TS + 24, c.y * TS - 8, 3.4, 0, 7); ctx.fill();

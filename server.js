@@ -21,7 +21,7 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const HFAST = Math.max(1, +process.env.HUNGER_FAST || 1);
 if (process.env.OCEAN_ANYTIME) S.OCEAN.anytime = true; // ทดสอบ: ออกเรือใหญ่ได้ทุกเวลา (ปกติ 06:00–15:00 เวลาเกม)
-const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs, RESULT_MS = +process.env.CASINO_RESULT_MS || 8000, EMPTY_MS = +process.env.CIN_EMPTY_MS || 20000; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
+const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs, EMPTY_MS = +process.env.CIN_EMPTY_MS || 20000; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
 const SNAP_MS = +process.env.SNAP_MS || 60 * 60 * 1000; // ระยะห่างของ event snap (ไว้ทดสอบ)
 if (process.env.FRESH_START) S.FRESH.startAt = +process.env.FRESH_START; // ไว้ทดสอบ: เริ่มระบบความสดเร็วขึ้น (ms)
 if (process.env.EVENT_NOW) { const d = new Date(Date.now() + 3000); S.EVENTS.list.unshift(Object.assign({}, S.EVENTS.list[0], { dow: d.getDay(), hour: d.getHours(), min: d.getMinutes(), mins: 1 })); } // ไว้ทดสอบ: อีเวนต์ตกปลาเริ่มภายในนาทีนี้ ยาว 1 นาที
@@ -124,7 +124,7 @@ class World {
     this.tables = {};
     S.CABINETS.forEach((c, i) => {
       if (!c.game) return;
-      this.tables['cab' + i] = c.game === 'uno' ? this.newUnoTable('cab' + i, c, i) : PARTY.has(c.game) ? this.newPartyTable('cab' + i, c, i) : (c.game === 'bacc' || c.game === 'bj') ? this.newCasinoTable('cab' + i, c, i) : this.newTable('cab' + i, c, i);
+      this.tables['cab' + i] = c.game === 'uno' ? this.newUnoTable('cab' + i, c, i) : PARTY.has(c.game) ? this.newPartyTable('cab' + i, c, i) : this.newTable('cab' + i, c, i);
     });
     this.treeHp = new Map(); this.treeTimer = 0; this.sickTimer = 0;
     this.treeKind = new Map(); // ชนิดต้นไม้ต่อช่อง 'x,y' (S.TREE_KINDS) ต้นที่ยังไม่มีชนิด (เซฟเก่า/แมพใหม่) สุ่มตามที่เกิดแบบคงที่จากตำแหน่ง
@@ -2316,13 +2316,13 @@ class World {
       g: t.game === 'xo' || !t.g ? null : this.duelPub(t, vid) };
   }
   arcsPub() {
-    return Object.values(this.tables).map(t => (t.game === 'uno' || PARTY.has(t.game) || t.game === 'bacc' || t.game === 'bj')
+    return Object.values(this.tables).map(t => (t.game === 'uno' || PARTY.has(t.game))
       ? [t.id, t.idx, t.state, t.bet, t.players[0] ? t.players[0].name : '', t.players.length + '/' + t.max, t.bot ? 1 : 0, t.game]
       : [t.id, t.idx, t.state, t.bet, t.host ? t.host.name : '', t.guest ? t.guest.name : '', t.bot ? 1 : 0, t.game]);
   }
-  pubFor(t, id) { return t.game === 'uno' ? this.unoPub(t, id) : PARTY.has(t.game) ? this.partyPub(t, id) : (t.game === 'bacc' || t.game === 'bj') ? this.casinoPub(t, id) : this.tablePub(t, id); }
+  pubFor(t, id) { return t.game === 'uno' ? this.unoPub(t, id) : PARTY.has(t.game) ? this.partyPub(t, id) : this.tablePub(t, id); }
   pushTable(t, openFor) {
-    const ids = (t.game === 'uno' || PARTY.has(t.game) || t.game === 'bacc' || t.game === 'bj')
+    const ids = (t.game === 'uno' || PARTY.has(t.game))
       ? new Set([...t.players.filter(q => !q.bot).map(q => q.id), ...t.watchers])
       : new Set([t.host && t.host.id, t.guest && t.guest.id, ...t.watchers].filter(Boolean));
     for (const id of ids) {
@@ -2336,7 +2336,6 @@ class World {
   inGame(p) {
     return Object.values(this.tables).some(t => (t.state === 'waiting' || t.state === 'playing') &&
       (t.game === 'uno' || PARTY.has(t.game) ? t.players.some(q => q.id === p.id && !q.out)
-        : (t.game === 'bacc' || t.game === 'bj') ? t.players.some(q => q.id === p.id && !q.leaving)
         : (t.host && t.host.id === p.id) || (t.guest && t.guest.id === p.id)));
   }
   // จ่ายเหรียญให้ผู้เล่น (ออนไลน์หรือออฟไลน์ก็ได้)
@@ -2436,7 +2435,6 @@ class World {
     if (!t) return;
     if (t.game === 'uno') return this.unoHandle(p, m, t);
     if (PARTY.has(t.game)) return this.partyHandle(p, m, t);
-    if (t.game === 'bacc' || t.game === 'bj') return this.casinoHandle(p, m, t);
     const coin = p.rec.inv.coin || 0, now = Date.now();
     switch (m.a) {
       case 'close': t.watchers.delete(p.id); break;
@@ -2482,13 +2480,12 @@ class World {
     t.watchers.delete(p.id);
     if (t.game === 'uno') { this.unoLeave(p, t); return; }
     if (PARTY.has(t.game)) { this.partyLeave(p, t); return; }
-    if (t.game === 'bacc' || t.game === 'bj') { this.casinoDisconnect(p, t); return; }
     if (t.state === 'waiting' && t.host.id === p.id) this.cancelWait(t, `${p.name} ออกจากเกม ยกเลิกห้อง`);
     else if (t.state === 'playing' && (t.xId === p.id || t.oId === p.id)) this.finish(t, p.id === t.xId ? 'O' : 'X', null, `${p.name} ออกจากเกม`);
   }
   arcLeave(p) { for (const t of Object.values(this.tables)) this.arcLeaveTable(p, t); } // ผู้เล่นหลุด/ออกจากเกม
   arcSeated(p, t) { // นั่งอยู่ที่โต๊ะนี้ (ผู้เล่นจริง ไม่ใช่แค่ดู)
-    if (t.game === 'uno' || PARTY.has(t.game) || t.game === 'bacc' || t.game === 'bj') return t.players.some(q => q.id === p.id);
+    if (t.game === 'uno' || PARTY.has(t.game)) return t.players.some(q => q.id === p.id);
     return !!((t.host && t.host.id === p.id) || (t.guest && t.guest.id === p.id) || t.xId === p.id || t.oId === p.id);
   }
   arcRangeCheck(p) { // เดินห่างจากตู้เกินระยะ = ออกจากโต๊ะทันที (คนที่นั่งเล่นอยู่นับเหมือนออกจากเกม แค่ดูอยู่ก็ปิดหน้าต่างให้)
@@ -2506,7 +2503,6 @@ class World {
     for (const t of Object.values(this.tables)) {
       if (t.game === 'uno') { this.unoTick(t, now); continue; }
       if (PARTY.has(t.game)) { this.partyTick(t, now); continue; }
-      if (t.game === 'bacc' || t.game === 'bj') { this.casinoTick(t, now); continue; }
       if (t.state === 'waiting' && now > t.waitUntil) this.cancelWait(t, 'หมดเวลารอคู่แข่ง คืนเหรียญให้แล้ว');
       else if (t.state === 'playing' && t.game !== 'xo') this.duelTick(t, now);
       else if (t.state === 'playing') {
@@ -2517,7 +2513,6 @@ class World {
   }
   arcRefundAll() { // ตอนปิดเซิร์ฟเวอร์: คืนเงินเดิมพันที่ถูกกันไว้
     for (const t of Object.values(this.tables)) {
-      if ((t.game === 'bacc' || t.game === 'bj') && t.phase === 'bet' && !t.practice) { for (const q of t.players) if (q.bet) this.payKey(q, q.bet.amt); continue; }
       if (!t.bet) continue;
       if (t.game !== 'uno' && !PARTY.has(t.game) && t.bot) { if (t.state === 'playing') this.payKey(t.host, t.bet); continue; }
       if (t.game === 'uno' || PARTY.has(t.game)) { if (t.state === 'waiting' || t.state === 'playing') for (const q of t.players) if (!q.bot) this.payKey(q, t.bet); continue; }
@@ -3006,211 +3001,6 @@ class World {
       if (t.drawn >= 0) { t.log = `${q.name} หมดเวลา`; this.unoAdvance(t, 0); }
       else { this.unoDraw(t, q, 1); t.log = `${q.name} หมดเวลา จั่วไพ่`; this.unoAdvance(t, 0); }
     }
-  }
-
-  // ===================== คาสิโน: บาคาร่า / แบล็คแจ็ค (1-3 คนต่อโต๊ะ เล่นกับเจ้ามือ เดิมพันทุกรอบ) =====================
-  // "โชค" ของผู้เล่นแต่ละคนถูกซ่อนไว้: เล่นติดต่อกันนานความล้า F สูงขึ้นแล้วโชคลดลง พักไปสักพัก F ค่อยๆ ลดและโชคกลับมา
-  // (ตอนเริ่มโชคดีกว่าปกตินิดหน่อย เล่นวันละนิดๆ จึงได้เล็กน้อย แต่เล่นยาว/ติดหนักจะเสีย) ไม่มีการแจ้งค่านี้ให้ผู้เล่นเห็น
-  newCasinoTable(id, c, idx) { return Object.assign({ id, idx, game: c.game, cx: c.x, cy: c.y, watchers: new Set() }, this.casinoBlank()); }
-  casinoBlank() {
-    return { state: 'idle', max: 2, practice: false, players: [], phase: '', round: 0, deadline: 0, hands: null, dealer: null, seq: [], cur: -1,
-      msg: '', log: '', waitUntil: 0, nextAt: 0, idleRounds: 0, shoe: [], bet: 0, bot: false };
-  }
-  resetCasino(t) { Object.assign(t, this.casinoBlank()); }
-  casinoBias(q) { // >0 = โชคดี (ได้เปรียบ), <0 = โชคร้าย  ค่าอยู่ในช่วง -0.6 .. +0.12
-    const rec = this.saved[q.key]; if (!rec) return 0;
-    const now = Date.now(), L = rec.luck || (rec.luck = { F: 0, t: now });
-    L.F = Math.max(0, L.F - (now - L.t) / 3600000 * S.CASINO.recoverPerHour); L.t = now;
-    return Math.max(-0.6, 0.12 - 0.55 * L.F);
-  }
-  casinoTire(q) { const rec = this.saved[q.key]; if (!rec) return; this.casinoBias(q); rec.luck.F += S.CASINO.perRound; this.dirty = true; }
-  coinOf(q) { const rec = this.saved[q.key]; return rec ? rec.inv.coin || 0 : 0; }
-  casinoPub(t, vid) {
-    const cur = t.cur >= 0 && t.seq[t.cur] ? t.seq[t.cur].id : 0, d = t.dealer;
-    return { id: t.id, game: t.game, state: t.state, max: t.max, practice: t.practice, hostId: t.players[0] ? t.players[0].id : 0, bets: S.CASINO.bets,
-      players: t.players.map(q => ({ id: q.id, name: q.name, bet: q.bet ? { side: q.bet.side, amt: q.bet.amt, dbl: !!q.bet.dbl } : null, net: q.net || 0, hand: q.hand || null, status: q.status || '', done: !!q.done })),
-      phase: t.phase, round: t.round, deadline: t.deadline, cur, hands: t.hands, dealer: d ? { hand: d.reveal ? d.hand : [d.hand[0], '??'], reveal: d.reveal, total: d.reveal ? this.bjTotal(d.hand) : null } : null,
-      msg: t.msg, log: t.log, me: t.players.some(q => q.id === vid) };
-  }
-  cardDraw() { return 'SHDC'[Math.floor(Math.random() * 4)] + ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'][Math.floor(Math.random() * 13)]; }
-  // --- บาคาร่า ---
-  baccDeal() {
-    const P = [this.cardDraw(), this.cardDraw()], B = [this.cardDraw(), this.cardDraw()];
-    let pt = this.pokPts(P), bt = this.pokPts(B);
-    if (pt < 8 && bt < 8) {
-      let p3 = null;
-      if (pt <= 5) { p3 = this.cardDraw(); P.push(p3); }
-      if (p3 === null) { if (bt <= 5) B.push(this.cardDraw()); }
-      else {
-        const v = this.pokVal(p3); let draw = false;
-        if (bt <= 2) draw = true; else if (bt === 3) draw = v !== 8; else if (bt === 4) draw = v >= 2 && v <= 7; else if (bt === 5) draw = v >= 4 && v <= 7; else if (bt === 6) draw = v === 6 || v === 7;
-        if (draw) B.push(this.cardDraw());
-      }
-    }
-    pt = this.pokPts(P); bt = this.pokPts(B);
-    return { P, B, pt, bt, win: pt > bt ? 'P' : bt > pt ? 'B' : 'T' };
-  }
-  baccNet(bet, win) { // กำไร/ขาดทุนสุทธิ: ผู้เล่น 1:1 เจ้ามือ 0.95:1 เสมอ 8:1 (เสมอ = คืนเดิมพันของฝั่งผู้เล่น/เจ้ามือ)
-    const a = bet.amt;
-    if (bet.side === 'T') return win === 'T' ? a * 8 : -a;
-    if (win === 'T') return 0;
-    return bet.side === win ? (bet.side === 'B' ? Math.floor(a * 0.95) : a) : -a;
-  }
-  baccResolve(t) {
-    const bettors = t.players.filter(q => q.bet), cands = []; for (let i = 0; i < 6; i++) cands.push(this.baccDeal());
-    let pick = cands[0];
-    if (!t.practice && bettors.length) {
-      const bs = bettors.map(q => this.casinoBias(q)), strength = Math.min(0.9, bs.reduce((a, b) => a + Math.abs(b), 0) / bs.length);
-      if (Math.random() < strength) { let best = -Infinity; for (const c of cands) { let J = 0; bettors.forEach((q, i) => { J += bs[i] * this.baccNet(q.bet, c.win); }); if (J > best) { best = J; pick = c; } } }
-    }
-    t.hands = pick; t.phase = 'result'; t.nextAt = Date.now() + RESULT_MS; t.deadline = 0;
-    t.msg = `ผู้เล่น ${pick.pt} แต้ม • เจ้ามือ ${pick.bt} แต้ม → ${pick.win === 'P' ? '🔵 ฝั่งผู้เล่นชนะ' : pick.win === 'B' ? '🔴 ฝั่งเจ้ามือชนะ' : '🟢 เสมอ'}`;
-    for (const q of bettors) this.casinoSettle(t, q, this.baccNet(q.bet, pick.win));
-    this.pushTable(t);
-  }
-  casinoSettle(t, q, net) {
-    q.net = net;
-    if (!t.practice) { if (net >= 0) this.payKey(q, q.bet.amt + net); this.casinoTire(q); const o = this.players.get(q.id); if (o && o.key === q.key && net !== 0) this.sfxTo(o, net > 0 ? 'win' : 'lose'); }
-  }
-  // --- แบล็คแจ็ค ---
-  bjTotal(h) { let t = 0, a = 0; for (const c of h) { const r = c.slice(1); if (r === 'A') { a++; t += 11; } else if (r !== '?') t += ['10', 'J', 'Q', 'K'].includes(r) ? 10 : +r; } while (t > 21 && a > 0) { t -= 10; a--; } return t; }
-  bjIsBJ(h) { return h.length === 2 && this.bjTotal(h) === 21; }
-  bjDraw(t, hand, bias) { // จั่ว 1 ใบ: บางครั้งเลือกจาก 3 ใบแบบสุ่มตามโชคที่ซ่อนไว้ (bias>0 ช่วยเจ้าของมือ <0 ขัดขวาง)
-    if (!t.shoe || t.shoe.length < 52) { const d = []; for (let k = 0; k < 6; k++) for (const s of 'SHDC') for (const r of ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']) d.push(s + r); t.shoe = this.unoShuffle(d); }
-    const idx = [0, 1, 2].map(() => Math.floor(Math.random() * t.shoe.length)); let pick = idx[0];
-    if (Math.random() < Math.abs(bias)) {
-      const score = i => { const nt = this.bjTotal([...hand, t.shoe[i]]); return nt > 21 ? -100 : nt; };
-      pick = idx.reduce((b, i) => ((bias > 0 ? score(i) > score(b) : score(i) < score(b)) ? i : b), idx[0]);
-    }
-    return t.shoe.splice(pick, 1)[0];
-  }
-  bjBiasOf(t, q) { return t.practice ? 0 : this.casinoBias(q); }
-  bjDealerBias(t) { const b = t.seq.filter(q => !t.practice); return b.length ? -b.reduce((s, q) => s + this.casinoBias(q), 0) / b.length : 0; }
-  bjStart(t) {
-    const seq = t.players.filter(q => q.bet); t.seq = seq;
-    for (const q of seq) { q.hand = []; q.done = false; q.status = ''; q.net = 0; }
-    const d = t.dealer = { hand: [], reveal: false }, db = this.bjDealerBias(t);
-    for (let r = 0; r < 2; r++) { for (const q of seq) q.hand.push(this.bjDraw(t, q.hand, this.bjBiasOf(t, q))); d.hand.push(this.bjDraw(t, d.hand, db)); }
-    t.phase = 'play'; t.msg = '';
-    if (this.bjIsBJ(d.hand)) { d.reveal = true; return this.bjFinish(t); } // เจ้ามือได้แบล็คแจ็ค เปิดทันที
-    for (const q of seq) if (this.bjIsBJ(q.hand)) { q.done = true; q.status = 'blackjack'; }
-    t.cur = -1; this.bjNext(t);
-  }
-  bjNext(t) {
-    let i = t.cur + 1; while (i < t.seq.length && t.seq[i].done) i++;
-    if (i >= t.seq.length) return this.bjDealerPlay(t);
-    t.cur = i; t.deadline = Date.now() + 20000; this.pushTable(t);
-  }
-  bjDealerPlay(t) {
-    const d = t.dealer, db = this.bjDealerBias(t); d.reveal = true;
-    if (t.seq.some(q => q.status !== 'bust')) while (this.bjTotal(d.hand) < 17) d.hand.push(this.bjDraw(t, d.hand, db));
-    this.bjFinish(t);
-  }
-  bjFinish(t) {
-    const d = t.dealer, dt = this.bjTotal(d.hand), dbj = this.bjIsBJ(d.hand);
-    for (const q of t.seq) {
-      const pt = this.bjTotal(q.hand), a = q.bet.amt; let net;
-      if (pt > 21) net = -a;
-      else if (this.bjIsBJ(q.hand)) net = dbj ? 0 : Math.floor(a * 1.5);
-      else if (dbj) net = -a;
-      else if (dt > 21) net = a;
-      else net = pt > dt ? a : pt === dt ? 0 : -a;
-      q.status = pt > 21 ? 'bust' : net > 0 ? 'win' : net < 0 ? 'lose' : 'push';
-      this.casinoSettle(t, q, net);
-    }
-    t.phase = 'result'; t.cur = -1; t.deadline = 0; t.nextAt = Date.now() + RESULT_MS;
-    t.msg = `เจ้ามือ ${dt > 21 ? 'ไหม้ (' + dt + ')' : dt + ' แต้ม'}${dbj ? ' (แบล็คแจ็ค)' : ''}`;
-    this.pushTable(t);
-  }
-  casinoStartRound(t) {
-    t.players = t.players.filter(q => !q.leaving && !q.gone);
-    if (!t.players.some(q => !q.gone)) { this.resetCasino(t); this.pushTable(t); return; }
-    Object.assign(t, { phase: 'bet', round: t.round + 1, deadline: Date.now() + 25000, hands: null, dealer: null, seq: [], cur: -1, msg: '' });
-    for (const q of t.players) { q.bet = null; q.net = 0; q.hand = null; q.done = false; q.status = ''; }
-    this.pushTable(t);
-  }
-  casinoBeginSession(t) { t.state = 'playing'; t.idleRounds = 0; this.casinoStartRound(t); }
-  casinoHandle(p, m, t) {
-    const now = Date.now(), mine = t.players.find(q => q.id === p.id), coin = p.rec.inv.coin || 0;
-    const mkp = () => ({ id: p.id, name: p.name, key: p.key, bet: null, net: 0, hand: null, done: false, status: '' });
-    switch (m.a) {
-      case 'close': t.watchers.delete(p.id); break;
-      case 'create': case 'practice': case 'solo': {
-        if (t.state !== 'idle') return this.toast(p, 'โต๊ะนี้ไม่ว่าง');
-        if (this.inGame(p)) return this.toast(p, 'คุณกำลังอยู่ในเกมอื่น');
-        this.resetCasino(t); t.players = [mkp()]; t.watchers.add(p.id);
-        if (m.a === 'practice') { t.practice = true; t.max = 1; this.casinoBeginSession(t); }       // ซ้อม ไม่ใช้เหรียญ
-        else if (m.a === 'solo') { t.max = 1; this.casinoBeginSession(t); }                          // เล่นคนเดียวกับเจ้ามือ ใช้เหรียญจริง เริ่มทันที
-        else { t.max = 12; t.state = 'waiting'; t.waitUntil = now + 180000; this.pushTable(t, p.id); } // โต๊ะหลายคน: รอเพื่อน host กดเริ่มเอง (ไม่จำกัดจำนวนจริง เพดาน 12 กันกรณีสุดโต่ง)
-        break;
-      }
-      case 'join': {
-        if (mine || t.practice || t.players.length >= t.max || (t.state !== 'waiting' && !(t.state === 'playing' && (t.phase === 'bet' || t.phase === 'result')))) return;
-        if (this.inGame(p)) return this.toast(p, 'คุณกำลังอยู่ในเกมอื่น');
-        t.players.push(mkp()); t.watchers.add(p.id);
-        if (t.state === 'waiting' && t.players.length >= t.max) this.casinoBeginSession(t); else this.pushTable(t);
-        break;
-      }
-      case 'startnow': if (t.state === 'waiting' && t.players[0] && t.players[0].id === p.id && t.players.length >= 2) this.casinoBeginSession(t); break;
-      case 'cancel': if (t.state === 'waiting' && t.players[0] && t.players[0].id === p.id) { this.resetCasino(t); this.pushTable(t); } break;
-      case 'leave': this.casinoLeave(p, t); break;
-      case 'bet': {
-        if (t.state !== 'playing' || t.phase !== 'bet' || !mine || mine.bet) return;
-        const amt = m.amt | 0, side = t.game === 'bacc' ? String(m.side) : 'X';
-        if (!S.CASINO.bets.includes(amt) || (t.game === 'bacc' && !['P', 'B', 'T'].includes(side))) return;
-        if (!t.practice) { if (coin < amt) return this.toast(p, 'เหรียญไม่พอสำหรับเดิมพันนี้'); this.add(p, 'coin', -amt); }
-        mine.bet = { side, amt }; this.pushTable(t);
-        break;
-      }
-      case 'hit': case 'stand': case 'double': {
-        if (t.game !== 'bj' || t.state !== 'playing' || t.phase !== 'play' || !mine || t.seq[t.cur] !== mine || mine.done) return;
-        if (m.a === 'stand') { mine.done = true; mine.status = mine.status || 'stand'; return this.bjNext(t); }
-        if (m.a === 'double') {
-          if (mine.hand.length !== 2 || mine.bet.dbl) return;
-          if (!t.practice) { if (coin < mine.bet.amt) return this.toast(p, 'เหรียญไม่พอสำหรับดับเบิ้ล'); this.add(p, 'coin', -mine.bet.amt); }
-          mine.bet.amt *= 2; mine.bet.dbl = true;
-        }
-        mine.hand.push(this.bjDraw(t, mine.hand, this.bjBiasOf(t, mine)));
-        const tot = this.bjTotal(mine.hand);
-        if (tot > 21) { mine.done = true; mine.status = 'bust'; }
-        else if (tot === 21 || m.a === 'double') { mine.done = true; mine.status = mine.status || 'stand'; }
-        if (mine.done) this.bjNext(t); else { t.deadline = now + 20000; this.pushTable(t); }
-        break;
-      }
-    }
-  }
-  casinoLeave(p, t) {
-    const q = t.players.find(x => x.id === p.id); if (!q) { t.watchers.delete(p.id); return; }
-    if (t.state === 'waiting') { t.players = t.players.filter(x => x !== q); if (!t.players.length) this.resetCasino(t); this.pushTable(t); return; }
-    if (t.phase === 'bet' && q.bet && !t.practice) { this.payKey(q, q.bet.amt); q.bet = null; } // ยังไม่เริ่มรอบ คืนเดิมพันให้
-    if (t.phase === 'bet' || t.phase === 'result' || t.practice) {
-      t.players = t.players.filter(x => x !== q);
-      if (!t.players.some(x => !x.gone)) this.resetCasino(t);
-      this.pushTable(t);
-    } else { q.leaving = true; this.toast(p, 'รอให้จบรอบนี้ก่อน แล้วจะออกจากโต๊ะให้เอง'); }
-  }
-  casinoDisconnect(p, t) { // หลุดจากเกม: ถ้ากำลังเล่นรอบนั้นอยู่ให้ยืน/ผ่านอัตโนมัติ เดิมพันยังคิดผลตามปกติ
-    const q = t.players.find(x => x.id === p.id); t.watchers.delete(p.id); if (!q) return;
-    q.gone = true;
-    if (t.state === 'waiting') { t.players = t.players.filter(x => x !== q); if (!t.players.length) this.resetCasino(t); this.pushTable(t); return; }
-    if (t.phase === 'bet' && q.bet && !t.practice) { this.payKey(q, q.bet.amt); q.bet = null; }
-    if (t.phase === 'bet' || t.phase === 'result' || t.practice) { t.players = t.players.filter(x => x !== q); if (!t.players.length) this.resetCasino(t); this.pushTable(t); }
-    else if (t.game === 'bj' && t.phase === 'play' && t.seq[t.cur] === q) { q.done = true; q.status = q.status || 'stand'; this.bjNext(t); }
-  }
-  casinoTick(t, now) {
-    if (t.state === 'waiting') { if (now > t.waitUntil) { this.resetCasino(t); this.pushTable(t); } return; }
-    if (t.state !== 'playing') return;
-    if (t.phase === 'bet') {
-      const able = t.players.filter(q => !q.gone && (t.practice || this.coinOf(q) >= S.CASINO.bets[0] || q.bet)), allBet = able.length > 0 && able.every(q => q.bet);
-      if (allBet || now > t.deadline) {
-        if (!t.players.some(q => q.bet)) { if (++t.idleRounds >= 2) { this.resetCasino(t); this.pushTable(t); } else this.casinoStartRound(t); return; }
-        t.idleRounds = 0;
-        if (t.game === 'bacc') this.baccResolve(t); else this.bjStart(t);
-      }
-    } else if (t.phase === 'play') {
-      const q = t.seq[t.cur];
-      if (q && (q.gone || now > t.deadline)) { q.done = true; q.status = q.status || 'stand'; this.bjNext(t); }
-    } else if (t.phase === 'result' && now >= t.nextAt) this.casinoStartRound(t);
   }
 
   tick(dt, now) {
