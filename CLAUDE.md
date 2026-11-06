@@ -1,127 +1,58 @@
-# My World — คู่มือปรับปรุงเกม (Claude Code / คนทำงาน)
+# My World — คู่มือสั้นสำหรับ Claude Code
 
-เกมฟาร์มออนไลน์ใน repo นี้ถูกพัฒนาและรัน **บน VPS โดยตรง** แล้วซิงก์ผ่าน GitHub
-ไฟล์นี้บอกวิธีทำงานให้เหมือนกันทุกเครื่อง (VPS และเครื่องที่บ้าน)
+เกมฟาร์มออนไลน์ (Node.js + `ws` ฝั่งเซิร์ฟเวอร์, Canvas 2D + JS ล้วน ฝั่งเว็บ ไม่มี build step) รันจริงบน VPS ซิงก์ผ่าน GitHub branch `main`
+ภาษาในเกม คอมเมนต์ และเอกสาร: ไทย • งานบน VPS / deploy / สำรองข้อมูล: ดู `docs/OPS.md`
+ลำดับงาน: dev ที่เครื่อง (`PORT=3001 DATA_DIR=./data-dev npm start`) → push GitHub → VPS อัปเดตด้วย `tools/deploy.sh` (ไม่แก้โค้ดบน VPS ยกเว้น hotfix)
+ทำงานจาก 3 เครื่อง (ที่ทำงาน บ้าน โน้ตบุ๊ก): เริ่ม session ดู `docs/HANDOFF.md` • เลิกงาน/ย้ายเครื่องใช้ `/handoff`
 
-- Repo: `git@github.com:xbobokungx-coder/my-world.git` (branch `main`)
-- เกมจริงที่คนเล่น: **`https://165-101-64-106.sslip.io`** (ต้องใช้ HTTPS ไม่งั้นเปิดไมค์ไม่ได้) VPS ชื่อเครื่อง `my-world`
-- ภาษาในเกม คอมเมนต์ และเอกสาร: **ไทย**
+## กฎเหล็ก
+1. ก่อนเริ่มงาน `git pull` • แก้เสร็จ commit และ push ทุกครั้ง (เพิ่มทีละไฟล์ ไม่ใช้ `git add .` แบบไม่ดู)
+2. ห้าม commit หรืออ่านความลับ: `admin.key`, `data/`, `backup/`, `.env`, รหัสผ่าน, คีย์ SSH
+3. ห้ามเขียนรหัสผู้ดูแลหรือรหัสผ่านลงเอกสารใดๆ
+4. แก้ `data/` ด้วยมือเฉพาะตอนจำเป็น และสำรองก่อนเสมอ
+5. ก่อนขึ้นเกมจริง: `node --check` ไฟล์ที่แก้ + เทสต์ `tools/test-*.js` ต้องผ่านครบ (พังเพราะตั้งใจเปลี่ยนกติกา = แก้เทสต์ให้ตรง ไม่ใช่ข้าม)
 
-## กฎเหล็ก (ทำทุกครั้ง)
+## ไฟล์หลัก
+- `server.js` กติกาทั้งหมด (server-authoritative) • `public/shared.js` ค่าคงที่/กติกาที่ใช้ร่วมสองฝั่ง • `public/game.js` ฝั่งเว็บ • `public/pixel*.js` พิกเซลอาร์ต • `public/index.html` หน้าเว็บ+CSS
+- `GAME-DESIGN.md` แหล่งความจริงเดียวของกติกาและตัวเลข • `ECONOMY-PLAN.md` แผนเศรษฐกิจ • `STYLE_GUIDE.md` กติกาหน้าตา
+- `tools/test-*.js` เทสต์ • `tools/levelsim.js` `tools/econsim.js` จำลองก่อนปรับตัวเลข • `tools/economy.js 7` รายงานเศรษฐกิจ (นับเฉพาะผู้เล่นจริงตาม `tools/realplayers.js` ใส่ `--all` นับทุกบัญชี) • `tools/stats.js` ตัวชี้วัดจาก `data/events/` • `tools/bugs.js` รายงานบั๊กผู้เล่น
+- `GROWTH-PLAN.md` แผนดึงผู้เล่นใหม่ • `*.ps1` `*.bat` สคริปต์ Windows (ไม่ใช้บน VPS)
+- เกมจริง `https://165-101-64-106.sslip.io` (ต้อง HTTPS ไมค์ถึงใช้ได้) • ชื่อลัด SSH ของ VPS `my-world`
+- ดูสไปรต์ชีตท่าทำงาน: `__mw.actionSheet()` ในคอนโซลเบราว์เซอร์ • `public/pixelfurn.js` เฟอร์นิเจอร์ furniture-kit-v2 ทำตาม STYLE_GUIDE ข้อ 8
+- เพิ่มเกมในตู้: ใส่ `CABINETS` (shared) แล้วเขียนกติกาใน `server.js` ส่วน Arcade
 
-1. **แก้เสร็จต้อง commit และ push ขึ้น GitHub ทุกครั้ง** ห้ามทิ้งงานค้างไว้เฉพาะในเครื่อง
-2. **ก่อนเริ่มงาน `git pull`** ทุกครั้ง (อาจมีคนแก้จากอีกเครื่อง)
-3. **ห้าม commit ความลับ:** `admin.key`, `data/`, `backup/`, `.env`, รหัสผ่าน, คีย์ SSH (`.gitignore` กันไว้แล้ว แต่ดู `git status` ก่อน commit เสมอ)
-4. **ห้ามเขียนรหัสผู้ดูแลหรือรหัสผ่านลงไฟล์เอกสารใดๆ** รหัสผู้ดูแลอยู่ในไฟล์ `admin.key` บนเซิร์ฟเวอร์เท่านั้น
-5. เปลี่ยนข้อมูลผู้เล่น (`data/main.json`) ด้วยมือเฉพาะตอนจำเป็น และ **สำรองก่อนเสมอ** (ดูหัวข้อสำรองข้อมูล)
+## แนวทางโค้ด
+- ทุกกติกาตัดสินที่เซิร์ฟเวอร์ ฝั่งเว็บแสดงผลและส่ง input เท่านั้น
+- ตัวเลขสมดุลอยู่ใน shared data ห้ามฝังกระจายในโค้ด
+- ของที่มองเห็นได้ทำตาม `STYLE_GUIDE.md`
+- ข้อความผู้เล่นเป็นภาษาไทย น้ำเสียงสบายๆ
+- แก้เล็กๆ ตรงจุด ห้ามจัดรูปแบบทั้งไฟล์ใหม่
+- เพิ่มฟีเจอร์แล้วอัปเดต `GAME-DESIGN.md` / `HOW-TO-PLAY.md` / `README.md`
+- commit สั้น ชัด ภาษาไทย เช่น `แก้บั๊กขายปลาแล้วเหรียญไม่เพิ่ม` • git user.name = `xbobokungx-coder`
 
-## โครงสร้างโปรเจกต์
+## ทีมงาน (subagents) — เซสชันหลักคือ "โปรดิวเซอร์"
+เซสชันหลักวางแผน แจกงาน รวมงาน และ commit เอง agent ทุกตัวไม่ commit/push
 
-| ไฟล์ | หน้าที่ |
+| งาน | ส่งให้ |
 |---|---|
-| `server.js` | เซิร์ฟเวอร์ Node.js + WebSocket (`ws`) คุมกติกาทั้งหมด (server-authoritative): ผู้เล่น เศรษฐกิจ ตู้เกม คาสิโน ผู้ดูแล ห้อง |
-| `public/shared.js` | ค่าคงที่ที่ใช้ร่วมกันสองฝั่ง: `FISH`, `CROPS`, `ANIMALS`, `WEAR`, `CABINETS`, `MARKET`, `SICK`, `CASINO` ปรับสมดุลเกมที่นี่ |
-| `public/game.js` | ฝั่งเว็บ: วาด Canvas, รับ input, UI, เสียง |
-| `public/pixelart.js` `pixelchar.js` `pixelui.js` | พิกเซลอาร์ต พื้น/อาคาร, ตัวละคร, สัตว์/พืช/ไอคอน |
-| `public/pixelaction.js` | สไปรต์ชีตท่าทำงาน (ขุดแร่ ตัดไม้ ตกปลา) เฟรม + เศษกระเด็นตอนกระทบ ดูชีตทั้งหมด `__mw.actionSheet()` ในคอนโซลเบราว์เซอร์ |
-| `public/pixelfurn.js` | เฟอร์นิเจอร์ในบ้านชุด furniture-kit-v2 (ผู้ดูแลออกแบบ) + พื้น/ผนังห้องแบบเติมทีละพิกเซล แคชเป็นภาพใน game.js ดูกติกา STYLE_GUIDE ข้อ 8 |
-| `public/index.html` | หน้าเว็บและ CSS ของ UI |
-| `GAME-DESIGN.md` | **แหล่งความจริงเดียวของกติกาและตัวเลขทั้งเกม** (ดึงจากโค้ด) แก้กติกาแล้วอัปเดตที่นี่ด้วย |
-| `ECONOMY-PLAN.md` | แผนเศรษฐกิจระยะยาว KPI คันโยกปรับสมดุล และบันทึกการปรับค่า |
-| `GROWTH-PLAN.md` | แผนดึงผู้เล่นใหม่และให้อยู่ต่อ (60 วินาทีแรก 7 วันแรก ชาเลนจ์ส่งต่อ อีเวนต์) |
-| `STYLE_GUIDE.md` | กติกาหน้าตา สี มุมกล้อง รูปทรง **อ่านก่อนเพิ่มของที่มองเห็นได้** |
-| `README.md` / `HOW-TO-PLAY.md` | รายละเอียดฟีเจอร์และวิธีเล่น อัปเดตเมื่อเพิ่มฟีเจอร์ |
-| `tools/stats.js` | สรุปตัวชี้วัดจาก `data/events/*.jsonl` และไฟล์เซฟ: `node tools/stats.js` |
-| `tools/economy.js` | รายงานเศรษฐกิจรายวัน (เงินรวม Gini เข้า–ออก ราคาจริงต่อหมวด พลังงาน ตลาด คู่มือ): `node tools/economy.js 7` (นับเฉพาะผู้เล่นจริงที่ออนไลน์ ≥ 5 นาที ตาม `tools/realplayers.js` ใส่ `--all` เพื่อนับทุกบัญชี) |
-| `tools/levelsim.js` | จำลอง XP/ชม. และเหรียญ/ชม. ทุกอาชีพทุกเลเวล ใช้ก่อนปรับ XP หรือราคา: `node tools/levelsim.js` |
-| `tools/econsim.js` | จำลองเศรษฐกิจทั้งเมือง 35 วัน วัดเกณฑ์ความไม่เหลื่อมล้ำ G2–G8: `node tools/econsim.js` (ใช้คู่กับ levelsim ก่อนปรับตัวเลข) |
-| `tools/test-*.js` | เทสต์อัตโนมัติ (บ้าน ถ้ำ ฝูงสัตว์ เซฟ/เศรษฐกิจ/สูตรประดิษฐ์) รันทุกไฟล์ก่อน restart ดูขั้นตอนด้านล่าง |
-| `tools/backup.sh` | สำรอง `data/` (cron ทุกชั่วโมง ดูหัวข้อสำรองข้อมูล) |
-| `*.ps1` `*.bat` | สคริปต์สำหรับ Windows (ใช้บนเครื่องที่บ้านได้ ไม่ใช้บน VPS) |
+| หาว่าโค้ดอยู่ไหน / ทำงานยังไง | `Explore` |
+| ออกแบบงานที่แตะ 2 ระบบขึ้นไป, refactor, เปลี่ยนรูปแบบไฟล์เซฟ | `architect` |
+| กติกาเกมฝั่งเซิร์ฟเวอร์ | `server-dev` |
+| UI / การวาด / input ฝั่งเว็บ | `client-dev` |
+| พิกเซลอาร์ต | `pixel-artist` |
+| ราคา XP เวลา โอกาส | `economy-designer` |
+| รันเทสต์ / เขียนเทสต์ | `qa-tester` |
+| ตรวจ diff ก่อน commit | `code-reviewer` |
+| อัปเดตเอกสาร | `doc-writer` |
+| deploy / restart / ดู log (เฉพาะเมื่อผู้ใช้สั่ง) | `ops` |
 
-เทคโนโลยี: HTML5 Canvas 2D + JavaScript ล้วน ไม่มี build step ไม่มี framework ฝั่งเว็บ ฝั่งเซิร์ฟเวอร์มี dependency เดียวคือ `ws`
-
-## ขั้นตอนทำงานบน VPS (เกมจริง)
-
-เกมรันเป็น systemd service ชื่อ `my-world` (เปิดเองตอนบูต รีสตาร์ทเองถ้าล่ม) โฟลเดอร์ `/root/my-world`
-
-```bash
-cd /root/my-world
-git pull                      # 1) ดึงล่าสุด
-# 2) แก้โค้ด
-node --check server.js        # 3) เช็ค syntax ก่อนรีสตาร์ท (ทำกับไฟล์ .js ที่แก้ด้วย)
-for t in tools/test-*.js; do node $t >/dev/null && echo "ผ่าน $t" || echo "พัง $t"; done   # 3.1) เทสต์ต้องผ่านครบก่อนขึ้นเกมจริง (พังเพราะกติกาเปลี่ยนตั้งใจ = แก้เทสต์ให้ตรง ไม่ใช่ข้าม)
-systemctl restart my-world    # 4) เฉพาะเมื่อแก้ server.js (แก้ public/* ไม่ต้อง แค่รีเฟรชเบราว์เซอร์)
-systemctl status my-world --no-pager
-curl -s localhost:3000/healthz   # ต้องตอบ ok
-git add <ไฟล์ที่แก้>          # 5) เพิ่มทีละไฟล์ อย่าใช้ git add . แบบไม่ดูก่อน
-git commit -m "ข้อความอธิบายสั้นๆ"
-git push                      # 6) ขึ้น GitHub
-```
-
-หมายเหตุ:
-- ไฟล์ใน `public/*` ถูกอ่านจากดิสก์ทุกคำขอ (`no-cache`) แก้แล้วรีเฟรชเบราว์เซอร์ก็เห็นผลทันที
-- แก้ `server.js` แล้วต้อง restart และ **ผู้เล่นที่ออนไลน์จะหลุดชั่วครู่** ถ้าไม่เร่ง ให้ restart ตอนคนน้อย
-- ถ้า restart แล้วไม่ขึ้น: `journalctl -u my-world -n 50 --no-pager` ดู error แล้วย้อนด้วย `git checkout -- <ไฟล์>` หรือ `git revert`
-- ดู log สด: `journalctl -u my-world -f`
-
-## ขั้นตอนทำงานที่เครื่องที่บ้าน (ทดสอบก่อนขึ้นเกมจริง)
-
-```bash
-git clone git@github.com:xbobokungx-coder/my-world.git
-cd my-world
-npm install
-PORT=3001 DATA_DIR=./data-dev npm start   # เปิดที่ http://localhost:3001
-```
-
-- ใช้ `DATA_DIR` แยกเพื่อไม่ปนกับข้อมูลจริง และใช้ `PORT` คนละพอร์ต
-- ตัวแปรสำหรับทดสอบ: `ADMIN_KEY=รหัสทดสอบ` (ไม่ตั้งก็สุ่มสร้าง `admin.key` ให้), `HUNGER_FAST`, `SICK_CHECK_MS`, `CASINO_RESULT_MS` ฯลฯ (ดูต้น `server.js`)
-- ทดสอบผ่านแล้ว `git push` จากเครื่องบ้าน จากนั้นบน VPS `git pull` (+ `systemctl restart my-world` ถ้าแก้ `server.js`)
-- ถ้าสองเครื่องแก้ไฟล์เดียวกันแล้วชน: `git pull --rebase` แก้ conflict แล้ว push ไม่ใช้ `git push --force`
-
-## สำรองข้อมูล
-
-ข้อมูลผู้เล่นอยู่ที่ `/root/my-world/data/` (ไม่ขึ้น git)
-
-**สำรองอัตโนมัติ:** `/etc/cron.d/my-world-backup` รัน `tools/backup.sh` ทุกชั่วโมง (นาทีที่ 5) เก็บที่ `backup/auto/hourly/` 48 ชุด และ `backup/auto/daily/` 14 วัน (ตรวจว่าไฟล์ JSON อ่านได้ก่อนเก็บ) log อยู่ที่ `/var/log/my-world-backup.log` กู้คืน: `systemctl stop my-world` → `tar xzf backup/auto/hourly/<ไฟล์>.tar.gz -C /root/my-world` → `systemctl start my-world` (ถ้าย้ายเครื่อง ต้องสร้างไฟล์ cron ใหม่)
-
-ก่อนแก้โครงสร้างข้อมูลหรืออัปเดตใหญ่ สำรองด้วยมืออีกชุด:
-
-```bash
-mkdir -p /root/my-world/backup && cp -a /root/my-world/data /root/my-world/backup/data-$(date +%Y%m%d-%H%M)
-```
-
-กู้คืน: `systemctl stop my-world` → คัดลอกกลับไปที่ `data/` → `systemctl start my-world`
-
-## แนวทางเขียนโค้ดให้เข้ากับของเดิม
-
-- ทุกกติกาตัดสินที่ **ฝั่งเซิร์ฟเวอร์** ฝั่งเว็บห้ามเชื่อใจ (ผู้เล่นโกงได้) ฝั่งเว็บมีหน้าที่แสดงผลและส่ง input เท่านั้น
-- ค่าตัวเลขสมดุล (ราคา เวลา โอกาส) ใส่ใน `public/shared.js` อย่าฝังกระจายในโค้ด
-- ของใหม่ที่มองเห็นได้ต้องทำตาม `STYLE_GUIDE.md` (พิกเซลอาร์ต พาเลตสี เงา ขอบ 1 px)
-- เพิ่มเกมในตู้: ใส่ที่ `CABINETS` (`public/shared.js`) แล้วเขียนกติกาฝั่งเซิร์ฟเวอร์ใน `server.js` ส่วน Arcade
-- ข้อความที่ผู้เล่นเห็น เป็นภาษาไทย น้ำเสียงสบายๆ เข้ากับเกมเดิม
-- แก้เล็กๆ ที่ตรงจุด อย่าจัดรูปแบบไฟล์ทั้งไฟล์ใหม่ (ทำให้ diff ใหญ่และ conflict ง่าย)
-- เพิ่มฟีเจอร์แล้วอัปเดต `README.md` / `HOW-TO-PLAY.md` ให้ตรงด้วย
-
-## ข้อความ commit
-
-สั้น ชัด บอกว่าเปลี่ยนอะไร เช่น
-- `เพิ่มตู้เกมหมากรุก`
-- `แก้บั๊กขายปลาแล้วเหรียญไม่เพิ่ม`
-- `ปรับราคาเมล็ดข้าวโพด`
-
-ผู้เขียน git บนเครื่องต่างๆ ใช้ `user.name = xbobokungx-coder`
+กติกาการแจกงาน:
+- งานเล็ก (ไม่เกิน ~20 บรรทัด ไฟล์เดียวที่รู้ตำแหน่งแล้ว) ทำเองในเซสชันหลัก ถูกกว่าเรียก agent
+- งานใหญ่: เขียนตั๋วที่ `docs/tasks/<slug>.md` แล้วส่ง path ตั๋วให้ agent แทนการอธิบายยาว
+- ขอรายงานสั้น (ไฟล์:บรรทัด + ผล) ไม่ต้องให้แปะโค้ดยาวกลับมา
+- ให้ agent ที่แก้ไฟล์ทำงานพร้อมกันได้เฉพาะเมื่อไฟล์ไม่ทับกัน ไม่งั้นทำทีละตัว
+- ก่อน commit ต้องผ่าน `qa-tester` และ `code-reviewer`
+- ขั้นตอนมาตรฐาน: `/feature`, `/bugfix`, `/ship`, `/handoff`
 
 ## ผู้ดูแลเกม
-
-ชื่อตัวละครสงวน `Sira` ต้องใส่รหัสตอนเข้าเกม รหัสอยู่ในไฟล์ `admin.key` บนเซิร์ฟเวอร์ (`cat /root/my-world/admin.key`) หรือกำหนดด้วยตัวแปร `ADMIN_KEY` ผู้ดูแลสร้างห้องใหม่ ดูรายชื่อผู้เล่น และเตะผู้เล่นได้
-
-## ข้อมูลเซิร์ฟเวอร์ (VPS)
-
-- ระบบ: Ubuntu (RAM ~1GB, มี swap 1GB) ระวังกินหน่วยความจำ อย่าติดตั้งของหนักโดยไม่จำเป็น
-- พอร์ต: `22` (SSH), `80`/`443` (Caddy), `3000` (เกม ใช้ภายในเป็นหลัก)
-- HTTPS: Caddy (`/etc/caddy/Caddyfile`) ขอใบรับรอง Let's Encrypt ให้ชื่อ `165-101-64-106.sslip.io` (sslip.io ชี้ไป IP ของ VPS ฟรี) แล้ว reverse proxy ไป `localhost:3000` รวม WebSocket ต่ออายุใบรับรองอัตโนมัติ ดูสถานะ `systemctl status caddy`
-- service: `/etc/systemd/system/my-world.service` (รัน `/usr/bin/node server.js` ใน `/root/my-world`)
-- Node.js LTS ติดตั้งจาก NodeSource
-- ถ้ามีโดเมนจริง: ชี้ A record มาที่ IP VPS แล้วเปลี่ยนชื่อในบรรทัดแรกของ `/etc/caddy/Caddyfile` จากนั้น `systemctl reload caddy`
-- ไมค์/กล้องในเบราว์เซอร์ใช้ได้เฉพาะ HTTPS หรือ `localhost` ตอนทดสอบที่บ้านผ่าน `localhost` ใช้ได้ปกติ
+ชื่อตัวละครสงวน `Sira` ต้องใส่รหัสตอนเข้าเกม รหัสอยู่ใน `admin.key` บนเซิร์ฟเวอร์เท่านั้น (หรือตั้งด้วยตัวแปร `ADMIN_KEY`) ผู้ดูแลสร้างห้องใหม่ ดูรายชื่อผู้เล่น และเตะผู้เล่นได้
