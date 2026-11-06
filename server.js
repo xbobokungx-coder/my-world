@@ -21,7 +21,7 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const HFAST = Math.max(1, +process.env.HUNGER_FAST || 1);
 if (process.env.OCEAN_ANYTIME) S.OCEAN.anytime = true; // ทดสอบ: ออกเรือใหญ่ได้ทุกเวลา (ปกติ 06:00–15:00 เวลาเกม)
-const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs, EMPTY_MS = +process.env.CIN_EMPTY_MS || 20000; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
+const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
 const SNAP_MS = +process.env.SNAP_MS || 60 * 60 * 1000; // ระยะห่างของ event snap (ไว้ทดสอบ)
 if (process.env.FRESH_START) S.FRESH.startAt = +process.env.FRESH_START; // ไว้ทดสอบ: เริ่มระบบความสดเร็วขึ้น (ms)
 if (process.env.EVENT_NOW) { const d = new Date(Date.now() + 3000); S.EVENTS.list.unshift(Object.assign({}, S.EVENTS.list[0], { dow: d.getDay(), hour: d.getHours(), min: d.getMinutes(), mins: 1 })); } // ไว้ทดสอบ: อีเวนต์ตกปลาเริ่มภายในนาทีนี้ ยาว 1 นาที
@@ -1743,45 +1743,6 @@ class World {
     this.event(pa, 'trade'); this.event(pb, 'trade');
   }
 
-  // ---------- โรงหนังกลางแปลง: ฉายหนังเรื่องเดียวกันให้ทุกคนที่เข้าไปดู (ฝั่งผู้ชมเท่านั้นที่ได้ยินเสียง เพราะเสียงมาจากหน้าต่างหนังของตัวเอง) ----------
-  cinemaPos(now) { const c = this.cinema; return c.playing ? c.pos + (now - c.ref) / 1000 : c.pos; }
-  cinemaPub() { const c = this.cinema, now = Date.now(); return { movie: c.movie, yt: c.yt, name: c.name, startedAt: c.startedAt, playing: c.playing, pos: this.cinemaPos(now), now, viewers: [...c.viewers] }; }
-  cinemaBroadcast(extra) { this.broadcast(Object.assign({ t: 'cin', st: this.cinemaPub() }, extra)); }
-  cinemaEnd(msg) { const c = this.cinema; c.movie = null; c.yt = ''; c.name = ''; c.playing = false; c.viewers = new Set(); c.paid = new Set(); this.broadcast({ t: 'msg', text: msg || '🎬 หนังจบแล้ว ขอบคุณที่มาดูนะ' }); this.cinemaBroadcast(); }
-  cinemaHandle(p, m) {
-    const c = this.cinema, now = Date.now();
-    if (m.a === 'sync') { // ผู้ชมคนไหนกด เล่น/หยุด/เลื่อน ทุกคนในโรงจะตามทันที
-      if (!c.movie || !c.viewers.has(p.id) || now - (c.lastSync || 0) < 150) return;
-      const pos = +m.pos; if (!isFinite(pos)) return;
-      c.lastSync = now; c.pos = Math.max(0, Math.min(86400, pos)); c.ref = now; c.playing = !!m.playing;
-      this.cinemaBroadcast({ sync: true, by: p.id }); return;
-    }
-    if (m.a === 'end') { if (c.movie && c.viewers.has(p.id) && this.cinemaPos(now) > 5) this.cinemaEnd(); return; }
-    if (Math.hypot(p.x - S.CINEMA_CENTER.x, p.y - S.CINEMA_CENTER.y) > 12 * TS) return this.toast(p, 'เดินเข้าไปใกล้จอหนังอีกนิด');
-    const payTicket = () => { if ((p.rec.inv.coin || 0) < S.TICKET) { this.toast(p, `เหรียญไม่พอซื้อตั๋ว (🪙 ${S.TICKET})`); return false; } this.add(p, 'coin', -S.TICKET); c.paid.add(p.key); this.toast(p, `🎟️ ซื้อตั๋วหนัง -🪙 ${S.TICKET}`); this.sfxTo(p, 'coin'); return true; };
-    if (m.a === 'play') {
-      if (c.movie) return this.toast(p, 'กำลังฉายเรื่องอื่นอยู่ รอให้จบก่อนนะ');
-      let yt = '', name = '', id = 'custom';
-      const mv = S.MOVIES.find(x => x.id === m.id);
-      if (mv) { yt = mv.yt; name = mv.name; id = mv.id; }
-      else { const u = String(m.url || '').trim(), g = /(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{11})/.exec(u) || /^([A-Za-z0-9_-]{11})$/.exec(u); if (!g) return this.toast(p, 'ลิงก์ไม่ถูกต้อง ใช้ลิงก์ YouTube เท่านั้นนะ'); yt = g[1]; name = 'วิดีโอจากลิงก์ YouTube'; }
-      c.paid = new Set(); if (!payTicket()) return;
-      Object.assign(c, { movie: id, yt, name, startedAt: now, pos: 0, ref: now, playing: true, emptyAt: 0 }); c.viewers = new Set([p.id]);
-      this.broadcast({ t: 'msg', text: `🎬 ${p.name} เปิดฉาย "${name}" ที่โรงหนังกลางแปลง! ไปดูกันได้ (ตั๋ว 🪙 ${S.TICKET})` });
-      send(p, { t: 'cin', watch: true, st: this.cinemaPub() }); this.cinemaBroadcast();
-    } else if (m.a === 'watch') {
-      if (!c.movie) return;
-      if (!c.paid.has(p.key) && !payTicket()) return;
-      c.viewers.add(p.id); c.emptyAt = 0; send(p, { t: 'cin', watch: true, st: this.cinemaPub() }); this.cinemaBroadcast();
-    } else if (m.a === 'leave') { if (c.viewers.delete(p.id)) this.cinemaBroadcast(); }
-  }
-  cinemaTick(now) {
-    const c = this.cinema; if (!c.movie) return;
-    const mv = S.MOVIES.find(x => x.id === c.movie);
-    if (mv && this.cinemaPos(now) > mv.sec + 3) return this.cinemaEnd();
-    if (!c.viewers.size) { if (!c.emptyAt) c.emptyAt = now; else if (now - c.emptyAt > EMPTY_MS) this.cinemaEnd('🎬 ไม่มีคนดูแล้ว ปิดโรงหนัง'); } else c.emptyAt = 0; // ไม่มีผู้ชมนานเกินไปก็ปิดรอบ
-  }
-
   // ขายของที่ซื้อมาคืนร้าน ได้ 70% ของราคาซื้อ (หัก 30%)
   sellback(p, item) {
     const kind = this.nearShopKind(p);
@@ -3083,6 +3044,7 @@ class World {
 }
 const { mix } = require('./server/mixin.js');
 mix(World, require('./server/systems/lotto.js')); // ระบบหวย (ย้ายไป server/systems/lotto.js)
+mix(World, require('./server/systems/cinema.js')); // ระบบโรงหนัง (ย้ายไป server/systems/cinema.js)
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
 const ADMIN_NAME = (process.env.ADMIN_NAME || 'Sira').trim();
