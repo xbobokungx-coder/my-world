@@ -1,6 +1,6 @@
 // ทดสอบถ้ำเหมือง 10 ชั้น (ผังสุ่มต่อชั้น เดินถึงบันไดลงเสมอ แร่ 3 ขนาด สัดส่วนแร่ต่อชั้น ขุด/อีเต้อ/ความทนทาน แร่เกิดใหม่ 1 วันในเกม ขายแร่): node tools/test-cave.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-cave-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-cave-');
 const { World } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS, T = S.T;
 
 const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } });

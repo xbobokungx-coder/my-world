@@ -1,6 +1,6 @@
 // ทดสอบระบบบ้านหลังใหญ่ (ฉากแยก เข้า-ออก ตกแต่งอิสระ เยี่ยมบ้าน ลีดเดอร์บอร์ด บันทึก/ย้ายข้อมูลเดิม): node tools/test-house.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-house-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-house-');
 const { World } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS;
 
 const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } });

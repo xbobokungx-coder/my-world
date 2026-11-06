@@ -1,6 +1,6 @@
 // ทดสอบกองกลาง หวยประจำวัน และภาษีขาย: node tools/test-lotto.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-lotto-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-lotto-');
 const { World } = require('../server.js'), S = require('../public/shared.js');
 
 // ---- ภาษีขาย ----
@@ -93,4 +93,4 @@ const draw = () => w.lottoDraw();
   console.log('  ภาษีขายเข้ากองกลาง ' + tax + ' จากการขาย ' + (got + tax));
 }
 console.log('✓ ผ่าน: หวย/กองกลาง/ภาษีขาย');
-fs.rmSync(process.env.DATA_DIR, { recursive: true, force: true }); process.exit(0);
+process.exit(0);

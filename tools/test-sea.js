@@ -1,6 +1,6 @@
 // ทดสอบออกทะเล (เรือที่ท่าเกาะลึกลับ → ฉากทะเล ตกปลาทะเลลึก): node tools/test-sea.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-sea-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-sea-');
 const { World } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS;
 
 // ชุดปลา: สระไม่มีปลา sea-only • ทะเลมี sea-only + ชนิดทะเล
@@ -107,4 +107,4 @@ w.seaGo(a); a.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!a.
   // ออกเรือไม่ได้ตอนกลางคืน/บ่ายแก่ (ใช้นาฬิกาจริงของเกมอาจเป็นเวลาไหนก็ได้ จึงเช็กผ่าน oceanWindow ด้านบนแล้ว)
 }
 console.log('✓ ผ่าน: ออกทะเล (ท่าเรือ ค่าเรือเข้ากองกลาง ชุดปลาแยก ตกปลา หมดเวลา/ท้ายเรือกลับเกาะ)');
-fs.rmSync(process.env.DATA_DIR, { recursive: true, force: true }); process.exit(0);
+process.exit(0);

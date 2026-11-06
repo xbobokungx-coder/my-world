@@ -1,7 +1,7 @@
 // ทดสอบชักเย่อกับปลา: โมเดลล้วน (ทั้งสองฝั่งใช้ชุดเดียวกัน) + ขั้นตอนบนเซิร์ฟเวอร์ (ตั้งเบ็ด → ชักเย่อ → ชนะ/สายขาด/ปลาหลุด/ดึงเร็วไปคืนเหยื่อ)
 // รัน: node tools/test-fight.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-fight-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-fight-');
 const { World } = require('../server.js'), S = require('../public/shared.js'), F = S.FIGHT;
 
 // บอทมือคน: กรอจนตึง ~72 แล้วปล่อยจนเหลือ ~48 • เห็นเตือนกระชากก็ปล่อยก่อน • ช้าตามเวลาตอบสนอง react ms

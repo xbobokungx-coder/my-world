@@ -1,7 +1,7 @@
 // ทดสอบว่าข้อมูลเมืองที่ save แล้วถูกโหลดกลับมาครบหลังรีสตาร์ต: node tools/test-persist.js
 // (บั๊กเดิม: โครงการพัฒนาเมืองถูกบันทึกแต่ไม่ถูกโหลด → ยอดลงขันรีเซ็ตเป็น 0 ทุกครั้งที่รีสตาร์ตเซิร์ฟเวอร์)
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-persist-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-persist-');
 const { World } = require('../server.js'), S = require('../public/shared.js');
 const w = new World('main');
 const p = { name: 'tester', key: 'tester', x: 0, y: 0, ws: { readyState: 0, send() {} }, rec: { inv: { coin: 20000 }, skills: { farm: 0, fish: 0, animal: 0, wood: 0, cook: 0 }, pts: 0, arc: { pts: 0, total: 0, wk: 0 } } };
@@ -142,4 +142,4 @@ for (let x = S.ISLAND.x0 + 1; x <= S.BRIDGE.x0; x++) assert.ok(walk(x, S.ISLAND.
 const orig = S.makeMap(); let changed = 0; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (orig[y][x] !== all[y][x]) { changed++; assert.ok([T.WATER, T.GRASS, T.TREE, T.PATH].includes(orig[y][x]), `ทับช่องที่ไม่ควรทับที่ ${x},${y}`); }
 console.log('  โครงการทั้ง 3 แปลงแมพ', changed, 'ช่อง');
 console.log('✓ ผ่าน: ยอดโครงการอยู่ครบหลังโหลดใหม่ และสะพานเดินข้ามได้ทั้งตอนสร้างเสร็จและหลังรีสตาร์ต');
-fs.rmSync(process.env.DATA_DIR, { recursive: true, force: true }); process.exit(0);
+process.exit(0);

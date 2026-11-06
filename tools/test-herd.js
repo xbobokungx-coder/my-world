@@ -1,7 +1,7 @@
 // ทดสอบสัตว์ของใครของมัน: โผล่/หายตามออนไลน์ • เพดานต่อคน • ไก่ของขวัญ • ไม่ชุบ
 // รัน: node tools/test-herd.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-herd-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-herd-');
 const { World } = require('../server.js'), S = require('../public/shared.js');
 const w = new World('herdtest');
 const mk = (name) => {

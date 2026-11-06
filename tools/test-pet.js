@@ -1,7 +1,7 @@
 // ทดสอบค่าสถานะสัตว์เลี้ยง: แต้มตามราคา • ผลเฉพาะตอนพาออก/ไม่ป่วย/อิ่มพอ • XP พลังงาน และโชคเพิ่มผลผลิต
 // รัน: node tools/test-pet.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-pet-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-pet-');
 const { World } = require('../server.js'), S = require('../public/shared.js');
 
 // แต้มรวมตามราคา: ราคาแพงกว่า = แต้มรวมมากกว่า (≈ ราคา ÷ 100) ตัวละ 1–3 ค่า

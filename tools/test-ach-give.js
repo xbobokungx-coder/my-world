@@ -1,7 +1,7 @@
 // ทดสอบ: ตู้เซฟกองกลางถูกยกเลิก → ความสำเร็จสายลงขัน (give2k/10k/30k) ผ่านให้ทุกคนทันที ไม่ได้เหรียญ ไม่ลงข่าวเมือง
 // รัน: node tools/test-ach-give.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-ach-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-ach-');
 const { World } = require('../server.js'), S = require('../public/shared.js');
 const w = new World('achtest');
 const ids = S.ACH.filter(d => d.stat === 'give').map(d => d.id);

@@ -1,7 +1,7 @@
 // ทดสอบสูตรขุดแร่ใหม่ (6 พ.ย. 2026): ต่ำกว่าแร่ 1 ระดับขุดได้แต่ช้า • แรงเกินแร่ไม่แตกครั้งเดียว + ได้ชิ้นเพิ่ม + สึกน้อยลง • ถุงมือ/ค้อน • ตั๋วลงชั้น (เพิ่มในเฟสถัดไป)
 // รัน: node tools/test-mining.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-mining-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-mining-');
 const { World } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS, T = S.T, M = S.MINE;
 
 // 1) สูตรล้วน

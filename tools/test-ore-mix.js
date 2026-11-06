@@ -1,7 +1,7 @@
 // ทดสอบสัดส่วนชนิดแร่ตอนเกิดใหม่: แร่ที่ผู้เล่นขุดไม่ได้ (เลเวล/อีเต้อไม่ถึง) ต้องไม่สะสมจนเต็มชั้นแล้วแร่ที่ขุดได้หายหมด
 // รัน: node tools/test-ore-mix.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-oremix-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-oremix-');
 const { World } = require('../server.js'), S = require('../public/shared.js'), T = S.T;
 
 // rollOreQuota: ชนิดที่เต็มโควตาไม่ถูกสุ่ม • ไม่มีชนิดไหนว่างก็สุ่มตามสัดส่วนปกติ

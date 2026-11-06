@@ -1,7 +1,7 @@
 // ทดสอบคู่มือมือใหม่: บท 1 (6 ข้อ) ไม่เปลี่ยน • บท 2 (ตัดไม้ ขุดแร่ ให้อาหาร เก็บไข่ ทำอาหาร) นับแยก ได้เหรียญต่อข้อ + รางวัลรวม ผู้เล่นเก่าข้าม
 // รัน: node tools/test-starter.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-starter-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-starter-');
 const { World } = require('../server.js'), S = require('../public/shared.js');
 const w = new World('startertest');
 const mk = name => { const ws = { readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } }; const r = w.join(ws, name, '#3498db', false); assert.ok(r.p, name); return { p: r.p, ws }; };

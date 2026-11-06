@@ -1,6 +1,6 @@
 // ทดสอบต้นไม้: โควตาต่อชนิด (ต้นแพงที่คนตัดไม่ได้ต้องไม่ไล่ต้นมือใหม่จนหมดแมพ) + ถอนต้นที่เกินโควตา + อัตรางอกของชนิดหายากไม่เพิ่ม
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-trees-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-trees-');
 const { World } = require('../server.js'), S = require('../public/shared.js'), K = S.TREE_KINDS, CAP = S.TREE.cap;
 const rng = S.rng(5112026);
 

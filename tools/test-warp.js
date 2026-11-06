@@ -1,6 +1,6 @@
 // ทดสอบวาปของผู้ดูแล (ไปเมือง/ถ้ำทุกชั้น/ทะเล/บ้านผู้เล่น): node tools/test-warp.js
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mw-warp-'));
+process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-warp-');
 const { World } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS, CAVE = '@cave';
 
 const w = new World('main');
