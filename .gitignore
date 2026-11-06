@@ -8,3 +8,4 @@ admin.key
 .claude/agent-memory-local/
 art/raw/
 data-dev/
+.DS_Store

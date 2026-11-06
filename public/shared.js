@@ -1209,7 +1209,7 @@
   ];
   const STARTER2_FINAL = { coin: 100 }; // ครบบท 2 รับเหรียญ (ผู้เล่นระดับการเล่น ≥ 8 ข้ามบทนี้)
   const STARTER_FINAL = { coin: 150, items: ['furn_chair', 'furn_plant', 'lamp'] }; // 150 (เดิม 100 ตอนคู่มือมี 12 ข้อ) เงินช่วงแรกรวมใกล้เดิม
-  // 60 วินาทีแรกของคนใหม่ (GROWTH-PLAN.md N1): กล่องของขวัญสุ่มของแต่งตัว 1 ชิ้น • เมล็ดเร่งโตสำหรับการปลูก quickSeeds ครั้งแรก (โตเร็ว ×quickMul) • ปลาตัวแรกในชีวิตเป็น firstFish
+  // 60 วินาทีแรกของคนใหม่ (docs/plans/GROWTH-PLAN.md N1): กล่องของขวัญสุ่มของแต่งตัว 1 ชิ้น • เมล็ดเร่งโตสำหรับการปลูก quickSeeds ครั้งแรก (โตเร็ว ×quickMul) • ปลาตัวแรกในชีวิตเป็น firstFish
   // ต้อนรับจากเมือง: คนที่ออนไลน์ทักคนใหม่ได้ภายใน greetMs หลังเข้าเกมครั้งแรก (ไม่มีของ/เงิน ผู้ทักได้แต้มความดี greetPts)
   const NEWBIE = { gift: [...WEAR.hat, ...WEAR.acc].filter(i => i.price >= 60 && i.price <= 150).map(i => wearKey(WEAR.hat.includes(i) ? 'hat' : 'acc', i.id)), quickSeeds: 3, quickMul: 3, firstFish: 'koi', greetMs: 10 * 60 * 1000, greetPts: 1 };
   // สมุดสะสม: ได้ครบทุกชนิดในหมวดไหนรับรางวัลหมวดนั้น (ชนิดใหม่แต่ละชนิดได้ BOOK_ENTRY_COIN) rare = เฟอร์นิเจอร์หายากที่เป็นรางวัล

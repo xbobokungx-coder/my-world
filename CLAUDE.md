@@ -16,7 +16,8 @@
 - `server.js` กติกาทั้งหมด (server-authoritative) • `public/shared.js` ค่าคงที่/กติกาที่ใช้ร่วมสองฝั่ง • `public/game.js` ฝั่งเว็บ • `public/pixel*.js` พิกเซลอาร์ต • `public/index.html` หน้าเว็บ+CSS
 - `GAME-DESIGN.md` แหล่งความจริงเดียวของกติกาและตัวเลข • `ECONOMY-PLAN.md` แผนเศรษฐกิจ • `STYLE_GUIDE.md` กติกาหน้าตา
 - `tools/test-*.js` เทสต์ • `tools/levelsim.js` `tools/econsim.js` จำลองก่อนปรับตัวเลข • `tools/economy.js 7` รายงานเศรษฐกิจ (นับเฉพาะผู้เล่นจริงตาม `tools/realplayers.js` ใส่ `--all` นับทุกบัญชี) • `tools/stats.js` ตัวชี้วัดจาก `data/events/` • `tools/bugs.js` รายงานบั๊กผู้เล่น
-- `GROWTH-PLAN.md` แผนดึงผู้เล่นใหม่ • `*.ps1` `*.bat` สคริปต์ Windows (ไม่ใช้บน VPS)
+- เอกสารอื่นทั้งหมด (แผน รายงาน ตั๋วงาน) อยู่ใน `docs/` ดูสารบัญ `docs/README.md` • ภาพและตัวอย่างงานศิลป์อยู่ `art/`
+- `docs/plans/GROWTH-PLAN.md` แผนดึงผู้เล่นใหม่ • `*.ps1` `*.bat` สคริปต์ Windows (ไม่ใช้บน VPS)
 - เกมจริง `https://165-101-64-106.sslip.io` (ต้อง HTTPS ไมค์ถึงใช้ได้) • ชื่อลัด SSH ของ VPS `my-world`
 - ดูสไปรต์ชีตท่าทำงาน: `__mw.actionSheet()` ในคอนโซลเบราว์เซอร์ • `public/pixelfurn.js` เฟอร์นิเจอร์ furniture-kit-v2 ทำตาม STYLE_GUIDE ข้อ 8
 - เพิ่มเกมในตู้: ใส่ `CABINETS` (shared) แล้วเขียนกติกาใน `server.js` ส่วน Arcade

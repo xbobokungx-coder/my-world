@@ -25,7 +25,7 @@
 ## ขั้น 1 — ติดตั้งชุดไฟล์เข้ารีโป ⚠️
 
 ```
-เพิ่งแตกชุดไฟล์ทีมงาน (my-world-studio) ลงรากรีโปนี้ อ่าน AGENTS-PLAN.md, REFACTOR-PLAN.md,
+เพิ่งแตกชุดไฟล์ทีมงาน (my-world-studio) ลงรากรีโปนี้ อ่าน docs/plans/AGENTS-PLAN.md, docs/plans/REFACTOR-PLAN.md,
 docs/SETUP-MACHINES.md และ docs/OPS.md ให้เข้าใจภาพรวมก่อน แล้วทำตามนี้ทีละข้อ ยังไม่ต้อง commit:
 
 1. .gitignore: รวมกับ gitignore.proposed — เก็บบรรทัดเดิมที่ยังใช้อยู่ทั้งหมด ลบบรรทัด ".claude/"
@@ -70,7 +70,7 @@ npm install, ตัวแปร PIXELLAB_API_KEY ถูกตั้งไว้�
 1. Explore: ระบบล็อตโต้ออกรางวัลที่ไหน และเก็บข้อมูลใน state ตัวไหน
 2. qa-tester: รันเทสต์ทั้งหมด รายงานเฉพาะที่พัง
 3. code-reviewer: ตรวจ commit ล่าสุด (git diff HEAD~1)
-4. economy-designer: รัน levelsim กับ econsim แล้วสรุปเคส 2 ใน ISSUES-2026-10.md ว่าตัวเลขตอนนี้เป็นยังไง (ห้ามแก้ค่า)
+4. economy-designer: รัน levelsim กับ econsim แล้วสรุปเคส 2 ใน docs/reports/ISSUES-2026-10.md ว่าตัวเลขตอนนี้เป็นยังไง (ห้ามแก้ค่า)
 5. pixel-artist: แสดงรายชื่อเครื่องมือของ PixelLab ที่ใช้ได้ (ห้ามสร้างภาพ จะเสียเครดิต)
 ถ้าตัวไหนไม่ถูกเรียก ทำงานผิดขอบเขต หรือรันผิดโมเดล ให้เสนอวิธีแก้ไฟล์ agent นั้น
 ```
@@ -102,8 +102,8 @@ npm install, ตัวแปร PIXELLAB_API_KEY ถูกตั้งไว้�
 ## ขั้น 5 — เริ่ม refactor ขั้น 0 (งานจริงชิ้นแรก)
 
 ```
-เริ่ม refactor ตาม REFACTOR-PLAN.md หัวข้อ 6 "ขั้น 0" ทีละข้อ ทีละ commit:
-1. architect: เขียน docs/plans/refactor.md จาก REFACTOR-PLAN.md
+เริ่ม refactor ตาม docs/plans/REFACTOR-PLAN.md หัวข้อ 6 "ขั้น 0" ทีละข้อ ทีละ commit:
+1. architect: เขียน docs/plans/refactor.md จาก docs/plans/REFACTOR-PLAN.md
    (ตัดสินเรื่องการเสิร์ฟ shared/ ให้เบราว์เซอร์ และชื่อบริการกลาง) แล้วสรุปให้ฉัน 10 บรรทัด
 2. หลังฉันอ่านแผนแล้ว: qa-tester เขียน golden test ตามหัวข้อ 6 แล้วรันให้ผ่านกับโค้ดปัจจุบัน
 3. server-dev: ลบโค้ดคาสิโน → qa รันทุกเทสต์ + golden → code-reviewer ตรวจ → สรุปให้ฉันก่อน commit

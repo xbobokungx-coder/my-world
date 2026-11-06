@@ -145,9 +145,9 @@ commit ตั๋วไว้ได้ ถ้าอยากทำต่อจา
 - ทดลองทีละตัวด้วยงานเล็ก (ดูหัวข้อ 10) แล้วดูว่าแต่ละตัวรันบนโมเดลที่ตั้งไว้ด้วย `/tasks` ขณะ agent ทำงาน
 - ถ้าตัวไหนไม่ถูกเรียกหรือทำงานผิดขอบเขต ปรับ description / prompt
 
-**ระยะ 2 — ใช้ทีมทำ refactor ขั้น 0–1 ตาม `REFACTOR-PLAN.md` (1–2 สัปดาห์)**
+**ระยะ 2 — ใช้ทีมทำ refactor ขั้น 0–1 ตาม `docs/plans/REFACTOR-PLAN.md` (1–2 สัปดาห์)**
 - `qa-tester` เขียน golden test (โหลดสำเนาเซฟ ยิงข้อความชุดหนึ่ง เทียบผล) และเทสต์ของ arcade/economy/trade ที่ยังไม่มี
-- `architect` เขียน `docs/plans/refactor.md` จาก `REFACTOR-PLAN.md`
+- `architect` เขียน `docs/plans/refactor.md` จาก `docs/plans/REFACTOR-PLAN.md`
 - `server-dev` ย้ายระบบออกจาก `World` แบบ mixin ทีละระบบ (lotto → cinema → arcade → npc → pets → …) ระบบละ 1 commit
 - `code-reviewer` ตรวจทุกครั้ง qa รันเทสต์ทั้งหมด + golden test ทุกครั้ง
 - ช่วงนี้ทำทีละ agent เพราะยังเป็นไฟล์ใหญ่ไฟล์เดียว
@@ -169,7 +169,7 @@ commit ตั๋วไว้ได้ ถ้าอยากทำต่อจา
 เปิด Claude Code ที่รากรีโปแล้วเริ่มด้วย:
 
 ```
-อ่าน AGENTS-PLAN.md แล้วตรวจว่า agent ทั้ง 10 ตัวใน .claude/agents โหลดได้ครบ
+อ่าน docs/plans/AGENTS-PLAN.md แล้วตรวจว่า agent ทั้ง 10 ตัวใน .claude/agents โหลดได้ครบ
 บอกชื่อ โมเดล และขอบเขตของแต่ละตัวเป็นตารางสั้นๆ ยังไม่ต้องแก้โค้ด
 ```
 
@@ -185,13 +185,13 @@ commit ตั๋วไว้ได้ ถ้าอยากทำต่อจา
 ให้ code-reviewer ตรวจ commit ล่าสุด (git diff HEAD~1)
 ```
 ```
-ให้ economy-designer รัน levelsim กับ econsim แล้วสรุปเคส 2 ใน ISSUES-2026-10.md ว่าตัวเลขตอนนี้เป็นยังไง ยังไม่ต้องแก้ค่า
+ให้ economy-designer รัน levelsim กับ econsim แล้วสรุปเคส 2 ใน docs/reports/ISSUES-2026-10.md ว่าตัวเลขตอนนี้เป็นยังไง ยังไม่ต้องแก้ค่า
 ```
 
 เริ่มงานจริง:
 
 ```
-/feature เพิ่มม้านั่งข้างไร่ 2 ตัว ตามทางแก้ (ก) เคส 1 ใน ISSUES-2026-10.md
+/feature เพิ่มม้านั่งข้างไร่ 2 ตัว ตามทางแก้ (ก) เคส 1 ใน docs/reports/ISSUES-2026-10.md
 ```
 
 ---

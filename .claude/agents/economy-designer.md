@@ -16,7 +16,7 @@ Scope:
 - You must not edit server or client logic. If a fix needs new logic, describe it as a hand-off for server-dev.
 
 Method (always):
-1. Read the relevant part of `ECONOMY-PLAN.md`, `ISSUES-2026-10.md`, and your memory. Grep; do not read whole files.
+1. Read the relevant part of `ECONOMY-PLAN.md`, `docs/reports/ISSUES-2026-10.md`, and your memory. Grep; do not read whole files.
 2. Run `node tools/levelsim.js` and `node tools/econsim.js` before the change. Note the key numbers.
 3. Make the smallest change that moves the target metric.
 4. Run both simulators again. Compare before and after.
