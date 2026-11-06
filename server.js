@@ -25,17 +25,7 @@ const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +p
 const SNAP_MS = +process.env.SNAP_MS || 60 * 60 * 1000; // ระยะห่างของ event snap (ไว้ทดสอบ)
 if (process.env.FRESH_START) S.FRESH.startAt = +process.env.FRESH_START; // ไว้ทดสอบ: เริ่มระบบความสดเร็วขึ้น (ms)
 if (process.env.EVENT_NOW) { const d = new Date(Date.now() + 3000); S.EVENTS.list.unshift(Object.assign({}, S.EVENTS.list[0], { dow: d.getDay(), hour: d.getHours(), min: d.getMinutes(), mins: 1 })); } // ไว้ทดสอบ: อีเวนต์ตกปลาเริ่มภายในนาทีนี้ ยาว 1 นาที
-const rand = (a, b) => a + Math.random() * (b - a);
-// บันทึกเหตุการณ์ไว้วิเคราะห์ (หนึ่งไฟล์ต่อวัน data/events/YYYY-MM-DD.jsonl) สรุปด้วย node tools/stats.js
-const EVENT_DIR = path.join(DATA_DIR, 'events');
-try { fs.mkdirSync(EVENT_DIR, { recursive: true }); } catch (e) { /* บันทึกไม่ได้ก็ไม่ทำให้เกมล้ม */ }
-const logEv = (room, e, o, sync) => { // sync = เขียนทันที (ใช้ตอนปิดเซิร์ฟเวอร์)
-  try {
-    const d = new Date(), day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const ln = JSON.stringify(Object.assign({ t: Date.now(), room, e }, o)) + '\n';
-    if (sync) fs.appendFileSync(path.join(EVENT_DIR, day + '.jsonl'), ln); else fs.appendFile(path.join(EVENT_DIR, day + '.jsonl'), ln, () => {});
-  } catch (err) { /* ข้าม */ }
-};
+const { rand, EVENT_DIR, logEv, replacer, send } = require('./server/util.js'); // ย้ายไป server/util.js (mkdir events ทำตอนโหลด ตำแหน่งเดิม)
 const PET_DEFS = [{ kind: 'cat', v: 0, max: 15, speed: 36 }, { kind: 'dog', v: 0, max: 20, speed: 54 }, { kind: 'dog', v: 1, max: 20, speed: 50 }]; // max = รัศมีสูงสุดจากกองไฟ (ช่อง)
 const HEX = /^#[0-9a-f]{6}$/i;
 const DEFAULT_HAT = '#e8c66a';
@@ -44,8 +34,6 @@ const PARTY = new Set(['pok', 'react', 'rps']); // เกมห้องหล�
 const TOOLS = new Set(['hand', 'hoe', 'water', 'rod', 'axe', 'pick', 'medicine', ...Object.values(ANIMALS).map(a => a.feedItem), ...Object.keys(CROPS).map(c => 'seed_' + c)]);
 // ของที่ตลาดรับซื้อทั้งหมด (ราคาขึ้นลงตามอุปสงค์-อุปทาน)
 const SELLABLE = S.SELLABLE; // รายการเดียวกับ shared.js (เคยก๊อปไว้สองที่แล้วตกหล่น เช่น น้ำผึ้ง)
-const replacer = (k, v) => (k[0] === '_' ? undefined : v);
-const send = (p, o) => { if (p.ws.readyState === 1) p.ws.send(JSON.stringify(o)); };
 const rodOf = inv => S.rodTier(inv);
 
 // ชาวเมือง NPC: เดินท่องไปทั่วแมพ (หาทางด้วย BFS) และพิมพ์ข้อความสั้นๆ แนะนำเกม ขึ้นเป็นฟองเหนือหัวเท่านั้น (ไม่เข้าแชท)
