@@ -2,5 +2,9 @@ node_modules/
 data/
 backup/
 admin.key
-.claude/
 *.log
+.env
+.claude/settings.local.json
+.claude/agent-memory-local/
+art/raw/
+data-dev/

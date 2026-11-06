@@ -1,0 +1,9 @@
+# ไฟล์ข้อความเก็บใน git เป็น LF เสมอ (ทำงานจาก Windows แล้ว VPS ไม่พัง)
+* text=auto
+*.sh text eol=lf
+*.js text eol=lf
+*.md text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary

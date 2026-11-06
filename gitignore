@@ -1,6 +1,0 @@
-node_modules/
-data/
-backup/
-admin.key
-.claude/
-*.log
