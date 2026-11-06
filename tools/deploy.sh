@@ -42,7 +42,7 @@ fi
 if [ "$OLD" = "$NEW" ] && [ "$FORCE_RESTART" = 0 ]; then say "โค้ดล่าสุดอยู่แล้ว ($(git log -1 --format='%h %s'))"; exit 0; fi
 CHANGED=$(git diff --name-only "$OLD" "$NEW")
 say "อัปเดต $(git rev-parse --short "$OLD") → $(git rev-parse --short "$NEW") ($(echo "$CHANGED" | grep -c . || true) ไฟล์)"
-git log --oneline "$OLD..$NEW" | head -20
+git log --oneline -n 20 "$OLD..$NEW" # ไม่ใช้ | head: ใต้ pipefail ถ้ามีเกิน 20 commit git log โดน SIGPIPE แล้วสคริปต์จบ exit 141
 
 # 1) ทดสอบเวอร์ชันใหม่ในโฟลเดอร์ชั่วคราว
 TMP=$(mktemp -d)
