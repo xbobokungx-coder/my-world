@@ -38,7 +38,7 @@ module.exports = {
   starClaim(p, sk) {
     if (!Object.hasOwn(S.SKILLS, sk)) return; const n = this.starOf(p.rec, sk) + 1, M = S.MASTERY;
     if (n > M.max) return this.toast(p, 'ได้ดาวครบแล้ว');
-    const need = S.xpFor(S.MAX_LV) + n * M.xpPer, cost = M.costBase * n;
+    const need = S.xpFor(S.MAX_LV, sk) + n * S.masteryXp(sk), cost = M.costBase * n;
     if ((p.rec.skills[sk] || 0) < need) return this.toast(p, `ต้องมี XP ${S.SKILLS[sk].name} ${need.toLocaleString()} ก่อน`);
     if ((p.rec.inv.coin || 0) < cost) return this.toast(p, `เหรียญไม่พอ (ดาวที่ ${n} ใช้ 🪙${cost})`);
     this.add(p, 'coin', -cost, 'mastery'); (p.rec.stars || (p.rec.stars = {}))[sk] = n; this.dirty = true;

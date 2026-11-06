@@ -262,8 +262,11 @@
   const XP_TABLE_V2 = [0, 0, 150, 600, 1500, 3500, 8000, 14500, 24000, 36000, 64000, 95000, 130000, 169000, 213000, 262000, 317000, 379000, 448000, 525000, 612000]; // ตารางเดิม (ใช้ย้าย XP ผู้เล่นเก่า xpv 2 → 3)
   // 31 ต.ค. 2026 (xpv 3): ยืดเลเวลต้นให้อยู่นานขึ้น ชม.เล่นจริงต่อเลเวล (ชาวนา): Lv1→2 0.5 • 2→3 0.8 • 3→4 1.2 • 4→5 1.6 • 5→6 2.0 • 6→7 2.5 • 7→8 3.0 • 8→9 3.5 • 9→10 4.2 • Lv10 ขึ้นไปเท่าเดิม (ถึง Lv10 ≈ 19 ชม. Lv20 ≈ 114 ชม.)
   const XP_TABLE = [0, 0, 700, 2000, 4350, 7600, 12650, 20150, 31300, 43900, 63550, 91950, 126900, 165700, 209800, 259000, 314200, 380800, 449800, 526900, 613650]; // Lv11–20 ขั้นละ ×1.12 ของขั้นก่อน (ถึง Lv20 ≈ 100 ชม.เล่นจริง)
-  const xpFor = lv => XP_TABLE[Math.max(1, Math.min(MAX_LV, lv))];
-  const levelOf = xp => { let lv = 1; while (lv < MAX_LV && (xp || 0) >= XP_TABLE[lv + 1]) lv++; return lv; };
+  // 6 พ.ย. 2026 (xpv 4): หลอดนักขุดแร่แยกตารางเอง (ถึง Lv20 ≈ 20 ชม.เล่นจริง XP แร่โตตามชั้นที่ลงลึกแทนตัวคูณเลเวล) อาชีพอื่นยังใช้ XP_TABLE
+  const XP_TABLE_MINE = [0, 0, 250, 535, 959, 1442, 2158, 2976, 4189, 5573, 7627, 9970, 13447, 17415, 23301, 30018, 39983, 51355, 68225, 87477, 116038];
+  const xpTable = skill => skill === 'mine' ? XP_TABLE_MINE : XP_TABLE; // ไม่ส่ง skill = ตารางเดิม
+  const xpFor = (lv, skill) => xpTable(skill)[Math.max(1, Math.min(MAX_LV, lv))];
+  const levelOf = (xp, skill) => { const T = xpTable(skill); let lv = 1; while (lv < MAX_LV && (xp || 0) >= T[lv + 1]) lv++; return lv; };
   // ย้าย XP จากตาราง xpv 2 มาตารางใหม่: เลเวลเท่าเดิม ความคืบหน้าในเลเวลเป็นสัดส่วนเท่าเดิม (เลเวลสูงสุดเก็บส่วนเกินไว้)
   const xpFromV2 = xp => {
     xp = Math.max(0, xp || 0); let L = 1; while (L < MAX_LV && xp >= XP_TABLE_V2[L + 1]) L++;
@@ -320,7 +323,8 @@
   const seasonAt = t => { const L = SEASONS.days * 864e5, n = Math.floor((t - SEASONS.epoch) / L), i = ((n % 3) + 3) % 3; return { s: SEASONS.list[i], end: SEASONS.epoch + (n + 1) * L, on: t >= SEASONS.epoch }; };
   const cropSeason = (c, t) => { const se = seasonAt(t); if (!se.on || !CROPS[c] || CROPS[c].lv <= 1) return 0; return se.s.crops.includes(c) ? 1 : -1; }; // 1 ในฤดู • -1 นอกฤดู • 0 ไม่มีผล
   // ความชำนาญหลัง Lv10: ดาว 1–max ต่ออาชีพ ดาวที่ n ต้องมี XP ≥ XP Lv10 + n × xpPer และจ่าย costBase × n เหรียญ (ใช้เงินระยะยาว ไม่เพิ่มพลังหรือรายได้) ครบ max ดาวได้ฉายา "ปรมาจารย์<อาชีพ>"
-  const MASTERY = { xpPer: 25000, costBase: 2000, max: 5 };
+  const MASTERY = { xpPer: 25000, costBase: 2000, max: 5, xpPerSkill: { mine: 8000 } }; // xpPerSkill = XP ต่อดาวของอาชีพที่หลอดเล็กกว่า (นักขุด 8,000 ≈ 28% ของหลอด Lv19→20 เท่าสัดส่วนอาชีพอื่น)
+  const masteryXp = skill => MASTERY.xpPerSkill[skill] || MASTERY.xpPer;
   // ปลา: lv = เลเวลชาวประมงที่เริ่มตกได้, w = น้ำหนักความน่าจะเป็น (หายาก = ราคาแพง: ราคาแปรผันตามความหายาก)
   // XP ปลา ≈ 6 × ราคา^0.36 (ปลาแพงให้ XP มากขึ้นแต่ไม่ตามราคา) ให้ XP/ชม. ใกล้ชาวนาที่เลเวลเดียวกัน ตรวจด้วย node tools/levelsim.js
   // 31 ต.ค. 2026: เหลือปลาที่ตกได้ 20 ชนิด (+รองเท้า) เลเวลละ 1 ชนิดเรียงตามราคา ปลา 12 ชนิดที่เลิกตก (LEGACY_FISH) ยังขาย/ดูในกระเป๋าได้
@@ -459,19 +463,49 @@
   for (const k of Object.values(TREE_KINDS)) k.hp = Math.round((ACTION_TUNE.wood.swings + ACTION_TUNE.wood.perLv * (k.lv - 1)) * AXES[k.axe].power * (k.hpMul || 1)); // HP = ครั้งที่ฟันด้วยขวานขั้นต่ำที่ต้องใช้ × พลังขวานนั้น
   // ขุดเหมือง (ถ้ำ 10 ชั้น): เดินเข้าปากถ้ำบนหน้าผาเหนือ ใช้อีเต้อขุดก้อนแร่ ลงบันไดไปชั้นลึกขึ้นเรื่อยๆ ยิ่งลึกยิ่งได้แร่แพง (แต่ละชั้นเป็นฉากร่วมของทั้งห้อง เห็นกันและแย่งแร่กัน)
   // อีเต้อ 6 ระดับ ไม้→หิน→เหล็ก→ทองคำ→มรกต→เพชร: power = แต้มต่อครั้ง lv = เลเวลนักขุดแร่ที่ซื้อได้ (ระดับแรกซื้อได้เลย)
+  // ชุดอุปกรณ์ขุด 10 ชนิด (6 พ.ย. 2026) ชนิดละระดับ ตรงกับแร่ลำดับเดียวกัน (ORES[k].pick = 1..10) • คีย์ในเซฟ pick_1..10 • power = เลขระดับ • lv = เลเวลนักขุดที่ซื้อได้ (ตรงกับแร่ที่ปลด)
   const PICKS = {
-    1: { name: 'อีเต้อไม้',    price: 60,   power: 1 },
-    2: { name: 'อีเต้อหิน',    price: 260,  lv: 3,  power: 2 },
-    3: { name: 'อีเต้อเหล็ก',  price: 800,  lv: 7,  power: 3 },
-    4: { name: 'อีเต้อทองคำ',  price: 2000, lv: 11,  power: 4 },
-    5: { name: 'อีเต้อมรกต',   price: 4500, lv: 15,  power: 5 },
-    6: { name: 'อีเต้อเพชร',   price: 9000, lv: 19, power: 6 },
+    1:  { name: 'ถุงมือ',      price: 60,    power: 1 },
+    2:  { name: 'จอบไม้',      price: 260,   lv: 3,  power: 2 },
+    3:  { name: 'อีเต้อเหล็ก',  price: 600,   lv: 5,  power: 3 },
+    4:  { name: 'ค้อนทุบหิน',  price: 1100,  lv: 7,  power: 4 },
+    5:  { name: 'ชะแลง',      price: 1900,  lv: 9,  power: 5 },
+    6:  { name: 'สว่านมือ',    price: 3000,  lv: 11, power: 6 },
+    7:  { name: 'สว่านลม',    price: 4500,  lv: 13, power: 7 },
+    8:  { name: 'สว่านไฟฟ้า',  price: 6500,  lv: 15, power: 8 },
+    9:  { name: 'ไดนาไมต์',    price: 9000,  lv: 17, power: 9 },
+    10: { name: 'ระเบิด',      price: 12500, lv: 19, power: 10 },
   };
-  const PICK_EMOJI = { 1: '🪝', 2: '🧲', 3: '⚓', 4: '🔱', 5: '🏹', 6: '🪃' }; // คีย์ไอคอนอีเต้อพิกเซลแต่ละระดับ (วาดใน pixelui.js)
-  const pickTier = inv => { for (let t = 6; t >= 1; t--) if (inv && inv['pick_' + t]) return t; return 0; }; // ระดับอีเต้อสูงสุดที่มี (0 = ไม่มี)
+  const PICK_MAX = 10;
+  const PICK_EMOJI = { 1: '🪝', 2: '🧲', 3: '⚓', 4: '🔱', 5: '🏹', 6: '🪃', 7: '💨', 8: '🔌', 9: '🧨', 10: '💣' }; // คีย์ไอคอนพิกเซลแต่ละระดับ (วาดใน pixelui.js) • 1–6 คีย์เดิมแต่วาดใหม่เป็นถุงมือ..สว่านมือ • 7–10 คีย์ใหม่
+  const pickTier = inv => { for (let t = PICK_MAX; t >= 1; t--) if (inv && inv['pick_' + t]) return t; return 0; }; // ระดับอุปกรณ์ขุดสูงสุดที่มี (0 = ไม่มี)
+  // ย้ายเซฟนักขุดแร่ xpv 3 → 4 (6 พ.ย. 2026) ทำครั้งเดียวตอนโหลด: XP หลอดนักขุด → ตารางใหม่ (เลเวลและสัดส่วนความคืบหน้าเท่าเดิม) • อีเต้อ pick_1..6 → เลขใหม่ ความทนทานคงสัดส่วน • ถุงมือ/ค้อนที่เลิกขาย ลบแล้วคืนเหรียญเท่าราคาซื้อเดิม
+  const MINE_MIG = { pick: { 1: 1, 2: 2, 3: 4, 4: 6, 5: 8, 6: 10 }, oldDur: [0, 100, 180, 400, 700, 1100, 1800], refund: { glove_1: 220, glove_2: 1200, glove_3: 4000, hammer_1: 600, hammer_2: 2500, hammer_3: 7000 } };
+  const xpMineV4 = xp => { // pure: XP ตาราง XP_TABLE → XP_TABLE_MINE (เลเวลสูงสุดแปลงส่วนเกินตามสัดส่วนหลอดต่อดาว)
+    xp = Math.max(0, +xp || 0); let L = 1; while (L < MAX_LV && xp >= XP_TABLE[L + 1]) L++;
+    if (L >= MAX_LV) return XP_TABLE_MINE[MAX_LV] + Math.floor((xp - XP_TABLE[MAX_LV]) * masteryXp('mine') / MASTERY.xpPer);
+    return XP_TABLE_MINE[L] + Math.floor((xp - XP_TABLE[L]) / (XP_TABLE[L + 1] - XP_TABLE[L]) * (XP_TABLE_MINE[L + 1] - XP_TABLE_MINE[L]));
+  };
+  const migrateMineV4 = rec => { // แก้ rec ตรงๆ (idempotent: rec.xpv >= 4 ข้าม) คืน { refund } หรือ null ถ้าไม่ได้ทำ • ผู้เรียกต้องแปลง xpv ถึง 3 ก่อน
+    if (!rec || typeof rec !== 'object' || (rec.xpv | 0) >= 4) return null;
+    if (rec.skills && Number.isFinite(rec.skills.mine)) rec.skills.mine = xpMineV4(rec.skills.mine);
+    let refund = 0, oldTier = 0;
+    if (rec.inv && typeof rec.inv === 'object') {
+      const inv = rec.inv, had = [];
+      for (let t = 1; t <= 6; t++) if (inv['pick_' + t] > 0) { had.push([t, inv['pick_' + t]]); oldTier = t; delete inv['pick_' + t]; }
+      for (const [t, c] of had) inv['pick_' + MINE_MIG.pick[t]] = c;
+      for (const [k, price] of Object.entries(MINE_MIG.refund)) { const c = Math.floor(+inv[k] || 0); if (c > 0) refund += price * c; delete inv[k]; }
+      if (refund > 0) inv.coin = (inv.coin || 0) + refund;
+    }
+    if (oldTier && rec.dur && Number.isFinite(rec.dur.pick)) { // ความทนทานคงสัดส่วนของค่าสูงสุดตามจำนวนครั้งที่ซ่อม
+      const fx = Math.max(0, Math.floor(+(rec.fix && rec.fix.pick) || 0)), oldMax = Math.max(1, Math.floor(MINE_MIG.oldDur[oldTier] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fx))));
+      const ratio = Math.max(0, Math.min(1, rec.dur.pick / oldMax)), nm = durMax('pick', MINE_MIG.pick[oldTier], fx);
+      rec.dur.pick = ratio > 0 ? Math.max(1, Math.round(ratio * nm)) : 0;
+    }
+    rec.xpv = 4; return { refund };
+  };
   const SWING_MS = 570; // ความยาวท่าขุดแร่/ตัดไม้ (pixelaction.js 6 เฟรม × 95 ms) = ระยะห่างขั้นต่ำระหว่างการฟาด (levelsim คิด 0.7 วินาที/ครั้ง)
   const MINE = {
-    xpPerLv: 0.1,                                  // XP นักขุดแร่ ×(1 + xpPerLv×(เลเวล−1)) เหมือนช่างไม้ (ก้อนแร่มีจำกัด จึงโตตามเลเวลด้วยตัวคูณ)
     floors: 10,                                    // จำนวนชั้นของถ้ำ (ชั้น f = แร่ระดับ f เป็นหลัก)
     mix: [70, 20, 10],                             // ชั้น f: แร่ระดับ f 70% / f+1 20% / f+2 10% (เกินชนิดสุดท้ายนับเป็นชนิดสุดท้าย → ชั้น 10 เป็นคริสตัลล้วน)
     mixLast: { mythril: 70, moonstone: 30 },     // ชั้นลึกสุด (ชั้น 10): มิทริล 70% + มูนสโตน 30% (เดิมมิทริลล้วน Lv19 เท่านั้น ผู้เล่น Lv17–18 ลงไปแล้วขุดไม่ได้เลย และเหมือนชั้น 9 มาก) ชั้น 9 = มูนสโตน 70 มิทริล 30 กลับกัน
@@ -479,8 +513,9 @@
     fee: [0, 0, 650, 1000, 1450, 1850, 2350, 2750, 3150, 3500, 3750], // ตั๋วลงชั้น (ดัชนี = ชั้น) ≈ 10% ของเหรียญ/ชม. ที่ชั้นนั้นทำได้ • ซื้อที่ร้านช่างเหมือง ลงถึงเฉพาะชั้นที่เคยเดินลงถึงเอง (rec.deep) • เป็นเงินจมล้วน ลงเดินเองฟรี
     discover: 20,                                  // ขุดแร่ชนิดใหม่ครั้งแรก ได้ XP โบนัส = discover × XP ต่อชิ้นของแร่นั้น (ราว 1–3 นาทีของเวลาขุดที่เลเวลนั้น) ให้ความรู้สึกขึ้นขั้นตอนปลดแร่ใหม่
     minHits: [3, 4, 5],                            // ฟาดอย่างน้อยกี่ครั้งต่อก้อน (เล็ก/กลาง/ใหญ่) ต่อให้อีเต้อ/ค้อน/ถุงมือแรงแค่ไหนก็ไม่แตกครั้งเดียว
-    slow: { dmg: 0.5, wear: 2 },                   // อีเต้อต่ำกว่าแร่ 1 ระดับ ขุดได้แต่ช้า: ดาเมจ ×0.5 อีเต้อสึก ×2 (ต่ำกว่า 2 ระดับขึ้นไปยังล็อก)
-    over: { bonus: 0.06, cap: 0.3, wear: 0.25 },   // อีเต้อสูงกว่าแร่ d ระดับ: โอกาสได้ชิ้นเพิ่ม 6%×d (สูงสุด 30%) และสึกช้าลง 1/(1+0.25d) แต่ไม่ได้ XP เพิ่ม
+    slow: { dmg: 0.85, wear: 0.5 },                // อุปกรณ์ต่ำกว่าแร่ d ระดับ (กี่ระดับก็ขุดได้): ดาเมจ ×dmg^d สึก ×(1+wear×d) เช่นต่ำกว่า 3 ระดับ = ดาเมจ ×0.61 สึก ×2.5
+    maxHits: 120,                                  // เพดานจำนวนฟาดต่อก้อน (≈ 70 วินาที) กันขุดช้าเกินเหตุเมื่ออุปกรณ์ต่ำกว่าแร่มาก
+    over: { bonus: 0.06, cap: 0.3, wear: 0.25 },   // อุปกรณ์สูงกว่าแร่ d ระดับ: โอกาสได้ชิ้นเพิ่ม 6%×d (สูงสุด 30%) สึกช้าลง 1/(1+0.25d) และชิ้นเพิ่มได้ XP ด้วย
     maxOres: 60,                                    // ก้อนแร่สูงสุดต่อชั้น (ปกติราว 1 ก้อนต่อพื้น orePer ช่อง ≈ 50–63 ก้อน • ปรับจาก 45 เมื่อ 5 พ.ย. 2026: ผู้เล่นคนเดียวขุดเร็วกว่าแร่เกิดใหม่)
     orePer: 12,                                    // พื้นเดินได้กี่ช่องต่อแร่ 1 ก้อน (ยิ่งมาก แร่ยิ่งบาง ต้องเดินหา) • เพดานจริงอยู่ที่ oreGap
     oreGap: 2,                                     // ก้อนแร่ห่างกันอย่างน้อย 2 ช่อง (ไม่เกาะกันเป็นพืด) • เดิม 3 ทำให้ชั้นหนึ่งลงได้แค่ 31–38 ก้อน ต่อให้ลด orePer ก็ไม่เพิ่ม
@@ -502,40 +537,40 @@
   // 31 ต.ค. 2026: เหลือแร่ที่ขุดได้ 10 ชนิด = ถ้ำ 10 ชั้น (ชั้น f = แร่ลำดับ f เป็นหลัก) ปลดทุก 2 เลเวลนักขุดแร่ (Lv1,3,5,…,19) • ชั้นล่างขึ้นมาแทนที่ชั้นเก่า 2 ชั้นต่อ 1 ชั้น
   // แร่ที่เลิกขุด (legacy) ยังขายได้ที่ร้านช่างเหมือง แต่ไม่ปรากฏในถ้ำ hpm = ตัวคูณ HP ของแร่ตัวที่สองในคู่อีเต้อเดียวกัน
   const ORES = {
-    stone:     { name: 'หิน',       emoji: '🪨', lv: 1,  pick: 1, sell: 5,  xp: 4.2 },
-    copper:    { name: 'ทองแดง',    emoji: '🟠', lv: 3,  pick: 2, sell: 9,  xp: 5.9 },
-    silver:    { name: 'เงิน',       emoji: '🥈', lv: 5,  pick: 2, sell: 14, xp: 7.5, hpm: 1.2 },
-    amethyst:  { name: 'อเมทิสต์',   emoji: '🟣', lv: 7,  pick: 3, sell: 19, xp: 8 },
-    emerald:   { name: 'มรกต',      emoji: '🟢', lv: 9,  pick: 3, sell: 24, xp: 10.8, hpm: 1.2 },
-    opal:      { name: 'โอปอล',      emoji: '🤍', lv: 11, pick: 4, sell: 29, xp: 10.7 },
-    sapphire:  { name: 'ไพลิน',      emoji: '🔵', lv: 13, pick: 4, sell: 33, xp: 12.5, hpm: 1.2 },
-    jade:      { name: 'หยก',        emoji: '🍀', lv: 15, pick: 5, sell: 37, xp: 11 },
-    moonstone: { name: 'มูนสโตน',    emoji: '🌙', lv: 17, pick: 5, sell: 41, xp: 11.9, hpm: 1.2 },
-    mythril:   { name: 'มิทริล',      emoji: '🔷', lv: 19, pick: 6, sell: 45, xp: 10.7, hpm: 1.2 },
+    stone:     { name: 'หิน',       emoji: '🪨', lv: 1,  pick: 1, sell: 5, xp: 3.6 },
+    copper:    { name: 'ทองแดง',    emoji: '🟠', lv: 3,  pick: 2, sell: 9, xp: 4.8 },
+    silver:    { name: 'เงิน',       emoji: '🥈', lv: 5,  pick: 3, sell: 14, xp: 6.2 },
+    amethyst:  { name: 'อเมทิสต์',   emoji: '🟣', lv: 7,  pick: 4, sell: 19, xp: 7.9 },
+    emerald:   { name: 'มรกต',      emoji: '🟢', lv: 9,  pick: 5, sell: 24, xp: 10.2 },
+    opal:      { name: 'โอปอล',      emoji: '🤍', lv: 11, pick: 6, sell: 29, xp: 13.1 },
+    sapphire:  { name: 'ไพลิน',      emoji: '🔵', lv: 13, pick: 7, sell: 33, xp: 16.9 },
+    jade:      { name: 'หยก',        emoji: '🍀', lv: 15, pick: 8, sell: 37, xp: 21.9 },
+    moonstone: { name: 'มูนสโตน',    emoji: '🌙', lv: 17, pick: 9, sell: 39, xp: 28.2 },
+    mythril:   { name: 'มิทริล',      emoji: '🔷', lv: 19, pick: 10, sell: 40, xp: 35.2 },
     // legacy (ไม่อยู่ในถ้ำแล้ว)
     coal:      { name: 'ถ่านหิน',    emoji: '⚫', lv: 2,  pick: 1, sell: 6,  xp: 5, legacy: true },
     iron:      { name: 'เหล็ก',      emoji: '🔩', lv: 4,  pick: 2, sell: 11, xp: 7, legacy: true },
-    gold:      { name: 'ทองคำ',     emoji: '🥇', lv: 6,  pick: 3, sell: 17, xp: 8, legacy: true },
-    ruby:      { name: 'ทับทิม',     emoji: '🔴', lv: 8,  pick: 4, sell: 21, xp: 9, legacy: true },
-    crystal:   { name: 'คริสตัล',    emoji: '💎', lv: 10, pick: 6, sell: 27, xp: 10, legacy: true },
-    topaz:     { name: 'โทแพซ',      emoji: '🟡', lv: 12, pick: 6, sell: 30, xp: 11, legacy: true },
-    garnet:    { name: 'การ์เน็ต',    emoji: '🟤', lv: 14, pick: 6, sell: 32, xp: 12, legacy: true },
-    obsidian:  { name: 'ออบซิเดียน',   emoji: '⬛', lv: 16, pick: 6, sell: 34, xp: 12, legacy: true },
-    sunstone:  { name: 'ซันสโตน',    emoji: '🌞', lv: 18, pick: 6, sell: 36, xp: 13, legacy: true },
-    starcore:  { name: 'แกนดวงดาว',  emoji: '⭐', lv: 20, pick: 6, sell: 38, xp: 14, legacy: true },
+    gold:      { name: 'ทองคำ',     emoji: '🥇', lv: 6,  pick: 4, sell: 17, xp: 8, legacy: true },
+    ruby:      { name: 'ทับทิม',     emoji: '🔴', lv: 8,  pick: 6, sell: 21, xp: 9, legacy: true },
+    crystal:   { name: 'คริสตัล',    emoji: '💎', lv: 10, pick: 10, sell: 27, xp: 10, legacy: true },
+    topaz:     { name: 'โทแพซ',      emoji: '🟡', lv: 12, pick: 10, sell: 30, xp: 11, legacy: true },
+    garnet:    { name: 'การ์เน็ต',    emoji: '🟤', lv: 14, pick: 10, sell: 32, xp: 12, legacy: true },
+    obsidian:  { name: 'ออบซิเดียน',   emoji: '⬛', lv: 16, pick: 10, sell: 34, xp: 12, legacy: true },
+    sunstone:  { name: 'ซันสโตน',    emoji: '🌞', lv: 18, pick: 10, sell: 36, xp: 13, legacy: true },
+    starcore:  { name: 'แกนดวงดาว',  emoji: '⭐', lv: 20, pick: 10, sell: 38, xp: 14, legacy: true },
   };
   // สัดส่วนขนาดก้อน [เล็ก, กลาง, ใหญ่] % ต่อชั้น (ตารางปรับรายชั้นได้): ชั้นตื้นมีแต่ก้อนเล็กเป็นส่วนใหญ่ ชั้นลึกก้อนกลาง/ใหญ่มากขึ้น ชั้น 5–6 ≈ ฐาน 50/40/10
   const SIZE_MIX = [[60, 35, 5], [58, 36, 6], [56, 37, 7], [53, 38, 9], [51, 40, 9], [49, 41, 10], [46, 42, 12], [44, 43, 13], [42, 44, 14], [40, 45, 15], [39, 45, 16], [38, 45, 17], [37, 45, 18], [36, 45, 19], [35, 45, 20], [34, 45, 21], [33, 45, 22], [32, 45, 23], [31, 45, 24], [30, 45, 25]].filter((_, i) => i % 2 === 0); // ถ้ำ 10 ชั้น: ใช้แถวของเลเวล 1,3,5,…,19 ของตารางเดิม
   const ORE_ORDER = Object.keys(ORES).filter(k => !ORES[k].legacy); // แร่ในถ้ำตามลำดับชั้น
   for (const o of Object.values(ORES)) o.hp = Math.round(MINE.hpBase * ACTION_TUNE.mine * o.pick * (o.hpm || 1));
-  const oreXp = (xp, lv) => Math.round(xp * (1 + MINE.xpPerLv * (perkLv(lv) - 1)));
+  const oreXp = (xp, lv) => Math.round(xp); // เลิกตัวคูณเลเวล (6 พ.ย. 2026): XP โตตามชั้นที่ลงลึกผ่าน ORES[].xp (คงพารามิเตอร์ lv ไว้ให้ผู้เรียกเดิม)
   const oreHp = (kind, size) => Math.round(ORES[kind].hp * ORE_SIZES[size].hp);
-  // ผลการฟาด 1 ครั้งกับก้อนแร่ (ผู้ขุดมีของในกระเป๋า inv) • null = อีเต้อต่ำกว่าแร่เกิน 1 ระดับ ขุดไม่ได้ • dmg = ดาเมจต่อครั้ง hits = ครั้งที่ต้องฟาดทั้งก้อน wear = ตัวคูณการสึกอีเต้อต่อก้อน extra = โอกาสได้ชิ้นเพิ่ม
+  // ผลการฟาด 1 ครั้งกับก้อนแร่ (ผู้ขุดมีของในกระเป๋า inv) • null = ไม่มีอุปกรณ์ขุด (ต่ำกว่าแร่กี่ระดับก็ขุดได้ ช้าลงตาม down) • dmg = ดาเมจต่อครั้ง hits = ครั้งที่ต้องฟาดทั้งก้อน wear = ตัวคูณการสึกอีเต้อต่อก้อน extra = โอกาสได้ชิ้นเพิ่ม
   const mineHit = (inv, kind, size) => {
-    const O = ORES[kind], pick = pickTier(inv), d = pick - O.pick; if (!pick || d < -1) return null;
-    const g = GLOVES[gloveTier(inv)], h = HAMMERS[hammerTier(inv)], hp = oreHp(kind, size);
-    const raw = PICKS[pick].power * (d < 0 ? MINE.slow.dmg : 1) * (1 + (g ? g.dmg : 0)) * (size > 0 && h ? 1 + h.mid : 1), dmg = Math.min(raw, hp / MINE.minHits[size]);
-    return { dmg, hits: Math.ceil(hp / dmg - 1e-9), slow: d < 0, over: Math.max(0, d), wear: (d < 0 ? MINE.slow.wear : 1 / (1 + MINE.over.wear * d)) * (g ? g.wear : 1), extra: Math.min(MINE.over.cap, MINE.over.bonus * Math.max(0, d)) };
+    const O = ORES[kind], pick = pickTier(inv), d = pick - O.pick; if (!pick) return null;
+    const hp = oreHp(kind, size), raw = PICKS[pick].power * (d < 0 ? Math.pow(MINE.slow.dmg, -d) : 1);
+    const dmg = Math.max(Math.min(raw, hp / MINE.minHits[size]), hp / MINE.maxHits); // ไม่แตกครั้งเดียว (minHits) และไม่ช้าเกินเพดาน (maxHits)
+    return { dmg, hits: Math.ceil(hp / dmg - 1e-9), slow: d < 0, down: Math.max(0, -d), over: Math.max(0, d), wear: d < 0 ? 1 + MINE.slow.wear * -d : 1 / (1 + MINE.over.wear * d), extra: Math.min(MINE.over.cap, MINE.over.bonus * Math.max(0, d)) };
   };
   const floorMix = f => { if (f === MINE.floors) return Object.assign({}, MINE.mixLast); const d = {}; (f === 1 ? MINE.mix1 : MINE.mix).forEach((w, i) => { const k = ORE_ORDER[Math.min(ORE_ORDER.length, f + i) - 1]; d[k] = (d[k] || 0) + w; }); return d; }; // สัดส่วน % ของแร่แต่ละชนิดในชั้น f
   const rollOre = (f, R) => { let t = R() * 100, k = ORE_ORDER[ORE_ORDER.length - 1]; for (const [id, w] of Object.entries(floorMix(f))) { if ((t -= w) < 0) { k = id; break; } } return k; };
@@ -587,10 +622,10 @@
       const dist = new Map(), q = [[31, CAVE.y1 - 1]]; dist.set(q[0].join(), 0); let far = q[0];
       for (let i = 0; i < q.length; i++) { const [x, y] = q[i], d = dist.get(x + ',' + y); if (d > dist.get(far.join())) far = q[i]; for (const [dx, dy] of DIRS) { const k = (x + dx) + ',' + (y + dy); if (!dist.has(k) && m[y + dy][x + dx] === T.CAVE) { dist.set(k, d + 1); q.push([x + dx, y + dy]); } } }
       for (let y = CAVE.y0; y < CAVE.y1; y++) for (let x = CAVE.x0; x <= CAVE.x1; x++) if (m[y][x] === T.CAVE && !dist.has(x + ',' + y)) m[y][x] = T.ROCK;
-      if (f < MINE.floors) { // บันไดลง 3 ช่องที่จุดไกลสุด (ชั้นสุดท้ายไม่มี) เปิดพื้นรอบบันได 5×3 ให้ยืนได้
+      if (f < MINE.floors) { // บันไดลง 1 ช่องที่จุดไกลสุด (ชั้นสุดท้ายไม่มี) เปิดพื้นรอบบันได 5×3 ให้ยืนได้
         const cx = Math.max(CAVE.x0 + 3, Math.min(CAVE.x1 - 3, far[0])), cy = Math.max(CAVE.y0 + 2, Math.min(CAVE.y1 - 4, far[1]));
         for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 2; x <= cx + 2; x++) m[y][x] = T.CAVE;
-        for (let x = cx - 1; x <= cx + 1; x++) m[cy][x] = T.DOWN;
+        m[cy][cx] = T.DOWN;
       }
     }
     // หินก้อนโดดเป็นสิ่งกีดขวางบางๆ: วางกลางพื้นโล่ง (รอบตัวเป็นพื้นทั้งหมด) ห่างกัน ≥ 4 ช่อง ไม่ใกล้ทางออก/บันไดลง และพื้นที่ที่เหลือยังเดินถึงกันหมด
@@ -709,27 +744,13 @@
   // ตลาดมีลิมิต: ขายต่อเนื่องยิ่งขายเยอะ ราคาต่อชิ้นยิ่งถูกลงเรื่อยๆ (ชิ้นละ -4% ทบต่อกัน ต่ำสุด 20% ของราคาปกติ) และฟื้นตัวช้า
   const MARKET = { drop: 0.01, min: 0.2, max: 1.4, recover: 0.06 }; // drop = ราคาต่อชิ้นลดลงชิ้นละ 1 จุดเปอร์เซ็นต์ของราคาฐาน (เชิงเส้น: ชิ้นที่ N ได้ (101-N)% เมื่อราคาตั้งต้น 100%) • min = พื้นราคาต่อชิ้น = 20% ของราคาฐาน (ถึงพื้นที่ชิ้นที่ 81)
   // ตลาดแยกต่อคน: ราคาที่ผู้เล่นเห็น = ตลาดกลาง × ตลาดส่วนตัว × โบนัสความหลากหลาย ขายชนิดเดิมซ้ำๆ ตลาดส่วนตัวของคนนั้นตกหนัก (share = สัดส่วนที่ตกเป็นของส่วนตัว) และฟื้นช้า (recover ต่อ 1 นาทีที่ออนไลน์)
-  // อุปกรณ์เสริมนักขุดแร่ (5 พ.ย. 2026) ถือไว้ในกระเป๋าก็ใช้ผล (ระดับสูงสุดที่มี เหมือนอีเต้อ) ซื้อครั้งเดียวขายคืน 70%
-  // ถุงมือ: ดาเมจเพิ่ม dmg และอีเต้อสึกช้าลง (wear = ตัวคูณการสึก) • ค้อน: ดาเมจเพิ่ม mid กับก้อนกลาง/ใหญ่ (ก้อนเล็กไม่ช่วย) • ดาเมจต่อครั้งมีเพดานตาม MINE.minHits ของไม่แตกครั้งเดียวไม่ว่าเสริมแค่ไหน
-  const GLOVES = {
-    1: { name: 'ถุงมือหนัง',   emoji: '🧤', price: 220,  lv: 2,  dmg: 0.05, wear: 0.8 },
-    2: { name: 'ถุงมือเหล็ก',  emoji: '🧤', price: 1200, lv: 8,  dmg: 0.10, wear: 0.65 },
-    3: { name: 'ถุงมือทองคำ', emoji: '🧤', price: 4000, lv: 14, dmg: 0.12, wear: 0.5 },
-  };
-  const HAMMERS = {
-    1: { name: 'ค้อนทุบหิน',  emoji: '🔨', price: 600,  lv: 5,  mid: 0.25 },
-    2: { name: 'ค้อนเหล็ก',   emoji: '🔨', price: 2500, lv: 11, mid: 0.32 },
-    3: { name: 'ค้อนเพชร',    emoji: '🔨', price: 7000, lv: 17, mid: 0.40 },
-  };
-  const gloveTier = inv => { for (let t = 3; t >= 1; t--) if (inv && inv['glove_' + t]) return t; return 0; };
-  const hammerTier = inv => { for (let t = 3; t >= 1; t--) if (inv && inv['hammer_' + t]) return t; return 0; };
   const PMARKET = { share: 0.75, min: 0.25, recover: 0.03 };
   // ความทนทานเครื่องมือ: ใช้งานทุกครั้งสึกหรอ 1 หน่วย ใช้ครบแล้วใช้ไม่ได้จนกว่าจะซ่อมที่ร้านเสียเหรียญ (ค่าซ่อมคิดตามส่วนที่สึกหรอ) = รายจ่ายที่เกิดขึ้นสม่ำเสมอ
   const DURABILITY = {
     hoe:   { max: [0, 120, 120, 120], fix: [0, 24, 24, 24],  shop: 'farm',   name: 'จอบ' },
     rod:   { max: [0, 100, 140, 200, 280, 360, 450, 560], fix: [0, 30, 72, 168, 400, 900, 2400, 6000], shop: 'fish',   name: 'เบ็ดตกปลา' },
     axe:   { max: [0, 90, 140, 220, 320, 450],  fix: [0, 36, 96, 216, 480, 1320], shop: 'wood',   name: 'ขวาน' },
-    pick:  { max: [0, 100, 180, 400, 700, 1100, 1800], fix: [0, 40, 110, 240, 600, 1350, 2700], shop: 'mine',  name: 'อีเต้อ' }, // ขุดแตก 1 ก้อน = สึก 1 ครั้ง (ไม่ใช่ทุกครั้งที่ฟาด) ตัวเลขเป็นจำนวนก้อน
+    pick:  { max: [0, 140, 320, 460, 600, 800, 1000, 1300, 1650, 2100, 2600], fix: [0, 15, 65, 150, 275, 475, 750, 1125, 1625, 2250, 3125], shop: 'mine',  name: 'อีเต้อ' }, // ขุดแตก 1 ก้อน = สึก 1 ครั้ง (ไม่ใช่ทุกครั้งที่ฟาด) ตัวเลขเป็นจำนวนก้อน (6 พ.ย. 2026 ปรับให้ต้นทุนสึกหรอ ≈ 8% ของรายได้ทุกระดับ ตามซิม levelsim)
   };
   // อัตราสึกหรอ: เกจเท่าเดิม แต่ใช้ 1 ครั้งสึก base หน่วย (เดิม 1) และ "ความร้อน" สะสมเมื่อใช้ถี่ๆ ต่อเนื่อง: ทุกครั้งที่ใช้ +1, เย็นลง cool ต่อวินาที
   // ตัวคูณการสึก = 1 + min(maxBonus, ความร้อน × perHeat) → ใช้ถี่และนานได้สูงสุด 2 เท่า (พักสักครู่ก็เย็นลง) เตือนเมื่อความร้อนถึง warnHeat
@@ -737,8 +758,8 @@
   // ซ่อมได้จำกัด: ซ่อมแต่ละครั้งความทนทานสูงสุดลดลง decay ของค่าเดิม ค่าซ่อมแพงขึ้น growth ต่อครั้ง ซ่อมครบ maxFixes ครั้งแล้วซ่อมไม่ได้อีก ต้องซื้อใหม่ (ราคา TOOL_PRICE)
   // สมดุล: ค่าซ่อมเต็ม = pct × ราคาซื้อ × (1 + growth × ครั้งที่ซ่อมมาแล้ว) แต่ได้ความทนทานน้อยลงเรื่อยๆ → ซ่อมครั้งที่ ~4 ขึ้นไปต่อหน่วยการใช้งานแพงกว่าซื้อใหม่
   const REPAIR = { decay: 0.15, maxFixes: 3, growth: 0.5, pct: 0.25 };
-  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500, 6000, 16000, 40000], axe: [0, 50, 220, 700, 2000, 5500], pick: [0, 60, 260, 800, 2000, 4500, 9000] };
-  const tierN = t => Math.max(1, Math.min(7, t || 1)); // ระดับ 4 มีเฉพาะคันเบ็ด ระดับ 4–6 ของอีเต้อ
+  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500, 6000, 16000, 40000], axe: [0, 50, 220, 700, 2000, 5500], pick: [0, 60, 260, 600, 1100, 1900, 3000, 4500, 6500, 9000, 12500] };
+  const tierN = t => Math.max(1, Math.min(10, t || 1)); // คันเบ็ดมี 7 ระดับ ขวาน 5 อุปกรณ์ขุด 10
   const durMax = (tool, tier, fixes) => Math.max(1, Math.floor(DURABILITY[tool].max[tierN(tier)] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fixes || 0))));
   const toolPrice = (tool, tier) => TOOL_PRICE[tool][tierN(tier)];
   // ค่าซ่อมครั้งถัดไป (ซ่อมแล้วเต็มที่ความทนทานสูงสุดใหม่ที่ต่ำลง) เทียบกับความเสียหายของค่าสูงสุดปัจจุบัน
@@ -1101,7 +1122,7 @@
   // เดิมพันกับบอท: เงินเดิมพันฝั่งบอทมาจากบ้าน (สร้างเหรียญใหม่) จึงจำกัดวงเงินต่อครั้ง และกำไรสุทธิจากบอทต่อวันไม่เกิน dailyWinCap (ขาดทุนไม่จำกัด)
   const BOTBET = { bets: [0], dailyWinCap: 0 }; // ปิดการจ่ายเหรียญจากบอท (ซ้อมฟรีเท่านั้น) จนกว่าจะมีแต้มตู้เกม เดิมคือ bets [0,10,50,100,200,300] และ dailyWinCap 500
   const LEGACY_SKILLS = 5; // อาชีพที่มีมาตั้งแต่ต้น (นักขุดแร่เพิ่มทีหลัง): หักเลเวลตั้งต้นของอาชีพใหม่ออก เกณฑ์มือใหม่/เงินช่วยเหลือที่ตั้งไว้ตามช่วง 5–50 จะได้ไม่เลื่อน
-  const playLevel = skills => Object.keys(SKILLS).reduce((n, k) => n + levelOf(skills && skills[k]), 0) - (Object.keys(SKILLS).length - LEGACY_SKILLS);
+  const playLevel = skills => Object.keys(SKILLS).reduce((n, k) => n + levelOf(skills && skills[k], k), 0) - (Object.keys(SKILLS).length - LEGACY_SKILLS);
   const NPC = { sayMin: 45000, sayMax: 110000, gap: 12000, speed: 50 }; // ชาวเมือง NPC: พิมพ์ข้อความทุก sayMin-sayMax ms, เดินด้วยความเร็ว speed px/วินาที
   // คู่มือเริ่มต้น 6 ข้อ (เดิม 12: ข้อสัตว์/เควส/นั่ง ผ่านแค่ 13–25% ตัดออก 25 ต.ค. 2026 จะย้ายไปภารกิจวันที่ 2 ใน GROWTH-PLAN N2): ทำครบทุกข้อ (ลำดับไหนก็ได้) ได้ของรางวัลเล็กทีละข้อ + รางวัลใหญ่ตอนจบ ปุ่มช่วยบนจอบอก "ข้อถัดไป" ให้เสมอ
   // how = วิธีกดทีละขั้น (แสดงในเมนู 📋 เควส → เริ่มต้น) • ตัวเลข 1–7 = ช่องเครื่องมือด้านล่างจอ (กดเลขบนคีย์บอร์ด หรือแตะที่ช่องบนมือถือ)
@@ -1279,7 +1300,7 @@
     fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3', 'rod_4', 'rod_5', 'rod_6', 'rod_7'],                  sell: ['fish_'] },
     animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee', 'animal_alpaca', 'animal_horse', 'animal_boar'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
-    mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'glove_1', 'glove_2', 'glove_3', 'hammer_1', 'hammer_2', 'hammer_3', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
+    mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'pick_7', 'pick_8', 'pick_9', 'pick_10', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3', 'axe_4', 'axe_5'], sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
     // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือ ⛵ (BOAT) ซื้อครั้งเดียว ไม่ได้ขี่บนบก มีเรือ = ออกทะเลฟรีทุกเที่ยว (ไม่มี = จ่าย SEA.fee)
     vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v).concat(['boat']), sell: [] },
@@ -1300,12 +1321,8 @@
     if (wm) { const d = COOK.find(x => x.id === k); return d ? { name: d.name, emoji: d.emoji, sell: d.sell, cat: 'food' } : null; }
     if (WOOD_ITEMS[k]) { const w = WOOD_ITEMS[k]; return { name: w.name, emoji: w.emoji, sell: w.sell, cat: 'wood' }; }
     if (ORES[k]) { const o = ORES[k]; return { name: o.name, emoji: o.emoji, sell: o.sell, cat: 'ore' }; }
-    const pm = /^pick_(\d)$/.exec(k);
+    const pm = /^pick_(\d+)$/.exec(k);
     if (pm && PICKS[pm[1]]) return { name: PICKS[pm[1]].name, emoji: PICK_EMOJI[pm[1]], buy: PICKS[pm[1]].price, lv: PICKS[pm[1]].lv, skill: 'mine', once: true, cat: 'gear', pick: +pm[1] };
-    const gm = /^glove_(\d)$/.exec(k);
-    if (gm && GLOVES[gm[1]]) { const g = GLOVES[gm[1]]; return { name: `${g.name} (ดาเมจ +${Math.round(g.dmg * 100)}% อีเต้อสึกช้าลง ${Math.round((1 - g.wear) * 100)}%)`, emoji: g.emoji, buy: g.price, lv: g.lv, skill: 'mine', once: true, cat: 'gear', glove: +gm[1] }; }
-    const hm = /^hammer_(\d)$/.exec(k);
-    if (hm && HAMMERS[hm[1]]) { const h = HAMMERS[hm[1]]; return { name: `${h.name} (ก้อนกลาง/ใหญ่ ดาเมจ +${Math.round(h.mid * 100)}%)`, emoji: h.emoji, buy: h.price, lv: h.lv, skill: 'mine', once: true, cat: 'gear', hammer: +hm[1] }; }
     if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 58, cat: 'wood' };
     if (k === 'lamp') return { name: 'ตะเกียง/ไฟฉาย (สว่างรอบตัว 5 ช่อง)', emoji: '🔦', buy: 120, once: true, cat: 'gear' }; // ซื้อได้ที่ร้านช่างเหมือง (ใช้ส่องถ้ำ) หรือได้จากรางวัลคู่มือเริ่มต้น • ขายต่อไม่ได้
     if (k === 'medicine') return { name: 'ยารักษาสัตว์', emoji: '💊', buy: 20, cat: 'feed' };
@@ -1573,9 +1590,9 @@
 
   const api = { OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-    SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, GLOVES, HAMMERS, gloveTier, hammerTier, mineHit, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
+    SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, xpFor, xpFromV1, levelOf, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, facing, inFarm,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

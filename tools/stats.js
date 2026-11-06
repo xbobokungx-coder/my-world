@@ -59,7 +59,7 @@ if (top.length) console.log('ขายสูงสุด: ' + top.map(([k, v]) =
   if (ms.length) {
     const by = (f) => { const o = {}; for (const e of ms) { const k = f(e); (o[k] = o[k] || []).push(e); } return o; };
     const avg = (a, k) => (a.reduce((s, e) => s + (e[k] || 0), 0) / a.length).toFixed(1);
-    console.log(`\nขุดแร่: ${ms.length} ก้อน โดย ${new Set(ms.map(e => e.p)).size} คน | ฟาดเฉลี่ย ${avg(ms, 'hits')} ครั้ง/ก้อน | ชิ้นเฉลี่ย ${avg(ms, 'n')} | ขุดแบบช้า (อีเต้อต่ำกว่าแร่) ${(ms.filter(e => e.slow).length / ms.length * 100).toFixed(0)}% | มีถุงมือ ${(ms.filter(e => e.gl).length / ms.length * 100).toFixed(0)}% มีค้อน ${(ms.filter(e => e.hm).length / ms.length * 100).toFixed(0)}%`);
+    console.log(`\nขุดแร่: ${ms.length} ก้อน โดย ${new Set(ms.map(e => e.p)).size} คน | ฟาดเฉลี่ย ${avg(ms, 'hits')} ครั้ง/ก้อน | ชิ้นเฉลี่ย ${avg(ms, 'n')} | ขุดแบบช้า (อีเต้อต่ำกว่าแร่) ${(ms.filter(e => e.slow).length / ms.length * 100).toFixed(0)}% | เลเวลนักขุดเฉลี่ย ${avg(ms, 'ml')} ระดับอุปกรณ์เฉลี่ย ${avg(ms, 'pk')}`); // เลิกถุงมือ/ค้อนแล้ว (6 พ.ย. 2026) ดูระดับอุปกรณ์ (pk) แทน
     console.log('  ต่อชั้น: ' + Object.entries(by(e => e.f)).sort((a, b) => a[0] - b[0]).map(([f, a]) => `ชั้น${f} ${a.length}ก้อน`).join(' | '));
     console.log('  ต่อชนิด: ' + Object.entries(by(e => e.k)).sort((a, b) => b[1].length - a[1].length).map(([k, a]) => `${k} ${a.length} (ฟาด ${avg(a, 'hits')})`).join(' | '));
   }

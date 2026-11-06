@@ -113,13 +113,13 @@ module.exports = {
   lotPut(rec, k, lots) { const L = this.lotsOf(rec, k); for (const [t, n] of lots) { if (!(n > 0)) continue; const last = L[L.length - 1]; if (last && Math.abs(last[0] - t) < 60000) last[1] += n; else L.push([t, n]); } L.sort((a, b) => a[0] - b[0]); rec.lots[k] = L; },
   lotTake(rec, k, n) { const L = this.lotsOf(rec, k), out = []; while (n > 0 && L.length) { const d = Math.min(L[0][1], n); out.push([L[0][0], d]); L[0][1] -= d; n -= d; if (!L[0][1]) L.shift(); } if (!L.length) delete rec.lots[k]; return out; },
   freshPub(rec, key) { const o = {}; for (const k of Object.keys(rec.inv)) if (S.perishable(k) && rec.inv[k] > 0) o[k] = this.lotsOf(rec, k).map(([t, n]) => [t, n]); return { l: o, fz: this.hasFridge(key) }; },
-  lv(p, skill) { return S.levelOf(p.rec.skills[skill]); },
+  lv(p, skill) { return S.levelOf(p.rec.skills[skill], skill); },
   addXp(p, skill, n) {
     const xb = this.petBonus(p).xp; if (xb > 0 && n > 0) { const f = n * (1 + xb); n = Math.floor(f) + (Math.random() < f - Math.floor(f) ? 1 : 0); } // 📚 สัตว์เลี้ยง: XP เพิ่ม (ปัดแบบสุ่มตามเศษ ไม่ให้ค่าน้อยๆ สูญ)
-    const r = p.rec.skills, before = S.levelOf(r[skill]);
+    const r = p.rec.skills, before = S.levelOf(r[skill], skill);
     r[skill] = (r[skill] || 0) + n;
     send(p, { t: 'skills', skills: r });
-    const after = S.levelOf(r[skill]);
+    const after = S.levelOf(r[skill], skill);
     if (after > before) { logEv(this.room, 'level', { p: p.key, skill, lv: after }); this.toast(p, `🎉 ${S.SKILLS[skill].emoji} ${S.SKILLS[skill].name} เลเวล ${after}!`); this.addLog(`⭐ ${p.name} เลื่อนเป็น ${S.SKILLS[skill].emoji} ${S.SKILLS[skill].name} เลเวล ${after}`); this.sfxTo(p, 'levelup'); }
     this.dirty = true;
   },

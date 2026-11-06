@@ -18,7 +18,7 @@ const SLOTS = [ // ช่อง 1 = เครื่องมือ (จอบ/�
   { id: 'feed', n: 'อาหารสัตว์/ยา', pick: true },
   { id: 'hand', n: 'มือเปล่า' },
 ];
-const TOOL_LIST = ['hoe', 'water', 'rod', 'axe', 'pick'], TOOL_SHORT = { hand: 'มือเปล่า', hoe: 'จอบ', water: 'บัวรดน้ำ', rod: 'เบ็ด', axe: 'ขวาน', pick: 'อีเต้อ' };
+const TOOL_LIST = ['hoe', 'water', 'rod', 'axe', 'pick'], TOOL_SHORT = { hand: 'มือเปล่า', hoe: 'จอบ', water: 'บัวรดน้ำ', rod: 'เบ็ด', axe: 'ขวาน', pick: 'อุปกรณ์ขุด' };
 const FEEDS = ['feed', 'hay', 'slop', 'nectar', 'medicine'], BAIT_KEYS = ['bait', 'bait_2', 'bait_3'];
 let selBait = ls.get('mw_bait') || 'bait';
 let slot = 0, selSeed = 'carrot', selFeed = 'feed';
@@ -53,7 +53,7 @@ let chatFocus = false, walk = null;
 const isTouch = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window && !matchMedia('(any-pointer: fine)').matches); // โน้ตบุ๊กจอสัมผัสที่มีเมาส์ ใช้โหมดคอม
 if (isTouch) document.body.classList.add('touch');
 ['gesturestart', 'gesturechange', 'contextmenu'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
-const lvl = s => levelOf(skills[s]);
+const lvl = s => levelOf(skills[s], s);
 const rodLevel = () => Shared.rodTier(inv);
 const axeLevel = () => Shared.axeTier(inv);
 const pickLevel = () => Shared.pickTier(inv);
@@ -1037,7 +1037,7 @@ function toolInfo(t) { // ข้อมูลเครื่องมือใน
   if (t === 'hoe') return { e: '⛏️', n: 'จอบ', sub: 'ขุดดิน', cnt: null };
   if (t === 'water') { const c = CANS[canTier(inv)], cap = buffOn('bigcan') ? Math.round(c.cap * BUFFS.bigcan.capMul) : c.cap; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${cap} • แตะสระเพื่อตักน้ำ)`, sub: `น้ำ ${wtr}/${cap}`, cnt: wtr }; }
   if (t === 'rod') { const b = itemInfo(selBait); return { e: '🎣', n: RODS[rodLevel()].name + ' (' + b.name.split(' ')[0] + ' ' + (inv[selBait] || 0) + ')', sub: `เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
-  if (t === 'pick') { const pk = pickLevel(); return { e: pk ? Shared.PICK_EMOJI[pk] : '⚒️', n: pk ? Shared.PICKS[pk].name : 'อีเต้อ (ยังไม่มี ซื้อที่ร้านช่างเหมือง)', sub: pk ? Shared.PICKS[pk].name : 'ยังไม่มี', cnt: pk ? null : 0 }; }
+  if (t === 'pick') { const pk = pickLevel(); return { e: pk ? Shared.PICK_EMOJI[pk] : '⚒️', n: pk ? Shared.PICKS[pk].name : 'อุปกรณ์ขุด (ยังไม่มี ซื้อที่ร้านช่างเหมือง)', sub: pk ? Shared.PICKS[pk].name : 'ยังไม่มี', cnt: pk ? null : 0 }; }
   const ax = axeLevel(); return { e: '🪓', n: ax ? AXES[ax].name : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', sub: ax ? AXES[ax].name : 'ยังไม่มี', cnt: ax ? null : 0 };
 }
 function renderHud() {
@@ -1186,8 +1186,8 @@ function renderBag() {
       + `<button class="btn small" data-pinset="1" style="margin:4px 6px 6px 0">🔐 ${pinSt ? 'เปลี่ยน PIN' : 'ตั้ง PIN'}</button>`
       + `<button class="btn small" data-sfx="1" style="margin:4px 0 6px">${sfxOn ? '🔊 เอฟเฟกต์เสียง: เปิด' : '🔇 เอฟเฟกต์เสียง: ปิด'}</button><div class="sec">เลเวลอาชีพ</div>`
       + Object.keys(SKILLS).map(k => {
-        const L = lvl(k), xp = skills[k] || 0, base = xpFor(L), need = L >= MAX_LV ? 0 : xpFor(L + 1) - base;
-        const st = starsSt[k] || 0, M = Shared.MASTERY, nxt = st < M.max && L >= MAX_LV ? xpFor(MAX_LV) + (st + 1) * M.xpPer : 0;
+        const L = lvl(k), xp = skills[k] || 0, base = xpFor(L, k), need = L >= MAX_LV ? 0 : xpFor(L + 1, k) - base;
+        const st = starsSt[k] || 0, M = Shared.MASTERY, nxt = st < M.max && L >= MAX_LV ? xpFor(MAX_LV, k) + (st + 1) * Shared.masteryXp(k) : 0;
         return `<div class="skill"><b>${SKILLS[k].emoji} ${SKILLS[k].name}</b> — เลเวล ${L}${L >= MAX_LV ? ' (สูงสุด)' : ''} ${'⭐'.repeat(st)} <small style="display:inline">XP ${xp}</small><div class="bar"><i style="width:${need ? Math.min(100, Math.round((xp - base) / need * 100)) : 100}%"></i></div>`
           + (nxt ? `<small>ดาวความชำนาญที่ ${st + 1}: XP ${nxt.toLocaleString()} + 🪙${M.costBase * (st + 1)} <button class="btn small" data-star="${k}" ${xp < nxt || (inv.coin || 0) < M.costBase * (st + 1) ? 'disabled' : ''}>รับดาว</button></small>` : '') + '</div>';
       }).join('');
@@ -1219,10 +1219,11 @@ function renderBag() {
       farm: () => { const c = nextCrop(); return (c ? `ถัดไป: ปลดล็อก ${c.emoji} ${c.name} ที่ Lv${c.lv}` : 'ปลดล็อกเมล็ดครบแล้ว') + ' • พืชโตเร็วขึ้น 4% ต่อเลเวล'; },
       fish: () => { const f = nextFish(); return (f ? `ถัดไป: ตกได้ ${f.emoji} ${f.name} ที่ Lv${f.lv}` : 'ตกปลาได้ครบทุกชนิดแล้ว') + ' • คันเบ็ดดีขึ้นซื้อที่ร้านตกปลา (Lv3, Lv6)'; },
       animal: () => `ซื้อวัวได้ที่ Lv${ANIMALS.cow.lv} • ซื้อหมูได้ที่ Lv${ANIMALS.pig.lv} • ซื้อผึ้งได้ที่ Lv${ANIMALS.bee.lv} (น้ำผึ้งจากรัง 🍯) • แต่ละชนิดมีเล้าของตัวเอง เล้าละ ${ANIMALS.cow.cap} ตัว • ผลผลิตออกเร็วขึ้น 5% ต่อเลเวล • สัตว์ป่วยรักษาด้วยยา 💊`,
+      mine: () => { const n = Object.values(Shared.PICKS).find(x => x.lv > lvl('mine')); return (n ? `ถัดไป: ซื้อ ${n.name} ได้ที่ Lv${n.lv}` : 'ซื้ออุปกรณ์ขุดได้ครบทุกชนิดแล้ว') + ' • ยิ่งลงลึก แร่ยิ่งให้ XP เยอะ • อุปกรณ์ต่ำกว่าแร่ขุดได้แต่ช้า (🐌)'; },
       wood: () => `ขวานเหล็กซื้อได้ที่ Lv${AXES[2].lv} • ขวานเหล็กกล้า Lv${AXES[3].lv} • เลเวลสูงขึ้นได้ไม้เพิ่มและเจอไม้เนื้อแข็งบ่อยขึ้น • (งานช่างไม้อื่นๆ จะมาเร็วๆ นี้)`,
     };
     el.innerHTML = Object.keys(SKILLS).map(k => {
-      const L = lvl(k), xp = skills[k] || 0, base = xpFor(L), need = L >= MAX_LV ? 0 : xpFor(L + 1) - base;
+      const L = lvl(k), xp = skills[k] || 0, base = xpFor(L, k), need = L >= MAX_LV ? 0 : xpFor(L + 1, k) - base;
       const pct = need ? Math.min(100, Math.round((xp - base) / need * 100)) : 100;
       return `<div class="skill"><b>${SKILLS[k].emoji} ${SKILLS[k].name}</b> — เลเวล ${L}${L >= MAX_LV ? ' (สูงสุด)' : ''}
         <div class="bar"><i style="width:${pct}%"></i></div>
@@ -1528,7 +1529,7 @@ function act(tx, ty) {
   if (!me || chatFocus || modalOpen() || now - lastAct < actGap) return;
   if (scene && tx === undefined) return; // ในบ้านใช้เครื่องมือฟาร์มไม่ได้ (แตะที่นั่งเพื่อนั่งอย่างเดียว)
   if (inSea() && toolId() !== 'rod') { toast('บนเรือใช้เบ็ด 🎣 ตกปลา (เลือกที่ช่องเครื่องมือ)'); return; }
-  if (cave && !inSea() && toolId() !== 'pick') { toast('ในถ้ำใช้อีเต้อ ⚒️ ขุดแร่ (เลือกที่ช่องเครื่องมือ)'); return; }
+  if (cave && !inSea() && toolId() !== 'pick') { toast('ในถ้ำใช้อุปกรณ์ขุด ⚒️ ขุดแร่ (เลือกที่ช่องเครื่องมือ)'); return; }
   const o = { t: 'act', tool: scene ? '' : toolId() }; if (o.tool === 'rod') o.bait = selBait;
   if (tx !== undefined) {
     if (tx < 0 || ty < 0 || tx >= W || ty >= H) return;
@@ -2675,17 +2676,18 @@ function buildCaveBase() {
   base = oc; baseHi = document.createElement('canvas'); baseHi.width = baseHi.height = 1;
   const gh = oc.getContext('2d'); if (caveFlr > 1) { const ax = (Shared.CAVE.exit[1] + 0.5) * TS, ay = Shared.CAVE.y1 * TS + 16; gh.fillStyle = '#1b1d24'; gh.fillRect(ax - 11, ay - 11, 22, 22); gh.fillStyle = '#3a4a68'; gh.fillRect(ax - 10, ay - 10, 20, 20); gh.fillStyle = '#e8f0ff'; gh.beginPath(); gh.moveTo(ax, ay - 7); gh.lineTo(ax + 7, ay + 3); gh.lineTo(ax + 3, ay + 3); gh.lineTo(ax + 3, ay + 7); gh.lineTo(ax - 3, ay + 7); gh.lineTo(ax - 3, ay + 3); gh.lineTo(ax - 7, ay + 3); gh.closePath(); gh.fill(); } // ป้ายบันไดขึ้น (ชั้นลึก)
   else PixelUI.world(gh, '🚪', (Shared.CAVE.exit[1] + 0.5) * TS, Shared.CAVE.y1 * TS + 16, 15); // ป้ายทางออกสู่เมือง (ชั้น 1)
-  for (let ty = 0; ty < H; ty++) for (let tx = 1; tx < W - 1; tx++) if (MAP[ty][tx] === T.DOWN && MAP[ty][tx - 1] !== T.DOWN && MAP[ty][tx + 1] === T.DOWN && MAP[ty][tx + 2] === T.DOWN) { const ax = (tx + 1.5) * TS, ay = (ty + 0.5) * TS; gh.fillStyle = '#e8f0ff'; gh.beginPath(); gh.moveTo(ax, ay + 7); gh.lineTo(ax + 7, ay - 3); gh.lineTo(ax + 3, ay - 3); gh.lineTo(ax + 3, ay - 7); gh.lineTo(ax - 3, ay - 7); gh.lineTo(ax - 3, ay - 3); gh.lineTo(ax - 7, ay - 3); gh.closePath(); gh.fill(); } // ลูกศรลงบนบันไดกลาง
+  for (let ty = 0; ty < H; ty++) for (let tx = 1; tx < W - 1; tx++) if (MAP[ty][tx] === T.DOWN) { const ax = (tx + 0.5) * TS, ay = (ty + 0.5) * TS; gh.fillStyle = '#e8f0ff'; gh.beginPath(); gh.moveTo(ax, ay + 7); gh.lineTo(ax + 7, ay - 3); gh.lineTo(ax + 3, ay - 3); gh.lineTo(ax + 3, ay - 7); gh.lineTo(ax - 3, ay - 7); gh.lineTo(ax - 3, ay - 3); gh.lineTo(ax - 7, ay - 3); gh.closePath(); gh.fill(); } // ลูกศรลงบนบันได (ช่องเดียว)
 }
 const ORE_SCALE = [2, 3, 4]; // ขยายสไปรต์แร่ (ช่อง 16×16) ตามขนาดก้อน: เล็ก 32 px • กลาง 48 px • ใหญ่ 64 px
-// ก้อนที่ขุดไม่ได้ตอนนี้ (เลเวลนักขุดไม่ถึง หรืออีเต้อต่ำกว่าแร่เกิน 1 ระดับ) ทำให้หม่นและมี 🔒 ให้ผู้เล่นใหม่แยกออก • อีเต้อต่ำกว่า 1 ระดับ (ขุดได้แต่ช้า) ขึ้น 🐌
+// ก้อนที่ขุดไม่ได้ตอนนี้ (เลเวลนักขุดไม่ถึง หรือไม่มีอุปกรณ์ขุดเลย) ทำให้หม่นและมี 🔒 • อุปกรณ์ต่ำกว่าแร่ (ขุดได้แต่ช้า) ขึ้น 🐌 + "ช้า ×N" (N = จำนวนระดับที่ต่ำกว่า จาก S.mineHit.down)
 function drawOreLock(tx, ty, k) {
-  const O = Shared.ORES[k]; if (!O) return; const pk = pickLevel(), lockedLv = lvl('mine') < O.lv, lockedPick = !pk || pk < O.pick - 1, slow = !lockedLv && !lockedPick && pk < O.pick;
+  const O = Shared.ORES[k]; if (!O) return; const pk = pickLevel(), lockedLv = lvl('mine') < O.lv, lockedPick = !pk;
+  const mh = !lockedLv && !lockedPick ? Shared.mineHit(inv, k, oreS.get(tx + ',' + ty) | 0) : null, down = mh ? mh.down : 0, slow = down > 0;
   if (!lockedLv && !lockedPick && !slow) return;
   const x = tx * TS, y = ty * TS;
   if (!slow) { ctx.fillStyle = 'rgba(16,20,34,.42)'; ctx.fillRect(x + 3, y + 5, TS - 6, TS - 9); }
   ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#2a1b14'; ctx.lineWidth = 3;
-  const t = slow ? '🐌' : '🔒', ty2 = y + 12; ctx.strokeText(t, x + TS / 2, ty2); ctx.fillText(t, x + TS / 2, ty2);
+  const t = slow ? '🐌' + (down > 0 ? ' ×' + down : '') : '🔒', ty2 = y + 12; ctx.strokeText(t, x + TS / 2, ty2); ctx.fillText(t, x + TS / 2, ty2);
 }
 function drawOre(tx, ty, k, now, sz, ctx = mainCtx) {
   const spr = PixelOre.has(k) && PixelOre.get(k, sz | 0, (now / 500 | 0) & 1); // สไปรต์พิกเซลวาดมือ (ชนิดที่ยังไม่มีใช้แบบเดิมด้านล่าง)
@@ -3053,7 +3055,7 @@ function drawHeldTool(p, now, ctx = mainCtx) {
       const [pb, ph, ps] = PixelUI.PICK_PAL[e] || ['#8d99a6', '#c9d3dc', '#6c7782'];
       ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD);
       R(-8, -16, 17, 5, OUT); R(-10, -13, 3, 4, OUT); R(8, -13, 3, 4, OUT); R(-7, -15, 15, 3, pb); R(-7, -15, 15, 1, ph); R(-9, -12, 2, 2, ps); R(8, -12, 2, 2, ps); R(-2, -13, 4, 2, ps);
-      if (/[🏹🪃]/u.test(e) && Math.floor(now / 280) % 2) { R(-5, -15, 1, 1, '#ffffff'); R(5, -14, 1, 1, '#ffffff'); } } // มรกต/เพชรมีประกาย
+      if (/[🏹🪃🔌💣]/u.test(e) && Math.floor(now / 280) % 2) { R(-5, -15, 1, 1, '#ffffff'); R(5, -14, 1, 1, '#ffffff'); } } // มรกต/เพชรมีประกาย
     else if (isHoe) { ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(-6, -14, 13, 5, OUT); R(-5, -13, 11, 3, STEEL); R(-5, -13, 11, 1, STH); R(-5, -11, 2, 2, STEEL); R(4, -11, 2, 2, STEEL); }
     else if (isAxe) { ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, STEEL); R(1, -13, 6, 1, STH); R(6, -13, 2, 6, STH); }
     else if (isCan) { // บัวรดน้ำตามระดับที่ซื้อ: 1 สังกะสี (เทาเงิน) • 2 ทองแดง • 3 ทองคำ (ประกาย) ใหญ่ขึ้นตามความจุ

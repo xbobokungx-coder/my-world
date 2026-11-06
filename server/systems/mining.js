@@ -114,11 +114,11 @@ module.exports = {
     if (!ore) return this.toast(p, 'ใช้อีเต้อขุดก้อนแร่ในถ้ำ 🪨 (หันหน้าหาก้อนแร่ หรือแตะที่ก้อนแร่)');
     const kid = ore.k, O = S.ORES[kid], ml = this.lv(p, 'mine');
     if (ml < O.lv) return this.toast(p, `🔒 ${O.emoji} ${O.name}ต้องเป็นนักขุดแร่ Lv${O.lv} ขึ้นไป`);
-    const mh = S.mineHit(inv, kid, ore.s); // ดาเมจ/สึก/โบนัสตามอีเต้อ ถุงมือ ค้อน เทียบแร่ (ต่ำกว่าแร่ 1 ระดับ = ขุดได้แต่ช้า)
-    if (!mh) return this.toast(p, `🔒 ${O.emoji} ${O.name}ต้องใช้${S.PICKS[Math.max(1, O.pick - 1)].name}ขึ้นไป (ต่ำกว่านี้ขุดไม่ได้)`);
+    const mh = S.mineHit(inv, kid, ore.s); // ดาเมจ/สึก/โบนัสตามอุปกรณ์ขุดเทียบแร่ (ต่ำกว่าแร่กี่ระดับก็ขุดได้ ยิ่งต่ำยิ่งช้า)
+    if (!mh) return;
     let h = F.hp.get(key);
     if (!h || now - h.t > 20000) h = { hp: S.oreHp(kid, ore.s), t: now };
-    if (!h.slowWarn && mh.slow) { h.slowWarn = true; this.toast(p, `🐌 ${S.PICKS[pick].name}ต่ำกว่าที่${O.name}ต้องการ ขุดได้แต่ช้าและอีเต้อสึกไว`); }
+    if (!h.slowWarn && mh.slow) { h.slowWarn = true; this.toast(p, `🐌 ${S.PICKS[pick].name}ต่ำกว่าที่${O.name}ต้องการ ${mh.down} ระดับ ขุดได้แต่ช้าและของสึกไว`); }
     h.hp -= mh.dmg; h.t = now; h.n = (h.n || 0) + 1;
     this.sfx(p, 'chop');
     if (h.hp > 0) { F.hp.set(key, h); this.sceneBroadcast(p.scene, { t: 'oh', x: tx, y: ty, f: +(h.hp / S.oreHp(kid, ore.s)).toFixed(2) }); const left = Math.ceil(h.hp / mh.dmg - 1e-9); if (left <= 3 || left % 5 === 0) this.toast(p, `⚒️ ${O.emoji} ${O.name}ก้อน${S.ORE_SIZES[ore.s].name} อีก ${left} ครั้ง`); return; }
@@ -126,14 +126,15 @@ module.exports = {
     F.hp.delete(key); F.ores.delete(key); F.map[ty][tx] = T.CAVE;
     F.wait.push({ x: tx, y: ty, at: now + S.MINE.respawnMs });
     this.sceneBroadcast(p.scene, { t: 'ore', x: tx, y: ty, k: '' });
-    let n = S.rollDrop(ore.s, Math.random); const xp = O.xp * n; let bonus = false; // XP นับจากชิ้นปกติ (อีเต้อแรงเกินแร่ไม่ได้ XP เพิ่ม)
+    let n = S.rollDrop(ore.s, Math.random); let bonus = false;
     if (Math.random() < mh.extra) { n++; bonus = true; }
+    const xp = O.xp * n; // XP นับทุกชิ้น รวมชิ้นโบนัสจากอุปกรณ์สูงกว่าแร่
     const val = O.sell * n;
     this.add(p, kid, n);
     this.addXp(p, 'mine', S.oreXp(xp, ml)); this.tire(p, 'mine', val);
     if (!this.bookOf(p).ore[kid]) { const dx = Math.round(O.xp * S.MINE.discover); this.addXp(p, 'mine', dx); this.toast(p, `✨ ค้นพบแร่ใหม่ ${O.emoji} ${O.name}! โบนัส XP +${dx}`); this.bookAdd(p, 'ore', kid); } // ครั้งแรกของแร่ชนิดนี้
     if (this.petLuck(p, O.emoji + ' ' + O.name)) this.add(p, kid, 1);
-    this.toast(p, `⛏️ ขุดได้ ${O.emoji} ${O.name} x${n} (ก้อน${S.ORE_SIZES[ore.s].name})${bonus ? ' ✨ อีเต้อแรง ได้เพิ่ม' : ''}`); this.sfx(p, 'fell'); this.event(p, 'mine');
-    logEv(this.room, 'mine', { p: p.key, f: cf, k: kid, s: ore.s, n, hits: h.n, pk: pick, gl: S.gloveTier(inv), hm: S.hammerTier(inv), slow: mh.slow ? 1 : 0, ml }); // บันทึกการขุดละเอียด (ชนิด ขนาด ชั้น อีเต้อ ครั้งที่ฟาด) ไว้วัดก้อน/ชม. และเวลาต่อเลเวล • tools/stats.js สรุป
+    this.toast(p, `⛏️ ขุดได้ ${O.emoji} ${O.name} x${n} (ก้อน${S.ORE_SIZES[ore.s].name})${bonus ? ' ✨ อุปกรณ์แรง ได้เพิ่ม' : ''}`); this.sfx(p, 'fell'); this.event(p, 'mine');
+    logEv(this.room, 'mine', { p: p.key, f: cf, k: kid, s: ore.s, n, hits: h.n, pk: pick, slow: mh.slow ? 1 : 0, ml }); // บันทึกการขุดละเอียด (ชนิด ขนาด ชั้น อีเต้อ ครั้งที่ฟาด) ไว้วัดก้อน/ชม. และเวลาต่อเลเวล • tools/stats.js สรุป
   },
 };

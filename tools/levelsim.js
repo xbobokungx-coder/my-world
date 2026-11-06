@@ -13,7 +13,6 @@ const M = {
   fishOver: 3,     // วินาทีนอกเวลารอปลาต่อการเหวี่ยง 1 ครั้ง (เหวี่ยง กดเกจ เก็บ)
   fishHit: 0.8,    // สัดส่วนที่กดเกจโดน
   treeWalk: 5,     // วินาทีเดินระหว่างต้นไม้ + ฟันครั้งละ 0.7 วินาที
-  mineGear: !process.env.NO_GEAR,  // นักขุดแร่ซื้อถุงมือ/ค้อนตามเลเวลที่ปลดแล้ว (เพดานบน) ตั้ง false ดูแบบไม่มีอุปกรณ์เสริม (NO_GEAR=1 ก็ได้)
   oreWalk: 6,      // วินาทีเดินหาก้อนแร่ถัดไปในถ้ำ (ชั้นละ ~30–40 ก้อน ห่างกัน ≥ 3 ช่อง) + ขุดครั้งละ 0.7 วินาที
   treeRegen: 60000 / S.TREE.growMs, // ต้นไม้งอกใหม่ต่อนาทีทั้งห้อง (เพดานระยะยาวของการตัดไม้คนเดียว)
   EFF: 0.5,        // ผู้เล่นจริงทำได้กี่เท่าของเพดานนี้
@@ -105,20 +104,24 @@ function cook(lv) {
 
 // ขุดเหมือง (ถ้ำ 10 ชั้น): ผู้เล่นเลเวล n ลงชั้น n ขุดได้เฉพาะแร่ที่เลเวลถึง (ส่วนที่เหลือของชั้นข้าม) ใช้อีเต้อดีสุดที่ซื้อได้ ก้อนมี 3 ขนาด (HP/ชิ้นต่างกัน) • อีเต้อสึก 1 ครั้งต่อก้อน
 // เพดานคนเดียว: ชั้นละ ~30–40 ก้อนเกิดใหม่ทุก 4 นาที (~8 ก้อน/นาที) มากกว่าที่คนเดียวขุดทัน จึงติดความเร็วขุด+เดินหา ไม่ติดซัพพลาย
-function mine(lv, gear = M.mineGear) { // 6 พ.ย. 2026: ใช้ S.mineHit จริง (ถุงมือ ค้อน ขุดช้าเมื่ออีเต้อต่ำกว่าแร่ 1 ระดับ แรงเกินแร่ได้ชิ้นเพิ่ม) • gear = ผู้เล่นซื้อถุงมือ/ค้อนสูงสุดที่เลเวลนี้ปลดแล้ว (เพดานบน)
+function mine(lv, lag = 0) { // 6 พ.ย. 2026: ใช้ S.mineHit จริง (ไม่มีถุงมือ/ค้อนแล้ว ชุดอุปกรณ์ 10 ระดับ ต่ำกว่าแร่กี่ระดับก็ขุดได้แต่ช้าและสึกไว) • lag = ผู้เล่นไม่ได้อัปอุปกรณ์ ใช้ต่ำกว่าระดับที่ปลดแล้วกี่ระดับ (0 = ซื้อสูงสุดตามเลเวล เพดานบน)
   const inv = {}; for (const [t, p] of Object.entries(S.PICKS)) if (!p.lv || p.lv <= lv) inv['pick_' + t] = 1;
-  if (gear) { for (const [t, g] of Object.entries(S.GLOVES)) if (g.lv <= lv) inv['glove_' + t] = 1; for (const [t, h] of Object.entries(S.HAMMERS)) if (h.lv <= lv) inv['hammer_' + t] = 1; }
-  const pk = S.pickTier(inv), wl = 1 + S.MINE.xpPerLv * (S.perkLv(lv) - 1), fl = Math.min(Math.ceil(lv / 2), S.MINE.floors);
+  for (let i = 0; i < lag; i++) { const top = S.pickTier(inv); if (top > 1) delete inv['pick_' + top]; }
+  const pk = S.pickTier(inv), wl = 1, fl = Math.min(Math.ceil(lv / 2), S.MINE.floors);
   const mix = Object.entries(S.floorMix(fl)).filter(([k]) => S.ORES[k].lv <= lv && S.mineHit(inv, k, 0)), share = mix.reduce((a, [, w]) => a + w, 0) / 100;
   let val = 0, xp = 0, pcs = 0, secs = 0, wearC = 0;
   for (const [k, w] of mix) { const o = S.ORES[k], f = w / 100 / share; // สัดส่วนในกลุ่มที่ขุดได้
     for (let i = 0; i < S.ORE_SIZES.length; i++) { const z = S.ORE_SIZES[i], p = f * S.sizeMix(fl)[i] / 100, n = (z.drop[0] + z.drop[1]) / 2, mh = S.mineHit(inv, k, i);
-      val += p * (n + mh.extra) * o.sell; xp += p * n * o.xp; pcs += p * (n + mh.extra); secs += p * mh.hits * 0.7;
+      val += p * (n + mh.extra) * o.sell; xp += p * (n + mh.extra) * o.xp; pcs += p * (n + mh.extra); secs += p * mh.hits * 0.7;
       wearC += p * S.TOOL_PRICE.pick[pk] / S.DURABILITY.pick.max[pk] * S.WEAR_RATE.base * 1.35 * mh.wear; } } // ซ่อม/ซื้อใหม่เฉลี่ยต่อก้อน (ตัวคูณ 1.35) × ตัวคูณการสึก
   secs += M.oreWalk / Math.sqrt(share); // ก้อนที่ขุดไม่ได้ (เลเวลไม่ถึง) ทำให้ต้องเดินหาไกลขึ้น
   const npm = 60 / secs;
-  return { pick: mix.slice(-1)[0][0], coin: npm * (val - wearC) * 60, xp: npm * xp * wl * 60, gross: npm * val * 60, cost: npm * wearC * 60, pieces: npm * pcs * 60, cat: 'ore' };
+  return { pick: mix.slice(-1)[0][0], coin: npm * (val - wearC) * 60, xp: npm * xp * wl * 60, gross: npm * val * 60, cost: npm * wearC * 60, pieces: npm * pcs * 60, cat: 'ore', ores: npm * 60 };
 }
+// เป้านักขุดแร่ (ล็อก 6 พ.ย. 2026, docs/plans/mine-rework.md): ถึง Lv20 = 20 ชม.เล่นจริง • Lv1→2 = 15 นาที โตเวลาต่อเลเวล ×1.141 • XP/ชม.จริงของชั้น f = 1,000 × 1.3^(f−1) (ชั้น f = เลเวล 2f−1 และ 2f) • ในซิมนี้เป็นเพดาน = จริง ÷ EFF
+const MINE_GOAL = { lv1Min: 15, growth: 1.141, floorXpH: 1000, floorGrow: 1.3, tol: 0.10 };
+const mineGoalXpH = f => MINE_GOAL.floorXpH * Math.pow(MINE_GOAL.floorGrow, f - 1) / M.EFF; // เพดานต่อชม. ของชั้น f
+const mineGoalHours = lv => { let m = 0; for (let k = 1; k < lv; k++) m += MINE_GOAL.lv1Min * Math.pow(MINE_GOAL.growth, k - 1); return m / 60; };
 const SIMS = { farm, fish, animal, wood, cook, mine };
 function simulate() {
   const out = {};
@@ -126,7 +129,7 @@ function simulate() {
   return out;
 }
 // ชั่วโมงเล่นจริงโดยประมาณถึงแต่ละเลเวล (ใช้ XP/ชม. ของเลเวลปัจจุบัน × EFF)
-function hoursTo(rows) { const h = [0]; for (let lv = 1; lv < S.MAX_LV; lv++) h.push(h[lv - 1] + (S.xpFor(lv + 1) - S.xpFor(lv)) / (rows[lv - 1].xp * M.EFF)); return h; }
+function hoursTo(rows, sk) { const h = [0]; for (let lv = 1; lv < S.MAX_LV; lv++) h.push(h[lv - 1] + (S.xpFor(lv + 1, sk) - S.xpFor(lv, sk)) / (rows[lv - 1].xp * M.EFF)); return h; }
 
 if (require.main === module) {
   const r = simulate();
@@ -140,9 +143,20 @@ if (require.main === module) {
       return `${num(x.xp).padStart(6)} ${String(pct).padStart(3)}%${bad} ${x.pick.slice(0, 6).padEnd(6)}`; }).join('| '));
   }
   console.log(`\nชั่วโมงเล่นจริงโดยประมาณถึงเลเวล (XP/ชม. × ${M.EFF})`);
-  console.log('อาชีพ'.padEnd(12) + [3, 5, 7, 10].map(l => ('Lv' + l).padStart(7)).join(''));
-  for (const k of Object.keys(SIMS)) { const h = hoursTo(r[k]); console.log(S.SKILLS[k].name.padEnd(12) + [3, 5, 7, 10].map(l => h[l - 1].toFixed(1).padStart(7)).join('')); }
+  console.log('อาชีพ'.padEnd(12) + [3, 5, 7, 10, 15, 20].map(l => ('Lv' + l).padStart(7)).join(''));
+  for (const k of Object.keys(SIMS)) { const h = hoursTo(r[k], k); console.log(S.SKILLS[k].name.padEnd(12) + [3, 5, 7, 10, 15, 20].map(l => h[l - 1].toFixed(1).padStart(7)).join('') + (k === 'mine' ? '   (ตารางหลอด XP_TABLE_MINE)' : '')); }
+  console.log('เป้านักขุด'.padEnd(12) + [3, 5, 7, 10, 15, 20].map(l => mineGoalHours(l).toFixed(1).padStart(7)).join('') + '   (Lv1→2 = 15 นาที ×1.141 ต่อเลเวล)');
+  // นักขุดแร่: XP/ชม. ต่อชั้นเทียบเป้า 1,000×1.3^(f−1) (จริง) และเหรียญเทียบชาวนา และต้นทุนสึกหรอ
+  console.log(`\nนักขุดแร่ รายชั้น: XP/ชม.จริง (เพดาน × ${M.EFF}) เทียบเป้า ±${MINE_GOAL.tol * 100}% • เหรียญ/ชม.สุทธิเทียบชาวนาเลเวลเดียวกัน (เป้า ≤ 125%) • ต้นทุนสึกหรอ % ของรายได้ (เป้า ≤ 10%)`);
+  console.log('ชั้น Lv     XP/ชม.จริง   เป้า  ตรง    เหรียญ/ชม. %ชาวนา  สึกหรอ%  ก้อน/ชม.');
+  for (let lv = 1; lv <= S.MAX_LV; lv++) { const m = r.mine[lv - 1], f = Math.ceil(lv / 2), g = mineGoalXpH(f) * M.EFF, got = m.xp * M.EFF, dev = got / g - 1, cp = m.coin / r.farm[lv - 1].coin;
+    console.log(String(f).padStart(3) + ' ' + String(lv).padStart(2) + '  ' + num(got).padStart(10) + ' ' + num(g).padStart(7) + ' ' + ((dev >= 0 ? '+' : '') + (dev * 100).toFixed(0) + '%').padStart(5) + (Math.abs(dev) > MINE_GOAL.tol ? '!' : ' ') + num(m.coin).padStart(12) + ' ' + (Math.round(cp * 100) + '%').padStart(7) + (cp > 1.25 ? '!' : ' ') + (m.cost / m.gross * 100).toFixed(1).padStart(7) + '%' + (m.cost / m.gross > 0.10 ? '!' : ' ') + num(m.ores).padStart(8)); }
+  // ผู้เล่นไม่อัปอุปกรณ์: ใช้ต่ำกว่าระดับที่ปลดแล้ว 1–3 ระดับ (อุปกรณ์ปลดทุก 2 เลเวล) → XP/ชม. เหรียญสุทธิ เทียบตอนอัปครบ และจำนวนฟาดก้อนใหญ่ของแร่หลัก (เพดาน MINE.maxHits)
+  console.log(`\nนักขุดแร่ไม่อัปอุปกรณ์ (ต่ำกว่าแร่ 1–3 ระดับ): % ของตอนอัปครบ (XP/ชม. | เหรียญสุทธิ/ชม.) • ฟาดก้อนใหญ่ของแร่หลัก (เพดาน ${S.MINE.maxHits})`);
+  console.log('Lv    ' + [1, 2, 3].map(l => ('ต่ำกว่า ' + l).padStart(17)).join('') + '   ' + [0, 1, 2, 3].map(l => ('ฟาด d-' + l).padStart(9)).join(''));
+  for (const lv of [3, 5, 7, 10, 13, 15, 17, 20]) { const b = mine(lv), t = Math.ceil(lv / 2), main = Object.keys(S.ORES).find(k => S.ORES[k].pick === t && !S.ORES[k].legacy);
+    console.log(String(lv).padStart(2) + '    ' + [1, 2, 3].map(l => { const x = mine(lv, l); return (Math.round(x.xp / b.xp * 100) + '% | ' + Math.round(x.coin / b.coin * 100) + '%').padStart(17); }).join('') + '   ' + [0, 1, 2, 3].map(l => { const pk = Math.max(1, t - l), mh = S.mineHit({ ['pick_' + pk]: 1 }, main, 2); return (mh.hits + (mh.hits >= S.MINE.maxHits ? '*' : '')).padStart(9); }).join('')); }
   console.log(`\nเหรียญ/ชม. (เพดานคนเดียว ตามทางที่เลือก)`);
   for (const k of Object.keys(SIMS)) console.log(S.SKILLS[k].name.padEnd(12) + r[k].map(x => num(x.coin).padStart(7)).join(''));
 }
-module.exports = { M, SIMS, simulate, hoursTo };
+module.exports = { M, SIMS, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours };

@@ -28,7 +28,7 @@ function wishlist() {
   for (const x of S.WISH_EXTRA || []) w.push(x); // ที่ใช้เงินใหม่ (ขั้น 2) ใส่ไว้ใน shared.js ให้จำลองรู้จัก
   return w;
 }
-const SK = ['farm', 'fish', 'animal', 'wood', 'cook'];
+const SK = ['farm', 'fish', 'animal', 'wood', 'cook']; // ยังไม่รวม mine (6 พ.ย. 2026: levelOf ส่ง skill ทุกที่แล้ว ถ้าเพิ่ม mine เข้ามา หลอดจะใช้ XP_TABLE_MINE ถูกตาราง)
 const gini = a => { if (a.length < 2) return 0; a = a.slice().sort((x, y) => x - y); const s = a.reduce((x, y) => x + y, 0); if (!s) return 0; let c = 0; a.forEach((v, i) => { c += (2 * (i + 1) - a.length - 1) * v; }); return c / (a.length * s); };
 
 function run(days) { // คืนผลจำลอง (เรียกซ้ำได้หลังแก้ค่าใน S เพื่อลองปรับสมดุล)
@@ -44,15 +44,15 @@ const perDay = [];
 for (let d = 0; d < days; d++) {
   const on = agents.filter(a => d >= a.start);
   const skillOf = a => a.focus === 'mix' ? SK[d % SK.length] : a.focus;
-  const lvs = on.map(a => Math.max(...SK.map(k => S.levelOf(a.xp[k])))).sort((x, y) => x - y), medLv = lvs[Math.floor(lvs.length / 2)] || 1;
+  const lvs = on.map(a => Math.max(...SK.map(k => S.levelOf(a.xp[k], k)))).sort((x, y) => x - y), medLv = lvs[Math.floor(lvs.length / 2)] || 1;
   // ความต้องการของส่วนรวมรวมทั้งวัน เทียบกับที่มีในช่วงเวลาเล่นร่วมกัน → ตัวคูณที่ได้จริง
   const scale = {};
   for (const r of ['wood', 'animal']) {
-    const want = on.filter(a => skillOf(a) === r).reduce((n, a) => n + sims[r][S.levelOf(a.xp[r]) - 1].pieces / 60 * L.M.EFF * a.mins, 0);
+    const want = on.filter(a => skillOf(a) === r).reduce((n, a) => n + sims[r][S.levelOf(a.xp[r], r) - 1].pieces / 60 * L.M.EFF * a.mins, 0);
     scale[r] = want ? Math.min(1, supplyPerMin[r] * C.window / want) : 1;
   }
   for (const a of on) {
-    const sk = skillOf(a), lv = S.levelOf(a.xp[sk]), r = sims[sk][lv - 1], f = L.M.EFF * (scale[sk] || 1) * C.cal[sk];
+    const sk = skillOf(a), lv = S.levelOf(a.xp[sk], sk), r = sims[sk][lv - 1], f = L.M.EFF * (scale[sk] || 1) * C.cal[sk];
     const cu = S.CATCHUP && lv < medLv ? S.CATCHUP.xpMul : 1; // XP ตามทัน: เลเวลต่ำกว่าค่ากลางเมือง
     const pcs = r.pieces / 60 * f, val = r.gross / r.pieces, cat = r.cat;
     let m = a.mkt[cat] === undefined ? 1 : a.mkt[cat], rev = 0, stock = (a.stock || {})[cat] || 0, work = 0;
@@ -72,7 +72,7 @@ for (let d = 0; d < days; d++) {
     a.coin += inc - cost; a.earned += rev; (a.daily || (a.daily = []))[d] = rev - r.cost / 60 * f * work; a.xp[sk] += r.xp / 60 * f * work * cu;
     if (scale[sk] !== undefined) share[sk][a.id] = (share[sk][a.id] || 0) + r.pieces / 60 * f * work;
     // ซื้อของในรายการอยากได้ (ที่ซื้อได้ตามเลเวล) เมื่อเงินพอ
-    for (let i = 0; i < a.wish.length;) { const w = a.wish[i]; if (w.need && S.levelOf(a.xp[w.need[0]]) < w.need[1]) { i++; continue; } if (a.coin - w.p < C.reserve) break; a.coin -= w.p; a.assets += w.p; a.wish.splice(i, 1); }
+    for (let i = 0; i < a.wish.length;) { const w = a.wish[i]; if (w.need && S.levelOf(a.xp[w.need[0]], w.need[0]) < w.need[1]) { i++; continue; } if (a.coin - w.p < C.reserve) break; a.coin -= w.p; a.assets += w.p; a.wish.splice(i, 1); }
   }
   perDay.push(on.map(a => a.coin + a.assets));
 }
@@ -92,7 +92,7 @@ return { res, agents, wealth, avg, grp, byFocus };
 }
 if (require.main === module) {
 const { res, agents, wealth, avg, grp } = run(days);
-if (process.argv.includes('--json')) { console.log(JSON.stringify({ days, res, agents: agents.map(a => ({ id: a.id, wealth: Math.round(wealth(a)), coin: Math.round(a.coin), lv: Object.fromEntries(SK.map(k => [k, S.levelOf(a.xp[k])])) })) }, null, 1)); process.exit(0); }
+if (process.argv.includes('--json')) { console.log(JSON.stringify({ days, res, agents: agents.map(a => ({ id: a.id, wealth: Math.round(wealth(a)), coin: Math.round(a.coin), lv: Object.fromEntries(SK.map(k => [k, S.levelOf(a.xp[k], k)])) })) }, null, 1)); process.exit(0); }
 
 const num = n => Math.round(n).toLocaleString('en-US');
 console.log(`จำลอง ${days} วัน • ผู้เล่นจำลอง ${agents.length} คน (เวลาเล่น 30/60/120/240 นาที/วัน × อาชีพ 5 + ผสม × เริ่มวันที่ 0/14) • ทรัพย์สิน = เหรียญ + ของที่ซื้อ`);
@@ -101,7 +101,7 @@ console.log('อาชีพ'.padEnd(10) + [30, 60, 120, 240].map(m => (m + ' �
 for (const f of [...SK, 'mix']) console.log((S.SKILLS[f] ? S.SKILLS[f].name : 'ผสม').padEnd(10) + [30, 60, 120, 240].map(m => num(avg(grp(a => a.focus === f && a.mins === m && !a.start).map(wealth))).padStart(10)).join(''));
 console.log('\nราคาขายจริง ÷ ราคาฐาน (เทียบข้อมูลจริง: ผัก 76% สัตว์ 65% ไม้ 79% ปลา 108% อาหาร 118%)');
 for (const f of SK) console.log((S.SKILLS[f].name).padEnd(10) + [30, 60, 120, 240].map(m => { const g = grp(a => a.focus === f && a.mins === m && !a.start); return (Math.round(g.reduce((n, a) => n + a.rev, 0) / Math.max(1, g.reduce((n, a) => n + a.gross, 0)) * 100) + '%').padStart(10); }).join(''));
-console.log(`\nเลเวลเฉลี่ยตอนจบของอาชีพหลัก (คนเล่น 60 นาที/วัน): ` + SK.map(k => `${S.SKILLS[k].name} ${avg(grp(a => a.focus === k && a.mins === 60 && !a.start).map(a => S.levelOf(a.xp[k]))).toFixed(1)}`).join(' • '));
+console.log(`\nเลเวลเฉลี่ยตอนจบของอาชีพหลัก (คนเล่น 60 นาที/วัน): ` + SK.map(k => `${S.SKILLS[k].name} ${avg(grp(a => a.focus === k && a.mins === 60 && !a.start).map(a => S.levelOf(a.xp[k], k))).toFixed(1)}`).join(' • '));
 const ok = (v, pass) => pass ? `✅ ${v}` : `❌ ${v}`;
 console.log('\n=== เกณฑ์ (ECONOMY-PLAN.md 1B) ===');
 console.log(`G2 คนเล่น 240 ÷ 60 นาที/วัน: ${ok(res.G2.toFixed(2) + ' เท่า', res.G2 <= 2.5)} (เป้า ≤ 2.5 • เวลามากกว่า 4 เท่า)`);

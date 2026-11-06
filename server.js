@@ -61,12 +61,15 @@ class World {
         this.farm = moved; this.dirty = true;
       }
       this.saved = Object.assign(Object.create(null), d.players); // ไม่มี prototype: ชื่อผู้เล่นอย่าง "__proto__" จะได้ไม่ไปชนของในระบบ
+      let mineRefund = 0, mineMoved = 0; // สรุปการย้ายเซฟนักขุดแร่ (xpv 4) ลง log ครั้งเดียว เหรียญที่คืนไม่ผ่าน telemetry
       for (const rec of Object.values(this.saved)) { // ย้าย XP มาตาราง XP_TABLE (ครั้งเดียวต่อบัญชี) เลเวลเท่าเดิม
-        if (!rec || rec.xpv === 3) continue;
+        if (!rec || rec.xpv >= 4) continue;
+        if (rec.xpv === 3) { const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } this.dirty = true; continue; } // xpv 4 (6 พ.ย. 2026): นักขุดแร่ตารางหลอดใหม่ + อีเต้อ 10 ชนิด + คืนเหรียญถุงมือ/ค้อน
         if (rec.xpv !== 2 && rec.skills) for (const k of Object.keys(rec.skills)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = S.xpFromV1(rec.skills[k]);
         if (rec.skills) for (const k of Object.keys(rec.skills)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = S.xpFromV2(rec.skills[k]); // xpv 3 (31 ต.ค. 2026): ยืดเลเวลต้น เลเวลเท่าเดิม
-        rec.xpv = 3; this.dirty = true;
+        rec.xpv = 3; const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } this.dirty = true;
       }
+      if (mineMoved) console.log(`[migrate] นักขุดแร่ xpv 4: ย้าย ${mineMoved} บัญชี คืนเหรียญถุงมือ/ค้อนรวม ${mineRefund}`);
       for (const rec of Object.values(this.saved)) { // ย้อนพิกัดจากทดลอง TS=64 กลับ TS=32
         if (!rec || !rec.px64) continue;
         if (Number.isFinite(rec.x)) rec.x /= 2;
@@ -159,7 +162,7 @@ class World {
     if (!admin && this.banned && this.banned.has(key)) return { err: 'ชื่อนี้ถูกระงับโดยผู้ดูแล 🚫 กรุณาใช้ชื่ออื่น' };
     for (const q of this.players.values()) if (q.key === key) return { err: 'ชื่อนี้กำลังเล่นอยู่ ลองใช้ชื่ออื่น' };
     let rec = this.saved[key];
-    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 3, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
+    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 4, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
     if (!rec.mig2) { rec.mig2 = true; rec.inv.bait = (rec.inv.bait || 0) + 10; } // แจกเหยื่อตกปลาชุดแรกให้ผู้เล่นเดิม (ระบบเหยื่อเพิ่งเพิ่ม)
     rec.name = name;
     if (!rec.firstSeen) rec.firstSeen = rec.lastSeen || Date.now(); // บัญชีเก่าก่อนมีตัวนับ: ใช้เวลาเข้าล่าสุดแทน (ใกล้เคียงเท่านั้น)
@@ -970,7 +973,7 @@ function adminHandle(p, world, m) {
     const sk = String(m.skill || ''); if (!Object.hasOwn(S.SKILLS, sk)) return reply({ err: 'ไม่รู้จักอาชีพนี้' });
     const cur = world.lv(p, sk), to = Number.isFinite(+m.to) ? Math.trunc(+m.to) : cur + Math.trunc(+m.d || 0);
     if (!(to >= 1 && to <= S.MAX_LV)) return reply({ err: `เลเวลต้องอยู่ระหว่าง 1–${S.MAX_LV}` });
-    p.rec.skills[sk] = S.xpFor(to); world.dirty = true;
+    p.rec.skills[sk] = S.xpFor(to, sk); world.dirty = true;
     send(p, { t: 'skills', skills: p.rec.skills });
     console.log('ผู้ดูแลปรับเลเวล:', p.name, S.SKILLS[sk].name, cur, '→', to, '(ห้อง ' + world.room + ')');
     return reply({ lvmsg: `🎚️ ${S.SKILLS[sk].emoji} ${S.SKILLS[sk].name} เลเวล ${to}` });
