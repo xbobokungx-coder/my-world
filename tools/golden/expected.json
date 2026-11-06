@@ -1,0 +1,11503 @@
+{
+ "save": {
+  "evt": {
+   "key": "",
+   "scores": {},
+   "done": true
+  },
+  "chain": 0,
+  "invites": {},
+  "layout": 2,
+  "rents": {},
+  "farm": {
+   "6,16": {
+    "idle": 88225,
+    "wu": 1793934094600
+   },
+   "8,14": {
+    "idle": 88025,
+    "wu": 1793934095200
+   }
+  },
+  "players": {
+   "alice": {
+    "firstSeen": 1793934000000,
+    "inv": {
+     "coin": 794,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1,
+     "pick_3": 1,
+     "copper": 4
+    },
+    "mig2": true,
+    "xpv": 3,
+    "gift": "wear_hat_flower",
+    "x": 1072,
+    "y": 720,
+    "color": "#e74c3c",
+    "name": "alice",
+    "hat": "#e8c66a",
+    "skills": {
+     "farm": 400,
+     "fish": 400,
+     "animal": 400,
+     "wood": 400,
+     "cook": 400,
+     "mine": 5149
+    },
+    "lamp": false,
+    "wear": {
+     "shirt": "tee",
+     "pants": "jeans",
+     "hat": "straw",
+     "acc": "none"
+    },
+    "pc": "#5b4a8a",
+    "hunger": 88.70000000000002,
+    "pet": "",
+    "pmode": "follow",
+    "joins": 1,
+    "herdGift": 1,
+    "herd": [
+     {
+      "type": "chicken",
+      "hunger": 87,
+      "zero": 0,
+      "sick": false,
+      "sickMs": 0,
+      "fed": false,
+      "prod": false,
+      "feeder": "",
+      "fn": "",
+      "pm": 0,
+      "layLeft": 0,
+      "warned": false
+     }
+    ],
+    "arc": {
+     "pts": 0,
+     "total": 0,
+     "wk": 0,
+     "wkKey": "2026-W45"
+    },
+    "catAt": 1793934080825,
+    "en": {
+     "v": 100,
+     "at": 1793934000000,
+     "ex": false
+    },
+    "starter": {
+     "done": {},
+     "final": true,
+     "c2": {
+      "done": {
+       "mine": 1
+      },
+      "final": false
+     }
+    },
+    "streak": {
+     "last": "2026-11-6",
+     "n": 1
+    },
+    "ach": {
+     "cnt": {
+      "dig": 1,
+      "plant": 1,
+      "water": 1,
+      "harvest": 1,
+      "fish": 4,
+      "questdone": 1,
+      "sell": 3,
+      "mine": 1
+     },
+     "got": {
+      "give2k": 1793934000000,
+      "give10k": 1793934000000,
+      "give30k": 1793934000000,
+      "harvest1": 1793934025800,
+      "fish1": 1793934035325,
+      "mine1": 1793934083425
+     }
+    },
+    "quest": {
+     "day": "2026-11-6",
+     "list": [
+      {
+       "id": "dig4",
+       "n": 1,
+       "done": false,
+       "seen": []
+      },
+      {
+       "id": "collect3",
+       "n": 0,
+       "done": false,
+       "seen": []
+      },
+      {
+       "id": "eat1",
+       "n": 0,
+       "done": false,
+       "seen": []
+      },
+      {
+       "id": "fish3",
+       "n": 3,
+       "done": true,
+       "seen": []
+      },
+      {
+       "id": "water6",
+       "n": 1,
+       "done": false,
+       "seen": []
+      },
+      {
+       "id": "plant5",
+       "n": 1,
+       "done": false,
+       "seen": []
+      }
+     ]
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0,
+     "day": "2026-11-6"
+    },
+    "wk1": {
+     "n": {
+      "1": 1
+     },
+     "done": {},
+     "final": false
+    },
+    "book": {
+     "fish": {
+      "koi": 1,
+      "carp": 1
+     },
+     "crop": {
+      "carrot": 1
+     },
+     "furn": {},
+     "meal": {},
+     "ore": {
+      "copper": 1
+     },
+     "wood": {}
+    },
+    "bank": {
+     "bal": 0
+    },
+    "dur": {
+     "pick": 399
+    },
+    "quick": 1,
+    "wtr": 9,
+    "lots": {},
+    "qtotal": 1,
+    "sales": [
+     [
+      1793934067425,
+      106
+     ]
+    ],
+    "cat": {
+     "fish": 0.9937330953559684
+    },
+    "mk": {}
+   },
+   "bob": {
+    "firstSeen": 1793934000000,
+    "inv": {
+     "coin": 367,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "furn_chair": 1
+    },
+    "mig2": true,
+    "xpv": 3,
+    "gift": "wear_hat_chef",
+    "x": 1072,
+    "y": 720,
+    "color": "#3498db",
+    "name": "bob",
+    "hat": "#e8c66a",
+    "skills": {
+     "farm": 9,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    },
+    "lamp": false,
+    "wear": {
+     "shirt": "tee",
+     "pants": "jeans",
+     "hat": "straw",
+     "acc": "none"
+    },
+    "pc": "#5b4a8a",
+    "hunger": 92.60000000000001,
+    "pet": "",
+    "pmode": "follow",
+    "joins": 1,
+    "herdGift": 1,
+    "herd": [
+     {
+      "type": "chicken",
+      "hunger": 87,
+      "zero": 0,
+      "sick": false,
+      "sickMs": 0,
+      "fed": false,
+      "prod": false,
+      "feeder": "",
+      "fn": "",
+      "pm": 0,
+      "layLeft": 0,
+      "warned": false
+     }
+    ],
+    "arc": {
+     "pts": 0,
+     "total": 0,
+     "wk": 0,
+     "wkKey": "2026-W45"
+    },
+    "catAt": 1793934000000,
+    "en": {
+     "v": 100,
+     "at": 1793934000000,
+     "ex": false
+    },
+    "starter": {
+     "done": {
+      "dig": 1,
+      "plant": 1,
+      "water": 1,
+      "harvest": 1
+     },
+     "final": false,
+     "c2": {
+      "done": {},
+      "final": false
+     }
+    },
+    "streak": {
+     "last": "2026-11-6",
+     "n": 1
+    },
+    "ach": {
+     "cnt": {
+      "dig": 1,
+      "plant": 1,
+      "water": 1,
+      "harvest": 1,
+      "hplace": 2
+     },
+     "got": {
+      "give2k": 1793934000000,
+      "give10k": 1793934000000,
+      "give30k": 1793934000000,
+      "harvest1": 1793934026000
+     }
+    },
+    "quest": {
+     "day": "2026-11-6",
+     "list": [
+      {
+       "id": "sellprod2",
+       "n": 0,
+       "done": false,
+       "seen": []
+      },
+      {
+       "id": "sit1",
+       "n": 0,
+       "done": false,
+       "seen": []
+      },
+      {
+       "id": "dig4",
+       "n": 1,
+       "done": false,
+       "seen": []
+      },
+      {
+       "id": "fish3",
+       "n": 0,
+       "done": false,
+       "seen": []
+      },
+      {
+       "id": "harvest4",
+       "n": 1,
+       "done": false,
+       "seen": []
+      },
+      {
+       "id": "water6",
+       "n": 1,
+       "done": false,
+       "seen": []
+      }
+     ]
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0,
+     "day": "2026-11-6"
+    },
+    "wk1": {
+     "n": {
+      "1": 1
+     },
+     "done": {},
+     "final": false
+    },
+    "book": {
+     "fish": {},
+     "crop": {
+      "carrot": 1
+     },
+     "furn": {},
+     "meal": {},
+     "ore": {},
+     "wood": {}
+    },
+    "bank": {
+     "bal": 0
+    },
+    "dur": {
+     "hoe": 119
+    },
+    "quick": 1,
+    "wtr": 9,
+    "lots": {
+     "crop_carrot": [
+      [
+       1793934026000,
+       1
+      ]
+     ]
+    }
+   }
+  },
+  "animals": {},
+  "market": {
+   "crop_carrot": {
+    "m": 0.9996470364743947,
+    "t": 1
+   },
+   "crop_cabbage": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_corn": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_tomato": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_eggplant": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_strawberry": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_pumpkin": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_potato": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_chili": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_broccoli": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_cherry": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_grape": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_pineapple": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_mango": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_melon": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_peach": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_kiwi": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_coconut": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_avocado": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_blueberry": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_olive": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_beans": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_mushroom": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_sunflower": {
+    "m": 1,
+    "t": 1
+   },
+   "crop_tulip": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_carp": {
+    "m": 0.9993615916864423,
+    "t": 1
+   },
+   "fish_bass": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_shrimp": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_crab": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_koi": {
+    "m": 0.9991158447705614,
+    "t": 1
+   },
+   "fish_lobster": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_squid": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_octopus": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_shark": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_dolphin": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_jelly": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_beaver": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_flamingo": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_coral": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_swan": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_mermaid": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_dragon": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_sdragon": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_unicorn": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_star": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_sardine": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_anchovy": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_mackerel": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_snapper": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_seabass": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_tuna": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_bonito": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_barracuda": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_puffer": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_sword": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_manta": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_hammer": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_turtle": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_seal": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_orca": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_whaleshark": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_bluewhale": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_kraken": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_angler": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_pearl": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_catfish": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_shell": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_frog": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_oyster": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_whale": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_otter": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_croc": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_humpback": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_penguin": {
+    "m": 1,
+    "t": 1
+   },
+   "fish_dino": {
+    "m": 1,
+    "t": 1
+   },
+   "egg": {
+    "m": 1,
+    "t": 1
+   },
+   "duck_egg": {
+    "m": 1,
+    "t": 1
+   },
+   "milk": {
+    "m": 1,
+    "t": 1
+   },
+   "wool": {
+    "m": 1,
+    "t": 1
+   },
+   "truffle": {
+    "m": 1,
+    "t": 1
+   },
+   "honey": {
+    "m": 1,
+    "t": 1
+   },
+   "alpaca_wool": {
+    "m": 1,
+    "t": 1
+   },
+   "horse_milk": {
+    "m": 1,
+    "t": 1
+   },
+   "chestnut": {
+    "m": 1,
+    "t": 1
+   },
+   "log": {
+    "m": 1,
+    "t": 1
+   },
+   "hardwood": {
+    "m": 1,
+    "t": 1
+   },
+   "bamboo": {
+    "m": 1,
+    "t": 1
+   },
+   "shoot": {
+    "m": 1,
+    "t": 1
+   },
+   "pinewood": {
+    "m": 1,
+    "t": 1
+   },
+   "resin": {
+    "m": 1,
+    "t": 1
+   },
+   "palmwood": {
+    "m": 1,
+    "t": 1
+   },
+   "coconut": {
+    "m": 1,
+    "t": 1
+   },
+   "teak": {
+    "m": 1,
+    "t": 1
+   },
+   "goldwood": {
+    "m": 1,
+    "t": 1
+   },
+   "kunflower": {
+    "m": 1,
+    "t": 1
+   },
+   "rosewood": {
+    "m": 1,
+    "t": 1
+   },
+   "maplewood": {
+    "m": 1,
+    "t": 1
+   },
+   "syrup": {
+    "m": 1,
+    "t": 1
+   },
+   "sakurawood": {
+    "m": 1,
+    "t": 1
+   },
+   "petal": {
+    "m": 1,
+    "t": 1
+   },
+   "ebony": {
+    "m": 1,
+    "t": 1
+   },
+   "amber": {
+    "m": 1,
+    "t": 1
+   },
+   "ancientwood": {
+    "m": 1,
+    "t": 1
+   },
+   "padaukwood": {
+    "m": 1,
+    "t": 1
+   },
+   "oakwood": {
+    "m": 1,
+    "t": 1
+   },
+   "acorn": {
+    "m": 1,
+    "t": 1
+   },
+   "willowwood": {
+    "m": 1,
+    "t": 1
+   },
+   "diptwood": {
+    "m": 1,
+    "t": 1
+   },
+   "takianwood": {
+    "m": 1,
+    "t": 1
+   },
+   "ginkgowood": {
+    "m": 1,
+    "t": 1
+   },
+   "ginkgonut": {
+    "m": 1,
+    "t": 1
+   },
+   "makhawood": {
+    "m": 1,
+    "t": 1
+   },
+   "raintreewood": {
+    "m": 1,
+    "t": 1
+   },
+   "shingwood": {
+    "m": 1,
+    "t": 1
+   },
+   "plank": {
+    "m": 1,
+    "t": 1
+   },
+   "stone": {
+    "m": 1,
+    "t": 1
+   },
+   "copper": {
+    "m": 1,
+    "t": 1
+   },
+   "silver": {
+    "m": 1,
+    "t": 1
+   },
+   "amethyst": {
+    "m": 1,
+    "t": 1
+   },
+   "emerald": {
+    "m": 1,
+    "t": 1
+   },
+   "opal": {
+    "m": 1,
+    "t": 1
+   },
+   "sapphire": {
+    "m": 1,
+    "t": 1
+   },
+   "jade": {
+    "m": 1,
+    "t": 1
+   },
+   "moonstone": {
+    "m": 1,
+    "t": 1
+   },
+   "mythril": {
+    "m": 1,
+    "t": 1
+   },
+   "coal": {
+    "m": 1,
+    "t": 1
+   },
+   "iron": {
+    "m": 1,
+    "t": 1
+   },
+   "gold": {
+    "m": 1,
+    "t": 1
+   },
+   "ruby": {
+    "m": 1,
+    "t": 1
+   },
+   "crystal": {
+    "m": 1,
+    "t": 1
+   },
+   "topaz": {
+    "m": 1,
+    "t": 1
+   },
+   "garnet": {
+    "m": 1,
+    "t": 1
+   },
+   "obsidian": {
+    "m": 1,
+    "t": 1
+   },
+   "sunstone": {
+    "m": 1,
+    "t": 1
+   },
+   "starcore": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_vegbowl": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_boiledegg": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_saltfish": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_grill": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_omelet": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_seafood": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_feast": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_fishsoup": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_sashimi": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_fishburger": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_fishpie": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_fishmix": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_fishstew": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_platter": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_curry": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_salad": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_noodle": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_pizza": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_pasta": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_pie": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_cake": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_sharksoup": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_party": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_banquet": {
+    "m": 1,
+    "t": 1
+   }
+  },
+  "mktDay": 2491575,
+  "trees": [
+   [
+    15,
+    1,
+    "gold"
+   ],
+   [
+    4,
+    3,
+    "oak"
+   ],
+   [
+    6,
+    3,
+    "pine"
+   ],
+   [
+    1,
+    4,
+    "pine"
+   ],
+   [
+    4,
+    4,
+    "broad"
+   ],
+   [
+    8,
+    4,
+    "pine"
+   ],
+   [
+    13,
+    4,
+    "pine"
+   ],
+   [
+    12,
+    5,
+    "pine"
+   ],
+   [
+    13,
+    5,
+    "pine"
+   ],
+   [
+    14,
+    5,
+    "pine"
+   ],
+   [
+    48,
+    5,
+    "oak"
+   ],
+   [
+    1,
+    6,
+    "teak"
+   ],
+   [
+    6,
+    6,
+    "pine"
+   ],
+   [
+    10,
+    6,
+    "maple"
+   ],
+   [
+    57,
+    6,
+    "padauk"
+   ],
+   [
+    1,
+    7,
+    "maple"
+   ],
+   [
+    12,
+    7,
+    "pine"
+   ],
+   [
+    20,
+    7,
+    "teak"
+   ],
+   [
+    59,
+    7,
+    "broad"
+   ],
+   [
+    61,
+    7,
+    "pine"
+   ],
+   [
+    1,
+    14,
+    "broad"
+   ],
+   [
+    4,
+    24,
+    "bamboo"
+   ],
+   [
+    1,
+    25,
+    "broad"
+   ],
+   [
+    1,
+    26,
+    "broad"
+   ],
+   [
+    4,
+    26,
+    "bamboo"
+   ],
+   [
+    17,
+    26,
+    "bamboo"
+   ],
+   [
+    18,
+    26,
+    "broad"
+   ],
+   [
+    4,
+    27,
+    "bamboo"
+   ],
+   [
+    5,
+    28,
+    "bamboo"
+   ],
+   [
+    8,
+    28,
+    "bamboo"
+   ],
+   [
+    9,
+    28,
+    "bamboo"
+   ],
+   [
+    6,
+    29,
+    "broad"
+   ],
+   [
+    9,
+    29,
+    "broad"
+   ],
+   [
+    8,
+    31,
+    "broad"
+   ],
+   [
+    3,
+    33,
+    "broad"
+   ],
+   [
+    6,
+    33,
+    "ebony"
+   ],
+   [
+    9,
+    33,
+    "broad"
+   ],
+   [
+    12,
+    33,
+    "gold"
+   ],
+   [
+    21,
+    33,
+    "teak"
+   ],
+   [
+    6,
+    34,
+    "gold"
+   ],
+   [
+    10,
+    34,
+    "broad"
+   ],
+   [
+    19,
+    34,
+    "broad"
+   ],
+   [
+    21,
+    34,
+    "broad"
+   ],
+   [
+    24,
+    34,
+    "broad"
+   ],
+   [
+    25,
+    34,
+    "broad"
+   ],
+   [
+    26,
+    34,
+    "coconut"
+   ],
+   [
+    27,
+    34,
+    "coconut"
+   ],
+   [
+    27,
+    35,
+    "teak"
+   ],
+   [
+    9,
+    36,
+    "ancient"
+   ],
+   [
+    11,
+    36,
+    "takian"
+   ],
+   [
+    14,
+    36,
+    "rose"
+   ],
+   [
+    15,
+    36,
+    "ginkgo"
+   ],
+   [
+    5,
+    37,
+    "padauk"
+   ],
+   [
+    11,
+    37,
+    "rose"
+   ],
+   [
+    22,
+    37,
+    "teak"
+   ],
+   [
+    5,
+    38,
+    "makha"
+   ],
+   [
+    14,
+    38,
+    "takian"
+   ],
+   [
+    22,
+    38,
+    "broad"
+   ],
+   [
+    23,
+    38,
+    "rose"
+   ],
+   [
+    26,
+    38,
+    "coconut"
+   ],
+   [
+    27,
+    38,
+    "broad"
+   ],
+   [
+    1,
+    39,
+    "dipt"
+   ],
+   [
+    2,
+    39,
+    "shingchan"
+   ],
+   [
+    5,
+    39,
+    "teak"
+   ],
+   [
+    9,
+    39,
+    "raintree"
+   ],
+   [
+    60,
+    39,
+    "coconut"
+   ],
+   [
+    9,
+    40,
+    "gold"
+   ],
+   [
+    10,
+    40,
+    "gold"
+   ],
+   [
+    18,
+    40,
+    "rose"
+   ],
+   [
+    26,
+    40,
+    "coconut"
+   ],
+   [
+    27,
+    40,
+    "broad"
+   ],
+   [
+    7,
+    41,
+    "padauk"
+   ],
+   [
+    14,
+    41,
+    "teak"
+   ],
+   [
+    25,
+    41,
+    "broad"
+   ],
+   [
+    26,
+    41,
+    "coconut"
+   ],
+   [
+    1,
+    42,
+    "gold"
+   ],
+   [
+    2,
+    42,
+    "gold"
+   ],
+   [
+    6,
+    42,
+    "teak"
+   ],
+   [
+    15,
+    42,
+    "padauk"
+   ],
+   [
+    24,
+    42,
+    "dipt"
+   ],
+   [
+    25,
+    42,
+    "broad"
+   ],
+   [
+    27,
+    42,
+    "coconut"
+   ],
+   [
+    21,
+    43,
+    "sakura"
+   ],
+   [
+    27,
+    43,
+    "broad"
+   ],
+   [
+    58,
+    44,
+    "broad"
+   ]
+  ],
+  "treeMix": 2,
+  "house": {
+   "houses": {
+    "bob": {
+     "items": {
+      "1": {
+       "f": "table",
+       "x": 26,
+       "y": 20,
+       "r": 1,
+       "z": 0,
+       "on": null
+      },
+      "2": {
+       "f": "chair",
+       "x": 24.5,
+       "y": 20.25,
+       "r": 0,
+       "z": 0,
+       "on": null
+      }
+     },
+     "next": 3
+    }
+   }
+  },
+  "log": [
+   [
+    1793934000000,
+    "👋 alice เข้ามาในเมือง"
+   ],
+   [
+    1793934000000,
+    "👋 bob เข้ามาในเมือง"
+   ],
+   [
+    1793934035325,
+    "🎣 alice ตกปลาครั้งแรกได้🎏 ปลาคอยทอง!"
+   ],
+   [
+    1793934067425,
+    "🎓 alice ผ่านคู่มือเริ่มต้นครบแล้ว!"
+   ]
+  ],
+  "lotto": {
+   "pot": 30150,
+   "round": "2026-11-6",
+   "sealed": {
+    "nums": [
+     "013",
+     "888",
+     "710"
+    ],
+    "salt": "2fe052701692611b",
+    "hash": "f054b8a12f40aac89428350c2785bab97f3c072eaa4fed3f772febd405e98e2a"
+   },
+   "tickets": {
+    "alice": [
+     "123",
+     "456",
+     "810"
+    ]
+   },
+   "last": null,
+   "hist": []
+  },
+  "stats": {
+   "day": "2026-11-6",
+   "ev": {
+    "water": {
+     "alice": 1,
+     "bob": 1
+    },
+    "harvest": {
+     "alice": 1,
+     "bob": 1
+    },
+    "fish": {
+     "alice": 4
+    },
+    "mine": {
+     "alice": 1
+    }
+   }
+  },
+  "village": {
+   "day": "2026-11-6",
+   "n": 9,
+   "peak": 2,
+   "done": false,
+   "until": 0,
+   "doneAt": 0,
+   "open": 0,
+   "by": {
+    "alice": 7,
+    "bob": 2
+   },
+   "prev": {}
+  },
+  "week": {
+   "key": "2026-W45",
+   "n": 9,
+   "done": false,
+   "by": {
+    "alice": 7,
+    "bob": 2
+   },
+   "claimed": {},
+   "cnt": {
+    "alice": 7,
+    "bob": 2
+   }
+  },
+  "orders": {
+   "day": "",
+   "list": [],
+   "by": {}
+  },
+  "stall": [],
+  "banned": [],
+  "mocks": [],
+  "mapOv": {}
+ },
+ "alice": {
+  "msgs": [
+   {
+    "t": "w",
+    "deep": 1,
+    "first": true,
+    "admin": false,
+    "id": 1,
+    "x": 320,
+    "y": 528,
+    "inv": {
+     "coin": 50,
+     "seed_carrot": 5,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "skills": {
+     "farm": 0,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    },
+    "arc": {
+     "pts": 0,
+     "total": 0,
+     "wk": 0,
+     "tt": []
+    },
+    "hunger": 80,
+    "dur": {
+     "hoe": [
+      120,
+      120,
+      0
+     ],
+     "rod": [
+      100,
+      100,
+      0
+     ],
+     "axe": [
+      90,
+      90,
+      0
+     ],
+     "pick": [
+      100,
+      100,
+      0
+     ]
+    },
+    "wtr": 10,
+    "cin": {
+     "movie": null,
+     "yt": "",
+     "name": "",
+     "startedAt": 0,
+     "playing": false,
+     "pos": 0,
+     "now": 1793934000000,
+     "viewers": []
+    },
+    "farm": {},
+    "time": 1793934000000,
+    "room": "golden",
+    "trees": [
+     [
+      15,
+      1,
+      "gold"
+     ],
+     [
+      4,
+      3,
+      "oak"
+     ],
+     [
+      6,
+      3,
+      "pine"
+     ],
+     [
+      1,
+      4,
+      "pine"
+     ],
+     [
+      4,
+      4,
+      "broad"
+     ],
+     [
+      8,
+      4,
+      "pine"
+     ],
+     [
+      13,
+      4,
+      "pine"
+     ],
+     [
+      12,
+      5,
+      "pine"
+     ],
+     [
+      13,
+      5,
+      "pine"
+     ],
+     [
+      14,
+      5,
+      "pine"
+     ],
+     [
+      1,
+      6,
+      "teak"
+     ],
+     [
+      6,
+      6,
+      "pine"
+     ],
+     [
+      10,
+      6,
+      "maple"
+     ],
+     [
+      57,
+      6,
+      "padauk"
+     ],
+     [
+      1,
+      7,
+      "maple"
+     ],
+     [
+      12,
+      7,
+      "pine"
+     ],
+     [
+      20,
+      7,
+      "teak"
+     ],
+     [
+      59,
+      7,
+      "broad"
+     ],
+     [
+      61,
+      7,
+      "pine"
+     ],
+     [
+      1,
+      14,
+      "broad"
+     ],
+     [
+      4,
+      24,
+      "bamboo"
+     ],
+     [
+      1,
+      25,
+      "broad"
+     ],
+     [
+      1,
+      26,
+      "broad"
+     ],
+     [
+      4,
+      26,
+      "bamboo"
+     ],
+     [
+      17,
+      26,
+      "bamboo"
+     ],
+     [
+      4,
+      27,
+      "bamboo"
+     ],
+     [
+      5,
+      28,
+      "bamboo"
+     ],
+     [
+      8,
+      28,
+      "bamboo"
+     ],
+     [
+      9,
+      28,
+      "bamboo"
+     ],
+     [
+      6,
+      29,
+      "broad"
+     ],
+     [
+      9,
+      29,
+      "broad"
+     ],
+     [
+      8,
+      31,
+      "broad"
+     ],
+     [
+      3,
+      33,
+      "broad"
+     ],
+     [
+      6,
+      33,
+      "ebony"
+     ],
+     [
+      9,
+      33,
+      "broad"
+     ],
+     [
+      10,
+      34,
+      "broad"
+     ],
+     [
+      19,
+      34,
+      "broad"
+     ],
+     [
+      21,
+      34,
+      "broad"
+     ],
+     [
+      24,
+      34,
+      "broad"
+     ],
+     [
+      25,
+      34,
+      "broad"
+     ],
+     [
+      26,
+      34,
+      "coconut"
+     ],
+     [
+      27,
+      34,
+      "coconut"
+     ],
+     [
+      27,
+      35,
+      "teak"
+     ],
+     [
+      9,
+      36,
+      "ancient"
+     ],
+     [
+      11,
+      36,
+      "takian"
+     ],
+     [
+      14,
+      36,
+      "rose"
+     ],
+     [
+      15,
+      36,
+      "ginkgo"
+     ],
+     [
+      5,
+      37,
+      "padauk"
+     ],
+     [
+      11,
+      37,
+      "rose"
+     ],
+     [
+      22,
+      37,
+      "teak"
+     ],
+     [
+      5,
+      38,
+      "makha"
+     ],
+     [
+      14,
+      38,
+      "takian"
+     ],
+     [
+      22,
+      38,
+      "broad"
+     ],
+     [
+      23,
+      38,
+      "rose"
+     ],
+     [
+      26,
+      38,
+      "coconut"
+     ],
+     [
+      27,
+      38,
+      "broad"
+     ],
+     [
+      1,
+      39,
+      "dipt"
+     ],
+     [
+      2,
+      39,
+      "shingchan"
+     ],
+     [
+      5,
+      39,
+      "teak"
+     ],
+     [
+      9,
+      39,
+      "raintree"
+     ],
+     [
+      60,
+      39,
+      "coconut"
+     ],
+     [
+      9,
+      40,
+      "gold"
+     ],
+     [
+      10,
+      40,
+      "gold"
+     ],
+     [
+      18,
+      40,
+      "rose"
+     ],
+     [
+      26,
+      40,
+      "coconut"
+     ],
+     [
+      27,
+      40,
+      "broad"
+     ],
+     [
+      7,
+      41,
+      "padauk"
+     ],
+     [
+      14,
+      41,
+      "teak"
+     ],
+     [
+      25,
+      41,
+      "broad"
+     ],
+     [
+      26,
+      41,
+      "coconut"
+     ],
+     [
+      1,
+      42,
+      "gold"
+     ],
+     [
+      2,
+      42,
+      "gold"
+     ],
+     [
+      6,
+      42,
+      "teak"
+     ],
+     [
+      15,
+      42,
+      "padauk"
+     ],
+     [
+      24,
+      42,
+      "dipt"
+     ],
+     [
+      25,
+      42,
+      "broad"
+     ],
+     [
+      27,
+      42,
+      "coconut"
+     ],
+     [
+      21,
+      43,
+      "sakura"
+     ],
+     [
+      27,
+      43,
+      "broad"
+     ],
+     [
+      58,
+      44,
+      "broad"
+     ]
+    ],
+    "npcs": [
+     {
+      "id": 1000001,
+      "name": "ป้าแก้ว",
+      "title": "🏘️ ชาวเมือง",
+      "color": "#d6559a",
+      "hat": "#e8c66a",
+      "pc": "#6b4a8a",
+      "wear": {
+       "shirt": "dots",
+       "pants": "skirt",
+       "hat": "flower",
+       "acc": "none"
+      },
+      "x": 896,
+      "y": 912,
+      "dir": 0
+     },
+     {
+      "id": 1000002,
+      "name": "ลุงสมชาย",
+      "title": "🏘️ ชาวเมือง",
+      "color": "#7a9a3a",
+      "hat": "#e8c66a",
+      "pc": "#4a5b3a",
+      "wear": {
+       "shirt": "farmer",
+       "pants": "overall",
+       "hat": "straw",
+       "acc": "none"
+      },
+      "x": 1344,
+      "y": 1040,
+      "dir": 0
+     },
+     {
+      "id": 1000003,
+      "name": "น้องมิ้นท์",
+      "title": "🏘️ ชาวเมือง",
+      "color": "#3aa0d6",
+      "hat": "#ffffff",
+      "pc": "#2c3e50",
+      "wear": {
+       "shirt": "hoodie",
+       "pants": "shorts",
+       "hat": "cap",
+       "acc": "none"
+      },
+      "x": 1088,
+      "y": 688,
+      "dir": 0
+     }
+    ],
+    "pets": [
+     {
+      "id": 2000001,
+      "kind": "cat",
+      "v": 0,
+      "x": 1136,
+      "y": 848,
+      "dir": 3
+     },
+     {
+      "id": 2000002,
+      "kind": "dog",
+      "v": 0,
+      "x": 1040,
+      "y": 912,
+      "dir": 3
+     },
+     {
+      "id": 2000003,
+      "kind": "dog",
+      "v": 1,
+      "x": 1040,
+      "y": 784,
+      "dir": 3
+     }
+    ],
+    "players": [
+     {
+      "id": 1,
+      "wet": 0,
+      "veh": "",
+      "held": "",
+      "status": "",
+      "deaf": false,
+      "title": "",
+      "name": "alice",
+      "color": "#e74c3c",
+      "hat": "#e8c66a",
+      "pc": "#5b4a8a",
+      "wear": {
+       "shirt": "tee",
+       "pants": "jeans",
+       "hat": "straw",
+       "acc": "none"
+      },
+      "lamp": false,
+      "pet": "",
+      "pm": "follow",
+      "pax": 320,
+      "pay": 528,
+      "psick": false,
+      "pname": "",
+      "x": 320,
+      "y": 528,
+      "dir": 0,
+      "voice": false
+     }
+    ],
+    "roster": [
+     {
+      "voice": false,
+      "id": 1,
+      "wet": 0,
+      "veh": "",
+      "held": "",
+      "status": "",
+      "deaf": false,
+      "title": "",
+      "name": "alice",
+      "color": "#e74c3c",
+      "hat": "#e8c66a",
+      "pc": "#5b4a8a",
+      "wear": {
+       "shirt": "tee",
+       "pants": "jeans",
+       "hat": "straw",
+       "acc": "none"
+      },
+      "lamp": false,
+      "pet": "",
+      "pm": "follow",
+      "pax": 320,
+      "pay": 528,
+      "psick": false,
+      "pname": "",
+      "x": 320,
+      "y": 528,
+      "dir": 0
+     }
+    ]
+   },
+   {
+    "t": "pst",
+    "pst": {},
+    "names": {}
+   },
+   {
+    "t": "arcs",
+    "a": [
+     [
+      "cab0",
+      0,
+      "idle",
+      0,
+      "",
+      "0/8",
+      0,
+      "rps"
+     ],
+     [
+      "cab1",
+      1,
+      "idle",
+      0,
+      "",
+      "",
+      0,
+      "xo"
+     ],
+     [
+      "cab2",
+      2,
+      "idle",
+      0,
+      "",
+      "0/2",
+      0,
+      "uno"
+     ],
+     [
+      "cab3",
+      3,
+      "idle",
+      0,
+      "",
+      "0/8",
+      0,
+      "react"
+     ],
+     [
+      "cab4",
+      4,
+      "idle",
+      0,
+      "",
+      "0/8",
+      0,
+      "pok"
+     ],
+     [
+      "cab5",
+      5,
+      "idle",
+      0,
+      "",
+      "",
+      0,
+      "c4"
+     ]
+    ]
+   },
+   {
+    "t": "rents",
+    "r": {}
+   },
+   {
+    "t": "ch",
+    "ch": null,
+    "wet": 0,
+    "chain": 0
+   },
+   {
+    "t": "evt",
+    "e": {
+     "id": "derby",
+     "start": 1793973600000,
+     "end": 1793975400000,
+     "on": false,
+     "top": [],
+     "topNb": []
+    }
+   },
+   {
+    "t": "stars",
+    "s": {}
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "crop_carrot": 1,
+     "crop_cabbage": 1,
+     "crop_corn": 1,
+     "crop_tomato": 1,
+     "crop_eggplant": 1,
+     "crop_strawberry": 1,
+     "crop_pumpkin": 1,
+     "crop_potato": 1,
+     "crop_chili": 1,
+     "crop_broccoli": 1,
+     "crop_cherry": 1,
+     "crop_grape": 1,
+     "crop_pineapple": 1,
+     "crop_mango": 1,
+     "crop_melon": 1,
+     "crop_peach": 1,
+     "crop_kiwi": 1,
+     "crop_coconut": 1,
+     "crop_avocado": 1,
+     "crop_blueberry": 1,
+     "crop_olive": 1,
+     "crop_beans": 1,
+     "crop_mushroom": 1,
+     "crop_sunflower": 1,
+     "crop_tulip": 1,
+     "fish_carp": 1,
+     "fish_bass": 1,
+     "fish_shrimp": 1,
+     "fish_crab": 1,
+     "fish_koi": 1,
+     "fish_lobster": 1,
+     "fish_squid": 1,
+     "fish_octopus": 1,
+     "fish_shark": 1,
+     "fish_dolphin": 1,
+     "fish_jelly": 1,
+     "fish_beaver": 1,
+     "fish_flamingo": 1,
+     "fish_coral": 1,
+     "fish_swan": 1,
+     "fish_mermaid": 1,
+     "fish_dragon": 1,
+     "fish_sdragon": 1,
+     "fish_unicorn": 1,
+     "fish_star": 1,
+     "fish_sardine": 1,
+     "fish_anchovy": 1,
+     "fish_mackerel": 1,
+     "fish_snapper": 1,
+     "fish_seabass": 1,
+     "fish_tuna": 1,
+     "fish_bonito": 1,
+     "fish_barracuda": 1,
+     "fish_puffer": 1,
+     "fish_sword": 1,
+     "fish_manta": 1,
+     "fish_hammer": 1,
+     "fish_turtle": 1,
+     "fish_seal": 1,
+     "fish_orca": 1,
+     "fish_whaleshark": 1,
+     "fish_bluewhale": 1,
+     "fish_kraken": 1,
+     "fish_angler": 1,
+     "fish_pearl": 1,
+     "fish_catfish": 1,
+     "fish_shell": 1,
+     "fish_frog": 1,
+     "fish_oyster": 1,
+     "fish_whale": 1,
+     "fish_otter": 1,
+     "fish_croc": 1,
+     "fish_humpback": 1,
+     "fish_penguin": 1,
+     "fish_dino": 1,
+     "egg": 1,
+     "duck_egg": 1,
+     "milk": 1,
+     "wool": 1,
+     "truffle": 1,
+     "honey": 1,
+     "alpaca_wool": 1,
+     "horse_milk": 1,
+     "chestnut": 1,
+     "log": 1,
+     "hardwood": 1,
+     "bamboo": 1,
+     "shoot": 1,
+     "pinewood": 1,
+     "resin": 1,
+     "palmwood": 1,
+     "coconut": 1,
+     "teak": 1,
+     "goldwood": 1,
+     "kunflower": 1,
+     "rosewood": 1,
+     "maplewood": 1,
+     "syrup": 1,
+     "sakurawood": 1,
+     "petal": 1,
+     "ebony": 1,
+     "amber": 1,
+     "ancientwood": 1,
+     "padaukwood": 1,
+     "oakwood": 1,
+     "acorn": 1,
+     "willowwood": 1,
+     "diptwood": 1,
+     "takianwood": 1,
+     "ginkgowood": 1,
+     "ginkgonut": 1,
+     "makhawood": 1,
+     "raintreewood": 1,
+     "shingwood": 1,
+     "plank": 1,
+     "stone": 1,
+     "copper": 1,
+     "silver": 1,
+     "amethyst": 1,
+     "emerald": 1,
+     "opal": 1,
+     "sapphire": 1,
+     "jade": 1,
+     "moonstone": 1,
+     "mythril": 1,
+     "coal": 1,
+     "iron": 1,
+     "gold": 1,
+     "ruby": 1,
+     "crystal": 1,
+     "topaz": 1,
+     "garnet": 1,
+     "obsidian": 1,
+     "sunstone": 1,
+     "starcore": 1,
+     "dish_vegbowl": 1,
+     "dish_boiledegg": 1,
+     "dish_saltfish": 1,
+     "dish_grill": 1,
+     "dish_omelet": 1,
+     "dish_seafood": 1,
+     "dish_feast": 1,
+     "dish_fishsoup": 1,
+     "dish_sashimi": 1,
+     "dish_fishburger": 1,
+     "dish_fishpie": 1,
+     "dish_fishmix": 1,
+     "dish_fishstew": 1,
+     "dish_platter": 1,
+     "dish_curry": 1,
+     "dish_salad": 1,
+     "dish_noodle": 1,
+     "dish_pizza": 1,
+     "dish_pasta": 1,
+     "dish_pie": 1,
+     "dish_cake": 1,
+     "dish_sharksoup": 1,
+     "dish_party": 1,
+     "dish_banquet": 1
+    }
+   },
+   {
+    "t": "cat",
+    "c": {},
+    "recover": 0.03
+   },
+   {
+    "t": "en",
+    "spent": 0,
+    "v": 100,
+    "ex": false,
+    "rate": 0.00025,
+    "resume": 10,
+    "rareUntil": 0,
+    "wk": null,
+    "wkScale": 50,
+    "wkMax": 0.5,
+    "wkHalf": 120000
+   },
+   {
+    "t": "chatlog",
+    "list": []
+   },
+   {
+    "t": "lotto",
+    "l": {
+     "buyers": [],
+     "hist": [],
+     "near": false,
+     "pot": 30000,
+     "drawAt": 1793973600000,
+     "now": 1793934000000,
+     "hash": "f054b8a12f40aac89428350c2785bab97f3c072eaa4fed3f772febd405e98e2a",
+     "mine": [],
+     "max": 6,
+     "price": 50,
+     "minLv": 5,
+     "ok": false,
+     "open": true,
+     "last": null,
+     "heat": 0,
+     "rate": 0
+    }
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 65,
+     "seed_carrot": 5,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "🏛️ ยกเลิกตู้เซฟกองกลางแล้ว ความสำเร็จสายลงขันผ่านให้ทุกคน • ได้ฉายา \"ผู้อุปถัมภ์เมือง\" \"คหบดีใจบุญ\" \"เสาหลักของเมือง\" (เลือกใช้ได้ที่ 🏅)"
+   },
+   {
+    "t": "ach",
+    "cnt": {
+     "wealth": 65,
+     "streak": 1
+    },
+    "got": {
+     "give2k": 1793934000000,
+     "give10k": 1793934000000,
+     "give30k": 1793934000000
+    },
+    "sel": ""
+   },
+   {
+    "t": "ach",
+    "cnt": {
+     "wealth": 65,
+     "streak": 1
+    },
+    "got": {
+     "give2k": 1793934000000,
+     "give10k": 1793934000000,
+     "give30k": 1793934000000
+    },
+    "sel": ""
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      0,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ],
+     [
+      "plant5",
+      0,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "bank",
+    "bal": 0,
+    "cap": 100000
+   },
+   {
+    "wn": 0,
+    "wgoal": 250,
+    "wdone": false,
+    "t": "village",
+    "n": 0,
+    "goal": 50,
+    "done": false,
+    "left": 0,
+    "mine": 0,
+    "full": 3
+   },
+   {
+    "t": "log",
+    "list": []
+   },
+   {
+    "t": "gift",
+    "item": "wear_hat_flower"
+   },
+   {
+    "t": "log",
+    "e": [
+     1793934000000,
+     "👋 alice เข้ามาในเมือง"
+    ]
+   },
+   {
+    "t": "newbie",
+    "id": 2,
+    "name": "bob"
+   },
+   {
+    "t": "log",
+    "e": [
+     1793934000000,
+     "👋 bob เข้ามาในเมือง"
+    ]
+   },
+   {
+    "t": "on",
+    "voice": false,
+    "id": 2,
+    "wet": 0,
+    "veh": "",
+    "held": "",
+    "status": "",
+    "deaf": false,
+    "title": "",
+    "name": "bob",
+    "color": "#3498db",
+    "hat": "#e8c66a",
+    "pc": "#5b4a8a",
+    "wear": {
+     "shirt": "tee",
+     "pants": "jeans",
+     "hat": "straw",
+     "acc": "none"
+    },
+    "lamp": false,
+    "pet": "",
+    "pm": "follow",
+    "pax": 320,
+    "pay": 528,
+    "psick": false,
+    "pname": "",
+    "x": 320,
+    "y": 528,
+    "dir": 0
+   },
+   {
+    "t": "p+",
+    "id": 2,
+    "held": "",
+    "title": "",
+    "name": "bob",
+    "color": "#3498db",
+    "hat": "#e8c66a",
+    "pc": "#5b4a8a",
+    "wear": {
+     "shirt": "tee",
+     "pants": "jeans",
+     "hat": "straw",
+     "acc": "none"
+    },
+    "lamp": false,
+    "pet": "",
+    "pm": "follow",
+    "pax": 320,
+    "pay": 528,
+    "psick": false,
+    "pname": "",
+    "x": 320,
+    "y": 528
+   },
+   {
+    "t": "tp",
+    "x": 336,
+    "y": 724
+   },
+   {
+    "t": "tp",
+    "x": 336,
+    "y": 724
+   },
+   {
+    "t": "chat",
+    "id": 1,
+    "name": "alice",
+    "text": "สวัสดี"
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 1,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "hoe",
+    "id": 1,
+    "x": 208,
+    "y": 560
+   },
+   {
+    "t": "dur",
+    "d": {
+     "hoe": [
+      119,
+      120,
+      0
+     ],
+     "rod": [
+      100,
+      100,
+      0
+     ],
+     "axe": [
+      90,
+      90,
+      0
+     ],
+     "pick": [
+      100,
+      100,
+      0
+     ]
+    }
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 515,
+     "seed_carrot": 5,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ คู่มือเริ่มต้น: ขุดดินในรั้วแปลงผัก ⛏️ (+🪙15)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      0,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ],
+     [
+      "plant5",
+      0,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ],
+     [
+      "plant5",
+      0,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "use",
+    "id": 2
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "hoe",
+    "id": 2,
+    "x": 272,
+    "y": 496
+   },
+   {
+    "t": "msg",
+    "text": "💧 น้ำเต็มบัวแล้ว (10/10)"
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 515,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "🌱 เมล็ดมือใหม่ โตไวพิเศษ! (1/3) รดน้ำแล้วรอแป๊บเดียว"
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 3,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "plant",
+    "id": 1,
+    "x": 208,
+    "y": 560
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 530,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ คู่มือเริ่มต้น: ปลูกเมล็ดลงดินที่ขุด 🥕 (+🪙15)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ],
+     [
+      "plant5",
+      0,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "wtr",
+    "n": 9
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 0,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "water",
+    "id": 1,
+    "x": 208,
+    "y": 560
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 4,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 545,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ คู่มือเริ่มต้น: รดน้ำต้นพืช 💧 (+🪙15)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "wn": 1,
+    "wgoal": 250,
+    "wdone": false,
+    "t": "village",
+    "n": 1,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 1,
+    "full": 3
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 1,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "use",
+    "id": 2
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "plant",
+    "id": 2,
+    "x": 272,
+    "y": 496
+   },
+   {
+    "t": "use",
+    "id": 2
+   },
+   {
+    "t": "use",
+    "id": 2
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 0,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "water",
+    "id": 2,
+    "x": 272,
+    "y": 496
+   },
+   {
+    "wn": 2,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 2,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 1,
+    "full": 3
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 1,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 1,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "chat",
+    "id": 1000001,
+    "name": "ป้าแก้ว",
+    "text": "ซื้อที่ดินสร้างบ้านได้ 🏠",
+    "npc": 1
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 2,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 2,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 2,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 2,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 3,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 3,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "hun",
+    "v": 98
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 4,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 4,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 2,
+     "f": 4,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 2,
+     "f": 4,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "tree",
+    "x": 6,
+    "y": 34,
+    "on": true,
+    "k": "gold"
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 2,
+     "f": 5,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 2,
+     "f": 5,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "chat",
+    "id": 1000002,
+    "name": "ลุงสมชาย",
+    "text": "อัปเลเวลปลดล็อกของใหม่ ⭐",
+    "npc": 1
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 3,
+     "f": 6,
+     "w": 1,
+     "o": "alice",
+     "l": 1
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 3,
+     "f": 6,
+     "w": 1,
+     "o": "bob",
+     "l": 1
+    }
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 545,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 9,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "msg",
+    "text": "เก็บ 🥕 แครอท"
+   },
+   {
+    "t": "sfx",
+    "k": "harvest",
+    "id": 1,
+    "x": 208,
+    "y": 560
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 565,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ คู่มือเริ่มต้น: เก็บเกี่ยวผลผลิตที่โตแล้ว 🌽 (+🪙20)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 1,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 1,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "wn": 3,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 3,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 2,
+    "full": 3
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 575,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "🏆 ความสำเร็จใหม่: 🌾 ต้นแรกของฉัน (+🪙10)"
+   },
+   {
+    "t": "sfx",
+    "k": "levelup",
+    "id": 1,
+    "x": 208,
+    "y": 560,
+    "self": 1
+   },
+   {
+    "t": "ach",
+    "cnt": {
+     "dig": 1,
+     "plant": 1,
+     "water": 1,
+     "harvest": 1,
+     "wealth": 575,
+     "streak": 1
+    },
+    "got": {
+     "give2k": 1793934000000,
+     "give10k": 1793934000000,
+     "give30k": 1793934000000,
+     "harvest1": 1793934025800
+    },
+    "sel": ""
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 583,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "📖 สมุดสะสมพืชผล: 1/20 (+🪙8)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 2,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 1,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "use",
+    "id": 2
+   },
+   {
+    "t": "sfx",
+    "k": "harvest",
+    "id": 2,
+    "x": 272,
+    "y": 496
+   },
+   {
+    "wn": 4,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 4,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 2,
+    "full": 3
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 1,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 583,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 7,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "sfx",
+    "k": "cast",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "dur",
+    "d": {
+     "hoe": [
+      119,
+      120,
+      0
+     ],
+     "rod": [
+      99,
+      100,
+      0
+     ],
+     "axe": [
+      90,
+      90,
+      0
+     ],
+     "pick": [
+      100,
+      100,
+      0
+     ]
+    }
+   },
+   {
+    "t": "hun",
+    "v": 96
+   },
+   {
+    "t": "fg",
+    "per": 754.5830731512979,
+    "half": 0.0923477745638229,
+    "c": 0.33593679745681587,
+    "ph": 178.07131758169936,
+    "win": 4200
+   },
+   {
+    "t": "msg",
+    "text": "🎣 ปลากินเบ็ดแล้ว! กดตอนตัวชี้อยู่ตรงกลาง!"
+   },
+   {
+    "t": "sfx",
+    "k": "bite",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "fg",
+    "off": 1
+   },
+   {
+    "t": "fight",
+    "cls": 1,
+    "sched": [
+     [
+      1100,
+      886
+     ]
+    ],
+    "dist": 55,
+    "ten": 20,
+    "str": 62,
+    "run": 16,
+    "spd": 30,
+    "rise": 38,
+    "perfect": false
+   },
+   {
+    "t": "msg",
+    "text": "🎣 ปลาติดเบ็ด! กดค้างเพื่อกรอสาย ปล่อยเมื่อสายตึงเกินไป"
+   },
+   {
+    "t": "fs",
+    "ten": 27.6,
+    "dist": 49,
+    "el": 200
+   },
+   {
+    "t": "fs",
+    "ten": 35.2,
+    "dist": 43,
+    "el": 400
+   },
+   {
+    "t": "fs",
+    "ten": 42.8,
+    "dist": 36.5,
+    "el": 600
+   },
+   {
+    "t": "fs",
+    "ten": 50.4,
+    "dist": 28.7,
+    "el": 800
+   },
+   {
+    "t": "fs",
+    "ten": 58,
+    "dist": 20.9,
+    "el": 1000
+   },
+   {
+    "t": "fs",
+    "ten": 73.4,
+    "dist": 15.1,
+    "el": 1200
+   },
+   {
+    "t": "fs",
+    "ten": 74.8,
+    "dist": 19.1,
+    "el": 1400
+   },
+   {
+    "t": "fs",
+    "ten": 76.2,
+    "dist": 23.1,
+    "el": 1600
+   },
+   {
+    "t": "fs",
+    "ten": 77.6,
+    "dist": 27.1,
+    "el": 1800
+   },
+   {
+    "t": "fs",
+    "ten": 77.4,
+    "dist": 30.7,
+    "el": 2000
+   },
+   {
+    "t": "fs",
+    "ten": 66.4,
+    "dist": 31.5,
+    "el": 2200
+   },
+   {
+    "t": "fs",
+    "ten": 55.4,
+    "dist": 32.3,
+    "el": 2400
+   },
+   {
+    "t": "fs",
+    "ten": 52.9,
+    "dist": 26.5,
+    "el": 2600
+   },
+   {
+    "t": "fs",
+    "ten": 59,
+    "dist": 14,
+    "el": 2800
+   },
+   {
+    "t": "fs",
+    "ten": 65.1,
+    "dist": 1.6,
+    "el": 3000
+   },
+   {
+    "t": "fe",
+    "r": "win"
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 583,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 7,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 9,
+     "fish": 29,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "msg",
+    "text": "🎉 ปลาตัวแรกของคุณเป็น 🎏 ปลาคอยทอง! โชคดีสุดๆ"
+   },
+   {
+    "t": "log",
+    "e": [
+     1793934035325,
+     "🎣 alice ตกปลาครั้งแรกได้🎏 ปลาคอยทอง!"
+    ]
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 603,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 7,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ คู่มือเริ่มต้น: ตกปลาริมสระ 🎣 (+🪙20)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest",
+      "fish"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 2,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "wn": 5,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 5,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 3,
+    "full": 3
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      1,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest",
+      "fish"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 3,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 613,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 7,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "🏆 ความสำเร็จใหม่: 🎣 ปลาตัวแรก (+🪙10)"
+   },
+   {
+    "t": "sfx",
+    "k": "levelup",
+    "id": 1,
+    "x": 336,
+    "y": 720,
+    "self": 1
+   },
+   {
+    "t": "ach",
+    "cnt": {
+     "dig": 1,
+     "plant": 1,
+     "water": 1,
+     "harvest": 1,
+     "fish": 1,
+     "wealth": 613,
+     "streak": 1
+    },
+    "got": {
+     "give2k": 1793934000000,
+     "give10k": 1793934000000,
+     "give30k": 1793934000000,
+     "harvest1": 1793934025800,
+     "fish1": 1793934035325
+    },
+    "sel": ""
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 621,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 7,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "📖 สมุดสะสมปลา: 1/40 (+🪙8)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      1,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest",
+      "fish"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [
+      "koi"
+     ],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 3,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "catch",
+    "id": 1,
+    "f": "koi"
+   },
+   {
+    "t": "sfx",
+    "k": "catch",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 621,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 6,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "sfx",
+    "k": "cast",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "dur",
+    "d": {
+     "hoe": [
+      119,
+      120,
+      0
+     ],
+     "rod": [
+      98,
+      100,
+      0
+     ],
+     "axe": [
+      90,
+      90,
+      0
+     ],
+     "pick": [
+      100,
+      100,
+      0
+     ]
+    }
+   },
+   {
+    "t": "chat",
+    "id": 1000003,
+    "name": "น้องมิ้นท์",
+    "text": "ท้าเพื่อนเล่น XO ไหม ❌⭕",
+    "npc": 1
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "crop_carrot": 1,
+     "crop_cabbage": 1,
+     "crop_corn": 1,
+     "crop_tomato": 1,
+     "crop_eggplant": 1,
+     "crop_strawberry": 1,
+     "crop_pumpkin": 1,
+     "crop_potato": 1,
+     "crop_chili": 1,
+     "crop_broccoli": 1,
+     "crop_cherry": 1,
+     "crop_grape": 1,
+     "crop_pineapple": 1,
+     "crop_mango": 1,
+     "crop_melon": 1,
+     "crop_peach": 1,
+     "crop_kiwi": 1,
+     "crop_coconut": 1,
+     "crop_avocado": 1,
+     "crop_blueberry": 1,
+     "crop_olive": 1,
+     "crop_beans": 1,
+     "crop_mushroom": 1,
+     "crop_sunflower": 1,
+     "crop_tulip": 1,
+     "fish_carp": 1,
+     "fish_bass": 1,
+     "fish_shrimp": 1,
+     "fish_crab": 1,
+     "fish_koi": 1,
+     "fish_lobster": 1,
+     "fish_squid": 1,
+     "fish_octopus": 1,
+     "fish_shark": 1,
+     "fish_dolphin": 1,
+     "fish_jelly": 1,
+     "fish_beaver": 1,
+     "fish_flamingo": 1,
+     "fish_coral": 1,
+     "fish_swan": 1,
+     "fish_mermaid": 1,
+     "fish_dragon": 1,
+     "fish_sdragon": 1,
+     "fish_unicorn": 1,
+     "fish_star": 1,
+     "fish_sardine": 1,
+     "fish_anchovy": 1,
+     "fish_mackerel": 1,
+     "fish_snapper": 1,
+     "fish_seabass": 1,
+     "fish_tuna": 1,
+     "fish_bonito": 1,
+     "fish_barracuda": 1,
+     "fish_puffer": 1,
+     "fish_sword": 1,
+     "fish_manta": 1,
+     "fish_hammer": 1,
+     "fish_turtle": 1,
+     "fish_seal": 1,
+     "fish_orca": 1,
+     "fish_whaleshark": 1,
+     "fish_bluewhale": 1,
+     "fish_kraken": 1,
+     "fish_angler": 1,
+     "fish_pearl": 1,
+     "fish_catfish": 1,
+     "fish_shell": 1,
+     "fish_frog": 1,
+     "fish_oyster": 1,
+     "fish_whale": 1,
+     "fish_otter": 1,
+     "fish_croc": 1,
+     "fish_humpback": 1,
+     "fish_penguin": 1,
+     "fish_dino": 1,
+     "egg": 1,
+     "duck_egg": 1,
+     "milk": 1,
+     "wool": 1,
+     "truffle": 1,
+     "honey": 1,
+     "alpaca_wool": 1,
+     "horse_milk": 1,
+     "chestnut": 1,
+     "log": 1,
+     "hardwood": 1,
+     "bamboo": 1,
+     "shoot": 1,
+     "pinewood": 1,
+     "resin": 1,
+     "palmwood": 1,
+     "coconut": 1,
+     "teak": 1,
+     "goldwood": 1,
+     "kunflower": 1,
+     "rosewood": 1,
+     "maplewood": 1,
+     "syrup": 1,
+     "sakurawood": 1,
+     "petal": 1,
+     "ebony": 1,
+     "amber": 1,
+     "ancientwood": 1,
+     "padaukwood": 1,
+     "oakwood": 1,
+     "acorn": 1,
+     "willowwood": 1,
+     "diptwood": 1,
+     "takianwood": 1,
+     "ginkgowood": 1,
+     "ginkgonut": 1,
+     "makhawood": 1,
+     "raintreewood": 1,
+     "shingwood": 1,
+     "plank": 1,
+     "stone": 1,
+     "copper": 1,
+     "silver": 1,
+     "amethyst": 1,
+     "emerald": 1,
+     "opal": 1,
+     "sapphire": 1,
+     "jade": 1,
+     "moonstone": 1,
+     "mythril": 1,
+     "coal": 1,
+     "iron": 1,
+     "gold": 1,
+     "ruby": 1,
+     "crystal": 1,
+     "topaz": 1,
+     "garnet": 1,
+     "obsidian": 1,
+     "sunstone": 1,
+     "starcore": 1,
+     "dish_vegbowl": 1,
+     "dish_boiledegg": 1,
+     "dish_saltfish": 1,
+     "dish_grill": 1,
+     "dish_omelet": 1,
+     "dish_seafood": 1,
+     "dish_feast": 1,
+     "dish_fishsoup": 1,
+     "dish_sashimi": 1,
+     "dish_fishburger": 1,
+     "dish_fishpie": 1,
+     "dish_fishmix": 1,
+     "dish_fishstew": 1,
+     "dish_platter": 1,
+     "dish_curry": 1,
+     "dish_salad": 1,
+     "dish_noodle": 1,
+     "dish_pizza": 1,
+     "dish_pasta": 1,
+     "dish_pie": 1,
+     "dish_cake": 1,
+     "dish_sharksoup": 1,
+     "dish_party": 1,
+     "dish_banquet": 1
+    }
+   },
+   {
+    "t": "tree",
+    "x": 18,
+    "y": 26,
+    "on": true,
+    "k": "broad"
+   },
+   {
+    "t": "fg",
+    "per": 981.4808313734828,
+    "half": 0.10946399141335861,
+    "c": 0.41886138678528373,
+    "ph": 1704.051216563663,
+    "win": 4200
+   },
+   {
+    "t": "msg",
+    "text": "🎣 ปลากินเบ็ดแล้ว! กดตอนตัวชี้อยู่ตรงกลาง!"
+   },
+   {
+    "t": "sfx",
+    "k": "bite",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "fg",
+    "off": 1
+   },
+   {
+    "t": "fight",
+    "cls": 0,
+    "sched": [],
+    "dist": 55,
+    "ten": 20,
+    "str": 0,
+    "run": 0,
+    "spd": 40,
+    "rise": 38,
+    "perfect": false
+   },
+   {
+    "t": "msg",
+    "text": "🎣 ปลาติดเบ็ด! กดค้างเพื่อกรอสาย ปล่อยเมื่อสายตึงเกินไป"
+   },
+   {
+    "t": "fs",
+    "ten": 26.1,
+    "dist": 42.2,
+    "el": 200
+   },
+   {
+    "t": "fs",
+    "ten": 32.2,
+    "dist": 29.4,
+    "el": 400
+   },
+   {
+    "t": "fs",
+    "ten": 38.2,
+    "dist": 16.6,
+    "el": 600
+   },
+   {
+    "t": "fs",
+    "ten": 44.3,
+    "dist": 1.4,
+    "el": 800
+   },
+   {
+    "t": "fe",
+    "r": "win"
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 621,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 6,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 9,
+     "fish": 46,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "msg",
+    "text": "✨ ชักเย่อสวย! ได้ 🐟 ปลาตะเพียน!"
+   },
+   {
+    "wn": 6,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 6,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 4,
+    "full": 3
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      2,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest",
+      "fish"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [
+      "koi"
+     ],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 4,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 629,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 6,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "📖 สมุดสะสมปลา: 2/40 (+🪙8)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      2,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest",
+      "fish"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [
+      "koi",
+      "carp"
+     ],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 4,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "catch",
+    "id": 1,
+    "f": "carp"
+   },
+   {
+    "t": "sfx",
+    "k": "catch",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "hun",
+    "v": 95
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 629,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 5,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "sfx",
+    "k": "cast",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "dur",
+    "d": {
+     "hoe": [
+      119,
+      120,
+      0
+     ],
+     "rod": [
+      96,
+      100,
+      0
+     ],
+     "axe": [
+      90,
+      90,
+      0
+     ],
+     "pick": [
+      100,
+      100,
+      0
+     ]
+    }
+   },
+   {
+    "t": "fg",
+    "per": 1194.9207374593243,
+    "half": 0.10305809657089414,
+    "c": 0.6137148970738053,
+    "ph": 614.7387631487418,
+    "win": 4200
+   },
+   {
+    "t": "msg",
+    "text": "🎣 ปลากินเบ็ดแล้ว! กดตอนตัวชี้อยู่ตรงกลาง!"
+   },
+   {
+    "t": "sfx",
+    "k": "bite",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "fg",
+    "off": 1
+   },
+   {
+    "t": "fight",
+    "cls": 0,
+    "sched": [],
+    "dist": 55,
+    "ten": 20,
+    "str": 0,
+    "run": 0,
+    "spd": 40,
+    "rise": 38,
+    "perfect": false
+   },
+   {
+    "t": "msg",
+    "text": "🎣 ปลาติดเบ็ด! กดค้างเพื่อกรอสาย ปล่อยเมื่อสายตึงเกินไป"
+   },
+   {
+    "t": "fs",
+    "ten": 26.1,
+    "dist": 42.2,
+    "el": 200
+   },
+   {
+    "t": "fs",
+    "ten": 32.2,
+    "dist": 29.4,
+    "el": 400
+   },
+   {
+    "t": "fs",
+    "ten": 38.2,
+    "dist": 16.6,
+    "el": 600
+   },
+   {
+    "t": "fs",
+    "ten": 44.3,
+    "dist": 1.4,
+    "el": 800
+   },
+   {
+    "t": "fe",
+    "r": "win"
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 629,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 5,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 2
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        2
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 9,
+     "fish": 63,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "msg",
+    "text": "✨ ชักเย่อสวย! ได้ 🐟 ปลาตะเพียน!"
+   },
+   {
+    "wn": 7,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 7,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 5,
+    "full": 3
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 9,
+     "fish": 103,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 659,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 5,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 2
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        2
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ เควสสำเร็จ: ตกปลา (+40 XP, +🪙30)"
+   },
+   {
+    "t": "sfx",
+    "k": "levelup",
+    "id": 1,
+    "x": 336,
+    "y": 720,
+    "self": 1
+   },
+   {
+    "t": "title",
+    "id": 1,
+    "title": "หน้าใหม่ใจสู้"
+   },
+   {
+    "t": "msg",
+    "text": "🏅 ได้ฉายา \"หน้าใหม่ใจสู้\""
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      3,
+      1
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 1,
+    "title": "หน้าใหม่ใจสู้",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest",
+      "fish"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [
+      "koi",
+      "carp"
+     ],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 5,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "catch",
+    "id": 1,
+    "f": "carp"
+   },
+   {
+    "t": "sfx",
+    "k": "catch",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 659,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 2
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        2
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "sfx",
+    "k": "cast",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "dur",
+    "d": {
+     "hoe": [
+      119,
+      120,
+      0
+     ],
+     "rod": [
+      95,
+      100,
+      0
+     ],
+     "axe": [
+      90,
+      90,
+      0
+     ],
+     "pick": [
+      100,
+      100,
+      0
+     ]
+    }
+   },
+   {
+    "t": "hun",
+    "v": 93
+   },
+   {
+    "t": "tree",
+    "x": 48,
+    "y": 5,
+    "on": true,
+    "k": "oak"
+   },
+   {
+    "t": "fg",
+    "per": 1112.5272196833976,
+    "half": 0.09970354225602934,
+    "c": 0.41667414130643016,
+    "ph": 392.9909573988715,
+    "win": 4200
+   },
+   {
+    "t": "msg",
+    "text": "🎣 ปลากินเบ็ดแล้ว! กดตอนตัวชี้อยู่ตรงกลาง!"
+   },
+   {
+    "t": "sfx",
+    "k": "bite",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "fg",
+    "off": 1
+   },
+   {
+    "t": "fight",
+    "cls": 0,
+    "sched": [],
+    "dist": 55,
+    "ten": 20,
+    "str": 0,
+    "run": 0,
+    "spd": 40,
+    "rise": 38,
+    "perfect": false
+   },
+   {
+    "t": "msg",
+    "text": "🎣 ปลาติดเบ็ด! กดค้างเพื่อกรอสาย ปล่อยเมื่อสายตึงเกินไป"
+   },
+   {
+    "t": "fs",
+    "ten": 26.1,
+    "dist": 42.2,
+    "el": 200
+   },
+   {
+    "t": "fs",
+    "ten": 32.2,
+    "dist": 29.4,
+    "el": 400
+   },
+   {
+    "t": "fs",
+    "ten": 38.2,
+    "dist": 16.6,
+    "el": 600
+   },
+   {
+    "t": "fs",
+    "ten": 44.3,
+    "dist": 1.4,
+    "el": 800
+   },
+   {
+    "t": "fe",
+    "r": "win"
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 659,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 9,
+     "fish": 120,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "msg",
+    "text": "✨ ชักเย่อสวย! ได้ 🐟 ปลาตะเพียน!"
+   },
+   {
+    "wn": 8,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 8,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 6,
+    "full": 3
+   },
+   {
+    "t": "catch",
+    "id": 1,
+    "f": "carp"
+   },
+   {
+    "t": "sfx",
+    "k": "catch",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 635,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 635,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934025800,
+        1
+       ]
+      ],
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "ซื้อ 🥕 เมล็ดแครอท x3"
+   },
+   {
+    "t": "sfx",
+    "k": "coin",
+    "id": 1,
+    "x": 720,
+    "y": 560,
+    "self": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 635,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3
+    },
+    "fr": {
+     "l": {
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 655,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3
+    },
+    "fr": {
+     "l": {
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "crop_carrot": 1,
+     "crop_cabbage": 1,
+     "crop_corn": 1,
+     "crop_tomato": 1,
+     "crop_eggplant": 1,
+     "crop_strawberry": 1,
+     "crop_pumpkin": 1,
+     "crop_potato": 1,
+     "crop_chili": 1,
+     "crop_broccoli": 1,
+     "crop_cherry": 1,
+     "crop_grape": 1,
+     "crop_pineapple": 1,
+     "crop_mango": 1,
+     "crop_melon": 1,
+     "crop_peach": 1,
+     "crop_kiwi": 1,
+     "crop_coconut": 1,
+     "crop_avocado": 1,
+     "crop_blueberry": 1,
+     "crop_olive": 1,
+     "crop_beans": 1,
+     "crop_mushroom": 1,
+     "crop_sunflower": 1,
+     "crop_tulip": 1,
+     "fish_carp": 1,
+     "fish_bass": 1,
+     "fish_shrimp": 1,
+     "fish_crab": 1,
+     "fish_koi": 1,
+     "fish_lobster": 1,
+     "fish_squid": 1,
+     "fish_octopus": 1,
+     "fish_shark": 1,
+     "fish_dolphin": 1,
+     "fish_jelly": 1,
+     "fish_beaver": 1,
+     "fish_flamingo": 1,
+     "fish_coral": 1,
+     "fish_swan": 1,
+     "fish_mermaid": 1,
+     "fish_dragon": 1,
+     "fish_sdragon": 1,
+     "fish_unicorn": 1,
+     "fish_star": 1,
+     "fish_sardine": 1,
+     "fish_anchovy": 1,
+     "fish_mackerel": 1,
+     "fish_snapper": 1,
+     "fish_seabass": 1,
+     "fish_tuna": 1,
+     "fish_bonito": 1,
+     "fish_barracuda": 1,
+     "fish_puffer": 1,
+     "fish_sword": 1,
+     "fish_manta": 1,
+     "fish_hammer": 1,
+     "fish_turtle": 1,
+     "fish_seal": 1,
+     "fish_orca": 1,
+     "fish_whaleshark": 1,
+     "fish_bluewhale": 1,
+     "fish_kraken": 1,
+     "fish_angler": 1,
+     "fish_pearl": 1,
+     "fish_catfish": 1,
+     "fish_shell": 1,
+     "fish_frog": 1,
+     "fish_oyster": 1,
+     "fish_whale": 1,
+     "fish_otter": 1,
+     "fish_croc": 1,
+     "fish_humpback": 1,
+     "fish_penguin": 1,
+     "fish_dino": 1,
+     "egg": 1,
+     "duck_egg": 1,
+     "milk": 1,
+     "wool": 1,
+     "truffle": 1,
+     "honey": 1,
+     "alpaca_wool": 1,
+     "horse_milk": 1,
+     "chestnut": 1,
+     "log": 1,
+     "hardwood": 1,
+     "bamboo": 1,
+     "shoot": 1,
+     "pinewood": 1,
+     "resin": 1,
+     "palmwood": 1,
+     "coconut": 1,
+     "teak": 1,
+     "goldwood": 1,
+     "kunflower": 1,
+     "rosewood": 1,
+     "maplewood": 1,
+     "syrup": 1,
+     "sakurawood": 1,
+     "petal": 1,
+     "ebony": 1,
+     "amber": 1,
+     "ancientwood": 1,
+     "padaukwood": 1,
+     "oakwood": 1,
+     "acorn": 1,
+     "willowwood": 1,
+     "diptwood": 1,
+     "takianwood": 1,
+     "ginkgowood": 1,
+     "ginkgonut": 1,
+     "makhawood": 1,
+     "raintreewood": 1,
+     "shingwood": 1,
+     "plank": 1,
+     "stone": 1,
+     "copper": 1,
+     "silver": 1,
+     "amethyst": 1,
+     "emerald": 1,
+     "opal": 1,
+     "sapphire": 1,
+     "jade": 1,
+     "moonstone": 1,
+     "mythril": 1,
+     "coal": 1,
+     "iron": 1,
+     "gold": 1,
+     "ruby": 1,
+     "crystal": 1,
+     "topaz": 1,
+     "garnet": 1,
+     "obsidian": 1,
+     "sunstone": 1,
+     "starcore": 1,
+     "dish_vegbowl": 1,
+     "dish_boiledegg": 1,
+     "dish_saltfish": 1,
+     "dish_grill": 1,
+     "dish_omelet": 1,
+     "dish_seafood": 1,
+     "dish_feast": 1,
+     "dish_fishsoup": 1,
+     "dish_sashimi": 1,
+     "dish_fishburger": 1,
+     "dish_fishpie": 1,
+     "dish_fishmix": 1,
+     "dish_fishstew": 1,
+     "dish_platter": 1,
+     "dish_curry": 1,
+     "dish_salad": 1,
+     "dish_noodle": 1,
+     "dish_pizza": 1,
+     "dish_pasta": 1,
+     "dish_pie": 1,
+     "dish_cake": 1,
+     "dish_sharksoup": 1,
+     "dish_party": 1,
+     "dish_banquet": 1
+    }
+   },
+   {
+    "t": "msg",
+    "text": "ขาย 🥕 แครอท x1 ได้ 🪙 20"
+   },
+   {
+    "t": "cat",
+    "c": {},
+    "recover": 0.03
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 675,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3
+    },
+    "fr": {
+     "l": {
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ คู่มือเริ่มต้น: ขายของที่ร้านเมล็ดพันธุ์ 🪙 (+🪙20)"
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 825,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3
+    },
+    "fr": {
+     "l": {
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 825,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3,
+     "furn_chair": 1
+    },
+    "fr": {
+     "l": {
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 825,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3,
+     "furn_chair": 1,
+     "furn_plant": 1
+    },
+    "fr": {
+     "l": {
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 825,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1
+    },
+    "fr": {
+     "l": {
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "log",
+    "e": [
+     1793934067425,
+     "🎓 alice ผ่านคู่มือเริ่มต้นครบแล้ว!"
+    ]
+   },
+   {
+    "t": "msg",
+    "text": "🎓 ผ่านคู่มือเริ่มต้นครบ! รับ 🪙150 + 🪑 เก้าอี้ + 🪴 ต้นไม้ + 🔦 ตะเกียง (เปิดโหมดตกแต่งบ้านด้วยปุ่ม 🏠)"
+   },
+   {
+    "t": "sfx",
+    "k": "levelup",
+    "id": 1,
+    "x": 720,
+    "y": 560,
+    "self": 1
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      3,
+      1
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 1,
+    "title": "หน้าใหม่ใจสู้",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest",
+      "fish",
+      "sell"
+     ],
+     "final": true,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [
+      "koi",
+      "carp"
+     ],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 6,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "sfx",
+    "k": "coin",
+    "id": 1,
+    "x": 720,
+    "y": 560,
+    "self": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 815,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 4,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1
+    },
+    "fr": {
+     "l": {
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 815,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_koi": 1,
+     "fish_carp": 3,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1
+    },
+    "fr": {
+     "l": {
+      "fish_koi": [
+       [
+        1793934035325,
+        1
+       ]
+      ],
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "ซื้อ 🪱 เหยื่อตกปลา (ไส้เดือน) x5"
+   },
+   {
+    "t": "sfx",
+    "k": "coin",
+    "id": 1,
+    "x": 1200,
+    "y": 1040,
+    "self": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 815,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_carp": 3,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1
+    },
+    "fr": {
+     "l": {
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 865,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "fish_carp": 3,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1
+    },
+    "fr": {
+     "l": {
+      "fish_carp": [
+       [
+        1793934044825,
+        3
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "crop_carrot": 1,
+     "crop_cabbage": 1,
+     "crop_corn": 1,
+     "crop_tomato": 1,
+     "crop_eggplant": 1,
+     "crop_strawberry": 1,
+     "crop_pumpkin": 1,
+     "crop_potato": 1,
+     "crop_chili": 1,
+     "crop_broccoli": 1,
+     "crop_cherry": 1,
+     "crop_grape": 1,
+     "crop_pineapple": 1,
+     "crop_mango": 1,
+     "crop_melon": 1,
+     "crop_peach": 1,
+     "crop_kiwi": 1,
+     "crop_coconut": 1,
+     "crop_avocado": 1,
+     "crop_blueberry": 1,
+     "crop_olive": 1,
+     "crop_beans": 1,
+     "crop_mushroom": 1,
+     "crop_sunflower": 1,
+     "crop_tulip": 1,
+     "fish_carp": 1,
+     "fish_bass": 1,
+     "fish_shrimp": 1,
+     "fish_crab": 1,
+     "fish_koi": 0.99,
+     "fish_lobster": 1,
+     "fish_squid": 1,
+     "fish_octopus": 1,
+     "fish_shark": 1,
+     "fish_dolphin": 1,
+     "fish_jelly": 1,
+     "fish_beaver": 1,
+     "fish_flamingo": 1,
+     "fish_coral": 1,
+     "fish_swan": 1,
+     "fish_mermaid": 1,
+     "fish_dragon": 1,
+     "fish_sdragon": 1,
+     "fish_unicorn": 1,
+     "fish_star": 1,
+     "fish_sardine": 1,
+     "fish_anchovy": 1,
+     "fish_mackerel": 1,
+     "fish_snapper": 1,
+     "fish_seabass": 1,
+     "fish_tuna": 1,
+     "fish_bonito": 1,
+     "fish_barracuda": 1,
+     "fish_puffer": 1,
+     "fish_sword": 1,
+     "fish_manta": 1,
+     "fish_hammer": 1,
+     "fish_turtle": 1,
+     "fish_seal": 1,
+     "fish_orca": 1,
+     "fish_whaleshark": 1,
+     "fish_bluewhale": 1,
+     "fish_kraken": 1,
+     "fish_angler": 1,
+     "fish_pearl": 1,
+     "fish_catfish": 1,
+     "fish_shell": 1,
+     "fish_frog": 1,
+     "fish_oyster": 1,
+     "fish_whale": 1,
+     "fish_otter": 1,
+     "fish_croc": 1,
+     "fish_humpback": 1,
+     "fish_penguin": 1,
+     "fish_dino": 1,
+     "egg": 1,
+     "duck_egg": 1,
+     "milk": 1,
+     "wool": 1,
+     "truffle": 1,
+     "honey": 1,
+     "alpaca_wool": 1,
+     "horse_milk": 1,
+     "chestnut": 1,
+     "log": 1,
+     "hardwood": 1,
+     "bamboo": 1,
+     "shoot": 1,
+     "pinewood": 1,
+     "resin": 1,
+     "palmwood": 1,
+     "coconut": 1,
+     "teak": 1,
+     "goldwood": 1,
+     "kunflower": 1,
+     "rosewood": 1,
+     "maplewood": 1,
+     "syrup": 1,
+     "sakurawood": 1,
+     "petal": 1,
+     "ebony": 1,
+     "amber": 1,
+     "ancientwood": 1,
+     "padaukwood": 1,
+     "oakwood": 1,
+     "acorn": 1,
+     "willowwood": 1,
+     "diptwood": 1,
+     "takianwood": 1,
+     "ginkgowood": 1,
+     "ginkgonut": 1,
+     "makhawood": 1,
+     "raintreewood": 1,
+     "shingwood": 1,
+     "plank": 1,
+     "stone": 1,
+     "copper": 1,
+     "silver": 1,
+     "amethyst": 1,
+     "emerald": 1,
+     "opal": 1,
+     "sapphire": 1,
+     "jade": 1,
+     "moonstone": 1,
+     "mythril": 1,
+     "coal": 1,
+     "iron": 1,
+     "gold": 1,
+     "ruby": 1,
+     "crystal": 1,
+     "topaz": 1,
+     "garnet": 1,
+     "obsidian": 1,
+     "sunstone": 1,
+     "starcore": 1,
+     "dish_vegbowl": 1,
+     "dish_boiledegg": 1,
+     "dish_saltfish": 1,
+     "dish_grill": 1,
+     "dish_omelet": 1,
+     "dish_seafood": 1,
+     "dish_feast": 1,
+     "dish_fishsoup": 1,
+     "dish_sashimi": 1,
+     "dish_fishburger": 1,
+     "dish_fishpie": 1,
+     "dish_fishmix": 1,
+     "dish_fishstew": 1,
+     "dish_platter": 1,
+     "dish_curry": 1,
+     "dish_salad": 1,
+     "dish_noodle": 1,
+     "dish_pizza": 1,
+     "dish_pasta": 1,
+     "dish_pie": 1,
+     "dish_cake": 1,
+     "dish_sharksoup": 1,
+     "dish_party": 1,
+     "dish_banquet": 1
+    }
+   },
+   {
+    "t": "msg",
+    "text": "ขาย 🎏 ปลาคอยทอง x1 ได้ 🪙 50"
+   },
+   {
+    "t": "cat",
+    "c": {},
+    "recover": 0.03
+   },
+   {
+    "t": "sfx",
+    "k": "coin",
+    "id": 1,
+    "x": 1200,
+    "y": 1040,
+    "self": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 865,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 901,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "crop_carrot": 1,
+     "crop_cabbage": 1,
+     "crop_corn": 1,
+     "crop_tomato": 1,
+     "crop_eggplant": 1,
+     "crop_strawberry": 1,
+     "crop_pumpkin": 1,
+     "crop_potato": 1,
+     "crop_chili": 1,
+     "crop_broccoli": 1,
+     "crop_cherry": 1,
+     "crop_grape": 1,
+     "crop_pineapple": 1,
+     "crop_mango": 1,
+     "crop_melon": 1,
+     "crop_peach": 1,
+     "crop_kiwi": 1,
+     "crop_coconut": 1,
+     "crop_avocado": 1,
+     "crop_blueberry": 1,
+     "crop_olive": 1,
+     "crop_beans": 1,
+     "crop_mushroom": 1,
+     "crop_sunflower": 1,
+     "crop_tulip": 1,
+     "fish_carp": 0.99,
+     "fish_bass": 0.99,
+     "fish_shrimp": 0.99,
+     "fish_crab": 0.99,
+     "fish_koi": 0.99,
+     "fish_lobster": 0.99,
+     "fish_squid": 0.99,
+     "fish_octopus": 0.99,
+     "fish_shark": 0.99,
+     "fish_dolphin": 0.99,
+     "fish_jelly": 0.99,
+     "fish_beaver": 0.99,
+     "fish_flamingo": 0.99,
+     "fish_coral": 0.99,
+     "fish_swan": 0.99,
+     "fish_mermaid": 0.99,
+     "fish_dragon": 0.99,
+     "fish_sdragon": 0.99,
+     "fish_unicorn": 0.99,
+     "fish_star": 0.99,
+     "fish_sardine": 0.99,
+     "fish_anchovy": 0.99,
+     "fish_mackerel": 0.99,
+     "fish_snapper": 0.99,
+     "fish_seabass": 0.99,
+     "fish_tuna": 0.99,
+     "fish_bonito": 0.99,
+     "fish_barracuda": 0.99,
+     "fish_puffer": 0.99,
+     "fish_sword": 0.99,
+     "fish_manta": 0.99,
+     "fish_hammer": 0.99,
+     "fish_turtle": 0.99,
+     "fish_seal": 0.99,
+     "fish_orca": 0.99,
+     "fish_whaleshark": 0.99,
+     "fish_bluewhale": 0.99,
+     "fish_kraken": 0.99,
+     "fish_angler": 0.99,
+     "fish_pearl": 0.99,
+     "fish_catfish": 0.99,
+     "fish_shell": 0.99,
+     "fish_frog": 0.99,
+     "fish_oyster": 0.99,
+     "fish_whale": 0.99,
+     "fish_otter": 0.99,
+     "fish_croc": 0.99,
+     "fish_humpback": 0.99,
+     "fish_penguin": 0.99,
+     "fish_dino": 0.99,
+     "egg": 1,
+     "duck_egg": 1,
+     "milk": 1,
+     "wool": 1,
+     "truffle": 1,
+     "honey": 1,
+     "alpaca_wool": 1,
+     "horse_milk": 1,
+     "chestnut": 1,
+     "log": 1,
+     "hardwood": 1,
+     "bamboo": 1,
+     "shoot": 1,
+     "pinewood": 1,
+     "resin": 1,
+     "palmwood": 1,
+     "coconut": 1,
+     "teak": 1,
+     "goldwood": 1,
+     "kunflower": 1,
+     "rosewood": 1,
+     "maplewood": 1,
+     "syrup": 1,
+     "sakurawood": 1,
+     "petal": 1,
+     "ebony": 1,
+     "amber": 1,
+     "ancientwood": 1,
+     "padaukwood": 1,
+     "oakwood": 1,
+     "acorn": 1,
+     "willowwood": 1,
+     "diptwood": 1,
+     "takianwood": 1,
+     "ginkgowood": 1,
+     "ginkgonut": 1,
+     "makhawood": 1,
+     "raintreewood": 1,
+     "shingwood": 1,
+     "plank": 1,
+     "stone": 1,
+     "copper": 1,
+     "silver": 1,
+     "amethyst": 1,
+     "emerald": 1,
+     "opal": 1,
+     "sapphire": 1,
+     "jade": 1,
+     "moonstone": 1,
+     "mythril": 1,
+     "coal": 1,
+     "iron": 1,
+     "gold": 1,
+     "ruby": 1,
+     "crystal": 1,
+     "topaz": 1,
+     "garnet": 1,
+     "obsidian": 1,
+     "sunstone": 1,
+     "starcore": 1,
+     "dish_vegbowl": 1,
+     "dish_boiledegg": 1,
+     "dish_saltfish": 1,
+     "dish_grill": 1,
+     "dish_omelet": 1,
+     "dish_seafood": 1,
+     "dish_feast": 1,
+     "dish_fishsoup": 1,
+     "dish_sashimi": 1,
+     "dish_fishburger": 1,
+     "dish_fishpie": 1,
+     "dish_fishmix": 1,
+     "dish_fishstew": 1,
+     "dish_platter": 1,
+     "dish_curry": 1,
+     "dish_salad": 1,
+     "dish_noodle": 1,
+     "dish_pizza": 1,
+     "dish_pasta": 1,
+     "dish_pie": 1,
+     "dish_cake": 1,
+     "dish_sharksoup": 1,
+     "dish_party": 1,
+     "dish_banquet": 1
+    }
+   },
+   {
+    "t": "msg",
+    "text": "ขาย 🐟 ปลาตะเพียน x3 ได้ 🪙 36"
+   },
+   {
+    "t": "cat",
+    "c": {
+     "fish": 0.994
+    },
+    "recover": 0.03
+   },
+   {
+    "t": "sfx",
+    "k": "coin",
+    "id": 1,
+    "x": 1200,
+    "y": 1040,
+    "self": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 751,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "🎟️ ซื้อ Lucky Lotto 123 456 810 (🪙 150) ออกผล 21:00 น."
+   },
+   {
+    "t": "sfx",
+    "k": "coin",
+    "id": 1,
+    "x": 1168,
+    "y": 688,
+    "self": 1
+   },
+   {
+    "t": "lotto",
+    "l": {
+     "buyers": [
+      [
+       "alice",
+       3
+      ]
+     ],
+     "hist": [],
+     "near": true,
+     "pot": 30150,
+     "drawAt": 1793973600000,
+     "now": 1793934069825,
+     "hash": "f054b8a12f40aac89428350c2785bab97f3c072eaa4fed3f772febd405e98e2a",
+     "mine": [
+      "123",
+      "456",
+      "810"
+     ],
+     "max": 6,
+     "price": 50,
+     "minLv": 5,
+     "ok": true,
+     "open": true,
+     "last": null,
+     "heat": 106,
+     "rate": 0
+    }
+   },
+   {
+    "t": "p-",
+    "id": 2,
+    "quiet": 1
+   },
+   {
+    "t": "sfx",
+    "k": "plant",
+    "id": 2,
+    "x": 896,
+    "y": 800
+   },
+   {
+    "t": "sfx",
+    "k": "plant",
+    "id": 2,
+    "x": 896,
+    "y": 800
+   },
+   {
+    "t": "sfx",
+    "k": "plant",
+    "id": 2,
+    "x": 896,
+    "y": 800
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.93
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.86
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.79
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.71
+   },
+   {
+    "t": "msg",
+    "text": "⚒️ 🟠 ทองแดงก้อนใหญ่ อีก 10 ครั้ง"
+   },
+   {
+    "t": "chat",
+    "id": 1000001,
+    "name": "ป้าแก้ว",
+    "text": "สัตว์หิว รีบให้อาหารนะ 🐔",
+    "npc": 1
+   },
+   {
+    "t": "hun",
+    "v": 91
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.64
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.57
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.5
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.43
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.36
+   },
+   {
+    "t": "msg",
+    "text": "⚒️ 🟠 ทองแดงก้อนใหญ่ อีก 5 ครั้ง"
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.29
+   },
+   {
+    "t": "tree",
+    "x": 12,
+    "y": 33,
+    "on": true,
+    "k": "gold"
+   },
+   {
+    "t": "cat",
+    "c": {
+     "fish": 0.994
+    },
+    "recover": 0.03
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "crop_carrot": 1,
+     "crop_cabbage": 1,
+     "crop_corn": 1,
+     "crop_tomato": 1,
+     "crop_eggplant": 1,
+     "crop_strawberry": 1,
+     "crop_pumpkin": 1,
+     "crop_potato": 1,
+     "crop_chili": 1,
+     "crop_broccoli": 1,
+     "crop_cherry": 1,
+     "crop_grape": 1,
+     "crop_pineapple": 1,
+     "crop_mango": 1,
+     "crop_melon": 1,
+     "crop_peach": 1,
+     "crop_kiwi": 1,
+     "crop_coconut": 1,
+     "crop_avocado": 1,
+     "crop_blueberry": 1,
+     "crop_olive": 1,
+     "crop_beans": 1,
+     "crop_mushroom": 1,
+     "crop_sunflower": 1,
+     "crop_tulip": 1,
+     "fish_carp": 0.99,
+     "fish_bass": 0.99,
+     "fish_shrimp": 0.99,
+     "fish_crab": 0.99,
+     "fish_koi": 0.99,
+     "fish_lobster": 0.99,
+     "fish_squid": 0.99,
+     "fish_octopus": 0.99,
+     "fish_shark": 0.99,
+     "fish_dolphin": 0.99,
+     "fish_jelly": 0.99,
+     "fish_beaver": 0.99,
+     "fish_flamingo": 0.99,
+     "fish_coral": 0.99,
+     "fish_swan": 0.99,
+     "fish_mermaid": 0.99,
+     "fish_dragon": 0.99,
+     "fish_sdragon": 0.99,
+     "fish_unicorn": 0.99,
+     "fish_star": 0.99,
+     "fish_sardine": 0.99,
+     "fish_anchovy": 0.99,
+     "fish_mackerel": 0.99,
+     "fish_snapper": 0.99,
+     "fish_seabass": 0.99,
+     "fish_tuna": 0.99,
+     "fish_bonito": 0.99,
+     "fish_barracuda": 0.99,
+     "fish_puffer": 0.99,
+     "fish_sword": 0.99,
+     "fish_manta": 0.99,
+     "fish_hammer": 0.99,
+     "fish_turtle": 0.99,
+     "fish_seal": 0.99,
+     "fish_orca": 0.99,
+     "fish_whaleshark": 0.99,
+     "fish_bluewhale": 0.99,
+     "fish_kraken": 0.99,
+     "fish_angler": 0.99,
+     "fish_pearl": 0.99,
+     "fish_catfish": 0.99,
+     "fish_shell": 0.99,
+     "fish_frog": 0.99,
+     "fish_oyster": 0.99,
+     "fish_whale": 0.99,
+     "fish_otter": 0.99,
+     "fish_croc": 0.99,
+     "fish_humpback": 0.99,
+     "fish_penguin": 0.99,
+     "fish_dino": 0.99,
+     "egg": 1,
+     "duck_egg": 1,
+     "milk": 1,
+     "wool": 1,
+     "truffle": 1,
+     "honey": 1,
+     "alpaca_wool": 1,
+     "horse_milk": 1,
+     "chestnut": 1,
+     "log": 1,
+     "hardwood": 1,
+     "bamboo": 1,
+     "shoot": 1,
+     "pinewood": 1,
+     "resin": 1,
+     "palmwood": 1,
+     "coconut": 1,
+     "teak": 1,
+     "goldwood": 1,
+     "kunflower": 1,
+     "rosewood": 1,
+     "maplewood": 1,
+     "syrup": 1,
+     "sakurawood": 1,
+     "petal": 1,
+     "ebony": 1,
+     "amber": 1,
+     "ancientwood": 1,
+     "padaukwood": 1,
+     "oakwood": 1,
+     "acorn": 1,
+     "willowwood": 1,
+     "diptwood": 1,
+     "takianwood": 1,
+     "ginkgowood": 1,
+     "ginkgonut": 1,
+     "makhawood": 1,
+     "raintreewood": 1,
+     "shingwood": 1,
+     "plank": 1,
+     "stone": 1,
+     "copper": 1,
+     "silver": 1,
+     "amethyst": 1,
+     "emerald": 1,
+     "opal": 1,
+     "sapphire": 1,
+     "jade": 1,
+     "moonstone": 1,
+     "mythril": 1,
+     "coal": 1,
+     "iron": 1,
+     "gold": 1,
+     "ruby": 1,
+     "crystal": 1,
+     "topaz": 1,
+     "garnet": 1,
+     "obsidian": 1,
+     "sunstone": 1,
+     "starcore": 1,
+     "dish_vegbowl": 1,
+     "dish_boiledegg": 1,
+     "dish_saltfish": 1,
+     "dish_grill": 1,
+     "dish_omelet": 1,
+     "dish_seafood": 1,
+     "dish_feast": 1,
+     "dish_fishsoup": 1,
+     "dish_sashimi": 1,
+     "dish_fishburger": 1,
+     "dish_fishpie": 1,
+     "dish_fishmix": 1,
+     "dish_fishstew": 1,
+     "dish_platter": 1,
+     "dish_curry": 1,
+     "dish_salad": 1,
+     "dish_noodle": 1,
+     "dish_pizza": 1,
+     "dish_pasta": 1,
+     "dish_pie": 1,
+     "dish_cake": 1,
+     "dish_sharksoup": 1,
+     "dish_party": 1,
+     "dish_banquet": 1
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.21
+   },
+   {
+    "t": "msg",
+    "text": "⚒️ 🟠 ทองแดงก้อนใหญ่ อีก 3 ครั้ง"
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.14
+   },
+   {
+    "t": "msg",
+    "text": "⚒️ 🟠 ทองแดงก้อนใหญ่ อีก 2 ครั้ง"
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "oh",
+    "x": 35,
+    "y": 30,
+    "f": 0.07
+   },
+   {
+    "t": "msg",
+    "text": "⚒️ 🟠 ทองแดงก้อนใหญ่ อีก 1 ครั้ง"
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "dur",
+    "d": {
+     "hoe": [
+      120,
+      120,
+      0
+     ],
+     "rod": [
+      100,
+      100,
+      0
+     ],
+     "axe": [
+      90,
+      90,
+      0
+     ],
+     "pick": [
+      399,
+      400,
+      0
+     ]
+    }
+   },
+   {
+    "t": "ore",
+    "x": 35,
+    "y": 30,
+    "k": ""
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 751,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1,
+     "pick_3": 1,
+     "copper": 4
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 400,
+     "fish": 400,
+     "animal": 400,
+     "wood": 400,
+     "cook": 400,
+     "mine": 5031
+    }
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 400,
+     "fish": 400,
+     "animal": 400,
+     "wood": 400,
+     "cook": 400,
+     "mine": 5149
+    }
+   },
+   {
+    "t": "msg",
+    "text": "✨ ค้นพบแร่ใหม่ 🟠 ทองแดง! โบนัส XP +118"
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 759,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1,
+     "pick_3": 1,
+     "copper": 4
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "📖 สมุดสะสมแร่: 1/10 (+🪙8)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      3,
+      1
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 1,
+    "title": "หน้าใหม่ใจสู้",
+    "starter": {
+     "done": [],
+     "final": true,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [
+      "koi",
+      "carp"
+     ],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [
+      "copper"
+     ],
+     "wood": []
+    },
+    "wk": {
+     "mine": 6,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "msg",
+    "text": "⛏️ ขุดได้ 🟠 ทองแดง x4 (ก้อนใหญ่)"
+   },
+   {
+    "t": "sfx",
+    "k": "fell",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 784,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1,
+     "pick_3": 1,
+     "copper": 4
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ ซื้ออีเต้อแล้วขุดแร่ 1 ก้อน +🪙25 (บท 2: 1/5)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "collect3",
+      0,
+      0
+     ],
+     [
+      "eat1",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      3,
+      1
+     ],
+     [
+      "water6",
+      1,
+      0
+     ],
+     [
+      "plant5",
+      1,
+      0
+     ]
+    ],
+    "total": 1,
+    "title": "หน้าใหม่ใจสู้",
+    "starter": {
+     "done": [],
+     "final": true,
+     "c2": {
+      "done": [
+       "mine"
+      ],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [
+      "koi",
+      "carp"
+     ],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [
+      "copper"
+     ],
+     "wood": []
+    },
+    "wk": {
+     "mine": 6,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "wn": 9,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 9,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 7,
+    "full": 3
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 794,
+     "seed_carrot": 7,
+     "feed": 5,
+     "bait": 9,
+     "meal_bread": 3,
+     "rod_1": 1,
+     "furn_chair": 1,
+     "furn_plant": 1,
+     "lamp": 1,
+     "pick_3": 1,
+     "copper": 4
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "🏆 ความสำเร็จใหม่: ⚒️ ก้าวแรกในถ้ำ (+🪙10)"
+   },
+   {
+    "t": "sfx",
+    "k": "levelup",
+    "id": 1,
+    "x": 1136,
+    "y": 1008,
+    "self": 1
+   },
+   {
+    "t": "ach",
+    "cnt": {
+     "dig": 1,
+     "plant": 1,
+     "water": 1,
+     "harvest": 1,
+     "fish": 4,
+     "questdone": 1,
+     "sell": 3,
+     "mine": 1,
+     "wealth": 794,
+     "streak": 1
+    },
+    "got": {
+     "give2k": 1793934000000,
+     "give10k": 1793934000000,
+     "give30k": 1793934000000,
+     "harvest1": 1793934025800,
+     "fish1": 1793934035325,
+     "mine1": 1793934083425
+    },
+    "sel": ""
+   },
+   {
+    "t": "chat",
+    "id": 1000003,
+    "name": "น้องมิ้นท์",
+    "text": "กด H ตกแต่งบ้านได้ 🛋️",
+    "npc": 1
+   },
+   {
+    "t": "hun",
+    "v": 89
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "tree",
+    "x": 21,
+    "y": 33,
+    "on": true,
+    "k": "teak"
+   },
+   {
+    "t": "chat",
+    "id": 1000002,
+    "name": "ลุงสมชาย",
+    "text": "ขายเยอะๆ ราคาตกนะ 📉",
+    "npc": 1
+   },
+   {
+    "t": "hun",
+    "v": 89
+   }
+  ],
+  "bulk": {
+   "s": {
+    "n": 258,
+    "sha1": "4336ee47965f6da2d21fab7f68d05c347837d72c"
+   }
+  }
+ },
+ "bob": {
+  "msgs": [
+   {
+    "t": "w",
+    "deep": 1,
+    "first": true,
+    "admin": false,
+    "id": 2,
+    "x": 320,
+    "y": 528,
+    "inv": {
+     "coin": 50,
+     "seed_carrot": 5,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "skills": {
+     "farm": 0,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    },
+    "arc": {
+     "pts": 0,
+     "total": 0,
+     "wk": 0,
+     "tt": []
+    },
+    "hunger": 80,
+    "dur": {
+     "hoe": [
+      120,
+      120,
+      0
+     ],
+     "rod": [
+      100,
+      100,
+      0
+     ],
+     "axe": [
+      90,
+      90,
+      0
+     ],
+     "pick": [
+      100,
+      100,
+      0
+     ]
+    },
+    "wtr": 10,
+    "cin": {
+     "movie": null,
+     "yt": "",
+     "name": "",
+     "startedAt": 0,
+     "playing": false,
+     "pos": 0,
+     "now": 1793934000000,
+     "viewers": []
+    },
+    "farm": {},
+    "time": 1793934000000,
+    "room": "golden",
+    "trees": [
+     [
+      15,
+      1,
+      "gold"
+     ],
+     [
+      4,
+      3,
+      "oak"
+     ],
+     [
+      6,
+      3,
+      "pine"
+     ],
+     [
+      1,
+      4,
+      "pine"
+     ],
+     [
+      4,
+      4,
+      "broad"
+     ],
+     [
+      8,
+      4,
+      "pine"
+     ],
+     [
+      13,
+      4,
+      "pine"
+     ],
+     [
+      12,
+      5,
+      "pine"
+     ],
+     [
+      13,
+      5,
+      "pine"
+     ],
+     [
+      14,
+      5,
+      "pine"
+     ],
+     [
+      1,
+      6,
+      "teak"
+     ],
+     [
+      6,
+      6,
+      "pine"
+     ],
+     [
+      10,
+      6,
+      "maple"
+     ],
+     [
+      57,
+      6,
+      "padauk"
+     ],
+     [
+      1,
+      7,
+      "maple"
+     ],
+     [
+      12,
+      7,
+      "pine"
+     ],
+     [
+      20,
+      7,
+      "teak"
+     ],
+     [
+      59,
+      7,
+      "broad"
+     ],
+     [
+      61,
+      7,
+      "pine"
+     ],
+     [
+      1,
+      14,
+      "broad"
+     ],
+     [
+      4,
+      24,
+      "bamboo"
+     ],
+     [
+      1,
+      25,
+      "broad"
+     ],
+     [
+      1,
+      26,
+      "broad"
+     ],
+     [
+      4,
+      26,
+      "bamboo"
+     ],
+     [
+      17,
+      26,
+      "bamboo"
+     ],
+     [
+      4,
+      27,
+      "bamboo"
+     ],
+     [
+      5,
+      28,
+      "bamboo"
+     ],
+     [
+      8,
+      28,
+      "bamboo"
+     ],
+     [
+      9,
+      28,
+      "bamboo"
+     ],
+     [
+      6,
+      29,
+      "broad"
+     ],
+     [
+      9,
+      29,
+      "broad"
+     ],
+     [
+      8,
+      31,
+      "broad"
+     ],
+     [
+      3,
+      33,
+      "broad"
+     ],
+     [
+      6,
+      33,
+      "ebony"
+     ],
+     [
+      9,
+      33,
+      "broad"
+     ],
+     [
+      10,
+      34,
+      "broad"
+     ],
+     [
+      19,
+      34,
+      "broad"
+     ],
+     [
+      21,
+      34,
+      "broad"
+     ],
+     [
+      24,
+      34,
+      "broad"
+     ],
+     [
+      25,
+      34,
+      "broad"
+     ],
+     [
+      26,
+      34,
+      "coconut"
+     ],
+     [
+      27,
+      34,
+      "coconut"
+     ],
+     [
+      27,
+      35,
+      "teak"
+     ],
+     [
+      9,
+      36,
+      "ancient"
+     ],
+     [
+      11,
+      36,
+      "takian"
+     ],
+     [
+      14,
+      36,
+      "rose"
+     ],
+     [
+      15,
+      36,
+      "ginkgo"
+     ],
+     [
+      5,
+      37,
+      "padauk"
+     ],
+     [
+      11,
+      37,
+      "rose"
+     ],
+     [
+      22,
+      37,
+      "teak"
+     ],
+     [
+      5,
+      38,
+      "makha"
+     ],
+     [
+      14,
+      38,
+      "takian"
+     ],
+     [
+      22,
+      38,
+      "broad"
+     ],
+     [
+      23,
+      38,
+      "rose"
+     ],
+     [
+      26,
+      38,
+      "coconut"
+     ],
+     [
+      27,
+      38,
+      "broad"
+     ],
+     [
+      1,
+      39,
+      "dipt"
+     ],
+     [
+      2,
+      39,
+      "shingchan"
+     ],
+     [
+      5,
+      39,
+      "teak"
+     ],
+     [
+      9,
+      39,
+      "raintree"
+     ],
+     [
+      60,
+      39,
+      "coconut"
+     ],
+     [
+      9,
+      40,
+      "gold"
+     ],
+     [
+      10,
+      40,
+      "gold"
+     ],
+     [
+      18,
+      40,
+      "rose"
+     ],
+     [
+      26,
+      40,
+      "coconut"
+     ],
+     [
+      27,
+      40,
+      "broad"
+     ],
+     [
+      7,
+      41,
+      "padauk"
+     ],
+     [
+      14,
+      41,
+      "teak"
+     ],
+     [
+      25,
+      41,
+      "broad"
+     ],
+     [
+      26,
+      41,
+      "coconut"
+     ],
+     [
+      1,
+      42,
+      "gold"
+     ],
+     [
+      2,
+      42,
+      "gold"
+     ],
+     [
+      6,
+      42,
+      "teak"
+     ],
+     [
+      15,
+      42,
+      "padauk"
+     ],
+     [
+      24,
+      42,
+      "dipt"
+     ],
+     [
+      25,
+      42,
+      "broad"
+     ],
+     [
+      27,
+      42,
+      "coconut"
+     ],
+     [
+      21,
+      43,
+      "sakura"
+     ],
+     [
+      27,
+      43,
+      "broad"
+     ],
+     [
+      58,
+      44,
+      "broad"
+     ]
+    ],
+    "npcs": [
+     {
+      "id": 1000001,
+      "name": "ป้าแก้ว",
+      "title": "🏘️ ชาวเมือง",
+      "color": "#d6559a",
+      "hat": "#e8c66a",
+      "pc": "#6b4a8a",
+      "wear": {
+       "shirt": "dots",
+       "pants": "skirt",
+       "hat": "flower",
+       "acc": "none"
+      },
+      "x": 896,
+      "y": 912,
+      "dir": 0
+     },
+     {
+      "id": 1000002,
+      "name": "ลุงสมชาย",
+      "title": "🏘️ ชาวเมือง",
+      "color": "#7a9a3a",
+      "hat": "#e8c66a",
+      "pc": "#4a5b3a",
+      "wear": {
+       "shirt": "farmer",
+       "pants": "overall",
+       "hat": "straw",
+       "acc": "none"
+      },
+      "x": 1344,
+      "y": 1040,
+      "dir": 0
+     },
+     {
+      "id": 1000003,
+      "name": "น้องมิ้นท์",
+      "title": "🏘️ ชาวเมือง",
+      "color": "#3aa0d6",
+      "hat": "#ffffff",
+      "pc": "#2c3e50",
+      "wear": {
+       "shirt": "hoodie",
+       "pants": "shorts",
+       "hat": "cap",
+       "acc": "none"
+      },
+      "x": 1088,
+      "y": 688,
+      "dir": 0
+     }
+    ],
+    "pets": [
+     {
+      "id": 2000001,
+      "kind": "cat",
+      "v": 0,
+      "x": 1136,
+      "y": 848,
+      "dir": 3
+     },
+     {
+      "id": 2000002,
+      "kind": "dog",
+      "v": 0,
+      "x": 1040,
+      "y": 912,
+      "dir": 3
+     },
+     {
+      "id": 2000003,
+      "kind": "dog",
+      "v": 1,
+      "x": 1040,
+      "y": 784,
+      "dir": 3
+     }
+    ],
+    "players": [
+     {
+      "id": 1,
+      "wet": 0,
+      "veh": "",
+      "held": "",
+      "status": "",
+      "deaf": false,
+      "title": "",
+      "name": "alice",
+      "color": "#e74c3c",
+      "hat": "#e8c66a",
+      "pc": "#5b4a8a",
+      "wear": {
+       "shirt": "tee",
+       "pants": "jeans",
+       "hat": "straw",
+       "acc": "none"
+      },
+      "lamp": false,
+      "pet": "",
+      "pm": "follow",
+      "pax": 320,
+      "pay": 528,
+      "psick": false,
+      "pname": "",
+      "x": 320,
+      "y": 528,
+      "dir": 0,
+      "voice": false
+     },
+     {
+      "id": 2,
+      "wet": 0,
+      "veh": "",
+      "held": "",
+      "status": "",
+      "deaf": false,
+      "title": "",
+      "name": "bob",
+      "color": "#3498db",
+      "hat": "#e8c66a",
+      "pc": "#5b4a8a",
+      "wear": {
+       "shirt": "tee",
+       "pants": "jeans",
+       "hat": "straw",
+       "acc": "none"
+      },
+      "lamp": false,
+      "pet": "",
+      "pm": "follow",
+      "pax": 320,
+      "pay": 528,
+      "psick": false,
+      "pname": "",
+      "x": 320,
+      "y": 528,
+      "dir": 0,
+      "voice": false
+     }
+    ],
+    "roster": [
+     {
+      "voice": false,
+      "id": 1,
+      "wet": 0,
+      "veh": "",
+      "held": "",
+      "status": "",
+      "deaf": false,
+      "title": "",
+      "name": "alice",
+      "color": "#e74c3c",
+      "hat": "#e8c66a",
+      "pc": "#5b4a8a",
+      "wear": {
+       "shirt": "tee",
+       "pants": "jeans",
+       "hat": "straw",
+       "acc": "none"
+      },
+      "lamp": false,
+      "pet": "",
+      "pm": "follow",
+      "pax": 320,
+      "pay": 528,
+      "psick": false,
+      "pname": "",
+      "x": 320,
+      "y": 528,
+      "dir": 0
+     },
+     {
+      "voice": false,
+      "id": 2,
+      "wet": 0,
+      "veh": "",
+      "held": "",
+      "status": "",
+      "deaf": false,
+      "title": "",
+      "name": "bob",
+      "color": "#3498db",
+      "hat": "#e8c66a",
+      "pc": "#5b4a8a",
+      "wear": {
+       "shirt": "tee",
+       "pants": "jeans",
+       "hat": "straw",
+       "acc": "none"
+      },
+      "lamp": false,
+      "pet": "",
+      "pm": "follow",
+      "pax": 320,
+      "pay": 528,
+      "psick": false,
+      "pname": "",
+      "x": 320,
+      "y": 528,
+      "dir": 0
+     }
+    ]
+   },
+   {
+    "t": "pst",
+    "pst": {},
+    "names": {}
+   },
+   {
+    "t": "arcs",
+    "a": [
+     [
+      "cab0",
+      0,
+      "idle",
+      0,
+      "",
+      "0/8",
+      0,
+      "rps"
+     ],
+     [
+      "cab1",
+      1,
+      "idle",
+      0,
+      "",
+      "",
+      0,
+      "xo"
+     ],
+     [
+      "cab2",
+      2,
+      "idle",
+      0,
+      "",
+      "0/2",
+      0,
+      "uno"
+     ],
+     [
+      "cab3",
+      3,
+      "idle",
+      0,
+      "",
+      "0/8",
+      0,
+      "react"
+     ],
+     [
+      "cab4",
+      4,
+      "idle",
+      0,
+      "",
+      "0/8",
+      0,
+      "pok"
+     ],
+     [
+      "cab5",
+      5,
+      "idle",
+      0,
+      "",
+      "",
+      0,
+      "c4"
+     ]
+    ]
+   },
+   {
+    "t": "rents",
+    "r": {}
+   },
+   {
+    "t": "ch",
+    "ch": null,
+    "wet": 0,
+    "chain": 0
+   },
+   {
+    "t": "evt",
+    "e": {
+     "id": "derby",
+     "start": 1793973600000,
+     "end": 1793975400000,
+     "on": false,
+     "top": [],
+     "topNb": []
+    }
+   },
+   {
+    "t": "stars",
+    "s": {}
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "crop_carrot": 1,
+     "crop_cabbage": 1,
+     "crop_corn": 1,
+     "crop_tomato": 1,
+     "crop_eggplant": 1,
+     "crop_strawberry": 1,
+     "crop_pumpkin": 1,
+     "crop_potato": 1,
+     "crop_chili": 1,
+     "crop_broccoli": 1,
+     "crop_cherry": 1,
+     "crop_grape": 1,
+     "crop_pineapple": 1,
+     "crop_mango": 1,
+     "crop_melon": 1,
+     "crop_peach": 1,
+     "crop_kiwi": 1,
+     "crop_coconut": 1,
+     "crop_avocado": 1,
+     "crop_blueberry": 1,
+     "crop_olive": 1,
+     "crop_beans": 1,
+     "crop_mushroom": 1,
+     "crop_sunflower": 1,
+     "crop_tulip": 1,
+     "fish_carp": 1,
+     "fish_bass": 1,
+     "fish_shrimp": 1,
+     "fish_crab": 1,
+     "fish_koi": 1,
+     "fish_lobster": 1,
+     "fish_squid": 1,
+     "fish_octopus": 1,
+     "fish_shark": 1,
+     "fish_dolphin": 1,
+     "fish_jelly": 1,
+     "fish_beaver": 1,
+     "fish_flamingo": 1,
+     "fish_coral": 1,
+     "fish_swan": 1,
+     "fish_mermaid": 1,
+     "fish_dragon": 1,
+     "fish_sdragon": 1,
+     "fish_unicorn": 1,
+     "fish_star": 1,
+     "fish_sardine": 1,
+     "fish_anchovy": 1,
+     "fish_mackerel": 1,
+     "fish_snapper": 1,
+     "fish_seabass": 1,
+     "fish_tuna": 1,
+     "fish_bonito": 1,
+     "fish_barracuda": 1,
+     "fish_puffer": 1,
+     "fish_sword": 1,
+     "fish_manta": 1,
+     "fish_hammer": 1,
+     "fish_turtle": 1,
+     "fish_seal": 1,
+     "fish_orca": 1,
+     "fish_whaleshark": 1,
+     "fish_bluewhale": 1,
+     "fish_kraken": 1,
+     "fish_angler": 1,
+     "fish_pearl": 1,
+     "fish_catfish": 1,
+     "fish_shell": 1,
+     "fish_frog": 1,
+     "fish_oyster": 1,
+     "fish_whale": 1,
+     "fish_otter": 1,
+     "fish_croc": 1,
+     "fish_humpback": 1,
+     "fish_penguin": 1,
+     "fish_dino": 1,
+     "egg": 1,
+     "duck_egg": 1,
+     "milk": 1,
+     "wool": 1,
+     "truffle": 1,
+     "honey": 1,
+     "alpaca_wool": 1,
+     "horse_milk": 1,
+     "chestnut": 1,
+     "log": 1,
+     "hardwood": 1,
+     "bamboo": 1,
+     "shoot": 1,
+     "pinewood": 1,
+     "resin": 1,
+     "palmwood": 1,
+     "coconut": 1,
+     "teak": 1,
+     "goldwood": 1,
+     "kunflower": 1,
+     "rosewood": 1,
+     "maplewood": 1,
+     "syrup": 1,
+     "sakurawood": 1,
+     "petal": 1,
+     "ebony": 1,
+     "amber": 1,
+     "ancientwood": 1,
+     "padaukwood": 1,
+     "oakwood": 1,
+     "acorn": 1,
+     "willowwood": 1,
+     "diptwood": 1,
+     "takianwood": 1,
+     "ginkgowood": 1,
+     "ginkgonut": 1,
+     "makhawood": 1,
+     "raintreewood": 1,
+     "shingwood": 1,
+     "plank": 1,
+     "stone": 1,
+     "copper": 1,
+     "silver": 1,
+     "amethyst": 1,
+     "emerald": 1,
+     "opal": 1,
+     "sapphire": 1,
+     "jade": 1,
+     "moonstone": 1,
+     "mythril": 1,
+     "coal": 1,
+     "iron": 1,
+     "gold": 1,
+     "ruby": 1,
+     "crystal": 1,
+     "topaz": 1,
+     "garnet": 1,
+     "obsidian": 1,
+     "sunstone": 1,
+     "starcore": 1,
+     "dish_vegbowl": 1,
+     "dish_boiledegg": 1,
+     "dish_saltfish": 1,
+     "dish_grill": 1,
+     "dish_omelet": 1,
+     "dish_seafood": 1,
+     "dish_feast": 1,
+     "dish_fishsoup": 1,
+     "dish_sashimi": 1,
+     "dish_fishburger": 1,
+     "dish_fishpie": 1,
+     "dish_fishmix": 1,
+     "dish_fishstew": 1,
+     "dish_platter": 1,
+     "dish_curry": 1,
+     "dish_salad": 1,
+     "dish_noodle": 1,
+     "dish_pizza": 1,
+     "dish_pasta": 1,
+     "dish_pie": 1,
+     "dish_cake": 1,
+     "dish_sharksoup": 1,
+     "dish_party": 1,
+     "dish_banquet": 1
+    }
+   },
+   {
+    "t": "cat",
+    "c": {},
+    "recover": 0.03
+   },
+   {
+    "t": "en",
+    "spent": 0,
+    "v": 100,
+    "ex": false,
+    "rate": 0.00025,
+    "resume": 10,
+    "rareUntil": 0,
+    "wk": null,
+    "wkScale": 50,
+    "wkMax": 0.5,
+    "wkHalf": 120000
+   },
+   {
+    "t": "chatlog",
+    "list": []
+   },
+   {
+    "t": "lotto",
+    "l": {
+     "buyers": [],
+     "hist": [],
+     "near": false,
+     "pot": 30000,
+     "drawAt": 1793973600000,
+     "now": 1793934000000,
+     "hash": "f054b8a12f40aac89428350c2785bab97f3c072eaa4fed3f772febd405e98e2a",
+     "mine": [],
+     "max": 6,
+     "price": 50,
+     "minLv": 5,
+     "ok": false,
+     "open": true,
+     "last": null,
+     "heat": 0,
+     "rate": 0
+    }
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 65,
+     "seed_carrot": 5,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "🏛️ ยกเลิกตู้เซฟกองกลางแล้ว ความสำเร็จสายลงขันผ่านให้ทุกคน • ได้ฉายา \"ผู้อุปถัมภ์เมือง\" \"คหบดีใจบุญ\" \"เสาหลักของเมือง\" (เลือกใช้ได้ที่ 🏅)"
+   },
+   {
+    "t": "ach",
+    "cnt": {
+     "wealth": 65,
+     "streak": 1
+    },
+    "got": {
+     "give2k": 1793934000000,
+     "give10k": 1793934000000,
+     "give30k": 1793934000000
+    },
+    "sel": ""
+   },
+   {
+    "t": "ach",
+    "cnt": {
+     "wealth": 65,
+     "streak": 1
+    },
+    "got": {
+     "give2k": 1793934000000,
+     "give10k": 1793934000000,
+     "give30k": 1793934000000
+    },
+    "sel": ""
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "sellprod2",
+      0,
+      0
+     ],
+     [
+      "sit1",
+      0,
+      0
+     ],
+     [
+      "dig4",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "harvest4",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "bank",
+    "bal": 0,
+    "cap": 100000
+   },
+   {
+    "wn": 0,
+    "wgoal": 250,
+    "wdone": false,
+    "t": "village",
+    "n": 0,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 0,
+    "full": 3
+   },
+   {
+    "t": "log",
+    "list": [
+     [
+      1793934000000,
+      "👋 alice เข้ามาในเมือง"
+     ]
+    ]
+   },
+   {
+    "t": "gift",
+    "item": "wear_hat_chef"
+   },
+   {
+    "t": "log",
+    "e": [
+     1793934000000,
+     "👋 bob เข้ามาในเมือง"
+    ]
+   },
+   {
+    "t": "tp",
+    "x": 400,
+    "y": 688
+   },
+   {
+    "t": "tp",
+    "x": 400,
+    "y": 688
+   },
+   {
+    "t": "tp",
+    "x": 400,
+    "y": 688
+   },
+   {
+    "t": "tp",
+    "x": 400,
+    "y": 688
+   },
+   {
+    "t": "tp",
+    "x": 400,
+    "y": 688
+   },
+   {
+    "t": "chat",
+    "id": 1,
+    "name": "alice",
+    "text": "สวัสดี"
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "hoe",
+    "id": 1,
+    "x": 208,
+    "y": 560
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 1,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "hoe",
+    "id": 2,
+    "x": 272,
+    "y": 496
+   },
+   {
+    "t": "dur",
+    "d": {
+     "hoe": [
+      119,
+      120,
+      0
+     ],
+     "rod": [
+      100,
+      100,
+      0
+     ],
+     "axe": [
+      90,
+      90,
+      0
+     ],
+     "pick": [
+      100,
+      100,
+      0
+     ]
+    }
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 315,
+     "seed_carrot": 3,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ คู่มือเริ่มต้น: ขุดดินในรั้วแปลงผัก ⛏️ (+🪙15)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "sellprod2",
+      0,
+      0
+     ],
+     [
+      "sit1",
+      0,
+      0
+     ],
+     [
+      "dig4",
+      0,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "harvest4",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "sellprod2",
+      0,
+      0
+     ],
+     [
+      "sit1",
+      0,
+      0
+     ],
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "harvest4",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "plant",
+    "id": 1,
+    "x": 208,
+    "y": 560
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 0,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "water",
+    "id": 1,
+    "x": 208,
+    "y": 560
+   },
+   {
+    "wn": 1,
+    "wgoal": 250,
+    "wdone": false,
+    "t": "village",
+    "n": 1,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 0,
+    "full": 3
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 315,
+     "seed_carrot": 2,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "🌱 เมล็ดมือใหม่ โตไวพิเศษ! (1/3) รดน้ำแล้วรอแป๊บเดียว"
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 3,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "plant",
+    "id": 2,
+    "x": 272,
+    "y": 496
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 330,
+     "seed_carrot": 2,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ คู่มือเริ่มต้น: ปลูกเมล็ดลงดินที่ขุด 🥕 (+🪙15)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "sellprod2",
+      0,
+      0
+     ],
+     [
+      "sit1",
+      0,
+      0
+     ],
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "harvest4",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "msg",
+    "text": "💧 น้ำเต็มบัวแล้ว (10/10)"
+   },
+   {
+    "t": "wtr",
+    "n": 9
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 0,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "water",
+    "id": 2,
+    "x": 272,
+    "y": 496
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 4,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 345,
+     "seed_carrot": 2,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3
+    },
+    "fr": {
+     "l": {},
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ คู่มือเริ่มต้น: รดน้ำต้นพืช 💧 (+🪙15)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "sellprod2",
+      0,
+      0
+     ],
+     [
+      "sit1",
+      0,
+      0
+     ],
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "harvest4",
+      0,
+      0
+     ],
+     [
+      "water6",
+      0,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 0,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "wn": 2,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 2,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 1,
+    "full": 3
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "sellprod2",
+      0,
+      0
+     ],
+     [
+      "sit1",
+      0,
+      0
+     ],
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "harvest4",
+      0,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 1,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 1,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 1,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "chat",
+    "id": 1000001,
+    "name": "ป้าแก้ว",
+    "text": "ซื้อที่ดินสร้างบ้านได้ 🏠",
+    "npc": 1
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 2,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 0,
+     "f": 2,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 2,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 2,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 3,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 3,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "hun",
+    "v": 98
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 4,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 1,
+     "f": 4,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 2,
+     "f": 4,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 2,
+     "f": 4,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "tree",
+    "x": 6,
+    "y": 34,
+    "on": true,
+    "k": "gold"
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 2,
+     "f": 5,
+     "w": 1,
+     "o": "alice",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 2,
+     "f": 5,
+     "w": 1,
+     "o": "bob",
+     "l": 0
+    }
+   },
+   {
+    "t": "chat",
+    "id": 1000002,
+    "name": "ลุงสมชาย",
+    "text": "อัปเลเวลปลดล็อกของใหม่ ⭐",
+    "npc": 1
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": "carrot",
+     "s": 3,
+     "f": 6,
+     "w": 1,
+     "o": "alice",
+     "l": 1
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": "carrot",
+     "s": 3,
+     "f": 6,
+     "w": 1,
+     "o": "bob",
+     "l": 1
+    }
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "t": "sfx",
+    "k": "harvest",
+    "id": 1,
+    "x": 208,
+    "y": 560
+   },
+   {
+    "wn": 3,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 3,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 1,
+    "full": 3
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 1,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 345,
+     "seed_carrot": 2,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934026000,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "skills",
+    "skills": {
+     "farm": 9,
+     "fish": 0,
+     "animal": 0,
+     "wood": 0,
+     "cook": 0
+    }
+   },
+   {
+    "t": "msg",
+    "text": "เก็บ 🥕 แครอท"
+   },
+   {
+    "t": "sfx",
+    "k": "harvest",
+    "id": 2,
+    "x": 272,
+    "y": 496
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 365,
+     "seed_carrot": 2,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934026000,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "✅ คู่มือเริ่มต้น: เก็บเกี่ยวผลผลิตที่โตแล้ว 🌽 (+🪙20)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {},
+     "done": []
+    },
+    "list": [
+     [
+      "sellprod2",
+      0,
+      0
+     ],
+     [
+      "sit1",
+      0,
+      0
+     ],
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "harvest4",
+      0,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 1,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "sellprod2",
+      0,
+      0
+     ],
+     [
+      "sit1",
+      0,
+      0
+     ],
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "harvest4",
+      0,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 1,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "wn": 4,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 4,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 2,
+    "full": 3
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "sellprod2",
+      0,
+      0
+     ],
+     [
+      "sit1",
+      0,
+      0
+     ],
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "harvest4",
+      1,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 2,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 375,
+     "seed_carrot": 2,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934026000,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "🏆 ความสำเร็จใหม่: 🌾 ต้นแรกของฉัน (+🪙10)"
+   },
+   {
+    "t": "sfx",
+    "k": "levelup",
+    "id": 2,
+    "x": 272,
+    "y": 496,
+    "self": 1
+   },
+   {
+    "t": "ach",
+    "cnt": {
+     "dig": 1,
+     "plant": 1,
+     "water": 1,
+     "harvest": 1,
+     "wealth": 375,
+     "streak": 1
+    },
+    "got": {
+     "give2k": 1793934000000,
+     "give10k": 1793934000000,
+     "give30k": 1793934000000,
+     "harvest1": 1793934026000
+    },
+    "sel": ""
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 383,
+     "seed_carrot": 2,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934026000,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "📖 สมุดสะสมพืชผล: 1/20 (+🪙8)"
+   },
+   {
+    "t": "quests",
+    "wk1": {
+     "day": 1,
+     "n": {
+      "1": 1
+     },
+     "done": []
+    },
+    "list": [
+     [
+      "sellprod2",
+      0,
+      0
+     ],
+     [
+      "sit1",
+      0,
+      0
+     ],
+     [
+      "dig4",
+      1,
+      0
+     ],
+     [
+      "fish3",
+      0,
+      0
+     ],
+     [
+      "harvest4",
+      1,
+      0
+     ],
+     [
+      "water6",
+      1,
+      0
+     ]
+    ],
+    "total": 0,
+    "title": "",
+    "starter": {
+     "done": [
+      "dig",
+      "plant",
+      "water",
+      "harvest"
+     ],
+     "final": false,
+     "c2": {
+      "done": [],
+      "final": false
+     }
+    },
+    "streak": {
+     "n": 1
+    },
+    "book": {
+     "fish": [],
+     "crop": [
+      "carrot"
+     ],
+     "furn": [],
+     "meal": [],
+     "ore": [],
+     "wood": []
+    },
+    "wk": {
+     "mine": 2,
+     "claimed": false
+    },
+    "pts": {
+     "bal": 0,
+     "earned": 0
+    },
+    "buffs": {}
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 1,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "t": "sfx",
+    "k": "cast",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "hun",
+    "v": 96
+   },
+   {
+    "t": "sfx",
+    "k": "bite",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "t": "log",
+    "e": [
+     1793934035325,
+     "🎣 alice ตกปลาครั้งแรกได้🎏 ปลาคอยทอง!"
+    ]
+   },
+   {
+    "wn": 5,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 5,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 2,
+    "full": 3
+   },
+   {
+    "t": "catch",
+    "id": 1,
+    "f": "koi"
+   },
+   {
+    "t": "sfx",
+    "k": "catch",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "t": "sfx",
+    "k": "cast",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "chat",
+    "id": 1000003,
+    "name": "น้องมิ้นท์",
+    "text": "ท้าเพื่อนเล่น XO ไหม ❌⭕",
+    "npc": 1
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "crop_carrot": 1,
+     "crop_cabbage": 1,
+     "crop_corn": 1,
+     "crop_tomato": 1,
+     "crop_eggplant": 1,
+     "crop_strawberry": 1,
+     "crop_pumpkin": 1,
+     "crop_potato": 1,
+     "crop_chili": 1,
+     "crop_broccoli": 1,
+     "crop_cherry": 1,
+     "crop_grape": 1,
+     "crop_pineapple": 1,
+     "crop_mango": 1,
+     "crop_melon": 1,
+     "crop_peach": 1,
+     "crop_kiwi": 1,
+     "crop_coconut": 1,
+     "crop_avocado": 1,
+     "crop_blueberry": 1,
+     "crop_olive": 1,
+     "crop_beans": 1,
+     "crop_mushroom": 1,
+     "crop_sunflower": 1,
+     "crop_tulip": 1,
+     "fish_carp": 1,
+     "fish_bass": 1,
+     "fish_shrimp": 1,
+     "fish_crab": 1,
+     "fish_koi": 1,
+     "fish_lobster": 1,
+     "fish_squid": 1,
+     "fish_octopus": 1,
+     "fish_shark": 1,
+     "fish_dolphin": 1,
+     "fish_jelly": 1,
+     "fish_beaver": 1,
+     "fish_flamingo": 1,
+     "fish_coral": 1,
+     "fish_swan": 1,
+     "fish_mermaid": 1,
+     "fish_dragon": 1,
+     "fish_sdragon": 1,
+     "fish_unicorn": 1,
+     "fish_star": 1,
+     "fish_sardine": 1,
+     "fish_anchovy": 1,
+     "fish_mackerel": 1,
+     "fish_snapper": 1,
+     "fish_seabass": 1,
+     "fish_tuna": 1,
+     "fish_bonito": 1,
+     "fish_barracuda": 1,
+     "fish_puffer": 1,
+     "fish_sword": 1,
+     "fish_manta": 1,
+     "fish_hammer": 1,
+     "fish_turtle": 1,
+     "fish_seal": 1,
+     "fish_orca": 1,
+     "fish_whaleshark": 1,
+     "fish_bluewhale": 1,
+     "fish_kraken": 1,
+     "fish_angler": 1,
+     "fish_pearl": 1,
+     "fish_catfish": 1,
+     "fish_shell": 1,
+     "fish_frog": 1,
+     "fish_oyster": 1,
+     "fish_whale": 1,
+     "fish_otter": 1,
+     "fish_croc": 1,
+     "fish_humpback": 1,
+     "fish_penguin": 1,
+     "fish_dino": 1,
+     "egg": 1,
+     "duck_egg": 1,
+     "milk": 1,
+     "wool": 1,
+     "truffle": 1,
+     "honey": 1,
+     "alpaca_wool": 1,
+     "horse_milk": 1,
+     "chestnut": 1,
+     "log": 1,
+     "hardwood": 1,
+     "bamboo": 1,
+     "shoot": 1,
+     "pinewood": 1,
+     "resin": 1,
+     "palmwood": 1,
+     "coconut": 1,
+     "teak": 1,
+     "goldwood": 1,
+     "kunflower": 1,
+     "rosewood": 1,
+     "maplewood": 1,
+     "syrup": 1,
+     "sakurawood": 1,
+     "petal": 1,
+     "ebony": 1,
+     "amber": 1,
+     "ancientwood": 1,
+     "padaukwood": 1,
+     "oakwood": 1,
+     "acorn": 1,
+     "willowwood": 1,
+     "diptwood": 1,
+     "takianwood": 1,
+     "ginkgowood": 1,
+     "ginkgonut": 1,
+     "makhawood": 1,
+     "raintreewood": 1,
+     "shingwood": 1,
+     "plank": 1,
+     "stone": 1,
+     "copper": 1,
+     "silver": 1,
+     "amethyst": 1,
+     "emerald": 1,
+     "opal": 1,
+     "sapphire": 1,
+     "jade": 1,
+     "moonstone": 1,
+     "mythril": 1,
+     "coal": 1,
+     "iron": 1,
+     "gold": 1,
+     "ruby": 1,
+     "crystal": 1,
+     "topaz": 1,
+     "garnet": 1,
+     "obsidian": 1,
+     "sunstone": 1,
+     "starcore": 1,
+     "dish_vegbowl": 1,
+     "dish_boiledegg": 1,
+     "dish_saltfish": 1,
+     "dish_grill": 1,
+     "dish_omelet": 1,
+     "dish_seafood": 1,
+     "dish_feast": 1,
+     "dish_fishsoup": 1,
+     "dish_sashimi": 1,
+     "dish_fishburger": 1,
+     "dish_fishpie": 1,
+     "dish_fishmix": 1,
+     "dish_fishstew": 1,
+     "dish_platter": 1,
+     "dish_curry": 1,
+     "dish_salad": 1,
+     "dish_noodle": 1,
+     "dish_pizza": 1,
+     "dish_pasta": 1,
+     "dish_pie": 1,
+     "dish_cake": 1,
+     "dish_sharksoup": 1,
+     "dish_party": 1,
+     "dish_banquet": 1
+    }
+   },
+   {
+    "t": "tree",
+    "x": 18,
+    "y": 26,
+    "on": true,
+    "k": "broad"
+   },
+   {
+    "t": "sfx",
+    "k": "bite",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "wn": 6,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 6,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 2,
+    "full": 3
+   },
+   {
+    "t": "catch",
+    "id": 1,
+    "f": "carp"
+   },
+   {
+    "t": "sfx",
+    "k": "catch",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "hun",
+    "v": 95
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "t": "sfx",
+    "k": "cast",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "sfx",
+    "k": "bite",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "wn": 7,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 7,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 2,
+    "full": 3
+   },
+   {
+    "t": "title",
+    "id": 1,
+    "title": "หน้าใหม่ใจสู้"
+   },
+   {
+    "t": "catch",
+    "id": 1,
+    "f": "carp"
+   },
+   {
+    "t": "sfx",
+    "k": "catch",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "t": "sfx",
+    "k": "cast",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "hun",
+    "v": 94
+   },
+   {
+    "t": "tree",
+    "x": 48,
+    "y": 5,
+    "on": true,
+    "k": "oak"
+   },
+   {
+    "t": "sfx",
+    "k": "bite",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "use",
+    "id": 1
+   },
+   {
+    "wn": 8,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 8,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 2,
+    "full": 3
+   },
+   {
+    "t": "catch",
+    "id": 1,
+    "f": "carp"
+   },
+   {
+    "t": "sfx",
+    "k": "catch",
+    "id": 1,
+    "x": 336,
+    "y": 720
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 367,
+     "seed_carrot": 2,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934026000,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 367,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934026000,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "msg",
+    "text": "ซื้อ 🥕 เมล็ดแครอท x2"
+   },
+   {
+    "t": "sfx",
+    "k": "coin",
+    "id": 2,
+    "x": 720,
+    "y": 560,
+    "self": 1
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "crop_carrot": 1
+    }
+   },
+   {
+    "t": "log",
+    "e": [
+     1793934067425,
+     "🎓 alice ผ่านคู่มือเริ่มต้นครบแล้ว!"
+    ]
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "fish_koi": 1
+    }
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "fish_carp": 1
+    }
+   },
+   {
+    "t": "msg",
+    "text": "🏠 ยินดีต้อนรับสู่บ้านของคุณ! ซื้อเฟอร์นิเจอร์ที่ร้านเฟอร์นิเจอร์มาตกแต่ง แล้วกดปุ่ม 🏠 เพื่อเข้าโหมดตกแต่ง"
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 367,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "furn_chair": 2
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934026000,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "furn",
+    "op": "set",
+    "o": {
+     "i": 1,
+     "f": "table",
+     "x": 26,
+     "y": 20,
+     "r": 0,
+     "z": 0,
+     "on": null
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "plant",
+    "id": 2,
+    "x": 896,
+    "y": 800
+   },
+   {
+    "t": "inv",
+    "inv": {
+     "coin": 367,
+     "seed_carrot": 4,
+     "feed": 5,
+     "bait": 10,
+     "meal_bread": 3,
+     "crop_carrot": 1,
+     "furn_chair": 1
+    },
+    "fr": {
+     "l": {
+      "crop_carrot": [
+       [
+        1793934026000,
+        1
+       ]
+      ]
+     },
+     "fz": false
+    },
+    "deep": 1
+   },
+   {
+    "t": "furn",
+    "op": "set",
+    "o": {
+     "i": 2,
+     "f": "chair",
+     "x": 24.5,
+     "y": 20.25,
+     "r": 0,
+     "z": 0,
+     "on": null
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "plant",
+    "id": 2,
+    "x": 896,
+    "y": 800
+   },
+   {
+    "t": "furn",
+    "op": "set",
+    "o": {
+     "i": 1,
+     "f": "table",
+     "x": 26,
+     "y": 20,
+     "r": 1,
+     "z": 0,
+     "on": null
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "plant",
+    "id": 2,
+    "x": 896,
+    "y": 800
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "chat",
+    "id": 1000001,
+    "name": "ป้าแก้ว",
+    "text": "สัตว์หิว รีบให้อาหารนะ 🐔",
+    "npc": 1
+   },
+   {
+    "t": "hun",
+    "v": 94
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "tree",
+    "x": 12,
+    "y": 33,
+    "on": true,
+    "k": "gold"
+   },
+   {
+    "t": "mkt",
+    "m": {
+     "crop_carrot": 1,
+     "crop_cabbage": 1,
+     "crop_corn": 1,
+     "crop_tomato": 1,
+     "crop_eggplant": 1,
+     "crop_strawberry": 1,
+     "crop_pumpkin": 1,
+     "crop_potato": 1,
+     "crop_chili": 1,
+     "crop_broccoli": 1,
+     "crop_cherry": 1,
+     "crop_grape": 1,
+     "crop_pineapple": 1,
+     "crop_mango": 1,
+     "crop_melon": 1,
+     "crop_peach": 1,
+     "crop_kiwi": 1,
+     "crop_coconut": 1,
+     "crop_avocado": 1,
+     "crop_blueberry": 1,
+     "crop_olive": 1,
+     "crop_beans": 1,
+     "crop_mushroom": 1,
+     "crop_sunflower": 1,
+     "crop_tulip": 1,
+     "fish_carp": 1,
+     "fish_bass": 1,
+     "fish_shrimp": 1,
+     "fish_crab": 1,
+     "fish_koi": 1,
+     "fish_lobster": 1,
+     "fish_squid": 1,
+     "fish_octopus": 1,
+     "fish_shark": 1,
+     "fish_dolphin": 1,
+     "fish_jelly": 1,
+     "fish_beaver": 1,
+     "fish_flamingo": 1,
+     "fish_coral": 1,
+     "fish_swan": 1,
+     "fish_mermaid": 1,
+     "fish_dragon": 1,
+     "fish_sdragon": 1,
+     "fish_unicorn": 1,
+     "fish_star": 1,
+     "fish_sardine": 1,
+     "fish_anchovy": 1,
+     "fish_mackerel": 1,
+     "fish_snapper": 1,
+     "fish_seabass": 1,
+     "fish_tuna": 1,
+     "fish_bonito": 1,
+     "fish_barracuda": 1,
+     "fish_puffer": 1,
+     "fish_sword": 1,
+     "fish_manta": 1,
+     "fish_hammer": 1,
+     "fish_turtle": 1,
+     "fish_seal": 1,
+     "fish_orca": 1,
+     "fish_whaleshark": 1,
+     "fish_bluewhale": 1,
+     "fish_kraken": 1,
+     "fish_angler": 1,
+     "fish_pearl": 1,
+     "fish_catfish": 1,
+     "fish_shell": 1,
+     "fish_frog": 1,
+     "fish_oyster": 1,
+     "fish_whale": 1,
+     "fish_otter": 1,
+     "fish_croc": 1,
+     "fish_humpback": 1,
+     "fish_penguin": 1,
+     "fish_dino": 1,
+     "egg": 1,
+     "duck_egg": 1,
+     "milk": 1,
+     "wool": 1,
+     "truffle": 1,
+     "honey": 1,
+     "alpaca_wool": 1,
+     "horse_milk": 1,
+     "chestnut": 1,
+     "log": 1,
+     "hardwood": 1,
+     "bamboo": 1,
+     "shoot": 1,
+     "pinewood": 1,
+     "resin": 1,
+     "palmwood": 1,
+     "coconut": 1,
+     "teak": 1,
+     "goldwood": 1,
+     "kunflower": 1,
+     "rosewood": 1,
+     "maplewood": 1,
+     "syrup": 1,
+     "sakurawood": 1,
+     "petal": 1,
+     "ebony": 1,
+     "amber": 1,
+     "ancientwood": 1,
+     "padaukwood": 1,
+     "oakwood": 1,
+     "acorn": 1,
+     "willowwood": 1,
+     "diptwood": 1,
+     "takianwood": 1,
+     "ginkgowood": 1,
+     "ginkgonut": 1,
+     "makhawood": 1,
+     "raintreewood": 1,
+     "shingwood": 1,
+     "plank": 1,
+     "stone": 1,
+     "copper": 1,
+     "silver": 1,
+     "amethyst": 1,
+     "emerald": 1,
+     "opal": 1,
+     "sapphire": 1,
+     "jade": 1,
+     "moonstone": 1,
+     "mythril": 1,
+     "coal": 1,
+     "iron": 1,
+     "gold": 1,
+     "ruby": 1,
+     "crystal": 1,
+     "topaz": 1,
+     "garnet": 1,
+     "obsidian": 1,
+     "sunstone": 1,
+     "starcore": 1,
+     "dish_vegbowl": 1,
+     "dish_boiledegg": 1,
+     "dish_saltfish": 1,
+     "dish_grill": 1,
+     "dish_omelet": 1,
+     "dish_seafood": 1,
+     "dish_feast": 1,
+     "dish_fishsoup": 1,
+     "dish_sashimi": 1,
+     "dish_fishburger": 1,
+     "dish_fishpie": 1,
+     "dish_fishmix": 1,
+     "dish_fishstew": 1,
+     "dish_platter": 1,
+     "dish_curry": 1,
+     "dish_salad": 1,
+     "dish_noodle": 1,
+     "dish_pizza": 1,
+     "dish_pasta": 1,
+     "dish_pie": 1,
+     "dish_cake": 1,
+     "dish_sharksoup": 1,
+     "dish_party": 1,
+     "dish_banquet": 1
+    }
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "chop",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "t": "sfx",
+    "k": "fell",
+    "id": 1,
+    "x": 1136,
+    "y": 1008
+   },
+   {
+    "wn": 9,
+    "wgoal": 350,
+    "wdone": false,
+    "t": "village",
+    "n": 9,
+    "goal": 70,
+    "done": false,
+    "left": 0,
+    "mine": 2,
+    "full": 3
+   },
+   {
+    "t": "chat",
+    "id": 1000003,
+    "name": "น้องมิ้นท์",
+    "text": "กด H ตกแต่งบ้านได้ 🛋️",
+    "npc": 1
+   },
+   {
+    "t": "hun",
+    "v": 93
+   },
+   {
+    "t": "tile",
+    "k": "6,16",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "tile",
+    "k": "8,14",
+    "v": {
+     "c": null,
+     "s": 0,
+     "f": 0,
+     "w": 0,
+     "o": "",
+     "l": 0
+    }
+   },
+   {
+    "t": "tree",
+    "x": 21,
+    "y": 33,
+    "on": true,
+    "k": "teak"
+   },
+   {
+    "t": "chat",
+    "id": 1000002,
+    "name": "ลุงสมชาย",
+    "text": "ขายเยอะๆ ราคาตกนะ 📉",
+    "npc": 1
+   },
+   {
+    "t": "hun",
+    "v": 93
+   }
+  ],
+  "bulk": {
+   "s": {
+    "n": 258,
+    "sha1": "507aa3aad1a28fb9467400f54698cc510553aa8d"
+   },
+   "scene": {
+    "n": 1,
+    "sha1": "0c292f81bf65b74e6fd081382156ea8203232ddc"
+   }
+  }
+ }
+}
