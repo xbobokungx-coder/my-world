@@ -63,9 +63,13 @@ const spot = [...F.ores.keys()][0].split(',').map(Number); F.ores.clear(); F.hp.
 }
 { // บันทึก event ขุด (เขียนไฟล์ events/วันที่.jsonl)
   setOre(ox, oy, 'stone', 0); a.rec.inv = { coin: 0, pick_1: 1, glove_1: 1 }; a.rec.dur = {}; let n = 0; while (F.ores.has(ox + ',' + oy) && n < 50) { act(ox, oy); n++; }
-  setTimeout(() => {
-    const dir = path.join(process.env.DATA_DIR, 'events'); const lines = fs.readdirSync(dir).flatMap(f => fs.readFileSync(path.join(dir, f), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l))).filter(e => e.e === 'mine');
-    assert.ok(lines.length >= 1 && lines[lines.length - 1].k === 'stone' && lines[lines.length - 1].gl === 1 && lines[lines.length - 1].hits >= 1, 'event mine ครบข้อมูล');
+  const dir = path.join(process.env.DATA_DIR, 'events'), t0 = Date.now();
+  const readMine = () => { try { return fs.readdirSync(dir).flatMap(f => fs.readFileSync(path.join(dir, f), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l))).filter(e => e.e === 'mine'); } catch (e) { return []; } };
+  const poll = () => { // รอ appendFile เขียนเสร็จ (สูงสุด 3 วินาที) แล้วหา event ของก้อนที่เพิ่งขุดนี้ ไม่พึ่งลำดับบรรทัดท้าย
+    const lines = readMine(), ev = lines.find(e => e.k === 'stone' && e.gl === 1 && e.hits >= 1);
+    if (!ev && Date.now() - t0 < 3000) return setTimeout(poll, 50);
+    assert.ok(lines.length >= 1 && ev, 'event mine ครบข้อมูล');
     console.log('ผ่าน test-mining'); process.exit(0);
-  }, 300);
+  };
+  setTimeout(poll, 50);
 }
