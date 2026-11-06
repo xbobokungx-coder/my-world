@@ -14,4 +14,10 @@ Decisions recorded in docs/plans/refactor.md (written 2026-11-06, status: awaiti
 - D4: golden test stubs global Date class, Math.random (seeded), crypto.randomInt/randomBytes and TZ in the test — World has no clock/rng injection and we don't add one.
 - weekKey: keep the ISO version (the one that actually wins today); delete the numeric dead one.
 
+Step-1 remaining sub-plan (docs/plans/refactor-step1-remaining.md, 2026-11-06):
+- System files export methods ONLY (mix copies every own property). Module constants shared by 2+ systems go to `server/consts.js` (no shared.js require): CAVE ('@cave' string, not S.CAVE), HFAST, ADMIN_NAME, PARTY, NPC_DEFS. Shared aliases (SELLABLE, rodOf, TS…) may be redeclared per file.
+- Proof of "moved not rewritten": `tools/check-moved.js` compares `World.prototype[name].toString()` before/after (class vs object-literal methods give identical text at same indent). `tools/move-methods.js` cuts by method name and reports free module-level names (main runtime risk = missing require → ReferenceError only on that path).
+- After step 1, class World keeps only orchestrators for step 2: constructor loadTown loadProjects join leave handle act tick save. Core services go last to `server/systems/core.js` (inside systems/ so check-structure dup check covers it). Arcade lives in `server/systems/arcade/{uno,party,duel,core}.js`.
+- Order chosen: leaf/small systems first, arcade middle, mining/fishing/house/market late, core last.
+
 **How to apply:** future refactor plans (steps 2–4, client split) must stay consistent with these; if the user overrides D1 or weekKey, update this memory. Related: [[refactor-plan-status]]

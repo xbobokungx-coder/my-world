@@ -1,1 +1,1 @@
-- [Refactor decisions](refactor-decisions.md) — shared/ at root + route, keep existing service names, mix() helper, golden stubs, weekKey ISO
+- [Refactor decisions](refactor-decisions.md) — shared/ root, service names, mix(), golden stubs, weekKey ISO, consts.js + check-moved, step-1 order
