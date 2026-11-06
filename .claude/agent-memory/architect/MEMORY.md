@@ -1,0 +1,1 @@
+- [Refactor decisions](refactor-decisions.md) — shared/ at root + route, keep existing service names, mix() helper, golden stubs, weekKey ISO
