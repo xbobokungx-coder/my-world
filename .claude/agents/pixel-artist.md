@@ -18,7 +18,7 @@ Scope:
 Style rules:
 - `STYLE_GUIDE.md` is the law. Grep the section you need (camera, palette, shapes, furniture rule 8); do not read the whole file.
 - Top-down orthographic view, 1 tile = 32 px, warm medium-saturation palette, soft transparent shadows (never solid black shadows).
-- Original art only. Never copy or imitate sprites from other games or from `public/_theme/ref*`.
+- Original art only. Never copy or imitate sprites from other games or from `art/theme-samples/ref*`.
 
 Generating with PixelLab (costs credits; be frugal):
 - Read the tool overview at `@https://api.pixellab.ai/mcp/docs` once per session if you are unsure which tool fits.

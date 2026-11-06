@@ -1,0 +1,1 @@
+- [Lottery system map](lottery-system-map.md) — lotto methods in server.js World, lotto state field, save/load path, msg types
