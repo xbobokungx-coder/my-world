@@ -270,39 +270,7 @@ class World {
   houseRects(key) { let r = this.hrects.get(key); if (!r) { r = S.houseSolidRects(this.houses[key] ? this.houses[key].items : {}); this.hrects.set(key, r); } return r; }
   mapOf(p) { const f = S.caveFloor(p.scene); return f ? this.floorOf(f).map : p.scene ? this.houseMap() : this.map; }
   blockedFor(p, x, y) { const f = S.caveFloor(p.scene); return f ? S.blockedAt(this.floorOf(f).map, x, y) : p.scene ? S.houseBlockedAt(this.houseMap(), this.houseRects(p.scene), x, y, p.x, p.y) : S.blockedAt(this.map, x, y); } // ในบ้านรวมกล่องเฟอร์นิเจอร์ (ถ้าอยู่ในกล่องอยู่แล้ว เช่นเพิ่งลุกจากเก้าอี้ เดินออกได้)
-  // ชั้นแก้แมพของผู้ดูแล: mapOv ทับช่องหลัง makeMap/ต้นไม้/โครงการ • mocks เป็นกล่องวางแผน (ไม่ชน ไม่มีผลกติกา)
-  applyMapOv() {
-    if (!this.mapOv) this.mapOv = {};
-    for (const [k, t] of Object.entries(this.mapOv)) {
-      const [x, y] = k.split(',').map(Number);
-      if (!this.map[y] || x < 1 || y < 1 || x > S.W - 2 || y > S.H - 2) continue; // ขอบแมพต้นไม้คงที่
-      const prev = this.map[y][x]; this.map[y][x] = t;
-      if (this.treeKind) {
-        if (t === T.TREE && prev !== T.TREE) this.treeKind.set(x + ',' + y, S.pickTreeKind(this.map, x, y, S.rng(x * 7919 + y * 104729)));
-        else if (t !== T.TREE) this.treeKind.delete(x + ',' + y);
-      }
-    }
-  }
   adminSend(o) { for (const q of this.players.values()) if (q.admin) send(q, o); }
-  paintCells(cells) { // [[x,y,t],...] วาดพื้นแมพสด เก็บใน mapOv
-    if (!Array.isArray(cells) || !cells.length || cells.length > 500) return null;
-    if (!this.mapOv) this.mapOv = {};
-    const out = [], ok = new Set(S.MAP_PAINT.map(p => p.t));
-    for (const c of cells) {
-      if (!Array.isArray(c) || c.length < 3) continue;
-      const x = Math.trunc(+c[0]), y = Math.trunc(+c[1]), t = Math.trunc(+c[2]);
-      if (!Number.isInteger(x) || !Number.isInteger(y) || !ok.has(t)) continue;
-      if (x < 1 || y < 1 || x > S.W - 2 || y > S.H - 2) continue;
-      this.map[y][x] = t; this.mapOv[x + ',' + y] = t;
-      if (t === T.TREE) { if (!this.treeKind.has(x + ',' + y)) this.treeKind.set(x + ',' + y, S.pickTreeKind(this.map, x, y, Math.random)); }
-      else { this.treeKind.delete(x + ',' + y); if (this.treeHp) this.treeHp.delete(x + ',' + y); }
-      out.push([x, y, t]);
-    }
-    if (!out.length) return null;
-    this.dirty = true;
-    this.broadcast({ t: 'mapcell', cells: out });
-    return out;
-  }
   nameOfKey(key) { return (this.saved[key] && this.saved[key].name) || key; }
   houseStyle(key) { const h = this.houses[key] || {}; return { fl: h.fl || S.HOUSE_STYLE_DEFAULT.fl, wp: h.wp || S.HOUSE_STYLE_DEFAULT.wp }; }
   houseItemsPub(key) { const h = this.houses[key]; return h ? Object.entries(h.items).map(([i, it]) => Object.assign({ i: +i }, it)) : []; }
@@ -455,11 +423,6 @@ class World {
     rec.inv[item] = Math.max(0, (rec.inv[item] || 0) + n); if (!rec.inv[item]) delete rec.inv[item];
     if (p) send(p, { t: 'inv', inv: rec.inv }); this.dirty = true;
   }
-  creditAnimalCare(key, xp) { // ปันผล XP การเลี้ยงให้คนที่ให้อาหารสัตว์ไว้ แม้คนอื่นจะมาเก็บผลผลิต (ออนไลน์/ออฟไลน์)
-    const p = [...this.players.values()].find(q => q.key === key);
-    if (p) { this.addXp(p, 'animal', xp); this.addPts(p, 1); this.toast(p, '🐄 มีคนเก็บผลผลิตจากสัตว์ที่คุณเลี้ยง — คุณได้ XP การเลี้ยง'); }
-    else { const rec = this.saved[key]; if (rec && rec.skills) { rec.skills.animal = (rec.skills.animal || 0) + xp; this.dirty = true; } }
-  }
   // ----- แต้มตู้เกม (arcade points): เล่นจบ/ชนะคนจริงได้แต้ม ใช้แลกของโชว์ + จัดอันดับ Leaderboard -----
   arcOf(rec) {
     if (!rec.arc || typeof rec.arc !== 'object') rec.arc = { pts: 0, total: 0, wk: 0, wkKey: 0 };
@@ -545,29 +508,6 @@ class World {
 
 
   dayOf(t) { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
-  // ----- แปลงเช่า (S.FARM_RENT) -----
-  rentAt(x, y) { const P = S.rentPlotAt(x, y), r = P && this.rents[P.id]; return r && r.until > Date.now() ? r : null; }
-  rentBlock(x, y, p) { // แปลงเช่าใช้ได้เฉพาะคนที่เช่าอยู่ แปลงว่างล็อกไว้ (คืนข้อความที่ต้องบล็อก หรือ null)
-    if (!S.rentPlotAt(x, y)) return null;
-    const r = this.rentAt(x, y);
-    if (r && r.key === p.key) return null;
-    return r ? `🔒 แปลงนี้ ${r.name} เช่าอยู่` : '🔒 แปลงนี้ยังไม่มีคนเช่า ล็อกไว้ก่อน (เช่าได้ที่ร้านเมล็ดพันธุ์)';
-  }
-  rentsPub() { const o = {}, now = Date.now(); for (const [id, r] of Object.entries(this.rents)) if (r.until > now) o[id] = { name: r.name, until: r.until, key: r.key }; return o; }
-  rentHandle(p, id) { // เช่า/ต่อเวลาแปลง ที่ร้านเมล็ดพันธุ์ • คนละแปลง • จ่ายเหรียญ (หายจากระบบ)
-    if (this.nearShopKind(p) !== 'farm') return this.toast(p, 'เช่าแปลงได้ที่ร้านเมล็ดพันธุ์');
-    const P = S.FARM_RENT.plots.find(q => q.id === id); if (!P) return;
-    const now = Date.now(), cur = this.rents[id], mine = Object.entries(this.rents).find(([k, r]) => r.key === p.key && r.until > now);
-    if (cur && cur.until > now && cur.key !== p.key) return this.toast(p, `แปลง ${id} มีคนเช่าอยู่แล้ว (${cur.name})`);
-    if (mine && mine[0] !== id) return this.toast(p, `คุณเช่าแปลง ${mine[0]} อยู่แล้ว เช่าได้คนละแปลง`);
-    if (cur && cur.key === p.key && cur.until > now) return this.toast(p, 'เช่าได้รอบละ 1 วัน รอให้หมดรอบก่อนแล้วค่อยเช่าใหม่');
-    const until = now + S.FARM_RENT.ms;
-    if ((p.rec.inv.coin || 0) < S.FARM_RENT.price) return this.toast(p, `เหรียญไม่พอ ค่าเช่า 🪙 ${S.FARM_RENT.price}`);
-    this.add(p, 'coin', -S.FARM_RENT.price, 'rent'); this.toPot(S.FARM_RENT.price); this.rents[id] = { key: p.key, name: p.name, until }; this.dirty = true;
-    this.broadcast({ t: 'rents', r: this.rentsPub() }); this.sfxTo(p, 'coin');
-    this.toast(p, `🏡 เช่าแปลง ${id} ถึง ${new Date(until).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} (ต้นในแปลงนี้ไม่นับเพดานปลูก)`);
-    if (!cur || cur.key !== p.key || cur.until <= now) this.addLog(`🏡 ${p.name} เช่าแปลง ${id} ที่แปลงผัก`);
-  }
 
 
   // ----- ตลาดราคาไดนามิก: ขายเยอะราคาตก ปล่อยไว้ราคาค่อยๆ กลับ และทุก 1 วันในเกมราคาเป้าหมายสุ่มใหม่ (มีข่าวราคาพุ่ง/ตก) -----
@@ -599,62 +539,10 @@ class World {
   sfx(p, k) { this.broadcast({ t: 'sfx', k, id: p.id, x: Math.round(p.x), y: Math.round(p.y) }); }
   sfxTo(p, k) { send(p, { t: 'sfx', k, id: p.id, x: Math.round(p.x), y: Math.round(p.y), self: 1 }); }
 
-  zone(type) { const z = S.PENS[type] || S.PENS.chicken; return { x0: (z.x0 + 0.4) * TS, x1: (z.x1 + 0.6) * TS, y0: (z.y0 + 0.5) * TS, y1: (z.y1 + 0.5) * TS }; }
-  hiveBox(i) { const [hx, hy] = S.BEE.hives[i]; return { x0: (hx - 0.6) * TS, x1: (hx + 1.6) * TS, y0: (hy - 0.6) * TS, y1: (hy + 1.6) * TS }; } // ผึ้งบินวนอยู่รอบรังของตัวเอง (ไม่ไกลเกิน 1 ช่อง)
-  // ----- สัตว์ฟาร์มของใครของมัน: เก็บใน rec.herd • โผล่เล้าเฉพาะตอนเจ้าของออน • ออฟ = หายจากเล้า + แช่แข็ง -----
-  herdOf(rec) { if (!Array.isArray(rec.herd)) rec.herd = []; return rec.herd; }
-  packAnimal(a, now) {
-    return { type: a.type, hunger: Math.round(a.hunger), zero: a.zero || 0, sick: !!a.sick, sickMs: a.sickMs || 0,
-      fed: !!a.fed, prod: !!a.prod, feeder: a.feeder || '', fn: a.fn || '', pm: a.pm || 0,
-      layLeft: a.fed && a.layAt ? Math.max(0, a.layAt - now) : 0, warned: !!a.warned };
-  }
-  syncHerd(p) { const now = Date.now(); p.rec.herd = this.animals.filter(a => a.owner === p.key && !a.dead).map(a => this.packAnimal(a, now)); this.dirty = true; }
-  ownerCount(key, type) { return this.animals.filter(a => a.owner === key && a.type === type && !a.dead).length; }
-  count(type) { return this.animals.filter(a => a.type === type && !a.dead).length; }
-  spawnAnimal(type, p, st) {
-    if (!p || !ANIMALS[type]) return null;
-    const hive = type === 'bee' ? this.animals.filter(a => a.type === 'bee' && a.owner === p.key).length % S.BEE.hives.length : 0;
-    const z = type === 'bee' ? this.hiveBox(hive) : this.zone(type), x = rand(z.x0, z.x1), y = rand(z.y0, z.y1), now = Date.now();
-    const a = { id: this.nextAid++, type, hive, owner: p.key, on: p.name, x, y, tx: x, ty: y, wait: rand(0, 3),
-      prod: !!(st && st.prod), fed: !!(st && st.fed), feeder: (st && st.feeder) || '', fn: (st && st.fn) || '', pm: (st && st.pm) || 0,
-      layAt: (st && st.fed) ? now + Math.max(0, st.layLeft || 0) : 0, dx: 1,
-      hunger: Number.isFinite(st && st.hunger) ? Math.max(0, Math.min(100, st.hunger)) : 90,
-      zero: (st && st.zero) || 0, sick: !!(st && st.sick), sickMs: (st && st.sickMs) || 0, warned: !!(st && st.warned) };
-    this.animals.push(a); this.dirty = true; return a;
-  }
-  ensureGiftChicken(p) { // มือใหม่ (และผู้เล่นเก่ายังไม่ได้รับ): ได้ไก่ตัวแรก 1 ตัว
-    if (p.rec.herdGift) return;
-    p.rec.herdGift = 1; const herd = this.herdOf(p.rec);
-    if (!herd.some(a => a.type === 'chicken')) {
-      herd.push({ type: 'chicken', hunger: 90, zero: 0, sick: false, sickMs: 0, fed: false, prod: false, feeder: '', fn: '', pm: 0, layLeft: 0 });
-      setTimeout(() => { if (p.ws.readyState === 1) this.toast(p, '🐔 เมืองมอบไก่ตัวแรกให้คุณแล้ว! ซื้ออาหารไก่แล้วไปให้อาหารที่เล้า — ไข่เป็นของคุณ'); }, 4500);
-    }
-    this.dirty = true;
-  }
-  loadHerd(p) {
-    this.ensureGiftChicken(p);
-    const herd = this.herdOf(p.rec), kept = [], nBy = {};
-    for (const st of herd) {
-      if (!st || !ANIMALS[st.type]) continue;
-      nBy[st.type] = (nBy[st.type] || 0) + 1;
-      if (nBy[st.type] > ANIMALS[st.type].cap) continue;
-      kept.push(st); this.spawnAnimal(st.type, p, st);
-    }
-    p.rec.herd = kept; this.dirty = true;
-  }
-  unloadHerd(p) { this.syncHerd(p); this.animals = this.animals.filter(a => a.owner !== p.key); }
 
-  // พืชเป็นของคนปลูก (t.o = key, t.on = ชื่อ): เก็บได้เฉพาะเจ้าของ แต่ถ้าสุกแล้วไม่มีใครมาเก็บครบ 1 วันในเกม (t.rm = เวลาที่สุกค้างอยู่ นับเฉพาะตอนมีคนออนไลน์) คนอื่นก็มาเก็บได้ ต้นเก่าที่ไม่มีเจ้าของ = ใครเก็บก็ได้
-  cropLocked(t, p) { return !!(t.o && p.key !== t.o && (t.rm || 0) < S.DAY_MS); }
-  pub(t, now) { return { c: t.c || null, s: t.c ? S.cropStage(t) : 0, f: t.c ? S.cropFrame(t) : 0, w: t.wu > now ? 1 : 0, o: t.on || '', l: t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS ? 1 : 0 }; }
   broadcast(o, except) {
     const s = JSON.stringify(o);
     for (const p of this.players.values()) if (p !== except && p.ws.readyState === 1) p.ws.send(s);
-  }
-  tileUpdate(k, t) {
-    if (t) { t._p = JSON.stringify(this.pub(t, Date.now())); this.broadcast({ t: 'tile', k, v: JSON.parse(t._p) }); }
-    else this.broadcast({ t: 'tile', k, v: null });
-    this.dirty = true;
   }
   toast(p, text) { send(p, { t: 'msg', text }); }
   add(p, key, n, why, lots) { // lots = อายุของที่ได้มา (ของเน่าได้ ใช้ตอนเทรดให้อายุติดไปด้วย) • คืนค่า = กองที่ถูกเอาออก (เมื่อ n < 0)
@@ -903,7 +791,6 @@ class World {
     this.broadcast({ t: 'veh', id: p.id, v }); if (v) this.toast(p, `${S.VEHICLES[v].emoji} ขี่${S.VEHICLES[v].name}แล้ว (กด V เพื่อลง)`);
   }
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); }
-  treeList() { const out = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) out.push([x, y, (this.treeKind && this.treeKind.get(x + ',' + y)) || 'broad']); return out; }
 
   // ขายของที่ซื้อมาคืนร้าน ได้ 70% ของราคาซื้อ (หัก 30%)
   sellback(p, item) {
@@ -2157,21 +2044,6 @@ class World {
     }
   }
 
-  cropTick(now) {
-    let dt = now - this.lastCrop; this.lastCrop = now;
-    if (!Number.isFinite(dt) || dt < 0 || dt > 120000) return; // นาฬิกากระโดด — ไม่โต/ไม่ถอย
-    if (!this.players.size) return; // โลกจำศีล: ไม่มีคนออนไลน์ พืชไม่โต
-    for (const k in this.farm) {
-      const t = this.farm[k];
-      if (t.c && t.wu > now && S.cropStage(t) < 3) t.g = Math.min(CROPS[t.c].time, (t.g || 0) + dt * (t.m || 1) / (S.cropSeason(t.c, now) < 0 ? S.SEASONS.outGrow : 1)); // นอกฤดูโตช้าลง
-      else if (t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS) { t.rm = (t.rm || 0) + dt; this.dirty = true; } // สุกค้างอยู่ นับเวลาจนครบ 1 วันในเกม
-      else if (!t.c) { // แปลงว่างที่ไม่มีใครถาง/ปลูกเกินเวลาที่กำหนด หญ้าขึ้นกลับ
-        t.idle = (t.idle || 0) + dt;
-        if (t.idle >= S.FARM_REGROW_MS) { delete this.farm[k]; this.tileUpdate(k, null); this.dirty = true; continue; }
-      }
-      if (JSON.stringify(this.pub(t, now)) !== t._p) this.tileUpdate(k, t);
-    }
-  }
 
   save(sync) {
     if (!this.dirty) return;
@@ -2202,6 +2074,9 @@ mix(World, require('./server/systems/pets.js')); // สัตว์เลี้�
 mix(World, require('./server/systems/quests.js')); // เควสประจำวัน แต้ม บัฟ ข่าวชื่อเสียง (ย้ายไป server/systems/quests.js)
 mix(World, require('./server/systems/achievements.js')); // ความสำเร็จ ฉายา ดาว สมุดสะสม (ย้ายไป server/systems/achievements.js)
 mix(World, require('./server/systems/onboarding.js')); // คู่มือเริ่มต้น สัปดาห์แรก ของขวัญ ทักทาย สตรีค (ย้ายไป server/systems/onboarding.js)
+mix(World, require('./server/systems/farm.js')); // ไร่ แปลงปลูก แปลงเช่า (ย้ายไป server/systems/farm.js)
+mix(World, require('./server/systems/animals.js')); // สัตว์ในฟาร์ม ฝูง คอก ผึ้ง (ย้ายไป server/systems/animals.js)
+mix(World, require('./server/systems/map.js')); // ชั้นแก้แมพ ต้นไม้ (ย้ายไป server/systems/map.js)
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
 if (require.main !== module) { module.exports = { World }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)
