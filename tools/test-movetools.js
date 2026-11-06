@@ -78,4 +78,42 @@ assert.strictEqual(r.status, 1, 'ชื่อซ้ำในไฟล์เป�
 assert.strictEqual(fs.readFileSync(dup, 'utf8'), dupB2, 'ไฟล์เป้าต้องไม่ถูกแก้');
 assert.strictEqual(fs.readFileSync(srv, 'utf8'), srvC, 'server.js ต้องไม่ถูกแก้');
 assert.ok(!fs.existsSync(dup + '.tmp') && !fs.existsSync(srv + '.tmp'), 'ต้องไม่มี .tmp ค้าง');
+// บั๊กขอบเขต: เมธอดถัดไปมี default param (ไม่ตรง regex เดิม) ต้องไม่ถูกดึงไปด้วย / เนื้อปนหรือ syntax พัง = exit 1 ไม่แก้ไฟล์
+{
+  const fx = name => { // สร้างโฟลเดอร์จำลองที่มี server.js ของตัวเอง
+    const d = path.join(tmp, name); fs.mkdirSync(path.join(d, 'tools'), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'tools', 'move-methods.js'), path.join(d, 'tools', 'move-methods.js'));
+    fs.writeFileSync(path.join(d, 'package.json'), '{}'); return d;
+  };
+  const go = (d, ...a) => cp.spawnSync(process.execPath, [path.join(d, 'tools', 'move-methods.js'), ...a], { cwd: d, encoding: 'utf8' });
+  const FX = "'use strict';\nclass World {\n  // กินของ\n  eat(p, item) {\n    if (!item) { return; }\n    p.hp++;\n  }\n\n  // ใกล้น้ำไหม\n  nearWater(p, r = 2) { // ดูรอบตัว\n    return r > 1;\n  }\n\n  other(a) {\n    return a;\n  }\n}\nmodule.exports = { World };\n";
+  let d = fx('fx1'); fs.writeFileSync(path.join(d, 'server.js'), FX);
+  r = go(d, 'server/systems/e.js', 'eat');
+  assert.strictEqual(r.status, 0, 'ย้าย eat ต้องผ่าน: ' + r.stderr);
+  let t = fs.readFileSync(path.join(d, 'server/systems/e.js'), 'utf8'), sv = fs.readFileSync(path.join(d, 'server.js'), 'utf8');
+  assert.ok(/^  eat\(p, item\) \{/m.test(t) && !/nearWater|other/.test(t), 'ต้องไม่ดึง nearWater/other ไปด้วย');
+  assert.ok(/^  nearWater\(p, r = 2\)/m.test(sv) && /^  other\(a\)/m.test(sv) && !/^  eat\(/m.test(sv), 'เมธอดถัดไปต้องอยู่ใน server.js');
+  assert.strictEqual(cp.spawnSync(process.execPath, ['--check', path.join(d, 'server/systems/e.js')]).status, 0, 'ไฟล์เป้าต้อง syntax ถูก');
+  assert.strictEqual(cp.spawnSync(process.execPath, ['--check', path.join(d, 'server.js')]).status, 0, 'server.js ต้อง syntax ถูก');
+  // ย้ายตัวที่มี default param เอง (ตัวถัดไปคือ other) ก็ต้องไม่ลากต่อ
+  d = fx('fx2'); fs.writeFileSync(path.join(d, 'server.js'), FX);
+  assert.strictEqual(go(d, 'server/systems/n.js', 'nearWater').status, 1, 'หัวแบบ default param ไม่อยู่ในรายชื่อที่ย้ายได้ ต้อง exit 1');
+  // เนื้อที่ตัดมีเมธอดอื่นปน (หัวหลายบรรทัดไม่รู้จัก ทำให้ '}' ปิดไม่ชัด) = exit 1 ไม่แก้ไฟล์
+  d = fx('fx3'); const BAD = FX.replace("  other(a) {\n    return a;\n  }\n", "  other(a,\n    b) {\n    return a;\n  }\n");
+  fs.writeFileSync(path.join(d, 'server.js'), BAD);
+  r = go(d, 'server/systems/e.js', 'nearWater');
+  assert.strictEqual(r.status, 1, 'ขอบเขตไม่ชัดต้อง exit 1: ' + r.stdout);
+  assert.strictEqual(fs.readFileSync(path.join(d, 'server.js'), 'utf8'), BAD, 'server.js ต้องไม่ถูกแก้');
+  assert.ok(!fs.existsSync(path.join(d, 'server/systems/e.js')) && !fs.existsSync(path.join(d, 'server.js.tmp')), 'ต้องไม่เขียนไฟล์ใด');
+  // เมธอดจริงใน HEAD (ถ้ามี eat ตามด้วย nearWater) ต้องย้ายแล้ว syntax ผ่าน
+  const head = cp.spawnSync('git', ['show', 'HEAD:server.js'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26 });
+  if (head.status === 0 && /^  eat\(p, item\) \{/m.test(head.stdout) && /^  nearWater\(p, r = 2\)/m.test(head.stdout)) {
+    d = fx('fx4'); fs.writeFileSync(path.join(d, 'server.js'), head.stdout);
+    r = go(d, 'server/systems/e.js', 'eat');
+    assert.strictEqual(r.status, 0, 'ย้าย eat จริงต้องผ่าน: ' + r.stderr);
+    assert.ok(!/nearWater/.test(fs.readFileSync(path.join(d, 'server/systems/e.js'), 'utf8')), 'eat จริงต้องไม่ดึง nearWater');
+    assert.ok(/^  nearWater\(p, r = 2\)/m.test(fs.readFileSync(path.join(d, 'server.js'), 'utf8')));
+    assert.strictEqual(cp.spawnSync(process.execPath, ['--check', path.join(d, 'server/systems/e.js')]).status, 0);
+  }
+}
 console.log('ok test-movetools');

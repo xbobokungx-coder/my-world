@@ -621,46 +621,6 @@ class World {
     } else if (m.a === 'fame') { this.statDay(); send(p, { t: 'fame', f: this.famePub() }); }
   }
 
-  // ----- พลังงาน ⚡ (Phase 2) -----
-  enOf(p) { const e = p.rec.en = p.rec.en && typeof p.rec.en === 'object' ? p.rec.en : {}; if (!Number.isFinite(e.v)) e.v = S.ENERGY.max; e.v = Math.max(-S.ENERGY.max, Math.min(S.ENERGY.max, e.v)); if (!Number.isFinite(e.at)) e.at = Date.now(); e.ex = !!e.ex; return e; }
-  enJoin(p) { const e = this.enOf(p), now = Date.now(); e.v = Math.min(S.ENERGY.max, e.v + Math.max(0, now - e.at) / S.ENERGY.regenMs); e.at = now; if (e.ex && e.v >= S.ENERGY.resume) e.ex = false; } // ฟื้นระหว่างออฟไลน์ด้วย
-  enPub(p, spent) { const e = this.enOf(p); return { t: 'en', spent: spent || 0, v: Math.round(e.v * 10) / 10, ex: e.ex, rate: (p.sit ? S.ENERGY.sitMul : 1) / S.ENERGY.regenMs, resume: S.ENERGY.resume, rareUntil: p.rec.rareAt || 0, wk: this.wkPub(p), wkScale: S.ENERGY.var && S.ENERGY.var.scale, wkMax: S.ENERGY.var && S.ENERGY.var.max, wkHalf: S.ENERGY.var && S.ENERGY.var.halfLifeMs }; }
-  enPush(p, spent) { send(p, this.enPub(p, spent)); }
-  wkDecay(p, ms) { // ความล้างานซ้ำของทุกกลุ่มลดครึ่งหนึ่งทุก halfLifeMs (ms = เวลาที่นับ) ล้างกลุ่มที่เหลือน้อยทิ้ง
-    const V = S.ENERGY.var, w = p.rec.wk = p.rec.wk && typeof p.rec.wk === 'object' ? p.rec.wk : {}, f = Math.pow(0.5, Math.max(0, ms) / V.halfLifeMs);
-    for (const k of Object.keys(w)) { w[k] = Number.isFinite(w[k]) ? w[k] * f : 0; if (w[k] < 0.5) delete w[k]; }
-    return w;
-  }
-  wkMult(p, kind, base) { // ตัวคูณต้นทุนพลังงานจากความล้างานกลุ่มเดิมซ้ำๆ (ดู ENERGY.var ใน shared.js) แล้วบวกความล้าของงานนี้เพิ่ม
-    const V = S.ENERGY.var, g = V && V.group[kind]; if (!g) return 1;
-    const now = Date.now(), w = this.wkDecay(p, now - (p.rec.wkAt || now));
-    p.rec.wkAt = now; const m = 1 + Math.min(V.max, (w[g] || 0) / V.scale); w[g] = (w[g] || 0) + base; return m;
-  }
-  wkPub(p) { // ความล้าต่อกลุ่ม (ค่าดิบ) ให้ client คำนวณ % และลดเองตามเวลา
-    const V = S.ENERGY.var, w = p.rec.wk; if (!V || !w) return null; const o = {};
-    for (const k of Object.keys(w)) o[k] = Math.round(w[k] * 10) / 10; return Object.keys(o).length ? o : null;
-  }
-  tire(p, kind, value) { // งานหนักที่สำเร็จแล้ว หักพลังงานตามมูลค่างาน (S.energyCost) เกินที่มี = ติดลบ ต้องพักจนถึง resume
-    if (!S.ENERGY.on) return this.telAdd(p, kind, 0); // ระบบพลังงานปิดอยู่: ไม่หักพลังงาน แต่ยังนับการกระทำ
-    const e = this.enOf(p), cost = Math.round(S.energyCost(kind, value) * this.wkMult(p, kind, S.energyCost(kind, value)) * 10) / 10; e.v = Math.max(-S.ENERGY.max, e.v - cost); e.at = Date.now();
-    if (e.v <= 0 && !e.ex) {
-      e.ex = true; const sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000);
-      this.toast(p, `😮‍💨 เหนื่อยแล้ว! ต้องพักราว ${sec >= 60 ? Math.ceil(sec / 60) + ' นาที' : sec + ' วินาที'} (นั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า) ระหว่างนี้ทำอาหาร เควส หรือลงขันเมืองได้`); logEv(this.room, 'tired', { p: p.key });
-    }
-    this.dirty = true; this.enPush(p, cost); this.telAdd(p, kind, cost);
-  }
-  exhausted(p) { return S.ENERGY.on && this.enOf(p).ex; }
-  heavyAction(tool, k) { return ['hoe', 'water', 'axe', 'rod'].includes(tool) || (typeof tool === 'string' && tool.startsWith('seed_')) || (tool === 'hand' && !!(this.farm[k] && this.farm[k].c)); } // เครื่องมือ/การกระทำที่ถูกหยุดเมื่อเหนื่อย (นั่ง/เก็บไข่/ร้านค้า/ให้อาหารสัตว์ไม่ถูกหยุด)
-  energyTick(dt) { // ฟื้นพลังงานทุกคนที่ออนไลน์ + ส่งค่าให้ client ทุก ~1 วินาทีเฉพาะคนที่ยังไม่เต็ม
-    if (!S.ENERGY.on) return;
-    this.enAcc = (this.enAcc || 0) + dt; const push = this.enAcc >= 1; if (push) this.enAcc = 0;
-    for (const p of this.players.values()) {
-      if (p.sit && S.ENERGY.var && p.rec.wk) this.wkDecay(p, dt * 1000 * (S.ENERGY.sitMul - 1)); // นั่งพัก: ความล้างานซ้ำหายเร็วขึ้น sitMul เท่า (รวมกับการลดตามเวลาปกติ)
-      const e = this.enOf(p); if (e.v >= S.ENERGY.max && !e.ex) continue;
-      e.v = Math.min(S.ENERGY.max, e.v + dt * 1000 / S.ENERGY.regenMs * (p.sit ? S.ENERGY.sitMul : 1)); e.at = Date.now(); this.dirty = true;
-      if (e.ex && e.v >= S.ENERGY.resume) { e.ex = false; this.toast(p, '⚡ พักพอแล้ว กลับไปทำงานได้'); this.enPush(p); } else if (push) this.enPush(p);
-    }
-  }
   catJoin(p) { // ความอิ่มตัวของตลาดหมวดฟื้นตามเวลาจริงที่ผ่านไปแม้ออฟไลน์ (เหมือนพลังงาน) catAt = ครั้งล่าสุดที่คิดการฟื้น
     const ct = p.rec.cat, now = Date.now(), min = Math.max(0, (now - (p.rec.catAt || now)) / 60000), f = Math.pow(1 - S.CATFAT.recover, min);
     if (ct) for (const k of Object.keys(ct)) { ct[k] = 1 - (1 - ct[k]) * f; if (ct[k] > 0.995) delete ct[k]; }
@@ -1208,60 +1168,6 @@ class World {
   }
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); }
   treeList() { const out = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) out.push([x, y, (this.treeKind && this.treeKind.get(x + ',' + y)) || 'broad']); return out; }
-  // ---------- ความทนทานเครื่องมือ (รายจ่ายสม่ำเสมอ): ใช้ทุกครั้งสึก 1 หมดแล้วต้องซ่อมที่ร้านเสียเหรียญ ----------
-  toolTier(p, tool) { const inv = p.rec.inv; return tool === 'rod' ? rodOf(inv) : tool === 'axe' ? (S.axeTier(inv) || 1) : tool === 'pick' ? (S.pickTier(inv) || 1) : 1; }
-  fixN(p, tool) { return (p.rec.fix && p.rec.fix[tool]) || 0; }
-  durMx(p, tool) { return S.durMax(tool, this.toolTier(p, tool), this.fixN(p, tool)); }
-  durCur(p, tool) { const mx = this.durMx(p, tool), d = p.rec.dur && p.rec.dur[tool]; return d === undefined ? mx : Math.max(0, Math.min(d, mx)); }
-  durPub(p) { const o = {}; for (const t of Object.keys(S.DURABILITY)) o[t] = [this.durCur(p, t), this.durMx(p, t), this.fixN(p, t)]; return o; }
-  // ---------- น้ำในบัวรดน้ำ: ตักจากสระได้ครั้งละตามความจุของบัว (S.CANS) แล้วต้องกลับไปตักใหม่ ----------
-  canOf(p) { const c = S.CANS[S.canTier(p.rec.inv)]; return this.buffOn(p, 'bigcan') ? Object.assign({}, c, { cap: Math.round(c.cap * S.BUFFS.bigcan.capMul) }) : c; }
-  waterCur(p) { const cap = this.canOf(p).cap, w = p.rec.wtr; return w === undefined ? cap : Math.max(0, Math.min(w, cap)); }
-  waterSet(p, n) { p.rec.wtr = n; send(p, { t: 'wtr', n }); this.dirty = true; }
-  durOk(p, tool) {
-    if (this.durCur(p, tool) > 0) return true;
-    const D = S.DURABILITY[tool], sn = S.SHOPS[D.shop].name;
-    this.toast(p, this.fixN(p, tool) >= S.REPAIR.maxFixes ? `💥 ${D.name}ซ่อมไม่ได้แล้ว! ต้องซื้อใหม่ที่${sn}` : `🔧 ${D.name}พังแล้ว! ซ่อมได้ที่${sn}`); return false;
-  }
-  durUse(p, tool) {
-    const W = S.WEAR_RATE, now = Date.now(), H = (p.heat || (p.heat = {}))[tool] || (p.heat[tool] = { h: 0, t: now, carry: 0, warn: false });
-    H.h = Math.max(0, H.h - (now - H.t) / 1000 * W.cool) + 1; H.t = now; // ใช้ถี่ๆ ต่อเนื่อง = ร้อนขึ้น พักแล้วเย็นลง
-    H.carry += W.base * (1 + Math.min(W.maxBonus, H.h * W.perHeat));
-    const take = Math.floor(H.carry); H.carry -= take;
-    const before = this.durCur(p, tool), cur = Math.max(0, before - take), mx = this.durMx(p, tool), thr = Math.ceil(mx * 0.1);
-    (p.rec.dur || (p.rec.dur = {}))[tool] = cur;
-    send(p, { t: 'dur', d: this.durPub(p) }); this.dirty = true;
-    if (cur <= 0) this.toast(p, this.fixN(p, tool) >= S.REPAIR.maxFixes ? `💥 ${S.DURABILITY[tool].name}พังจนซ่อมไม่ได้แล้ว! ต้องซื้อใหม่ที่ร้าน` : `🔧 ${S.DURABILITY[tool].name}พังแล้ว! ต้องซ่อมที่ร้านก่อนใช้ต่อ`);
-    else if (before > thr && cur <= thr) this.toast(p, `⚠️ ${S.DURABILITY[tool].name}ใกล้พังแล้ว (เหลือ ${cur})`);
-    if (H.h >= W.warnHeat && !H.warn) { H.warn = true; this.toast(p, `🔥 ใช้${S.DURABILITY[tool].name}ถี่และนานมาก จะสึกหรอไวกว่าปกติ (ยิ่งใช้ต่อเนื่องยิ่งไว สูงสุด 2 เท่า) พักสักครู่จะเย็นลง`); }
-    else if (H.h < W.warnHeat * 0.4) H.warn = false;
-  }
-  toolShopCheck(p, tool) {
-    const D = typeof tool === 'string' && Object.hasOwn(S.DURABILITY, tool) ? S.DURABILITY[tool] : null; if (!D) return null;
-    if (this.nearShopKind(p) !== D.shop) { this.toast(p, `ต้องอยู่ที่${S.SHOPS[D.shop].name}ถึงจะซ่อม/ซื้อ${D.name}ได้`); return null; }
-    return D;
-  }
-  repair(p, tool) {
-    const D = this.toolShopCheck(p, tool); if (!D) return;
-    const tier = this.toolTier(p, tool), n = this.fixN(p, tool), cur = this.durCur(p, tool);
-    if (n >= S.REPAIR.maxFixes) return this.toast(p, `💥 ${D.name}ซ่อมครบ ${n} ครั้งแล้ว ซ่อมไม่ได้อีก ต้องซื้อใหม่ (🪙 ${S.toolPrice(tool, tier)})`);
-    const nmx = S.durMax(tool, tier, n + 1);
-    if (cur >= nmx) return this.toast(p, `${D.name}ยังสภาพดีอยู่`);
-    const cost = S.repairCost(tool, tier, cur, n);
-    if ((p.rec.inv.coin || 0) < cost) return this.toast(p, `เหรียญไม่พอ ค่าซ่อม 🪙 ${cost}`);
-    this.add(p, 'coin', -cost, 'repair'); this.toPot(cost); (p.rec.dur || (p.rec.dur = {}))[tool] = nmx; (p.rec.fix || (p.rec.fix = {}))[tool] = n + 1;
-    send(p, { t: 'dur', d: this.durPub(p) });
-    this.toast(p, `🔧 ซ่อม${D.name}เรียบร้อย (-🪙 ${cost}) ความทนทานสูงสุดเหลือ ${nmx}${n + 1 >= S.REPAIR.maxFixes ? ' • ซ่อมได้อีกไม่ได้แล้ว' : ''}`); this.sfxTo(p, 'coin'); this.dirty = true;
-  }
-  rebuy(p, tool) {
-    const D = this.toolShopCheck(p, tool); if (!D) return;
-    const tier = this.toolTier(p, tool), n = this.fixN(p, tool), cur = this.durCur(p, tool);
-    if (!n && cur > 0) return this.toast(p, `${D.name}ยังใหม่อยู่ ไม่ต้องซื้อใหม่`);
-    const cost = S.toolPrice(tool, tier);
-    if ((p.rec.inv.coin || 0) < cost) return this.toast(p, `เหรียญไม่พอ ราคา 🪙 ${cost}`);
-    this.add(p, 'coin', -cost, 'repair'); this.toPot(cost); if (p.rec.dur) delete p.rec.dur[tool]; if (p.rec.fix) delete p.rec.fix[tool];
-    send(p, { t: 'dur', d: this.durPub(p) }); this.toast(p, `🛒 ซื้อ${D.name}อันใหม่แล้ว (-🪙 ${cost}) ความทนทานเต็ม`); this.sfxTo(p, 'coin'); this.dirty = true;
-  }
 
   // ขายของที่ซื้อมาคืนร้าน ได้ 70% ของราคาซื้อ (หัก 30%)
   sellback(p, item) {
@@ -1278,28 +1184,6 @@ class World {
     if (info.can) this.waterSet(p, this.waterCur(p)); // ขายคืนบัวใหญ่ น้ำเกินความจุของบัวที่เหลือถูกตัด
     this.broadcastLook(p); send(p, { t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp });
     this.toast(p, `ขายคืน ${info.emoji} ${info.name} ได้ 🪙 ${v} (หัก 30%)`); this.sfxTo(p, 'coin');
-  }
-  setHunger(p, v, quiet) {
-    const old = p.rec.hunger; p.rec.hunger = Math.max(0, Math.min(100, v));
-    send(p, { t: 'hun', v: Math.round(p.rec.hunger) });
-    if (!quiet) {
-      if (old > 20 && p.rec.hunger <= 20 && p.rec.hunger > 5) this.toast(p, '🍗 เริ่มหิวแล้ว! ไปกินอะไรหน่อย (ร้านอาหาร หรือกินผลผลิตที่มี)');
-      else if (old > 5 && p.rec.hunger <= 5 && p.rec.hunger > 0) this.toast(p, '⚠️ หิวมาก! เดินช้าลงแล้ว รีบหาอาหารกิน');
-      else if (old > 0 && p.rec.hunger <= 0) this.toast(p, '😵 หิวจนไม่มีแรงทำงาน! ต้องกินอาหารก่อนถึงจะใช้เครื่องมือได้');
-    }
-    this.dirty = true;
-  }
-  eat(p, item) {
-    const info = typeof item === 'string' && S.itemInfo(item);
-    if (!info || !info.food || !p.rec.inv[item]) return;
-    if (p.rec.hunger >= 99) return this.toast(p, 'อิ่มแล้ว กินไม่ลง 😋');
-    const gain = Math.min(info.food, 100 - Math.round(p.rec.hunger));
-    this.add(p, item, -1);
-    this.setHunger(p, p.rec.hunger + info.food, true);
-    if (S.ENERGY.on) { const e = this.enOf(p); e.v = Math.min(S.ENERGY.max, e.v + info.food * S.ENERGY.eatMul); if (e.ex && e.v >= S.ENERGY.resume) e.ex = false; this.enPush(p); }
-    this.toast(p, `กิน ${info.emoji} ${info.name} (อิ่มขึ้น +${gain})`);
-    this.sfx(p, 'eat'); if (item.startsWith('meal_')) this.bookAdd(p, 'meal', item.slice(5));
-    this.event(p, 'eat');
   }
 
   nearWater(p, r = 2) { // มีช่องน้ำอยู่ในระยะ r ช่องรอบตัวผู้เล่นไหม
@@ -2575,6 +2459,9 @@ mix(World, require('./server/systems/trade.js')); // เทรดระหว่
 mix(World, require('./server/systems/events.js')); // อีเวนต์ประจำสัปดาห์ (ย้ายไป server/systems/events.js)
 mix(World, require('./server/systems/challenge.js')); // ชาเลนจ์ถังน้ำ (ย้ายไป server/systems/challenge.js)
 mix(World, require('./server/systems/village.js')); // หมู่บ้านและสัปดาห์เมือง (ย้ายไป server/systems/village.js)
+mix(World, require('./server/systems/energy.js')); // พลังงานและความล้า (ย้ายไป server/systems/energy.js)
+mix(World, require('./server/systems/tools.js')); // ความทนทานเครื่องมือและบัวรดน้ำ (ย้ายไป server/systems/tools.js)
+mix(World, require('./server/systems/hunger.js')); // ความหิวและการกิน (ย้ายไป server/systems/hunger.js)
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
 if (require.main !== module) { module.exports = { World }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)

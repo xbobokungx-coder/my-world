@@ -4,7 +4,7 @@
 // - ชื่อไม่เจอ/เจอซ้ำ/โครงสร้างไม่ชัด = exit 1 โดยไม่แก้ไฟล์ใดเลย • ไฟล์เป้าไม่มี = สร้างให้
 // - ไม่เรียก mix ให้ (เพิ่ม mix(World, require(...)) ใน server.js เอง)
 // - พิมพ์ชื่อระดับบนสุดของ server.js ที่โค้ดที่ย้ายอ้างถึง ให้ไป require/ประกาศในไฟล์เป้า (ตรวจแบบกว้าง อาจเกินมาบ้าง แต่ไม่ตกหล่นเงียบ)
-const fs = require('fs'), path = require('path');
+const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const die = m => { console.error('ผิดพลาด: ' + m + ' (ยังไม่แก้ไฟล์ใดเลย)'); process.exit(1); };
 
@@ -25,13 +25,19 @@ function headerName(line) {
   return m[2];
 }
 
+// หัวเมธอดแบบกว้าง (รวม default param '=') ใช้หาขอบเขตเท่านั้น
+function broadName(line) {
+  const m = /^  (?:static\s+|async\s+|get\s+|set\s+)*\*?([A-Za-z_$][\w$]*)\s*\(.*\)\s*\{/.exec(line);
+  return m && !SKIP.has(m[1]) ? m[1] : null;
+}
+
 const start = src.findIndex(l => /^class World\b/.test(l));
 if (start < 0) die('หา class World ไม่เจอ');
 let end = src.findIndex((l, i) => i > start && l === '}');
 if (end < 0) die('หาท้าย class World ไม่เจอ');
 
 const heads = []; // [{name, line}] line = index
-for (let i = start + 1; i < end; i++) { const n = headerName(src[i]); if (n) heads.push({ name: n, line: i }); }
+for (let i = start + 1; i < end; i++) { const n = broadName(src[i]); if (n) heads.push({ name: n, line: i, narrow: !!headerName(src[i]) }); }
 // จุดเริ่มจริงของแต่ละหัว = รวมคอมเมนต์ '  //' ที่ติดด้านบน
 for (let k = 0; k < heads.length; k++) {
   let s = heads[k].line;
@@ -43,7 +49,7 @@ for (let k = 0; k < heads.length; k++) heads[k].to = k + 1 < heads.length ? head
 
 const picked = [];
 for (const n of names) {
-  const hit = heads.filter(h => h.name === n);
+  const hit = heads.filter(h => h.narrow && h.name === n);
   if (!hit.length) die('ไม่เจอเมธอด ' + n + ' ใน class World');
   if (hit.length > 1) die('เจอเมธอดชื่อ ' + n + ' ซ้ำ ' + hit.length + ' ที่ (บรรทัด ' + hit.map(h => h.line + 1).join(', ') + ')');
   picked.push(hit[0]);
@@ -54,6 +60,11 @@ for (const h of picked) {
   let a = h.from, b = h.to;
   while (b - 1 > h.line && src[b - 1].trim() === '') b--; // ตัดบรรทัดว่างท้ายบล็อก
   const body = src.slice(a, b);
+  for (let i = h.line + 1; i < b; i++) if (broadName(src[i])) die(`เมธอด ${h.name}: เนื้อที่ตัดมีเมธอดอื่นปนอยู่ (server.js:${i + 1} ${broadName(src[i])})`);
+  if (b - 1 > h.line) { // '}' ปิดของตัวเองที่เยื้อง 2 ช่อง ต้องเป็นบรรทัดสุดท้ายของบล็อกเท่านั้น
+    const closes = []; for (let i = h.line + 1; i < b; i++) if (/^  \}/.test(src[i])) closes.push(i);
+    if (closes.length !== 1 || closes[0] !== b - 1) die(`เมธอด ${h.name}: หา '}' ปิดของตัวเองที่เยื้อง 2 ช่องไม่ชัด (server.js:${h.line + 1}-${b})`);
+  }
   const last = body[body.length - 1];
   if (!/\}(\s*\/\/.*)?$/.test(last)) die(`เมธอด ${h.name}: บรรทัดสุดท้ายของบล็อก (server.js:${b}) ไม่ใช่ '}' ปิดเมธอด`);
   if (b - 1 > h.line && !/^  \}/.test(last) && !/; \}(\s*\/\/.*)?$/.test(last)) die(`เมธอด ${h.name}: '}' ปิดเมธอดไม่เยื้อง 2 ช่องตามที่คาด (server.js:${b})`);
@@ -90,6 +101,12 @@ if (fs.existsSync(target)) {
   tsrc = "'use strict';\n// TODO: อธิบายระบบนี้ (ย้ายมาจาก class World ใน server.js ต่อกลับด้วย mix() ดู server/mixin.js)\n// TODO: เพิ่ม require ตามรายการที่สคริปต์ย้ายพิมพ์ไว้ (" + rel + ")\n\nmodule.exports = {\n" + blocks.join('\n') + '\n};\n';
 }
 
+// ตรวจ syntax ก่อนเขียนจริง (ไฟล์เป้า และ server.js หลังตัด)
+const keep = src.filter((_, i) => !cut.some(([a, b]) => i >= a && i < b));
+for (const [label, code] of [['ไฟล์เป้า', tsrc], ['server.js หลังตัด', keep.join('\n')]]) {
+  try { new vm.Script('(function (require, module, exports, __dirname, __filename) {' + code + '\n})', { filename: label }); } catch (e) { die(label + ' syntax ผิดหลังย้าย: ' + e.message); }
+}
+
 // ชื่อระดับบนสุดของ server.js ที่โค้ดที่ย้ายอ้างถึง
 const top = new Set();
 for (let i = 0; i < src.length; i++) {
@@ -116,7 +133,6 @@ for (const l of tsrc.split('\n')) { const m = /^(?:const|let|var|function)\s+\{?
 for (const l of tsrc.split('\n')) { const m = /^(?:const|let|var)\s+\{([^}]*)\}/.exec(l); if (m) for (const p of m[1].split(',')) inTarget.add(p.split(':').pop().trim()); }
 
 // เขียนไฟล์ (เป้าก่อน แล้วค่อยตัด server.js)
-const keep = src.filter((_, i) => !cut.some(([a, b]) => i >= a && i < b));
 fs.mkdirSync(path.dirname(target), { recursive: true });
 fs.writeFileSync(target + '.tmp', tsrc);
 fs.writeFileSync(serverFile + '.tmp', keep.join('\n'));
