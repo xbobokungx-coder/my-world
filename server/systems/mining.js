@@ -119,9 +119,12 @@ module.exports = {
     let h = F.hp.get(key);
     if (!h || now - h.t > 20000) h = { hp: S.oreHp(kid, ore.s), t: now };
     if (!h.slowWarn && mh.slow) { h.slowWarn = true; this.toast(p, `🐌 ${S.PICKS[pick].name}ต่ำกว่าที่${O.name}ต้องการ ${mh.down} ระดับ ขุดได้แต่ช้าและของสึกไว`); }
-    h.hp -= mh.dmg; h.t = now; h.n = (h.n || 0) + 1;
+    const crit = Math.random() < S.MINE.crit.p, dealt = mh.dmg * (crit ? S.MINE.crit.mul : 1); // ติด Critical = ดาเมจ ×mul (หลังเพดาน minHits)
+    h.hp -= dealt; if (crit) h.cr = (h.cr || 0) + 1; h.t = now; h.n = (h.n || 0) + 1;
     this.sfx(p, 'chop');
-    if (h.hp > 0) { F.hp.set(key, h); this.sceneBroadcast(p.scene, { t: 'oh', x: tx, y: ty, f: +(h.hp / S.oreHp(kid, ore.s)).toFixed(2) }); const left = Math.ceil(h.hp / mh.dmg - 1e-9); if (left <= 3 || left % 5 === 0) this.toast(p, `⚒️ ${O.emoji} ${O.name}ก้อน${S.ORE_SIZES[ore.s].name} อีก ${left} ครั้ง`); return; }
+    const oh = { t: 'oh', x: tx, y: ty, f: 0, d: +dealt.toFixed(1) }; if (crit) oh.c = 1; // d = ดาเมจที่ตีครั้งนี้ c = ติดคริ (ให้เว็บเด้งเลข)
+    if (h.hp > 0) { F.hp.set(key, h); oh.f = +(h.hp / S.oreHp(kid, ore.s)).toFixed(2); this.sceneBroadcast(p.scene, oh); return; }
+    this.sceneBroadcast(p.scene, oh); // ครั้งที่ตีแตกก็ส่ง oh f:0 ก่อนลบก้อน
     { const wf = Math.floor(mh.wear), wn = wf + (Math.random() < mh.wear - wf ? 1 : 0); for (let i = 0; i < wn; i++) { if (!this.durCur(p, 'pick')) break; this.durUse(p, 'pick'); } } // ขุดแตก 1 ก้อน = อีเต้อสึก ~1 ครั้ง (ไม่นับทุกครั้งที่ฟาด) ×ตัวคูณ: ต่ำกว่าแร่ ×2 / สูงกว่าแร่และถุงมือสึกน้อยลง
     F.hp.delete(key); F.ores.delete(key); F.map[ty][tx] = T.CAVE;
     F.wait.push({ x: tx, y: ty, at: now + S.MINE.respawnMs });
@@ -135,6 +138,6 @@ module.exports = {
     if (!this.bookOf(p).ore[kid]) { const dx = Math.round(O.xp * S.MINE.discover); this.addXp(p, 'mine', dx); this.toast(p, `✨ ค้นพบแร่ใหม่ ${O.emoji} ${O.name}! โบนัส XP +${dx}`); this.bookAdd(p, 'ore', kid); } // ครั้งแรกของแร่ชนิดนี้
     if (this.petLuck(p, O.emoji + ' ' + O.name)) this.add(p, kid, 1);
     this.toast(p, `⛏️ ขุดได้ ${O.emoji} ${O.name} x${n} (ก้อน${S.ORE_SIZES[ore.s].name})${bonus ? ' ✨ อุปกรณ์แรง ได้เพิ่ม' : ''}`); this.sfx(p, 'fell'); this.event(p, 'mine');
-    logEv(this.room, 'mine', { p: p.key, f: cf, k: kid, s: ore.s, n, hits: h.n, pk: pick, slow: mh.slow ? 1 : 0, ml }); // บันทึกการขุดละเอียด (ชนิด ขนาด ชั้น อีเต้อ ครั้งที่ฟาด) ไว้วัดก้อน/ชม. และเวลาต่อเลเวล • tools/stats.js สรุป
+    logEv(this.room, 'mine', { p: p.key, f: cf, k: kid, s: ore.s, n, hits: h.n, cr: h.cr || 0, pk: pick, slow: mh.slow ? 1 : 0, ml }); // บันทึกการขุดละเอียด (ชนิด ขนาด ชั้น อีเต้อ ครั้งที่ฟาด) ไว้วัดก้อน/ชม. และเวลาต่อเลเวล • tools/stats.js สรุป
   },
 };

@@ -104,6 +104,7 @@ function cook(lv) {
 
 // ขุดเหมือง (ถ้ำ 10 ชั้น): ผู้เล่นเลเวล n ลงชั้น n ขุดได้เฉพาะแร่ที่เลเวลถึง (ส่วนที่เหลือของชั้นข้าม) ใช้อีเต้อดีสุดที่ซื้อได้ ก้อนมี 3 ขนาด (HP/ชิ้นต่างกัน) • อีเต้อสึก 1 ครั้งต่อก้อน
 // เพดานคนเดียว: ชั้นละ ~30–40 ก้อนเกิดใหม่ทุก 4 นาที (~8 ก้อน/นาที) มากกว่าที่คนเดียวขุดทัน จึงติดความเร็วขุด+เดินหา ไม่ติดซัพพลาย
+const critSwings = (hp, d) => { const c = S.MINE.crit, memo = new Map(), E = h => h <= 1e-9 ? 0 : (memo.has(h) ? memo.get(h) : (memo.set(h, 0), memo.set(h, 1 + (1 - c.p) * E(+(h - d).toFixed(6)) + c.p * E(+(h - d * c.mul).toFixed(6))).get(h))); return E(hp); }; // ครั้งฟาดเฉลี่ยต่อก้อนเมื่อมีคริ (ดาเมจ ×mul โอกาส p)
 function mine(lv, lag = 0) { // 6 พ.ย. 2026: ใช้ S.mineHit จริง (ไม่มีถุงมือ/ค้อนแล้ว ชุดอุปกรณ์ 10 ระดับ ต่ำกว่าแร่กี่ระดับก็ขุดได้แต่ช้าและสึกไว) • lag = ผู้เล่นไม่ได้อัปอุปกรณ์ ใช้ต่ำกว่าระดับที่ปลดแล้วกี่ระดับ (0 = ซื้อสูงสุดตามเลเวล เพดานบน)
   const inv = {}; for (const [t, p] of Object.entries(S.PICKS)) if (!p.lv || p.lv <= lv) inv['pick_' + t] = 1;
   for (let i = 0; i < lag; i++) { const top = S.pickTier(inv); if (top > 1) delete inv['pick_' + top]; }
@@ -112,7 +113,7 @@ function mine(lv, lag = 0) { // 6 พ.ย. 2026: ใช้ S.mineHit จริ�
   let val = 0, xp = 0, pcs = 0, secs = 0, wearC = 0;
   for (const [k, w] of mix) { const o = S.ORES[k], f = w / 100 / share; // สัดส่วนในกลุ่มที่ขุดได้
     for (let i = 0; i < S.ORE_SIZES.length; i++) { const z = S.ORE_SIZES[i], p = f * S.sizeMix(fl)[i] / 100, n = (z.drop[0] + z.drop[1]) / 2, mh = S.mineHit(inv, k, i);
-      val += p * (n + mh.extra) * o.sell; xp += p * (n + mh.extra) * o.xp; pcs += p * (n + mh.extra); secs += p * mh.hits * 0.7;
+      val += p * (n + mh.extra) * o.sell; xp += p * (n + mh.extra) * o.xp; pcs += p * (n + mh.extra); secs += p * critSwings(S.oreHp(k, i), mh.dmg) * 0.7;
       wearC += p * S.TOOL_PRICE.pick[pk] / S.DURABILITY.pick.max[pk] * S.WEAR_RATE.base * 1.35 * mh.wear; } } // ซ่อม/ซื้อใหม่เฉลี่ยต่อก้อน (ตัวคูณ 1.35) × ตัวคูณการสึก
   secs += M.oreWalk / Math.sqrt(share); // ก้อนที่ขุดไม่ได้ (เลเวลไม่ถึง) ทำให้ต้องเดินหาไกลขึ้น
   const npm = 60 / secs;

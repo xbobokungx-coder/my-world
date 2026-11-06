@@ -157,7 +157,7 @@ function handle(m) {
     case 'ach': achSt = { cnt: m.cnt || {}, got: m.got || {}, sel: m.sel || '' }; if (achShown()) renderAch(); break;
     case 'deaf': presence(m.id, p => { p.deaf = !!m.on; }); break;
     case 'use': { const p = players.get(m.id); if (p) { p.useAt = performance.now(); p.useK = PixelAction.kindOf(p.held) === 'fish' && p.fs ? 'reel' : ''; } break; } // ตกปลาอยู่แล้ว = ท่าดึงเบ็ด
-    case 'oh': oreHit.set(m.x + ',' + m.y, { t: performance.now(), f: m.f }); break; // ก้อนแร่โดนฟาด: สั่น + รอยร้าวตาม HP ที่เหลือ
+    case 'oh': { const now = performance.now(); oreHit.set(m.x + ',' + m.y, { t: now, f: m.f }); if (m.d > 0 && cave) { oreDmg.push({ x: m.x, y: m.y, t: now, d: m.d, c: !!m.c }); if (oreDmg.length > 12) oreDmg.shift(); if (m.c) playSfx('levelup', 0.5); } break; } // ก้อนแร่โดนฟาด: สั่น + รอยร้าวตาม HP ที่เหลือ
     case 'th': treeHit.set(m.x + ',' + m.y, { t: performance.now(), f: m.f }); break; // ต้นไม้โดนฟัน: ส่าย + รอยบากที่โคน
     case 'catch': { const p = players.get(m.id), F = Shared.FISH_ALL.find(f => f.id === m.f); if (p && F) p.catchFx = { t: performance.now(), e: F.emoji, big: F.sell >= 100, x: p.fx || p.x, y: p.fy || p.y }; break; } // ปลากระโดดขึ้นมาอยู่เหนือหัว
     case 'held': { const p = players.get(m.id); if (p) p.held = m.e || ''; break; }
@@ -2700,6 +2700,27 @@ function buildCaveBase() {
   else PixelUI.world(gh, '🚪', (Shared.CAVE.exit[1] + 0.5) * TS, Shared.CAVE.y1 * TS + 16, 15); // ป้ายทางออกสู่เมือง (ชั้น 1)
   for (let ty = 0; ty < H; ty++) for (let tx = 1; tx < W - 1; tx++) if (MAP[ty][tx] === T.DOWN) { const ax = (tx + 0.5) * TS, ay = (ty + 0.5) * TS; gh.fillStyle = '#e8f0ff'; gh.beginPath(); gh.moveTo(ax, ay + 7); gh.lineTo(ax + 7, ay - 3); gh.lineTo(ax + 3, ay - 3); gh.lineTo(ax + 3, ay - 7); gh.lineTo(ax - 3, ay - 7); gh.lineTo(ax - 3, ay - 3); gh.lineTo(ax - 7, ay - 3); gh.closePath(); gh.fill(); } // ลูกศรลงบนบันได (ช่องเดียว)
 }
+const oreDmg = []; // เลขดาเมจลอยจากก้อนแร่ {x, y ช่อง, t, d, c คริ} จำกัด 12 ตัวพร้อมกัน
+const ORE_DMG_MS = 900;
+function drawOreHp(tx, ty, k, sz, now) { // แถบ HP เหนือก้อนแร่ที่ถูกตี (ไม่โชว์เมื่อเต็ม/ไม่มีใครตีเกิน 20 วิ)
+  const hit = oreHit.get(tx + ',' + ty); if (!hit || hit.f >= 1 || now - hit.t > 20000) return;
+  const spr = PixelOre.has(k) && PixelOre.get(k, sz | 0, 0), sc = ORE_SCALE[sz | 0] || 2, w = Math.max(22, [9, 11, 14][sz | 0] * sc * 0.9 | 0), x = tx * TS + 16, top = ty * TS + 31 - (spr ? spr.height * sc : 20) - 6;
+  const f = Math.max(0, Math.min(1, hit.f)), bx = Math.round(x - w / 2), by = Math.round(top);
+  mainCtx.fillStyle = '#1b1d24'; mainCtx.fillRect(bx - 2, by - 2, w + 4, 8); mainCtx.fillStyle = '#5a3030'; mainCtx.fillRect(bx, by, w, 4);
+  mainCtx.fillStyle = f > 0.55 ? '#6cc04a' : f > 0.25 ? '#f1c40f' : '#e5453a'; mainCtx.fillRect(bx, by, Math.round(w * f), 4);
+  mainCtx.fillStyle = 'rgba(255,255,255,.45)'; mainCtx.fillRect(bx, by, Math.round(w * f), 1);
+}
+function drawOreDmg(now) {
+  for (let i = oreDmg.length - 1; i >= 0; i--) {
+    const o = oreDmg[i], t = now - o.t; if (t > (o.c ? ORE_DMG_MS + 300 : ORE_DMG_MS)) { oreDmg.splice(i, 1); continue; }
+    const u = t / (o.c ? ORE_DMG_MS + 300 : ORE_DMG_MS), pop = o.c ? 1 + 0.5 * Math.max(0, 1 - t / 220) : 1, shake = o.c && t < 300 ? Math.sin(t / 22) * 3 * (1 - t / 300) : 0;
+    const x = o.x * TS + 16 + shake + (o.c ? 0 : ((o.x * 7 + o.y * 3 + (o.t | 0)) % 9) - 4), y = o.y * TS - 16 - u * 26, txt = '-' + (o.d >= 10 ? Math.round(o.d) : (Math.round(o.d * 10) / 10).toFixed(1));
+    ctx.save(); ctx.globalAlpha = u < 0.6 ? 1 : 1 - (u - 0.6) / 0.4; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1b1d24'; ctx.fillStyle = o.c ? '#ffb02e' : '#fff';
+    ctx.font = `bold ${Math.round((o.c ? 20 : 14) * pop)}px sans-serif`; ctx.lineWidth = o.c ? 4 : 3; ctx.strokeText(txt, x, y); ctx.fillText(txt, x, y);
+    if (o.c) { ctx.font = `bold ${Math.round(11 * pop)}px sans-serif`; ctx.fillStyle = '#ff7a2e'; ctx.strokeText('CRIT!', x, y - 17); ctx.fillText('CRIT!', x, y - 17); }
+    ctx.restore();
+  }
+}
 const ORE_SCALE = [2, 3, 4]; // ขยายสไปรต์แร่ (ช่อง 16×16) ตามขนาดก้อน: เล็ก 32 px • กลาง 48 px • ใหญ่ 64 px
 // ก้อนที่ขุดไม่ได้ตอนนี้ (เลเวลนักขุดไม่ถึง หรือไม่มีอุปกรณ์ขุดเลย) ทำให้หม่นและมี 🔒 • อุปกรณ์ต่ำกว่าแร่ (ขุดได้แต่ช้า) ขึ้น 🐌 + "ช้า ×N" (N = จำนวนระดับที่ต่ำกว่า จาก S.mineHit.down)
 function drawOreLock(tx, ty, k) {
@@ -2747,7 +2768,7 @@ function drawCaveWorld(now) {
   }
   const vw = canvas.width / zoom, vh = canvas.height / zoom, x0 = Math.max(0, Math.floor(camX / TS) - 1), x1 = Math.min(W - 1, Math.ceil((camX + vw) / TS) + 1), y0 = Math.max(0, Math.floor(camY / TS) - 1), y1 = Math.min(H - 1, Math.ceil((camY + vh) / TS) + 1);
   const list = [];
-  for (const [k, id] of oreK) { const [tx, ty] = k.split(',').map(Number); if (tx >= x0 && tx <= x1 && ty >= y0 && ty <= y1) list.push({ y: (ty + 1) * TS - 2, f: () => { drawOre(tx, ty, id, now, oreS.get(k)); drawOreLock(tx, ty, id); } }); }
+  for (const [k, id] of oreK) { const [tx, ty] = k.split(',').map(Number); if (tx >= x0 && tx <= x1 && ty >= y0 && ty <= y1) list.push({ y: (ty + 1) * TS - 2, f: () => { drawOre(tx, ty, id, now, oreS.get(k)); drawOreLock(tx, ty, id); drawOreHp(tx, ty, id, oreS.get(k), now); } }); }
   for (const [k, b] of oreBurst) { // ก้อนแร่แตก: สไปรต์ชีตแตกกระจาย (PixelAction.shatter ~0.65 วินาที)
     const t = now - b.t; if (t >= 650) { oreBurst.delete(k); continue; }
     const [tx, ty] = k.split(',').map(Number); list.push({ y: (ty + 1) * TS + 20, f: () => PixelAction.shatter(ctx, tx * TS + 16, ty * TS + 18, t, b.k && ORE_COL[b.k], tx * 7 + ty, b.s === 2) });
@@ -2757,6 +2778,7 @@ function drawCaveWorld(now) {
   if (ocean) for (const p of players.values()) list.push({ y: p.y + 8, f: () => drawBoat(p, now) }); // เรือไม้ใต้ตัวละคร (ทุกคนในทะเลใหญ่มีเรือของตัวเอง)
   for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
+  if (oreDmg.length) drawOreDmg(now);
   if (inSea()) for (const p of players.values()) if (p.fs) drawFishing(p, now); // เอ็นเบ็ด ทุ่น ระลอกน้ำ น้ำกระเซ็น (เดิมวาดเฉพาะรอบวาดของเมือง ฉากทะเลเลยไม่เห็นแอนิเมชันตกปลา)
 }
 // หน้าผา/บันได (ผังเมืองใหม่): วาดทับพื้นทางหลังสร้างพื้นโลก ใช้พาเลตดินหิน-น้ำตาลตาม STYLE_GUIDE

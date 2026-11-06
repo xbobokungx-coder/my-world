@@ -2,6 +2,7 @@
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
 process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-cave-');
 const { World } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS, T = S.T;
+S.MINE.crit.p = 0; // เทสต์นี้นับจำนวนครั้งฟาดแน่นอน จึงปิดคริ (เทสต์คริอยู่ test-mining.js)
 
 const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } });
 const last = (ws, t) => { for (let i = ws.msgs.length - 1; i >= 0; i--) if (ws.msgs[i].t === t) return ws.msgs[i]; return null; };

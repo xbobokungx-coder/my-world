@@ -42,6 +42,7 @@ const F = w.floorOf(1);
 const setOre = (x, y, k, s) => { F.ores.set(x + ',' + y, { k, s }); F.map[y][x] = T.ORE; };
 const act = (tx, ty) => { a.lastAct = a.hitAt = 0; w.handle(a, { t: 'act', tool: 'pick', tx, ty }); };
 const spot = [...F.ores.keys()][0].split(',').map(Number); F.ores.clear(); F.hp.clear(); const [ox, oy] = spot; [a.x, a.y] = ctr(ox, oy + 1); a.dir = 1;
+const CRIT = { p: M.crit.p }; M.crit.p = 0; // บล็อกเก่านับจำนวนครั้งฟาดแน่นอน จึงปิดคริไว้ก่อน (เทสต์คริอยู่ท้ายไฟล์)
 { // ถุงมือ vs ทองแดงเล็ก: ขุดได้แต่ช้า (ครั้งตามสูตร) และสึกเฉลี่ย ×1.5 ต่อก้อน (ต่ำ 1 ระดับ)
   a.rec.inv = { coin: 0, pick_1: 1 }; a.rec.dur = {}; setOre(ox, oy, 'copper', 0); const h0 = S.mineHit(a.rec.inv, 'copper', 0); let n = 0;
   while (F.ores.has(ox + ',' + oy) && n < 200) { act(ox, oy); n++; }
@@ -85,6 +86,30 @@ const spot = [...F.ores.keys()][0].split(',').map(Number); F.ores.clear(); F.hp.
   // เดินลงถึงชั้นใหม่เอง = จำชั้นลึกสุด
   b.scene = null; w.enterCave(b); w.caveMove(b, 1, 2); assert.strictEqual(b.rec.deep, 3, 'ชั้น 2 ตื้นกว่า deep เดิมไม่ลด'); w.caveMove(b, 3, 4); assert.strictEqual(b.rec.deep, 4, 'ลงถึงชั้น 4 จำเป็นชั้นลึกสุดใหม่');
   assert.strictEqual(S.MINE.fee.length, S.MINE.floors + 1); for (let f = 3; f <= S.MINE.floors; f++) assert.ok(S.MINE.fee[f] > S.MINE.fee[f - 1], 'ราคาตั๋วเพิ่มตามความลึก');
+}
+{ // ตีติด Critical: ดาเมจ ×mul หลังเพดาน minHits • ส่ง oh d/c • ครั้งแตกส่ง oh f:0 ก่อน ore • ไม่มี toast "อีก N ครั้ง" • โอกาสมาจาก S.MINE.crit.p
+  assert.deepStrictEqual(CRIT, { p: 0.15 }); assert.strictEqual(M.crit.mul, 3); M.crit.p = CRIT.p;
+  const rnd = Math.random, key = ox + ',' + oy, sb = w.sceneBroadcast; w.sceneBroadcast = (sc, m) => ws.msgs.push(m); // sceneMates ถูกสแตบเป็นว่าง จึงดักข้อความฉากเอง
+  a.rec.inv = { coin: 0, pick_1: 1 }; a.rec.dur = {}; a.rec.book = { ore: { copper: 1 } };
+  const mh = S.mineHit(a.rec.inv, 'copper', 2), full = S.oreHp('copper', 2), ohs = () => ws.msgs.filter(m => m.t === 'oh' && m.x === ox && m.y === oy);
+  try {
+    // ไม่คริแน่นอน (สุ่ม 0.99 ≥ p): ดาเมจปกติ ไม่มี c
+    Math.random = () => 0.99; setOre(ox, oy, 'copper', 2); F.hp.clear(); ws.msgs.length = 0; act(ox, oy);
+    let m = ohs().pop(); assert.ok(m && m.c === undefined && m.d === +mh.dmg.toFixed(1), 'ไม่คริ: d = ดาเมจปกติ ไม่มี c'); assert.ok(Math.abs(F.hp.get(key).hp - (full - mh.dmg)) < 1e-9);
+    // คริแน่นอน (สุ่ม 0 < p): ดาเมจ ×3 HP ลดตามนั้น
+    Math.random = () => 0; setOre(ox, oy, 'copper', 2); F.hp.clear(); ws.msgs.length = 0; act(ox, oy);
+    m = ohs().pop(); assert.strictEqual(m.c, 1, 'คริ: c = 1'); assert.strictEqual(m.d, +(mh.dmg * M.crit.mul).toFixed(1), 'คริ: d = ดาเมจ ×3'); assert.ok(Math.abs(F.hp.get(key).hp - (full - mh.dmg * M.crit.mul)) < 1e-9, 'HP ลด ×3');
+    assert.strictEqual(m.f, +(F.hp.get(key).hp / full).toFixed(2));
+    assert.ok(!ws.msgs.some(z => z.t === 'msg' && /อีก \d+ ครั้ง/.test(z.text || '')), 'ไม่มี toast อีก N ครั้งแล้ว');
+    // โอกาสตั้งจาก S.MINE.crit.p: สุ่ม 0.5 ไม่คริเมื่อ p=0.15 แต่คริเมื่อ p=0.9
+    Math.random = () => 0.5; M.crit.p = 0.9; setOre(ox, oy, 'copper', 2); F.hp.clear(); ws.msgs.length = 0; act(ox, oy); assert.strictEqual(ohs().pop().c, 1, 'p=0.9 สุ่ม 0.5 คริ'); M.crit.p = CRIT.p;
+    setOre(ox, oy, 'copper', 2); F.hp.clear(); ws.msgs.length = 0; act(ox, oy); assert.strictEqual(ohs().pop().c, undefined, 'p=0.15 สุ่ม 0.5 ไม่คริ');
+    // ครั้งตีแตกด้วยคริ: ก้อนเล็กอาจแตกครั้งเดียว (ดาเมจคริคูณหลังเพดาน minHits) ส่ง oh f:0 ก่อน ore k:'' และบันทึก cr
+    Math.random = () => 0; a.rec.inv = { coin: 0, pick_10: 1 }; a.rec.dur = {}; setOre(ox, oy, 'stone', 0); F.hp.clear(); ws.msgs.length = 0; let n = 0; while (F.ores.has(key) && n < 50) { act(ox, oy); n++; }
+    assert.ok(n < M.minHits[0], 'คริทุกครั้งทำให้แตกไวกว่า minHits (ฟาด ' + n + ')');
+    const i1 = ws.msgs.findIndex(z => z.t === 'oh' && z.x === ox && z.y === oy && z.f === 0), i2 = ws.msgs.findIndex(z => z.t === 'ore' && z.x === ox && z.y === oy && z.k === '');
+    assert.ok(i1 >= 0 && i2 > i1, 'oh f:0 มาก่อน ore ที่ลบก้อน'); assert.strictEqual(ws.msgs[i1].c, 1); assert.ok(ws.msgs[i1].d > 0);
+  } finally { Math.random = rnd; M.crit.p = 0; w.sceneBroadcast = sb; }
 }
 { // บันทึก event ขุด (เขียนไฟล์ events/วันที่.jsonl)
   setOre(ox, oy, 'stone', 0); a.rec.inv = { coin: 0, pick_1: 1 }; a.rec.dur = {}; let n = 0; while (F.ores.has(ox + ',' + oy) && n < 50) { act(ox, oy); n++; }
