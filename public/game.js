@@ -1546,10 +1546,19 @@ const nearWater = (x, y) => { for (let dy = -FISH_SHORE; dy <= FISH_SHORE; dy++)
 const myTile = () => [Math.floor(me.x / TS), Math.floor(me.y / TS)];
 const cheb = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
 const inReach = (tx, ty) => { const [px, py] = myTile(); return cheb(tx, ty, px, py) <= reachOf(tx, ty); };
+// ปุ่ม A / Space ใช้กับสิ่งที่เดิมแตะได้อย่างเดียว: ลิฟต์เหมือง • ป้าย Arcade Hub • เรือ/ป้ายออกทะเล (กฎ: ของใหม่ที่โต้ตอบได้ ต้องใช้ปุ่ม Action ได้เสมอ)
+function contextAct(now) {
+  const [fx, fy] = Shared.facing(me.x, me.y, me.dir), [px, py] = myTile(), dk = Shared.SEA.dock;
+  if (Shared.nearLift(me.x, me.y)) { stopWalk(); lastAct = now; actGap = 300; openLift(); return true; }
+  if (hubSignAt(fx, fy)) { stopWalk(); lastAct = now; actGap = 300; openHub(); return true; }
+  if ((fx === dk.x && fy === dk.y) || (cheb(px, py, dk.x, dk.y) <= 2 && toolId() !== 'rod')) { stopWalk(); lastAct = now; actGap = 300; send({ t: 'act', tool: toolId(), tx: dk.x, ty: dk.y }); return true; } // บนเกาะ: ยืนใกล้เรือ/ป้ายแล้วกด A = ออกทะเล (ถือเบ็ดต้องหันหน้าหาเรือ ไม่งั้นเป็นการตกปลารอบเกาะ)
+  return false;
+}
 function act(tx, ty) {
   const now = performance.now();
   if (!me || chatFocus || modalOpen() || now - lastAct < actGap) return;
   if (scene && tx === undefined) return; // ในบ้านใช้เครื่องมือฟาร์มไม่ได้ (แตะที่นั่งเพื่อนั่งอย่างเดียว)
+  if (tx === undefined && inTown() && !ft && contextAct(now)) return;
   if (inSea() && toolId() !== 'rod') { toast('บนเรือใช้เบ็ด 🎣 ตกปลา (เลือกที่ช่องเครื่องมือ)'); return; }
   if (cave && !inSea() && toolId() !== 'pick') { toast('ในถ้ำใช้อุปกรณ์ขุด ⚒️ ขุดแร่ (เลือกที่ช่องเครื่องมือ)'); return; }
   const o = { t: 'act', tool: scene ? '' : toolId() }; if (o.tool === 'rod') o.bait = selBait;
