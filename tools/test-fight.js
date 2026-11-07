@@ -44,21 +44,19 @@ const rate = (cls, rod, perk, perfect, react, policy, n = 300) => { let w = 0; f
   assert.ok(g3b > g3a, 'คันเพชร เลเวลสูง ชนะมากกว่า'); assert.ok(g3c < g3a, 'ตั้งเบ็ดไม่เป๊ะ ยากกว่ามาก');
   assert.ok(rate(3, 5, 7, true, 400, 'human') >= 0.85, 'ตอบสนองช้า 400 ms แต่คันดีก็ยังชนะได้');
 }
-// 3) เซิร์ฟเวอร์: ตั้งเบ็ดเกจโดน → ชักเย่อ → ชนะได้ปลา / ปล่อยทิ้งปลาหลุด / กดค้างสายขาด / ดึงเร็วไปคืนเหยื่อ / ส่งสถานะให้ผู้เล่น
+// 3) เซิร์ฟเวอร์: ปลากินเบ็ด → ชักเย่อทันที → ชนะได้ปลา / ปล่อยทิ้งปลาหลุด / กดค้างสายขาด / ดึงเร็วไปคืนเหยื่อ / ส่งสถานะให้ผู้เล่น
 const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } });
 const w = new World('fighttest'), ws = mkWs(), p = w.join(ws, 'alice', '#e74c3c').p;
 const got = t => ws.msgs.filter(m => m.t === t), fishN = () => Object.keys(p.rec.inv).filter(k => k.startsWith('fish_')).reduce((a, k) => a + p.rec.inv[k], 0);
 let T0 = 1e12;
 const cast = () => { p.rec.inv.bait = 5; p.baitSel = 'bait'; w.castFish(p, 10, 10, T0, false, ''); assert.strictEqual(p.fish.st, 'wait'); assert.strictEqual(p.fish.bk, 'bait'); };
-const bite = () => { // ทำให้ปลากินและตัวชี้อยู่กลางโซนพอดี
-  p.fish.at = T0; w.tick(0.1, T0); assert.strictEqual(p.fish.st, 'bite'); Object.assign(p.fish, { c: 0.5, half: 0.2, per: 1000, gt0: T0 - 500, at: T0 + 4000 }); // ตำแหน่งตัวชี้ = 0.5 = กลางโซน
-};
+const bite = () => { p.fish.at = T0; w.tick(0.1, T0); assert.strictEqual(p.fish.st, 'fight', 'ปลากินเบ็ด → เข้าชักเย่อทันที ไม่มีเกจ'); }; // ขั้นเดียว (7 พ.ย. 2026)
 { // ดึงก่อนปลากิน = ได้เหยื่อคืน
   cast(); assert.strictEqual(p.rec.inv.bait, 4); w.reelFish(p, T0 + 500); assert.strictEqual(p.rec.inv.bait, 5, 'ได้เหยื่อคืน'); assert.strictEqual(p.fish, null);
 }
 { // ชนะ
   cast(); bite(); const n0 = fishN(), ps = ws.msgs.length; w.reelFish(p, T0);
-  assert.strictEqual(p.fish.st, 'fight', 'เกจโดน → เริ่มชักเย่อ'); assert.ok(fishN() === n0, 'ยังไม่ได้ปลาจนกว่าจะชนะ');
+  assert.strictEqual(p.fish.st, 'fight', 'ปลากินเบ็ด → เริ่มชักเย่อ'); assert.ok(fishN() === n0, 'ยังไม่ได้ปลาจนกว่าจะชนะ');
   const fm = got('fight').pop(); assert.ok(fm && fm.sched && fm.dist > 0 && fm.ten > 0, 'ส่งข้อมูลชักเย่อให้เว็บ');
   const packet = w.players && [...w.players.values()].length; assert.ok(packet >= 1);
   let now = T0; w.handle(p, { t: 'reel', on: true }); // กดค้าง (ปล่อยเมื่อตึง ~70)
@@ -76,8 +74,7 @@ const bite = () => { // ทำให้ปลากินและตัวช�
 { // ผู้เล่นอื่นเห็นสถานะ 3 (ชักเย่อ) ในแพ็กเก็ตตำแหน่ง
   cast(); bite(); w.reelFish(p, T0); ws.msgs.length = 0; w.tick(0.1, T0 + 100); const s = got('s').pop(); assert.ok(s, 'มีแพ็กเก็ตตำแหน่ง'); const me = s.p.find(x => x[0] === p.id); assert.strictEqual(me[4], 3, 'fs = 3 ตอนชักเย่อ'); w.tick(0.1, T0 + 400); assert.ok(got('fs').length >= 1, 'ส่งสถานะจริงให้ผู้เล่นปรับ'); p.fish = null;
 }
-{ // กดเกจพลาด = ปลาหลุดทันที (เหมือนเดิม) และ act ระหว่างชักเย่อไม่ยกเลิก
-  cast(); bite(); p.fish.gt0 = T0; p.fish.c = 0.5; p.fish.half = 0.01; p.fish.per = 1000; w.reelFish(p, T0 + 480); assert.strictEqual(p.fish, null, 'กดนอกโซน ปลาหลุด');
+{ // act ระหว่างชักเย่อไม่ยกเลิก
   cast(); bite(); w.reelFish(p, T0); const st = p.fish.ft; w.reelFish(p, T0 + 10); assert.ok(p.fish && p.fish.st === 'fight' && p.fish.ft === st, 'กด act ซ้ำระหว่างชักเย่อไม่มีผล'); p.fish = null;
 }
 console.log('ผ่าน test-fight');

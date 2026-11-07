@@ -652,15 +652,7 @@ class World {
     for (const p of this.players.values()) {
       const f = p.fish;
       if (!f) continue;
-      if (f.st === 'wait' && now >= f.at) {
-        // มินิเกมเกจ: ตัวชี้วิ่งไป-กลับ กดตอนอยู่ตรงกลางโซนเขียวถึงจะดึงปลาขึ้น (คันเบ็ดดีกว่า = โซนกว้างขึ้น ตัวชี้ช้าลง)
-        const g = S.FISH_GAUGE, rr = (a, b) => a + Math.random() * (b - a); f.st = 'bite';
-        f.per = (g.per + g.perRod * (f.rod - 1)) * rr(g.perVar[0], g.perVar[1]); f.half = (g.half + g.halfRod * (f.rod - 1)) * rr(g.halfVar[0], g.halfVar[1]);
-        f.c = rr(g.cMin, g.cMax); const off = rr(0, 2 * f.per); f.gt0 = now - off; f.at = now + g.window; // สุ่มจุดกลางโซน ความเร็ว ความกว้าง และตำแหน่งเริ่มต้นของตัวชี้ทุกครั้ง
-        send(p, { t: 'fg', per: f.per, half: f.half, c: f.c, ph: off, win: g.window }); // ph = ระยะที่ตัวชี้วิ่งมาแล้วตอนเริ่ม (ms) (ห้ามใช้ชื่อ off เพราะ off = สัญญาณปิดเกจ)
-        this.toast(p, '🎣 ปลากินเบ็ดแล้ว! กดตอนตัวชี้อยู่ตรงกลาง!'); this.sfx(p, 'bite');
-      }
-      else if (f.st === 'bite' && now >= f.at) { p.fish = null; send(p, { t: 'fg', off: 1 }); this.toast(p, 'ปลาหนีไปแล้ว...'); }
+      if (f.st === 'wait' && now >= f.at) this.startFight(p, now); // ปลากินเบ็ด → ชักเย่อเลย ขั้นเดียว (ไม่มีเกจจับจังหวะ 7 พ.ย. 2026)
       else if (f.st === 'fight') { // ชักเย่อ: เดินเวลาตามสถานะกรอ + ส่งสถานะจริงให้เว็บปรับ (เว็บทำนายเองระหว่างนั้น)
         this.fightAdvance(p, now);
         const g = p.fish; if (g && g.st === 'fight' && now - g.sync >= 150) { g.sync = now; send(p, { t: 'fs', ten: +g.ft.ten.toFixed(1), dist: +g.ft.dist.toFixed(1), el: Math.round(g.ft.t) }); }

@@ -58,14 +58,12 @@ for (let i = 0; i < 400; i++) { // รอพืชสุก (รดน้ำซ�
 }
 at(a, 6, 17, 1); act(a, 'hand', 6, 16); at(b, 8, 15, 1); act(b, 'hand', 8, 14);
 
-// ตกปลา (alice ริมสระ): โยน → รอปลากิน → ดึงตอนตัวชี้ตรงกลาง → ชักเย่อจนจบ (ลองซ้ำได้ 4 รอบ)
+// ตกปลา (alice ริมสระ): โยน → รอปลากิน → ชักเย่อทันทีจนจบ (ลองซ้ำได้ 4 รอบ)
 Object.assign(a.rec.inv, { rod_1: 1, bait: 8 });
 at(a, 10, 22, 0);
 for (let round = 0; round < 4; round++) {
   act(a, 'rod', 10, 23, { bait: 'bait' });
   for (let i = 0; i < 400 && a.fish && a.fish.st === 'wait'; i++) adv(600);
-  for (let i = 0; i < 200 && a.fish && a.fish.st === 'bite' && !S.gaugeHit(a.fish, NOW); i++) adv(25, 25);
-  if (a.fish && a.fish.st === 'bite') { w.lastActReset = 0; a.lastAct = 0; w.handle(a, { t: 'act', tool: 'rod', tx: 10, ty: 23 }); }
   let hold = false;
   for (let i = 0; i < 600 && a.fish && a.fish.st === 'fight'; i++) {
     const want = hold ? a.fish.ft.ten < 70 : a.fish.ft.ten < 50;

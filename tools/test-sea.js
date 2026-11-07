@@ -31,13 +31,11 @@ a.lastAct = 0; w.seaAct(a, { tool: 'rod', tx: S.SEA.deck.x0, ty: S.SEA.deck.y0 }
 const bait0 = a.rec.inv.bait; a.lastAct = 0; w.seaAct(a, { tool: 'rod', tx: 20, ty: 10, bait: 'bait' });
 assert.ok(a.fish && a.fish.sea === true && a.rec.inv.bait === bait0 - 1, 'โยนเบ็ดลงทะเล ใช้เหยื่อ 1 ชิ้น และตั้งธงทะเล');
 // ดึงเบ็ด: ได้ปลาจากชุดทะเลเท่านั้น (ทดสอบหลายครั้ง)
-const reelWin = p => { w.reelFish(p, Date.now()); if (p.fish && p.fish.st === 'fight') { p.fish.ft.end = 'win'; w.fightEnd(p, Date.now()); } }; // กดเกจโดน → ชักเย่อ (บังคับชนะทันที ตรวจชุดปลา/โซนอย่างเดียว ตัวชักเย่ออยู่ใน test-fight.js)
-const gh = S.gaugeHit, gc = S.gaugeCore; S.gaugeHit = () => true; S.gaugeCore = () => true;
+const reelWin = p => { w.startFight(p, Date.now()); if (p.fish && p.fish.st === 'fight') { p.fish.ft.end = 'win'; w.fightEnd(p, Date.now()); } }; // กดเกจโดน → ชักเย่อ (บังคับชนะทันที ตรวจชุดปลา/โซนอย่างเดียว ตัวชักเย่ออยู่ใน test-fight.js)
 const seaIds = new Set(S.fishPool(true).map(f => 'fish_' + f.id)); let gotSea = 0;
 for (let i = 0; i < 200; i++) { a.rec.inv = { coin: 1000, bait: 5 }; a.rec.rareAt = 0; a.fish = { st: 'bite', at: Date.now(), fl: 20, rod: 7, bt: 1, fx: 0, fy: 0, sea: true }; reelWin(a); const fk = Object.keys(a.rec.inv).filter(k => k.startsWith('fish_')); assert.strictEqual(fk.length, 1); assert.ok(seaIds.has(fk[0]), 'ได้ปลานอกชุดทะเล ' + fk[0]); if (S.FISH.find(f => 'fish_' + f.id === fk[0]).sea) gotSea++; }
 assert.ok(gotSea > 20, 'ปลา sea-only ต้องตกได้บ่อยพอ (ได้ ' + gotSea + '/200)');
 for (let i = 0; i < 200; i++) { a.rec.inv = { coin: 1000, bait: 5 }; a.rec.rareAt = 0; a.fish = { st: 'bite', at: Date.now(), fl: 20, rod: 7, bt: 1, fx: 0, fy: 0 }; reelWin(a); assert.ok(!Object.keys(a.rec.inv).some(k => /^fish_(sardine|mackerel|tuna|puffer|hammer|bluewhale)$/.test(k)), 'สระต้องไม่ได้ปลาทะเลลึก'); }
-S.gaugeHit = gh; S.gaugeCore = gc;
 // กลับเกาะ: เดินถึงท้ายเรือ / หมดเวลา
 a.rec.inv.coin = 1000; a.x = (S.SEA.exit.x + 0.5) * TS; a.y = (S.SEA.exit.y + 0.5) * TS; a.lastMove = 0;
 w.handle(a, { t: 'm', x: a.x, y: a.y, d: 0 }); assert.ok(!a.scene, 'เดินถึงท้ายเรือแล้วกลับเกาะ'); assert.ok(Math.abs(a.x - (S.SEA.ret.x + 0.5) * TS) < 1, 'ลงที่เกาะ');
@@ -94,10 +92,8 @@ w.seaGo(a); a.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!a.
   own.rec.inv.bait = 5; own.lastAct = 0; w.seaAct(own, { tool: 'rod', tx: px + 3, ty: py, bait: 'bait' });
   assert.ok(own.fish && own.fish.sea && own.fish.zone === S.oceanZone(px + 3, py), 'โยนใกล้เรือได้ และจำโซนของน้ำที่โยน');
   // เทียบสัดส่วนปลา: โซนลึกออกปลาเลเวลสูงบ่อยกว่าโซนตื้น (ผู้เล่นเลเวลสูง)
-  const gh = S.gaugeHit, gc = S.gaugeCore; S.gaugeHit = () => true; S.gaugeCore = () => true;
-  const lvAvg = zone => { let sum = 0, n = 0; for (let i = 0; i < 400; i++) { own.rec.inv = { coin: 1000, bait: 5, boat: 1 }; own.rec.rareAt = 0; own.fish = { st: 'bite', at: Date.now(), fl: 20, rod: 7, bt: 1, fx: 0, fy: 0, sea: true, zone }; reelWin(own); for (const k of Object.keys(own.rec.inv)) if (k.startsWith('fish_')) { const f = S.fishPool(true).find(x => 'fish_' + x.id === k); if (f) { sum += f.lv * own.rec.inv[k]; n += own.rec.inv[k]; } } } return sum / n; };
-  const sh = lvAvg('shallow'), dp = lvAvg('deep'); S.gaugeHit = gh; S.gaugeCore = gc;
-  assert.ok(dp > sh + 3, `ปลาทะเลลึกเลเวลสูงกว่าทะเลตื้น (ตื้น ${sh.toFixed(1)} • ลึก ${dp.toFixed(1)})`);
+    const lvAvg = zone => { let sum = 0, n = 0; for (let i = 0; i < 400; i++) { own.rec.inv = { coin: 1000, bait: 5, boat: 1 }; own.rec.rareAt = 0; own.fish = { st: 'bite', at: Date.now(), fl: 20, rod: 7, bt: 1, fx: 0, fy: 0, sea: true, zone }; reelWin(own); for (const k of Object.keys(own.rec.inv)) if (k.startsWith('fish_')) { const f = S.fishPool(true).find(x => 'fish_' + x.id === k); if (f) { sum += f.lv * own.rec.inv[k]; n += own.rec.inv[k]; } } } return sum / n; };
+  const sh = lvAvg('shallow'), dp = lvAvg('deep');   assert.ok(dp > sh + 3, `ปลาทะเลลึกเลเวลสูงกว่าทะเลตื้น (ตื้น ${sh.toFixed(1)} • ลึก ${dp.toFixed(1)})`);
   // กลับท่า (แล่นถึง MOUTH) และตะวันตก (หมดเวลา)
   own.rec.inv.boat = 1; own.fish = null; own.x = (O.exit.x + 0.5) * TS; own.y = (O.exit.y0 + 1.5) * TS; own.lastMove = 0; w.handle(own, { t: 'm', x: own.x, y: own.y, d: 2 });
   assert.ok(!own.scene && Math.abs(own.x - (S.SEA.ret.x + 0.5) * TS) < 2, 'แล่นถึงท่า กลับเกาะ');
