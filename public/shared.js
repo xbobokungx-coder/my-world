@@ -1474,15 +1474,15 @@
   const SEA = { floor: 99, fee: 200, ms: 15 * 60e3, minFishLv: 3, dock: { x: 39, y: 38 }, ret: { x: 40, y: 38 }, deck: { x0: 29, y0: 21, x1: 35, y1: 23 }, exit: { x: 28, y: 22 }, spawn: { x: 32.5 * TS, y: 22.5 * TS } };
   const isSea = f => f === SEA.floor;
   // ทะเลใหญ่ (SEA-PLAN ช่วง A): คนมี "เรือ" ขับเรือเองฟรี • ฉากชั้น 98 ใช้ระบบฉากเดียวกับถ้ำ • ช่องแล่นได้ = T.CAVE (วาดเป็นน้ำ เดินได้/โยนเบ็ดได้) เกาะ/หินโสโครกและขอบแมพ = T.ROCK ทางกลับท่า = T.MOUTH (แล่นถึง = กลับเกาะ)
-  // ออกเรือได้ 06:00–15:00 เวลาเกม (hours.from–to) ตะวันตก 19:00 (hours.end) กัปตันพากลับ • 1 ชม.เกม = CLOCK_MS/24 • castRange = ระยะโยนเบ็ดสูงสุดจากเรือ (ช่อง) • speed = ตัวคูณความเร็วเรือ
-  const OCEAN = { floor: 98, spawn: { x: 5.5 * TS, y: 23.5 * TS }, exit: { x: 1, y0: 21, y1: 25 }, speed: 1.35, castRange: 7, hours: { from: 6, to: 15, end: 19 }, anytime: false };
+  // 7 พ.ย. 2026: คนมีเรือ = ออกได้ทุกเวลา ไม่จำกัดเวลา • คนไม่มีเรือ = เช่าเรือ (แทนแพ) ร้านเปิด 06:00 ปิด 19:00 (hours.from–end) เช่าได้ถึง hours.to ครบกำหนดตอนปิด กัปตันพากลับ • 1 ชม.เกม = CLOCK_MS/24 • castRange = ระยะโยนเบ็ดสูงสุดจากเรือ (ช่อง) • speed = ตัวคูณความเร็วเรือ
+  const OCEAN = { floor: 98, spawn: { x: 5.5 * TS, y: 23.5 * TS }, exit: { x: 1, y0: 21, y1: 25 }, speed: 1.35, castRange: 7, hours: { from: 6, to: 17, end: 19 }, anytime: false };
   const isOcean = f => f === OCEAN.floor, isSeaScene = f => isSea(f) || isOcean(f);
   const oceanHour = now => ((now % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24; // เวลาเกมตอนนี้ (ชั่วโมง 6–30) สูตรเดียวกับนาฬิกาฝั่งเว็บ
-  function oceanWindow(now) { // { ok, ms, why } ออกเรือได้ไหม และอยู่ได้กี่มิลลิวินาทีจนตะวันตก
+  function oceanWindow(now) { // เรือเช่า (คนไม่มีเรือ): { ok, ms, why } ร้านเช่าเปิด 06:00 ปิด 19:00 เวลาเกม เช่าได้ถึง 17:00 (เหลือ ≥ 2 นาที) ครบกำหนดตอนร้านปิด • คนมีเรือของตัวเองไม่ใช้ฟังก์ชันนี้ (ออกได้ทุกเวลา ไม่จำกัดเวลา)
     const H = OCEAN.hours, h = oceanHour(now);
     if (OCEAN.anytime) return { ok: true, ms: 8 * 60e3 };
-    if (h >= H.end || h < H.from) return { ok: false, why: '🌙 กลางคืนออกเรือไม่ได้ รอเช้า (ออกได้ 06:00–15:00 เวลาเกม ดูนาฬิกามุมขวาบน)' };
-    if (h >= H.to) return { ok: false, why: '🌇 ตะวันใกล้ตกแล้ว ออกเรือตอนนี้ไม่ทัน รอรอบหน้า (ออกได้ 06:00–15:00 เวลาเกม)' };
+    if (h >= H.end || h < H.from) return { ok: false, why: '🌙 ร้านเช่าเรือปิดอยู่ (เปิด 06:00–19:00 เวลาเกม ดูนาฬิกามุมขวาบน) • ซื้อเรือของตัวเองออกได้ทุกเวลา' };
+    if (h >= H.to) return { ok: false, why: '🌇 ร้านเช่าเรือใกล้ปิดแล้ว (ปิด 19:00) เช่าตอนนี้ได้เวลาน้อยเกินไป รอรอบหน้า • ซื้อเรือของตัวเองออกได้ทุกเวลา' };
     return { ok: true, ms: Math.round((H.end - h) * CLOCK_MS / 24) };
   }
   const oceanLayout = (() => { // เกาะและแนวปะการัง สร้างแบบกำหนดผลตายตัว (เซิร์ฟเวอร์กับหน้าเว็บได้เหมือนกัน)

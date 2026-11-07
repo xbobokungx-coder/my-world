@@ -33,7 +33,7 @@ module.exports = {
     p.scene = scene; p.x = x; p.y = y; p.sit = null; p.dir = 0;
     if (p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); }
     this.sceneBroadcast(scene, Object.assign({ t: 'p+', quiet: 1 }, this.pubFull(p)), p);
-    send(p, { t: 'scene', sc: scene, owner: scene && !S.caveFloor(scene) ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene && !S.caveFloor(scene) ? this.houseItemsPub(scene) : [], st: scene && !S.caveFloor(scene) ? this.houseStyle(scene) : null, cave: S.caveFloor(scene), until: S.isSeaScene(S.caveFloor(scene)) ? p.seaUntil || 0 : 0, ores: S.caveFloor(scene) ? this.oresPub(S.caveFloor(scene)) : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
+    send(p, { t: 'scene', sc: scene, owner: scene && !S.caveFloor(scene) ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene && !S.caveFloor(scene) ? this.houseItemsPub(scene) : [], st: scene && !S.caveFloor(scene) ? this.houseStyle(scene) : null, cave: S.caveFloor(scene), until: S.isSeaScene(S.caveFloor(scene)) && Number.isFinite(p.seaUntil) ? p.seaUntil || 0 : 0, ores: S.caveFloor(scene) ? this.oresPub(S.caveFloor(scene)) : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
     this.dirty = true;
   },
   addLog(text) { const e = [Date.now(), text]; this.log.push(e); if (this.log.length > S.TOWN.logMax) this.log.shift(); this.dirty = true; this.broadcast({ t: 'log', e }); },

@@ -434,7 +434,7 @@ class World {
     // 3) ตู้เกม
     if (tt === T.BUILD && S.cinemaAt(tx, ty)) { send(p, { t: 'cin', open: true, st: this.cinemaPub() }); return; } // จอหนังกลางแปลง
     const town = tt === T.SHOP ? S.townAt(tx, ty) : null;
-    if (town) { send(p, { t: 'town', w: town, fee: town === 'sea' ? this.seaFee(p) : undefined, boat: town === 'sea' ? p.rec.inv.boat > 0 : undefined, win: town === 'sea' && p.rec.inv.boat > 0 ? S.oceanWindow(Date.now()) : undefined, min: town === 'sea' ? S.SEA.minFishLv : undefined, ms: town === 'sea' ? S.SEA.ms : undefined }); return; }
+    if (town) { send(p, { t: 'town', w: town, fee: town === 'sea' ? this.seaFee(p) : undefined, boat: town === 'sea' ? p.rec.inv.boat > 0 : undefined, win: town === 'sea' && !(p.rec.inv.boat > 0) ? S.oceanWindow(Date.now()) : undefined, min: town === 'sea' ? S.SEA.minFishLv : undefined, ms: town === 'sea' ? S.SEA.ms : undefined }); return; }
     const cab = tt === T.SHOP ? S.cabinetAt(tx, ty) : null;
     if (cab) { this.arcOpen(p, cab); return; }
     // 4) ร้านค้า
@@ -547,8 +547,9 @@ class World {
     this.lottoTick(now);
     for (const p of this.players.values()) {
       const cf = S.caveFloor(p.scene); if (!S.isSeaScene(cf)) continue;
-      if (now >= (p.seaUntil || 0)) this.seaLeave(p, S.isOcean(cf) ? '🌇 ตะวันตกดินแล้ว กัปตันพากลับเกาะ' : '⛵ ครบเวลาออกทะเล กัปตันพากลับเกาะแล้ว');
-      else if (S.isOcean(cf)) { const left = p.seaUntil - now; if (left <= 60000 && !(p.seaW & 1)) { p.seaW |= 1; this.toast(p, '🌇 ตะวันใกล้ตกแล้ว อีก 1 นาทีกัปตันจะพากลับ แล่นกลับท่า (ซ้ายสุดของแมพ) ได้ก่อน'); } else if (left <= 15000 && !(p.seaW & 2)) { p.seaW |= 2; this.toast(p, '⛵ เรือกำลังจะกลับท่าแล้ว!'); } }
+      if (p.seaUntil === Infinity) continue; // เรือของตัวเอง ไม่จำกัดเวลา
+      if (now >= (p.seaUntil || 0)) this.seaLeave(p, S.isOcean(cf) ? '🌇 ร้านเช่าเรือปิดแล้ว (19:00) กัปตันพากลับเกาะ' : '⛵ ครบเวลาออกทะเล กัปตันพากลับเกาะแล้ว');
+      else if (S.isOcean(cf)) { const left = p.seaUntil - now; if (left <= 60000 && !(p.seaW & 1)) { p.seaW |= 1; this.toast(p, '🌇 เรือเช่าใกล้หมดเวลา (ร้านปิด 19:00) อีก 1 นาทีกัปตันจะพากลับ แล่นกลับท่า (ซ้ายสุดของแมพ) ได้ก่อน'); } else if (left <= 15000 && !(p.seaW & 2)) { p.seaW |= 2; this.toast(p, '⛵ เรือกำลังจะกลับท่าแล้ว!'); } }
     }
     this.arcTick(now);
     this.cinemaTick(now);

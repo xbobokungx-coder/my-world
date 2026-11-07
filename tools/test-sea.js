@@ -22,13 +22,13 @@ const pot0 = w.lotto.pot;
 w.seaGo(far); assert.ok(!far.scene, 'อยู่ไกลท่าเรือ ขึ้นเรือไม่ได้');
 w.seaGo(low); assert.ok(!low.scene, 'เลเวลตกปลาไม่ถึง');
 w.seaGo(poor); assert.ok(!poor.scene && poor.rec.inv.coin === 10, 'เหรียญไม่พอ');
+S.OCEAN.anytime = true; // ไม่ผูกกับนาฬิกาจริง (ร้านเช่าเรือเปิด 06:00–19:00 ทดสอบด้านล่าง)
 w.seaGo(a);
-assert.strictEqual(S.caveFloor(a.scene), S.SEA.floor, 'ขึ้นเรือแล้ว อยู่ฉากทะเล'); assert.strictEqual(a.rec.inv.coin, 1000 - S.SEA.fee); assert.strictEqual(w.lotto.pot, pot0 + S.SEA.fee, 'ค่าเรือเข้ากองกลาง');
-assert.ok(a.seaUntil > Date.now() && a.ret.x === (S.SEA.ret.x + 0.5) * TS);
+assert.strictEqual(S.caveFloor(a.scene), S.OCEAN.floor, 'เช่าเรือแล้ว อยู่ทะเลใหญ่ (แพเลิกใช้แล้ว)'); assert.strictEqual(a.rec.inv.coin, 1000 - S.SEA.fee); assert.strictEqual(w.lotto.pot, pot0 + S.SEA.fee, 'ค่าเช่าเรือเข้ากองกลาง');
+assert.ok(Number.isFinite(a.seaUntil) && a.seaUntil > Date.now() && a.ret.x === (S.SEA.ret.x + 0.5) * TS, 'เรือเช่ามีเวลาจำกัด');
 // ตกปลา: เบ็ดเท่านั้น ต้องเป็นช่องน้ำ
 w.seaAct(a, { tool: 'hoe' }); assert.ok(!a.fish, 'ไม่ใช่เบ็ด ตกไม่ได้');
-a.lastAct = 0; w.seaAct(a, { tool: 'rod', tx: S.SEA.deck.x0, ty: S.SEA.deck.y0 }); assert.ok(!a.fish, 'ดาดฟ้าไม่ใช่น้ำ');
-const bait0 = a.rec.inv.bait; a.lastAct = 0; w.seaAct(a, { tool: 'rod', tx: 20, ty: 10, bait: 'bait' });
+const bait0 = a.rec.inv.bait; a.lastAct = 0; w.seaAct(a, { tool: 'rod', tx: Math.floor(a.x / TS) + 3, ty: Math.floor(a.y / TS), bait: 'bait' });
 assert.ok(a.fish && a.fish.sea === true && a.rec.inv.bait === bait0 - 1, 'โยนเบ็ดลงทะเล ใช้เหยื่อ 1 ชิ้น และตั้งธงทะเล');
 // ดึงเบ็ด: ได้ปลาจากชุดทะเลเท่านั้น (ทดสอบหลายครั้ง)
 const reelWin = p => { w.startFight(p, Date.now()); if (p.fish && p.fish.st === 'fight') { p.fish.ft.end = 'win'; w.fightEnd(p, Date.now()); } }; // กดเกจโดน → ชักเย่อ (บังคับชนะทันที ตรวจชุดปลา/โซนอย่างเดียว ตัวชักเย่ออยู่ใน test-fight.js)
@@ -38,14 +38,14 @@ assert.ok(gotSea > 20, 'ปลา sea-only ต้องตกได้บ่อ�
 for (let i = 0; i < 200; i++) { a.rec.inv = { coin: 1000, bait: 5 }; a.rec.rareAt = 0; a.fish = { st: 'bite', at: Date.now(), fl: 20, rod: 7, bt: 1, fx: 0, fy: 0 }; reelWin(a); assert.ok(!Object.keys(a.rec.inv).some(k => /^fish_(sardine|mackerel|tuna|puffer|hammer|bluewhale)$/.test(k)), 'สระต้องไม่ได้ปลาทะเลลึก'); }
 // กลับเกาะ: เดินถึงท้ายเรือ / หมดเวลา
 a.rec.inv.coin = 1000; a.x = (S.SEA.exit.x + 0.5) * TS; a.y = (S.SEA.exit.y + 0.5) * TS; a.lastMove = 0;
-w.handle(a, { t: 'm', x: a.x, y: a.y, d: 0 }); assert.ok(!a.scene, 'เดินถึงท้ายเรือแล้วกลับเกาะ'); assert.ok(Math.abs(a.x - (S.SEA.ret.x + 0.5) * TS) < 1, 'ลงที่เกาะ');
-w.seaGo(a); a.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!a.scene, 'หมดเวลา กัปตันพากลับเกาะ');
+a.fish = null; w.seaLeave(a, 'ทดสอบ'); assert.ok(!a.scene, 'กลับเกาะได้');
+w.seaGo(a); a.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!a.scene, 'เรือเช่าหมดเวลา กัปตันพากลับเกาะ'); S.OCEAN.anytime = false;
 // เรือขาย: ร้านยานพาหนะขาย 'boat' (ซื้อครั้งเดียว ขายคืน 70%) มีเรือ = ออกทะเลฟรี ไม่เข้ากองกลาง • ไม่มี = จ่าย SEA.fee
 {
   assert.ok(S.SHOPS.vehicle.buy.includes('boat') && !S.SHOPS.vehicle.soon, 'ร้านยานพาหนะเปิดขายเรือแล้ว');
   const bi = S.itemInfo('boat'); assert.strictEqual(bi.buy, S.BOAT.price); assert.ok(bi.once && !bi.veh, 'เรือเป็นของชิ้นเดียว ไม่ใช่ยานพาหนะขี่บนบก');
   assert.strictEqual(S.sellbackValue('boat'), Math.floor(S.BOAT.price * S.SELLBACK), 'ขายคืนเรือ 70%');
-  const q = mk('Skipper', 5000); w.nearShopKind = () => 'vehicle'; S.OCEAN.anytime = true; // เรือ: มีเรือขับเองในทะเลใหญ่ (ไม่ผูกกับนาฬิกาจริง)
+  const q = mk('Skipper', 5000); w.nearShopKind = () => 'vehicle'; S.OCEAN.anytime = true; // (เรือเช่าตรวจนาฬิกา) เรือของตัวเองไม่ผูกกับนาฬิกาอยู่แล้ว
   assert.strictEqual(w.seaFee(q), S.SEA.fee, 'ไม่มีเรือ = จ่ายค่าเรือ');
   w.buy(q, 'boat', 1); assert.strictEqual(q.rec.inv.boat, 1, 'ซื้อเรือได้'); assert.strictEqual(q.rec.inv.coin, 5000 - S.BOAT.price);
   w.buy(q, 'boat', 1); assert.strictEqual(q.rec.inv.coin, 5000 - S.BOAT.price, 'ซื้อซ้ำไม่ได้');
@@ -72,16 +72,18 @@ w.seaGo(a); a.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!a.
   assert.ok(S.oceanZoneMul('deep', 18) > S.oceanZoneMul('deep', 3) && S.oceanZoneMul('shallow', 2) > 1, 'ปลาระดับตรงโซนออกบ่อยกว่า');
   // ช่วงเวลา: เช้ามีเวลานาน บ่ายแก่เหลือน้อย 15:00 เป็นต้นไป/กลางคืนออกไม่ได้
   const at = h => ((h - 6 + 24) % 24) / 24 * S.CLOCK_MS + S.CLOCK_MS * 5000;
-  const w6 = S.oceanWindow(at(6)), w10 = S.oceanWindow(at(10)), w149 = S.oceanWindow(at(14.9));
-  assert.ok(w6.ok && Math.abs(w6.ms - 13 * 60e3) < 2000 && w10.ok && Math.abs(w10.ms - 9 * 60e3) < 2000 && w149.ok && w149.ms >= 4 * 60e3 - 2000, 'เวลาอยู่ได้ = จนตะวันตก 19:00');
-  for (const h of [5, 15, 17, 19, 22]) assert.ok(!S.oceanWindow(at(h)).ok && S.oceanWindow(at(h)).why, 'ออกไม่ได้ตอน ' + h + ':00');
+  const w6 = S.oceanWindow(at(6)), w10 = S.oceanWindow(at(10)), w149 = S.oceanWindow(at(16.9));
+  assert.ok(w6.ok && Math.abs(w6.ms - 13 * 60e3) < 2000 && w10.ok && Math.abs(w10.ms - 9 * 60e3) < 2000 && w149.ok && w149.ms >= 2 * 60e3 - 2000, 'เรือเช่าอยู่ได้ = จนร้านปิด 19:00 (16:54 ยังเหลือ ≥ 2 นาที)');
+  for (const h of [5, 17, 18, 19, 22]) assert.ok(!S.oceanWindow(at(h)).ok && S.oceanWindow(at(h)).why, 'ร้านเช่าเรือปิด/ใกล้ปิด ตอน ' + h + ':00');
+  assert.ok(S.oceanWindow(at(15)).ok && S.oceanWindow(at(16)).ok, 'เช่าได้ตอน 15–16:00 (แต่เดิมออกไม่ได้)');
 
   S.OCEAN.anytime = true; // ทดสอบกติกาที่เหลือโดยไม่ผูกกับนาฬิกาจริง
   const own = mk('Owner', 100), raft = mk('Raft', 1000); own.rec.inv.boat = 1; w.nearShopKind = () => '';
   const c0 = own.rec.inv.coin, pot2 = w.lotto.pot; w.seaGo(own);
   assert.strictEqual(S.caveFloor(own.scene), O.floor, 'มีเรือ → ทะเลใหญ่'); assert.strictEqual(own.rec.inv.coin, c0, 'ฟรี'); assert.strictEqual(w.lotto.pot, pot2);
-  assert.ok(Math.abs(own.x - O.spawn.x) < 1 && own.seaUntil > Date.now(), 'เกิดที่ท่าซ้ายสุด มีเวลา');
-  w.seaGo(raft); assert.strictEqual(S.caveFloor(raft.scene), S.SEA.floor, 'ไม่มีเรือ → ขึ้นแพ (จ่ายค่าเรือเหมือนเดิม)'); assert.strictEqual(raft.rec.inv.coin, 1000 - S.SEA.fee);
+  assert.ok(Math.abs(own.x - O.spawn.x) < 1 && own.seaUntil === Infinity, 'เกิดที่ท่าซ้ายสุด เรือตัวเองไม่จำกัดเวลา');
+  { const sent = []; own.ws = { readyState: 1, send: s => sent.push(JSON.parse(s)) }; w.tick(0.05, Date.now() + 10 * 3600e3); assert.strictEqual(S.caveFloor(own.scene), O.floor, 'ผ่านไป 10 ชม. ก็ไม่ถูกส่งกลับ'); S.OCEAN.anytime = false; w.seaLeave(own, 't'); S.OCEAN.anytime = true; w.seaGo(own); assert.ok(sent.some(m => m.t === 'scene' && m.until === 0), 'ส่ง until=0 (ไม่มีนาฬิกานับถอยหลัง)'); }
+  w.seaGo(raft); assert.strictEqual(S.caveFloor(raft.scene), O.floor, 'ไม่มีเรือ → เช่าเรือขับเองในทะเลใหญ่ (จ่ายค่าเช่า)'); assert.ok(Number.isFinite(raft.seaUntil), 'เรือเช่ามีเวลาจำกัด'); assert.strictEqual(raft.rec.inv.coin, 1000 - S.SEA.fee);
   // เดิน/ชน: น้ำเดินได้ เกาะชน ขอบชน
   const F = w.floorOf(O.floor); assert.ok(!w.blockedFor(own, O.spawn.x, O.spawn.y) && w.blockedFor(own, 0.5 * TS, 5.5 * TS));
   const isl = L.islands[0]; assert.ok(w.blockedFor(own, (Math.round(isl.x) + 0.5) * TS, (Math.round(isl.y) + 0.5) * TS), 'ชนเกาะ');
@@ -97,7 +99,7 @@ w.seaGo(a); a.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!a.
   // กลับท่า (แล่นถึง MOUTH) และตะวันตก (หมดเวลา)
   own.rec.inv.boat = 1; own.fish = null; own.x = (O.exit.x + 0.5) * TS; own.y = (O.exit.y0 + 1.5) * TS; own.lastMove = 0; w.handle(own, { t: 'm', x: own.x, y: own.y, d: 2 });
   assert.ok(!own.scene && Math.abs(own.x - (S.SEA.ret.x + 0.5) * TS) < 2, 'แล่นถึงท่า กลับเกาะ');
-  w.seaGo(own); const toasts = [], toast0 = w.toast.bind(w); w.toast = (pl, t) => { toasts.push(t); return toast0(pl, t); }; own.seaUntil = Date.now() + 50000; w.tick(0.05, Date.now()); assert.ok(toasts.some(t => /ตะวันใกล้ตก/.test(t)), 'เตือน 1 นาทีสุดท้าย'); w.toast = toast0;
+  w.seaGo(own); const toasts = [], toast0 = w.toast.bind(w); w.toast = (pl, t) => { toasts.push(t); return toast0(pl, t); }; own.seaUntil = Date.now() + 50000; w.tick(0.05, Date.now()); assert.ok(toasts.some(t => /เรือเช่าใกล้หมดเวลา/.test(t)), 'เตือน 1 นาทีสุดท้าย'); w.toast = toast0;
   own.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!own.scene, 'ตะวันตก กัปตันพากลับเกาะ');
   S.OCEAN.anytime = false;
   // ออกเรือไม่ได้ตอนกลางคืน/บ่ายแก่ (ใช้นาฬิกาจริงของเกมอาจเป็นเวลาไหนก็ได้ จึงเช็กผ่าน oceanWindow ด้านบนแล้ว)

@@ -272,11 +272,11 @@ function handle(m) {
     case 'arcpts': arcSt = m.arc; if (hubShown()) renderHub(); break;
     case 'lb': lbSt = m; if (hubShown()) renderHub(); break;
     case 'town': if (m.w === 'sea') {
-      if (m.boat) { // มีเรือ: ขับเรือเองในทะเลใหญ่ (ต้องออกช่วงเช้า-บ่าย)
-        if (m.win && !m.win.ok) { toast(m.win.why); break; }
-        ask(`⛵ ออกเรือของคุณ ล่องทะเลใหญ่ ฟรี? ขับเรือเองได้ราว ${Math.max(1, Math.round(m.win.ms / 60000))} นาทีจนตะวันตก • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • โยนเบ็ดได้ไกล ${Shared.OCEAN.castRange} ช่อง ปลาแพงอยู่ทะเลลึกทางขวา`, () => send({ t: 'sea' })); break;
+      if (m.boat) { // มีเรือเอง: ออกได้ทุกเวลา ไม่จำกัดเวลา ขับเรือเองในทะเลใหญ่
+        ask(`⛵ ออกเรือของคุณ ล่องทะเลใหญ่ ฟรี? ออกได้ทุกเวลา ไม่จำกัดเวลา กลับเมื่อไหร่ก็ได้โดยแล่นไปท่าซ้ายสุด • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • โยนเบ็ดได้ไกล ${Shared.OCEAN.castRange} ช่อง ปลาแพงอยู่ทะเลลึกทางขวา`, () => send({ t: 'sea' })); break;
       }
-      ask(`🛶 ขึ้นแพออกทะเล? ค่าเรือ 🪙${m.fee} • ตกปลาจากแพได้ ${Math.round(m.ms / 60000)} นาที • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • (ซื้อเรือของตัวเองที่ร้านยานพาหนะ ขับเรือออกทะเลใหญ่ได้ฟรี)`, () => send({ t: 'sea' })); break;
+      if (m.win && !m.win.ok) { toast(m.win.why); break; }
+      ask(`⛵ เช่าเรือออกทะเลใหญ่? ค่าเช่า 🪙${m.fee} • ขับเรือเองได้ราว ${Math.max(1, Math.round(m.win.ms / 60000))} นาทีจนร้านเช่าปิด 19:00 (เปิด 06:00–19:00 เวลาเกม) • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • (ซื้อเรือของตัวเองที่ร้านยานพาหนะ ออกได้ทุกเวลาไม่จำกัดเวลา)`, () => send({ t: 'sea' })); break;
     } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : 'log'); break;
     case 'scene': applyScene(m); break;
     case 'hboard': hboard = m; if (plotsShown()) renderPlots(); break;
@@ -342,7 +342,7 @@ function renderAdmin() {
     const W = adminSt.warp || { houses: [], floors: 0 }, btn = to => `<button class="btn small" data-warp="${esc(to)}">🧭 วาป</button>`;
     h += '<div class="sec">🏘️ เมือง</div>' + `<div class="arow"><span>ลานกองไฟกลางเมือง</span>${btn('town')}</div>`;
     h += '<div class="sec">⛏️ ถ้ำเหมือง</div>' + Array.from({ length: W.floors }, (_, i) => `<div class="arow"><span>ชั้น ${i + 1}</span>${btn('cave:' + (i + 1))}</div>`).join('');
-    h += '<div class="sec">🌊 ทะเลลึก</div>' + `<div class="arow"><span>เกาะลึกลับกลางสระ (แพ)</span>${btn('sea')}</div><div class="arow"><span>ทะเลใหญ่ (ขับเรือ)</span>${btn('ocean')}</div>`;
+    h += '<div class="sec">🌊 ทะเลลึก</div>' + `<div class="arow"><span>เกาะลึกลับกลางสระ (เรือเช่า)</span>${btn('sea')}</div><div class="arow"><span>ทะเลใหญ่ (ขับเรือ)</span>${btn('ocean')}</div>`;
     h += `<div class="sec">🏠 บ้านของผู้เล่น (${W.houses.length})</div>` + W.houses.map(x => `<div class="arow"><span><b>${esc(x.name)}</b></span>${btn('house:' + x.key)}</div>`).join('');
   } else if (adminTab === 'blacklist') {
     h += `<div class="arow"><input type="text" id="banName" maxlength="12" placeholder="พิมพ์ชื่อที่จะแบน (ห้อง ${esc(adminSt.current)})"><button class="btn small" id="banAdd">🚫 แบน</button></div>`;
@@ -1363,7 +1363,7 @@ function renderShop() {
       return `<div class="row"><span>${i.emoji} ${i.name}<br><small>${own ? (riding ? 'กำลังขี่อยู่ ✅' : 'มีแล้ว') : `🪙${i.buy}`}</small></span><span>`
         + (own ? `<button class="btn small" data-veh="${riding ? '' : v}">${riding ? 'ลงเดิน' : 'ขี่'}</button> <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sellbackValue(k)}</button>` : `<button class="btn small" data-buy="${k}" data-n="1" ${(inv.coin || 0) < i.buy ? 'disabled' : ''}>ซื้อ</button>`) + '</span></div>'; }).join('');
     const bi = itemInfo('boat'), bown = inv.boat > 0;
-    const brow = `<div class="row"><span>${bi.emoji} ${bi.name}<br><small>${bown ? 'มีแล้ว ✅ ขับเรือออกทะเลใหญ่ฟรี (แตะเรือที่ท่าบนเกาะลึกลับ • ออกได้ 06:00–15:00 เวลาเกม)' : `🪙${bi.buy} • ขับเรือเองในทะเลใหญ่ ฟรีทุกเที่ยว • ไม่มีเรือต้องจ่าย 🪙${Shared.SEA.fee} ขึ้นแพตกปลาที่เดียว`}</small></span><span>`
+    const brow = `<div class="row"><span>${bi.emoji} ${bi.name}<br><small>${bown ? 'มีแล้ว ✅ ขับเรือออกทะเลใหญ่ฟรี (แตะเรือที่ท่าบนเกาะลึกลับ • ออกได้ทุกเวลา ไม่จำกัดเวลา)' : `🪙${bi.buy} • ขับเรือเองในทะเลใหญ่ ฟรีทุกเที่ยว • ไม่มีเรือต้องจ่ายค่าเช่าเรือ 🪙${Shared.SEA.fee} ต่อเที่ยว (ร้านเช่าเปิด 06:00–19:00 เวลาเกม)`}</small></span><span>`
       + (bown ? `<button class="btn small muted" data-sellback="boat">↩️ ขายคืน 🪙${sellbackValue('boat')}</button>` : `<button class="btn small" data-buy="boat" data-n="1" ${(inv.coin || 0) < bi.buy ? 'disabled' : ''}>ซื้อ</button>`) + '</span></div>';
     $('shopBody').innerHTML = '<div class="sec">🚲 ยานพาหนะ (ขี่ได้ในเมือง เดินเร็วขึ้น • กด V ขี่/ลง)</div>' + vrows + '<div class="sec">⛵ ออกทะเล</div>' + brow;
     $('shopBody').querySelectorAll('[data-veh]').forEach(b => b.onclick = () => send({ t: 'veh', v: b.dataset.veh }));
@@ -3980,7 +3980,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   if (inSea()) { // ป้ายทะเล: โซน + นับถอยหลังกลับเกาะ (ตะวันตก/ครบเวลา)
     const left = seaEnd ? Math.max(0, seaEnd - (Date.now() + timeOffset)) : 0, cd = Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0');
     const zn = inOcean() && me ? (Shared.OCEAN_ZONE[Shared.oceanZone(Math.floor(me.x / TS), Math.floor(me.y / TS))] || {}).name : '';
-    const t = inOcean() ? `⛵ ทะเลใหญ่${zn ? ' • ' + zn : ''} • ตะวันตกในอีก ${cd} • เบ็ด 🎣 • แล่นซ้ายสุดเพื่อกลับท่า` : `🛶 ทะเลลึก (แพ) • เหลือ ${cd} • เบ็ด 🎣 ตกปลาทะเล • เดินไปท้ายแพเพื่อกลับเกาะ`;
+    const t = inOcean() ? `⛵ ทะเลใหญ่${zn ? ' • ' + zn : ''} ${seaEnd ? ' • เรือเช่าหมดเวลาในอีก ' + cd : ' • ไม่จำกัดเวลา'} • เบ็ด 🎣 • แล่นซ้ายสุดเพื่อกลับท่า` : `🛶 ทะเลลึก (แพ) • เหลือ ${cd} • เบ็ด 🎣 ตกปลาทะเล • เดินไปท้ายแพเพื่อกลับเกาะ`;
     ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(10, 62, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#fff'; ctx.fillText(t, 18, 80);
   }
   else if (cave) { const t = '⛏️ ถ้ำเหมือง ชั้น ' + caveFlr + '/' + Shared.MINE.floors; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(10, 96, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, 18, 115); }

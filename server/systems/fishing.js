@@ -19,23 +19,18 @@ module.exports = {
     if (p.scene) return;
     if (Math.hypot(p.x - (S.SEA.dock.x + 0.5) * TS, p.y - (S.SEA.dock.y + 0.5) * TS) > 3 * TS) return this.toast(p, '⛵ ไปที่เรือบนเกาะลึกลับกลางสระก่อนนะ');
     if (this.lv(p, 'fish') < S.SEA.minFishLv) return this.toast(p, `⛵ ต้องเป็นชาวประมงเลเวล ${S.SEA.minFishLv} ขึ้นไปถึงจะออกทะเลได้`);
-    const boat = p.rec.inv.boat > 0, win = boat ? S.oceanWindow(Date.now()) : null;
-    if (boat && !win.ok) return this.toast(p, win.why); // มีเรือ: ขับเรือเองในทะเลใหญ่ ฟรี แต่ต้องออกช่วงเช้า-บ่าย (กลับก่อนตะวันตก)
-    const fee = this.seaFee(p); // ไม่มีเรือ: จ่ายค่าเรือขึ้นแพ (ดาดฟ้า ตกปลาจากแพ 15 นาที)
-    if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `⛵ ค่าเรือ 🪙 ${fee} เหรียญไม่พอ (ซื้อเรือของตัวเองที่ร้านยานพาหนะ 🪙${S.BOAT.price} ขับเรือออกทะเลใหญ่ได้ฟรี)`);
+    const boat = p.rec.inv.boat > 0, win = boat ? null : S.oceanWindow(Date.now()); // มีเรือเอง: ออกได้ทุกเวลา ไม่จำกัดเวลา • ไม่มีเรือ: เช่าเรือ (ร้านเปิด 06:00 ปิด 19:00 เวลาเกม)
+    if (win && !win.ok) return this.toast(p, win.why);
+    const fee = this.seaFee(p); // ไม่มีเรือ: ค่าเช่าเรือ (เรือเช่าขับเองในทะเลใหญ่ได้เหมือนเรือของตัวเอง)
+    if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `⛵ ค่าเช่าเรือ 🪙 ${fee} เหรียญไม่พอ (ซื้อเรือของตัวเองที่ร้านยานพาหนะ 🪙${S.BOAT.price} ออกทะเลได้ฟรีไม่จำกัดเวลา)`);
     if (p.veh) this.setVeh(p, '');
     this.arcLeave(p); this.tradeCancel(p, 'ผู้เล่นออกทะเล'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
-    if (fee) { this.add(p, 'coin', -fee, 'sea'); this.toPot(fee); } // ค่าเรือเข้ากองกลางหวย (คนมีเรือไม่เสีย)
+    if (fee) { this.add(p, 'coin', -fee, 'sea'); this.toPot(fee); } // ค่าเช่าเรือเข้ากองกลางหวย (คนมีเรือไม่เสีย)
     p.ret = { x: (S.SEA.ret.x + 0.5) * TS, y: (S.SEA.ret.y + 0.5) * TS }; p.seaW = 0;
-    if (boat) {
-      p.seaUntil = Date.now() + win.ms;
-      this.changeScene(p, CAVE + S.OCEAN.floor, S.OCEAN.spawn.x, S.OCEAN.spawn.y);
-      this.toast(p, `⛵ ออกเรือของคุณ! ขับเรือด้วย WASD/จอยสติ๊ก ล่องทะเลใหญ่ได้ราว ${Math.max(1, Math.round(win.ms / 60000))} นาทีจนตะวันตก • คลิก/แตะน้ำใกล้ๆ โยนเบ็ด (ไกลสุด ${S.OCEAN.castRange} ช่อง) • ปลาแพงอยู่ทะเลลึกทางขวา • แล่นกลับท่า (ซ้ายสุด) เพื่อกลับเกาะ`);
-      return;
-    }
-    p.seaUntil = Date.now() + S.SEA.ms;
-    this.changeScene(p, CAVE + S.SEA.floor, S.SEA.spawn.x, S.SEA.spawn.y);
-    this.toast(p, `⛵ ขึ้นแพออกทะเล! ตกปลาทะเลลึกด้วยเบ็ดได้ ${Math.round(S.SEA.ms / 60000)} นาที (ใช้เหยื่อเหมือนเดิม) • เดินไปท้ายแพเพื่อกลับเกาะ • อยากขับเรือเองออกทะเลใหญ่ ซื้อเรือที่ร้านยานพาหนะ`);
+    p.seaUntil = boat ? Infinity : Date.now() + win.ms; // Infinity = ไม่จำกัดเวลา (tick ข้าม, ส่งเว็บเป็น 0 = ไม่มีนาฬิกานับถอยหลัง)
+    this.changeScene(p, CAVE + S.OCEAN.floor, S.OCEAN.spawn.x, S.OCEAN.spawn.y);
+    const how = `ขับเรือด้วย WASD/จอยสติ๊ก • คลิก/แตะน้ำใกล้ๆ โยนเบ็ด (ไกลสุด ${S.OCEAN.castRange} ช่อง) • ปลาแพงอยู่ทะเลลึกทางขวา • แล่นกลับท่า (ซ้ายสุด) เพื่อกลับเกาะ`;
+    this.toast(p, boat ? `⛵ ออกเรือของคุณ! ล่องทะเลใหญ่ได้ไม่จำกัดเวลา • ${how}` : `⛵ เช่าเรือออกทะเลแล้ว! ใช้ได้ราว ${Math.max(1, Math.round(win.ms / 60000))} นาทีจนร้านเช่าปิด 19:00 • ${how}`);
   },
   seaLeave(p, msg) { if (!S.isSeaScene(S.caveFloor(p.scene))) return; p.seaUntil = 0; p.seaW = 0; this.leaveCave(p); this.toast(p, msg); },
   seaAct(p, m) { // บนเรือ: ใช้ได้แค่เบ็ด ตกปลาทะเลลึก (ชุดปลาแยกจากสระ)
