@@ -2501,15 +2501,14 @@ function drawStructures(g, gh) {
     if (N) { rail(bx, by, TS, 4); if (tx % 3 === 0) post(bx + 2, by - 1); }
     if (S2) { rail(bx, by + TS - 4, TS, 4); if (tx % 3 === 0) post(bx + 2, by + TS - 5); }
   }
-  // เกาะตกปลาลับ: ต้นมะพร้าวบนเกาะทราย + ลังเหยื่อ (ตัวเกาะเป็นช่องทราย พื้นวาดจาก ground)
+  // เกาะลึกลับกลางสระ: ท่าเรือ ⛵ ออกทะเล + ป้ายไม้บอกชัดๆ (ตัดต้นมะพร้าวกับลังเหยื่อที่ไม่จำเป็นออก 7 พ.ย. 2026) แตะเรือเพื่อออกทะเล
   if (builtProj.has('island')) {
-    const I = Shared.ISLAND, px = (I.x0 + 1) * TS + 16, py = (I.y0 + 1) * TS + 22;
-    g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(px - 10, py + 2, 24, 5);
-    g.fillStyle = '#7a4a24'; g.fillRect(px - 2, py - 34, 5, 38); g.fillRect(px - 4, py - 30, 4, 4); g.fillRect(px + 1, py - 18, 4, 4); g.fillStyle = '#a8703a'; g.fillRect(px - 2, py - 34, 2, 38);
-    for (const [dx, dy, ww] of [[-22, -34, 22], [0, -38, 22], [-14, -42, 18], [-24, -28, 16], [8, -32, 16]]) { g.fillStyle = '#2f7d32'; g.fillRect(px + dx, py + dy, ww, 5); g.fillStyle = '#58b04a'; g.fillRect(px + dx + 2, py + dy, ww - 6, 2); }
-    g.fillStyle = '#5a3a1c'; g.fillRect(px - 5, py - 30, 4, 4); g.fillRect(px, py - 30, 4, 4);
-    g.fillStyle = '#8b5a2b'; g.fillRect(px + 12, py - 8, 14, 12); g.fillStyle = '#c98b4a'; g.fillRect(px + 12, py - 8, 14, 3); g.fillStyle = '#5a3a1c'; g.fillRect(px + 12, py - 1, 14, 1);
-    PixelUI.world(gh, '🎣', px + 19, py - 14, 11);
+    const I = Shared.ISLAND, cx = Math.round((I.x0 + 1.5) * TS), by = I.y0 * TS - 8, bw = 124, bh = 32, bx = cx - bw / 2; // ป้ายอยู่เหนือเกาะ กลางแถวบน
+    g.fillStyle = '#3f2814'; g.fillRect(cx - 4, by + bh - 2, 8, 30); g.fillStyle = '#7a4a24'; g.fillRect(cx - 4, by + bh - 2, 3, 30); g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(cx - 9, by + bh + 26, 18, 4); // เสาป้าย+เงา
+    g.fillStyle = '#2b1b0e'; g.fillRect(bx, by, bw, bh); g.fillStyle = '#6b4a2a'; g.fillRect(bx + 2, by + 2, bw - 4, bh - 4); g.fillStyle = '#8a6a3e'; g.fillRect(bx + 2, by + 2, bw - 4, 2); g.fillStyle = '#2b1b0e'; g.fillRect(bx + 6, by + 4, 3, 3); g.fillRect(bx + bw - 9, by + 4, 3, 3); // ป้ายไม้ ตะปูมุม
+    g.font = 'bold 15px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#2b1b0e'; g.fillText('ออกทะเล', cx + 9, by + 14); g.fillStyle = '#ffe9a8'; g.fillText('ออกทะเล', cx + 8, by + 13);
+    g.font = '9px sans-serif'; g.fillStyle = '#f1c40f'; g.fillText('แตะเรือที่ท่าเพื่อไป', cx, by + 25);
+    PixelUI.world(gh, '⛵', bx + 15, by + 15, 13);
     const dk = Shared.SEA.dock, dx = dk.x * TS, dy = dk.y * TS; // เรือที่ท่า: แตะเพื่อออกทะเล
     g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(dx + 2, dy + 25, 28, 5); g.fillStyle = '#6b3f1c'; g.fillRect(dx + 1, dy + 12, 30, 13); g.fillStyle = '#a8703a'; g.fillRect(dx + 3, dy + 14, 26, 7); g.fillStyle = '#4a2a10'; g.fillRect(dx + 1, dy + 22, 30, 3);
     g.fillStyle = '#7a4a24'; g.fillRect(dx + 15, dy - 8, 3, 22); g.fillStyle = '#f5ecd0'; g.fillRect(dx + 18, dy - 6, 11, 14); g.fillStyle = '#e0d4a8'; g.fillRect(dx + 18, dy + 4, 11, 4);
