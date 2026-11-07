@@ -1554,10 +1554,18 @@ function contextAct(now) {
   if ((fx === dk.x && fy === dk.y) || (cheb(px, py, dk.x, dk.y) <= 2 && toolId() !== 'rod')) { stopWalk(); lastAct = now; actGap = 300; send({ t: 'act', tool: toolId(), tx: dk.x, ty: dk.y }); return true; } // บนเกาะ: ยืนใกล้เรือ/ป้ายแล้วกด A = ออกทะเล (ถือเบ็ดต้องหันหน้าหาเรือ ไม่งั้นเป็นการตกปลารอบเกาะ)
   return false;
 }
+function houseAct(now) { // ปุ่ม A/Space ในบ้าน: เก้าอี้/โซฟา/เตียงที่ใกล้สุด (ไม่เกิน 2.5 ช่อง) = นั่ง/นอน • ยืนที่พรมหน้าประตู = เดินออก (เดิมต้องแตะอย่างเดียว)
+  if (build.on) return;
+  let best = -1, bd = 2.5 * TS;
+  for (const [i, it] of furn) { if (!FURN[it.f] || !(FURN[it.f].seat || FURN[it.f].bed)) continue; const d = Math.hypot(it.x * TS - me.x, it.y * TS - me.y); if (d <= bd) { bd = d; best = i; } }
+  if (best >= 0) { stopWalk(); lastAct = now; actGap = 300; send({ t: 'act', tool: '', i: best }); return; }
+  const door = Shared.HOUSE;
+  if (me.x >= door.door[0] * TS && me.x <= (door.door[1] + 1) * TS && me.y >= (door.y1 - 1.2) * TS && me.y <= door.y1 * TS + 8) { lastAct = now; actGap = 300; walkHouse(Shared.HOUSE_SPAWN.x, (door.y1 + 0.5) * TS); }
+}
 function act(tx, ty) {
   const now = performance.now();
   if (!me || chatFocus || modalOpen() || now - lastAct < actGap) return;
-  if (scene && tx === undefined) return; // ในบ้านใช้เครื่องมือฟาร์มไม่ได้ (แตะที่นั่งเพื่อนั่งอย่างเดียว)
+  if (scene && tx === undefined) { houseAct(now); return; } // ในบ้านใช้เครื่องมือฟาร์มไม่ได้ ปุ่ม A = นั่ง/นอนที่ใกล้สุด หรือออกจากบ้านถ้ายืนที่พรมหน้าประตู
   if (tx === undefined && inTown() && !ft && contextAct(now)) return;
   if (inSea() && toolId() !== 'rod') { toast('บนเรือใช้เบ็ด 🎣 ตกปลา (เลือกที่ช่องเครื่องมือ)'); return; }
   if (cave && !inSea() && toolId() !== 'pick') { toast('ในถ้ำใช้อุปกรณ์ขุด ⚒️ ขุดแร่ (เลือกที่ช่องเครื่องมือ)'); return; }
