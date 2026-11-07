@@ -157,7 +157,7 @@ function handle(m) {
     case 'ach': achSt = { cnt: m.cnt || {}, got: m.got || {}, sel: m.sel || '' }; if (achShown()) renderAch(); break;
     case 'deaf': presence(m.id, p => { p.deaf = !!m.on; }); break;
     case 'use': { const p = players.get(m.id); if (p) { p.useAt = performance.now(); p.useK = PixelAction.kindOf(p.held) === 'fish' && p.fs ? 'reel' : ''; } break; } // ตกปลาอยู่แล้ว = ท่าดึงเบ็ด
-    case 'oh': { const now = performance.now(); oreHit.set(m.x + ',' + m.y, { t: now, f: m.f }); if (m.d > 0 && cave) { oreDmg.push({ x: m.x, y: m.y, t: now, d: m.d, c: !!m.c }); if (oreDmg.length > 12) oreDmg.shift(); if (m.c) playSfx('levelup', 0.5); } break; } // ก้อนแร่โดนฟาด: สั่น + รอยร้าวตาม HP ที่เหลือ
+    case 'oh': { const now = performance.now(); oreHit.set(m.x + ',' + m.y, { t: now, f: m.f }); if (m.d > 0 && cave) { oreDmg.push({ x: m.x, y: m.y, t: now, d: m.d, c: !!m.c }); if (oreDmg.length > 12) oreDmg.shift(); if (m.c) playSfx('crit'); } break; } // ก้อนแร่โดนฟาด: สั่น + รอยร้าวตาม HP ที่เหลือ
     case 'th': treeHit.set(m.x + ',' + m.y, { t: performance.now(), f: m.f }); break; // ต้นไม้โดนฟัน: ส่าย + รอยบากที่โคน
     case 'catch': { const p = players.get(m.id), F = Shared.FISH_ALL.find(f => f.id === m.f); if (p && F) p.catchFx = { t: performance.now(), e: F.emoji, big: F.sell >= 100, x: p.fx || p.x, y: p.fy || p.y }; break; } // ปลากระโดดขึ้นมาอยู่เหนือหัว
     case 'held': { const p = players.get(m.id); if (p) p.held = m.e || ''; break; }
@@ -1913,6 +1913,7 @@ const SFX = {
   collect: k => { tone(880, 0.1, { type: 'triangle', vol: 0.28, k }); tone(1320, 0.18, { type: 'triangle', vol: 0.25, k, delay: 0.08 }); },
   coin: k => { tone(1319, 0.09, { type: 'square', vol: 0.12, lp: 3000, k }); tone(1976, 0.22, { type: 'square', vol: 0.12, lp: 3500, k, delay: 0.08 }); },
   lvsparkle: k => { [1568, 2093, 2637].forEach((f, i) => tone(f, 0.28, { type: 'sine', vol: 0.09, k, delay: 0.15 + i * 0.09 })); }, // ติ๊งวิบวับซ้อนเบาๆ ตอนแบนเนอร์เด้ง
+  crit: k => { noise(0.1, { f: 1500, to: 7000, q: 0.8, vol: 0.3, k }); tone(180, 0.2, { to: 45, vol: 0.55, k, delay: 0.06 }); noise(0.14, { type: 'lowpass', f: 1400, vol: 0.4, k, delay: 0.06 }); tone(2093, 0.3, { type: 'square', vol: 0.1, lp: 5000, k, delay: 0.07 }); tone(3136, 0.34, { type: 'sine', vol: 0.11, k, delay: 0.07 }); tone(1047, 0.13, { type: 'sawtooth', to: 1568, vol: 0.1, lp: 3500, k, delay: 0.12 }); }, // เสียงต่อสู้: ฟันตัดลม → กระแทกหนัก → โลหะกังวานสั้นๆ
   levelup: k => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.2, { type: 'triangle', vol: 0.3, k, delay: i * 0.1 })); },
   win: k => { [659, 784, 988, 1319].forEach((f, i) => tone(f, 0.18, { type: 'square', vol: 0.15, lp: 3000, k, delay: i * 0.1 })); },
   lose: k => { [392, 330, 262].forEach((f, i) => tone(f, 0.25, { type: 'sawtooth', vol: 0.12, lp: 900, k, delay: i * 0.16 })); },
