@@ -1682,8 +1682,15 @@ const endPtr = e => {
 };
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
-$('abtn').addEventListener('pointerdown', e => { e.preventDefault(); stopWalk(); if (ft) { setReel(true); return; } act(); });
-for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) { $('abtn').addEventListener(ev, () => setReel(false)); $('ffight').addEventListener(ev, () => setReel(false)); }
+// กดค้างปุ่ม A = ทำงานซ้ำตามจังหวะท่าเดิม (ขุด/ตัด/ขุดดิน/รดน้ำ ฯลฯ) ปล่อยนิ้วหยุด • เบ็ดไม่วนซ้ำ (ต้องจับจังหวะเอง) • act() กันจังหวะด้วย actGap เองและเซิร์ฟเวอร์ตัดสินกติกาเหมือนเดิม
+let holdAct = 0; // วนซ้ำเฉพาะช่องเครื่องมือ (ไม่รวมเบ็ด/เมล็ด/อาหาร กันข้อความเตือนรัว)
+const stopHoldAct = () => { if (holdAct) { clearInterval(holdAct); holdAct = 0; } };
+$('abtn').addEventListener('pointerdown', e => {
+  e.preventDefault(); stopWalk(); if (ft) { setReel(true); return; } act();
+  stopHoldAct(); holdAct = setInterval(() => { if (ft || modalOpen()) { stopHoldAct(); return; } if (SLOTS[slot].id === 'tool' && toolId() !== 'rod') act(); }, 60);
+});
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) { $('abtn').addEventListener(ev, () => { setReel(false); stopHoldAct(); }); $('ffight').addEventListener(ev, () => setReel(false)); }
+addEventListener('blur', stopHoldAct);
 $('ffight').addEventListener('pointerdown', e => { e.preventDefault(); setReel(true); }); // แตะ/คลิกค้างที่แผงชักเย่อ = กรอสาย (เมาส์และมือถือ)
 addEventListener('blur', () => setReel(false));
 // กดค้างบนมือถือ (ปุ่ม A / แผงชักเย่อ) ห้ามเบราว์เซอร์เริ่มเลือกข้อความหรือเด้งเมนูคัดลอก: กัน touchstart/selectstart/contextmenu และล้างการเลือกที่หลุดมา
