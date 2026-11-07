@@ -3252,7 +3252,7 @@ function onLvUp(m) {
   if (!p) return; // ไม่อยู่ในฉากเดียวกัน = ข้าม
   const T = lvTier(lv), mile = lv % 5 === 0, red = lvReduced(), sc = (mine ? 1 : 0.5) * (mile ? 1.25 : 1) * (1 + 0.12 * Math.min(4, n - 1));
   let cnt = Math.min(mine ? 60 : 8, Math.round(T.n * (mile ? 1.5 : 1) * (mine ? 1 : 0.25) * (1 + 0.2 * (n - 1)))); if (red) cnt = Math.ceil(cnt / 3);
-  p.lvFx = { t: performance.now(), lv, tier: T, n: cnt, rings: mine ? T.rings + (mile ? 1 : 0) : 1, sc, mine, dur: mine ? 1900 : 1300, hop: mine && !red ? (mile ? 2 : 1) : 0, seed: lv * 13 + (m.id | 0) };
+  p.lvFx = { t: performance.now(), lv, tier: T, n: cnt, rings: mine ? T.rings + (mile ? 1 : 0) : 1, sc, mine, dur: mine ? 3200 : 1500, hop: mine && !red ? (mile ? 2 : 1) : 0, seed: lv * 13 + (m.id | 0) };
   if (!mine) return;
   const sk = SKILLS[m.skill], b = $('lvBanner'), fl = $('lvFlash'); if (!b) return;
   b.className = T.rb ? 'rb' : ''; b.style.setProperty('--lc1', T.cols[0]); b.style.setProperty('--lc2', T.cols[1]); b.style.setProperty('--ls', String(Math.min(1.5, 1 + 0.1 * (n - 1) + (mile ? 0.12 : 0))));
