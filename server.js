@@ -580,13 +580,13 @@ class World {
             a.dead = true;
             logEv(this.room, 'animal_die', { p: a.owner, type: a.type, why: 'hunger' });
             this.broadcast({ t: 'msg', text: `💀 ${A.emoji} ${A.name}ของ ${a.on || 'ใครบางคน'} หิวตายแล้ว (ต้องซื้อใหม่ที่ร้านปศุสัตว์)` }); this.addLog(`💀 ${A.emoji} ${A.name}ของ ${a.on || '?'} หิวตาย`);
-            this.broadcast({ t: 'sfx', k: 'die', id: 0, x: Math.round(a.x), y: Math.round(a.y) });
+            this.sceneBroadcast(null, { t: 'sfx', k: 'die', id: 0, x: Math.round(a.x), y: Math.round(a.y) });
           }
         } else { a.zero = 0; a.warned = false; }
         if (a.sick && (a.sickMs = (a.sickMs || 0) + dt * 1000 * HFAST) > SICK_GRACE) {
           a.dead = true; logEv(this.room, 'animal_die', { p: a.owner, type: a.type, why: 'sick' });
           this.broadcast({ t: 'msg', text: `💀 ${A.emoji} ${A.name}ของ ${a.on || 'ใครบางคน'} ป่วยตายแล้ว ครั้งหน้ารีบรักษาด้วยยา 💊 นะ` }); this.addLog(`💀 ${A.emoji} ${A.name}ของ ${a.on || '?'} ป่วยตาย`);
-          this.broadcast({ t: 'sfx', k: 'die', id: 0, x: Math.round(a.x), y: Math.round(a.y) });
+          this.sceneBroadcast(null, { t: 'sfx', k: 'die', id: 0, x: Math.round(a.x), y: Math.round(a.y) });
         }
       }
       // สุ่มสัตว์ป่วย: เฉพาะตัวที่เจ้าของออน (อยู่ในเล้า) • ป่วยพร้อมกันได้ไม่เกิน SICK.max

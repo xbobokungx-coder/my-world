@@ -83,7 +83,7 @@ module.exports = {
     return `${d.getFullYear()}-W${1 + Math.round(((d - w1) / 864e5 - 3 + (w1.getDay() + 6) % 7) / 7)}`;
   },
   dayOf(t) { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; },
-  sfx(p, k) { this.broadcast({ t: 'sfx', k, id: p.id, x: Math.round(p.x), y: Math.round(p.y) }); },
+  sfx(p, k) { this.sceneBroadcast(p.scene, { t: 'sfx', k, id: p.id, x: Math.round(p.x), y: Math.round(p.y) }); }, // เสียงได้ยินเฉพาะคนในแมพ/ฉากเดียวกัน (เมือง ถ้ำแต่ละชั้น ทะเล บ้านแต่ละหลัง) ไม่ข้ามแมพ
   sfxTo(p, k) { send(p, { t: 'sfx', k, id: p.id, x: Math.round(p.x), y: Math.round(p.y), self: 1 }); },
   broadcast(o, except) {
     const s = JSON.stringify(o);
