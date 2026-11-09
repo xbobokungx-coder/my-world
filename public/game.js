@@ -391,7 +391,7 @@ if (typeof MapEdit !== 'undefined') MapEdit.bind();
 
 // ---------- เมือง: ข่าว + ตู้เซฟกองกลาง ----------
 const townShown = () => !$('town').classList.contains('hidden');
-function openTown(tab) { townTab = tab || townTab; if (townTab === 'lotto') send({ t: 'lotto', a: 'get' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); $('town').classList.remove('hidden'); renderTown(); }
+function openTown(tab) { closeOthers('town'); townTab = tab || townTab; if (townTab === 'lotto') send({ t: 'lotto', a: 'get' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); $('town').classList.remove('hidden'); renderTown(); }
 function closeTown() { $('town').classList.add('hidden'); }
 function updateHappyChip() {
   const el = $('happyChip'); if (!el) return;
@@ -487,8 +487,9 @@ function guideNext() { // { s: ข้อถัดไป, ch: 1|2, n: ทำแ�
 function updateGuide() {
   const el = $('guide'); if (!el) return;
   const g = guideNext();
-  if (!g) { el.classList.add('hidden'); return; }
+  if (!g) { el.classList.add('hidden'); layoutHud(); return; }
   el.classList.remove('hidden'); el.textContent = '👉 ' + (g.ch === 2 ? 'บท 2: ' : '') + g.s.hint + ' (' + g.n + '/' + g.tot + ')';
+  layoutHud();
 }
 $('guide').onclick = () => openQuest('start');
 function guideHTML() { // คู่มือเริ่มต้น + เข้าเกมติดต่อกัน (ส่วนบนสุดของแท็บเควส)
@@ -519,7 +520,7 @@ function renderBookTab(el) {
 // ---------- 🏅 ฉายา & ความสำเร็จ (Achievement) ----------
 let achSt = { cnt: {}, got: {}, sel: '' }, achTab = 'title';
 const achShown = () => !$('ach').classList.contains('hidden');
-function openAch(tab) { achTab = tab || achTab; $('ach').classList.remove('hidden'); send({ t: 'quest', a: 'ach' }); renderAch(); }
+function openAch(tab) { closeOthers('ach'); achTab = tab || achTab; $('ach').classList.remove('hidden'); send({ t: 'quest', a: 'ach' }); renderAch(); }
 function closeAch() { $('ach').classList.add('hidden'); }
 $('achBtn').onclick = () => (achShown() ? closeAch() : openAch());
 $('achClose').onclick = closeAch;
@@ -552,6 +553,7 @@ function renderAch() {
 let questTab = 'daily';
 const questShown = () => !$('quest').classList.contains('hidden');
 function openQuest(tab) {
+  closeOthers('quest');
   const st = questSt.starter;
   questTab = tab || (st && (!st.final || (st.c2 && !st.c2.final)) ? 'start' : 'daily'); // มือใหม่ที่ยังทำคู่มือไม่ครบ เปิดมาเจอหน้าเริ่มต้นก่อน
   $('quest').classList.remove('hidden'); renderQuestPanel();
@@ -911,7 +913,7 @@ $('houseBtn').onclick = homeAction;
 $('homeQuick').onclick = homeAction;
 // บ้านเพื่อน: ลีดเดอร์บอร์ดเรียงตามมูลค่าเฟอร์นิเจอร์ในบ้าน (ราคาร้าน) แล้วตามจำนวนชิ้น • กดชื่อเพื่อเข้าไปเยี่ยม
 const plotsShown = () => !$('plots').classList.contains('hidden');
-function openPlots() { $('plots').classList.remove('hidden'); send({ t: 'house', a: 'board' }); renderPlots(); }
+function openPlots() { closeOthers('plots'); $('plots').classList.remove('hidden'); send({ t: 'house', a: 'board' }); renderPlots(); }
 function closePlots() { $('plots').classList.add('hidden'); }
 function renderPlots() {
   const el = $('plotsBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -930,7 +932,7 @@ $('friendsBtn').onclick = openPlots;
 // ประตูบ้านหลังใหญ่ในเมือง (HOUSE_DOOR): เดินเข้ามายืนที่ช่องนี้ (หรือแตะตัวบ้าน) แล้วเลือกเข้าบ้านตัวเอง/บ้านเพื่อน
 let doorLatch = false; // ยืนอยู่บนช่องประตูแล้วถามไปแล้ว ไม่ถามซ้ำจนกว่าจะเดินออกจากช่อง
 const homeChoiceShown = () => !$('homeChoice').classList.contains('hidden');
-function openHomeChoice() { walk = null; setMenu(false); $('homeChoice').classList.remove('hidden'); }
+function openHomeChoice() { walk = null; closeOthers('homeChoice'); $('homeChoice').classList.remove('hidden'); }
 function closeHomeChoice() { $('homeChoice').classList.add('hidden'); }
 $('hcOwn').onclick = () => { closeHomeChoice(); enterHouse(); };
 $('hcFriend').onclick = () => { closeHomeChoice(); openPlots(); };
@@ -1130,8 +1132,14 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
 } else $('fsBtn').remove();
 
 // ---------- กระเป๋า / อาชีพ / ตัวละคร ----------
-const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'ask'].some(id => !$(id).classList.contains('hidden'));
-function openBag(tab) { if (tab) bagTab = tab; $('bag').classList.remove('hidden'); renderBag(); }
+const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'ask', 'gift', 'pinBox'].some(id => !$(id).classList.contains('hidden'));
+// เปิดหน้าต่างใหม่ = ปิดหน้าต่างอื่นในกลุ่มนี้ + เมนูหลัก (ไม่แตะ ask/pinBox/gift/trade/arcade/cinema/admin/mapEdit ที่มีผลข้างเคียง)
+function closeOthers(keep) {
+  const cl = { bag: closeBag, shop: closeShop, people: closePeople, archub: closeHub, status: closeStatus, bug: closeBug, quest: closeQuest, ach: closeAch, town: closeTown, plots: closePlots, homeChoice: closeHomeChoice };
+  for (const id in cl) if (id !== keep && !$(id).classList.contains('hidden')) cl[id]();
+  setMenu(false);
+}
+function openBag(tab) { closeOthers('bag'); if (tab) bagTab = tab; $('bag').classList.remove('hidden'); renderBag(); }
 function closeBag() { $('bag').classList.add('hidden'); }
 const bagShown = () => !$('bag').classList.contains('hidden');
 $('bagBtn').onclick = () => (bagShown() && bagTab === 'items' ? closeBag() : openBag('items'));
@@ -1275,7 +1283,7 @@ function renderBag() {
 }
 
 // ---------- ร้านค้า ----------
-function openShop(kind) { shopKind = kind; farmTab = SHOP_TABS[kind] ? SHOP_TABS[kind][0][0] : 'gear'; if (kind === 'cloth') { tryWear = Object.assign({}, me.wear); clothTab = 'shirt'; } $('shop').classList.remove('hidden'); renderShop(); }
+function openShop(kind) { closeOthers('shop'); shopKind = kind; farmTab = SHOP_TABS[kind] ? SHOP_TABS[kind][0][0] : 'gear'; if (kind === 'cloth') { tryWear = Object.assign({}, me.wear); clothTab = 'shirt'; } $('shop').classList.remove('hidden'); renderShop(); }
 function closeShop() { shopKind = null; $('shop').classList.add('hidden'); }
 $('shopClose').onclick = closeShop;
 $('shop').addEventListener('pointerdown', e => { if (e.target === $('shop')) closeShop(); });
@@ -1326,7 +1334,7 @@ function bindPet(body) {
   body.querySelectorAll('[data-petcare]').forEach(b => b.onclick = () => send({ t: 'petcare', a: b.dataset.petcare }));
 }
 // ลิฟต์เหมืองที่ปากถ้ำ: จ่ายเหรียญลงตรงไปชั้นที่เคยเดินลงถึง (ลงเดินเองฟรีเหมือนเดิม) เซิร์ฟเวอร์เช็กระยะ/เหรียญ/ชั้นเอง
-function openLift() { shopKind = 'lift'; $('shop').classList.remove('hidden'); renderShop(); }
+function openLift() { closeOthers('shop'); shopKind = 'lift'; $('shop').classList.remove('hidden'); renderShop(); }
 function renderLift() {
   const fees = Shared.MINE.fee, coin = inv.coin || 0; let rows = '';
   for (let f = 2; f <= Shared.MINE.floors; f++) {
@@ -1337,7 +1345,7 @@ function renderLift() {
   const body = $('shopBody'); body.innerHTML = `<div class="sec">จ่ายเหรียญลงชั้นลึกได้เลย ข้ามการเดินหาบันได (ไม่อยากเสียเงินก็เดินลงเองฟรี • ลงถึงชั้นลึกสุดที่เคยไปแล้ว: ชั้น ${deepFloor})</div>` + rows;
   body.querySelectorAll('[data-ticket]').forEach(b => b.onclick = () => { const f = +b.dataset.ticket; ask(`จ่าย 🪙${Shared.MINE.fee[f]} ลงลิฟต์ไปชั้น ${f}? (ไม่อยากเสียเงินก็เดินลงเองฟรี)`, () => { send({ t: 'mineticket', f }); closeShop(); }); });
 }
-function openPetMenu() { shopKind = 'petmenu'; $('shop').classList.remove('hidden'); renderShop(); }
+function openPetMenu() { closeOthers('shop'); shopKind = 'petmenu'; $('shop').classList.remove('hidden'); renderShop(); }
 function petSpeedMul() { // 🏃 สัตว์เลี้ยงที่พาออกมา เดินเร็วขึ้นตามค่าสถานะ (ไม่ป่วย/อิ่มพอ)
   const c = me && me.pet; if (!c || !COMPANIONS[c]) return 1;
   const st = petSt[c] || { h: 100, sick: false }; return 1 + Shared.petBonus(c, st.h, st.sick).spd;
@@ -1512,6 +1520,7 @@ addEventListener('keydown', e => {
   if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); setVehMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
   if (c === 'KeyV' && me && inTown()) { const own = Object.keys(Shared.VEHICLES).filter(v => inv['veh_' + v] > 0); if (me.veh) send({ t: 'veh', v: '' }); else if (own.length) send({ t: 'veh', v: own[own.length - 1] }); else toast('ยังไม่มียานพาหนะ ซื้อได้ที่ร้านยานพาหนะ 🚲'); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (toolLocked(TOOL_LIST[n])); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
+  if (modalOpen() && ((c === 'KeyP' && !peopleShown()) || ((c === 'KeyB' || c === 'KeyI') && !bagShown()) || (c === 'KeyC' && !bagShown()) || c === 'KeyH')) return; // มีหน้าต่างอื่นเปิดอยู่ = ไม่เปิดซ้อน
   if (c === 'KeyP') { peopleShown() ? closePeople() : openPeople(); return; }
   if (c === 'KeyB' || c === 'KeyI') { $('bagBtn').onclick(); return; }
   if (c === 'KeyC') { $('statBtn').onclick(); return; }
@@ -2174,7 +2183,7 @@ $('arcade').addEventListener('pointerdown', e => { if (e.target === $('arcade'))
 const peopleShown = () => !$('people').classList.contains('hidden');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let peopleSig = '';
-function openPeople() { $('people').classList.remove('hidden'); renderPeople(true); }
+function openPeople() { closeOthers('people'); $('people').classList.remove('hidden'); renderPeople(true); }
 function closePeople() { $('people').classList.add('hidden'); }
 // ปิดเสียงทุกคนอยู่ (และไม่ได้เปิดเสียงใครเป็นข้อยกเว้น) = ไม่ได้ยินใครเลย → บอกเซิร์ฟเวอร์ให้ติดป้ายที่ตัวละคร เพื่อนจะได้รู้
 const isDeaf = () => mute.all && !Object.values(mute.names).includes(false);
@@ -2221,7 +2230,7 @@ setSpkUi();
 // ---------- สถานะของฉัน ----------
 const STATUS_PRESETS = ['🟢 ว่าง คุยได้', '🌾 กำลังทำฟาร์ม', '🎣 กำลังตกปลา', '🪓 กำลังตัดไม้', '🍜 พักกินข้าว', '🎮 อยู่ที่ตู้เกม', '💤 ไม่อยู่หน้าจอ', '🙏 มือใหม่ ช่วยหน่อย'];
 const statusShown = () => !$('status').classList.contains('hidden');
-function openStatus() { $('statusChips').innerHTML = STATUS_PRESETS.map((t, i) => `<button class="chip" data-sp="${i}">${esc(t)}</button>`).join(''); $('statusIn').value = (me && me.status) || ''; $('status').classList.remove('hidden'); setTimeout(() => $('statusIn').focus(), 50); }
+function openStatus() { closeOthers('status'); $('statusChips').innerHTML = STATUS_PRESETS.map((t, i) => `<button class="chip" data-sp="${i}">${esc(t)}</button>`).join(''); $('statusIn').value = (me && me.status) || ''; $('status').classList.remove('hidden'); setTimeout(() => $('statusIn').focus(), 50); }
 function closeStatus() { $('status').classList.add('hidden'); $('statusIn').blur(); }
 function saveStatus(text) { send({ t: 'status', text }); closeStatus(); toast(text ? '💭 ตั้งสถานะแล้ว' : 'ล้างสถานะแล้ว'); }
 $('myStatusBtn').onclick = () => (statusShown() ? closeStatus() : openStatus());
@@ -2237,7 +2246,7 @@ function bugClearImg() {
   $('bugPrev').classList.add('hidden'); $('bugPrev').removeAttribute('src'); $('bugImgClear').classList.add('hidden');
   $('bugFileInfo').textContent = 'PNG / JPG / WEBP / GIF ไม่เกิน 1MB';
 }
-function openBug() { bugSay(''); $('bug').classList.remove('hidden'); if (!isTouch) $('bugText').focus(); }
+function openBug() { closeOthers('bug'); bugSay(''); $('bug').classList.remove('hidden'); if (!isTouch) $('bugText').focus(); }
 function closeBug() { $('bug').classList.add('hidden'); $('bugText').blur(); }
 $('bugBtn').onclick = () => (bugShown() ? closeBug() : openBug());
 $('bugClose').onclick = closeBug;
@@ -2281,7 +2290,7 @@ $('people').addEventListener('pointerdown', e => { if (e.target === $('people'))
 
 // ---------- Arcade Hub: แต้มตู้เกม + Leaderboard + ร้านรางวัล ----------
 const hubShown = () => !$('archub').classList.contains('hidden');
-function openHub() { $('archub').classList.remove('hidden'); send({ t: 'lb' }); renderHub(); }
+function openHub() { closeOthers('archub'); $('archub').classList.remove('hidden'); send({ t: 'lb' }); renderHub(); }
 function closeHub() { $('archub').classList.add('hidden'); }
 function renderHub() {
   const el = $('hubBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), medal = ['🥇', '🥈', '🥉'];
@@ -3604,7 +3613,15 @@ function layoutHud() { // แผนที่อยู่มุมบนขวา
   $('hudTop').style.right = `calc(${mw ? mw + 24 : 8}px + var(--sar, 0px))`;
   const top = Math.round($('hudTop').getBoundingClientRect().bottom + 6);
   $('guide').style.top = top + 'px';
-  if (isTouch) $('chat').style.top = top + 'px';
+  if (isTouch) {
+    // มือถือ: ป้ายคำแนะนำ/แชตอยู่ใต้แถบปุ่ม จำกัดความกว้างไม่ให้ทับแผนที่ย่อ และแชตเลื่อนลงใต้ป้ายคำแนะนำ
+    const mr = $('mini').getBoundingClientRect(), hit = mw && mr.bottom > top, avail = Math.floor(mr.left - 16);
+    $('guide').style.maxWidth = hit && avail > 80 ? avail + 'px' : '';
+    const gEl = $('guide'), gb = gEl.classList.contains('hidden') ? 0 : gEl.getBoundingClientRect().bottom;
+    $('chat').style.top = (gb > top ? Math.round(gb + 4) : top) + 'px';
+    $('chat').style.width = hit && avail > 80 ? Math.min(avail, 320) + 'px' : '';
+    { const jy = $('joy').getBoundingClientRect(), ct = parseFloat($('chat').style.top) || top, lg = $('chatLog'), room = jy.height && jy.top > ct + 60 ? Math.floor(jy.top - ct - 8 - ($('chatHist').offsetHeight || 0) - ($('chatIn').offsetHeight || 0)) : 0; lg.style.maxHeight = room > 0 ? Math.max(40, room) + 'px' : ''; lg.style.overflow = room > 0 ? 'hidden' : ''; lg.style.display = room > 0 ? 'flex' : ''; lg.style.flexDirection = 'column'; lg.style.justifyContent = 'flex-end'; } // ข้อความแชตไม่ล้นไปทับจอยสติ๊ก (จอเตี้ย 360x640) ตัดข้อความเก่าสุดก่อน ช่องพิมพ์ไม่โดนตัด
+  }
 }
 function sizeMini() {
   const dpr = window.devicePixelRatio || 1, cv = $('miniMap');
@@ -3656,9 +3673,14 @@ function drawGuideArrow(now) { // ลูกศรนำทางไปข้อ�
   const tx = sx + Math.cos(a) * (r + 26), ty = sy + Math.sin(a) * (r + 26), t = Math.round(dist) + ' ช่อง';
   ctx.strokeText(t, tx, ty); ctx.fillStyle = '#fff'; ctx.fillText(t, tx, ty);
 }
+let arcNear = false;
 function drawMini(now) {
   if (miniState === 'off' || now - lastMini < 90) return;
   lastMini = now;
+  if (isTouch) { // มือถือแนวตั้ง: อยู่แถวตู้เกมในเมือง = ซ่อนแผนที่ย่อชั่วคราว (CSS ซ่อนเฉพาะแนวตั้ง) ไม่ให้บังตู้แถวบน • ไม่ซ่อนถ้าผู้เล่นเปิดแผนที่ใหญ่เอง และคืนแผนที่เมื่อเข้าบ้าน/ถ้ำ
+    const [mx, my] = me ? myTile() : [0, 0], near = !!me && inTown() && miniState !== 'big' && CABINETS.some(c => Math.abs(c.x - mx) <= 7 && Math.abs(c.y - my) <= 7);
+    if (near !== arcNear) { arcNear = near; document.body.classList.toggle('arc-near', near); layoutHud(); }
+  }
   const cv = $('miniMap'), g = cv.getContext('2d'), cw = cv.width, ch = cv.height, sx = cw / W, sy = ch / H, k = cw / parseFloat(cv.style.width), big = miniState === 'big';
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.imageSmoothingEnabled = false; g.drawImage(miniBase, 0, 0, cw, ch);

@@ -68,6 +68,7 @@
   #chatIn { pointer-events:auto; margin-top:4px; width:100%; padding:6px 10px; border-radius:10px; border:3px solid var(--edge); font:inherit; font-size:14px; user-select:text; }
   #toast { position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:50; max-width:min(92vw,460px); box-sizing:border-box; padding:8px 16px; font-weight:700; line-height:1.4; text-align:center; box-shadow:0 4px 0 rgba(0,0,0,.25); pointer-events:none; opacity:0; transition:opacity .25s; }
   #toast.show { opacity:1; }
+  body.touch #toast { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; font-size:13px; line-height:1.35; }
   /* เอฟเฟกต์เลเวลอัพ: แบนเนอร์กลางจอเด้งสปริง + แฟลชขอบจอ (ไม่ขวางการเล่น) */
   #lvBanner { position:fixed; left:50%; top:20%; z-index:55; transform:translate(-50%,0) scale(0); opacity:0; pointer-events:none; text-align:center; font-weight:800; color:#fff; text-shadow:0 3px 0 rgba(61,42,26,.9),0 0 14px var(--lc2,#ffd24a); max-width:94vw; }
   #lvBanner .lvT { font-size:clamp(26px,7vw,46px); letter-spacing:2px; -webkit-text-stroke:2px #3d2a1a; paint-order:stroke fill; color:var(--lc1,#ffd24a); }
@@ -100,6 +101,10 @@
   body.touch #fgauge { bottom:calc(86px + var(--sab)); }
   #shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
   #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; max-height:92dvh; overflow:auto; }
+  @media (orientation:landscape) and (max-height:520px) { #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,560px); } }
+  /* หัวหน้าต่าง (ชื่อ+ปุ่มปิด) ติดบนสุดตอนเลื่อน */
+  :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots) .panel > h2:first-child { position:sticky; top:-16px; z-index:3; background:inherit; margin:-16px -16px 8px; padding:16px 16px 0; }
+  @media (max-height:420px) { #arcade .panel { padding:10px 12px; } #arcade .panel > h2:first-child { top:-10px; margin:-10px -12px 4px; padding:10px 12px 4px; } #arcade .uc { width:38px; height:56px; font-size:17px; } #arcade .uc.big { width:52px; height:76px; font-size:24px; } #arcade .hand { gap:3px; margin:4px 0 2px; padding-top:6px; } #arcade .utable { margin:2px 0; gap:10px; } #arcade .opps { margin:2px 0; } #arcade .banner { margin:4px 0; padding:4px; font-size:16px; } #arcade .colorpick { margin:4px 0; } }
   #shop h2,#bag h2,#people h2,#archub h2,#status h2,#bug h2,#quest h2,#ach h2,#arcade h2,#trade h2,#cinema h2,#town h2,#admin h2,#plots h2,#mapEdit h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
   /* ตัวแก้แมพเต็มจอ — ต้อง override กฎ canvas { position:fixed; inset:0 } ของเกม ไม่งั้นแคนวาสทับปุ่มและค้างมุมจอ */
   #mapEdit { position:fixed; inset:0; z-index:20; background:#1c140f; display:flex; padding:0; margin:0; }
@@ -254,9 +259,14 @@
   body.touch #abtn { right:calc(14px + var(--sar)); bottom:calc(88px + var(--sab)); }
   body.touch .chip { padding:9px 16px; }
   body.touch #shop .row,body.touch #bag .row,body.touch #people .row,body.touch #trade .row,body.touch #cinema .row,body.touch #town .row { padding:9px 0; }
-  body.touch #shop .btn.small,body.touch #bag .btn.small,body.touch #people .btn.small,body.touch #trade .btn.small,body.touch #cinema .btn.small,body.touch #town .btn.small { padding:8px 14px; font-size:15px; }
+  body.touch #shop .btn.small,body.touch #bag .btn.small,body.touch #people .btn.small,body.touch #trade .btn.small,body.touch #cinema .btn.small,body.touch #town .btn.small, body.touch :is(#admin,#ach,#quest,#archub,#plots,#status,#bug) .btn.small { padding:8px 14px; font-size:15px; min-height:40px; }
   body.touch :is(#picker,#skillbar) { bottom:calc(76px + var(--sab)); }
   @media (orientation:landscape) and (max-height:520px) { body.touch :is(#picker,#skillbar) { bottom:calc(58px + var(--sab)); } }
+  @media (orientation:portrait) and (max-width:699px) { body.touch :is(#picker,#ffight,#fgauge) { bottom:calc(222px + var(--sab)); } } /* ยกพ้นจอยสติ๊ก/ปุ่ม A */
+  /* จอแคบ: skillbar แคบลง ไม่ซ้อนจอยสติ๊ก */
+  @media (max-width:420px) { body.touch #skillbar { width:min(32vw,112px); font-size:12px; } body.touch #skillbar .r { gap:4px; } }
+  /* แท็บเล็ต: แผงชักเย่อ/เกจอยู่เหนือ hotbar */
+  @media (min-width:700px) and (min-height:600px) { body.touch #ffight, body.touch #fgauge { bottom:calc(132px + var(--sab)); } }
   @media (min-width:700px) and (min-height:600px) { body.touch :is(#picker,#skillbar) { bottom:calc(100px + var(--sab)); } }
   /* มือถือแนวนอน: จอเตี้ย ให้ปุ่มอยู่ล่างสุดข้างๆ hotbar */
   @media (orientation:landscape) and (max-height:520px) {
@@ -415,7 +425,7 @@
 
   /* ===== มือถือ/จอสัมผัสเท่านั้น (คอมไม่เปลี่ยน): แผงเลือกของเป็นตารางเล็ก, เมนูกระชับ, ไม่ถูกจอยสติ๊กทับ =====
      ปรับขนาดที่ตัวแปร 4 ตัวนี้ตัวเดียว: ไอคอนในแผงเลือกของ / ตัวหนังสือในแผง / ความสูงปุ่มเมนู / ตัวหนังสือใต้ปุ่มเมนู */
-  body.touch { --pk-ico:14px; --pk-txt:8px; --mn-h:28px; --mn-txt:8px; }
+  body.touch { --pk-ico:14px; --pk-txt:10px; --mn-h:40px; --mn-txt:10px; }
   body.touch #picker { display:grid; grid-template-columns:repeat(8,1fr); gap:3px; padding:4px; width:min(94vw,360px); max-width:none; max-height:min(40vh,260px); overflow-y:auto; overscroll-behavior:contain; justify-content:stretch; }
   body.touch #picker > div { grid-column:1 / -1; font-size:10px !important; margin-top:2px !important; }
   body.touch #picker .opt { min-width:0; padding:2px 0; font-size:var(--pk-txt); line-height:1.1; overflow:hidden; text-overflow:ellipsis; }
@@ -428,6 +438,7 @@
   body.touch #hudMenu .mgrid { grid-template-columns:repeat(6,1fr); gap:3px; }
   body.touch #hudMenu .btn { min-height:var(--mn-h); height:auto; font-size:14px; padding:2px 0; gap:0; border-bottom-width:3px; }
   body.touch #hudMenu .btn::after { font-size:var(--mn-txt); }
+  @media (orientation:portrait) { body.touch.arc-near #mini { display:none; } } /* ลานตู้เกม: ซ่อนแผนที่ย่อชั่วคราว (game.js drawMini) */
   body.touch.menu-open #mini, body.touch.menu-open #guide { display:none; }
   /* มือถือ: แถวบนเหลือแค่ เมนู เหรียญ พลังงาน (+ความหิวตอนต่ำ) ที่เหลือย้ายไปอยู่ในเมนู */
   body.touch #hudTop > #bagBtn, body.touch #hudTop > #chatBtn, body.touch #hudTop > #micBtn, body.touch #hudTop > #homeQuick { display:none !important; }
