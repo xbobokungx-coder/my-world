@@ -32,6 +32,12 @@ module.exports = {
     this.achAdd(rec, 'arcplay'); if (won) this.achAdd(rec, 'arcwin'); if (p) { this.wk1Step(p, 'arcplay'); if (won) this.evHit(p, 'arcwin'); }
     if (p) { send(p, { t: 'arcpts', arc: this.arcPub(rec) }); this.toast(p, gain ? `🎮 +${gain} แต้มตู้เกม${won ? ' (ชนะ!)' : ''} • มีอยู่ ${a.pts}` : `🎮 วันนี้ได้แต้มตู้เกมครบ ${S.ARCPTS.dailyCap} แล้ว พรุ่งนี้มาใหม่นะ`); }
   },
+  sendLeaderboard(p) { // อันดับแต้มตู้เกมในห้องนี้ (สะสมตลอดกาล + สัปดาห์นี้) Top 10
+    const arr = [];
+    for (const [k, r] of Object.entries(this.saved)) { const a = this.arcOf(r); if (a.total > 0) arr.push({ name: r.name || k, total: a.total, wk: a.wk }); }
+    const top = key => arr.slice().sort((x, y) => y[key] - x[key]).slice(0, 10);
+    send(p, { t: 'lb', total: top('total'), wk: top('wk').filter(x => x.wk > 0), me: this.arcPub(p.rec) });
+  },
   arcsPub() {
     return Object.values(this.tables).map(t => (t.game === 'uno' || PARTY.has(t.game))
       ? [t.id, t.idx, t.state, t.bet, t.players[0] ? t.players[0].name : '', t.players.length + '/' + t.max, t.bot ? 1 : 0, t.game]

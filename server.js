@@ -344,6 +344,7 @@ class World {
         break;
       }
       case 'arc': this.arcHandle(p, m); break;
+      case 'lb': this.sendLeaderboard(p); break;
       case 'rank': this.sendRank(p); break;
       case 'arcbuy': this.arcBuy(p, m.id); break;
       case 'rent': this.rentHandle(p, String(m.id || '')); break;
