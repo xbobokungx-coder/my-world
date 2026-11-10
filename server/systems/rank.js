@@ -39,7 +39,7 @@ module.exports = {
     const t = {
       lv: lvl,
       wk: make('wk', rows.filter(x => x.wk > 0), (a, b) => b.wk - a.wk, x => ({ n: x.n, xp: x.wk })),
-      rich: make('rich', rows.filter(x => x.coin > 0), (a, b) => b.coin - a.coin, x => ({ n: x.n, coin: x.coin })),
+      rich: make('rich', rows.filter(x => x.coin > 0), (a, b) => b.coin - a.coin, x => ({ n: x.n })), // ส่งแค่ชื่อตามลำดับ ไม่ส่งจำนวนเหรียญ (ความเป็นส่วนตัว)
     };
     return { at: Date.now(), wkKey: wkNow, top: t, ranks: { lv: ranks.lv, wk: ranks.wk, rich: ranks.rich } };
   },

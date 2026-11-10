@@ -721,7 +721,7 @@ function renderRankTab(el) {
       h += '<div class="sec">📅 XP สัปดาห์นี้ (Top 10)</div>' + list(R.wk, x => `<b>${x.xp.toLocaleString()}</b> XP`, mine.wk)
         + '<p style="font-size:12px;opacity:.65;margin-top:10px">รีเซ็ตทุกสัปดาห์ คนใหม่ก็ขึ้นอันดับได้</p>';
     } else if (rankTab === 'rich') {
-      h += '<div class="sec">💰 เหรียญที่มีอยู่ (Top 10)</div>' + list(R.rich, x => `🪙 <b>${x.coin.toLocaleString()}</b>`, mine.rich);
+      h += '<div class="sec">💰 เศรษฐี (Top 10)</div>' + list(R.rich, () => '', mine.rich) + '<p style="font-size:12px;opacity:.65;margin-top:10px">จัดอันดับจากเหรียญที่มี (รวมในธนาคาร) โชว์เฉพาะลำดับ ไม่แสดงจำนวนเงิน</p>';
     }
     el.innerHTML = h;
   }
