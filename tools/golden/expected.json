@@ -2217,7 +2217,8 @@
    },
    {
     "t": "theme",
-    "snow": "auto"
+    "snow": "auto",
+    "rain": "off"
    },
    {
     "t": "arcs",
@@ -8371,7 +8372,8 @@
    },
    {
     "t": "theme",
-    "snow": "auto"
+    "snow": "auto",
+    "rain": "off"
    },
    {
     "t": "arcs",

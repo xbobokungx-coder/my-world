@@ -463,6 +463,7 @@ class World {
       }
       if (!tile) return this.toast(p, 'ต้องขุดดินก่อน (หรือแตะสระน้ำเพื่อตักน้ำ)');
       { const rb = this.rentBlock(tx, ty, p); if (rb && tile.o !== p.key) return this.toast(p, rb); } // รดน้ำต้นของตัวเองในแปลงที่หมดสัญญาได้
+      if (S.rainAt(now, this.themeRain())) return this.toast(p, '🌧️ ฝนตกอยู่ ดินเปียกเองแล้ว ไม่ต้องรดน้ำ'); // ฝนตก: ไม่ให้ XP ไม่หักน้ำ ไม่เสียความทนทาน
       const wl = this.waterCur(p);
       if (wl <= 0) return this.toast(p, '💧 น้ำหมดแล้ว! ไปตักน้ำที่สระ (กดช่อง 1 เลือกบัวรดน้ำ แล้วแตะน้ำ)');
       const dry = !(tile.wu > now);
@@ -546,6 +547,7 @@ class World {
 
 
   tick(dt, now) {
+    this.rainTick(now);
     this.lottoTick(now);
     for (const p of this.players.values()) {
       const cf = S.caveFloor(p.scene); if (!S.isSeaScene(cf)) continue;
@@ -911,8 +913,14 @@ function commitLayout(world, p, items, how) { // เก็บของเดิ�
 }
 function adminHandle(p, world, m) {
   const reply = o => send(p, Object.assign({ t: 'admin', rooms: roomsPub(), current: world.room }, o));
-  if (m.a === 'rooms') return reply({ snow: world.themeSnow() });
-  if (m.a === 'snowget') return reply({ snow: world.themeSnow() });
+  if (m.a === 'rooms') return reply({ snow: world.themeSnow(), rain: world.themeRain() });
+  if (m.a === 'snowget') return reply({ snow: world.themeSnow(), rain: world.themeRain() });
+  if (m.a === 'rainget') return reply({ snow: world.themeSnow(), rain: world.themeRain() });
+  if (m.a === 'rain') { // ตั้งโหมดฝนทั้งเซิร์ฟเวอร์: m.mode = 'auto' | 'on' | 'off'
+    const r = world.adminSetRain(p, m.mode, worlds.values());
+    if (!r.err) console.log('ผู้ดูแลตั้งธีมฝน:', r.rain, '(โดย ' + p.name + ')');
+    return reply(r.err ? { err: r.err, rain: world.themeRain() } : { rain: r.rain, snow: world.themeSnow(), ok: '🌧️ ตั้งฝนเป็น "' + ({ auto: 'อัตโนมัติ (ฤดูฝนตกเป็นรอบ)', on: 'ตกตลอด', off: 'ปิด' }[r.rain] || r.rain) + '" แล้ว' });
+  }
   if (m.a === 'snow') { // ตั้งโหมดหิมะทั้งเซิร์ฟเวอร์: m.mode = 'auto' | 'on' | 'off'
     const r = world.adminSetSnow(p, m.mode, worlds.values());
     if (!r.err) console.log('ผู้ดูแลตั้งธีมหิมะ:', r.snow, '(โดย ' + p.name + ')');

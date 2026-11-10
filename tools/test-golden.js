@@ -24,6 +24,7 @@ const { World } = require('../server.js'), S = require('../public/shared.js'), T
 // ---- โลก + ผู้เล่น 2 คน (ws ปลอม เก็บข้อความที่ได้รับ) ----
 const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } });
 const w = new World('golden'), wa = mkWs(), wb = mkWs();
+w.themeRain = () => 'off'; // golden ล็อกกติกาพื้นฐาน: ปิดฝน (T0 ตรงต้นรอบฝนของฤดูฝนพอดี) ฝนมีเทสต์ของตัวเอง tools/test-rain.js
 const a = w.join(wa, 'alice', '#e74c3c').p, b = w.join(wb, 'bob', '#3498db').p;
 let steps = 0;
 function step(ms) { // เดินเวลาปลอมหนึ่งก้าว แล้วเรียกตัวเดินโลก

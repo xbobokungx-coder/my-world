@@ -245,7 +245,7 @@ function handle(m) {
     case 'furn': applyFurnOp(m); break;
     case 'hstyle': houseSt = { fl: m.fl, wp: m.wp }; if (scene) syncHouseBg(); if (build.on) renderBuild(); break;
     case 'admin': onAdmin(m); break;
-    case 'theme': setSnowMode(m.snow); break;
+    case 'theme': setSnowMode(m.snow); if (m.rain !== undefined) setRainMode(m.rain); break;
     case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break;
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
     case 'en': enSt = Object.assign(m, { at: Date.now(), spentAt: m.spent ? Date.now() : (enSt.spentAt || 0), lastSpent: m.spent || enSt.lastSpent || 0 }); renderEnergy(); break;
@@ -293,6 +293,7 @@ let bugView = 'open'; // หน้ารายงานบั๊ก: open = ย�
 const adminShown = () => !$('admin').classList.contains('hidden');
 function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); send({ t: 'admin', a: 'bugs' }); renderAdmin(); }
 function setSnowMode(v) { snowMode = v === 'on' || v === 'off' ? v : 'auto'; if (typeof adminShown === 'function' && adminShown()) renderAdmin(); }
+function setRainMode(v) { rainMode = v === 'on' || v === 'off' ? v : 'auto'; if (typeof adminShown === 'function' && adminShown()) renderAdmin(); }
 function closeAdmin() { $('admin').classList.add('hidden'); }
 function onAdmin(m) {
   adminSt = { rooms: m.rooms || [], current: m.current || '', err: m.err || '', users: m.users || (adminSt && adminSt.users) || [], bans: m.bans || (adminSt && adminSt.bans) || [], bugs: m.bugs || (adminSt && adminSt.bugs) || [], warp: m.warp || (adminSt && adminSt.warp) || null };
@@ -361,6 +362,7 @@ function renderAdmin() {
       + (!r.main ? `<button class="btn small muted" data-rm="${esc(r.name)}">🗑️ เลิกใช้</button>` : '') + '</span></div>').join('');
     h += `<div class="sec">🪙 เหรียญของตัวเอง</div><div class="row"><span>${me ? esc(me.name) : ''}</span><span><button class="btn small" data-admcoin="100">➕ 100</button> <button class="btn small muted" data-admcoin="-100">➖ 100</button></span></div>`;
     h += '<div class="sec">❄️ ธีมหิมะตก (ทุกคนในเกม)</div><div class="chips" style="margin-bottom:6px">' + [['auto', 'อัตโนมัติ (ตามฤดูหนาว)'], ['on', 'เปิดตลอด'], ['off', 'ปิด']].map(([k, n]) => `<button class="chip${snowMode === k ? ' sel' : ''}" data-snowmode="${k}" style="min-height:40px">${n}</button>`).join('') + '</div>';
+    h += '<div class="sec">🌧️ ฝนตก (ทุกคนในเกม)</div><div class="chips" style="margin-bottom:6px">' + [['auto', 'อัตโนมัติ (ตามฤดูฝน)'], ['on', 'ฝนตกตลอด'], ['off', 'ปิด']].map(([k, n]) => `<button class="chip${rainMode === k ? ' sel' : ''}" data-rainmode="${k}" style="min-height:40px">${n}</button>`).join('') + '</div>';
     h += '<div class="sec">🎚️ เลเวลของตัวเอง (ทดสอบ)</div>';
     h += Object.keys(Shared.SKILLS).map(k => `<div class="row"><span>${Shared.SKILLS[k].emoji} ${esc(Shared.SKILLS[k].name)} <b>Lv ${lvl(k)}</b></span><span><button class="btn small" data-lvskill="${k}" data-d="-1">➖</button> <button class="btn small" data-lvskill="${k}" data-d="1">➕</button> <button class="btn small" data-lvskill="${k}" data-to="${Shared.MAX_LV}">⏫ ${Shared.MAX_LV}</button> <button class="btn small muted" data-lvskill="${k}" data-to="1">⏬ 1</button></span></div>`).join('');
     h += '<div class="sec">👥 ผู้เล่นและ IP <button class="btn small" id="ipRefresh">🔄 รีเฟรช</button></div>';
@@ -369,6 +371,7 @@ function renderAdmin() {
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; if (adminTab === 'warp') send({ t: 'admin', a: 'warplist' }); renderAdmin(); });
+  el.querySelectorAll('[data-rainmode]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'rain', mode: b.dataset.rainmode }));
   el.querySelectorAll('[data-snowmode]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'snow', mode: b.dataset.snowmode }));
   el.querySelectorAll('[data-lvskill]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'lvl', skill: b.dataset.lvskill, d: b.dataset.d ? +b.dataset.d : undefined, to: b.dataset.to ? +b.dataset.to : undefined }));
   el.querySelectorAll('[data-warp]').forEach(b => b.onclick = () => { send({ t: 'admin', a: 'warp', to: b.dataset.warp }); closeAdmin(); });
@@ -1780,7 +1783,7 @@ function setReel(on) { if (on) clearSel(); if (!ft || ft.end || ftHold === on) r
 // ---------- แชทเสียง (WebRTC, ต่อตรงระหว่างผู้เล่น / signaling ผ่าน WebSocket เดิม) ----------
 const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 const peers = new Map(), levels = new Map();
-window.__mw = { snow(on) { snowForce = on === undefined || on === null ? null : !!on; }, openShop: (k, t) => { openShop(k); if (t) { farmTab = t; renderShop(); } }, get base() { return base; }, actionSheet: () => actionSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
+window.__mw = { rain(on) { rainForce = on === undefined || on === null ? null : !!on; }, snow(on) { snowForce = on === undefined || on === null ? null : !!on; }, openShop: (k, t) => { openShop(k); if (t) { farmTab = t; renderShop(); } }, get base() { return base; }, actionSheet: () => actionSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
 let callWith = 0, callPend = 0, callIn = 0, callMicOn = false, callTimer = 0; // callWith = คู่สายที่ต่อแล้ว, callPend = เรากำลังโทรหา, callIn = กำลังมีคนโทรหาเรา
 const pcSend = (to, k) => send({ t: 'pcall', to, k });
@@ -4052,6 +4055,7 @@ function fightUI() { // อัปเดตแผงชักเย่อ: หล
 const SNOW = { areaPer: 4500, maxDesk: 120, maxTouch: 60, reducedMul: 1 / 3, seasonCheckMs: 30000, sizes: [3, 4, 6], cols: ['#ffffff', '#ffffff', '#eef8ff', '#d6ecfb'], edge: 'rgba(90,140,190,.55)', vyMin: 28, vyMax: 70, sway: 14, swayHz: 0.8, wind: 10, slowMs: 40, slowRun: 20, fastRun: 120, reducedSlow: 0.5, alpha: 0.95 };
 let snowMode = 'auto', snowForce = null, snowWinter = false, snowChk = -1e9, snowPool = [], snowLast = 0, snowScale = 1, snowSlow = 0, snowFast = 0;
 function snowActive(now) {
+  if (rainActive(now)) return false; // ฝนชนะหิมะ (ตั้งโหมดผู้ดูแลทั้งคู่): ไม่วาดหิมะ/โทนหิมะซ้อน
   if (snowForce !== null) return snowForce;
   if (snowMode === 'off') return false;
   if (snowMode === 'on') return true;
@@ -4080,6 +4084,50 @@ function drawSnow(now) {
     const px = Math.round(f.x), py = Math.round(f.y); ctx.fillStyle = SNOW.edge; ctx.fillRect(px - 1, py - 1, sz + 2, sz + 2); ctx.fillStyle = SNOW.cols[(i + z) % SNOW.cols.length]; ctx.fillRect(px, py, sz, sz); // เส้นขอบฟ้าเข้มบางๆ ให้เห็นบนพื้นหญ้าสว่าง
   }
   ctx.restore();
+}
+// ===== ฝนตก (ภาพ+เสียงเบาๆ เซิร์ฟเวอร์จัดการกติกา/ดินเปียก) เฉพาะกลางแจ้งในเมือง =====
+const RAIN_FX = { areaPer: 6000, maxDesk: 160, maxTouch: 80, reducedMul: 1 / 3, reducedSlow: 0.6, chkMs: 5000, vyMin: 520, vyMax: 800, wind: 90, lenMin: 6, lenMax: 12, cols: ['#d4e6f5', '#c0d9ee', '#e6f2fa'], alpha: 0.9, slowMs: 40, slowRun: 20, fastRun: 120, rippleMax: 40, rippleMs: 420, rippleCol: '#d6e6f2', tint: '90,110,135', tintA: 0.2, tintNight: 0.06, sfxVol: 0.05, sfxEveryMs: 1500 };
+let rainMode = 'auto', rainForce = null, rainOn = false, rainChk = -1e9, rainPool = [], rainRip = [], rainLast = 0, rainScale = 1, rainSlow = 0, rainFast = 0, rainSfxAt = 0;
+function rainNow() { return !!(Shared.rainAt && Shared.rainAt(Date.now() + timeOffset, 'auto')); }
+function rainActive(now) {
+  if (rainForce !== null) return rainForce;
+  if (rainMode === 'off') return false;
+  if (rainMode === 'on') return true;
+  if (now - rainChk > RAIN_FX.chkMs) { rainChk = now; rainOn = rainNow(); }
+  return rainOn;
+}
+function drawRain(now, dark) {
+  if (document.hidden) { rainLast = 0; return; }
+  const R = RAIN_FX, dt = rainLast ? Math.min(0.1, (now - rainLast) / 1000) : 0; rainLast = now;
+  if (dt > 0) {
+    if (dt * 1000 > R.slowMs) { rainSlow++; rainFast = 0; if (rainSlow >= R.slowRun) { rainScale = Math.max(0.25, rainScale * 0.8); rainSlow = 0; } }
+    else { rainSlow = 0; if (++rainFast >= R.fastRun) { rainScale = Math.min(1, rainScale * 1.1); rainFast = 0; } }
+  }
+  const W = canvas.width, H = canvas.height, dpr = W / innerWidth, red = lvReduced();
+  const cap = isTouch ? R.maxTouch : R.maxDesk, want = Math.max(8, Math.round(Math.min(cap, W * H / (dpr * dpr) / R.areaPer) * rainScale * (red ? R.reducedMul : 1)));
+  while (rainPool.length < want) rainPool.push({ x: Math.random() * W, y: Math.random() * H, k: Math.random(), gy: 0 });
+  const sp = red ? R.reducedSlow : 1;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = `rgba(${R.tint},${R.tintA + (R.tintNight - R.tintA) * Math.min(1, dark / 0.75)})`; ctx.fillRect(0, 0, W, H); // โทนหม่นเทาฟ้า (กลางคืนจางลง ไม่มืดซ้ำ)
+  ctx.globalAlpha = R.alpha;
+  for (let i = 0; i < want; i++) {
+    const f = rainPool[i], v = (R.vyMin + (R.vyMax - R.vyMin) * f.k) * dpr * sp, wx = R.wind * dpr * sp, len = Math.round((R.lenMin + (R.lenMax - R.lenMin) * f.k) * dpr), w = f.k > 0.6 ? Math.max(2, Math.round(2 * dpr)) : Math.max(1, Math.round(dpr));
+    if (!f.gy) f.gy = f.y + (40 + Math.random() * 260) * dpr; // จุดที่หยดตกถึงพื้น
+    f.y += v * dt; f.x += wx * dt;
+    if (f.y >= f.gy) { if (!red && rainRip.length < R.rippleMax) rainRip.push({ x: f.x, y: f.gy, t: now }); f.y = -len; f.x = Math.random() * W; f.gy = 0; continue; }
+    if (f.x > W) f.x -= W;
+    ctx.fillStyle = R.cols[i % R.cols.length];
+    const n = Math.max(1, Math.round(len / (3 * dpr))); // เส้นเอียงเป็นขั้นบันไดพิกเซล
+    for (let j = 0; j < n; j++) ctx.fillRect(Math.round(f.x - j * wx / v * 3 * dpr), Math.round(f.y - j * 3 * dpr), w, Math.round(3 * dpr));
+  }
+  ctx.fillStyle = R.rippleCol;
+  for (let i = rainRip.length - 1; i >= 0; i--) { // ระลอกวงรีพิกเซลสั้นๆ ที่พื้น
+    const r = rainRip[i], a = (now - r.t) / R.rippleMs; if (a >= 1) { rainRip.splice(i, 1); continue; }
+    const rw = Math.round((2 + a * 5) * dpr), px = Math.round(r.x), py = Math.round(r.y), th = Math.max(1, Math.round(dpr));
+    ctx.globalAlpha = 0.75 * (1 - a); ctx.fillRect(px - rw, py, rw * 2, th); if (a > 0.35) { ctx.fillRect(px - rw - th, py + th, th, th); ctx.fillRect(px + rw, py + th, th, th); }
+  }
+  ctx.restore();
+  if (sfxOn && sctx && sctx.state === 'running' && now - rainSfxAt > R.sfxEveryMs) { rainSfxAt = now; try { noise(R.sfxEveryMs / 1000 * 1.3, { f: 2600, q: 0.6, vol: R.sfxVol, attack: 0.5 }); } catch (e) { /* ไม่รองรับเสียงก็ข้าม */ } } // นอยส์ band-pass เบาๆ ต่อกันเป็นช่วง (เล่นเฉพาะตอนวาดฝน = ในเมืองและแท็บไม่ซ่อน)
 }
 // ---------- ธีมหิมะ ระดับ 2: โทนสีหนาวของเมือง (ภาพล้วน เปิดตาม snowActive() เฉพาะในเมือง) ----------
 // ค่าสี/พารามิเตอร์ทั้งหมดอยู่ที่นี่ที่เดียว • พื้นฤดูหนาว (baseWinter) สร้างครั้งเดียวต่อการเปลี่ยนโหมด/ผังเมือง แบ่งทำทีละช่วงหลายเฟรมไม่ให้กระตุก แล้วคืนหน่วยความจำเมื่อปิดโหมด
@@ -4173,6 +4221,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (winterFlag && dark < 0.75) { ctx.fillStyle = `rgba(${WINTER.dayRGB},${WINTER.dayA * (1 - dark / 0.75)})`; ctx.fillRect(0, 0, canvas.width, canvas.height); } // แสงกลางวันโทนเย็นฟ้าอ่อน จางลงตอนมืด
   drawNight(inSea() ? dark : cave ? 0.6 : scene ? dark * 0.4 : dark, now); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
+  if (inTown() && rainActive(now)) drawRain(now, dark); else rainLast = 0;
   if (inTown() && snowActive(now)) drawSnow(now); else snowLast = 0;
   if (inTown()) drawGuideArrow(now);
   if (inSea()) { // ป้ายทะเล: โซน + นับถอยหลังกลับเกาะ (ตะวันตก/ครบเวลา)
@@ -4184,7 +4233,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   else if (cave) { const t = '⛏️ ถ้ำเหมือง ชั้น ' + caveFlr + '/' + Shared.MINE.floors; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(10, 96, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, 18, 115); }
   const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);
   const icon = dark > 0.45 ? '🌙' : hour < 8 || hour >= 17 ? '🌅' : '☀️';
-  const se = Shared.seasonAt(Date.now() + timeOffset), txt = `${se.on ? se.s.emoji + ' ' : ''}${icon} ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')}`; // ฤดูกาล + เวลาในเกม
+  const se = Shared.seasonAt(Date.now() + timeOffset), rn = rainActive(now), sem = rn ? '🌧️' : se.s.id === 'rain' && rainMode !== 'off' ? '☁️' : se.s.emoji, txt = `${se.on || rn ? sem + ' ' : ''}${icon} ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')}`; // ฤดูกาล + เวลาในเกม
   if ($('clock').textContent !== txt) $('clock').textContent = txt;
   drawMini(now);
 }

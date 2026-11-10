@@ -6,7 +6,7 @@ const { CROPS } = S;
 module.exports = {
   // พืชเป็นของคนปลูก (t.o = key, t.on = ชื่อ): เก็บได้เฉพาะเจ้าของ แต่ถ้าสุกแล้วไม่มีใครมาเก็บครบ 1 วันในเกม (t.rm = เวลาที่สุกค้างอยู่ นับเฉพาะตอนมีคนออนไลน์) คนอื่นก็มาเก็บได้ ต้นเก่าที่ไม่มีเจ้าของ = ใครเก็บก็ได้
   cropLocked(t, p) { return !!(t.o && p.key !== t.o && (t.rm || 0) < S.DAY_MS); },
-  pub(t, now) { return { c: t.c || null, s: t.c ? S.cropStage(t) : 0, f: t.c ? S.cropFrame(t) : 0, w: t.wu > now ? 1 : 0, o: t.on || '', l: t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS ? 1 : 0 }; },
+  pub(t, now) { return { c: t.c || null, s: t.c ? S.cropStage(t) : 0, f: t.c ? S.cropFrame(t) : 0, w: t.wu > now || S.rainAt(now, this.themeRain()) ? 1 : 0, o: t.on || '', l: t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS ? 1 : 0 }; },
   tileUpdate(k, t) {
     if (t) { t._p = JSON.stringify(this.pub(t, Date.now())); this.broadcast({ t: 'tile', k, v: JSON.parse(t._p) }); }
     else this.broadcast({ t: 'tile', k, v: null });
@@ -16,9 +16,10 @@ module.exports = {
     let dt = now - this.lastCrop; this.lastCrop = now;
     if (!Number.isFinite(dt) || dt < 0 || dt > 120000) return; // นาฬิกากระโดด — ไม่โต/ไม่ถอย
     if (!this.players.size) return; // โลกจำศีล: ไม่มีคนออนไลน์ พืชไม่โต
+    const raining = S.rainAt(now, this.themeRain()); // ฝนตก = ดินทุกช่องเปียกเอง
     for (const k in this.farm) {
       const t = this.farm[k];
-      if (t.c && t.wu > now && S.cropStage(t) < 3) t.g = Math.min(CROPS[t.c].time, (t.g || 0) + dt * (t.m || 1) / (S.cropSeason(t.c, now) < 0 ? S.SEASONS.outGrow : 1)); // นอกฤดูโตช้าลง
+      if (t.c && (t.wu > now || raining) && S.cropStage(t) < 3) t.g = Math.min(CROPS[t.c].time, (t.g || 0) + dt * (t.m || 1) / (S.cropSeason(t.c, now) < 0 ? S.SEASONS.outGrow : 1)); // นอกฤดูโตช้าลง
       else if (t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS) { t.rm = (t.rm || 0) + dt; this.dirty = true; } // สุกค้างอยู่ นับเวลาจนครบ 1 วันในเกม
       else if (!t.c) { // แปลงว่างที่ไม่มีใครถาง/ปลูกเกินเวลาที่กำหนด หญ้าขึ้นกลับ
         t.idle = (t.idle || 0) + dt;
