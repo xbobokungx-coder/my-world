@@ -1184,6 +1184,7 @@ document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => { bag
 $('bagBody').addEventListener('click', e => {
   if (e.target.closest('[data-pinset]')) { showPinBox(pinSt); return; }
   { const b = e.target.closest('[data-star]'); if (b) { send({ t: 'star', skill: b.dataset.star }); return; } }
+  if (e.target.closest('[data-snow]')) { snowOn = !snowOn; ls.set('mw_snow', snowOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
   const sb = e.target.closest('[data-sub]'); if (sb) { bagSub = sb.dataset.sub; renderBag(); return; }
   const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); return; }
@@ -1241,7 +1242,7 @@ function renderBag() {
       + `<div class="sec">🍖 ความอิ่ม — ${hl} (${hunger}/100)</div><div class="hbar"><i style="width:${hunger}%;${hunger <= 20 ? 'background:#e74c3c' : ''}"></i></div><small style="opacity:.7;font-size:12px">ลดลงเรื่อยๆ ขณะออนไลน์ • ต่ำกว่า 15 เดินช้าลง • ถึง 0 ใช้เครื่องมือไม่ได้ • กินอาหารที่ร้านอาหารหรือกินผลผลิตของตัวเองได้</small>`
       + `<div class="stat">${cards.map(c => `<div>${c[0]}<b>${c[1]}</b></div>`).join('')}</div>`
       + `<button class="btn small" data-pinset="1" style="margin:4px 6px 6px 0">🔐 ${pinSt ? 'เปลี่ยน PIN' : 'ตั้ง PIN'}</button>`
-      + `<button class="btn small" data-sfx="1" style="margin:4px 0 6px">${sfxOn ? '🔊 เอฟเฟกต์เสียง: เปิด' : '🔇 เอฟเฟกต์เสียง: ปิด'}</button><div class="sec">เลเวลอาชีพ</div>`
+      + `<button class="btn small" data-sfx="1" style="margin:4px 0 6px">${sfxOn ? '🔊 เอฟเฟกต์เสียง: เปิด' : '🔇 เอฟเฟกต์เสียง: ปิด'}</button> <button class="btn small" data-snow="1" style="margin:4px 0 6px">${snowOn ? '❄️ หิมะตก: เปิด' : '❄️ หิมะตก: ปิด'} (ตกเฉพาะฤดูหนาว)</button><div class="sec">เลเวลอาชีพ</div>`
       + Object.keys(SKILLS).map(k => {
         const L = lvl(k), xp = skills[k] || 0, base = xpFor(L, k), need = L >= MAX_LV ? 0 : xpFor(L + 1, k) - base;
         const st = starsSt[k] || 0, M = Shared.MASTERY, nxt = st < M.max && L >= MAX_LV ? xpFor(MAX_LV, k) + (st + 1) * Shared.masteryXp(k) : 0;
@@ -1775,7 +1776,7 @@ function setReel(on) { if (on) clearSel(); if (!ft || ft.end || ftHold === on) r
 // ---------- แชทเสียง (WebRTC, ต่อตรงระหว่างผู้เล่น / signaling ผ่าน WebSocket เดิม) ----------
 const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 const peers = new Map(), levels = new Map();
-window.__mw = { openShop: (k, t) => { openShop(k); if (t) { farmTab = t; renderShop(); } }, get base() { return base; }, actionSheet: () => actionSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
+window.__mw = { snow(on) { snowForce = on === undefined || on === null ? null : !!on; }, openShop: (k, t) => { openShop(k); if (t) { farmTab = t; renderShop(); } }, get base() { return base; }, actionSheet: () => actionSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
 let callWith = 0, callPend = 0, callIn = 0, callMicOn = false, callTimer = 0; // callWith = คู่สายที่ต่อแล้ว, callPend = เรากำลังโทรหา, callIn = กำลังมีคนโทรหาเรา
 const pcSend = (to, k) => send({ t: 'pcall', to, k });
@@ -4043,6 +4044,38 @@ function fightUI() { // อัปเดตแผงชักเย่อ: หล
   $('ftdist').style.width = Math.max(0, Math.min(100, 100 - ft.dist)) + '%'; $('ftfish').style.left = Math.max(0, Math.min(100, 100 - ft.dist)) + '%';
   if (!ft.end) $('ftxt').textContent = `${FT_SIZE[ft.cls] || ''}  ${ft.ten >= 85 ? '🔥 สายใกล้ขาด! ปล่อย!' : FT_TXT[ph]}`;
 }
+// ===== หิมะตก (เอฟเฟกต์หน้าจอล้วน ไม่เกี่ยวกติกา) ตกเฉพาะฤดูหนาวของเกม ตอนอยู่กลางแจ้งในเมือง =====
+const SNOW = { areaPer: 4500, maxDesk: 120, maxTouch: 60, reducedMul: 1 / 3, seasonCheckMs: 30000, sizes: [3, 4, 6], cols: ['#ffffff', '#ffffff', '#eef8ff', '#d6ecfb'], edge: 'rgba(90,140,190,.55)', vyMin: 28, vyMax: 70, sway: 14, swayHz: 0.8, wind: 10, slowMs: 40, slowRun: 20, fastRun: 120, reducedSlow: 0.5, alpha: 0.95 };
+let snowOn = ls.get('mw_snow') !== '0', snowForce = null, snowWinter = false, snowChk = -1e9, snowPool = [], snowLast = 0, snowScale = 1, snowSlow = 0, snowFast = 0;
+function snowActive(now) {
+  if (snowForce !== null) return snowForce;
+  if (!snowOn) return false;
+  if (now - snowChk > SNOW.seasonCheckMs) { snowChk = now; const se = Shared.seasonAt(Date.now() + timeOffset); snowWinter = se.on && se.s.id === 'cool'; }
+  return snowWinter;
+}
+function drawSnow(now) {
+  if (document.hidden) { snowLast = 0; return; }
+  const dt = snowLast ? Math.min(0.1, (now - snowLast) / 1000) : 0; snowLast = now;
+  if (dt > 0) { // เฟรมยาวต่อเนื่อง: ลดจำนวนเกล็ด / เฟรมลื่นต่อเนื่อง: ค่อยเพิ่มคืน
+    if (dt * 1000 > SNOW.slowMs) { snowSlow++; snowFast = 0; if (snowSlow >= SNOW.slowRun) { snowScale = Math.max(0.25, snowScale * 0.8); snowSlow = 0; } }
+    else { snowSlow = 0; if (++snowFast >= SNOW.fastRun) { snowScale = Math.min(1, snowScale * 1.1); snowFast = 0; } }
+  }
+  const W = canvas.width, H = canvas.height, dpr = W / innerWidth, red = lvReduced();
+  const cap = isTouch ? SNOW.maxTouch : SNOW.maxDesk, want = Math.max(8, Math.round(Math.min(cap, W * H / (dpr * dpr) / SNOW.areaPer) * snowScale * (red ? SNOW.reducedMul : 1)));
+  while (snowPool.length < want) snowPool.push({ x: Math.random() * W, y: Math.random() * H, k: Math.random(), ph: Math.random() * 6.28 });
+  const sp = red ? SNOW.reducedSlow : 1;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = SNOW.alpha;
+  for (let i = 0; i < want; i++) {
+    const f = snowPool[i], z = Math.min(SNOW.sizes.length - 1, Math.floor(f.k * SNOW.sizes.length)), sz = Math.max(1, Math.round(SNOW.sizes[z] * dpr));
+    const v = (SNOW.vyMin + (SNOW.vyMax - SNOW.vyMin) * (z + f.k) / (SNOW.sizes.length + 1)) * dpr * sp;
+    f.y += v * dt;
+    if (!red) f.x += (Math.sin(now / 1000 * SNOW.swayHz * 6.28 + f.ph) * SNOW.sway + SNOW.wind) * dpr * dt * (0.5 + z * 0.3);
+    if (f.y > H) { f.y = -sz; f.x = Math.random() * W; }
+    if (f.x > W) f.x -= W + sz; else if (f.x < -sz) f.x += W;
+    const px = Math.round(f.x), py = Math.round(f.y); ctx.fillStyle = SNOW.edge; ctx.fillRect(px - 1, py - 1, sz + 2, sz + 2); ctx.fillStyle = SNOW.cols[(i + z) % SNOW.cols.length]; ctx.fillRect(px, py, sz, sz); // เส้นขอบฟ้าเข้มบางๆ ให้เห็นบนพื้นหญ้าสว่าง
+  }
+  ctx.restore();
+}
 function frameTail(now, wall) { // กลางวัน/กลางคืน + นาฬิกา + แผนที่ย่อ (ใช้ทั้งในเมืองและในบ้าน)
   if (ft && !ft.end) { const n = performance.now(); Shared.fightStep(ft, Math.min(250, n - ft.last), ftHold); ft.last = n; fightUI(); if (ft.end) fightUI(); } // ทำนายล่วงหน้า (ผลจริงตัดสินที่เซิร์ฟเวอร์ ส่งสถานะมาปรับทุก 150 ms)
   if (fg) { // ตัวชี้เกจตกปลา (เส้นทางเดียวกับที่เซิร์ฟเวอร์คำนวณ) อยู่ที่นี่เพื่อให้ขยับทุกฉาก ทั้งเมือง บ้าน ถ้ำ และทะเล (เดิมอยู่ในรอบวาดเมืองอย่างเดียว ในทะเลตัวชี้เลยค้างอยู่ซ้ายสุด)
@@ -4053,6 +4086,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   const dark = daylight(hour);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   drawNight(inSea() ? dark : cave ? 0.6 : scene ? dark * 0.4 : dark, now); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
+  if (inTown() && snowActive(now)) drawSnow(now); else snowLast = 0;
   if (inTown()) drawGuideArrow(now);
   if (inSea()) { // ป้ายทะเล: โซน + นับถอยหลังกลับเกาะ (ตะวันตก/ครบเวลา)
     const left = seaEnd ? Math.max(0, seaEnd - (Date.now() + timeOffset)) : 0, cd = Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0');
