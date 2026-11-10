@@ -16,12 +16,10 @@ module.exports = {
       const sk = r.skills && typeof r.skills === 'object' ? r.skills : {};
       let xpAll = 0; for (const s of skills) xpAll += num(sk[s]);
       if (xpAll < S.RANK.minXp) continue;
-      const a = r.arc && typeof r.arc === 'object' ? r.arc : {};
       rows.push({
         k, n: String(r.name || k), xpAll, sk,
         wk: r.wkx && r.wkx.k === wkNow ? Math.floor(num(r.wkx.xp)) : 0,
         coin: Math.floor(num(r.inv && r.inv.coin)) + Math.floor(num(r.bank && r.bank.bal)),
-        at: Math.floor(num(a.total)), aw: a.wkKey === wkNow ? Math.floor(num(a.wk)) : 0,
       });
     }
     const top = {}, ranks = {};
@@ -42,22 +40,18 @@ module.exports = {
       lv: lvl,
       wk: make('wk', rows.filter(x => x.wk > 0), (a, b) => b.wk - a.wk, x => ({ n: x.n, xp: x.wk })),
       rich: make('rich', rows.filter(x => x.coin > 0), (a, b) => b.coin - a.coin, x => ({ n: x.n, coin: x.coin })),
-      arc: {
-        total: make('at', rows.filter(x => x.at > 0), (a, b) => b.at - a.at, x => ({ n: x.n, total: x.at })),
-        wk: make('aw', rows.filter(x => x.aw > 0), (a, b) => b.aw - a.aw, x => ({ n: x.n, wk: x.aw })),
-      },
     };
-    return { at: Date.now(), wkKey: wkNow, top: t, ranks: { lv: ranks.lv, wk: ranks.wk, rich: ranks.rich, arc: ranks.at } };
+    return { at: Date.now(), wkKey: wkNow, top: t, ranks: { lv: ranks.lv, wk: ranks.wk, rich: ranks.rich } };
   },
   rankData() { // แคชผลคำนวณ (S.RANK.cacheMs) และทิ้งเมื่อข้ามสัปดาห์
     const c = this._rank;
     if (c && c.wkKey === this.weekKey() && Date.now() - c.at < S.RANK.cacheMs) return c;
     return (this._rank = this.rankBuild());
   },
-  sendRank(p) { // ตอบ { t:'rank', lv, wk, rich, arc, me } • me = อันดับตัวเอง (0 = ยังไม่ติด)
+  sendRank(p) { // ตอบ { t:'rank', lv, wk, rich, me } • me = อันดับตัวเอง (0 = ยังไม่ติด)
     const d = this.rankData(), k = p.key, rk = d.ranks;
-    const me = { lv: {}, wk: rk.wk[k] || 0, rich: rk.rich[k] || 0, arc: (rk.arc && rk.arc[k]) || 0 };
+    const me = { lv: {}, wk: rk.wk[k] || 0, rich: rk.rich[k] || 0 };
     for (const s of Object.keys(rk.lv)) me.lv[s] = rk.lv[s][k] || 0;
-    send(p, { t: 'rank', lv: d.top.lv, wk: d.top.wk, rich: d.top.rich, arc: d.top.arc, me });
+    send(p, { t: 'rank', lv: d.top.lv, wk: d.top.wk, rich: d.top.rich, me });
   },
 };

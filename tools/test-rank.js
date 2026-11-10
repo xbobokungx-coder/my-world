@@ -37,8 +37,8 @@ fresh();
 // ตัดผู้ดูแลและบัญชีที่ไม่ใช่ผู้เล่นจริง
 let r = ask(a);
 const names = x => x.map(y => y.n);
-for (const list of [r.lv.all, r.lv.farm, r.wk, r.rich, r.arc.total, r.arc.wk]) assert.ok(!names(list).includes(ADMIN_NAME) && !names(list).includes('Bot1'), 'ต้องไม่มี Sira/บัญชีทดลอง');
-assert.deepStrictEqual(me(ask(adm)), me({ me: { lv: Object.fromEntries(Object.keys(r.me.lv).map(k => [k, 0])), wk: 0, rich: 0, arc: 0 } }), 'ผู้ดูแลได้ me เป็น 0');
+for (const list of [r.lv.all, r.lv.farm, r.wk, r.rich]) assert.ok(!names(list).includes(ADMIN_NAME) && !names(list).includes('Bot1'), 'ต้องไม่มี Sira/บัญชีทดลอง');
+assert.deepStrictEqual(me(ask(adm)), me({ me: { lv: Object.fromEntries(Object.keys(r.me.lv).map(k => [k, 0])), wk: 0, rich: 0 } }), 'ผู้ดูแลได้ me เป็น 0');
 function me(x) { return x.me; }
 
 // เรียงถูก + me ถูก
@@ -47,8 +47,7 @@ assert.deepStrictEqual(r.rich.map(x => x.coin), [9000, 500, 500]);
 assert.strictEqual(r.me.rich, names(r.rich).indexOf('Aaa') + 1); assert.ok(r.me.rich >= 2);
 assert.deepStrictEqual(names(r.wk), ['Bbb', 'Aaa']); assert.deepStrictEqual(r.wk.map(x => x.xp), [200, 70]);
 assert.strictEqual(r.me.wk, 2); assert.strictEqual(ask(b).me.wk, 1); assert.strictEqual(ask(c).me.wk, 0, 'ไม่มี wkx = ยังไม่ติดสัปดาห์นี้ ไม่พัง');
-assert.deepStrictEqual(r.arc.total.map(x => x.total), [90, 30]); assert.deepStrictEqual(r.arc.wk.map(x => x.wk), [10]);
-assert.strictEqual(ask(b).me.arc, 1); assert.strictEqual(ask(c).me.arc, 0);
+assert.ok(!('arc' in r) && !('arc' in r.me), 'ไม่มีอันดับแต้มตู้เกมแล้ว (เล่นเอาสนุก ไม่แข่งอันดับ)');
 assert.ok(r.lv.all[0].lv >= r.lv.all[1].lv && r.lv.all[1].lv >= r.lv.all[2].lv, 'อันดับรวมเรียงตามผลรวมเลเวล');
 assert.ok(r.lv.farm[0].lv >= r.lv.farm[1].lv); assert.deepStrictEqual(names(r.lv.wood), [], 'ไม่มี XP สาย wood = ลิสต์ว่าง');
 for (const k of Object.keys(S.SKILLS)) assert.ok(Array.isArray(r.lv[k]), 'ต้องมีลิสต์ lv.' + k);
@@ -63,7 +62,6 @@ assert.ok(r.me.lv.farm >= 1 && r.me.lv.farm <= 3);
   const rowKeys = x => Object.keys(x).sort().join();
   assert.ok(r.lv.all.every(x => rowKeys(x) === 'lv,n')); assert.ok(r.lv.farm.every(x => rowKeys(x) === 'lv,n,xp'));
   assert.ok(r.wk.every(x => rowKeys(x) === 'n,xp')); assert.ok(r.rich.every(x => rowKeys(x) === 'coin,n'));
-  assert.ok(r.arc.total.every(x => rowKeys(x) === 'n,total')); assert.ok(r.arc.wk.every(x => rowKeys(x) === 'n,wk'));
   assert.ok(r.lv.all.length <= S.RANK.top);
 }
 
@@ -94,7 +92,6 @@ assert.ok(r.me.lv.farm >= 1 && r.me.lv.farm <= 3);
   const k0 = w.weekKey(); NOW = RealDate.UTC(2026, 10, 8, 17, 30, 0); // จันทร์ถัดไป 00:30 ไทย
   assert.notStrictEqual(w.weekKey(), k0);
   fresh(); assert.ok(!names(ask(p).wk).includes('Dee'), 'ข้ามสัปดาห์ XP เก่าไม่นับ');
-  assert.deepStrictEqual(ask(p).arc.wk, [], 'แต้มตู้เกมรายสัปดาห์รีเซ็ตด้วย');
   w.addXp(p, 'farm', 5); assert.deepStrictEqual(p.rec.wkx, { k: w.weekKey(), xp: 5 }, 'addXp รีเซ็ตเริ่มสัปดาห์ใหม่');
 }
 console.log('rank ok');
