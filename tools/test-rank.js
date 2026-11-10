@@ -43,7 +43,7 @@ function me(x) { return x.me; }
 
 // เรียงถูก + me ถูก
 assert.strictEqual(r.rich[0].n, 'Bbb'); // เศรษฐีเรียงเหรียญมาก→น้อย
-assert.ok(r.rich.every(x => !('coin' in x)), 'อันดับเศรษฐีไม่ส่งจำนวนเหรียญ'); assert.ok(!JSON.stringify(r.rich).includes('9000'), 'ไม่มีตัวเลขเงินหลุด'); assert.strictEqual(r.rich.length, 3);
+assert.ok(r.rich.every(x => x.coin % S.RANK.coinStep === 0), 'เหรียญเศรษฐีปัดลงเป็นพันเสมอ'); assert.strictEqual(r.rich.length, 3);
 assert.strictEqual(r.me.rich, names(r.rich).indexOf('Aaa') + 1); assert.ok(r.me.rich >= 2);
 assert.deepStrictEqual(names(r.wk), ['Bbb', 'Aaa']); assert.deepStrictEqual(r.wk.map(x => x.xp), [200, 70]);
 assert.strictEqual(r.me.wk, 2); assert.strictEqual(ask(b).me.wk, 1); assert.strictEqual(ask(c).me.wk, 0, 'ไม่มี wkx = ยังไม่ติดสัปดาห์นี้ ไม่พัง');
@@ -61,7 +61,7 @@ assert.ok(r.me.lv.farm >= 1 && r.me.lv.farm <= 3);
   for (const bad of ['"k"', 'inv', 'pin', 'bank', 'key', 'ip']) assert.ok(!raw.includes('"' + bad.replace(/"/g, '') + '"'), 'ห้ามหลุดฟิลด์ ' + bad);
   const rowKeys = x => Object.keys(x).sort().join();
   assert.ok(r.lv.all.every(x => rowKeys(x) === 'lv,n')); assert.ok(r.lv.farm.every(x => rowKeys(x) === 'lv,n,xp'));
-  assert.ok(r.wk.every(x => rowKeys(x) === 'n,xp')); assert.ok(r.rich.every(x => rowKeys(x) === 'n'));
+  assert.ok(r.wk.every(x => rowKeys(x) === 'n,xp')); assert.ok(r.rich.every(x => rowKeys(x) === 'coin,n'));
   assert.ok(r.lv.all.length <= S.RANK.top);
 }
 

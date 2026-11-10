@@ -1076,7 +1076,7 @@
   const BOARD = { x: 30, y: 21 }, RANKBOARD = { x: 32, y: 21 }, ATM = { x: 34, y: 21 }, LUCKY = { x: 36, y: 21 }; // LUCKY = ตู้ Lucky Lotto
   const TOWN = { logMax: 15, revive: 0.5 };
   // ป้ายอันดับกลางเมือง: top = จำนวนแถวต่อแท็บ, cacheMs = อายุแคชผลคำนวณ, minXp = XP รวมขั้นต่ำถึงจะนับเป็นผู้เล่นจริง (เกณฑ์เดียวกับ tools/realplayers.js)
-  const RANK = { top: 10, cacheMs: 45000, minXp: 150 };
+  const RANK = { top: 10, cacheMs: 45000, minXp: 150, coinStep: 1000 }; // coinStep = อันดับเศรษฐีโชว์เหรียญปัดลงเป็นพัน (xxx,xxx,000) ไม่เห็นเลขจริง
   const townAt = (tx, ty) => (tx === BOARD.x && ty === BOARD.y ? 'board' : tx === RANKBOARD.x && ty === RANKBOARD.y ? 'rank' : tx === ATM.x && ty === ATM.y ? 'atm' : tx === LUCKY.x && ty === LUCKY.y ? 'lotto' : tx === SEA.dock.x && ty === SEA.dock.y ? 'sea' : null);
   const reviveCost = type => Math.round(ANIMALS[type].price * TOWN.revive); // เลิกใช้ใน UI แล้ว
   // เควสประจำวัน (วันตามปฏิทินของเซิร์ฟเวอร์): แต่ละคนได้ 3 เควสจาก 3 สายอาชีพที่ต่างกัน ทำเสร็จได้ XP + เหรียญทันที ยิ่งทำสะสมยิ่งได้ฉายา
