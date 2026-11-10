@@ -196,6 +196,7 @@ class World {
       mocks: admin ? (this.mocks || []) : undefined, // Mock วางแผนแมพ เห็นเฉพาะผู้ดูแล
     });
     send(p, { t: 'pst', pst: rec.pst || {}, names: rec.pnames || {} });
+    this.themeSend(p); // โหมดหิมะปัจจุบัน
     send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); this.chPush(p); send(p, { t: 'evt', e: this.evPub() }); send(p, { t: 'stars', s: rec.stars || {} });
     send(p, { t: 'mkt', m: this.mktFor(p) });
     this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
@@ -716,6 +717,7 @@ mix(World, require('./server/systems/mining.js')); // ถ้ำเหมือ�
 mix(World, require('./server/systems/fishing.js')); // ตกปลา ทะเลลึก ชักเย่อ (ย้ายไป server/systems/fishing.js)
 mix(World, require('./server/systems/house.js')); // บ้าน ตกแต่งเฟอร์นิเจอร์ ลีดเดอร์บอร์ดบ้าน (ย้ายไป server/systems/house.js)
 mix(World, require('./server/systems/market.js')); // ร้านค้า ตลาดราคาไดนามิก ความอิ่มตัวหมวด (ย้ายไป server/systems/market.js)
+mix(World, require('./server/systems/theme.js')); // ธีมหิมะที่ผู้ดูแลตั้ง (server/systems/theme.js)
 mix(World, require('./server/systems/core.js')); // บริการกลาง ฉาก วันที่ (ย้ายไป server/systems/core.js)
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
@@ -909,7 +911,13 @@ function commitLayout(world, p, items, how) { // เก็บของเดิ�
 }
 function adminHandle(p, world, m) {
   const reply = o => send(p, Object.assign({ t: 'admin', rooms: roomsPub(), current: world.room }, o));
-  if (m.a === 'rooms') return reply({});
+  if (m.a === 'rooms') return reply({ snow: world.themeSnow() });
+  if (m.a === 'snowget') return reply({ snow: world.themeSnow() });
+  if (m.a === 'snow') { // ตั้งโหมดหิมะทั้งเซิร์ฟเวอร์: m.mode = 'auto' | 'on' | 'off'
+    const r = world.adminSetSnow(p, m.mode, worlds.values());
+    if (!r.err) console.log('ผู้ดูแลตั้งธีมหิมะ:', r.snow, '(โดย ' + p.name + ')');
+    return reply(r.err ? { err: r.err, snow: world.themeSnow() } : { snow: r.snow, ok: '❄️ ตั้งหิมะเป็น "' + ({ auto: 'อัตโนมัติ (ตามฤดูหนาว)', on: 'เปิดตลอด', off: 'ปิด' }[r.snow] || r.snow) + '" แล้ว' });
+  }
   if (m.a === 'news') { // ประกาศจากผู้ดูแล: ขึ้นข่าวเมือง (ค้างใน 15 ข่าวล่าสุด) + ป้ายข้อความให้ทุกคนที่ออนไลน์ในห้องนั้น
     const text = String(m.text || '').replace(/\s+/g, ' ').trim().slice(0, 300); if (!text) return reply({ err: 'ไม่มีข้อความ' });
     world.addLog('📢 ' + text); world.broadcast({ t: 'msg', text: '📢 ' + text }); console.log('ประกาศ (ห้อง ' + world.room + '):', text); return reply({ ok: 'ประกาศแล้ว' });

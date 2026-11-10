@@ -148,7 +148,7 @@ function handle(m) {
       ['hudTop', 'hotbar', 'chat', 'mini'].forEach(i => $(i).classList.remove('hidden'));
       layoutHud(); setMini(miniState);
       if (isTouch) { $('joy').classList.remove('hidden'); $('abtn').classList.remove('hidden'); }
-      roomName = m.room || 'main'; isAdmin = !!m.admin; if (isAdmin && $('akey').value) ls.set('mw_akey', $('akey').value); $('adminBtn').classList.toggle('hidden', !isAdmin);
+      roomName = m.room || 'main'; isAdmin = !!m.admin; setSnowMode(m.snow); if (isAdmin && $('akey').value) ls.set('mw_akey', $('akey').value); $('adminBtn').classList.toggle('hidden', !isAdmin);
       history.replaceState(null, '', roomLink(roomName).slice(location.origin.length)); // คงชื่อห้องไว้ใน URL เผื่อรีเฟรช
       renderHud(); updateOnline();
       players.forEach((p, id) => { if (id < myId) callPeer(id); }); // ผู้เล่นใหม่เป็นฝ่ายโทรหาคนที่อยู่ก่อน
@@ -244,6 +244,7 @@ function handle(m) {
     case 'furn': applyFurnOp(m); break;
     case 'hstyle': houseSt = { fl: m.fl, wp: m.wp }; if (scene) syncHouseBg(); if (build.on) renderBuild(); break;
     case 'admin': onAdmin(m); break;
+    case 'theme': setSnowMode(m.snow); break;
     case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break;
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
     case 'en': enSt = Object.assign(m, { at: Date.now(), spentAt: m.spent ? Date.now() : (enSt.spentAt || 0), lastSpent: m.spent || enSt.lastSpent || 0 }); renderEnergy(); break;
@@ -290,6 +291,7 @@ const bugImgs = {}; // ภาพรายงานบั๊กที่โหล
 let bugView = 'open'; // หน้ารายงานบั๊ก: open = ยังไม่แก้ • fixed = แก้แล้ว
 const adminShown = () => !$('admin').classList.contains('hidden');
 function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); send({ t: 'admin', a: 'bugs' }); renderAdmin(); }
+function setSnowMode(v) { snowMode = v === 'on' || v === 'off' ? v : 'auto'; if (typeof adminShown === 'function' && adminShown()) renderAdmin(); }
 function closeAdmin() { $('admin').classList.add('hidden'); }
 function onAdmin(m) {
   adminSt = { rooms: m.rooms || [], current: m.current || '', err: m.err || '', users: m.users || (adminSt && adminSt.users) || [], bans: m.bans || (adminSt && adminSt.bans) || [], bugs: m.bugs || (adminSt && adminSt.bugs) || [], warp: m.warp || (adminSt && adminSt.warp) || null };
@@ -357,6 +359,7 @@ function renderAdmin() {
       + (r.name !== adminSt.current ? `<button class="btn small" data-go="${esc(r.name)}">↪️ ไปห้องนี้</button> ` : '')
       + (!r.main ? `<button class="btn small muted" data-rm="${esc(r.name)}">🗑️ เลิกใช้</button>` : '') + '</span></div>').join('');
     h += `<div class="sec">🪙 เหรียญของตัวเอง</div><div class="row"><span>${me ? esc(me.name) : ''}</span><span><button class="btn small" data-admcoin="100">➕ 100</button> <button class="btn small muted" data-admcoin="-100">➖ 100</button></span></div>`;
+    h += '<div class="sec">❄️ ธีมหิมะตก (ทุกคนในเกม)</div><div class="chips" style="margin-bottom:6px">' + [['auto', 'อัตโนมัติ (ตามฤดูหนาว)'], ['on', 'เปิดตลอด'], ['off', 'ปิด']].map(([k, n]) => `<button class="chip${snowMode === k ? ' sel' : ''}" data-snowmode="${k}" style="min-height:40px">${n}</button>`).join('') + '</div>';
     h += '<div class="sec">🎚️ เลเวลของตัวเอง (ทดสอบ)</div>';
     h += Object.keys(Shared.SKILLS).map(k => `<div class="row"><span>${Shared.SKILLS[k].emoji} ${esc(Shared.SKILLS[k].name)} <b>Lv ${lvl(k)}</b></span><span><button class="btn small" data-lvskill="${k}" data-d="-1">➖</button> <button class="btn small" data-lvskill="${k}" data-d="1">➕</button> <button class="btn small" data-lvskill="${k}" data-to="${Shared.MAX_LV}">⏫ ${Shared.MAX_LV}</button> <button class="btn small muted" data-lvskill="${k}" data-to="1">⏬ 1</button></span></div>`).join('');
     h += '<div class="sec">👥 ผู้เล่นและ IP <button class="btn small" id="ipRefresh">🔄 รีเฟรช</button></div>';
@@ -365,6 +368,7 @@ function renderAdmin() {
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; if (adminTab === 'warp') send({ t: 'admin', a: 'warplist' }); renderAdmin(); });
+  el.querySelectorAll('[data-snowmode]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'snow', mode: b.dataset.snowmode }));
   el.querySelectorAll('[data-lvskill]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'lvl', skill: b.dataset.lvskill, d: b.dataset.d ? +b.dataset.d : undefined, to: b.dataset.to ? +b.dataset.to : undefined }));
   el.querySelectorAll('[data-warp]').forEach(b => b.onclick = () => { send({ t: 'admin', a: 'warp', to: b.dataset.warp }); closeAdmin(); });
   const ome = $('openMapEdit'); if (ome) ome.onclick = openMapEdit;
@@ -1184,7 +1188,6 @@ document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => { bag
 $('bagBody').addEventListener('click', e => {
   if (e.target.closest('[data-pinset]')) { showPinBox(pinSt); return; }
   { const b = e.target.closest('[data-star]'); if (b) { send({ t: 'star', skill: b.dataset.star }); return; } }
-  if (e.target.closest('[data-snow]')) { snowOn = !snowOn; ls.set('mw_snow', snowOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
   const sb = e.target.closest('[data-sub]'); if (sb) { bagSub = sb.dataset.sub; renderBag(); return; }
   const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); return; }
@@ -1242,7 +1245,7 @@ function renderBag() {
       + `<div class="sec">🍖 ความอิ่ม — ${hl} (${hunger}/100)</div><div class="hbar"><i style="width:${hunger}%;${hunger <= 20 ? 'background:#e74c3c' : ''}"></i></div><small style="opacity:.7;font-size:12px">ลดลงเรื่อยๆ ขณะออนไลน์ • ต่ำกว่า 15 เดินช้าลง • ถึง 0 ใช้เครื่องมือไม่ได้ • กินอาหารที่ร้านอาหารหรือกินผลผลิตของตัวเองได้</small>`
       + `<div class="stat">${cards.map(c => `<div>${c[0]}<b>${c[1]}</b></div>`).join('')}</div>`
       + `<button class="btn small" data-pinset="1" style="margin:4px 6px 6px 0">🔐 ${pinSt ? 'เปลี่ยน PIN' : 'ตั้ง PIN'}</button>`
-      + `<button class="btn small" data-sfx="1" style="margin:4px 0 6px">${sfxOn ? '🔊 เอฟเฟกต์เสียง: เปิด' : '🔇 เอฟเฟกต์เสียง: ปิด'}</button> <button class="btn small" data-snow="1" style="margin:4px 0 6px">${snowOn ? '❄️ หิมะตก: เปิด' : '❄️ หิมะตก: ปิด'} (ตกเฉพาะฤดูหนาว)</button><div class="sec">เลเวลอาชีพ</div>`
+      + `<button class="btn small" data-sfx="1" style="margin:4px 0 6px">${sfxOn ? '🔊 เอฟเฟกต์เสียง: เปิด' : '🔇 เอฟเฟกต์เสียง: ปิด'}</button><div class="sec">เลเวลอาชีพ</div>`
       + Object.keys(SKILLS).map(k => {
         const L = lvl(k), xp = skills[k] || 0, base = xpFor(L, k), need = L >= MAX_LV ? 0 : xpFor(L + 1, k) - base;
         const st = starsSt[k] || 0, M = Shared.MASTERY, nxt = st < M.max && L >= MAX_LV ? xpFor(MAX_LV, k) + (st + 1) * Shared.masteryXp(k) : 0;
@@ -4046,10 +4049,11 @@ function fightUI() { // อัปเดตแผงชักเย่อ: หล
 }
 // ===== หิมะตก (เอฟเฟกต์หน้าจอล้วน ไม่เกี่ยวกติกา) ตกเฉพาะฤดูหนาวของเกม ตอนอยู่กลางแจ้งในเมือง =====
 const SNOW = { areaPer: 4500, maxDesk: 120, maxTouch: 60, reducedMul: 1 / 3, seasonCheckMs: 30000, sizes: [3, 4, 6], cols: ['#ffffff', '#ffffff', '#eef8ff', '#d6ecfb'], edge: 'rgba(90,140,190,.55)', vyMin: 28, vyMax: 70, sway: 14, swayHz: 0.8, wind: 10, slowMs: 40, slowRun: 20, fastRun: 120, reducedSlow: 0.5, alpha: 0.95 };
-let snowOn = ls.get('mw_snow') !== '0', snowForce = null, snowWinter = false, snowChk = -1e9, snowPool = [], snowLast = 0, snowScale = 1, snowSlow = 0, snowFast = 0;
+let snowMode = 'auto', snowForce = null, snowWinter = false, snowChk = -1e9, snowPool = [], snowLast = 0, snowScale = 1, snowSlow = 0, snowFast = 0;
 function snowActive(now) {
   if (snowForce !== null) return snowForce;
-  if (!snowOn) return false;
+  if (snowMode === 'off') return false;
+  if (snowMode === 'on') return true;
   if (now - snowChk > SNOW.seasonCheckMs) { snowChk = now; const se = Shared.seasonAt(Date.now() + timeOffset); snowWinter = se.on && se.s.id === 'cool'; }
   return snowWinter;
 }

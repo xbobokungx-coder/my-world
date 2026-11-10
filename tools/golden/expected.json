@@ -2216,6 +2216,10 @@
     "names": {}
    },
    {
+    "t": "theme",
+    "snow": "auto"
+   },
+   {
     "t": "arcs",
     "a": [
      [
@@ -8364,6 +8368,10 @@
     "t": "pst",
     "pst": {},
     "names": {}
+   },
+   {
+    "t": "theme",
+    "snow": "auto"
    },
    {
     "t": "arcs",
