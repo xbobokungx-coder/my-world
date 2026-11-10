@@ -321,11 +321,16 @@
     { id: 'cool', name: 'ฤดูหนาว', emoji: '❄️', crops: ['carrot', 'strawberry', 'mango', 'coconut', 'mushroom', 'tulip'] },
   ] };
   const seasonAt = t => { const L = SEASONS.days * 864e5, n = Math.floor((t - SEASONS.epoch) / L), i = ((n % 3) + 3) % 3; return { s: SEASONS.list[i], end: SEASONS.epoch + (n + 1) * L, on: t >= SEASONS.epoch }; };
-  const RAIN = { cycleMs: 30 * 60e3, rainMs: 10 * 60e3 }; // ฝนตกเป็นรอบในฤดูฝน: ตก 10 นาที พัก 20 นาที (นับจากต้นฤดู)
-  const rainAt = (t, mode) => { // ฝนตกไหม: mode 'on' ตกตลอด • 'off' ไม่ตก • อื่นๆ = เฉพาะฤดูฝนในช่วงตกของรอบ (คำนวณตรงกันสองฝั่ง)
+  // ฝนสุ่มแบบกำหนดผลได้: แบ่งเวลาเป็นช่อง slotMs แต่ละช่องใช้ hash ของเลขช่อง (ไม่ใช้ Math.random) ตัดสินว่า ฝนตกไหม/นานเท่าไร/เริ่มตอนไหน ฝนไม่ข้ามช่อง • ตามฤดูของช่อง: null = ไม่ตก
+  const RAIN = { slotMs: 30 * 60e3, season: { rain: { p: 0.7, minMs: 8 * 60e3, maxMs: 25 * 60e3 }, hot: { p: 0.12, minMs: 4 * 60e3, maxMs: 10 * 60e3 }, cool: null } };
+  const rainHash = (n, salt) => { let h = (Math.imul(n | 0, 0x9E3779B1) ^ Math.imul((n / 4294967296) | 0, 0x85EBCA6B) ^ Math.imul(salt, 0xC2B2AE35)) | 0; h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B); h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+  const rainAt = (t, mode) => { // ฝนตกไหม: mode 'on' ตกตลอด • 'off' ไม่ตก • อื่นๆ = ฝนสุ่มตามช่องเวลาและฤดู (คำนวณตรงกันสองฝั่ง)
     if (mode === 'on') return true; if (mode === 'off') return false;
-    const se = seasonAt(t); if (!se.on || se.s.id !== 'rain') return false;
-    return (t - (se.end - SEASONS.days * 864e5)) % RAIN.cycleMs < RAIN.rainMs;
+    if (!(t >= SEASONS.epoch)) return false;
+    const n = Math.floor(t / RAIN.slotMs), start = n * RAIN.slotMs, cfg = RAIN.season[seasonAt(start).s.id];
+    if (!cfg || rainHash(n, 1) >= cfg.p) return false;
+    const dur = cfg.minMs + rainHash(n, 2) * (cfg.maxMs - cfg.minMs), off = rainHash(n, 3) * (RAIN.slotMs - dur), r = t - start;
+    return r >= off && r < off + dur;
   };
   const cropSeason = (c, t) => { const se = seasonAt(t); if (!se.on || !CROPS[c] || CROPS[c].lv <= 1) return 0; return se.s.crops.includes(c) ? 1 : -1; }; // 1 ในฤดู • -1 นอกฤดู • 0 ไม่มีผล
   // ความชำนาญหลัง Lv10: ดาว 1–max ต่ออาชีพ ดาวที่ n ต้องมี XP ≥ XP Lv10 + n × xpPer และจ่าย costBase × n เหรียญ (ใช้เงินระยะยาว ไม่เพิ่มพลังหรือรายได้) ครบ max ดาวได้ฉายา "ปรมาจารย์<อาชีพ>"
@@ -1129,7 +1134,7 @@
   const BANK = { cap: 100000, amts: [100, 1000, 10000] };
   // Happy Village: ทั้งเมืองช่วยกันทำงานสะสมครบเป้าของวัน (เป้า = base + per × จำนวนคนออนไลน์สูงสุดของวัน) → ทุกคนได้บัฟร่วม ms มิลลิวินาที
   // fullMin = ช่วยงานเมืองวันนี้ ≥ เท่านี้ครั้งได้บัฟเต็ม ms • คนที่ยังไม่ถึงได้แค่ shortMs แรกหลังครบเป้า (ช่วยเพิ่มทีหลังก็ได้เต็มตามเวลาที่เหลือ) • ช่วงเทศกาลทุกคนได้เต็ม
-  const THEME_RAIN = ['auto', 'on', 'off']; // โหมดฝน: auto = ตกเป็นรอบในฤดูฝน (ดินเปียกเอง) / on = ตกตลอด / off = ไม่ตก — ผู้ดูแลตั้ง
+  const THEME_RAIN = ['auto', 'on', 'off']; // โหมดฝน: auto = ฝนสุ่มตามเวลา ฤดูฝนตกบ่อยสุด หนาวไม่ตก (ดินเปียกเอง) / on = ตกตลอด / off = ไม่ตก — ผู้ดูแลตั้ง
   const THEME_SNOW = ['auto', 'on', 'off']; // โหมดหิมะตก (ภาพอย่างเดียว): auto = ตามฤดูหนาวของเกม (ค่าเริ่มต้น) / on = ตกตลอด / off = ไม่ตก — ผู้ดูแลตั้ง
   const VILLAGE = { maxShare: 0.5, base: 30, per: 20, ms: 20 * 60000, fishMul: 0.75, hardBonus: 0.1, fullMin: 3, shortMs: 5 * 60000 };
   // เดิมพันกับบอท: เงินเดิมพันฝั่งบอทมาจากบ้าน (สร้างเหรียญใหม่) จึงจำกัดวงเงินต่อครั้ง และกำไรสุทธิจากบอทต่อวันไม่เกิน dailyWinCap (ขาดทุนไม่จำกัด)

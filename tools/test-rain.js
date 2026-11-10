@@ -4,17 +4,30 @@ const dir = process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-rain-');
 const S = require('../public/shared.js');
 assert.deepStrictEqual(S.THEME_RAIN, ['auto', 'on', 'off']);
 // ฤดูฝนรอบที่ 2 (n=1): เริ่ม epoch + 3.5 วัน
-const L = S.SEASONS.days * 864e5, rs = S.SEASONS.epoch + L;
+const L = S.SEASONS.days * 864e5, E = S.SEASONS.epoch, rs = E + L, R = S.RAIN;
 assert.strictEqual(S.seasonAt(rs + 1).s.id, 'rain');
-assert.strictEqual(S.rainAt(rs + 1, 'auto'), true);
-assert.strictEqual(S.rainAt(rs + S.RAIN.rainMs - 1, 'auto'), true);
-assert.strictEqual(S.rainAt(rs + S.RAIN.rainMs, 'auto'), false);
-assert.strictEqual(S.rainAt(rs + S.RAIN.cycleMs + 1, 'auto'), true, 'รอบถัดไป');
-assert.strictEqual(S.rainAt(S.SEASONS.epoch + 1, 'auto'), false, 'ฤดูร้อนไม่ตก');
-assert.strictEqual(S.rainAt(rs + L + 1, 'auto'), false, 'ฤดูหนาวไม่ตก');
-assert.strictEqual(S.rainAt(S.SEASONS.epoch - 1, 'auto'), false, 'ก่อนเริ่มฤดู');
-assert.strictEqual(S.rainAt(S.SEASONS.epoch + 1, 'on'), true); assert.strictEqual(S.rainAt(rs + 1, 'off'), false);
-assert.strictEqual(S.rainAt(rs + 1, 'xx'), true, 'ค่าอื่น = auto');
+// deterministic: เรียกซ้ำเวลาเดิมได้ผลเดิม
+for (let k = 0; k < 500; k++) { const t = E + k * 97e3; assert.strictEqual(S.rainAt(t, 'auto'), S.rainAt(t, 'auto')); }
+// สัดส่วนเวลาฝนตกต่อฤดู (สุ่มตัวอย่างทุกฤดูในรอบ 3 ฤดู x 4 รอบ)
+const frac = id => { let c = 0, n = 0; for (let r = 0; r < 4; r++) { const i = S.SEASONS.list.findIndex(x => x.id === id); const st = E + (r * 3 + i) * L; for (let k = 0; k < 3000; k++) { n++; if (S.rainAt(st + (k + 0.5) / 3000 * L, 'auto')) c++; } } return c / n; };
+const fr = frac('rain'), fh = frac('hot'), fc = frac('cool');
+assert.ok(fr > 0.30 && fr < 0.45, 'ฤดูฝน ' + fr); assert.ok(fh > 0.01 && fh < 0.06, 'ฤดูร้อน ' + fh); assert.strictEqual(fc, 0, 'ฤดูหนาวไม่ตก');
+// ฝนไม่ข้ามช่อง และความยาวอยู่ในช่วง min-max (สแกนทีละ 10 วินาที)
+for (const id of ['rain', 'hot']) {
+  const cfg = R.season[id], i = S.SEASONS.list.findIndex(x => x.id === id), st = E + i * L; let run = 0, runs = 0;
+  for (let t = st; t < st + L; t += 10e3) {
+    if (S.rainAt(t, 'auto')) run += 10e3;
+    else if (run) { runs++; assert.ok(run >= cfg.minMs - 10e3 && run <= cfg.maxMs + 10e3, id + ' ยาว ' + run); run = 0; }
+    if (run && t % R.slotMs === 0 && t > st) assert.ok(false, 'ฝนข้ามช่อง');
+  }
+  assert.ok(runs > 5, id + ' มีฝนหลายครั้ง');
+}
+assert.strictEqual(S.rainAt(E - 1, 'auto'), false, 'ก่อนเริ่มฤดู');
+assert.strictEqual(S.rainAt(E - 1, 'on'), true); assert.strictEqual(S.rainAt(rs + 1, 'off'), false);
+assert.strictEqual(S.rainAt(E + 5 * L, 'xx') === S.rainAt(E + 5 * L, 'auto'), true, 'ค่าอื่น = auto');
+// หาเวลาฝนตก/ไม่ตกจริงในฤดูฝน
+let wet = 0, dry = 0; for (let t = rs; t < rs + L && !(wet && dry); t += 60e3) { if (S.rainAt(t, 'auto')) { if (!wet) wet = t; } else if (wet && !dry) dry = t; }
+assert.ok(wet && dry);
 let { World } = require('../server.js');
 const sent = [];
 const mk = (w, name, admin) => { const p = { name, key: name.toLowerCase(), id: name, admin, ws: { readyState: 1, send(s) { sent.push([name, JSON.parse(s)]); } }, rec: { inv: { coin: 1 }, skills: {} } }; w.players.set(name, p); return p; };
@@ -25,7 +38,6 @@ assert.ok(w.adminSetRain(pl, 'on').err); assert.ok(!fs.existsSync(path.join(dir,
 for (const bad of ['rain', '', 'ON', null, undefined, 1, {}, ['on'], '__proto__']) assert.ok(w.adminSetRain(adm, bad).err);
 assert.strictEqual(w.themeRain(), 'auto');
 // พืชโต: ฝนตก vs ไม่ตก
-const dry = rs + S.RAIN.rainMs + 60e3, wet = rs + 60e3;
 w.farm['1,1'] = { c: 'carrot', g: 0, m: 1 };
 w.lastCrop = dry - 1000; w.cropTick(dry); assert.strictEqual(w.farm['1,1'].g, 0, 'ฝนหยุดไม่รดไม่โต');
 assert.strictEqual(w.pub(w.farm['1,1'], dry).w, 0);
