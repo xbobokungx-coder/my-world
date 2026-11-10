@@ -233,7 +233,7 @@ function handle(m) {
     case 'arc': onArc(m); break;
     case 'dur': dur = m.d; refreshOpen(); break;
     case 'wtr': wtr = m.n; renderHud(); break;
-    case 'fight': { ft = { cls: m.cls, sched: m.sched, dist: m.dist, ten: m.ten, peak: m.ten, t: 0, snapT: 0, str: m.str, run: m.run, spd: m.spd, rise: m.rise, end: '', last: performance.now(), perfect: !!m.perfect }; ftHold = false; $('ffight').classList.remove('hidden'); fightUI(); break; } // ชักเย่อเริ่ม: เว็บทำนายด้วยสูตรเดียวกับเซิร์ฟเวอร์ ตามค่าที่ได้รับ
+    case 'fight': { ft = { cls: m.cls, sched: m.sched, dist: m.dist, ten: m.ten, peak: m.ten, t: 0, snapT: 0, str: m.str, run: m.run, spd: m.spd, rise: m.rise, end: '', last: performance.now(), perfect: !!m.perfect }; ftHold = false; $('ffight').classList.remove('hidden'); fightUI(); if (abHeld || spHeld) setReel(true); break; } // ชักเย่อเริ่ม: เว็บทำนายด้วยสูตรเดียวกับเซิร์ฟเวอร์ ตามค่าที่ได้รับ
     case 'fs': if (ft && !ft.end) { ft.ten = m.ten; ft.dist = m.dist; ft.t = m.el; ft.last = performance.now(); } break; // เซิร์ฟเวอร์ส่งสถานะจริงทุก 150 ms ปรับตามทันที
     case 'fe': { const r = m.r; if (ft) { ft.end = r; ft.shown = performance.now(); $('ftxt').textContent = r === 'win' ? '🎉 ดึงขึ้นมาได้แล้ว!' : r === 'snap' ? '💥 สายเอ็นขาด!' : '🐟 ปลาหนีไปแล้ว...'; } ftHold = false; setTimeout(() => { if (ft && ft.end) { ft = null; $('ffight').classList.add('hidden'); } }, 900); break; }
     case 'fg': { // เกจตกปลา: เริ่ม/ปิด (ตัวชี้คำนวณจากเวลาที่ได้รับ ชดเชยหน่วงเล็กน้อย)
@@ -1569,7 +1569,7 @@ addEventListener('keydown', e => {
   if (c === 'KeyM') { setMini(miniState === 'off' ? 'small' : miniState === 'small' ? 'big' : 'off'); return; }
   const dg = /^(?:Digit|Numpad)([1-9])$/.exec(c);
   if (dg && +dg[1] <= SLOTS.length) { pickSlot(+dg[1] - 1); return; }
-  if (c === 'Space') { e.preventDefault(); if (ft) { setReel(true); return; } act(); return; } // ชักเย่ออยู่ = กดค้างกรอสาย
+  if (c === 'Space') { e.preventDefault(); spHeld = true; if (ft) { setReel(true); return; } if (e.repeat) return; act(); return; } // e.repeat: กดค้างไม่ให้ยิง act ซ้ำ (ไม่งั้นตอนรอปลากินจะดึงเบ็ดกลับเอง ตกไม่ได้) // ชักเย่ออยู่ = กดค้างกรอสาย
   if (c.startsWith('Arrow')) e.preventDefault();
   keys[c] = true;
   mouse.active = false;
@@ -1577,7 +1577,7 @@ addEventListener('keydown', e => {
 // กันปุ่มเดินค้าง (ตัวละครเดินเองและยกเลิกการคลิกเดิน): ถ้าไม่ได้รับ keyup (เช่น เปิดเมนูคลิกขวา/สลับหน้าต่าง/IME ภาษาไทย) ปุ่มจะค้างจนรีเฟรช
 const keyName = {};
 const clearKeys = () => { for (const k in keys) keys[k] = false; };
-addEventListener('keyup', e => { if (e.code === 'Space') setReel(false); keys[e.code] = false; for (const k in keyName) if (keyName[k] === e.key.toLowerCase()) keys[k] = false; delete keyName[e.code]; });
+addEventListener('keyup', e => { if (e.code === 'Space') { spHeld = false; setReel(false); } keys[e.code] = false; for (const k in keyName) if (keyName[k] === e.key.toLowerCase()) keys[k] = false; delete keyName[e.code]; });
 addEventListener('keydown', e => { keyName[e.code] = String(e.key).toLowerCase(); }, true);
 addEventListener('blur', clearKeys);
 addEventListener('focusout', e => { if (!e.relatedTarget) clearKeys(); });
@@ -1748,13 +1748,13 @@ const endPtr = e => {
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
 // กดค้างปุ่ม A = ทำงานซ้ำตามจังหวะท่าเดิม (ขุด/ตัด/ขุดดิน/รดน้ำ ฯลฯ) ปล่อยนิ้วหยุด • เบ็ดไม่วนซ้ำ (ต้องจับจังหวะเอง) • act() กันจังหวะด้วย actGap เองและเซิร์ฟเวอร์ตัดสินกติกาเหมือนเดิม
-let holdAct = 0; // วนซ้ำเฉพาะช่องเครื่องมือ (ไม่รวมเบ็ด/เมล็ด/อาหาร กันข้อความเตือนรัว)
+let holdAct = 0, abHeld = false, spHeld = false; // abHeld/spHeld = ปุ่ม A/Space กำลังถูกกดค้าง (ตกปลา: กดค้างมาก่อนปลากิน เริ่มชักเย่อแล้วต้องกรอสายทันที) // วนซ้ำเฉพาะช่องเครื่องมือ (ไม่รวมเบ็ด/เมล็ด/อาหาร กันข้อความเตือนรัว)
 const stopHoldAct = () => { if (holdAct) { clearInterval(holdAct); holdAct = 0; } };
 $('abtn').addEventListener('pointerdown', e => {
-  e.preventDefault(); stopWalk(); if (ft) { setReel(true); return; } act();
+  abHeld = true; e.preventDefault(); stopWalk(); if (ft) { setReel(true); return; } act();
   stopHoldAct(); holdAct = setInterval(() => { if (ft || modalOpen()) { stopHoldAct(); return; } if (SLOTS[slot].id === 'tool' && toolId() !== 'rod') act(); }, 60);
 });
-for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) { $('abtn').addEventListener(ev, () => { setReel(false); stopHoldAct(); }); $('ffight').addEventListener(ev, () => setReel(false)); }
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) { $('abtn').addEventListener(ev, () => { abHeld = false; setReel(false); stopHoldAct(); }); $('ffight').addEventListener(ev, () => setReel(false)); }
 addEventListener('blur', stopHoldAct);
 $('ffight').addEventListener('pointerdown', e => { e.preventDefault(); setReel(true); }); // แตะ/คลิกค้างที่แผงชักเย่อ = กรอสาย (เมาส์และมือถือ)
 addEventListener('blur', () => setReel(false));
