@@ -77,5 +77,12 @@ const bite = () => { p.fish.at = T0; w.tick(0.1, T0); assert.strictEqual(p.fish.
 { // act ระหว่างชักเย่อไม่ยกเลิก
   cast(); bite(); w.reelFish(p, T0); const st = p.fish.ft; w.reelFish(p, T0 + 10); assert.ok(p.fish && p.fish.st === 'fight' && p.fish.ft === st, 'กด act ซ้ำระหว่างชักเย่อไม่มีผล'); p.fish = null;
 }
+{ // ชักเย่อในทะเล/ถ้ำ: ข้อความ reel ต้องไปถึง (เดิมถูกทิ้งเพราะ p.scene ≠ null ทำให้ตกปลาทะเลไม่ได้เลย)
+  const S2 = require('../public/shared.js'); p.fish = null; w.changeScene(p, '@cave' + S2.OCEAN.floor, S2.OCEAN.spawn.x, S2.OCEAN.spawn.y); p.seaUntil = Infinity;
+  p.rec.inv.bait = 5; p.baitSel = 'bait'; w.castFish(p, Math.floor(p.x / 32) + 3, Math.floor(p.y / 32), T0, true, 'shallow'); p.fish.at = T0; w.tick(0.1, T0);
+  assert.strictEqual(p.fish.st, 'fight', 'ในทะเลปลากินเบ็ด → ชักเย่อ');
+  w.handle(p, { t: 'reel', on: true }); assert.strictEqual(p.fish.hold, true, 'ในทะเล reel:true ต้องมีผล');
+  w.handle(p, { t: 'reel', on: false }); assert.strictEqual(p.fish.hold, false, 'ในทะเล reel:false ต้องมีผล'); p.fish = null; w.leaveCave(p);
+}
 console.log('ผ่าน test-fight');
 process.exit(0);
