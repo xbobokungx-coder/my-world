@@ -43,7 +43,14 @@ function me(x) { return x.me; }
 
 // เรียงถูก + me ถูก
 assert.strictEqual(r.rich[0].n, 'Bbb'); // เศรษฐีเรียงเหรียญมาก→น้อย
-assert.ok(r.rich.every(x => x.coin % S.RANK.coinStep === 0), 'เหรียญเศรษฐีปัดลงเป็นพันเสมอ'); assert.strictEqual(r.rich.length, 3);
+assert.ok(r.rich.every(x => typeof x.coin === 'string' && x.coin.replace(/[,x]/g, '').length <= 3 && /^[x0-9,]+$/.test(x.coin)), 'เหรียญเศรษฐีเป็นข้อความปิดบังหลักหน้า เหลือสามหลักท้าย');
+{ // ตัวอย่างจริง: 123,321,123 → xxx,xxx,123 • 45,678 → xx,678 • 500 → 500 • ไม่ส่งเลขจริงออกไป
+  const keep = b.rec.inv.coin; for (const [coin, want] of [[123321123, 'xxx,xxx,123'], [45678, 'xx,678'], [500, '500'], [7000000, 'x,xxx,000']]) {
+    b.rec.inv.coin = coin; b.rec.bank = { bal: 0 }; fresh(); const row = ask(a).rich.find(x => x.n === 'Bbb'); assert.strictEqual(row.coin, want, coin + ' → ' + want);
+    if (coin >= 1000) assert.ok(!JSON.stringify(ask(a).rich).includes(String(coin)) && !JSON.stringify(ask(a).rich).includes(coin.toLocaleString('en-US')), 'ห้ามมีเลขจริงหลุด (ตั้งแต่พันขึ้นไปต้องปิดบังหลักหน้า)');
+  }
+  b.rec.inv.coin = keep; fresh();
+}
 assert.strictEqual(r.me.rich, names(r.rich).indexOf('Aaa') + 1); assert.ok(r.me.rich >= 2);
 assert.deepStrictEqual(names(r.wk), ['Bbb', 'Aaa']); assert.deepStrictEqual(r.wk.map(x => x.xp), [200, 70]);
 assert.strictEqual(r.me.wk, 2); assert.strictEqual(ask(b).me.wk, 1); assert.strictEqual(ask(c).me.wk, 0, 'ไม่มี wkx = ยังไม่ติดสัปดาห์นี้ ไม่พัง');

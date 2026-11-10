@@ -6,6 +6,8 @@ const { send } = require('../util.js');
 const { ADMIN_NAME } = require('../consts.js');
 
 const num = v => (Number.isFinite(v) && v > 0 ? v : 0);
+// ปิดบังจำนวนเหรียญ: เหลือเห็นสามหลักท้าย ที่เหลือเป็น x คงจุลภาคไว้ (123,321,123 → xxx,xxx,123 • 45,678 → xx,678 • 500 → 500)
+const maskCoin = n => { const s = Math.floor(num(n)).toLocaleString('en-US'); let seen = 0, out = ''; for (let i = s.length - 1; i >= 0; i--) { const c = s[i]; if (c === ',') { out = c + out; continue; } out = (seen < 3 ? c : 'x') + out; seen++; } return out; };
 
 module.exports = {
   rankBuild() { // คำนวณอันดับจากเซฟทุกคนครั้งเดียว (แล้วแคช) → { top, ranks }
@@ -39,7 +41,7 @@ module.exports = {
     const t = {
       lv: lvl,
       wk: make('wk', rows.filter(x => x.wk > 0), (a, b) => b.wk - a.wk, x => ({ n: x.n, xp: x.wk })),
-      rich: make('rich', rows.filter(x => x.coin > 0), (a, b) => b.coin - a.coin, x => ({ n: x.n, coin: Math.floor(x.coin / S.RANK.coinStep) * S.RANK.coinStep })), // ปัดลงเป็นพัน (xxx,xxx,000) ไม่ส่งตัวเลขจริง (ความเป็นส่วนตัว)
+      rich: make('rich', rows.filter(x => x.coin > 0), (a, b) => b.coin - a.coin, x => ({ n: x.n, coin: maskCoin(x.coin) })), // ส่งเป็นข้อความปิดบังหลักหน้า เหลือสามหลักท้าย (123,321,123 → xxx,xxx,123) ไม่ส่งตัวเลขจริง (ความเป็นส่วนตัว)
     };
     return { at: Date.now(), wkKey: wkNow, top: t, ranks: { lv: ranks.lv, wk: ranks.wk, rich: ranks.rich } };
   },
