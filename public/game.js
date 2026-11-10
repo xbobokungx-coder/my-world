@@ -46,6 +46,7 @@ const buffOn = id => (buffExp[id] || 0) > Date.now();
 const build = { on: false, sel: null, erase: false, pick: null, rot: 0 }; // sel = ชนิดที่จะวาง • erase = เก็บคืน • pick = id ของชิ้นที่เลือกไว้จะย้าย/หมุน • rot = ทิศของชิ้นที่จะวาง
 let deepFloor = 1, fg = null, ft = null, ftHold = false, wtr = 10, dur = {}, cin = null, cinAt = 0, cinWatching = false, tradeSt = null, tradeReq = null;
 const mult = k => market[k] || 1;
+const wallNow = () => Date.now() + timeOffset;
 let timeOffset = 0, lastSend = 0, lastSent = '', swing = 0, lastAct = 0, actGap = 200, shopKind = null, bagTab = 'status', flash = null;
 let miniState = ls.get('mw_mini') || 'small'; // small | big | off
 const keys = {}, joy = { x: 0, y: 0 };
@@ -3116,7 +3117,7 @@ function drawChainTree(now) { // โตตามจำนวนชาเลน�
   ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(42,27,20,.8)'; ctx.fillRect(cx - 26, by + 2, 52, 13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`🌳 ${n} ใบ`, cx, by + 12);
 }
 function drawTree(x, y, kind, rot = 0, alpha = 1, ctx = mainCtx) { // สไปรต์ต้นไม้พิกเซล · โคนต้นกลางขอบล่างช่อง · ไม่เบลอตอนขยาย • rot = เอียงรอบโคน (ส่ายตอนโดนฟัน/ล้ม)
-  const key = x + ',' + y, s = PixelArt.tree(x, y, kind || treeKinds.get(key)), hit = kind ? null : treeHit.get(key), now = performance.now();
+  const key = x + ',' + y, s0 = PixelArt.tree(x, y, kind || treeKinds.get(key)), s = winterFlag ? snowSprite(s0, WINTER.tree) : s0, hit = kind ? null : treeHit.get(key), now = performance.now();
   if (hit && now - hit.t > 20000) treeHit.delete(key);
   if (hit) rot = PixelAction.treeSway(now - hit.t);
   ctx.imageSmoothingEnabled = false;
@@ -3138,7 +3139,7 @@ function drawFelled(k, f, now, ctx = mainCtx) { // ต้นไม้ที่�
 // ร้านค้า: สไปรต์อาคาร + อีโมจิบนหลังคา + ป้ายชื่อกระดานไม้
 function drawBuilding(b) {
   const a = PixelArt.building(b), bx = b.x0 * TS, by = b.y0 * TS, bw = (b.x1 - b.x0 + 1) * TS;
-  ctx.drawImage(a.spr, bx + a.ox * 2, by + a.oy * 2, a.w * 2, a.h * 2);
+  ctx.drawImage(winterFlag ? snowSprite(a.spr, WINTER.roof) : a.spr, bx + a.ox * 2, by + a.oy * 2, a.w * 2, a.h * 2);
   const cx = bx + bw / 2;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   PixelUI.world(ctx, b.sign, cx, by - 10, 18);
@@ -3609,7 +3610,7 @@ function drawNight(dark, now) {
   if (dark <= 0.02) return;
   if (lightCv.width !== canvas.width || lightCv.height !== canvas.height) { lightCv.width = canvas.width; lightCv.height = canvas.height; }
   lctx.globalCompositeOperation = 'source-over'; lctx.setTransform(1, 0, 0, 1, 0, 0); lctx.clearRect(0, 0, lightCv.width, lightCv.height);
-  lctx.fillStyle = `rgba(5,9,32,${dark})`; lctx.fillRect(0, 0, lightCv.width, lightCv.height);
+  lctx.fillStyle = `rgba(${winterFlag ? WINTER.nightRGB : '5,9,32'},${dark})`; lctx.fillRect(0, 0, lightCv.width, lightCv.height);
   lctx.globalCompositeOperation = 'destination-out'; lctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
   const hole = (x, y, r, inner) => { const g = lctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(inner, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, r, 0, 7); lctx.fill(); };
   const fx = FIRE.x * TS + 16, fy = FIRE.y * TS + 12, fr = TS * 10.5 * (1 + Math.sin(now / 130) * 0.02 + Math.sin(now / 71) * 0.015);
@@ -4080,6 +4081,87 @@ function drawSnow(now) {
   }
   ctx.restore();
 }
+// ---------- ธีมหิมะ ระดับ 2: โทนสีหนาวของเมือง (ภาพล้วน เปิดตาม snowActive() เฉพาะในเมือง) ----------
+// ค่าสี/พารามิเตอร์ทั้งหมดอยู่ที่นี่ที่เดียว • พื้นฤดูหนาว (baseWinter) สร้างครั้งเดียวต่อการเปลี่ยนโหมด/ผังเมือง แบ่งทำทีละช่วงหลายเฟรมไม่ให้กระตุก แล้วคืนหน่วยความจำเมื่อปิดโหมด
+const WINTER = {
+  snow: ['#b9d3ea', '#c9ddf0', '#d9e8f6', '#e8f2fb', '#f7fbff'], sparkle: '#ffffff', sparkleDark: '#a9c8e6', sparkleDen: 0.014, // หญ้า → หิมะ (เงาฟ้าอ่อน → สว่าง) + ประกายพิกเซลตำแหน่งคงที่
+  path: ['#7fa6c6', '#91b5d2', '#a4c4de'], sand: ['#9dbfd8', '#b0cde3', '#c2d9ea'], // ทางเดิน/ลาน และทราย → น้ำแข็ง/หิมะบาง (เข้มกว่าพื้นหิมะ ยังเห็นเป็นทาง)
+  waterMix: [118, 150, 174, 0.55], iceMinR: 150, ice: ['#cfe5f2', '#e4f3fb'], iceEdge: '#e8f5fc', // น้ำเย็นลง (ผสมเทาฟ้า) · ริมตื้น/ขอบฝั่งเป็นน้ำแข็ง
+  fence: '#f4faff', fenceShade: '#bcd4ea', // หิมะบนสันรั้ว
+  tree: { depth: 4, white: '#f6fbff', blue: '#c2dbf0', dark: 70 }, roof: { depth: 3, white: '#f2f8fe', blue: '#bcd6ec', dark: 70 }, // หิมะบนยอดไม้/หลังคา (แถวพิกเซลบนสุดต่อคอลัมน์ ข้ามเส้นขอบมืด)
+  rentLine: 'rgba(60,110,160,.6)', destLine: 'rgba(40,80,130,.65)', // เส้นขอบแปลงเช่าว่าง/วงจุดหมายที่คลิก บนพื้นหิมะ
+  dayRGB: '175,215,255', dayA: 0.09, nightRGB: '6,16,58', // แสงกลางวันโทนเย็นฟ้า · กลางคืนฟ้าเข้มกว่าเดิม (เดิม 5,9,32)
+  sliceMs: 5, rowsPerSlice: 96,
+};
+let winterFlag = false, wJob = null, wCv = null, wSrc = null, wSpr = new WeakMap();
+const wRgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255]; };
+function snowSprite(spr, o) { // สำเนาสไปรต์ที่มีหิมะเกาะด้านบน (แคชต่อสไปรต์ ไม่แตะต้นฉบับ)
+  let c = wSpr.get(spr); if (c) return c;
+  const w = spr.width, h = spr.height; c = document.createElement('canvas'); c.width = w; c.height = h;
+  const cg = c.getContext('2d'); cg.drawImage(spr, 0, 0);
+  const im = cg.getImageData(0, 0, w, h), d = im.data, wh = wRgb(o.white), bl = wRgb(o.blue);
+  for (let x = 0; x < w; x++) {
+    const edge = Math.min(x, w - 1 - x) / (w / 2), dep = Math.max(1, Math.round(o.depth * (0.45 + edge) * (0.8 + hash(x, w, 77) * 0.4)));
+    let y = 0, n = 0;
+    while (y < h && d[(y * w + x) * 4 + 3] < 200) y++;
+    while (y < h && d[(y * w + x) * 4 + 3] >= 200 && d[(y * w + x) * 4] + d[(y * w + x) * 4 + 1] + d[(y * w + x) * 4 + 2] < o.dark * 3) y++; // ข้ามเส้นขอบมืดบนสุด
+    for (; y < h && n < dep; y++, n++) {
+      const i = (y * w + x) * 4; if (d[i + 3] < 200) break;
+      const k = n === dep - 1 && dep > 1 ? bl : wh; d[i] = k[0]; d[i + 1] = k[1]; d[i + 2] = k[2];
+    }
+  }
+  cg.putImageData(im, 0, 0); wSpr.set(spr, c); return c;
+}
+function winterStart() { // เริ่มงานสร้างพื้นฤดูหนาวจากพื้นปัจจุบัน (อ่านพิกเซลครั้งเดียว แล้วแปลงทีละแถบ)
+  const src = base, w = src.width, h = src.height, S = w / W, im = src.getContext('2d').getImageData(0, 0, w, h);
+  const types = new Uint8Array(W * H); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) types[y * W + x] = MAP[y][x];
+  const rows = MAP.map(r => r.slice());
+  const P = k => WINTER[k].map(wRgb);
+  wJob = { src, w, h, S, im, types, rows, y: 0, snow: P('snow'), path: P('path'), sand: P('sand'), ice: P('ice'), iceEdge: wRgb(WINTER.iceEdge), sp: wRgb(WINTER.sparkle), spd: wRgb(WINTER.sparkleDark) };
+}
+function winterStep() {
+  const J = wJob, { w, h, S, types, snow, path, sand, ice } = J, d = J.im.data, t0 = performance.now(), wm = WINTER.waterMix, ice0 = WINTER.iceMinR, den = WINTER.sparkleDen;
+  const ty = (px, py) => (px < 0 || py < 0 || px >= w || py >= h) ? -1 : types[((py / S) | 0) * W + ((px / S) | 0)];
+  while (J.y < h) {
+    const y = J.y, cy = (y / S) | 0;
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4, r = d[i], g = d[i + 1], b = d[i + 2], tt = types[cy * W + ((x / S) | 0)];
+      let c = null;
+      if (g > r && g > b && r >= g * 0.42 && r <= g * 0.85 && b <= g * 0.65) { // หญ้า (เฉดเขียวเหลืองของพื้น) → หิมะ + ประกาย
+        let k = Math.floor((g - 150) / 75 * snow.length); k = k < 0 ? 0 : k >= snow.length ? snow.length - 1 : k;
+        c = snow[k]; if (hash(x >> 1, y >> 1, 901) < den) c = k >= 3 ? J.spd : J.sp;
+      } else if (r > g && g > b && g >= 140 && r - b >= 20 && r - b <= 120 && tt !== T.FENCE && tt !== T.TREE && (tt === T.PATH || tt === T.SAND || tt === T.LANDMARK || tt === T.BUILD || tt === T.SHOP)) { // ดิน/ทราย/ลานปู → น้ำแข็ง
+        const pal = tt === T.SAND ? sand : path, l = (r + g + b) / 3; let k = Math.floor((l - 120) / 80 * pal.length); k = k < 0 ? 0 : k >= pal.length ? pal.length - 1 : k; c = pal[k];
+      } else if ((tt === T.WATER || tt === T.BRIDGE) && b > r + 40 && b >= g * 0.85) { // น้ำ → โทนเย็น
+        if (tt === T.WATER && (ty(x - 3, y) !== T.WATER && ty(x - 3, y) !== T.BRIDGE || ty(x + 3, y) !== T.WATER && ty(x + 3, y) !== T.BRIDGE || ty(x, y - 3) !== T.WATER && ty(x, y - 3) !== T.BRIDGE || ty(x, y + 3) !== T.WATER && ty(x, y + 3) !== T.BRIDGE)) c = J.iceEdge; // ขอบฝั่งเป็นน้ำแข็งบางๆ
+        else if (r >= ice0) c = ice[(r + g + b) / 3 > 215 ? 1 : 0]; // น้ำตื้นริมฝั่ง
+        else { const m = wm[3]; d[i] = Math.round(r + (wm[0] - r) * m); d[i + 1] = Math.round(g + (wm[1] - g) * m); d[i + 2] = Math.round(b + (wm[2] - b) * m); }
+      }
+      if (c) { d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; }
+    }
+    J.y++;
+    if ((J.y % 16 === 0 || J.y === h) && performance.now() - t0 > WINTER.sliceMs) break; // พอแล้วสำหรับเฟรมนี้ ที่เหลือเฟรมหน้า
+  }
+  if (J.y < h) return false;
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.putImageData(J.im, 0, 0);
+  const U2 = S / PixelArt.U, isF = (x, y) => J.rows[y] && J.rows[y][x] === T.FENCE, u = (n) => n * U2; // รั้ว: หิมะบางๆ บนสันราวและหัวเสา (หน่วยสไปรต์ 16 px ต่อช่อง)
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (!isF(x, y)) continue;
+    const px = x * PixelArt.U, py = y * PixelArt.U, L = isF(x - 1, y), R = isF(x + 1, y), Up = isF(x, y - 1), Dn = isF(x, y + 1);
+    if (L || R || !(Up || Dn)) { const x0 = L ? px : px + 6, x1 = R ? px + PixelArt.U : px + 10; g.fillStyle = WINTER.fence; g.fillRect(u(x0), u(py + 4), u(x1 - x0), u(1)); g.fillStyle = WINTER.fenceShade; g.fillRect(u(x0), u(py + 5), u(x1 - x0), u(1) / 2); }
+    g.fillStyle = WINTER.fence; g.fillRect(u(px + 5), u(py + 1), u(6), u(2)); g.fillStyle = WINTER.fenceShade; g.fillRect(u(px + 6), u(py + 3), u(4), u(1) / 2);
+  }
+  { const B = Shared.HOUSE_BLD, hs = PixelArt.bigHouse(), bx = B.x0 * TS, by = B.y0 * TS; g.imageSmoothingEnabled = false; g.drawImage(snowSprite(hs.spr, WINTER.roof), bx + hs.ox * 2, by + hs.oy * 2, hs.w * 2, hs.h * 2); } // บ้านหลังใหญ่ (วาดอยู่ในพื้น) ทับด้วยสไปรต์ที่มีหิมะ
+  wCv = cv; wSrc = J.src; wJob = null; return true;
+}
+function winterBase(on) { // พื้นที่จะวาดตอนนี้: ฤดูหนาวถ้าพร้อม ไม่งั้นพื้นเดิม (ระหว่างสร้างใช้พื้นเดิมไปก่อน) • ปิดโหมดแล้วคืนหน่วยความจำ
+  if (!on) { if (wCv || wJob) { wCv = null; wSrc = null; wJob = null; wSpr = new WeakMap(); } return base; }
+  if (wCv && wSrc === base) return wCv;
+  if (wJob && wJob.src !== base) wJob = null;
+  if (!wJob) winterStart();
+  winterStep();
+  return wCv && wSrc === base ? wCv : base;
+}
 function frameTail(now, wall) { // กลางวัน/กลางคืน + นาฬิกา + แผนที่ย่อ (ใช้ทั้งในเมืองและในบ้าน)
   if (ft && !ft.end) { const n = performance.now(); Shared.fightStep(ft, Math.min(250, n - ft.last), ftHold); ft.last = n; fightUI(); if (ft.end) fightUI(); } // ทำนายล่วงหน้า (ผลจริงตัดสินที่เซิร์ฟเวอร์ ส่งสถานะมาปรับทุก 150 ms)
   if (fg) { // ตัวชี้เกจตกปลา (เส้นทางเดียวกับที่เซิร์ฟเวอร์คำนวณ) อยู่ที่นี่เพื่อให้ขยับทุกฉาก ทั้งเมือง บ้าน ถ้ำ และทะเล (เดิมอยู่ในรอบวาดเมืองอย่างเดียว ในทะเลตัวชี้เลยค้างอยู่ซ้ายสุด)
@@ -4089,6 +4171,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
   const dark = daylight(hour);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (winterFlag && dark < 0.75) { ctx.fillStyle = `rgba(${WINTER.dayRGB},${WINTER.dayA * (1 - dark / 0.75)})`; ctx.fillRect(0, 0, canvas.width, canvas.height); } // แสงกลางวันโทนเย็นฟ้าอ่อน จางลงตอนมืด
   drawNight(inSea() ? dark : cave ? 0.6 : scene ? dark * 0.4 : dark, now); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
   if (inTown() && snowActive(now)) drawSnow(now); else snowLast = 0;
   if (inTown()) drawGuideArrow(now);
@@ -4218,9 +4301,10 @@ function step(now) {
   ctx.fillStyle = scene ? '#17110d' : inSea() ? '#1c5f8f' : cave ? '#0b0a10' : '#2d4a2b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
   ctx.imageSmoothingEnabled = false;
+  winterFlag = inTown() && snowActive(now); // ธีมหิมะระดับ 2 (โทนหนาว) ใช้เงื่อนไขเดียวกับหิมะตก เฉพาะในเมือง
   if (scene) { drawHouseWorld(now); frameTail(now, wall); return; } // ในบ้านวาดแยกแบบไอโซเมตริก
   if (cave) { drawCaveWorld(now); frameTail(now, wall); return; } // ในถ้ำวาดแยก: พื้น/ผนังถ้ำ ก้อนแร่ ผู้เล่น
-  ctx.drawImage(base, 0, 0, W * TS, H * TS);
+  ctx.drawImage(winterBase(winterFlag), 0, 0, W * TS, H * TS);
   ctx.drawImage(baseHi, 0, 0);
 
   const x0 = Math.max(0, Math.floor(camX / TS)), x1 = Math.min(W - 1, Math.ceil((camX + vw) / TS));
@@ -4272,7 +4356,7 @@ function step(now) {
   if (inTown()) for (const P of Shared.FARM_RENT.plots) {
     if (P.x1 < x0 || P.x0 > x1 || P.y1 < y0 || P.y0 > y1) continue;
     const r = rentsSt[P.id], active = r && r.until > Date.now() + timeOffset;
-    ctx.save(); ctx.setLineDash([6, 4]); ctx.lineWidth = 2; ctx.strokeStyle = active ? 'rgba(255,214,90,.9)' : 'rgba(255,255,255,.35)';
+    ctx.save(); ctx.setLineDash([6, 4]); ctx.lineWidth = 2; ctx.strokeStyle = active ? 'rgba(255,214,90,.9)' : winterFlag ? WINTER.rentLine : 'rgba(255,255,255,.35)';
     ctx.strokeRect(P.x0 * TS + 2, P.y0 * TS + 2, (P.x1 - P.x0 + 1) * TS - 4, (P.y1 - P.y0 + 1) * TS - 4); ctx.restore();
     if (active) { ctx.font = 'bold 11px sans-serif'; const t = `🏡 ${r.name}`, w = ctx.measureText(t).width + 8; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(P.x0 * TS + 4, P.y0 * TS + 4, w, 15); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, P.x0 * TS + 8, P.y0 * TS + 15); }
   }
@@ -4286,8 +4370,9 @@ function step(now) {
   }
   // จุดหมายที่คลิกให้เดิน
   if (walk && walk.dest) {
-    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(walk.dest[0] * TS + 16, walk.dest[1] * TS + 16, 6 + Math.sin(now / 150) * 2, 0, 7); ctx.stroke();
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(walk.dest[0] * TS + 16, walk.dest[1] * TS + 16, 6 + Math.sin(now / 150) * 2, 0, 7);
+    if (winterFlag) { ctx.strokeStyle = WINTER.destLine; ctx.lineWidth = 4; ctx.stroke(); ctx.lineWidth = 2; } // บนพื้นหิมะวงขาวจม: ใส่ขอบเข้มรองใต้วง
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke();
   }
   // ไม่วาดกรอบสี่เหลี่ยมบนพื้นแล้ว (ช่องที่ชี้/ช่องที่คลิก) — ใช้เคอร์เซอร์เมาส์เปลี่ยนเป็นรูปมือเมื่อชี้ของที่กดได้แทน
   { let cur = ''; if (mouse.active && !isTouch && mouse.tx >= 0 && mouse.ty >= 0 && mouse.tx < W && mouse.ty < H && (interactive(mouse.tx, mouse.ty) || hubSignAt(mouse.tx, mouse.ty))) cur = 'pointer'; if (canvas.style.cursor !== cur) canvas.style.cursor = cur; }
