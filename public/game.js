@@ -3398,10 +3398,10 @@ function drawPlayer(p, now, cx) {
 const blinkOf = (c, now) => ((now / 1000 + (c.id || 0) * 1.3) % 4) < 0.14;
 const blush = (bx, by, r) => { ctx.fillStyle = 'rgba(255,120,145,.55)'; ctx.beginPath(); ctx.arc(bx, by, r, 0, 7); ctx.fill(); };
 // สัตว์: สไปรต์พิกเซลจาก pixelui.js (หันขวา ซ้ายพลิกกลับ) ส่วนอีโมจิผลผลิต/หัวใจลอยเหนือหัววาดแบบพิกเซลเช่นกัน
-const ANIMAL_SHADOW = { chicken: [7, 3, 7], duck: [7, 3, 7], sheep: [13, 4, 10], cow: [15, 5, 11], pig: [12, 4, 9] };
-const ANIMAL_STEP = { chicken: 5, duck: 4.5, pig: 4, sheep: 3.5, cow: 3 }; // เฟรมเดินต่อวินาที (ตัวใหญ่ก้าวช้ากว่า)
+const ANIMAL_SHADOW = { chicken: [7, 3, 7], duck: [7, 3, 7], sheep: [13, 4, 10], cow: [15, 5, 11], pig: [12, 4, 9], alpaca: [13, 4, 10], horse: [16, 5, 12], boar: [12, 4, 9]};
+const ANIMAL_STEP = { chicken: 5, duck: 4.5, pig: 4, sheep: 3.5, cow: 3, alpaca: 3.5, horse: 3.5, boar: 4}; // เฟรมเดินต่อวินาที (ตัวใหญ่ก้าวช้ากว่า)
 function drawAnimalPx(type, c, now, top, prodE) {
-  const x = c.x, y = c.y, moving = !!c.moving, sh = ANIMAL_SHADOW[type];
+  const x = c.x, y = c.y, moving = !!c.moving, sh = ANIMAL_SHADOW[type] || ANIMAL_SHADOW.pig; // กันสัตว์ชนิดใหม่ที่ลืมใส่เงา (เคยทำให้วาดล้มทั้งเฟรม)
   const eat = !moving && (c.still || 0) > 0.8 && !c.sick && !c.prod && ((c.happyAt && now - c.happyAt < 1800) || ((now / 1000 + (c.id || 0) * 2.7) % 11) < 3); // หยุดนิ่งสักพักแล้วค่อยก้มกิน ไม่ก้มทันทีที่หยุด
   ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(x, y + sh[2], sh[0], sh[1], 0, 0, 7); ctx.fill();
   const step = eat ? (((now / (type === 'chicken' ? 900 : 1500) + (c.id || 0) * 0.37) % 1) > 0.8 ? 1 : 0) : moving ? Math.floor(c.anim * (ANIMAL_STEP[type] || 4)) % 2 : 0;
