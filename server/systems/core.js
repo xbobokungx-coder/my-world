@@ -118,6 +118,7 @@ module.exports = {
     const xb = this.petBonus(p).xp; if (xb > 0 && n > 0) { const f = n * (1 + xb); n = Math.floor(f) + (Math.random() < f - Math.floor(f) ? 1 : 0); } // 📚 สัตว์เลี้ยง: XP เพิ่ม (ปัดแบบสุ่มตามเศษ ไม่ให้ค่าน้อยๆ สูญ)
     const r = p.rec.skills, before = S.levelOf(r[skill], skill);
     r[skill] = (r[skill] || 0) + n;
+    if (n > 0) { const wk = this.weekKey(), w = p.rec.wkx; if (!w || typeof w !== 'object' || w.k !== wk) p.rec.wkx = { k: wk, xp: n }; else w.xp = (Number.isFinite(w.xp) ? w.xp : 0) + n; } // XP รายสัปดาห์สำหรับป้ายอันดับ (เพิ่มใหม่ ผู้เล่นเก่าเริ่มที่ 0)
     send(p, { t: 'skills', skills: r });
     const after = S.levelOf(r[skill], skill);
     if (after > before) { logEv(this.room, 'level', { p: p.key, skill, lv: after }); this.toast(p, `🎉 ${S.SKILLS[skill].emoji} ${S.SKILLS[skill].name} เลเวล ${after}!`); this.addLog(`⭐ ${p.name} เลื่อนเป็น ${S.SKILLS[skill].emoji} ${S.SKILLS[skill].name} เลเวล ${after}`); this.sfxTo(p, 'levelup'); this.broadcast(after - before > 1 ? { t: 'lvup', id: p.id, skill, lv: after, n: after - before } : { t: 'lvup', id: p.id, skill, lv: after }); }

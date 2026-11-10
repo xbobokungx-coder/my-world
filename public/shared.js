@@ -1067,9 +1067,11 @@
     { x: 36, y: 25, kind: 'chair', face: 2 }, { x: 36, y: 27, kind: 'chair', face: 2 },
   ];
   // กระดานข่าว (log ของโลก) และตู้เซฟกองกลาง อยู่ขอบเหนือของลานกองไฟ (ช่องเดินผ่านไม่ได้ กดจากช่องติดกัน)
-  const BOARD = { x: 29, y: 21 }, ATM = { x: 31, y: 21 }, LUCKY = { x: 36, y: 21 }; // LUCKY = ตู้ Lucky Lotto
+  const BOARD = { x: 30, y: 21 }, RANKBOARD = { x: 32, y: 21 }, ATM = { x: 34, y: 21 }, LUCKY = { x: 36, y: 21 }; // LUCKY = ตู้ Lucky Lotto
   const TOWN = { logMax: 15, revive: 0.5 };
-  const townAt = (tx, ty) => (tx === BOARD.x && ty === BOARD.y ? 'board' : tx === ATM.x && ty === ATM.y ? 'atm' : tx === LUCKY.x && ty === LUCKY.y ? 'lotto' : tx === SEA.dock.x && ty === SEA.dock.y ? 'sea' : null);
+  // ป้ายอันดับกลางเมือง: top = จำนวนแถวต่อแท็บ, cacheMs = อายุแคชผลคำนวณ, minXp = XP รวมขั้นต่ำถึงจะนับเป็นผู้เล่นจริง (เกณฑ์เดียวกับ tools/realplayers.js)
+  const RANK = { top: 10, cacheMs: 45000, minXp: 150 };
+  const townAt = (tx, ty) => (tx === BOARD.x && ty === BOARD.y ? 'board' : tx === RANKBOARD.x && ty === RANKBOARD.y ? 'rank' : tx === ATM.x && ty === ATM.y ? 'atm' : tx === LUCKY.x && ty === LUCKY.y ? 'lotto' : tx === SEA.dock.x && ty === SEA.dock.y ? 'sea' : null);
   const reviveCost = type => Math.round(ANIMALS[type].price * TOWN.revive); // เลิกใช้ใน UI แล้ว
   // เควสประจำวัน (วันตามปฏิทินของเซิร์ฟเวอร์): แต่ละคนได้ 3 เควสจาก 3 สายอาชีพที่ต่างกัน ทำเสร็จได้ XP + เหรียญทันที ยิ่งทำสะสมยิ่งได้ฉายา
   // ev = เหตุการณ์ที่นับ, distinct = นับเฉพาะชนิดที่ยังไม่เคยทำวันนี้, min = เฉพาะปลาที่ราคาขายตั้งแต่นี้ขึ้นไป
@@ -1449,7 +1451,7 @@
     // แถวยืนหน้าประตูปูทางทุกร้าน ให้ต่อกับถนน ร้านจะได้ไม่ลอยอยู่กลางหญ้า
     if (!bare) for (const b of BUILDINGS) if (b.counter.length) for (let x = b.x0; x <= b.x1; x++) setIfGrass(x, b.y1 + 1, T.PATH);
     if (!bare) for (const c of CABINETS) set(c.x, c.y, T.SHOP); // ตู้เกมเป็นช่องที่เดินผ่านไม่ได้ แต่ใช้งานได้จากช่องติดกัน
-    if (!bare) { set(ATM.x, ATM.y, T.SHOP); set(BOARD.x, BOARD.y, T.SHOP); set(LUCKY.x, LUCKY.y, T.SHOP); } // กระดานข่าว + ตู้เซฟกองกลาง
+    if (!bare) { set(ATM.x, ATM.y, T.SHOP); set(RANKBOARD.x, RANKBOARD.y, T.SHOP); set(BOARD.x, BOARD.y, T.SHOP); set(LUCKY.x, LUCKY.y, T.SHOP); } // กระดานข่าว + ตู้เซฟกองกลาง
     if (!bare) set(FIRE.x, FIRE.y, T.BUILD);                    // กองไฟ (เดินผ่านไม่ได้)
     // ต้นไม้ขอบแมพ + กระจายในที่ว่าง
     for (let x = 0; x < W; x++) { set(x, 0, T.TREE); set(x, H - 1, T.TREE); }
@@ -1545,11 +1547,15 @@
       const dx = num(f.x) - FIRE.x, dy = num(f.y) - FIRE.y;
       FIRE.x += dx; FIRE.y += dy; shiftRect(PLAZA, dx, dy); shiftRect(PAVED_RECTS[3], dx, dy);
       for (const q of SEATS) { q.x += dx; q.y += dy; }
-      for (const o of [BOARD, ATM, LUCKY]) { o.x += dx; o.y += dy; }
+      for (const o of [BOARD, RANKBOARD, ATM, LUCKY]) { o.x += dx; o.y += dy; }
       SPAWN.x += dx * TS; SPAWN.y += dy * TS; STARTER_GO.sit = [STARTER_GO.sit[0] + dx, STARTER_GO.sit[1] + dy];
       LAYOUT_SHIFT.x = dx; LAYOUT_SHIFT.y = dy;
     }
-    for (const [id, o] of [['board', BOARD], ['atm', ATM], ['lotto', LUCKY]]) { const v = it[id]; if (v && num(v.x) !== null && num(v.y) !== null) { o.x = num(v.x); o.y = num(v.y); } }
+    for (const [id, o] of [['board', BOARD], ['rank', RANKBOARD], ['atm', ATM], ['lotto', LUCKY]]) { const v = it[id]; if (v && num(v.x) !== null && num(v.y) !== null) { o.x = num(v.x); o.y = num(v.y); } }
+    { // ผังเก่าที่ผู้ดูแลเคยบันทึกไว้อาจวางป้ายอื่นทับช่องป้ายอันดับ → ขยับป้ายอันดับไปช่องว่างใกล้สุดในแถวเดียวกัน (กันกดตู้/ป้ายเดิมไม่ได้)
+      const taken = (x, y) => [BOARD, ATM, LUCKY].some(o => o.x === x && o.y === y) || CABINETS.some(c => c.x === x && c.y === y);
+      for (let d = 0; d < 8 && taken(RANKBOARD.x, RANKBOARD.y); d++) { const x0 = RANKBOARD.x; for (const x of [x0 + 1, x0 - 1]) if (!taken(x, RANKBOARD.y)) { RANKBOARD.x = x; break; } if (RANKBOARD.x === x0) RANKBOARD.x = x0 + 1; }
+    }
     CABINETS.forEach((c, i) => { const v = it['cab' + i]; if (v && num(v.x) !== null && num(v.y) !== null) { c.x = num(v.x); c.y = num(v.y); } });
     for (const b of BUILDINGS) {
       const v = it['b_' + b.kind]; if (!v || num(v.x) === null || num(v.y) === null) continue;
@@ -1591,7 +1597,7 @@
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
-  const api = { OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

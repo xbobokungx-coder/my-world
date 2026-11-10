@@ -3,7 +3,7 @@
 const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-  GAME_TITLES, COOK, COOK_FEE, craftFee, COOK_CATS, cookCat, PROJECTS, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, woodXp, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, LUCKY, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, playLevel, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, SELLABLE } = Shared;
+  GAME_TITLES, COOK, COOK_FEE, craftFee, COOK_CATS, cookCat, PROJECTS, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, woodXp, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, RANKBOARD, LUCKY, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, playLevel, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, SELLABLE } = Shared;
 const MAP = makeMap();
 const $ = id => document.getElementById(id);
 const canvas = $('c'), ctx = canvas.getContext('2d'), mainCtx = ctx;
@@ -34,7 +34,7 @@ const players = new Map(), animals = new Map(), npcs = new Map(); const roster =
 const presence = (id, fn) => { for (const p of [players.get(id), roster.get(id)]) if (p) fn(p); }; // roster = ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้รายชื่อและการโทร • players = คนในฉากเดียวกัน (วาดและเสียงรอบตัว) // npcs = ชาวเมือง NPC (ไม่นับเป็นผู้เล่น)
 let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, hunger = 80;
 const furn = new Map();               // เฟอร์นิเจอร์ในบ้านที่เปิดอยู่ (ฉากบ้าน): id -> { i, f, x, y, r, z, on, wl, u } พิกัดหน่วยช่อง
-let townLog = [], townTab = 'log', lottoSt = null;
+let townLog = [], townTab = 'log', lottoSt = null, rankSt = null, rankTab = 'lv', rankSub = 'all';
 let arcSt = { pts: 0, total: 0, wk: 0 };                               // แต้มตู้เกมของเรา
 let lbSt = { total: [], wk: [], me: null }, hubTab = 'rank';           // Leaderboard + ศูนย์รวมแต้ม/รางวัล
 let questSt = { list: [], total: 0, title: '', pts: { bal: 0, earned: 0 } }, fameSt = {};
@@ -270,6 +270,7 @@ function handle(m) {
     case 'orders_upd': if (townShown() && townTab === 'orders') send({ t: 'orders', a: 'list' }); break;
     case 'rents': rentsSt = m.r || {}; if (!$('shop').classList.contains('hidden')) renderShop(); break;
     case 'arcpts': arcSt = m.arc; if (hubShown()) renderHub(); break;
+    case 'rank': rankSt = m; if (townShown() && townTab === 'rank') renderTown(); break;
     case 'lb': lbSt = m; if (hubShown()) renderHub(); break;
     case 'town': if (m.w === 'sea') {
       if (m.boat) { // มีเรือเอง: ออกได้ทุกเวลา ไม่จำกัดเวลา ขับเรือเองในทะเลใหญ่
@@ -277,7 +278,7 @@ function handle(m) {
       }
       if (m.win && !m.win.ok) { toast(m.win.why); break; }
       ask(`⛵ เช่าเรือออกทะเลใหญ่? ค่าเช่า 🪙${m.fee} • ขับเรือเองได้ราว ${Math.max(1, Math.round(m.win.ms / 60000))} นาทีจนร้านเช่าปิด 19:00 (เปิด 06:00–19:00 เวลาเกม) • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • (ซื้อเรือของตัวเองที่ร้านยานพาหนะ ออกได้ทุกเวลาไม่จำกัดเวลา)`, () => send({ t: 'sea' })); break;
-    } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : 'log'); break;
+    } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : m.w === 'rank' ? 'rank' : 'log'); break;
     case 'scene': applyScene(m); break;
     case 'hboard': hboard = m; if (plotsShown()) renderPlots(); break;
   }
@@ -391,7 +392,7 @@ if (typeof MapEdit !== 'undefined') MapEdit.bind();
 
 // ---------- เมือง: ข่าว + ตู้เซฟกองกลาง ----------
 const townShown = () => !$('town').classList.contains('hidden');
-function openTown(tab) { closeOthers('town'); townTab = tab || townTab; if (townTab === 'lotto') send({ t: 'lotto', a: 'get' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); $('town').classList.remove('hidden'); renderTown(); }
+function openTown(tab) { closeOthers('town'); townTab = tab || townTab; if (townTab === 'lotto') send({ t: 'lotto', a: 'get' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); if (townTab === 'rank') send({ t: 'rank' }); $('town').classList.remove('hidden'); renderTown(); }
 function closeTown() { $('town').classList.add('hidden'); }
 function updateHappyChip() {
   const el = $('happyChip'); if (!el) return;
@@ -690,13 +691,47 @@ function bindLotto(el) {
   const lt = lottoSt && lottoSt.last, chk = $('lchk');
   if (lt && chk && window.crypto && crypto.subtle) crypto.subtle.digest('SHA-256', new TextEncoder().encode(lt.salt + ':' + lt.nums.join(','))).then(b => { const hx = [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); chk.textContent = hx === lt.hash ? '✅ ตรงกับลายนิ้วมือที่ประกาศไว้ก่อนขายตั๋ว' : '❌ ไม่ตรง'; });
 }
+function renderRankTab(el) {
+  const R = rankSt, medal = ['🥇', '🥈', '🥉'], myName = me && me.name;
+  const tabs = [['lv', '⭐ เลเวล'], ['wk', '📅 สัปดาห์นี้'], ['rich', '💰 เศรษฐี'], ['arc', '🎮 ตู้เกม']];
+  let h = `<div class="chips" style="margin:0 0 8px">${tabs.map(([k, n]) => `<button class="chip${rankTab === k ? ' sel' : ''}" data-rtab="${k}">${n}</button>`).join('')}</div>`;
+  if (!R) { el.innerHTML = h + '<p style="opacity:.7">กำลังโหลด...</p>'; }
+  else {
+    const mine = R.me || {};
+    const list = (arr, unit, rank, label) => {
+      let o = (arr && arr.length) ? arr.map((x, i) => `<div class="rkrow${x.n === myName ? ' me' : ''}"><span>${medal[i] || ('#' + (i + 1))} <b>${esc(x.n)}</b>${x.n === myName ? ' <small>(คุณ)</small>' : ''}</span><span>${unit(x)}</span></div>`).join('') : '<p style="opacity:.7">ยังไม่มีใครติดอันดับ</p>';
+      if (rank != null) o += `<div class="banner" style="background:#fff3cf;margin-top:8px">${rank > 0 ? `👤 คุณอยู่อันดับที่ <b>${rank}</b>${label || ''}` : '👤 คุณยังไม่ติดอันดับ ลองเล่นเก็บแต้มดูนะ'}</div>`;
+      return o;
+    };
+    if (rankTab === 'lv') {
+      const subs = [['all', '🌟 รวม']].concat(Object.keys(R.lv || {}).filter(k => k !== 'all' && SKILLS[k]).map(k => [k, SKILLS[k].emoji + ' ' + SKILLS[k].name]));
+      if (!subs.some(x => x[0] === rankSub)) rankSub = 'all';
+      h += `<div class="chips" style="margin:0 0 8px">${subs.map(([k, n]) => `<button class="chip${rankSub === k ? ' sel' : ''}" data-rsub="${k}">${esc(n)}</button>`).join('')}</div>`;
+      h += '<div class="sec">' + (rankSub === 'all' ? '🌟 เลเวลรวมทุกอาชีพ' : '⭐ เลเวล' + esc(SKILLS[rankSub].name)) + ' (Top 10)</div>'
+        + list((R.lv || {})[rankSub], x => rankSub === 'all' ? `รวม <b>${x.lv}</b> เลเวล` : `Lv <b>${x.lv}</b> <small>(${x.xp.toLocaleString()} XP)</small>`, (mine.lv || {})[rankSub]);
+    } else if (rankTab === 'wk') {
+      h += '<div class="sec">📅 XP สัปดาห์นี้ (Top 10)</div>' + list(R.wk, x => `<b>${x.xp.toLocaleString()}</b> XP`, mine.wk)
+        + '<p style="font-size:12px;opacity:.65;margin-top:10px">รีเซ็ตทุกสัปดาห์ คนใหม่ก็ขึ้นอันดับได้</p>';
+    } else if (rankTab === 'rich') {
+      h += '<div class="sec">💰 เหรียญที่มีอยู่ (Top 10)</div>' + list(R.rich, x => `🪙 <b>${x.coin.toLocaleString()}</b>`, mine.rich);
+    } else {
+      const a = R.arc || {};
+      h += '<div class="sec">🏆 แต้มตู้เกมสะสม (Top 10)</div>' + list(a.total, x => `<b>${x.total.toLocaleString()}</b> แต้ม`, mine.arc)
+        + '<div class="sec">📅 แต้มตู้เกมสัปดาห์นี้ (Top 10)</div>' + list(a.wk, x => `<b>${x.wk.toLocaleString()}</b> แต้ม`, null);
+    }
+    el.innerHTML = h;
+  }
+  el.querySelectorAll('[data-rtab]').forEach(b => b.onclick = () => { rankTab = b.dataset.rtab; renderTown(); });
+  el.querySelectorAll('[data-rsub]').forEach(b => b.onclick = () => { rankSub = b.dataset.rsub; renderTown(); });
+}
 function renderTown() {
-  $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM', lotto: '🎟️ Lucky Lotto' })[townTab] || '📰 ข่าวเมือง';
+  $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM', lotto: '🎟️ Lucky Lotto', rank: '🏆 ป้ายอันดับ' })[townTab] || '📰 ข่าวเมือง';
   document.querySelectorAll('[data-ttab]').forEach(t => t.classList.toggle('on', t.dataset.ttab === townTab));
   const el = $('townBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   if (townTab === 'bank') return renderBankTab(el);
   if (townTab === 'lotto') { el.innerHTML = lottoCard(); bindLotto(el); return; }
   if (townTab === 'fame') return renderFameTab(el);
+  if (townTab === 'rank') return renderRankTab(el);
   const tabs = ['log', 'stall', 'orders'].includes(townTab) ? `<div class="chips" style="margin:0 0 8px">${[['log', '📰 ข่าว'], ['stall', '🛒 ตลาดนัด'], ['orders', '📋 ใบงาน']].map(([k, n]) => `<button class="chip${townTab === k ? ' sel' : ''}" data-ttab2="${k}">${n}</button>`).join('')}</div>` : '';
   const bindTabs = () => el.querySelectorAll('[data-ttab2]').forEach(b => b.onclick = () => { townTab = b.dataset.ttab2; if (townTab === 'stall') send({ t: 'stall', a: 'list' }); if (townTab === 'orders') send({ t: 'orders', a: 'list' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); renderTown(); });
   if (townTab === 'stall') { // แผงฝากขาย: ซื้อของจากผู้เล่น / วางขายของตัวเอง
@@ -2951,6 +2986,13 @@ function buildBase() {
     g.fillStyle = '#8b5a2b'; g.fillRect(bx, by - 8, 32, 24); g.fillStyle = '#f4ecd2'; g.fillRect(bx + 3, by - 5, 26, 18);
     g.fillStyle = '#c9a869'; g.fillRect(bx + 6, by - 2, 9, 7); g.fillRect(bx + 17, by - 2, 9, 5); g.fillRect(bx + 8, by + 7, 12, 3);
     g.fillStyle = '#d63a2f'; g.fillRect(bx + 14, by - 6, 4, 4); }
+  { const rx = RANKBOARD.x * TS, ry = RANKBOARD.y * TS; // ป้ายอันดับ: กระดานไม้เหมือนป้ายข่าว มีถ้วยทองกับแท่งอันดับ
+    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(rx + 2, ry + 27, 28, 5);
+    g.fillStyle = '#6b4423'; g.fillRect(rx + 5, ry + 10, 4, 21); g.fillRect(rx + 23, ry + 10, 4, 21);
+    g.fillStyle = '#8b5a2b'; g.fillRect(rx, ry - 8, 32, 24); g.fillStyle = '#2f3f5c'; g.fillRect(rx + 3, ry - 5, 26, 18);
+    g.fillStyle = '#f1c40f'; g.fillRect(rx + 12, ry - 3, 8, 5); g.fillRect(rx + 14, ry + 2, 4, 3); g.fillRect(rx + 12, ry + 5, 8, 2);
+    g.fillStyle = '#c9a869'; g.fillRect(rx + 5, ry + 6, 6, 5); g.fillRect(rx + 21, ry + 8, 6, 3); g.fillStyle = '#e8e8e8'; g.fillRect(rx + 13, ry + 8, 6, 3);
+    g.fillStyle = '#d63a2f'; g.fillRect(rx + 14, ry - 6, 4, 3); }
   { const ax = ATM.x * TS, ay = ATM.y * TS; // ตู้ ATM
     g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(ax + 2, ay + 27, 28, 5);
     g.fillStyle = '#4b5d73'; g.fillRect(ax + 4, ay - 8, 24, 37); g.fillStyle = '#6c819b'; g.fillRect(ax + 4, ay - 8, 24, 5);
@@ -2963,7 +3005,7 @@ function buildBase() {
     g.fillStyle = '#fff3c4'; g.fillRect(lx + 8, ly - 2, 16, 11); g.fillStyle = '#c0392b'; g.fillRect(lx + 10, ly + 1, 3, 5); g.fillRect(lx + 14, ly + 1, 3, 5); g.fillRect(lx + 18, ly + 1, 3, 5);
     g.fillStyle = '#222'; g.fillRect(lx + 9, ly + 13, 14, 6); g.fillStyle = '#f1c40f'; g.fillRect(lx + 11, ly + 15, 10, 2); g.fillStyle = '#111'; g.fillRect(lx + 10, ly + 22, 12, 3); }
   { const tag = (txt, cx, y) => { gh.font = 'bold 8px sans-serif'; const w = gh.measureText(txt).width + 8; g.fillStyle = 'rgba(40,28,14,.85)'; g.fillRect(cx - w / 2, y, w, 11); gh.fillStyle = '#fff'; gh.textAlign = 'center'; gh.textBaseline = 'middle'; gh.fillText(txt, cx, y + 5.5); }; // ป้ายชื่อเหนือกระดานข่าว ATM และตู้กองกลาง
-    tag('ข่าวเมือง', BOARD.x * TS + 16, BOARD.y * TS - 22); tag('ATM', ATM.x * TS + 16, ATM.y * TS - 22); tag('Lucky Lotto', LUCKY.x * TS + 16, LUCKY.y * TS - 22); }
+    tag('ข่าวเมือง', BOARD.x * TS + 16, BOARD.y * TS - 22); tag('อันดับ', RANKBOARD.x * TS + 16, RANKBOARD.y * TS - 22); tag('ATM', ATM.x * TS + 16, ATM.y * TS - 22); tag('Lucky Lotto', LUCKY.x * TS + 16, LUCKY.y * TS - 22); }
   // เสาไฟ + กระถางดอกไม้รอบลาน (ภาพพื้นอย่างเดียว ไม่ชนการเดิน/เคาน์เตอร์) ให้หนาแน่นใกล้ภาพอ้างอิง
   { const lamp = (tx, ty) => {
       const px = tx * TS, py = ty * TS;

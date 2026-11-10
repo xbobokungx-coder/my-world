@@ -345,6 +345,7 @@ class World {
       }
       case 'arc': this.arcHandle(p, m); break;
       case 'lb': this.sendLeaderboard(p); break;
+      case 'rank': this.sendRank(p); break;
       case 'arcbuy': this.arcBuy(p, m.id); break;
       case 'rent': this.rentHandle(p, String(m.id || '')); break;
       case 'veh': this.setVeh(p, m.v); break;
@@ -688,6 +689,7 @@ mix(World, require('./server/systems/lotto.js')); // ระบบหวย (ย�
 mix(World, require('./server/systems/cinema.js')); // ระบบโรงหนัง (ย้ายไป server/systems/cinema.js)
 mix(World, require('./server/systems/npc.js')); // ชาวเมืองและสัตว์ประกอบฉาก (ย้ายไป server/systems/npc.js)
 mix(World, require('./server/systems/telemetry.js')); // สถิติการกระทำ/ความมั่งคั่ง (ย้ายไป server/systems/telemetry.js)
+mix(World, require('./server/systems/rank.js')); // ป้ายอันดับกลางเมือง (server/systems/rank.js)
 mix(World, require('./server/systems/bank.js')); // ธนาคาร ATM (ย้ายไป server/systems/bank.js)
 mix(World, require('./server/systems/crafting.js')); // เชฟและคราฟต์ (ย้ายไป server/systems/crafting.js)
 mix(World, require('./server/systems/orders.js')); // ใบงาน NPC (ย้ายไป server/systems/orders.js)
@@ -847,10 +849,10 @@ function banList() { // รายชื่อที่ถูกแบนทุ�
   return out;
 }
 // ----- ผังเมืองที่ผู้ดูแลย้ายได้ (ร้าน/ป้าย Arcade/ตู้เกม/กองไฟ+ลาน/ATM/กระดานข่าว/ตู้เซฟ) -----
-const LAYOUT_IDS = /^(b_[a-z]+|cab[0-9]|fire|atm|board|lotto)$/;
+const LAYOUT_IDS = /^(b_[a-z]+|cab[0-9]|fire|atm|board|rank|lotto)$/;
 const cleanLayoutItems = raw => { const out = {}; if (raw && typeof raw === 'object') for (const [id, v] of Object.entries(raw)) { if (!LAYOUT_IDS.test(id) || !v) continue; const x = Math.trunc(+v.x), y = Math.trunc(+v.y); if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < S.W && y < S.H) out[id] = { x, y }; } return out; };
-const liveLayoutItems = (Sx) => { const o = {}; for (const b of Sx.BUILDINGS) o['b_' + b.kind] = { x: b.x0, y: b.y0 }; Sx.CABINETS.forEach((c, i) => { o['cab' + i] = { x: c.x, y: c.y }; }); o.fire = { x: Sx.FIRE.x, y: Sx.FIRE.y }; o.atm = { x: Sx.ATM.x, y: Sx.ATM.y }; o.board = { x: Sx.BOARD.x, y: Sx.BOARD.y }; o.lotto = { x: Sx.LUCKY.x, y: Sx.LUCKY.y }; return o; };
-const LAYOUT_NAMES = { fire: 'กองไฟ', atm: 'ATM', board: 'กระดานข่าว', lotto: 'Lucky Lotto' };
+const liveLayoutItems = (Sx) => { const o = {}; for (const b of Sx.BUILDINGS) o['b_' + b.kind] = { x: b.x0, y: b.y0 }; Sx.CABINETS.forEach((c, i) => { o['cab' + i] = { x: c.x, y: c.y }; }); o.fire = { x: Sx.FIRE.x, y: Sx.FIRE.y }; o.atm = { x: Sx.ATM.x, y: Sx.ATM.y }; o.board = { x: Sx.BOARD.x, y: Sx.BOARD.y }; o.rank = { x: Sx.RANKBOARD.x, y: Sx.RANKBOARD.y }; o.lotto = { x: Sx.LUCKY.x, y: Sx.LUCKY.y }; return o; };
+const LAYOUT_NAMES = { fire: 'กองไฟ', atm: 'ATM', board: 'กระดานข่าว', rank: 'ป้ายอันดับ', lotto: 'Lucky Lotto' };
 const layoutName = id => LAYOUT_NAMES[id] || (/^cab/.test(id) ? 'ตู้เกม ' + (+id.slice(3) + 1) : (S.BUILDINGS.find(b => 'b_' + b.kind === id) || {}).name || id);
 function loadSharedWith(lay) { // สร้างสำเนา shared.js ที่ใช้ผังทดลอง โดยไม่แตะตัวที่เกมใช้อยู่
   const key = require.resolve('./public/shared.js'), cached = require.cache[key], prev = globalThis.__LAYOUT;
@@ -883,14 +885,14 @@ function validateLayout(items) { // คืนรายการข้อผิ�
     if (b.counter.length) { const [cx, cy] = b.counter[0]; claim(nm + ' (ช่องยืนหน้าประตู)', cx, cy + 1, true); }
   }
   Sx.CABINETS.forEach((c, i) => claim('ตู้เกม ' + (i + 1), c.x, c.y));
-  claim('กองไฟ', Sx.FIRE.x, Sx.FIRE.y); claim('ATM', Sx.ATM.x, Sx.ATM.y); claim('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); claim('Lucky Lotto', Sx.LUCKY.x, Sx.LUCKY.y);
+  claim('กองไฟ', Sx.FIRE.x, Sx.FIRE.y); claim('ATM', Sx.ATM.x, Sx.ATM.y); claim('ป้ายอันดับ', Sx.RANKBOARD.x, Sx.RANKBOARD.y); claim('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); claim('Lucky Lotto', Sx.LUCKY.x, Sx.LUCKY.y);
   for (const q of Sx.SEATS) claim('ที่นั่งลานกองไฟ', q.x, q.y);
   if (errs.length) return [...new Set(errs)];
   const now = unreachableCount(S, S.makeMap()), nw = unreachableCount(Sx, m);
   if (nw.n > now.n) errs.push(`มีช่องเดินได้ ${nw.n - now.n} ช่องที่เดินไปไม่ถึง (ร้าน/ตู้อาจล้อมช่องว่างไว้)`);
   for (const b of Sx.BUILDINGS) if (b.counter.length) { const [cx, cy] = b.counter[0]; if (!nw.walk(cx, cy + 1) || !nw.seen.has((cy + 1) * 1000 + cx)) errs.push(`เดินไปหน้าประตู ${b.name} ไม่ถึง`); }
   const adj = (nm, x, y) => { if (!Sx.DIRS.some(([dx, dy]) => nw.seen.has((y + dy) * 1000 + (x + dx)))) errs.push(nm + ' ไม่มีช่องเดินติดอยู่เลย (ใช้งานไม่ได้)'); };
-  Sx.CABINETS.forEach((c, i) => adj('ตู้เกม ' + (i + 1), c.x, c.y)); adj('ATM', Sx.ATM.x, Sx.ATM.y); adj('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); adj('Lucky Lotto', Sx.LUCKY.x, Sx.LUCKY.y);
+  Sx.CABINETS.forEach((c, i) => adj('ตู้เกม ' + (i + 1), c.x, c.y)); adj('ATM', Sx.ATM.x, Sx.ATM.y); adj('ป้ายอันดับ', Sx.RANKBOARD.x, Sx.RANKBOARD.y); adj('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); adj('Lucky Lotto', Sx.LUCKY.x, Sx.LUCKY.y);
   return [...new Set(errs)];
 }
 function layoutHistory() { try { return fs.readdirSync(LAYOUT_HIST).filter(f => f.endsWith('.json')).sort(); } catch (e) { return []; } }

@@ -1,6 +1,6 @@
 // แก้แมพสำหรับผู้ดูแล: ขยับ/เพิ่ม/ลบ Mock วางแผน + วาดพื้นห้อง (server-authoritative)
 (function (root) {
-  const { W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, BUILDINGS, FIRE, ATM, BOARD, LUCKY, CABINETS, HOUSE_BLD, FARM, PENS } = Shared;
+  const { W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, BUILDINGS, FIRE, ATM, BOARD, RANKBOARD, LUCKY, CABINETS, HOUSE_BLD, FARM, PENS } = Shared;
   let mocks = [], sel = null, mode = 'move', brush = T.WATER, drag = null, dirty = false, cell = 14;
   let sendFn = () => {}, toastFn = () => {}, onClose = () => {}, getMap = () => null;
   let paintQ = [], paintTimer = null, ignoreServerMocksUntil = 0;
@@ -19,6 +19,7 @@
     add('fire', FIRE.x, FIRE.y, 1, 1, 'กองไฟ', '#ff9a2e');
     add('atm', ATM.x, ATM.y, 1, 1, 'ATM', '#7dffb0');
     add('board', BOARD.x, BOARD.y, 1, 1, 'ข่าว', '#ffffff');
+    add('rank', RANKBOARD.x, RANKBOARD.y, 1, 1, 'อันดับ', '#ffd24a');
     add('lotto', LUCKY.x, LUCKY.y, 1, 1, 'Lucky Lotto', '#f1c40f');
     add('farm', FARM.x0, FARM.y0, FARM.x1 - FARM.x0 + 1, FARM.y1 - FARM.y0 + 1, 'แปลงผัก', '#b8f090');
     for (const [k, P] of Object.entries(PENS || {})) add('pen_' + k, P.x0, P.y0, P.x1 - P.x0 + 1, P.y1 - P.y0 + 1, 'คอก ' + k, '#e8b88a');
