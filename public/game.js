@@ -721,7 +721,7 @@ function renderRankTab(el) {
       h += '<div class="sec">📅 XP สัปดาห์นี้ (Top 10)</div>' + list(R.wk, x => `<b>${x.xp.toLocaleString()}</b> XP`, mine.wk)
         + '<p style="font-size:12px;opacity:.65;margin-top:10px">รีเซ็ตทุกสัปดาห์ คนใหม่ก็ขึ้นอันดับได้</p>';
     } else if (rankTab === 'rich') {
-      h += '<div class="sec">💰 เศรษฐี (Top 10)</div>' + list(R.rich, x => `🪙 <b>${esc(x.coin)}</b>`, mine.rich) + '<p style="font-size:12px;opacity:.65;margin-top:10px">จัดอันดับจากเหรียญที่มี (รวมในธนาคาร) ปิดบังหลักหน้า เห็นแค่สามหลักท้าย เช่น xxx,xxx,123</p>';
+      h += '<div class="sec">💰 เศรษฐี (Top 10)</div>' + list(R.rich, x => `🪙 <b>${esc(x.coin)}</b>`, mine.rich) + '<p style="font-size:12px;opacity:.65;margin-top:10px">จัดอันดับจากความมั่งคั่งรวม: เหรียญ (รวมในธนาคาร) + ของและอุปกรณ์ในกระเป๋า + เฟอร์นิเจอร์ที่วางในบ้าน ปิดบังหลักหน้า เห็นแค่สามหลักท้าย เช่น xxx,xxx,123</p>';
     }
     el.innerHTML = h;
   }

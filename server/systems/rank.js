@@ -12,7 +12,7 @@ const maskCoin = n => { const s = Math.floor(num(n)).toLocaleString('en-US'); le
 module.exports = {
   rankBuild() { // คำนวณอันดับจากเซฟทุกคนครั้งเดียว (แล้วแคช) → { top, ranks }
     const wkNow = this.weekKey(), admin = ADMIN_NAME.toLowerCase(), skills = Object.keys(S.SKILLS);
-    const rows = [];
+    const rows = []; let h;
     for (const [k, r] of Object.entries(this.saved)) {
       if (!r || typeof r !== 'object' || k === admin || String(r.name || '').toLowerCase() === admin) continue;
       const sk = r.skills && typeof r.skills === 'object' ? r.skills : {};
@@ -21,7 +21,8 @@ module.exports = {
       rows.push({
         k, n: String(r.name || k), xpAll, sk,
         wk: r.wkx && r.wkx.k === wkNow ? Math.floor(num(r.wkx.xp)) : 0,
-        coin: Math.floor(num(r.inv && r.inv.coin)) + Math.floor(num(r.bank && r.bank.bal)),
+        // ความมั่งคั่งรวม: เหรียญในมือ + ธนาคาร + ของ/อุปกรณ์ในกระเป๋า + เฟอร์นิเจอร์ที่วางในบ้าน (ไม่ใช่แค่เงินสด)
+        coin: Math.floor(num(r.inv && r.inv.coin)) + Math.floor(num(r.bank && r.bank.bal)) + Math.floor(S.holdingsValue(r.inv)) + ((h = this.houses && this.houses[k]) && h.items ? S.houseScore(h.items).value : 0),
       });
     }
     const top = {}, ranks = {};
@@ -41,7 +42,7 @@ module.exports = {
     const t = {
       lv: lvl,
       wk: make('wk', rows.filter(x => x.wk > 0), (a, b) => b.wk - a.wk, x => ({ n: x.n, xp: x.wk })),
-      rich: make('rich', rows.filter(x => x.coin > 0), (a, b) => b.coin - a.coin, x => ({ n: x.n, coin: maskCoin(x.coin) })), // ส่งเป็นข้อความปิดบังหลักหน้า เหลือสามหลักท้าย (123,321,123 → xxx,xxx,123) ไม่ส่งตัวเลขจริง (ความเป็นส่วนตัว)
+      rich: make('rich', rows.filter(x => x.coin > 0), (a, b) => b.coin - a.coin, x => ({ n: x.n, coin: maskCoin(x.coin) })), // ความมั่งคั่งรวม ส่งเป็นข้อความปิดบังหลักหน้า เหลือสามหลักท้าย (123,321,123 → xxx,xxx,123) ไม่ส่งตัวเลขจริง (ความเป็นส่วนตัว)
     };
     return { at: Date.now(), wkKey: wkNow, top: t, ranks: { lv: ranks.lv, wk: ranks.wk, rich: ranks.rich } };
   },

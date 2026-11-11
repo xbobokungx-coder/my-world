@@ -88,6 +88,19 @@ assert.ok(r.me.lv.farm >= 1 && r.me.lv.farm <= 3);
   NOW += S.RANK.cacheMs + 1000; assert.notStrictEqual(ask(a).rich[0].n, 'Bbb', 'แคชหมดอายุแล้วคำนวณใหม่');
 }
 
+// เศรษฐี = ความมั่งคั่งรวม: เหรียญ + ธนาคาร + ของ/อุปกรณ์ในกระเป๋า + เฟอร์นิเจอร์ที่วางในบ้าน (ไม่ใช่แค่เงินสด)
+{
+  const mask = n => { const t = n.toLocaleString('en-US'); let seen = 0, o = ''; for (let i = t.length - 1; i >= 0; i--) { const c = t[i]; if (c === ',') { o = c + o; continue; } o = (seen < 3 ? c : 'x') + o; seen++; } return o; };
+  const fid = S.FISH_ALL[0];
+  const hv = S.holdingsValue({ coin: 999, pick_2: 1, furn_chair: 2, seed_carrot: 5, ['fish_' + fid.id]: 3 });
+  assert.strictEqual(hv, S.itemInfo('pick_2').buy + 2 * S.FURN.chair.price + 3 * fid.sell, 'อุปกรณ์=ราคาซื้อ เฟอร์นิเจอร์=ราคาร้าน ปลา=ราคาขาย เมล็ด/เหรียญไม่นับ');
+  const keepInv = b.rec.inv, keepBank = b.rec.bank, keepH = w.houses.bbb;
+  b.rec.inv = { coin: 100, pick_2: 1, furn_chair: 1 }; b.rec.bank = { bal: 50 }; w.houses.bbb = { items: { 1: { f: 'chair' } }, next: 2 }; fresh();
+  const want = 100 + 50 + S.itemInfo('pick_2').buy + 2 * S.FURN.chair.price;
+  assert.strictEqual(ask(a).rich.find(x => x.n === 'Bbb').coin, mask(want), 'นับของ+เฟอร์นิเจอร์ที่วางรวมในมูลค่า');
+  b.rec.inv = keepInv; b.rec.bank = keepBank; if (keepH) w.houses.bbb = keepH; else delete w.houses.bbb; fresh();
+}
+
 // XP รายสัปดาห์: addXp สะสม และรีเซ็ตเมื่อ weekKey เปลี่ยน ผู้เล่นเก่าไม่มี wkx ไม่พัง
 {
   const p = mk('Dee', { farm: 400 }, 0); fresh();
