@@ -196,7 +196,9 @@ function handle(m) {
         p.fs = fs; p.fx = fx; p.fy = fy; p.sit = !!sit; p.lie = sit === 2; p.bt = bt || 1;
         if (id !== myId) { p.tx = x; p.ty = y; p.dir = d; }
       }
-      for (const [id, x, y, d] of (m.n || [])) { const n = npcs.get(id); if (n) { n.tx = x; n.ty = y; n.dir = d; } }
+      for (const [id, x, y, d, fs, fx, fy] of (m.n || [])) { const n = npcs.get(id); if (!n) continue; n.tx = x; n.ty = y; n.dir = d;
+        const f = fs || 0; if (f && !n.fs) { n.castAt = performance.now(); n.useAt = n.castAt; n.useK = ''; } if (!f && n.fs) { n.useAt = performance.now(); n.useK = 'reel'; } // เหวี่ยง/ดึงเบ็ด (NPC ตกปลาประกอบฉาก ภาพอย่างเดียว)
+        n.fs = f; n.fx = fx || 0; n.fy = fy || 0; n.held = f || n.useK === 'reel' && performance.now() - n.useAt < 700 ? '🎣' : ''; }
       for (const [id, x, y, d, mv] of (m.pt || [])) { const q = pets.get(id); if (q) { q.tx = x; q.ty = y; q.dir = d; q.srvMoving = !!mv; if (d === 2) q.dx = -1; else if (d === 3) q.dx = 1; } }
       const alive = new Set();
       for (const [id, type, x, y, prod, fed, dx, hg, sick, lock, fn, on] of m.c) {
@@ -4482,6 +4484,7 @@ function step(now) {
   for (const p of players.values()) {
     if (p.fs) drawFishing(p, performance.now());
   }
+  if (inTown()) for (const n of npcs.values()) if (n.fs) drawFishing(n, performance.now()); // NPC ตกปลาประกอบฉาก
 
   if (inTown()) drawLighthouse(ctx, now);
   frameTail(now, wall);

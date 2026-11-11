@@ -10,14 +10,14 @@ module.exports = {
   // ----- ชาวเมือง NPC: เดินเล่นแถวบ้านตัวเอง และพิมพ์ข้อความให้อ่านเล่นๆ (ไม่ใช่ผู้เล่น ไม่มีเงิน/สถานะ) -----
   initNpcs() {
     this.npcs = NPC_DEFS.map((d, i) => {
-      const n = { id: 1000001 + i, name: d.name, title: d.title, color: d.color, hat: d.hat, pc: d.pc, wear: Object.assign({}, S.WEAR_DEFAULT, d.wear), lines: d.lines, home: d.home, path: [], dir: 0, wait: rand(1, 4), lastLine: -1, sayAt: 0 };
+      const n = { id: 1000001 + i, name: d.name, title: d.title, color: d.color, hat: d.hat, pc: d.pc, wear: Object.assign({}, S.WEAR_DEFAULT, d.wear), lines: d.lines, home: d.home, job: d.job, path: [], dir: 0, wait: rand(1, 4), lastLine: -1, sayAt: 0 };
       let spot = null; // หาจุดที่เดินได้ใกล้บ้าน
       for (let k = 0; k < 400 && !spot; k++) { const a = k * 2.4, rr = 0.5 + k * 0.05, x = (d.home[0] + 0.5 + Math.cos(a) * rr) * TS, y = (d.home[1] + 0.5 + Math.sin(a) * rr) * TS; if (!S.blockedAt(this.map, x, y)) spot = [x, y]; }
       n.x = n.tx = spot ? spot[0] : (d.home[0] + 0.5) * TS; n.y = n.ty = spot ? spot[1] : (d.home[1] + 0.5) * TS;
       return n;
     });
   },
-  npcPub(n) { return { id: n.id, name: n.name, title: n.title, color: n.color, hat: n.hat, pc: n.pc, wear: n.wear, x: Math.round(n.x), y: Math.round(n.y), dir: n.dir }; },
+  npcPub(n) { return { fs: n.fs || 0, fx: n.fx || 0, fy: n.fy || 0, held: n.fs ? '🎣' : '', id: n.id, name: n.name, title: n.title, color: n.color, hat: n.hat, pc: n.pc, wear: n.wear, x: Math.round(n.x), y: Math.round(n.y), dir: n.dir }; },
   npcSay(n, now) {
     let i; do { i = Math.floor(Math.random() * n.lines.length); } while (i === n.lastLine && n.lines.length > 1);
     n.lastLine = i;
@@ -32,7 +32,33 @@ module.exports = {
     const t = this.map[y][x];
     return t !== T.FLOOR && t !== T.FURN && !S.blockedAt(this.map, (x + 0.5) * TS, (y + 0.5) * TS);
   },
-  npcPlan(n) { // เลือกจุดหมายไกลๆ ที่เดินถึงจริง แล้วหาเส้นทางด้วย BFS (4 ทิศ)
+  npcFishSpots() { // ช่องเดินได้ที่ติดน้ำของสระใหญ่ (ยืนตกปลาได้) + ทิศหันหาน้ำ + จุดทุ่น (ช่องน้ำที่ไกลสุดภายใน 3 ช่อง) • คำนวณครั้งเดียว
+    if (this._fishSpots) return this._fishSpots;
+    const out = [];
+    const F = S.NPC.fish, sc = F.scan;
+    for (let y = sc.y0; y <= sc.y1; y++) for (let x = sc.x0; x <= sc.x1; x++) {
+      if (!this.npcWalkable(x, y)) continue;
+      for (const [dx, dy] of S.DIRS) {
+        let w = 0; while (w < F.reach && this.map[y + dy * (w + 1)] && this.map[y + dy * (w + 1)][x + dx * (w + 1)] === T.WATER) w++;
+        if (w >= 2) { out.push({ x, y, dir: dx < 0 ? 2 : dx > 0 ? 3 : dy < 0 ? 1 : 0, fx: (x + dx * w + 0.5) * TS, fy: (y + dy * w + 0.5) * TS }); break; }
+      }
+    }
+    return (this._fishSpots = out);
+  },
+  npcFishStart(n, now) { // งานประจำตัว (ภาพอย่างเดียว): เดินไปริมสระ แล้วตั้งสถานะตกปลา — ไม่แตะปลา/ตลาด/เซฟ
+    const spots = this.npcFishSpots(); if (!spots.length) return false;
+    const sp = spots[Math.floor(Math.random() * spots.length)];
+    if (!this.npcPlan(n, [sp.x, sp.y])) return false;
+    n.fishGo = sp; return true;
+  },
+  npcFishTick(n, now) { // คืน true = กำลังตกปลาอยู่ (ไม่ต้องเดิน)
+    if (!n.fish) return false;
+    const f = n.fish, left = f.until - now;
+    n.fs = left < S.NPC.fish.biteMs ? 2 : 1; // ท้ายรอบปลากินเบ็ด
+    if (left <= 0) { n.fish = null; n.fs = 0; n.fx = n.fy = 0; n.wait = rand(S.NPC.fish.restMin, S.NPC.fish.restMax); return false; }
+    return true;
+  },
+  npcPlan(n, want) { // เลือกจุดหมายไกลๆ ที่เดินถึงจริง แล้วหาเส้นทางด้วย BFS (4 ทิศ) • want = [x,y] ช่องที่ต้องการ (ถ้าไปไม่ถึงคืน false)
     const W = S.W, sx = Math.floor(n.x / TS), sy = Math.floor(n.y / TS), prev = new Map(), q = [[sx, sy]], dist = new Map();
     prev.set(sy * W + sx, null); dist.set(sy * W + sx, 0);
     for (let i = 0; i < q.length; i++) {
@@ -43,11 +69,14 @@ module.exports = {
         prev.set(k, [x, y]); dist.set(k, dist.get(y * W + x) + 1); q.push([nx, ny]);
       }
     }
-    const far = q.filter(([x, y]) => dist.get(y * W + x) >= 8);
-    const goal = (far.length ? far : q)[Math.floor(Math.random() * (far.length ? far.length : q.length))];
+    let goal;
+    if (want) { if (!prev.has(want[1] * W + want[0])) return false; goal = want; } else {
+      const far = q.filter(([x, y]) => dist.get(y * W + x) >= 8);
+      goal = (far.length ? far : q)[Math.floor(Math.random() * (far.length ? far.length : q.length))];
+    }
     const path = []; let c = goal;
     while (c && prev.get(c[1] * W + c[0]) !== null) { path.push(c); c = prev.get(c[1] * W + c[0]); }
-    n.path = path.reverse();
+    n.path = path.reverse(); return true;
   },
   npcTick(dt, now) {
     if (!this.players.size) return; // ไม่มีคนอยู่ NPC ก็พักเหมือนกัน
@@ -57,9 +86,14 @@ module.exports = {
         if (now - (this.npcLastSay || 0) < S.NPC.gap) n.sayAt = now + rand(3000, 8000);
         else { n.sayAt = now + rand(S.NPC.sayMin, S.NPC.sayMax); this.npcLastSay = now; this.npcSay(n, now); }
       }
+      if (this.npcFishTick(n, now)) continue;
       if (!n.path || !n.path.length) {
+        if (n.fishGo) { // ถึงริมสระแล้ว: หันหน้าหาน้ำ เหวี่ยงเบ็ด 10–30 วินาที
+          const g = n.fishGo; n.fishGo = null;
+          if (Math.hypot(n.x - (g.x + 0.5) * TS, n.y - (g.y + 0.5) * TS) < TS) { n.dir = g.dir; n.fish = { until: now + rand(S.NPC.fish.minMs, S.NPC.fish.maxMs) }; n.fs = 1; n.fx = Math.round(g.fx); n.fy = Math.round(g.fy); continue; }
+        }
         n.wait -= dt;
-        if (n.wait <= 0) { n.wait = rand(2, 8); this.npcPlan(n); }
+        if (n.wait <= 0) { n.wait = rand(2, 8); if (!(n.job === 'fish' && Math.random() < S.NPC.fish.chance && this.npcFishStart(n, now))) this.npcPlan(n); }
         continue;
       }
       const [wx, wy] = n.path[0], tx = (wx + 0.5) * TS, ty = (wy + 0.5) * TS, d = Math.hypot(tx - n.x, ty - n.y);

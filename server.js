@@ -669,7 +669,7 @@ class World {
     for (const [k, ps] of groups) {
       const msg = { t: 's', p: ps.map(p => [p.id, Math.round(p.x), Math.round(p.y), p.dir, p.fish ? (p.fish.st === 'bite' ? 2 : p.fish.st === 'fight' ? 3 : 1) : 0, p.fish ? p.fish.fx : 0, p.fish ? p.fish.fy : 0, p.sit ? (p.sit.lie ? 2 : 1) : 0, p.fish ? p.fish.bt || 1 : 1]), n: [], pt: [], c: [] };
       if (!k) {
-        msg.n = this.npcs.map(n => [n.id, Math.round(n.x), Math.round(n.y), n.dir]);
+        msg.n = this.npcs.map(n => n.fs ? [n.id, Math.round(n.x), Math.round(n.y), n.dir, n.fs, n.fx, n.fy] : [n.id, Math.round(n.x), Math.round(n.y), n.dir]);
         msg.pt = this.pets.map(q => [q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? 1 : 0]);
         msg.c = this.animals.map(a => [a.id, a.type, Math.round(a.x), Math.round(a.y), a.prod ? 1 : 0, a.fed ? 1 : 0, a.dx, Math.round(a.hunger), a.sick ? 1 : 0, a.prod && a.feeder && (a.pm || 0) < S.DAY_MS ? 1 : 0, a.prod ? a.fn || '' : '', a.on || '']);
       }
