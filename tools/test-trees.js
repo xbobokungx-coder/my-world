@@ -50,8 +50,8 @@ const rng = S.rng(5112026);
   const tl = w.treeList(), c = {}; for (const t of tl) c[t[2]] = (c[t[2]] || 0) + 1;
   const hiN = tl.filter(t => K[t[2]].lv >= 11).length;
   assert.ok(lowCount() >= 10, 'ต้น Lv1–4 ต้องกลับมาในแมพ (ได้ ' + lowCount() + ')');
-  assert.ok(hiN <= Object.keys(K).filter(id => K[id].lv >= 11).reduce((a, id) => a + S.treeQuota(id, CAP), 0) + 2, 'ต้น Lv11+ ถูกถอนลงมาตามโควตา (เหลือ ' + hiN + ')');
-  for (const id of Object.keys(c)) assert.ok(c[id] <= S.treeQuota(id, CAP) + 1, `ชนิด ${id} เกินโควตา ${c[id]}`);
+  assert.ok(hiN <= Object.keys(K).filter(id => K[id].lv >= 11).reduce((a, id) => a + S.treeQuota(id, CAP, Date.now()), 0) + 2, 'ต้น Lv11+ ถูกถอนลงมาตามโควตา (เหลือ ' + hiN + ')');
+  for (const id of Object.keys(c)) assert.ok(c[id] <= S.treeQuota(id, CAP, Date.now()) + 1, `ชนิด ${id} เกินโควตา ${c[id]}`);
 }
 console.log('ผ่าน test-trees');
 process.exit(0);

@@ -478,6 +478,7 @@ class World {
       if (tile.c) return this.toast(p, 'มีพืชอยู่แล้ว');
       if (!inv[tool]) return this.toast(p, 'เมล็ดหมด ไปซื้อที่ร้านเมล็ดพันธุ์');
       { const rb = this.rentBlock(tx, ty, p); if (rb) return this.toast(p, rb); }
+      { const sw = S.plantWait(tool.slice(5), null, Date.now()); if (sw) { const c0 = CROPS[tool.slice(5)], cur = S.seasonAt(Date.now()).s; return this.toast(p, `🔒 ${c0.emoji} ${c0.name}ปลูกได้ช่วง${sw.s.emoji} ${sw.s.name} อีก ${S.seasonWaitText(sw.ms)} นะ (ตอนนี้${cur.emoji} ${cur.name}) เมล็ดเก็บไว้ได้`); } } // นอกฤดูปลูกไม่ได้ ไม่หักเมล็ด
       const rr = this.rentAt(tx, ty);
       const C0 = CROPS[tool.slice(5)], need = S.cropCan(C0);
       if (S.canTier(inv) < need) return this.toast(p, `${C0.emoji} ${C0.name}ต้องใช้${S.CANS[need].name}ดูแล ซื้อได้ที่ร้านเมล็ดพันธุ์ (🪙 ${S.CANS[need].price})`);
@@ -622,12 +623,12 @@ class World {
             if (this.animals.some(a => Math.hypot(a.x - (x + 0.5) * TS, a.y - (y + 0.5) * TS) < 3 * TS)) continue;
             spots.push([x, y]);
           }
-          const pick = S.pickTreeSpawn(this.map, Math.random, spots, counts, this.treeCap); if (!pick) break; if (pick.skip) continue; // ชนิดที่สุ่มได้เต็มโควตาแล้ว รอบนี้ไม่งอก
+          const pick = S.pickTreeSpawn(this.map, Math.random, spots, counts, this.treeCap, Date.now()); if (!pick) break; if (pick.skip) continue; // ชนิดที่สุ่มได้เต็มโควตาแล้ว รอบนี้ไม่งอก
           const { x, y, k } = pick; this.treeKind.set(x + ',' + y, k); counts[k] = (counts[k] || 0) + 1;
           this.map[y][x] = T.TREE; this.dirty = true; this.broadcast({ t: 'tree', x, y, on: true, k }); n++;
         }
         { // ถอนต้นที่เกินโควตาทีละต้นต่อรอบ (ไม่ถอนต้นที่มีคนอยู่ใกล้หรือกำลังฟัน) เพื่อเปิดที่ให้ชนิดที่ขาด • ปกติไม่มีต้นเกินโควตา (งอกกันไว้แล้ว) ใช้เคลียร์แมพเก่าที่ต้นแพงสะสมไว้
-          const pl = [...this.players.values()], cut = S.pickTreeTrim(this.treeList(), this.treeCap, Math.random, (x, y) => !(this.treeHp && this.treeHp.has(x + ',' + y)) && !pl.some(q => Math.hypot(q.x - (x + 0.5) * TS, q.y - (y + 0.5) * TS) < 4 * TS));
+          const pl = [...this.players.values()], cut = S.pickTreeTrim(this.treeList(), this.treeCap, Math.random, (x, y) => !(this.treeHp && this.treeHp.has(x + ',' + y)) && !pl.some(q => Math.hypot(q.x - (x + 0.5) * TS, q.y - (y + 0.5) * TS) < 4 * TS), Date.now());
           if (cut) { const [x, y] = cut; this.map[y][x] = T.GRASS; this.treeKind.delete(x + ',' + y); this.dirty = true; this.broadcast({ t: 'tree', x, y, on: false }); }
         }
       }

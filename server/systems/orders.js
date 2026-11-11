@@ -10,7 +10,7 @@ module.exports = {
     const day = this.today(), o = this.orders; if (o.day === day) return o;
     const today = new Set(Object.entries(this.saved).filter(([, r]) => r.lastSeen && this.dayOf(r.lastSeen) === day).map(([k]) => k));
     const n = Math.max(S.ORDERS.minN, Math.min(S.ORDERS.maxN, Math.round(S.ORDERS.perPlayer * Math.max(1, today.size, this.players.size))));
-    const NPCN = NPC_DEFS.map(d => d.name), byCat = {}; for (const k of SELLABLE) { const c = S.sellCat(k), i = S.itemInfo(k); if (i && i.sell <= 90 && c !== 'dish') (byCat[c] = byCat[c] || []).push(k); }
+    const NPCN = NPC_DEFS.map(d => d.name), byCat = {}; for (const k of SELLABLE) { const c = S.sellCat(k), i = S.itemInfo(k); if (i && i.sell <= 90 && c !== 'dish' && !(k.startsWith('crop_') && !S.canPlant(k.slice(5), Date.now()))) (byCat[c] = byCat[c] || []).push(k); }
     const cats = Object.keys(byCat), list = [];
     for (let i = 0; i < n; i++) {
       const pick = cats.slice().sort(() => Math.random() - 0.5).slice(0, 2 + (Math.random() < 0.4 ? 1 : 0));
