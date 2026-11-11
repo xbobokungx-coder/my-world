@@ -19,7 +19,7 @@ module.exports = {
     const raining = this.rainWet(now); // ฝนตก (และช่วงหลังฝนหยุด) = ดินทุกช่องเปียกเอง
     for (const k in this.farm) {
       const t = this.farm[k];
-      if (t.c && (t.wu > now || raining) && S.cropStage(t) < 3) t.g = Math.min(CROPS[t.c].time, (t.g || 0) + dt * (t.m || 1) / (S.cropSeason(t.c, now) < 0 ? S.SEASONS.outGrow : 1)); // นอกฤดูโตช้าลง
+      if (t.c && (t.wu > now || raining) && S.cropStage(t) < 3) t.g = Math.min(CROPS[t.c].time, (t.g || 0) + dt * (t.m || 1)); // พืชค้างข้ามฤดูโตปกติ (ฤดูมีผลแค่ห้ามปลูกและราคา)
       else if (t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS) { t.rm = (t.rm || 0) + dt; this.dirty = true; } // สุกค้างอยู่ นับเวลาจนครบ 1 วันในเกม
       else if (!t.c) { // แปลงว่างที่ไม่มีใครถาง/ปลูกเกินเวลาที่กำหนด หญ้าขึ้นกลับ
         t.idle = (t.idle || 0) + dt;

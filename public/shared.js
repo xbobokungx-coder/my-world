@@ -315,13 +315,13 @@
     sunflower: { name: 'ทานตะวันทอง', emoji: '🌻', seed: 124, sell: 288, time: 720000, lv: 19, xp: 53 },
     tulip: { name: 'ทิวลิปทอง', emoji: '🌷', seed: 128, sell: 298, time: 720000, lv: 20, xp: 54 },
   };
-  // ฤดูกาล (ขั้น 4 ใน ECONOMY-PLAN.md): ร้อน → ฝน → หนาว วนทุก days วันจริง นับจาก epoch • พืชในฤดู: ราคาเป้าตลาด ×inMul • นอกฤดู: โตช้าลง (เวลา ×outGrow) และราคา ×outMul
-  // พืชเลเวล 1 (แครอท กะหล่ำ) โตปกติทุกฤดู คนใหม่ไม่โดน
+  // ฤดูกาล: ร้อน → ฝน → หนาว วนทุก days วันจริง นับจาก epoch • พืช lv ≤ freeLv ปลูกได้ทุกฤดูและไม่มีผลฤดูเลย • พืช lv > freeLv ปลูกได้เฉพาะฤดูของตัวเอง (crops) ในฤดู: ราคาเป้าตลาด ×inMul นอกฤดู ×outMul
+  // lockCrops/lockTrees = สวิตช์ถอยด่วน (false = ไม่ล็อก) • trees = ต้นไม้ที่งอกใหม่เฉพาะฤดูนั้น (ชนิดที่ไม่อยู่ในฤดูไหนเลยงอกทุกฤดู) ต้นที่งอกอยู่แล้วคงอยู่และตัดได้
   const CROP_IDS = () => Object.keys(CROPS).filter(c => !CROPS[c].legacy).sort((a, b) => CROPS[a].lv - CROPS[b].lv || CROPS[a].sell - CROPS[b].sell); // พืชที่ขายอยู่จริง (ไม่รวม legacy)
-  const SEASONS = { epoch: Date.parse('2026-11-01T00:00:00+07:00'), days: 3.5, inMul: 1.15, outMul: 0.9, outGrow: 1.5, list: [
-    { id: 'hot',  name: 'ฤดูร้อน', emoji: '☀️', crops: ['corn', 'tomato', 'pineapple', 'melon', 'peach', 'avocado', 'sunflower'] },
-    { id: 'rain', name: 'ฤดูฝน',  emoji: '🌧️', crops: ['cabbage', 'eggplant', 'pumpkin', 'grape', 'kiwi', 'blueberry', 'beans'] },
-    { id: 'cool', name: 'ฤดูหนาว', emoji: '❄️', crops: ['carrot', 'strawberry', 'mango', 'coconut', 'mushroom', 'tulip'] },
+  const SEASONS = { epoch: Date.parse('2026-11-01T00:00:00+07:00'), days: 3.5, inMul: 1.08, outMul: 1.0, freeLv: 5, lockCrops: true, lockTrees: true, list: [
+    { id: 'hot',  name: 'ฤดูร้อน', emoji: '☀️', crops: ['strawberry', 'pineapple', 'peach', 'avocado', 'mushroom'], trees: ['coconut', 'gold', 'padauk'] },
+    { id: 'rain', name: 'ฤดูฝน',  emoji: '🌧️', crops: ['pumpkin', 'melon', 'kiwi', 'blueberry', 'sunflower'], trees: ['bamboo', 'willow', 'raintree'] },
+    { id: 'cool', name: 'ฤดูหนาว', emoji: '❄️', crops: ['grape', 'mango', 'coconut', 'beans', 'tulip'], trees: ['maple', 'ginkgo', 'sakura'] },
   ] };
   const seasonAt = t => { const L = SEASONS.days * 864e5, n = Math.floor((t - SEASONS.epoch) / L), i = ((n % 3) + 3) % 3; return { s: SEASONS.list[i], end: SEASONS.epoch + (n + 1) * L, on: t >= SEASONS.epoch }; };
   // ฝนสุ่มแบบกำหนดผลได้: แบ่งเวลาเป็นช่อง slotMs แต่ละช่องใช้ hash ของเลขช่อง (ไม่ใช้ Math.random) ตัดสินว่า ฝนตกไหม/นานเท่าไร/เริ่มตอนไหน ฝนไม่ข้ามช่อง • ตามฤดูของช่อง: null = ไม่ตก
@@ -335,7 +335,15 @@
     const dur = cfg.minMs + rainHash(n, 2) * (cfg.maxMs - cfg.minMs), off = rainHash(n, 3) * (RAIN.slotMs - dur), r = t - start;
     return r >= off && r < off + dur;
   };
-  const cropSeason = (c, t) => { const se = seasonAt(t); if (!se.on || !CROPS[c] || CROPS[c].lv <= 1) return 0; return se.s.crops.includes(c) ? 1 : -1; }; // 1 ในฤดู • -1 นอกฤดู • 0 ไม่มีผล
+  const cropSeason = (c, t) => { const se = seasonAt(t); if (!se.on || !CROPS[c] || CROPS[c].lv <= SEASONS.freeLv || !SEASONS.list.some(x => x.crops.includes(c))) return 0; return se.s.crops.includes(c) ? 1 : -1; }; // 1 ในฤดู • -1 นอกฤดู • 0 ไม่มีผล (lv ≤ freeLv / legacy)
+  const seasonOf = (list, id) => SEASONS.list.find(x => x[list].includes(id)) || null; // ฤดูที่ชนิดนี้อยู่ (null = ทุกฤดู)
+  const canPlant = (c, t) => !SEASONS.lockCrops || cropSeason(c, t) >= 0; // ปลูกได้ตอนเวลา t ไหม (นอกฤดู = false)
+  const canSpawnTree = (k, t) => { if (!SEASONS.lockTrees) return true; const se = seasonAt(t), own = seasonOf('trees', k); return !se.on || !own || own.id === se.s.id; };
+  // รอกี่ ms ถึงฤดู s (ฤดูตอนนี้ = 0) นับจากเวลา t
+  const msToSeason = (s, t) => { const L = SEASONS.days * 864e5, n = Math.floor((t - SEASONS.epoch) / L), i = ((n % 3) + 3) % 3, j = SEASONS.list.indexOf(s), k = (j - i + 3) % 3; return k ? SEASONS.epoch + (n + k) * L - t : 0; };
+  // รอปลูกพืช c → null ถ้าปลูกได้ตอนนี้ • ไม่งั้น { s: ฤดูที่ปลูกได้ (object ใน SEASONS.list), ms: เวลาที่ต้องรอ } (kind ไม่ใช้ เผื่อไว้)
+  const plantWait = (c, kind, t) => { if (canPlant(c, t)) return null; const s = seasonOf('crops', c); return { s, ms: msToSeason(s, t) }; };
+  const seasonWaitText = ms => { const m = Math.max(1, Math.ceil(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60), mi = m % 60; return d ? `${d} วัน${h ? ' ' + h + ' ชม.' : ''}` : h ? `${h} ชม.${mi ? ' ' + mi + ' นาที' : ''}` : `${mi} นาที`; };
   // ความชำนาญหลัง Lv10: ดาว 1–max ต่ออาชีพ ดาวที่ n ต้องมี XP ≥ XP Lv10 + n × xpPer และจ่าย costBase × n เหรียญ (ใช้เงินระยะยาว ไม่เพิ่มพลังหรือรายได้) ครบ max ดาวได้ฉายา "ปรมาจารย์<อาชีพ>"
   const MASTERY = { xpPer: 25000, costBase: 2000, max: 5, xpPerSkill: { mine: 8000, fish: 8000 } }; // xpPerSkill = XP ต่อดาวของอาชีพที่หลอดเล็กกว่า (นักขุด 8,000 ≈ 28% ของหลอด Lv19→20 เท่าสัดส่วนอาชีพอื่น)
   const masteryXp = skill => MASTERY.xpPerSkill[skill] || MASTERY.xpPer;
@@ -718,18 +726,21 @@
   // ต้นไม้งอกใหม่: สุ่มชนิดตามสัดส่วน % (pct) เฉพาะชนิดที่ตอนนี้มีช่องให้เกิด แล้วเลือกช่องที่ชนิดนั้นเกิดได้ • spots = [[x,y]] ช่องที่งอกได้ • คืน {x,y,k} หรือ null
   // (ชนิดที่ถูกตัดไปไม่ได้งอกคืนเร็วกว่าสัดส่วนของมัน ไม่ใช่ทางลัดฟาร์มไม้หายาก: อัตราที่ไม้หายากงอก = งอกรวม × pct ของมัน)
   // โควตาต่อชนิด = pct × เพดาน (อย่างน้อย 1 ต้น) • ชนิดที่ถึงโควตาแล้วไม่งอกเพิ่ม (กันต้นแพงที่คนเลเวลต่ำตัดไม่ได้สะสมจนเต็มเพดาน 132 แล้วไม่เหลือต้นให้มือใหม่ตัด • 5 พ.ย. 2026)
-  const treeQuota = (id, cap) => Math.max(1, Math.ceil(TREE_KINDS[id].pct * cap / 100 - 1e-9));
+  const treeQuota = (id, cap, t) => { // ส่ง t = โควตาตามฤดู: ชนิดที่งอกได้ตอนนี้แบ่ง cap กันตามสัดส่วน pct (ผลรวม ≥ cap แมพเต็มถึงเพดาน) • ชนิดนอกฤดูใช้โควตาปกติ (ไม่ถูกถอนเพราะหมดฤดู)
+    const pct = TREE_KINDS[id].pct; if (t != null && canSpawnTree(id, t)) { const tot = Object.keys(TREE_KINDS).filter(k => canSpawnTree(k, t)).reduce((a, k) => a + TREE_KINDS[k].pct, 0); return Math.max(1, Math.ceil(pct * cap / tot - 1e-9)); }
+    return Math.max(1, Math.ceil(pct * cap / 100 - 1e-9));
+  };
   // counts = { ชนิด: จำนวนต้นที่มีอยู่ } • สุ่มชนิดตาม pct เหมือนเดิม (อัตรางอกต่อชนิด = งอกรวม × pct ไม่ขึ้นกับว่าชนิดอื่นเต็ม) ถ้าสุ่มได้ชนิดที่เต็มโควตาแล้วคืน { skip: true } (รอบนี้ไม่งอก)
-  function pickTreeSpawn(m, rnd, spots, counts, cap) {
-    const kinds = Object.entries(TREE_KINDS).map(([id, K]) => ({ id, pct: K.pct, ok: spots.filter(([x, y]) => treeWhereOk(m, x, y, K.where)) })).filter(o => o.ok.length);
+  function pickTreeSpawn(m, rnd, spots, counts, cap, now) { // now = เวลาปัจจุบัน (ไม่ส่ง = ไม่คิดฤดู)
+    const kinds = Object.entries(TREE_KINDS).filter(([id]) => now == null || canSpawnTree(id, now)).map(([id, K]) => ({ id, pct: K.pct, ok: spots.filter(([x, y]) => treeWhereOk(m, x, y, K.where)) })).filter(o => o.ok.length);
     let t = rnd() * kinds.reduce((a, o) => a + o.pct, 0);
-    for (const o of kinds) if ((t -= o.pct) < 0) { if (counts && (counts[o.id] || 0) >= treeQuota(o.id, cap)) return { skip: true }; const [x, y] = o.ok[Math.floor(rnd() * o.ok.length)]; return { x, y, k: o.id }; }
+    for (const o of kinds) if ((t -= o.pct) < 0) { if (counts && (counts[o.id] || 0) >= treeQuota(o.id, cap, now)) return { skip: true }; const [x, y] = o.ok[Math.floor(rnd() * o.ok.length)]; return { x, y, k: o.id }; }
     return null;
   }
   // ต้นที่ควรถอน 1 ต้นเมื่อแมพเต็ม: ชนิดที่เกินโควตามากสุด (ok(x,y) = ช่องที่ถอนได้ เช่นไม่มีผู้เล่นอยู่ใกล้) คืน [x,y,ชนิด] หรือ null • list = [[x,y,ชนิด]]
-  function pickTreeTrim(list, cap, rnd, ok) {
+  function pickTreeTrim(list, cap, rnd, ok, now) {
     const counts = {}; for (const t of list) counts[t[2]] = (counts[t[2]] || 0) + 1;
-    const over = Object.keys(counts).filter(id => TREE_KINDS[id] && counts[id] > treeQuota(id, cap)).sort((a, b) => (counts[b] - treeQuota(b, cap)) - (counts[a] - treeQuota(a, cap)));
+    const over = Object.keys(counts).filter(id => TREE_KINDS[id] && counts[id] > treeQuota(id, cap, now)).sort((a, b) => (counts[b] - treeQuota(b, cap, now)) - (counts[a] - treeQuota(a, cap, now)));
     for (const id of over) { const c = list.filter(t => t[2] === id && (!ok || ok(t[0], t[1]))); if (c.length) return c[Math.floor(rnd() * c.length)]; }
     return null;
   }
@@ -1690,7 +1701,7 @@
     reportWhy: [{ id: 'abuse', name: 'พูดจาไม่ดี' }, { id: 'cheat', name: 'โกง' }, { id: 'other', name: 'อื่นๆ' }],
     muteMs: { '10m': 10 * 60000, '1h': 3600000, '1d': 86400000 }, banMs: { '1d': 86400000, '7d': 7 * 86400000 } }; // banMs ไม่มี perm: ถาวร = ระบบแบนเดิม
 
-  const api = { THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
