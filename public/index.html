@@ -223,6 +223,23 @@
   .stat { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0; }
   .stat div { border:2px solid var(--edge); border-radius:10px; background:#fffdf5; padding:6px 8px; font-size:13px; }
   .stat div b { display:block; font-size:16px; }
+  .ck-filters { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .ck-filters .chip { font-size:13px; padding:6px 10px; }
+  .ck-filters .chip.on { background:var(--accent); color:#fff; border-color:#b9791f; }
+  .ck-card { border:2px solid var(--edge); border-radius:12px; background:#fffdf5; padding:8px 10px; margin-bottom:8px; }
+  .ck-card.miss { opacity:.92; }
+  .ck-card.lock { opacity:.6; padding:6px 10px; }
+  .ck-card.lock.next { opacity:1; border-color:var(--accent); }
+  .ck-head { display:flex; align-items:center; gap:10px; cursor:pointer; }
+  .ck-ic { font-size:34px; line-height:1; }
+  .ck-nm { flex:1; min-width:0; font-weight:700; font-size:15px; }
+  .ck-nm small { display:block; font-weight:400; font-size:12px; opacity:.75; }
+  .ck-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .ck-chip { font-size:13px; padding:2px 8px; border-radius:999px; border:1px solid; }
+  .ck-chip.ok { background:#e6f6ec; color:#1e8f4e; border-color:#1e8f4e; }
+  .ck-chip.no { background:#fdecea; color:#c0392b; border-color:#c0392b; }
+  .ck-more { margin-top:6px; font-size:12px; opacity:.85; }
+  body.touch .ck-head .btn { min-height:44px; min-width:92px; font-size:15px; }
   .row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--edge); }
   .row span:first-child { font-size:15px; }
   #dc { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:30; display:flex; align-items:center; justify-content:center; color:#fff; flex-direction:column; gap:12px; font-size:18px; }

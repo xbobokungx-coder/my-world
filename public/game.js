@@ -1324,12 +1324,12 @@ function renderBag() {
 }
 
 // ---------- ร้านค้า ----------
-function openShop(kind) { closeOthers('shop'); shopKind = kind; farmTab = SHOP_TABS[kind] ? SHOP_TABS[kind][0][0] : 'gear'; if (kind === 'cloth') { tryWear = Object.assign({}, me.wear); clothTab = 'shirt'; } $('shop').classList.remove('hidden'); renderShop(); }
+function openShop(kind) { closeOthers('shop'); cookFilter = null; cookOpen = null; shopKind = kind; farmTab = SHOP_TABS[kind] ? SHOP_TABS[kind][0][0] : 'gear'; if (kind === 'cloth') { tryWear = Object.assign({}, me.wear); clothTab = 'shirt'; } $('shop').classList.remove('hidden'); renderShop(); }
 function closeShop() { shopKind = null; $('shop').classList.add('hidden'); }
 $('shopClose').onclick = closeShop;
 $('shop').addEventListener('pointerdown', e => { if (e.target === $('shop')) closeShop(); });
 const animalCount = type => { let n = 0; const my = me && me.name; animals.forEach(a => { if (a.type === type && (!a.on || a.on === my)) n++; }); return n; }; // นับเฉพาะสัตว์ของฉัน (cap ต่อคน)
-let farmTab = 'gear';
+let farmTab = 'gear', cookFilter = null, cookOpen = null; // เมนูเชฟ: ตัวกรอง (null = อัตโนมัติ) / สูตรที่ขยายอยู่
 // ทุกร้านที่รับซื้อมีแท็บ 💰 ขาย ไว้ท้ายสุด (แท็บซื้อของร้านที่ไม่มีแท็บเดิม)
 const SHOP_TABS = { // ทุกร้านที่มีซื้อขายใช้รูปแบบเดียวกัน: 🛒 ซื้อ → 🧰 อุปกรณ์ → (ทำ/ประดิษฐ์) → 💰 ขาย
   farm: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], fish: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']],
@@ -1482,10 +1482,24 @@ function renderShop() {
     const have = c => Object.keys(inv).reduce((s, k) => s + (inv[k] > 0 && cookCat(c, k) ? inv[k] : 0), 0);
     const haveU = c => Object.keys(inv).filter(k => inv[k] > 0 && cookCat(c, k)).length; // จำนวนชนิดที่มี (สูตรที่ต้องคนละชนิด)
     const hv = n => n.c ? (n.u ? haveU(n.c) : have(n.c)) : (inv[n.k] || 0);
-    for (const r of COOK) {
-      const parts = r.in.map(n => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, nm = n.c ? COOK_CATS[n.c].name + (n.u ? ' (คนละชนิด)' : '') : itemInfo(n.k).name, got = hv(n); return `${emo}${nm} ×${n.n}` + (got >= n.n ? '' : ` <small style="color:#c0392b">(มี ${got})</small>`); }).join(' + ');
-      const locked = lvl('cook') < r.lv, ok = r.in.every(n => hv(n) >= n.n);
-      h += `<div class="row${locked ? ' lock' : ''}"><span>${r.emoji} ${r.name}${locked ? ` <small>🔒 เชฟ Lv${r.lv}</small>` : ''}<br><small>ใช้ ${parts} • +${r.xp} XP • เวลาทำ ${Math.round(r.time / 1000)} วิ • ค่าเตา 🪙${Math.round(r.sell * COOK_FEE)} • ขายได้ราว 🪙${r.sell} • กินอิ่ม +${r.food}</small></span><span><button class="btn small" data-cook="${r.id}" ${!locked && ok && (inv.coin || 0) >= Math.round(r.sell * COOK_FEE) ? '' : 'disabled'}>ทำ</button></span></div>`;
+    const fee = r => Math.round(r.sell * COOK_FEE), coin = inv.coin || 0, cl = lvl('cook');
+    const st = COOK.map((r, i) => { const locked = cl < r.lv, ok = !locked && r.in.every(n => hv(n) >= n.n); return { r, i, locked, ok, can: ok && coin >= fee(r) }; });
+    const catOf = (r, c) => r.in.some(n => n.c ? n.c === c : cookCat(c, n.k));
+    const filt = cookFilter || (st.some(x => x.can) ? 'now' : 'all');
+    const FILTERS = [['now', '✅ ทำได้ตอนนี้'], ['all', 'ทั้งหมด'], ['fish', '🐟 ปลา'], ['crop', '🥕 ผัก'], ['egg', '🥚 ไข่'], ['lock', '🔒 ยังไม่ปลดล็อก']];
+    h += `<div class="ck-filters">${FILTERS.map(([c, n]) => `<button class="chip${filt === c ? ' on' : ''}" data-ckf="${c}">${n}</button>`).join('')}</div>`;
+    let list = st.filter(x => filt === 'now' ? x.can : filt === 'lock' ? x.locked : filt === 'all' ? true : catOf(x.r, filt));
+    const grp = x => x.locked ? 2 : x.ok ? 0 : 1;
+    list.sort((a, b) => grp(a) - grp(b) || a.r.lv - b.r.lv || a.i - b.i);
+    const nextLock = st.filter(x => x.locked).reduce((m, x) => !m || x.r.lv < m.r.lv ? x : m, null);
+    if (!list.length) h += '<p style="opacity:.7;margin:6px 0">' + (filt === 'now' ? 'ตอนนี้ยังไม่มีสูตรที่ทำได้ ลองดูแท็บ "ทั้งหมด" เพื่อเช็กว่าขาดอะไร' : 'ไม่มีสูตรในหมวดนี้') + '</p>';
+    for (const x of list) {
+      const r = x.r, f = fee(r);
+      if (x.locked) { h += `<div class="ck-card lock${nextLock && nextLock.r.id === r.id ? ' next' : ''}"><div class="ck-head"><span class="ck-ic">${r.emoji}</span><span class="ck-nm">${r.name}<small>🔒 ปลดที่เชฟ Lv ${r.lv}</small></span></div></div>`; continue; }
+      const chips = r.in.map(n => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, got = hv(n); return `<span class="ck-chip ${got >= n.n ? 'ok' : 'no'}">${emo}×${n.n}${n.u ? ' คนละชนิด' : ''}${got >= n.n ? '' : ` (มี ${got})`}</span>`; }).join('');
+      const mk = Math.min(...r.in.map(n => n.u ? (hv(n) >= n.n ? 1 : 0) : n.c ? Math.floor(hv(n) / r.in.filter(m => m.c === n.c && !m.u).reduce((t, m) => t + m.n, 0)) : Math.floor(hv(n) / n.n)), f > 0 ? Math.floor(coin / f) : 99), open = cookOpen === r.id;
+      h += `<div class="ck-card${x.can ? '' : ' miss'}"><div class="ck-head" data-ckx="${r.id}"><span class="ck-ic">${r.emoji}</span><span class="ck-nm">${r.name}<small>ขายได้ราว 🪙${r.sell} ${open ? '▴' : '▾'}</small></span><button class="btn small" data-cook="${r.id}" ${x.can ? '' : 'disabled'}>ทำ (×${Math.max(0, mk)})</button></div><div class="ck-chips">${chips}</div>`
+        + (open ? `<div class="ck-more">+${r.xp} XP • เวลาทำ ${Math.round(r.time / 1000)} วิ • ค่าเตา 🪙${f}${coin < f ? ' <b style="color:#c0392b">(เหรียญไม่พอ)</b>' : ''} • กำไรสุทธิ 🪙${r.sell - f} • กินอิ่ม +${r.food}</div>` : '') + '</div>';
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน หรือใช้กระดานใบสั่งซื้อ 📋 • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ (ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';
   }
@@ -1505,6 +1519,8 @@ function renderShop() {
   body.querySelectorAll('[data-fsub]').forEach(b => b.onclick = () => { furnSub = b.dataset.fsub; renderShop(); });
   body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft }));
   body.querySelectorAll('[data-rent]').forEach(b => b.onclick = () => send({ t: 'rent', id: b.dataset.rent }));
+  body.querySelectorAll('[data-ckf]').forEach(b => b.onclick = () => { cookFilter = b.dataset.ckf; renderShop(); });
+  body.querySelectorAll('[data-ckx]').forEach(b => b.onclick = e => { if (e.target.closest('[data-cook]')) return; cookOpen = cookOpen === b.dataset.ckx ? null : b.dataset.ckx; renderShop(); });
   body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook }));
   bindPet(body);
   body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: +b.dataset.n }));
