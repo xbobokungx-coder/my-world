@@ -97,12 +97,82 @@ w.seaGo(a); a.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!a.
     const lvAvg = zone => { let sum = 0, n = 0; for (let i = 0; i < 400; i++) { own.rec.inv = { coin: 1000, bait: 5, boat: 1 }; own.rec.rareAt = 0; own.fish = { st: 'bite', at: Date.now(), fl: 20, rod: 7, bt: 1, fx: 0, fy: 0, sea: true, zone }; reelWin(own); for (const k of Object.keys(own.rec.inv)) if (k.startsWith('fish_')) { const f = S.fishPool(true).find(x => 'fish_' + x.id === k); if (f) { sum += f.lv * own.rec.inv[k]; n += own.rec.inv[k]; } } } return sum / n; };
   const sh = lvAvg('shallow'), dp = lvAvg('deep');   assert.ok(dp > sh + 3, `ปลาทะเลลึกเลเวลสูงกว่าทะเลตื้น (ตื้น ${sh.toFixed(1)} • ลึก ${dp.toFixed(1)})`);
   // กลับท่า (แล่นถึง MOUTH) และตะวันตก (หมดเวลา)
-  own.rec.inv.boat = 1; own.fish = null; own.x = (O.exit.x + 0.5) * TS; own.y = (O.exit.y0 + 1.5) * TS; own.lastMove = 0; w.handle(own, { t: 'm', x: own.x, y: own.y, d: 2 });
+  own.rec.inv.boat = 1; own.fish = null; own.x = (O.exit.x + 1) * TS - 4; own.y = (O.exit.y0 + 1.5) * TS; /* r เรือใหญ่ 22: ศูนย์กลางต้องห่างขอบแมพ ≥ 22 */ own.lastMove = 0; w.handle(own, { t: 'm', x: own.x, y: own.y, d: 2 });
   assert.ok(!own.scene && Math.abs(own.x - (S.SEA.ret.x + 0.5) * TS) < 2, 'แล่นถึงท่า กลับเกาะ');
   w.seaGo(own); const toasts = [], toast0 = w.toast.bind(w); w.toast = (pl, t) => { toasts.push(t); return toast0(pl, t); }; own.seaUntil = Date.now() + 50000; w.tick(0.05, Date.now()); assert.ok(toasts.some(t => /เรือเช่าใกล้หมดเวลา/.test(t)), 'เตือน 1 นาทีสุดท้าย'); w.toast = toast0;
   own.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!own.scene, 'ตะวันตก กัปตันพากลับเกาะ');
   S.OCEAN.anytime = false;
   // ออกเรือไม่ได้ตอนกลางคืน/บ่ายแก่ (ใช้นาฬิกาจริงของเกมอาจเป็นเวลาไหนก็ได้ จึงเช็กผ่าน oceanWindow ด้านบนแล้ว)
 }
+// เรือใหญ่ (pet-on-boat ขั้น 1): ฮิตบ็อกซ์ r ใหม่ • ที่นั่งตามทิศ • blockedAt เดิมไม่เปลี่ยน
+{
+  const om = S.makeCaveMap(S.OCEAN.floor), H_ = S.BOAT.hull, O = S.OCEAN;
+  assert.ok(H_.r < 32 && !S.blockedAt(om, O.spawn.x, O.spawn.y, H_.r), 'จุดเกิดทะเลใหญ่ไม่ชนด้วย r เรือใหญ่');
+  for (let x = O.spawn.x; x >= (O.exit.x + 1) * TS - 4; x -= 2) assert.ok(!S.blockedAt(om, x, O.spawn.y, H_.r), 'แล่นตรงจาก spawn ถึงปากท่าได้ x=' + x);
+  assert.strictEqual(om[Math.floor(O.spawn.y / TS)][Math.floor(((O.exit.x + 1) * TS - 4) / TS)], S.T.MOUTH, 'แล่นตรงจบที่ช่อง MOUTH');
+  for (const [tx, ty] of [[10, 10], [3, 3], [20, 30]]) for (const [dx, dy] of [[0, 0], [5, 7], [-8, 3]]) { const x = tx * TS + dx, y = ty * TS + dy; assert.strictEqual(S.blockedAt(om, x, y), S.blockedAt(om, x, y, 8), 'ไม่ส่ง r = 8 เหมือนเดิม'); }
+  assert.ok(S.blockedAt(om, 5 * TS, 5 * TS) === S.blockedAt(om, 5 * TS, 5 * TS, 8));
+  const fwd = [[0, 1], [0, -1], [-1, 0], [1, 0]];
+  for (let d = 0; d < 4; d++) {
+    const s0 = S.boatSeat(d, 0), h = S.boatHelm(d);
+    assert.ok(s0.x * fwd[d][0] + s0.y * fwd[d][1] > 0, 'ที่นั่งหัวเรืออยู่ทางหัวเรือ ทิศ ' + d);
+    assert.ok(Math.abs(s0.x) <= H_.len / 2 && Math.abs(s0.y) <= H_.len / 2 && (d < 2 ? Math.abs(s0.x) <= H_.wid / 2 : Math.abs(s0.y) <= H_.wid / 2), 'ที่นั่งอยู่ในตัวเรือ ทิศ ' + d);
+    assert.ok(h.x === 0 && h.y === 0, 'พวงมาลัยอยู่กลางเรือ');
+    for (const sl of [1, 2]) { const q = S.boatSeat(d, sl); assert.ok(q.x * fwd[d][0] + q.y * fwd[d][1] < 0, 'ที่นั่งท้ายอยู่ท้ายเรือ'); }
+  }
+}
+// seaLeave โหมดปล่อยเล่น: pax/pay ต้องกลับเป็นพิกัดบนบกเมือง
+{
+  S.OCEAN.anytime = true; const pl = mk('Play', 5000, 5000); pl.rec.inv.boat = 1; pl.rec.pmode = pl.pm = 'play'; w.seaGo(pl);
+  assert.ok(S.isOcean(S.caveFloor(pl.scene))); pl.pax = 40 * TS; pl.pay = 3 * TS; // พิกัดทะเล
+  w.seaLeave(pl, 'ทดสอบ'); assert.ok(!pl.scene && !S.blockedAt(w.map, pl.pax, pl.pay), 'โหมดเล่น: pax/pay อยู่บนบกเมือง');
+  S.OCEAN.anytime = false;
+}
+// เซิร์ฟเวอร์ blockedFor กับ client blk ใช้ r เดียวกันในทะเลใหญ่ (client = อ่านจากซอร์ส game.js เพราะรันเว็บไม่ได้)
+{
+  const gsrc = fs.readFileSync(path.join(__dirname, '../public/game.js'), 'utf8');
+  const line = gsrc.split('\n').find(l => /^const blk = /.test(l)); assert.ok(line, 'พบ blk ใน game.js');
+  assert.ok(/inOcean\(\) \? blockedAt\(MAP, x, y, Shared\.BOAT\.hull\.r\)/.test(line), 'client blk ทะเลใหญ่ใช้ BOAT.hull.r');
+  assert.ok(/const inOcean = \(\) => cave && Shared\.isOcean\(caveFlr\)/.test(gsrc), 'client inOcean = isOcean(caveFlr) เหมือนฝั่งเซิร์ฟเวอร์');
+  const om = S.makeCaveMap(S.OCEAN.floor), pl = mk('Blk', 0, 0), r = S.BOAT.hull.r; pl.scene = '@cave' + S.OCEAN.floor;
+  assert.strictEqual(S.caveFloor(pl.scene), S.OCEAN.floor);
+  let diff = 0, inRock = 0;
+  for (let y = 0; y < om.length * TS; y += 13) for (let x = 0; x < om[0].length * TS; x += 13) {
+    if (w.blockedFor(pl, x, y) !== S.blockedAt(om, x, y, r)) diff++;
+    if (!S.blockedAt(om, x, y, r) && S.blockedAt(om, x, y, 0)) inRock++;
+  }
+  assert.strictEqual(diff, 0, 'blockedFor ทะเลใหญ่ตรง blockedAt(r เรือ) ทุกจุด');
+  globalThis.__rockHole = inRock;
+  const sm2 = S.makeCaveMap(S.SEA.floor), p2 = mk('Blk2', 0, 0); p2.scene = '@cave' + S.SEA.floor;
+  assert.strictEqual(w.blockedFor(p2, 5 * TS, 5 * TS), S.blockedAt(sm2, 5 * TS, 5 * TS, 8), 'ฉากแพ/ถ้ำอื่นยังใช้ r = 8');
+}
+// สัตว์เลี้ยง + เข้า/ออกทะเล: rec.pet/pmode/pst/รูปแบบเซฟต้องไม่เปลี่ยน
+{
+  S.OCEAN.anytime = true;
+  const keys = o => JSON.stringify(Object.keys(o).sort());
+  for (const mode of ['follow', 'play']) {
+    const pl = mk('Pet' + mode, 5000, 5000); pl.rec.inv.boat = 1; pl.rec.pet = pl.pet = 'dog'; pl.rec.pmode = pl.pm = mode; pl.rec.pst = { dog: { h: 77, sick: false } }; pl.rec.pnames = { dog: 'โต' };
+    const snap = JSON.stringify({ pet: pl.rec.pet, pmode: pl.rec.pmode, pst: pl.rec.pst, pnames: pl.rec.pnames }), k0 = keys(pl.rec);
+    for (const [how, out] of [['กลับท่า', p => { p.x = (S.OCEAN.exit.x + 1) * TS - 4; p.y = (S.OCEAN.exit.y0 + 1.5) * TS; p.lastMove = 0; w.handle(p, { t: 'm', x: p.x, y: p.y, d: 2 }); }], ['หมดเวลา', p => { p.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); }], ['seaLeave', p => w.seaLeave(p, 'ทดสอบ')]]) {
+      pl.rec.inv.boat = 1; pl.rec.inv.coin = 5000;
+      w.seaGo(pl); assert.ok(S.isOcean(S.caveFloor(pl.scene)), mode + ' ออกทะเลได้');
+      assert.strictEqual(pl.rec.pet, 'dog'); assert.strictEqual(pl.pet, 'dog');
+      out(pl); assert.ok(!pl.scene, `${mode}/${how}: กลับเมือง`);
+      assert.strictEqual(JSON.stringify({ pet: pl.rec.pet, pmode: pl.rec.pmode, pst: pl.rec.pst, pnames: pl.rec.pnames }), snap, `${mode}/${how}: pet/pmode/pst/pnames ไม่เปลี่ยน`);
+      assert.strictEqual(keys(pl.rec), k0, `${mode}/${how}: rec ไม่มีคีย์ใหม่ (รูปแบบเซฟเดิม)`);
+      if (mode === 'play') assert.ok(Number.isFinite(pl.pax) && !S.blockedAt(w.map, pl.pax, pl.pay), how + ': พิกัดสัตว์โหมดเล่นอยู่บนบกเมือง');
+    }
+  }
+  // หลุดการเชื่อมต่อกลางทะเล: เซฟตำแหน่งเมือง (จุดกลับท่า) ไม่ใช่พิกัดทะเล
+  const dc = mk('Disc', 5000, 5000); dc.rec.inv.boat = 1; dc.rec.pet = dc.pet = 'dog'; w.seaGo(dc); dc.x = 60 * TS; dc.y = 5 * TS;
+  w.leave(dc);
+  assert.ok(dc.rec.pet === 'dog' && dc.rec.x === (S.SEA.ret.x + 0.5) * TS && dc.rec.y === (S.SEA.ret.y + 0.5) * TS && !S.blockedAt(w.map, dc.rec.x, dc.rec.y), 'หลุดกลางทะเล: rec.x/y = จุดท่าเรือบนบก สัตว์เดิม');
+  // เรือเช่าหมดเวลา (มีสัตว์โหมดเล่น)
+  const rt = mk('Rent', 5000, 5000); rt.rec.pet = rt.pet = 'cat'; rt.rec.pmode = rt.pm = 'play'; w.seaGo(rt); assert.ok(Number.isFinite(rt.seaUntil));
+  rt.seaUntil = Date.now() - 1; w.tick(0.05, Date.now()); assert.ok(!rt.scene && rt.rec.pet === 'cat' && rt.rec.pmode === 'play', 'เช่าหมดเวลา: กลับเมือง สัตว์เดิม');
+  S.OCEAN.anytime = false;
+}
+// ท้ายสุด (ให้เช็กอื่นรันก่อน): ศูนย์กลางเรือห้ามอยู่ในช่องตัน — blockedAt เช็กแค่ 4 มุม กล่อง 44px > ช่อง 32px จึงลอดหินโดด 1 ช่องได้
+assert.strictEqual(globalThis.__rockHole, 0, 'เรือแล่นทับหิน 1 ช่องโดดได้ (ศูนย์กลางอยู่ในช่องตัน) จำนวนตัวอย่าง ' + globalThis.__rockHole);
 console.log('✓ ผ่าน: ออกทะเล (ท่าเรือ ค่าเรือเข้ากองกลาง ชุดปลาแยก ตกปลา หมดเวลา/ท้ายเรือกลับเกาะ)');
 process.exit(0);

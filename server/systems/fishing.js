@@ -32,7 +32,9 @@ module.exports = {
     const how = `ขับเรือด้วย WASD/จอยสติ๊ก • คลิก/แตะน้ำใกล้ๆ โยนเบ็ด (ไกลสุด ${S.OCEAN.castRange} ช่อง) • ปลาแพงอยู่ทะเลลึกทางขวา • แล่นกลับท่า (ซ้ายสุด) เพื่อกลับเกาะ`;
     this.toast(p, boat ? `⛵ ออกเรือของคุณ! ล่องทะเลใหญ่ได้ไม่จำกัดเวลา • ${how}` : `⛵ เช่าเรือออกทะเลแล้ว! ใช้ได้ราว ${Math.max(1, Math.round(win.ms / 60000))} นาทีจนร้านเช่าปิด 19:00 • ${how}`);
   },
-  seaLeave(p, msg) { if (!S.isSeaScene(S.caveFloor(p.scene))) return; p.seaUntil = 0; p.seaW = 0; this.leaveCave(p); this.toast(p, msg); },
+  seaLeave(p, msg) { if (!S.isSeaScene(S.caveFloor(p.scene))) return; p.seaUntil = 0; p.seaW = 0;
+    if (p.pm === 'play' || (p.rec && p.rec.pmode === 'play')) { const r = this.townPos(p); p.pax = r.x; p.pay = r.y; this.dirty = true; } // สัตว์โหมดปล่อยเล่น: จุดสนามเล่นเดิมเป็นพิกัดทะเล → ย้ายมาจุดกลับเกาะ
+    this.leaveCave(p); this.toast(p, msg); },
   seaAct(p, m) { // บนเรือ: ใช้ได้แค่เบ็ด ตกปลาทะเลลึก (ชุดปลาแยกจากสระ)
     const now = Date.now();
     if (now - p.lastAct < 150) return;

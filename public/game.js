@@ -874,7 +874,7 @@ function applyScene(m) {
     houseSt = Object.assign({ fl: 'oak', wp: 'cream' }, m.st || {}); if (!houseGrid) houseGrid = buildHouseGrid(); syncHouseBg();
   } else resetScene();
   const old = me; players.clear();
-  for (const q of m.players) { if (q.id === myId) { old.x = old.tx = m.x; old.y = old.ty = m.y; old.sit = false; old.fs = 0; players.set(myId, old); } else players.set(q.id, mkPlayer(q)); }
+  for (const q of m.players) { if (q.id === myId) { old.x = old.tx = m.x; old.y = old.ty = m.y; old.sit = false; old.fs = 0; old.cp = null; players.set(myId, old); } else players.set(q.id, mkPlayer(q)); }
   me = players.get(myId); updateOnline(); updateHouseUi(); renderBuild(); closePlots();
   if (inMyHouse()) toggleBuild(true); // เข้าบ้านตัวเองแล้วเปิดเมนูตกแต่งให้เลย
   // เปลี่ยนฉาก: ตัดเสียงกับคนฉากเก่าแล้วโทรหาทุกคนในฉากใหม่ (ผู้เล่นเดิมจะรับสายเองผ่าน onRtc)
@@ -2733,11 +2733,18 @@ function buildOceanBase() { // ทะเลใหญ่: น้ำตามโ�
   g.fillStyle = '#fff'; g.font = 'bold 11px sans-serif'; g.textAlign = 'left'; g.fillText('กลับท่า ⚓', 8, py0 - 6);
   base = oc; baseHi = document.createElement('canvas'); baseHi.width = baseHi.height = 1; caveTorches = [];
 }
-function drawBoat(p, now) { // เรือไม้ใต้ตัวละคร (ทะเลใหญ่): หัวเรือหันตามทิศ โคลงเบาๆ มีฟองคลื่นท้ายเรือตอนแล่น
+const boatBob = (p, now) => typeof PixelBoat !== 'undefined' ? Math.round((Math.sin(now / 620 + 1) + 1) / 2) : Math.sin(now / 420 + (p.id || 0)) * 1.2; // โยกตามคลื่น (สัตว์บนเรือใช้ค่าเดียวกับตัวเรือ)
+function boatPose(p, now) { // ท่าเรือของผู้เล่น: กำลังแล่นไหม ทิศ โยกตามคลื่น (เรียกครั้งเดียวต่อเฟรมต่อลำ เพราะเก็บตำแหน่งก่อนหน้าไว้วัดการเคลื่อนที่)
   const moved = Math.hypot(p.x - (p._lx == null ? p.x : p._lx), p.y - (p._ly == null ? p.y : p._ly)) > 0.25; p._lx = p.x; p._ly = p.y; if (moved) p._mvAt = now;
-  const moving = now - (p._mvAt || 0) < 260, d = p.dir || 0, hor = d >= 2, s = d === 3 || d === 0 ? 1 : -1, bob = Math.sin(now / 420 + (p.id || 0)) * 1.2;
+  const moving = now - (p._mvAt || 0) < 260, d = p.dir || 0, hor = d >= 2, s = d === 3 || d === 0 ? 1 : -1, bob = boatBob(p, now);
+  return { moving, d, hor, s, bob };
+}
+function drawBoat(p, now, layer) { // เรือไม้ใต้ตัวละคร (ทะเลใหญ่): หัวเรือหันตามทิศ โคลงเบาๆ มีฟองคลื่นท้ายเรือตอนแล่น • layer 'back'|'front'|ไม่ส่ง=ทั้งหมด
+  const { moving, d, hor, s, bob } = boatPose(p, now);
+  if (typeof PixelBoat !== 'undefined') { PixelBoat.draw(ctx, p.x, p.y + 6, d, now, layer); return; } // สไปรต์เรือพิกเซล (pixelboat.js)
+  if (layer === 'front') return; // รูปวาดโค้ดสำรองไม่แยกชั้น วาดรอบ back ครั้งเดียว
   const pt = (u, v) => (hor ? [s * u, v] : [v, s * u]), poly = (list, fill, stroke) => { ctx.beginPath(); list.forEach(([u, v], i) => { const [x, y] = pt(u, v); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); } };
-  ctx.save(); ctx.translate(Math.round(p.x), Math.round(p.y + 6 + bob)); ctx.scale(1.4, 1.4);
+  ctx.save(); ctx.translate(Math.round(p.x), Math.round(p.y + 6 + bob)); ctx.scale(1.75, 1.75); // ขยายให้ได้ BOAT.hull (ยาว ~96 กว้าง ~44)
   const [sx0, sy0] = pt(-6, 8); ctx.fillStyle = 'rgba(0,30,60,.28)'; ctx.beginPath(); ctx.ellipse(sx0 * 0.2, sy0 * 0.3 + 6, hor ? 28 : 15, hor ? 9 : 22, 0, 0, 7); ctx.fill(); // เงาใต้ท้องเรือ
   if (moving) for (let i = 0; i < 3; i++) { // ฟองคลื่นท้ายเรือ
     const ph = (now / 280 + i / 3) % 1, [wx, wy] = pt(-22 - ph * 26, 0); ctx.strokeStyle = `rgba(255,255,255,${(1 - ph) * 0.7})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(wx, wy + 6, hor ? 3 + ph * 5 : 8 + ph * 8, hor ? 8 + ph * 8 : 3 + ph * 5, 0, 0, 7); ctx.stroke();
@@ -2898,9 +2905,17 @@ function drawCaveWorld(now) {
     const [tx, ty] = k.split(',').map(Number); list.push({ y: (ty + 1) * TS + 20, f: () => PixelAction.shatter(ctx, tx * TS + 16, ty * TS + 18, t, b.k && ORE_COL[b.k], tx * 7 + ty, b.s === 2) });
   }
 
-  for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
-  if (ocean) for (const p of players.values()) list.push({ y: p.y + 8, f: () => drawBoat(p, now) }); // เรือไม้ใต้ตัวละคร (ทุกคนในทะเลใหญ่มีเรือของตัวเอง)
-  for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
+  if (ocean) for (const p of players.values()) list.push({ y: p.y + 12, f: () => { // เรือ + คน + สัตว์ของเจ้าของเดียวกันวาดเป็นกลุ่ม: เรือหลัง → สัตว์หลังคน → คน → สัตว์หน้าคน → เรือหน้า
+    drawBoat(p, now, 'back');
+    const behind = p.cp && p.cp.y + 8 < p.y + 12; if (behind) drawCompanion(p.cp, now);
+    drawPlayer(p, now);
+    if (p.cp && !behind) drawCompanion(p.cp, now);
+    drawBoat(p, now, 'front');
+  } });
+  else {
+    for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
+    for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
+  }
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   if (oreDmg.length) drawOreDmg(now);
   if (inSea()) for (const p of players.values()) if (p.fs) drawFishing(p, now); // เอ็นเบ็ด ทุ่น ระลอกน้ำ น้ำกระเซ็น (เดิมวาดเฉพาะรอบวาดของเมือง ฉากทะเลเลยไม่เห็นแอนิเมชันตกปลา)
@@ -3419,7 +3434,7 @@ function drawPlayer(p, now, cx) {
     if (p.lie) { // นอนบนเตียง: หมุนตัวละครยืนเป็นท่านอนราบ (ชื่อ/ฟองแชทไม่หมุน)
       ctx.save(); ctx.translate(bx, by); ctx.translate(x, y - 8); ctx.rotate(p.lieRot || Math.PI / 2); ctx.translate(-x, -(y - 8));
       PixelChar.draw(ctx, Object.assign({}, p, { sit: false, moving: false }), now); ctx.restore();
-    } else { ctx.save(); ctx.translate(bx, by); PixelChar.draw(ctx, p, now); ctx.restore(); } } // ตัวละครพิกเซล chibi (pixelchar.js)
+    } else { ctx.save(); ctx.translate(bx, by); PixelChar.draw(ctx, inOcean() ? Object.assign({}, p, { moving: false }) : p, now); ctx.restore(); } } // ตัวละครพิกเซล (ขับเรือในทะเลใหญ่: ยืนนิ่งไม่ก้าวขา) chibi (pixelchar.js)
   if (p.lvFx) drawLvFx(p, ctx, y);
   if (riding) y -= PixelVehicle.lift(p.veh); // ผู้ขี่ตัวสูงขึ้น ป้ายชื่อ/ฟองแชท/ไอคอนเลื่อนตาม
   if (p.wet) { PixelUI.world(ctx, '🪣', x, y - 20, 16); ctx.fillStyle = 'rgba(120,190,255,.85)'; for (let i = 0; i < 4; i++) { const t = (now / 600 + i / 4) % 1; ctx.fillRect(x - 10 + i * 7, y - 14 + t * 24, 2, 4); } } // โดนราดน้ำจากชาเลนจ์
@@ -3527,7 +3542,7 @@ function drawCompanion(q, now) { // สัตว์เลี้ยงคู่�
   if (q.x < camX - 40 || q.x > camX + vw + 40 || q.y < camY - 40 || q.y > camY + vh + 40) return;
   if (q.kind === 'bird') {
     const fly = q.moving, hop = fly ? Math.abs(Math.sin(q.anim * 14)) * 3 : Math.max(0, Math.sin(now / 900 + q.id) * 2 - 1.2), by = q.y - 4 - (fly ? 7 : 0) - hop, f = q.dx || 1;
-    ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(q.x, q.y + 6, 4, 1.4, 0, 0, 7); ctx.fill();
+    if (!q.boat) { ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(q.x, q.y + 6, 4, 1.4, 0, 0, 7); ctx.fill(); }
     const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(q.x + x * f - (f < 0 ? w : 0)), Math.round(by + y), w, h); };
     R(PixelArt.OUT, -5, -5, 10, 9); R(PixelArt.OUT, 3, -8, 6, 6);                        // ขอบ 1 px
     R('#4aa8e8', -4, -4, 8, 7); R('#8fd0ff', -3, -3, 5, 3); R('#f4efe0', -3, 1, 6, 2);   // ตัวสีฟ้า ท้องขาว
@@ -4294,7 +4309,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   if ($('clock').textContent !== txt) $('clock').textContent = txt;
   drawMini(now);
 }
-const blk = (x, y, fx, fy) => (scene ? Shared.houseBlockedAt(MAP, houseRects, x, y, fx, fy) : blockedAt(MAP, x, y)); // ชนผนัง/ของ (ในบ้านรวมเฟอร์นิเจอร์ตัน)
+const blk = (x, y, fx, fy) => (scene ? Shared.houseBlockedAt(MAP, houseRects, x, y, fx, fy) : inOcean() ? blockedAt(MAP, x, y, Shared.BOAT.hull.r) : blockedAt(MAP, x, y)); // ชนผนัง/ของ (ในบ้านรวมเฟอร์นิเจอร์ตัน)
 function step(now) {
   requestAnimationFrame(step);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -4345,6 +4360,16 @@ function step(now) {
     const C = COMPANIONS[p.pet], bird = C.kind === 'bird', play = p.pm === 'play';
     const cp = p.cp || (p.cp = { id: p.id, kind: C.kind, v: C.v, x: p.x - 18, y: p.y + 6, dx: 1, anim: Math.random() * 6, moving: false, chase: false, wait: 0, gx: p.x, gy: p.y, nextSay: now + 8000 + Math.random() * 15000 });
     cp.sick = p.psick; cp.name = p.pname;
+    if (inOcean()) { // ทะเลใหญ่: สัตว์ล็อกที่ที่นั่งบนเรือ ไม่มี AI เดิน ไม่ลงน้ำ โยกตามคลื่นเท่าเรือ • นกเกาะยอดเสา
+      const H = Shared.BOAT.hull, dir = p.dir | 0, bob = boatBob(p, now), o = Shared.boatSeat(dir, 0), dd = Shared.DIRS[dir] || Shared.DIRS[0];
+      if (bird) { cp.x = p.x + dd[0] * H.mast.u - dd[1] * H.mast.v; cp.y = p.y + 6 + bob + dd[1] * H.mast.u + dd[0] * H.mast.v - H.mast.h - 2; }
+      else { cp.x = p.x + o.x; cp.y = p.y + 3 + bob + o.y; }
+      cp.gx = cp.x; cp.gy = cp.y; cp.moving = false; cp.chase = false; cp.boat = true;
+      if (dir === 2) cp.dx = -1; else if (dir === 3) cp.dx = 1; // เรือขึ้น/ลงคง dx เดิม
+      if (now > cp.nextSay) { cp.sayAt = now; cp.nextSay = now + 20000 + Math.random() * 30000; }
+      continue;
+    }
+    cp.boat = false;
     const ax = play ? p.pax : p.x, ay = play ? p.pay : p.y, od = Math.hypot(p.x - cp.x, p.y - cp.y);
     const base = (bird ? 120 : C.kind === 'dog' ? 100 : 85) * (cp.sick ? 0.5 : 1);
     const free = (x, y) => bird || !blk(x, y);

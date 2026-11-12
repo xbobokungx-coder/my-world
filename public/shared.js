@@ -1376,7 +1376,7 @@
   const cabinetAt = (tx, ty) => { for (let i = 0; i < CABINETS.length; i++) if (CABINETS[i].x === tx && CABINETS[i].y === ty) return Object.assign({ idx: i }, CABINETS[i]); return null; };
   // ยานพาหนะ: ซื้อครั้งเดียว ขี่/ลงได้ที่ร้านยานพาหนะหรือกด V • speed = ตัวคูณความเร็วเดิน (เฉพาะในเมือง ในบ้านลงเดิน) • ขายคืนได้ 70%
   const VEHICLES = { bike: { name: 'จักรยาน', emoji: '🚲', price: 300, speed: 1.2 }, scooter: { name: 'มอเตอร์ไซค์', emoji: '🛵', price: 1500, speed: 1.4 }, car: { name: 'รถยนต์', emoji: '🚗', price: 6000, speed: 1.6 } };
-  const BOAT = { price: 3000 }; // เรือ: ซื้อครั้งเดียวที่ร้านยานพาหนะ (itemInfo 'boat') ใช้ออกทะเลฟรี ขายคืนได้ 70% เหมือนของชิ้นเดียวอื่นๆ
+  const BOAT = { price: 3000, hull: { len: 96, wid: 44, r: 22, helm: { u: 0, v: 0 }, seats: [{ u: 34, v: 0 }, { u: -28, v: -12 }, { u: -28, v: 12 }], mast: { u: -6, v: 0, h: 38 } } }; // เรือ: ซื้อครั้งเดียวที่ร้านยานพาหนะ (itemInfo 'boat') ใช้ออกทะเลฟรี ขายคืนได้ 70% เหมือนของชิ้นเดียวอื่นๆ
   const WISH_EXTRA = Object.values(VEHICLES).map(v => ({ k: 'veh', p: v.price })).concat([{ k: 'boat', p: BOAT.price }]); // ที่ใช้เงินแบบซื้อครั้งเดียวที่เพิ่มในขั้น 2 (tools/econsim.js ใช้ทำรายการของที่อยากได้)
   // ร้านแต่ละสาย: buy = สินค้าที่ขาย, sell = คำนำหน้าไอเทมที่ร้านรับซื้อ
   const SHOPS = {
@@ -1663,14 +1663,21 @@
     const t = m[ty][tx];
     return t === T.WATER || t === T.TREE || t === T.BUILD || t === T.FENCE || t === T.SHOP || t === T.FURN || t === T.LANDMARK || t === T.WALL || t === T.VOID || t === T.CLIFF || t === T.ROCK || t === T.ORE;
   }
-  function blockedAt(m, x, y) {
-    const r = 8;
+  function blockedAt(m, x, y, r = 8) { // r = รัศมีกล่องชน (ค่าเริ่ม 8 = ตัวคน • เรือใหญ่ส่ง BOAT.hull.r)
     return solid(m, Math.floor((x - r) / TS), Math.floor((y - r) / TS)) ||
            solid(m, Math.floor((x + r) / TS), Math.floor((y - r) / TS)) ||
            solid(m, Math.floor((x - r) / TS), Math.floor((y + r) / TS)) ||
-           solid(m, Math.floor((x + r) / TS), Math.floor((y + r) / TS));
+           solid(m, Math.floor((x + r) / TS), Math.floor((y + r) / TS)) ||
+           (r >= TS / 2 && ( // กล่องกว้างกว่าช่อง (เรือใหญ่): เช็กกลางกล่องและกึ่งกลางขอบด้วย กันข้ามหินโดด 1 ช่องที่หลบอยู่ระหว่างมุม
+             solid(m, Math.floor(x / TS), Math.floor(y / TS)) ||
+             solid(m, Math.floor((x - r) / TS), Math.floor(y / TS)) || solid(m, Math.floor((x + r) / TS), Math.floor(y / TS)) ||
+             solid(m, Math.floor(x / TS), Math.floor((y - r) / TS)) || solid(m, Math.floor(x / TS), Math.floor((y + r) / TS))));
   }
   const DIRS = [[0, 1], [0, -1], [-1, 0], [1, 0]]; // ลง, ขึ้น, ซ้าย, ขวา
+  // เรือ: แปลงพิกัดเรือ (u ตามหัวเรือ, v ด้านขวาของเรือ) เป็นออฟเซ็ตบนจอตามทิศ dir (0=ใต้ 1=เหนือ 2=ตะวันตก 3=ตะวันออก ลำดับเดียวกับ DIRS)
+  function boatOff(dir, u, v) { const d = DIRS[dir] || DIRS[0]; return { x: d[0] * u - d[1] * v + 0, y: d[1] * u + d[0] * v + 0 }; }
+  function boatSeat(dir, slot) { const s = BOAT.hull.seats[slot] || BOAT.hull.seats[0]; return boatOff(dir, s.u, s.v); }
+  function boatHelm(dir) { return boatOff(dir, BOAT.hull.helm.u, BOAT.hull.helm.v); }
   function facing(x, y, dir) {
     return [Math.floor(x / TS) + DIRS[dir][0], Math.floor(y / TS) + DIRS[dir][1]];
   }
@@ -1682,7 +1689,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
     FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, fishNewestLv, fishPoolMul, migrateStdV5, rareCdMs, xpStdV5,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
