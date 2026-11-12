@@ -261,8 +261,8 @@
   body.touch .ck-head .btn { min-height:44px; min-width:92px; font-size:15px; }
   .row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--edge); }
   .row span:first-child { font-size:15px; }
-  #rcBar { position:fixed; top:max(8px,env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:29; background:rgba(0,0,0,.78); color:#fff; padding:6px 14px; border-radius:16px; font-size:14px; max-width:calc(100vw - 32px); text-align:center; pointer-events:none; }
-  #dc { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:30; display:flex; align-items:center; justify-content:center; color:#fff; flex-direction:column; gap:12px; font-size:18px; }
+  #rcBar { position:fixed; top:max(56px,calc(env(safe-area-inset-top) + 50px)); left:8px; z-index:29; background:rgba(0,0,0,.78); color:#fff; padding:5px 12px; border-radius:16px; font-size:13px; white-space:nowrap; max-width:calc(100vw - 16px); overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
+  #dc { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:40; display:flex; align-items:center; justify-content:center; color:#fff; flex-direction:column; gap:12px; font-size:18px; }
   #joy { position:fixed; left:18px; bottom:20px; width:130px; height:130px; border-radius:50%; background:rgba(255,255,255,.25);
     border:3px solid rgba(255,255,255,.5); z-index:5; touch-action:none; }
   #knob { position:absolute; width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,.7); left:37px; top:37px; pointer-events:none; }
