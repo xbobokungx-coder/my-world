@@ -4360,7 +4360,7 @@ function step(now) {
     const C = COMPANIONS[p.pet], bird = C.kind === 'bird', play = p.pm === 'play';
     const cp = p.cp || (p.cp = { id: p.id, kind: C.kind, v: C.v, x: p.x - 18, y: p.y + 6, dx: 1, anim: Math.random() * 6, moving: false, chase: false, wait: 0, gx: p.x, gy: p.y, nextSay: now + 8000 + Math.random() * 15000 });
     cp.sick = p.psick; cp.name = p.pname;
-    if (inOcean()) { // ทะเลใหญ่: สัตว์ล็อกที่ที่นั่งบนเรือ ไม่มี AI เดิน ไม่ลงน้ำ โยกตามคลื่นเท่าเรือ • นกเกาะยอดเสา
+    if (inOcean() && !bird) { // ทะเลใหญ่: สัตว์เดินล็อกที่ที่นั่งบนเรือ (นกบินตามเรือเองด้านล่าง ไม่ล็อก) ไม่มี AI เดิน ไม่ลงน้ำ โยกตามคลื่นเท่าเรือ • นกเกาะยอดเสา
       const H = Shared.BOAT.hull, dir = p.dir | 0, bob = boatBob(p, now), o = Shared.boatSeat(dir, 0), dd = Shared.DIRS[dir] || Shared.DIRS[0];
       if (bird) { cp.x = p.x + dd[0] * H.mast.u - dd[1] * H.mast.v; cp.y = p.y + 6 + bob + dd[1] * H.mast.u + dd[0] * H.mast.v - H.mast.h - 2; }
       else { cp.x = p.x + o.x; cp.y = p.y + 3 + bob + o.y; }
@@ -4370,7 +4370,7 @@ function step(now) {
       continue;
     }
     cp.boat = false;
-    const ax = play ? p.pax : p.x, ay = play ? p.pay : p.y, od = Math.hypot(p.x - cp.x, p.y - cp.y);
+    const ax = play && !inOcean() ? p.pax : p.x, ay = play && !inOcean() ? p.pay : p.y, od = Math.hypot(p.x - cp.x, p.y - cp.y);
     const base = (bird ? 120 : C.kind === 'dog' ? 100 : 85) * (cp.sick ? 0.5 : 1);
     const free = (x, y) => bird || !blk(x, y);
     if (!play) { // เดินตาม: ห่างเกิน 2 ช่องจะวิ่งตามมาให้เหลือ 1 ช่อง • ยืนเฉยๆ เดินไปมาไม่เกิน 2 ช่อง
