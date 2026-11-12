@@ -1213,8 +1213,8 @@ function cropSeasonTag(c) { // ฤดูที่ปลูกได้ของ�
 }
 function seasonInfoText(short) { // ฤดูปัจจุบัน + นับถอยหลัง + พืชที่ปลูกได้เฉพาะฤดูนี้ (ใช้เป็นทูลทิปและ toast ตอนแตะนาฬิกา)
   const t = seasonNow(), se = Shared.seasonAt(t); if (!se.on) return '🌱 ยังไม่เข้าฤดูกาล ปลูกอะไรก็ได้';
-  const free = (Shared.SEASONS.freeLv || 0), names = se.s.crops.filter(c => CROPS[c] && CROPS[c].lv > free).map(c => CROPS[c].name).join(' ');
-  if (short) return `${se.s.emoji} ${se.s.name} เหลือ ${waitTxt(se.end - t)}${names ? '\nปลูกได้: ' + names : ''}`;
+  const free = (Shared.SEASONS.freeLv || 0), list = se.s.crops.filter(c => CROPS[c] && CROPS[c].lv > free).map(c => CROPS[c].name), names = list.join(' ');
+  if (short) return `${se.s.emoji} ${se.s.name} เหลือ ${waitTxt(se.end - t)}${list.length ? '\nปลูกได้: ' + list.slice(0, 2).join(' ') + (list.length > 2 ? ' +' + (list.length - 2) : '') : ''}`; // toast บนมือถือแคบ ย่อเหลือ 2 ชื่อ
   return `${se.s.emoji} ${se.s.name} เหลือ ${waitTxt(se.end - t)}${names ? ' • ปลูกได้: ' + names : ''}${free ? ' • Lv≤' + free + ' ปลูกได้ทุกฤดู' : ''}`;
 }
 function toolInfo(t) { // ข้อมูลเครื่องมือในช่อง 1: e = ไอคอน, n = ชื่อเต็ม, sub = บรรทัดย่อในเมนู, cnt = ตัวเลขมุมช่อง (null = ไม่แสดง)
@@ -1290,7 +1290,7 @@ function showPicker() {
     const b = document.createElement('button');
     b.className = 'opt' + ((s === 'seed' ? 'seed_' + selSeed : s === 'rod' ? selBait : selFeed) === k ? ' sel' : ''); b.disabled = !!locked;
     const sl = s === 'seed' && !locked ? plantLock(k.slice(5)) : null; // นอกฤดู: หม่น + 🔒 แต่ยังเลือกได้
-    b.innerHTML = `<b>${info.emoji}</b>${s === 'seed' ? CROPS[k.slice(5)].name : info.name.split(' ')[0]}<br><span style="white-space:nowrap">${locked ? '🔒 Lv' + info.lv : (sl ? '🔒' + (sl.s ? sl.s.emoji : '') + ' ' : '') + '×' + have}</span>`;
+    b.innerHTML = `<b>${info.emoji}</b>${s === 'seed' ? CROPS[k.slice(5)].name : info.name.split(' ')[0]}<br><span>${locked ? '🔒 Lv' + info.lv : (sl ? '🔒' + (sl.s ? sl.s.emoji : '') + ' ' : '') + '×' + have}</span>`;
     b.style.minHeight = '64px';
     if (sl) b.style.opacity = .6;
     b.onclick = e => { e.stopPropagation(); if (s === 'seed') selSeed = k.slice(5); else if (s === 'rod') { selBait = k; ls.set('mw_bait', k); } else selFeed = k; hidePicker(); renderHud(); };
