@@ -4116,7 +4116,7 @@ function drawSnow(now) {
   ctx.restore();
 }
 // ===== ฝนตก (ภาพ+เสียงเบาๆ เซิร์ฟเวอร์จัดการกติกา/ดินเปียก) เฉพาะกลางแจ้งในเมือง =====
-const RAIN_FX = { areaPer: 6000, maxDesk: 160, maxTouch: 80, reducedMul: 1 / 3, reducedSlow: 0.6, chkMs: 5000, vyMin: 520, vyMax: 800, wind: 90, lenMin: 6, lenMax: 12, cols: ['#d4e6f5', '#c0d9ee', '#e6f2fa'], alpha: 0.9, slowMs: 40, slowRun: 20, fastRun: 120, rippleMax: 40, rippleMs: 420, rippleCol: '#d6e6f2', tint: '90,110,135', tintA: 0.2, tintNight: 0.06 };
+const RAIN_FX = { areaPer: 6000, maxDesk: 240, maxTouch: 80, reducedMul: 1 / 3, reducedSlow: 0.6, chkMs: 5000, vyMin: 520, vyMax: 800, wind: 90, lenMin: 6, lenMax: 12, cols: ['#d4e6f5', '#c0d9ee', '#e6f2fa'], alpha: 0.9, slowMs: 40, slowRun: 20, fastRun: 120, rippleMax: 40, rippleMs: 420, rippleCol: '#d6e6f2', tint: '90,110,135', tintA: 0.2, tintNight: 0.06 };
 let rainMode = 'auto', rainForce = null, rainOn = false, rainChk = -1e9, rainPool = [], rainRip = [], rainLast = 0, rainScale = 1, rainSlow = 0, rainFast = 0;
 function rainNow() { return !!(Shared.rainAt && Shared.rainAt(Date.now() + timeOffset, 'auto')); }
 function rainActive(now) {
@@ -4142,7 +4142,7 @@ function drawRain(now, dark) {
   ctx.globalAlpha = R.alpha;
   for (let i = 0; i < want; i++) {
     const f = rainPool[i], v = (R.vyMin + (R.vyMax - R.vyMin) * f.k) * dpr * sp, wx = R.wind * dpr * sp, len = Math.round((R.lenMin + (R.lenMax - R.lenMin) * f.k) * dpr), w = f.k > 0.6 ? Math.max(2, Math.round(2 * dpr)) : Math.max(1, Math.round(dpr));
-    if (!f.gy) f.gy = f.y + (40 + Math.random() * 260) * dpr; // จุดที่หยดตกถึงพื้น
+    if (!f.gy) f.gy = Math.max(f.y + 40 * dpr, (0.1 + 0.9 * Math.random()) * H); // จุดที่หยดตกถึงพื้น สุ่มทั่วทั้งจอ (เดิมสุ่มแค่ 300px จากขอบบน เลยตกแค่ครึ่งบนของจอใหญ่)
     f.y += v * dt; f.x += wx * dt;
     if (f.y >= f.gy) { if (!red && rainRip.length < R.rippleMax) rainRip.push({ x: f.x, y: f.gy, t: now }); f.y = -len; f.x = Math.random() * W; f.gy = 0; continue; }
     if (f.x > W) f.x -= W;
