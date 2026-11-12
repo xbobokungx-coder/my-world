@@ -1123,11 +1123,12 @@ wss.on('connection', (ws, req) => {
         if (pinLocked(pk)) return err('ใส่ PIN ผิดบ่อยเกินไป รอ 1 นาทีแล้วลองใหม่', { need: 'pin' });
         if (!pinOk(prec, pin)) { pinFails.get(pk).push(Date.now()); if (++authFails > 8) { ws.close(); return; } return err(pin ? 'PIN ไม่ถูกต้อง' : 'ชื่อนี้ตั้ง PIN ไว้ กรุณาใส่ PIN', { need: 'pin' }); }
       }
+      if (!admin && !(prec && prec.pin) && !PIN_RE.test(pin)) return err(prec ? 'บัญชีนี้ยังไม่มี PIN ใส่ PIN ใหม่ 4–6 หลักในช่อง PIN เพื่อตั้งไว้ก่อนเข้าเกม (ใส่ทุกครั้งที่เข้า)' : 'ตั้ง PIN 4–6 หลักก่อนเริ่มเล่น (กันคนอื่นใช้ชื่อคุณ)', { need: prec ? 'setpin' : 'pin' }); // WP-02 PIN บังคับ: ชื่อใหม่ต้องตั้งตอนสมัคร ชื่อเดิมที่ยังไม่มีต้องตั้งตอนเข้า
       const old = [...w.players.values()].find(q => q.key === pkey);
       // ล็อกอินซ้ำ: เตะ session เก่าได้ทันทีเมื่อ (1) พิสูจน์ตัวตนแล้ว: ผู้ดูแลใส่รหัส / บัญชีตั้ง PIN ที่ผ่านด่านด้านบน / IP เดิม หรือ (2) session เก่า "ตายแล้ว" = ไม่ตอบ ping ภายใน DUP_PROBE_MS (เน็ตหลุดแต่เซิร์ฟเวอร์ยังเห็นออนไลน์) • บัญชีไม่มี PIN จาก IP อื่นขณะอีกฝั่งยังตอบ ping อยู่ (เล่นจริง) = ยังเข้าไม่ได้ (กันแอบอ้างชื่อ)
       const doJoin = takeover => {
         const r = w.join(ws, m.name, m.color, admin, takeover);
-        if (!r.err && !prec && PIN_RE.test(pin)) { r.p.rec.pin = pinMake(pin); w.dirty = true; } // บัญชีใหม่ที่ใส่ PIN มาตั้งแต่สมัคร
+        if (!r.err && !admin && !r.p.rec.pin && PIN_RE.test(pin)) { r.p.rec.pin = pinMake(pin); w.dirty = true; } // ตั้ง PIN ตอนสมัคร/ตอนเข้าครั้งแรกหลังบังคับ (บัญชีที่มี PIN แล้วผ่านด่านด้านบนมาแล้ว)
         if (!r.err && m.ch) w.chJoinInvite(r.p, String(m.ch).slice(0, 16), ip); // เข้ามาจากลิงก์ชาเลนจ์ถังน้ำ
         if (r.err) err(r.err);
         else {

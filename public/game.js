@@ -129,7 +129,7 @@ function applyMapCells(cells) {
 }
 function handle(m) {
   switch (m.t) {
-    case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'pin') $('pin').focus(); if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
+    case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'pin' || m.need === 'setpin') $('pin').focus(); if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
     case 'w':
       resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; if (m.fr) freshSt = m.fr; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
       dur = m.dur || {}; deepFloor = m.deep || 1; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
