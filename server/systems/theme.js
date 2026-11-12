@@ -21,9 +21,11 @@ module.exports = {
   themeSend(p) { send(p, { t: 'theme', snow: this.themeSnow(), rain: this.themeRain() }); },
   rainTick(now) { // ฝนเริ่ม/หยุด บอกคนออนไลน์ครั้งเดียวตอนสถานะเปลี่ยน (รอบแรกแค่จำสถานะ)
     const r = S.rainAt(now, this.themeRain());
-    if (this._rainOn !== undefined && r !== this._rainOn && this.players.size) this.broadcast({ t: 'msg', text: r ? '🌧️ ฝนเริ่มตกแล้ว ดินเปียกเองทุกช่อง' : '☀️ ฝนหยุดแล้ว' });
+    if (this._rainOn !== undefined && r !== this._rainOn && this.players.size) this.broadcast({ t: 'msg', text: r ? '🌧️ ฝนเริ่มตกแล้ว ดินเปียกเองทุกช่อง' : '☀️ ฝนหยุดแล้ว ดินยังเปียกอยู่อีกสักพัก' });
     this._rainOn = r;
+    if (r) this.rainEnd = now; // จำเวลาที่ฝนตกล่าสุด: หลังฝนหยุดดินยังเปียกต่ออีก RAIN.afterMs เหมือนรดน้ำ
   },
+  rainWet(now) { return S.rainAt(now, this.themeRain()) || now < (this.rainEnd || 0) + S.RAIN.afterMs; }, // ดินเปียกจากฝน (ตอนฝนตก + ช่วงแห้งช้าหลังฝนหยุด)
   // ผู้ดูแลตั้งโหมด: คืน { err } หรือ { snow } • rooms = ทุกห้องที่ต้องบอก (ค่าเริ่มต้นห้องนี้ห้องเดียว)
   adminSetSnow(p, mode, rooms) {
     if (!p || !p.admin) return { err: 'เฉพาะผู้ดูแลเท่านั้น' };

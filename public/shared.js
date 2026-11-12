@@ -325,7 +325,7 @@
   ] };
   const seasonAt = t => { const L = SEASONS.days * 864e5, n = Math.floor((t - SEASONS.epoch) / L), i = ((n % 3) + 3) % 3; return { s: SEASONS.list[i], end: SEASONS.epoch + (n + 1) * L, on: t >= SEASONS.epoch }; };
   // ฝนสุ่มแบบกำหนดผลได้: แบ่งเวลาเป็นช่อง slotMs แต่ละช่องใช้ hash ของเลขช่อง (ไม่ใช้ Math.random) ตัดสินว่า ฝนตกไหม/นานเท่าไร/เริ่มตอนไหน ฝนไม่ข้ามช่อง • ตามฤดูของช่อง: null = ไม่ตก
-  const RAIN = { slotMs: 30 * 60e3, season: { rain: { p: 0.7, minMs: 8 * 60e3, maxMs: 25 * 60e3 }, hot: { p: 0.12, minMs: 4 * 60e3, maxMs: 10 * 60e3 }, cool: null } };
+  const RAIN = { afterMs: WATER_MS, slotMs: 30 * 60e3, season: { rain: { p: 0.7, minMs: 8 * 60e3, maxMs: 25 * 60e3 }, hot: { p: 0.12, minMs: 4 * 60e3, maxMs: 10 * 60e3 }, cool: null } };
   const rainHash = (n, salt) => { let h = (Math.imul(n | 0, 0x9E3779B1) ^ Math.imul((n / 4294967296) | 0, 0x85EBCA6B) ^ Math.imul(salt, 0xC2B2AE35)) | 0; h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B); h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
   const rainAt = (t, mode) => { // ฝนตกไหม: mode 'on' ตกตลอด • 'off' ไม่ตก • อื่นๆ = ฝนสุ่มตามช่องเวลาและฤดู (คำนวณตรงกันสองฝั่ง)
     if (mode === 'on') return true; if (mode === 'off') return false;

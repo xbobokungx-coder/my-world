@@ -4116,8 +4116,8 @@ function drawSnow(now) {
   ctx.restore();
 }
 // ===== ฝนตก (ภาพ+เสียงเบาๆ เซิร์ฟเวอร์จัดการกติกา/ดินเปียก) เฉพาะกลางแจ้งในเมือง =====
-const RAIN_FX = { areaPer: 6000, maxDesk: 160, maxTouch: 80, reducedMul: 1 / 3, reducedSlow: 0.6, chkMs: 5000, vyMin: 520, vyMax: 800, wind: 90, lenMin: 6, lenMax: 12, cols: ['#d4e6f5', '#c0d9ee', '#e6f2fa'], alpha: 0.9, slowMs: 40, slowRun: 20, fastRun: 120, rippleMax: 40, rippleMs: 420, rippleCol: '#d6e6f2', tint: '90,110,135', tintA: 0.2, tintNight: 0.06, sfxVol: 0.05, sfxEveryMs: 1500 };
-let rainMode = 'auto', rainForce = null, rainOn = false, rainChk = -1e9, rainPool = [], rainRip = [], rainLast = 0, rainScale = 1, rainSlow = 0, rainFast = 0, rainSfxAt = 0;
+const RAIN_FX = { areaPer: 6000, maxDesk: 160, maxTouch: 80, reducedMul: 1 / 3, reducedSlow: 0.6, chkMs: 5000, vyMin: 520, vyMax: 800, wind: 90, lenMin: 6, lenMax: 12, cols: ['#d4e6f5', '#c0d9ee', '#e6f2fa'], alpha: 0.9, slowMs: 40, slowRun: 20, fastRun: 120, rippleMax: 40, rippleMs: 420, rippleCol: '#d6e6f2', tint: '90,110,135', tintA: 0.2, tintNight: 0.06 };
+let rainMode = 'auto', rainForce = null, rainOn = false, rainChk = -1e9, rainPool = [], rainRip = [], rainLast = 0, rainScale = 1, rainSlow = 0, rainFast = 0;
 function rainNow() { return !!(Shared.rainAt && Shared.rainAt(Date.now() + timeOffset, 'auto')); }
 function rainActive(now) {
   if (rainForce !== null) return rainForce;
@@ -4157,7 +4157,6 @@ function drawRain(now, dark) {
     ctx.globalAlpha = 0.75 * (1 - a); ctx.fillRect(px - rw, py, rw * 2, th); if (a > 0.35) { ctx.fillRect(px - rw - th, py + th, th, th); ctx.fillRect(px + rw, py + th, th, th); }
   }
   ctx.restore();
-  if (sfxOn && sctx && sctx.state === 'running' && now - rainSfxAt > R.sfxEveryMs) { rainSfxAt = now; try { noise(R.sfxEveryMs / 1000 * 1.3, { f: 2600, q: 0.6, vol: R.sfxVol, attack: 0.5 }); } catch (e) { /* ไม่รองรับเสียงก็ข้าม */ } } // นอยส์ band-pass เบาๆ ต่อกันเป็นช่วง (เล่นเฉพาะตอนวาดฝน = ในเมืองและแท็บไม่ซ่อน)
 }
 // ---------- ธีมหิมะ ระดับ 2: โทนสีหนาวของเมือง (ภาพล้วน เปิดตาม snowActive() เฉพาะในเมือง) ----------
 // ค่าสี/พารามิเตอร์ทั้งหมดอยู่ที่นี่ที่เดียว • พื้นฤดูหนาว (baseWinter) สร้างครั้งเดียวต่อการเปลี่ยนโหมด/ผังเมือง แบ่งทำทีละช่วงหลายเฟรมไม่ให้กระตุก แล้วคืนหน่วยความจำเมื่อปิดโหมด

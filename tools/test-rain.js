@@ -46,6 +46,14 @@ assert.strictEqual(w.pub(w.farm['1,1'], wet).w, 1);
 // ตั้ง off = ไม่โตแม้ในช่วงฝน
 w.adminSetRain(adm, 'off'); const g0 = w.farm['1,1'].g; w.lastCrop = wet + 1000; w.cropTick(wet + 2000); assert.strictEqual(w.farm['1,1'].g, g0);
 assert.strictEqual(w.pub(w.farm['1,1'], wet).w, 0);
+// หลังฝนหยุด ดินยังเปียกต่อ RAIN.afterMs (เหมือนรดน้ำ) แล้วค่อยแห้ง (ปิดฝนด้วยมือก็เหมือนกัน)
+w.adminSetRain(adm, 'auto'); w.rainEnd = 0; w.farm['2,2'] = { c: 'carrot', g: 0, m: 1 };
+w.rainTick(wet); assert.strictEqual(w.rainEnd, wet);
+w.adminSetRain(adm, 'off'); w.rainTick(wet + 1000);
+assert.strictEqual(w.pub(w.farm['2,2'], wet + S.RAIN.afterMs - 1).w, 1, 'ฝนหยุดแล้วดินยังเปียก');
+w.lastCrop = wet + 1000; w.cropTick(wet + 2000); assert.ok(w.farm['2,2'].g > 0, 'ช่วงเปียกหลังฝน พืชยังโต');
+assert.strictEqual(w.pub(w.farm['2,2'], wet + S.RAIN.afterMs + 1).w, 0, 'พ้นเวลาแล้วแห้ง');
+w.rainEnd = 0;
 // ตั้ง on = ตกตลอด, broadcast รวม snow+rain
 sent.length = 0; assert.deepStrictEqual(w.adminSetRain(adm, 'on', [w]), { rain: 'on' });
 assert.deepStrictEqual(sent.filter(([k, m]) => k === 'Joe' && m.t === 'theme').map(([, m]) => m), [{ t: 'theme', snow: 'auto', rain: 'on' }]);
