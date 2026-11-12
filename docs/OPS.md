@@ -87,6 +87,12 @@ mkdir -p /root/my-world/backup && cp -a /root/my-world/data /root/my-world/backu
 กู้คืน: `systemctl stop my-world` → คัดลอกกลับไปที่ `data/` → `systemctl start my-world`
 
 
+## ดูแลชุมชน (WP-06)
+
+- ดูรายงานผู้เล่นบน VPS: `node tools/reports.js` (รายการ) • `node tools/reports.js <id>` (ดูแชตแนบ) • `node tools/reports.js close <id>` ปิดรายงาน (ข้อมูลอ่อนไหว ห้าม commit ห้ามเอาเนื้อหาไปวาง)
+- คำหยาบ: แก้ `data/badwords.txt` เองได้ (บรรทัดละคำ ขึ้นต้น `#` = คอมเมนต์) เซิร์ฟเวอร์โหลดใหม่เองทุกนาที ไม่ต้อง restart
+- แชตย้อนหลังเก็บ 14 วัน ดูได้เฉพาะในแผงผู้ดูแลในเกม ไม่ต้องดูไฟล์ `data/chatlog/` ด้วยมือ
+
 ## ข้อมูลเซิร์ฟเวอร์ (VPS)
 
 - ระบบ: Ubuntu (RAM ~1GB, มี swap 1GB) ระวังกินหน่วยความจำ อย่าติดตั้งของหนักโดยไม่จำเป็น

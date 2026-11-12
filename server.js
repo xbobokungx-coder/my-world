@@ -38,7 +38,7 @@ const rodOf = inv => S.rodTier(inv);
 const { NPC_DEFS } = require('./server/consts.js'); // ย้ายไป server/consts.js
 
 const { CAVE, ADMIN_NAME } = require('./server/consts.js'); // ฉากถ้ำเหมือง (ย้ายไป server/consts.js)
-const HOUSE_MSG = new Set(['m', 'act', 'sw', 'reel', 'held', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'house', 'gift', 'greet']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
+const HOUSE_MSG = new Set(['m', 'act', 'sw', 'reel', 'held', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'block', 'report', 'house', 'gift', 'greet']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
 class World {
   constructor(room) {
     this.room = room;
@@ -84,7 +84,7 @@ class World {
         for (const [x, y, k] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2 && !(x >= S.MINE.hill.x0 && x <= S.MINE.hill.x1 && y <= 7) && !Object.values(S.PENS).some(P => x >= P.x0 - 1 && x <= P.x1 + 1 && y >= P.y0 - 1 && y <= P.y1 + 1)) { this.map[y][x] = T.TREE; if (Object.hasOwn(S.TREE_KINDS, k)) treeKinds[x + ',' + y] = k; }
       }
       mk = d.market || {}; this.mktDay = Number.isInteger(d.mktDay) ? d.mktDay : -1;
-      houseSaved = d.house || {}; townSaved = { evt: d.evt, chain: d.chain, invites: d.invites, stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, lotto: d.lotto, stats: d.stats, village: d.village, week: d.week, banned: d.banned };
+      houseSaved = d.house || {}; townSaved = { evt: d.evt, chain: d.chain, invites: d.invites, stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, lotto: d.lotto, stats: d.stats, village: d.village, week: d.week, banned: d.banned, banUntil: d.banUntil };
       this._loadMocks = d.mocks; this._loadMapOv = d.mapOv;
     } catch (e) {
       // ไม่มีไฟล์ = โลกใหม่ แต่ถ้ามีไฟล์แต่อ่านไม่ได้ ให้สำรองไว้ก่อน ไม่งั้นการบันทึกครั้งต่อไปจะเขียนทับข้อมูลเดิมทิ้ง
@@ -135,7 +135,7 @@ class World {
     this.orders = d.orders && Array.isArray(d.orders.list) ? d.orders : { day: '', list: [], by: {} };
     this.rents = {}; for (const P of S.FARM_RENT.plots) { const r = d.rents && d.rents[P.id]; if (r && typeof r.key === 'string' && Number.isFinite(r.until)) { if (r.until - Date.now() > S.FARM_RENT.ms) { this.dirty = true; continue; } /* เช่าเกิน 1 วันจริง (สัญญาเก่า) ตัดออกเลย */ this.rents[P.id] = { key: r.key, name: String(r.name || r.key).slice(0, 12), until: r.until }; } } // แปลงเช่า
     this.log = (Array.isArray(d.log) ? d.log : []).filter(e => Array.isArray(e) && Number.isFinite(e[0]) && typeof e[1] === 'string').slice(-S.TOWN.logMax).map(e => [e[0], e[1].slice(0, 120)]);
-    this.loadVillage(d.village); this.loadWeek(d.week); this.loadProjects(d.projects); this.loadLotto(d.lotto);
+    this.loadVillage(d.village); this.loadWeek(d.week); this.loadProjects(d.projects); this.loadLotto(d.lotto); this.modLoad(d);
     this.banned = new Set(Array.isArray(d.banned) ? d.banned.filter(x => typeof x === 'string').map(x => x.toLowerCase().slice(0, 24)) : []); // ชื่อ (key) ที่ผู้ดูแลแบน: เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น
     const st = d.stats || {}; this.stats = { day: typeof st.day === 'string' ? st.day : '', ev: {} };
     for (const ev of Object.keys(S.FAME)) { const m = Object.create(null), o = st.ev && st.ev[ev]; if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) if (Number.isFinite(v)) m[k] = v; this.stats.ev[ev] = m; }
@@ -162,6 +162,7 @@ class World {
     if (!name) return { err: 'กรุณาใส่ชื่อตัวละคร' };
     const key = name.toLowerCase();
     if (!admin && this.banned && this.banned.has(key)) return { err: 'ชื่อนี้ถูกระงับโดยผู้ดูแล 🚫 กรุณาใช้ชื่ออื่น' };
+    { const be = this.modJoinCheck(key, admin); if (be) return { err: be }; } // แบนชั่วคราว (หมดเวลาแล้วเข้าได้เอง)
     for (const q of [...this.players.values()]) if (q.key === key) {
       if (!takeover) return { err: 'ชื่อนี้กำลังเล่นอยู่ ลองใช้ชื่ออื่น' };
       // ล็อกอินซ้ำ (เช่น เน็ตหลุดแต่เซิร์ฟเวอร์ยังเห็นออนไลน์): เตะ session เก่าออก เซฟสถานะ แล้วให้ session ใหม่เข้าได้ทันที
@@ -208,7 +209,7 @@ class World {
     send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); this.chPush(p); send(p, { t: 'evt', e: this.evPub() }); send(p, { t: 'stars', s: rec.stars || {} });
     send(p, { t: 'mkt', m: this.mktFor(p) });
     this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
-    send(p, { t: 'chatlog', list: this.chatLog }); this.lottoJoin(p); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub(p)); send(p, { t: 'log', list: this.log });
+    send(p, { t: 'chatlog', list: this.chatLog.filter(c => !this.modBlockList(p.rec).includes(String(c.name).toLowerCase())) }); this.modJoin(p); this.lottoJoin(p); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub(p)); send(p, { t: 'log', list: this.log });
     if (rec.gift) send(p, { t: 'gift', item: rec.gift });
     this.awaySummary(p, rec.leftAt || rec.lastSeen);
     if (Date.now() < S.FRESH.startAt && rec.freshNote !== 1) { rec.freshNote = 1; setTimeout(() => { if (p.ws.readyState === 1) this.toast(p, `📢 ตั้งแต่ ${new Date(S.FRESH.startAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ผัก ปลา ไข่ นม อาหาร จะค่อยๆ เสื่อมราคาถ้าเก็บไว้นาน (สด 1 วัน = 100% • 1–3 วัน 70% • เกิน 40%) ของที่มีตอนนี้นับเป็นของสดวันนั้น • มีตู้เย็นในบ้านช่วยชะลอ`); }, 5000); }
@@ -293,19 +294,19 @@ class World {
         break;
       }
       case 'voice': {
-        p.voice = !!m.on;
+        p.voice = !!m.on && !this.modMuted(p); // ถูกปิดเสียงอยู่ เปิดไมค์ไม่ได้
         this.broadcast({ t: 'voice', id: p.id, on: p.voice }, p);
         break;
       }
       case 'pcall': { // โทรส่วนตัว: แจ้งคู่สายทุกฉาก ให้ฝั่งนั้นส่งเสียงให้กันคนเดียว
         const q = this.players.get(m.to | 0);
         const k = ['ring', 'ok', 'no', 'end'].includes(m.k) ? m.k : '';
-        if (k && q && q !== p) send(q, { t: 'pcall', from: p.id, k }); // โทรส่วนตัวข้ามฉากได้
+        if (k && q && q !== p && !this.modRelayDenied(p, q)) send(q, { t: 'pcall', from: p.id, k }); // โทรส่วนตัวข้ามฉากได้
         break;
       }
       case 'rtc': { // ส่งต่อข้อมูลเชื่อมต่อเสียง (WebRTC signaling) ระหว่างผู้เล่น
         const q = this.players.get(m.to | 0);
-        if (q && q !== p && m.d && typeof m.d === 'object') send(q, { t: 'rtc', from: p.id, d: m.d });
+        if (q && q !== p && m.d && typeof m.d === 'object' && !this.modRelayDenied(p, q)) send(q, { t: 'rtc', from: p.id, d: m.d });
         break;
       }
       case 'look': { // เปลี่ยนสี (เสื้อ/กางเกง/หมวก) และสวมเสื้อผ้าที่ซื้อไว้
@@ -344,15 +345,9 @@ class World {
         send(p, { t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp });
         break;
       }
-      case 'chat': {
-        const now = Date.now();
-        const text = Array.from(String(m.text || '').trim()).slice(0, 80).join('');
-        if (!text || now - p.lastChat < 500) return;
-        p.lastChat = now;
-        this.chatLog.push({ name: p.name, text, t: now }); if (this.chatLog.length > 10) this.chatLog.shift();
-        this.broadcast({ t: 'chat', id: p.id, name: p.name, text });
-        break;
-      }
+      case 'chat': this.modChat(p, m); break; // กรองคำหยาบ/ปิดเสียง/บล็อก/บันทึกแชต (server/systems/moderation.js)
+      case 'block': this.modBlockHandle(p, m); break;
+      case 'report': this.modReport(p, m); break;
       case 'arc': this.arcHandle(p, m); break;
       case 'lb': this.sendLeaderboard(p); break;
       case 'rank': this.sendRank(p); break;
@@ -691,7 +686,7 @@ class World {
     if (!this.dirty) return;
     this.dirty = false;
     for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; this.syncHerd(p); } // เซฟฝูงลง rec.herd ก่อนเขียนไฟล์
-    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), treeMix: this.treeMixV | 0, house: { houses: this.houses }, log: this.log, lotto: this.lotto, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])], mocks: this.mocks || [], mapOv: this.mapOv || {} }, replacer);
+    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), treeMix: this.treeMixV | 0, house: { houses: this.houses }, log: this.log, lotto: this.lotto, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])], ...(this.banUntil && Object.keys(this.banUntil).length ? { banUntil: this.banUntil } : {}), mocks: this.mocks || [], mapOv: this.mapOv || {} }, replacer);
     const seq = this.saveSeq = (this.saveSeq | 0) + 1, tmp = this.file + '.' + seq + '.tmp'; // ชื่อ .tmp ไม่ซ้ำต่อรอบ: เขียนซ้อนกันไม่ชนไฟล์เดียวกัน
     if (sync) { try { fs.writeFileSync(tmp, data); fs.renameSync(tmp, this.file); } catch (e) { this.dirty = true; try { fs.unlinkSync(tmp); } catch (_) {} throw e; } return; } // เขียน .tmp แล้ว rename ทับ: ไฟล์จริงไม่เสียครึ่งๆ กลางๆ ถ้าดับ/ดิสก์เต็ม
     fs.writeFile(tmp, data, err => {
@@ -733,6 +728,7 @@ mix(World, require('./server/systems/mining.js')); // ถ้ำเหมือ�
 mix(World, require('./server/systems/fishing.js')); // ตกปลา ทะเลลึก ชักเย่อ (ย้ายไป server/systems/fishing.js)
 mix(World, require('./server/systems/house.js')); // บ้าน ตกแต่งเฟอร์นิเจอร์ ลีดเดอร์บอร์ดบ้าน (ย้ายไป server/systems/house.js)
 mix(World, require('./server/systems/market.js')); // ร้านค้า ตลาดราคาไดนามิก ความอิ่มตัวหมวด (ย้ายไป server/systems/market.js)
+mix(World, require('./server/systems/moderation.js')); // ดูแลชุมชน กรองคำ บล็อก รายงาน แชตย้อนหลัง (server/systems/moderation.js)
 mix(World, require('./server/systems/theme.js')); // ธีมหิมะที่ผู้ดูแลตั้ง (server/systems/theme.js)
 mix(World, require('./server/systems/core.js')); // บริการกลาง ฉาก วันที่ (ย้ายไป server/systems/core.js)
 
@@ -857,13 +853,13 @@ function userList() {
   for (const r of ROOMS.values()) { const w = getWorld(r.name); if (!w) continue;
     const on = new Map(); for (const q of w.players.values()) on.set(q.key, q);
     for (const [key, rec] of Object.entries(w.saved)) { const q = on.get(key); if (!q && !(rec.ips && rec.ips.length)) continue;
-      users.push({ room: r.name, name: rec.name || key, online: !!q, admin: !!(q && q.admin), ip: q ? q.ip : '', ips: rec.ips || [], last: q ? Date.now() : rec.lastSeen || 0 }); } }
+      users.push({ room: r.name, name: rec.name || key, online: !!q, admin: !!(q && q.admin), ip: q ? q.ip : '', ips: rec.ips || [], last: q ? Date.now() : rec.lastSeen || 0, mute: rec.muteUntil > Date.now() ? rec.muteUntil : 0 }); } }
   users.sort((a, b) => (b.online - a.online) || (b.last - a.last));
   return users;
 }
 function banList() { // รายชื่อที่ถูกแบนทุกห้อง
   const out = [];
-  for (const r of ROOMS.values()) { const w = worlds.get(r.name); if (!w || !w.banned) continue; for (const key of w.banned) out.push({ room: r.name, name: key }); }
+  for (const r of ROOMS.values()) { const w = worlds.get(r.name); if (!w || !w.banned) continue; for (const key of w.banned) out.push({ room: r.name, name: key }); for (const [key, until] of Object.entries(w.banUntil || {})) if (until > Date.now()) out.push({ room: r.name, name: key, until }); }
   return out;
 }
 // ----- ผังเมืองที่ผู้ดูแลย้ายได้ (ร้าน/ป้าย Arcade/ตู้เกม/กองไฟ+ลาน/ATM/กระดานข่าว/ตู้เซฟ) -----
@@ -944,6 +940,17 @@ function adminHandle(p, world, m) {
     const text = String(m.text || '').replace(/\s+/g, ' ').trim().slice(0, 300); if (!text) return reply({ err: 'ไม่มีข้อความ' });
     world.addLog('📢 ' + text); world.broadcast({ t: 'msg', text: '📢 ' + text }); console.log('ประกาศ (ห้อง ' + world.room + '):', text); return reply({ ok: 'ประกาศแล้ว' });
   }
+  if (m.a === 'reports') return reply({ reports: world.modReportList() }); // WP-06 รายงานผู้เล่น (ผู้ดูแลเท่านั้น: ตรวจ p.admin ก่อนเรียก adminHandle แล้ว)
+  if (m.a === 'reportget') { const r = world.modReportRead(String(m.id || '')); return reply(r ? { report: r } : { err: 'ไม่พบรายงานนี้', reports: world.modReportList() }); }
+  if (m.a === 'reportclose' || m.a === 'reportopen') { const ok = world.modReportSet(String(m.id || ''), m.a === 'reportclose', p.name); return reply(ok ? { reports: world.modReportList() } : { err: 'ไม่พบรายงานนี้', reports: world.modReportList() }); }
+  if (m.a === 'chatlog') return reply({ chatlog: world.modChatlogQuery(m) });
+  if (m.a === 'mute') { // ปิดเสียงผู้เล่นตามเวลา: room, name, dur = '10m' | '1h' | '1d' | 'off'
+    const w = worlds.get(String(m.room || '')) || getWorld(String(m.room || ''));
+    if (!w) return reply({ err: 'ไม่พบห้องนี้', users: userList(), bans: banList() });
+    const r = w.modSetMute(m.name, String(m.dur || ''));
+    if (!r.err) console.log('ผู้ดูแลปิดเสียง:', r.key, m.dur, '(ห้อง ' + w.room + ', โดย ' + p.name + ')');
+    return reply(r.err ? { err: r.err, users: userList(), bans: banList() } : { muted: r.key, until: r.until, users: userList(), bans: banList() });
+  }
   if (m.a === 'bugs') return reply({ bugs: bugList() });
   if (m.a === 'bugimg') { // ส่งภาพของรายงานนั้นให้แอดมินดู (data URL ไม่เกิน 1MB)
     const r = bugRead(String(m.id || '')); if (!r || !r.img) return reply({ err: 'ไม่พบภาพ', bugs: bugList() });
@@ -966,12 +973,14 @@ function adminHandle(p, world, m) {
     if (!w.banned) w.banned = new Set();
     if (m.a === 'ban') {
       if (key === ADMIN_NAME.toLowerCase()) return reply({ err: 'แบนผู้ดูแลไม่ได้', users: userList(), bans: banList() });
-      w.banned.add(key); w.dirty = true;
+      if (m.dur && !Object.prototype.hasOwnProperty.call(S.MODERATION.banMs, String(m.dur))) return reply({ err: 'ระยะเวลาแบนไม่ถูกต้อง (ไม่แบนให้)', users: userList(), bans: banList() }); // พิมพ์ผิดต้องไม่กลายเป็นแบนถาวรเงียบๆ
+      const until = w.modTempBan(key, String(m.dur || '')); // dur = '1d' | '7d' = แบนชั่วคราว (banUntil) ไม่ระบุ = ถาวรแบบเดิม
+      if (!until) { w.banned.add(key); w.dirty = true; }
       for (const q of [...w.players.values()]) if (q.key === key && !q.admin) { send(q, { t: 'kicked' }); try { q.ws.close(); } catch (e) { /* ปิดไม่ได้ก็ไม่เป็นไร */ } }
       console.log('แบนผู้เล่น:', key, '(ห้อง ' + w.room + ', โดย ' + p.name + ')');
-      return reply({ banned: key, users: userList(), bans: banList() });
+      return reply({ banned: key, until: until || 0, users: userList(), bans: banList() });
     }
-    w.banned.delete(key); w.dirty = true;
+    w.banned.delete(key); w.modUnban(key); w.dirty = true;
     return reply({ unbanned: key, users: userList(), bans: banList() });
   }
   if (m.a === 'pinreset') { // ผู้ดูแลล้าง PIN ให้คนที่ลืม (ให้ตั้งใหม่ตอนเข้าเกม)
@@ -1176,6 +1185,7 @@ setInterval(() => {
 setInterval(() => { const now = Date.now(); for (const w of worlds.values()) guard(() => w.cropTick(now)); }, 1000);
 setInterval(() => { const now = Date.now(); for (const w of worlds.values()) guard(() => w.oreTick(now)); }, 5000);
 setInterval(() => { for (const w of worlds.values()) guard(() => w.save(false)); }, 30000);
+setInterval(() => { const now = Date.now(); for (const w of worlds.values()) guard(() => w.modTick(now)); }, 3600000); // วันละครั้ง + เก็บโทษแบนที่หมดแล้ว
 setInterval(() => { const now = Date.now(); for (const w of worlds.values()) guard(() => w.marketTick(now)); }, +process.env.MARKET_TICK_MS || 60000); // ตลาดปรับราคาทุก 1 นาที
 
 function shutdown() { for (const w of worlds.values()) { for (const p of w.players.values()) w.telFlush(p, true); w.arcRefundAll(); w.dirty = true; w.save(true); } process.exit(0); }
@@ -1185,5 +1195,6 @@ process.on('SIGTERM', shutdown);
 server.listen(PORT, () => {
   const w = getWorld(DEFAULT_ROOM); // โหลดห้องหลักตอนสตาร์ท ให้รัน migrate (เช่น ย้อน px64) แล้วเซฟ
   if (w && w.dirty) w.save(true);
+  if (w) guard(() => w.modPrune(Date.now())); // ลบแชตเก่ากว่า 14 วันตอนเริ่ม (WP-06)
   console.log(`My World รันอยู่ที่ http://localhost:${PORT}`);
 });

@@ -168,7 +168,7 @@ function handle(m) {
       renderHud(); updateOnline();
       players.forEach((p, id) => { if (id < myId) callPeer(id); }); // ผู้เล่นใหม่เป็นฝ่ายโทรหาคนที่อยู่ก่อน
       break;
-    case 'chatlog': chatHist.length = 0; for (const e of m.list || []) chatHist.push(e); break;
+    case 'chatlog': chatHist.length = 0; for (const e of m.list || []) if (!isBlockedName(e.name)) chatHist.push(e); break;
     case 'ach': achSt = { cnt: m.cnt || {}, got: m.got || {}, sel: m.sel || '' }; if (achShown()) renderAch(); break;
     case 'deaf': presence(m.id, p => { p.deaf = !!m.on; }); break;
     case 'use': { const p = players.get(m.id); if (p) { p.useAt = performance.now(); p.useK = PixelAction.kindOf(p.held) === 'fish' && p.fs ? 'reel' : ''; } break; } // ตกปลาอยู่แล้ว = ท่าดึงเบ็ด
@@ -243,7 +243,7 @@ function handle(m) {
       break;
     }
     case 'tp': me.x = m.x; me.y = m.y; walk = null; break;
-    case 'chat': { const p = players.get(m.id) || npcs.get(m.id); if (p) { p.chat = m.text; p.chatAt = performance.now() + (m.npc ? 3000 : 0); } if (!m.npc) addChat(m.name, m.text); break; } // NPC พูดเป็นฟองเหนือหัวอย่างเดียว (อยู่ 8 วินาที) ไม่เข้าแชท
+    case 'chat': { if (!m.npc && isBlockedName(m.name)) break; const p = players.get(m.id) || npcs.get(m.id); if (p) { p.chat = m.text; p.chatAt = performance.now() + (m.npc ? 3000 : 0); } if (!m.npc) addChat(m.name, m.text); break; } // NPC พูดเป็นฟองเหนือหัวอย่างเดียว (อยู่ 8 วินาที) ไม่เข้าแชท
     case 'shop': openShop(m.kind); break;
     case 'arcs': arcStatus = {}; for (const a of m.a) arcStatus[a[1]] = a; break;
     case 'arc': onArc(m); break;
@@ -299,20 +299,56 @@ function handle(m) {
     } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : m.w === 'rank' ? 'rank' : 'log'); break;
     case 'scene': applyScene(m); break;
     case 'hboard': hboard = m; if (plotsShown()) renderPlots(); break;
+    case 'blocks': onBlocks(m); break;
+    case 'muted': myMuteUntil = +m.until || 0; if (myMuteUntil > Date.now() && micOn) $('micBtn').click(); setMuteNote(); if (peopleShown()) renderPeople(true); break;
+    case 'reportres': if (m.ok) { closeReport(); } break;
   }
 }
+
+// ---------- บล็อก/รายงานผู้เล่น + สถานะถูกปิดเสียง (เซิร์ฟเวอร์ตัดสิน ฝั่งเว็บแค่แสดงและซ่อน) ----------
+let blockList = [], blockKeys = new Set(), myMuteUntil = 0;
+const MOD = Shared.MODERATION;
+{ const n = $('chatNote'); if (n && MOD) n.textContent = '💬 แชตถูกบันทึกไว้ ' + MOD.chatlogDays + ' วัน ผู้ดูแลเท่านั้นที่เปิดดูได้'; }
+const isBlockedName = n => !!n && blockKeys.has(String(n).toLowerCase());
+function onBlocks(m) {
+  blockList = Array.isArray(m.list) ? m.list : []; blockKeys = new Set(blockList.map(x => x.key));
+  for (const id of m.ids || []) { closePeer(id); if (callWith === id || callPend === id || callIn === id) leaveCall(); }
+  for (const [id, p] of players) if (isBlockedName(p.name)) p.chat = '';
+  if (peopleShown()) renderPeople(true);
+}
+function setMuteNote() {
+  const on = myMuteUntil > Date.now(), c = $('chatIn');
+  if (!c.dataset.ph) c.dataset.ph = c.placeholder;
+  c.placeholder = on ? '🤐 ผู้ดูแลปิดเสียงคุณอยู่ (อีก ' + Math.max(1, Math.ceil((myMuteUntil - Date.now()) / 60000)) + ' นาที)' : c.dataset.ph;
+}
+let reportTo = null, reportWhy = '';
+const reportShown = () => !$('report').classList.contains('hidden');
+function openReport(id) {
+  const p = roster.get(id); if (!p) return;
+  reportTo = { id: p.id, name: p.name }; reportWhy = '';
+  $('reportWho').textContent = p.name; $('reportText').value = ''; $('reportText').maxLength = MOD.reportTextMax;
+  $('reportWhy').innerHTML = MOD.reportWhy.map(w => `<button class="chip" data-why="${esc(w.id)}">${esc(w.name)}</button>`).join('');
+  $('reportSend').disabled = true; $('report').classList.remove('hidden');
+}
+function closeReport() { $('report').classList.add('hidden'); $('reportText').blur(); reportTo = null; }
+$('reportWhy').addEventListener('click', e => { const b = e.target.closest('[data-why]'); if (!b) return; reportWhy = b.dataset.why; $('reportWhy').querySelectorAll('.chip').forEach(c => c.classList.toggle('sel', c === b)); $('reportSend').disabled = false; });
+$('reportSend').onclick = () => { if (!reportTo || !reportWhy) return; send({ t: 'report', id: reportTo.id, why: reportWhy, text: $('reportText').value.trim().slice(0, MOD.reportTextMax) }); $('reportSend').disabled = true; };
+$('reportClose').onclick = closeReport;
+$('report').addEventListener('pointerdown', e => { if (e.target === $('report')) closeReport(); });
+$('reportText').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') closeReport(); });
 
 // ---------- ผู้ดูแล: สร้าง/ลบห้อง (โลกแยกกัน) + ลิงก์ ----------
 let adminSt = { rooms: [], current: '', err: '' }, adminTab = 'manage';
 const bugImgs = {}; // ภาพรายงานบั๊กที่โหลดแล้ว (id → data URL)
+let rView = 'open', clName = '', clDay = '', tgNameVal = '', tgRoomVal = ''; // รายงานผู้เล่น: open/closed • ค้นแชตย้อนหลัง
 let bugView = 'open'; // หน้ารายงานบั๊ก: open = ยังไม่แก้ • fixed = แก้แล้ว
 const adminShown = () => !$('admin').classList.contains('hidden');
-function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); send({ t: 'admin', a: 'bugs' }); renderAdmin(); }
+function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); send({ t: 'admin', a: 'bugs' }); send({ t: 'admin', a: 'reports' }); renderAdmin(); }
 function setSnowMode(v) { snowMode = v === 'on' || v === 'off' ? v : 'auto'; if (typeof adminShown === 'function' && adminShown()) renderAdmin(); }
 function setRainMode(v) { rainMode = v === 'on' || v === 'off' ? v : 'auto'; if (typeof adminShown === 'function' && adminShown()) renderAdmin(); }
 function closeAdmin() { $('admin').classList.add('hidden'); }
 function onAdmin(m) {
-  adminSt = { rooms: m.rooms || [], current: m.current || '', err: m.err || '', users: m.users || (adminSt && adminSt.users) || [], bans: m.bans || (adminSt && adminSt.bans) || [], bugs: m.bugs || (adminSt && adminSt.bugs) || [], warp: m.warp || (adminSt && adminSt.warp) || null };
+  adminSt = { rooms: m.rooms || [], current: m.current || '', err: m.err || '', users: m.users || (adminSt && adminSt.users) || [], bans: m.bans || (adminSt && adminSt.bans) || [], bugs: m.bugs || (adminSt && adminSt.bugs) || [], warp: m.warp || (adminSt && adminSt.warp) || null, reports: m.reports || (adminSt && adminSt.reports) || [], rview: m.report || (adminSt && adminSt.rview) || null, chatlog: m.chatlog || (adminSt && adminSt.chatlog) || null };
   if (m.bugimg) bugImgs[m.bugimg.id] = m.bugimg.uri;
   if (m.bugmark) toast(m.bugmark === 'fixed' ? '✅ ย้ายไปส่วน「แก้แล้ว」' : '↩️ เปิดรายงานใหม่ (กลับไป「ยังไม่แก้」)');
   if (m.created) { const url = roomLink(m.created); try { navigator.clipboard.writeText(url).catch(() => {}); } catch (e) { /* ไม่ได้ก็ไม่เป็นไร */ } toast('สร้างห้อง ' + m.created + ' แล้ว คัดลอกลิงก์ให้แล้ว 🔗'); }
@@ -321,7 +357,8 @@ function onAdmin(m) {
   if (m.warpmsg) toast(m.warpmsg);
   if (m.lvmsg) toast(m.lvmsg);
   if (m.kicked) { toast('เตะ ' + m.kicked + ' ออกแล้ว'); setTimeout(() => send({ t: 'admin', a: 'users' }), 700); }
-  if (m.banned) toast('🚫 แบน ' + m.banned + ' แล้ว (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)');
+  if (m.banned) toast(m.until ? '⏳ แบน ' + m.banned + ' ถึง ' + new Date(m.until).toLocaleString('th-TH') : '🚫 แบน ' + m.banned + ' ถาวรแล้ว (เข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น)');
+  if (m.muted) toast(m.until ? '🤐 ปิดเสียง ' + m.muted + ' ถึง ' + new Date(m.until).toLocaleTimeString('th-TH') : '🔊 เปิดเสียง ' + m.muted + ' แล้ว');
   if (m.unbanned) toast('✅ ปลดแบน ' + m.unbanned + ' แล้ว');
   if (m.removed) toast('เลิกใช้ห้อง ' + m.removed + ' แล้ว');
   if (m.mapedit && typeof MapEdit !== 'undefined') {
@@ -343,8 +380,10 @@ function renderAdmin() {
   const ago = t => { if (!t) return '-'; const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 90 ? 'เมื่อสักครู่' : s < 5400 ? Math.round(s / 60) + ' นาทีก่อน' : s < 129600 ? Math.round(s / 3600) + ' ชม.ก่อน' : Math.round(s / 86400) + ' วันก่อน'; };
   const banN = (adminSt.bans || []).length;
   const bugAll = adminSt.bugs || [], bugOpen = bugAll.filter(b => !b.fixed), bugFixed = bugAll.filter(b => b.fixed), bugN = bugOpen.length;
+  const repAll = adminSt.reports || [], repN = repAll.filter(r => !r.closed).length, hm = t => new Date(t).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+  const whyName = id => { const w = MOD.reportWhy.find(x => x.id === id); return w ? w.name : id; };
   let h = adminSt.err ? `<div class="banner" style="background:#fde0dc">${esc(adminSt.err)}</div>` : '';
-  h += `<div class="chips" style="margin-bottom:10px"><button class="chip${adminTab === 'manage' ? ' sel' : ''}" data-atab="manage">🏠 ห้อง & ผู้เล่น</button><button class="chip${adminTab === 'map' ? ' sel' : ''}" data-atab="map">🗺️ แมพ</button><button class="chip${adminTab === 'warp' ? ' sel' : ''}" data-atab="warp">🧭 วาป</button><button class="chip${adminTab === 'blacklist' ? ' sel' : ''}" data-atab="blacklist">🚫 Blacklist${banN ? ' (' + banN + ')' : ''}</button><button class="chip${adminTab === 'bugs' ? ' sel' : ''}" data-atab="bugs">🐞 บั๊ก${bugN ? ' (' + bugN + ')' : ''}</button></div>`;
+  h += `<div class="chips" style="margin-bottom:10px"><button class="chip${adminTab === 'manage' ? ' sel' : ''}" data-atab="manage">🏠 ห้อง & ผู้เล่น</button><button class="chip${adminTab === 'map' ? ' sel' : ''}" data-atab="map">🗺️ แมพ</button><button class="chip${adminTab === 'warp' ? ' sel' : ''}" data-atab="warp">🧭 วาป</button><button class="chip${adminTab === 'blacklist' ? ' sel' : ''}" data-atab="blacklist">🚫 Blacklist${banN ? ' (' + banN + ')' : ''}</button><button class="chip${adminTab === 'bugs' ? ' sel' : ''}" data-atab="bugs">🐞 บั๊ก${bugN ? ' (' + bugN + ')' : ''}</button><button class="chip${adminTab === 'reports' ? ' sel' : ''}" data-atab="reports">🚩 รายงาน${repN ? ' (' + repN + ')' : ''}</button><button class="chip${adminTab === 'chatlog' ? ' sel' : ''}" data-atab="chatlog">💬 แชตย้อนหลัง</button><button class="chip${adminTab === 'mute' ? ' sel' : ''}" data-atab="mute">🤐 ปิดเสียง</button><button class="chip${adminTab === 'tban' ? ' sel' : ''}" data-atab="tban">⏳ แบนตามเวลา</button></div>`;
   if (adminTab === 'map') {
     h += `<p style="font-size:13px;line-height:1.45;margin:0 0 10px">แก้แมพห้องนี้แบบอิสระ: <b>Mock</b> (กล่องวางแผน ขยับ/เพิ่ม/ลบ ได้ — เห็นเฉพาะผู้ดูแล) และ <b>วาดพื้น</b> (เปลี่ยนหญ้า/ทาง/น้ำ/ต้นไม้ ฯลฯ ให้ทุกคนในห้องทันที)</p>`;
     h += `<button class="btn" id="openMapEdit">🗺️ เปิดตัวแก้แมพ</button>`;
@@ -359,6 +398,31 @@ function renderAdmin() {
         + `<div style="margin-top:6px">${b.img && !bugImgs[b.id] ? `<button class="btn small" data-bugimg="${esc(b.id)}">🖼 ดูภาพ</button> ` : ''}`
         + (b.fixed ? `<button class="btn small muted" data-bugreopen="${esc(b.id)}">↩️ เปิดใหม่</button>` : `<button class="btn small" data-bugfix="${esc(b.id)}">✅ แก้แล้ว</button>`) + '</div></div></div>';
     }).join('') : `<p style="opacity:.7">${bugView === 'fixed' ? 'ยังไม่มีบั๊กที่แก้แล้ว' : 'ไม่มีบั๊กค้าง 🎉'}</p>`;
+  } else if (adminTab === 'reports') { // รายงานผู้เล่น (ดู / ปิด / เปิดใหม่)
+    const list = repAll.filter(r => rView === 'closed' ? r.closed : !r.closed), rv = adminSt.rview;
+    h += `<div class="chips" style="margin-bottom:8px"><button class="chip${rView === 'open' ? ' sel' : ''}" data-rview="open">🔴 ค้างอยู่ (${repN})</button><button class="chip${rView === 'closed' ? ' sel' : ''}" data-rview="closed">✅ ปิดแล้ว (${repAll.length - repN})</button> <button class="btn small" id="repRefresh">🔄 รีเฟรช</button></div>`;
+    h += list.length ? list.map(r => `<div class="arow bugrow"><div style="width:100%"><b>${esc(r.by || '?')}</b> รายงาน <b>${esc(r.target || '?')}</b> <small>ห้อง ${esc(r.room || '?')} • ${ago(r.time)}</small><br><small>เหตุผล: ${esc(whyName(r.why))}</small>`
+      + (r.text ? `<div style="white-space:pre-wrap;word-break:break-word;margin:4px 0">${esc(r.text)}</div>` : '')
+      + (r.closed ? `<br><small style="color:#1b7a2e">✅ ปิดแล้ว ${ago(r.closedAt)}${r.closedBy ? ' โดย ' + esc(r.closedBy) : ''}</small>` : '')
+      + (rv && rv.id === r.id ? `<div style="background:rgba(0,0,0,.06);border-radius:8px;padding:6px;margin:6px 0;font-size:13px">${(rv.chat || []).map(c => `<div><small>${hm(c.t)}</small> <b>${esc(c.name)}</b>: ${esc(c.text)}</div>`).join('') || 'ไม่มีแชตแนบ'}</div>` : '')
+      + `<div style="margin-top:6px"><button class="btn small" data-rget="${esc(r.id)}">💬 ดูแชตแนบ</button> <button class="btn small muted" data-rmute="${esc(r.target)}" data-rroom="${esc(r.room)}">🤐 ปิดเสียง 1 ชม.</button> `
+      + (r.closed ? `<button class="btn small muted" data-ropen="${esc(r.id)}">↩️ เปิดใหม่</button>` : `<button class="btn small" data-rclose="${esc(r.id)}">✅ ปิดรายงาน</button>`) + '</div></div></div>').join('') : `<p style="opacity:.7">${rView === 'closed' ? 'ยังไม่มีรายงานที่ปิดแล้ว' : 'ไม่มีรายงานค้าง 🎉'}</p>`;
+  } else if (adminTab === 'chatlog') { // แชตย้อนหลัง (เก็บ MOD.chatlogDays วัน)
+    const cl = adminSt.chatlog, days = (cl && cl.days) || [], day = clDay || (cl && cl.day) || '';
+    h += `<div class="arow"><input type="text" id="clName" maxlength="12" placeholder="ค้นตามชื่อ (เว้นว่าง = ทุกคน)" value="${esc(clName)}"></div>`;
+    h += `<div class="arow"><select id="clDay" style="flex:1;padding:8px;font:inherit;border:2px solid var(--edge);border-radius:8px">${(days.length ? days : [day]).map(d => `<option value="${esc(d)}"${d === day ? ' selected' : ''}>${esc(d)}</option>`).join('')}</select><button class="btn small" id="clGo">🔍 ค้นหา</button></div>`;
+    h += cl ? `<div class="sec">วันที่ ${esc(cl.day)} • เจอ ${cl.total} ข้อความ${cl.total > cl.rows.length ? ' (แสดงท้ายสุด ' + cl.rows.length + ')' : ''}</div>`
+      + (cl.rows.length ? cl.rows.map(r => `<div style="font-size:13px;padding:2px 0;border-bottom:1px dashed rgba(0,0,0,.12);word-break:break-word"><small>${new Date(r.t).toLocaleTimeString('th-TH')} • ${esc(r.room)}</small> <b>${esc(r.name)}</b>: ${esc(r.text)}</div>`).join('') : '<p style="opacity:.7">ไม่มีข้อความ</p>') : '<p style="opacity:.7">กด 🔍 ค้นหาเพื่อดูแชตของวันนี้</p>';
+    h += `<p style="font-size:12px;opacity:.7;margin:8px 0 0">เก็บแชตไว้ ${MOD.chatlogDays} วัน เฉพาะผู้ดูแลเท่านั้นที่เปิดดูได้</p>`;
+  } else if (adminTab === 'mute' || adminTab === 'tban') { // ปิดเสียง / แบนตามเวลา เลือกจากรายชื่อผู้เล่น
+    const isM = adminTab === 'mute', now = Date.now();
+    h += `<p style="font-size:12px;opacity:.7;margin:0 0 6px">${isM ? 'ปิดเสียง = ผู้เล่นพิมพ์แชต/พูดไม่ได้ตามเวลาที่เลือก (เห็นข้อความแจ้ง)' : 'แบนตามเวลา = เข้าเกมไม่ได้จนหมดเวลา (เตะออกทันทีถ้าออนไลน์) ผู้ดูแลเลือกเองทุกครั้ง ไม่มีแบนอัตโนมัติ'}</p>`;
+    h += '<div class="arow"><input type="text" id="tgName" maxlength="12" value="' + esc(tgNameVal).replace(/"/g, '&quot;') + '" placeholder="พิมพ์ชื่อ หรือกดชื่อจากรายการด้านล่าง"></div>';
+    const durs = isM ? [['10m', '10 นาที'], ['1h', '1 ชม.'], ['1d', '1 วัน'], ['off', 'เปิดเสียง']] : [['1d', '1 วัน'], ['7d', '7 วัน'], ['', 'ถาวร']];
+    h += '<div class="chips" style="margin:4px 0 8px">' + durs.map(([k, n], i) => `<button class="chip${i === 0 ? ' sel' : ''}" data-tgdur="${k}" style="min-height:40px">${n}</button>`).join('') + '</div>';
+    h += '<button class="btn small" id="tgGo">' + (isM ? '🤐 ปิดเสียง' : '⏳ แบน') + '</button>';
+    h += '<div class="sec">👥 ผู้เล่น</div>' + ((adminSt.users || []).filter(u => !u.admin).map(u => `<div class="arow"><span><button class="chip" data-tgname="${esc(u.name)}" data-tgroom="${esc(u.room)}">${u.online ? '🟢' : '⚪'} ${esc(u.name)}</button> <small>ห้อง ${esc(u.room)}</small>${isM && u.mute > now ? ' <small style="color:#c0392b">🤐 ถึง ' + new Date(u.mute).toLocaleTimeString('th-TH') + '</small>' : ''}</span></div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>');
+    if (!isM) h += '<div class="sec">⏳ ที่ถูกแบนตามเวลา</div>' + ((adminSt.bans || []).filter(b => b.until).map(b => `<div class="arow"><span>⏳ <b>${esc(b.name)}</b> <small>ถึง ${hm(b.until)} • ห้อง ${esc(b.room)}</small></span><button class="btn small" data-unban="${esc(b.name)}" data-uroom="${esc(b.room)}">✅ ปลดแบน</button></div>`).join('') || '<p style="opacity:.7">ยังไม่มี</p>');
   } else if (adminTab === 'warp') { // วาปไปฉากต่างๆ ของห้องนี้ (ผู้ดูแลเท่านั้น ข้ามเงื่อนไขเดินและค่าเรือ)
     const W = adminSt.warp || { houses: [], floors: 0 }, btn = to => `<button class="btn small" data-warp="${esc(to)}">🧭 วาป</button>`;
     h += '<div class="sec">🏘️ เมือง</div>' + `<div class="arow"><span>ลานกองไฟกลางเมือง</span>${btn('town')}</div>`;
@@ -369,7 +433,7 @@ function renderAdmin() {
     h += `<div class="arow"><input type="text" id="banName" maxlength="12" placeholder="พิมพ์ชื่อที่จะแบน (ห้อง ${esc(adminSt.current)})"><button class="btn small" id="banAdd">🚫 แบน</button></div>`;
     h += `<p style="font-size:12px;opacity:.7;margin:4px 0 8px">ชื่อที่ถูกแบนจะเข้าเกมไม่ได้จนกว่าจะใช้ชื่ออื่น (เตะออกทันทีถ้ากำลังออนไลน์) • แบนแยกตามห้อง</p>`;
     h += `<div class="sec">🚫 รายชื่อที่ถูกแบน ทั้งหมด (${banN})</div>`;
-    h += banN ? (adminSt.bans || []).map(b => `<div class="arow"><span>🚫 <b>${esc(b.name)}</b> <small>ห้อง ${esc(b.room)}</small></span><span><button class="btn small" data-unban="${esc(b.name)}" data-uroom="${esc(b.room)}">✅ ปลดแบน</button></span></div>`).join('') : '<p style="opacity:.7">ยังไม่มีใครถูกแบน 🎉</p>';
+    h += banN ? (adminSt.bans || []).map(b => `<div class="arow"><span>${b.until ? '⏳' : '🚫'} <b>${esc(b.name)}</b> <small>ห้อง ${esc(b.room)}${b.until ? ' • ถึง ' + hm(b.until) : ' • ถาวร'}</small></span><span><button class="btn small" data-unban="${esc(b.name)}" data-uroom="${esc(b.room)}">✅ ปลดแบน</button></span></div>`).join('') : '<p style="opacity:.7">ยังไม่มีใครถูกแบน 🎉</p>';
   } else {
     h += '<div class="arow"><input type="text" id="newRoom" maxlength="20" placeholder="ชื่อห้อง (a-z 0-9 _ -) เว้นว่าง = สุ่มให้"><button class="btn small" id="mkRoom">➕ สร้างห้อง</button></div><div class="sec">ห้องทั้งหมด</div>';
     h += adminSt.rooms.map(r => `<div class="arow${r.name === adminSt.current ? ' cur' : ''}"><span><b>${esc(r.name)}</b>${r.main ? ' (ห้องหลัก)' : ''}${r.name === adminSt.current ? ' • คุณอยู่ที่นี่' : ''}<br><small>👥 ${r.online} คน</small></span><span>`
@@ -386,7 +450,7 @@ function renderAdmin() {
       + `<br><small style="opacity:.7">${u.ips.map(x => esc(x.ip) + ' (' + ago(x.t) + ')').join(' • ') || 'ยังไม่มีประวัติ IP'}</small></span>${!u.admin ? `<span>${u.online ? `<button class="btn small muted" data-kick="${esc(u.name)}" data-kroom="${esc(u.room)}">🦶 เตะ</button> ` : ''}<button class="btn small muted" data-pinreset="${esc(u.name)}" data-proom="${esc(u.room)}">🔓 ล้าง PIN</button> <button class="btn small muted" data-ban="${esc(u.name)}" data-broom="${esc(u.room)}">🚫 แบน</button></span>` : ''}</div>`).join('') || '<p style="opacity:.7">ยังไม่มีข้อมูล</p>';
   }
   el.innerHTML = h;
-  el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; if (adminTab === 'warp') send({ t: 'admin', a: 'warplist' }); renderAdmin(); });
+  el.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { adminTab = b.dataset.atab; if (adminTab === 'warp') send({ t: 'admin', a: 'warplist' }); if (adminTab === 'reports') send({ t: 'admin', a: 'reports' }); if (adminTab === 'mute' || adminTab === 'tban') send({ t: 'admin', a: 'users' }); renderAdmin(); });
   el.querySelectorAll('[data-rainmode]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'rain', mode: b.dataset.rainmode }));
   el.querySelectorAll('[data-snowmode]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'snow', mode: b.dataset.snowmode }));
   el.querySelectorAll('[data-lvskill]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'lvl', skill: b.dataset.lvskill, d: b.dataset.d ? +b.dataset.d : undefined, to: b.dataset.to ? +b.dataset.to : undefined }));
@@ -396,6 +460,24 @@ function renderAdmin() {
   el.querySelectorAll('[data-bview]').forEach(b => b.onclick = () => { bugView = b.dataset.bview; renderAdmin(); });
   el.querySelectorAll('[data-bugfix]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'bugfix', id: b.dataset.bugfix }));
   el.querySelectorAll('[data-bugreopen]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'bugreopen', id: b.dataset.bugreopen }));
+  el.querySelectorAll('[data-rview]').forEach(b => b.onclick = () => { rView = b.dataset.rview; renderAdmin(); });
+  el.querySelectorAll('[data-rget]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'reportget', id: b.dataset.rget }));
+  el.querySelectorAll('[data-rclose]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'reportclose', id: b.dataset.rclose }));
+  el.querySelectorAll('[data-ropen]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'reportopen', id: b.dataset.ropen }));
+  el.querySelectorAll('[data-rmute]').forEach(b => b.onclick = () => ask('ปิดเสียง ' + b.dataset.rmute + ' 1 ชั่วโมง?', () => send({ t: 'admin', a: 'mute', room: b.dataset.rroom, name: b.dataset.rmute, dur: '1h' })));
+  const rR = $('repRefresh'); if (rR) rR.onclick = () => send({ t: 'admin', a: 'reports' });
+  const cn = $('clName'); if (cn) cn.oninput = () => { clName = cn.value; };
+  const cd = $('clDay'); if (cd) cd.onchange = () => { clDay = cd.value; };
+  const cg = $('clGo'); if (cg) { const go = () => { clName = $('clName').value.trim(); clDay = $('clDay').value; send({ t: 'admin', a: 'chatlog', name: clName, day: clDay || undefined }); }; cg.onclick = go; cn.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') go(); }; if (!adminSt.chatlog && !adminSt._cl) { adminSt._cl = 1; send({ t: 'admin', a: 'chatlog', name: '' }); } }
+  { const tn = $('tgName'), room = { v: tgRoomVal || adminSt.current }; let dur = adminTab === 'mute' ? '10m' : '1d';
+    if (tn) {
+      tn.onkeydown = e => e.stopPropagation(); tn.oninput = () => { tgNameVal = tn.value; }; // เก็บไว้ข้ามการวาดแผงใหม่ (ข้อความ admin เข้ามาแล้วไม่หาย)
+      el.querySelectorAll('[data-tgname]').forEach(b => b.onclick = () => { tn.value = tgNameVal = b.dataset.tgname; room.v = tgRoomVal = b.dataset.tgroom; });
+      el.querySelectorAll('[data-tgdur]').forEach(b => b.onclick = () => { dur = b.dataset.tgdur; el.querySelectorAll('[data-tgdur]').forEach(c => c.classList.toggle('sel', c === b)); });
+      $('tgGo').onclick = () => { const n = tn.value.trim(); if (!n) return toast('เลือกหรือพิมพ์ชื่อก่อนนะ'); tgNameVal = '';
+        if (adminTab === 'mute') send({ t: 'admin', a: 'mute', room: room.v, name: n, dur });
+        else ask('แบน ' + n + (dur ? ' ' + (dur === '1d' ? '1 วัน' : '7 วัน') : ' ถาวร') + '?', () => send(Object.assign({ t: 'admin', a: 'ban', room: room.v, name: n }, dur ? { dur } : {}))); };
+    } }
   const bR = $('bugRefresh'); if (bR) bR.onclick = () => send({ t: 'admin', a: 'bugs' });
   el.querySelectorAll('[data-pinreset]').forEach(b => b.onclick = () => ask('ล้าง PIN ของ ' + b.dataset.pinreset + '? (ให้เขาตั้งใหม่ตอนเข้าเกม)', () => send({ t: 'admin', a: 'pinreset', name: b.dataset.pinreset, room: b.dataset.proom })));
   el.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => ask('เตะ ' + b.dataset.kick + ' ออกจากห้อง?\n(เขาเข้ามาใหม่ได้ทันที)', () => send({ t: 'admin', a: 'kick', room: b.dataset.kroom, name: b.dataset.kick })));
@@ -1213,7 +1295,7 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
 } else $('fsBtn').remove();
 
 // ---------- กระเป๋า / อาชีพ / ตัวละคร ----------
-const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'ask', 'gift', 'pinBox'].some(id => !$(id).classList.contains('hidden'));
+const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'report', 'ask', 'gift', 'pinBox'].some(id => !$(id).classList.contains('hidden'));
 // เปิดหน้าต่างใหม่ = ปิดหน้าต่างอื่นในกลุ่มนี้ + เมนูหลัก (ไม่แตะ ask/pinBox/gift/trade/arcade/cinema/admin/mapEdit ที่มีผลข้างเคียง)
 function closeOthers(keep) {
   const cl = { bag: closeBag, shop: closeShop, people: closePeople, archub: closeHub, status: closeStatus, bug: closeBug, quest: closeQuest, ach: closeAch, town: closeTown, plots: closePlots, homeChoice: closeHomeChoice };
@@ -1614,7 +1696,7 @@ addEventListener('keydown', e => {
   if (build.on && c === 'Escape' && (build.sel || build.pick != null || build.erase)) { build.sel = null; build.pick = null; build.erase = false; renderBuild(); return; } // Esc ในโหมดตกแต่ง: ยกเลิกสิ่งที่เลือกอยู่ก่อน
   if (build.on && c === 'KeyZ') { undoBuild(); return; }
   if (build.on && (c === 'Delete' || c === 'Backspace') && build.pick != null) { e.preventDefault(); send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; return; }
-  if (c === 'Escape') { closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); setVehMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'Escape') { closeReport(); closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); setVehMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
   if (c === 'KeyV' && me && inTown()) { const own = Object.keys(Shared.VEHICLES).filter(v => inv['veh_' + v] > 0); if (me.veh) send({ t: 'veh', v: '' }); else if (own.length) send({ t: 'veh', v: own[own.length - 1] }); else toast('ยังไม่มียานพาหนะ ซื้อได้ที่ร้านยานพาหนะ 🚲'); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (toolLocked(TOOL_LIST[n])); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (modalOpen() && ((c === 'KeyP' && !peopleShown()) || ((c === 'KeyB' || c === 'KeyI') && !bagShown()) || (c === 'KeyC' && !bagShown()) || c === 'KeyH')) return; // มีหน้าต่างอื่นเปิดอยู่ = ไม่เปิดซ้อน
@@ -1919,6 +2001,7 @@ function closePeer(id) {
 }
 async function flushIce(p) { for (const c of p.pending.splice(0)) await p.pc.addIceCandidate(c).catch(() => {}); }
 async function callPeer(id) {
+  { const pl = players.get(id); if (pl && isBlockedName(pl.name)) return; } // ไม่ต่อเสียงหาคนที่บล็อกไว้
   try {
     closePeer(id); // เริ่มการเชื่อมต่อใหม่เสมอ ไม่ใช้การเชื่อมต่อเก่าที่อาจค้างจากฉากก่อน
     const p = getPeer(id);
@@ -1929,6 +2012,7 @@ async function callPeer(id) {
   } catch (e) { console.warn('call failed', e); }
 }
 async function onRtc(from, d) {
+  { const q = roster.get(from); if (q && isBlockedName(q.name)) return; } // คนที่บล็อกไว้ ไม่รับสัญญาณเสียง
   if (!players.has(from) && ![callWith, callPend, callIn].includes(from)) return; // สัญญาณเสียงค้างจากคนอยู่คนละฉาก ไม่รับ (ยกเว้นคู่สายโทรส่วนตัว)
   try {
     if (d.o) closePeer(from); // ข้อเสนอใหม่ = เริ่มการเชื่อมต่อใหม่ ไม่ต่อกับท่อเสียงเก่าที่เงียบแล้ว
@@ -2296,7 +2380,7 @@ function applyMute() { saveMute(); syncDeaf(); setSpkUi(); lastLevel = 0; update
 function renderPeople(force) {
   if (!peopleShown() || !me) return;
   const list = [...roster.values()].sort((a, b) => (a.id === myId ? -1 : b.id === myId ? 1 : a.name.localeCompare(b.name)));
-  const sig = JSON.stringify([mute, callWith, callPend, callIn, list.map(p => [p.id, p.name, p.color, p.voice, p.deaf, p.status])]);
+  const sig = JSON.stringify([mute, callWith, callPend, callIn, list.map(p => [p.id, p.name, p.color, p.voice, p.deaf, p.status]), [...blockKeys], myMuteUntil > Date.now()]);
   if (force || sig !== peopleSig) {
     peopleSig = sig;
     const others = list.filter(p => p.id !== myId), talking = others.filter(p => p.voice).length, off = others.filter(isMuted).length;
@@ -2304,9 +2388,11 @@ function renderPeople(force) {
       + `<small style="opacity:.7">ปิด/เปิดทั้งหมดที่ปุ่ม ${mute.all ? '🔇' : '🔊'} ข้างไมค์</small></div>`;
     for (const p of list) {
       const m = p.id !== myId && isMuted(p);
-      h += `<div class="row prow" data-id="${p.id}"><span><span class="dot" style="background:${esc(p.color)}"></span> <b>${esc(p.name)}</b>${p.id === myId ? ' (คุณ)' : ''} ${p.voice ? '🎙️' : ''}${p.deaf ? ' 🔇' : ''}<span class="spk"></span>${p.status ? `<br><small style="opacity:.8">💭 ${esc(p.status)}</small>` : ''}</span>`
-        + (p.id === myId ? '' : `<span><button class="btn small${callWith === p.id || callPend === p.id ? ' on' : ''}" data-call="${p.id}" title="โทรส่วนตัว: ต้องให้อีกฝ่ายรับสายก่อน">${callWith === p.id ? '📵 วางสาย' : callPend === p.id ? '⏳ ยกเลิก' : callIn === p.id ? '📞 รับสาย' : '📞 โทร'}</button> <button class="btn small" data-trade="${p.id}" title="ชวนเทรดของ (ต้องอยู่ใกล้กัน ${TRADE.range} ช่อง)">🤝 เทรด</button> <button class="btn small${m ? ' muted' : ''}" data-mute="${p.id}">${m ? '🔇 เปิดเสียง' : '🔊 ปิดเสียง'}</button></span>`) + '</div>';
+      h += `<div class="row prow" data-id="${p.id}"><span><span class="dot" style="background:${esc(p.color)}"></span> <b>${esc(p.name)}</b>${p.id === myId ? ' (คุณ)' : ''} ${p.voice ? '🎙️' : ''}${p.deaf ? ' 🔇' : ''}<span class="spk"></span>${p.id === myId && myMuteUntil > Date.now() ? '<br><small style="color:#c0392b">🤐 ผู้ดูแลปิดเสียงคุณอยู่</small>' : ''}${p.status ? `<br><small style="opacity:.8">💭 ${esc(p.status)}</small>` : ''}</span>`
+        + (p.id === myId ? '' : `<span><button class="btn small${callWith === p.id || callPend === p.id ? ' on' : ''}" data-call="${p.id}" title="โทรส่วนตัว: ต้องให้อีกฝ่ายรับสายก่อน">${callWith === p.id ? '📵 วางสาย' : callPend === p.id ? '⏳ ยกเลิก' : callIn === p.id ? '📞 รับสาย' : '📞 โทร'}</button> <button class="btn small" data-trade="${p.id}" title="ชวนเทรดของ (ต้องอยู่ใกล้กัน ${TRADE.range} ช่อง)">🤝 เทรด</button> <button class="btn small${m ? ' muted' : ''}" data-mute="${p.id}">${m ? '🔇 เปิดเสียง' : '🔊 ปิดเสียง'}</button> <button class="btn small${isBlockedName(p.name) ? ' on' : ''}" data-block="${p.id}" title="บล็อก: ไม่เห็นแชตและไม่ได้ยินเสียงกันและกัน">${isBlockedName(p.name) ? '✅ เลิกบล็อก' : '🚫 บล็อก'}</button> <button class="btn small muted" data-report="${p.id}" title="รายงานคนรบกวน ให้ผู้ดูแลตรวจสอบ">🚩 รายงาน</button></span>`) + '</div>';
     }
+    const onl = new Set(list.map(p => p.name.toLowerCase())), offB = blockList.filter(x => !onl.has(x.key));
+    if (offB.length) h += '<div class="sec">🚫 บล็อกไว้ (ไม่ได้อยู่ในห้อง)</div>' + offB.map(x => `<div class="row"><span><b>${esc(x.name)}</b></span><span><button class="btn small" data-unblockname="${esc(x.name)}">✅ เลิกบล็อก</button></span></div>`).join('');
     $('peopleBody').innerHTML = h;
   }
   $('peopleBody').querySelectorAll('.prow').forEach(r => { // ไฟแสดงว่าใครกำลังพูด (อัปเดตโดยไม่วาดรายการใหม่ ปุ่มจะได้ไม่กระตุก)
@@ -2321,6 +2407,14 @@ $('peopleBody').addEventListener('click', e => {
     if (Math.hypot(q.x - me.x, q.y - me.y) > TRADE.range * TS) { toast(`ต้องเดินเข้าไปใกล้ ${q.name} ก่อน (ไม่เกิน ${TRADE.range} ช่อง)`); return; }
     closePeople(); send({ t: 'trade', a: 'req', to: q.id }); return;
   }
+  if (b.dataset.unblockname) { send({ t: 'block', name: b.dataset.unblockname, on: false }); return; }
+  if (b.dataset.block) {
+    const q = roster.get(+b.dataset.block); if (!q) return;
+    if (isBlockedName(q.name)) send({ t: 'block', id: q.id, on: false });
+    else ask('บล็อก ' + q.name + '?\n(จะไม่เห็นแชตและไม่ได้ยินเสียงกันและกัน เลิกบล็อกได้ในรายชื่อนี้)', () => send({ t: 'block', id: q.id, on: true }));
+    return;
+  }
+  if (b.dataset.report) { closePeople(); openReport(+b.dataset.report); return; }
   if (b.dataset.call) { const id = +b.dataset.call; if (callIn === id) acceptCall(); else if (callWith === id) endCall(); else if (callPend === id) cancelCall(); else startCall(id); return; }
   const p = roster.get(+b.dataset.mute); if (!p) return;
   const key = p.name.toLowerCase(), now = isMuted(p);

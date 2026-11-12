@@ -79,7 +79,7 @@ module.exports = {
     q.rec.greetedBy = (q.rec.greetedBy || []).concat(p.key).slice(0, 3); // พี่เลี้ยง: ได้เครดิตเมื่อคนใหม่ผ่านคู่มือ
     const text = k === 'flower' ? `🌸 ส่งดอกไม้ต้อนรับ ${q.name} สู่เมืองนะ!` : `👋 ยินดีต้อนรับ ${q.name}!`, now = Date.now();
     this.chatLog.push({ name: p.name, text, t: now }); if (this.chatLog.length > 10) this.chatLog.shift();
-    this.broadcast({ t: 'chat', id: p.id, name: p.name, text });
+    if (!this.modMuted(p)) { const s = JSON.stringify({ t: 'chat', id: p.id, name: p.name, text }); for (const r of this.players.values()) if (r.ws.readyState === 1 && (r === p || !this.modBlocked(p, r))) r.ws.send(s); } // ผ่านระบบบล็อก/ปิดเสียง
     this.toast(q, `${k === 'flower' ? '🌸' : '👋'} ${p.name} ทักทายต้อนรับคุณ!`); this.sfxTo(q, 'collect');
     this.addPts(p, S.NEWBIE.greetPts);
     logEv(this.room, 'welcome', { p: q.key, by: p.key, k: k === 'flower' ? 'flower' : 'wave', sec: Math.round((now - q.rec.firstSeen) / 1000), n: q.greeted.size });

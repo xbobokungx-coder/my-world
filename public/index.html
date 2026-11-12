@@ -99,6 +99,10 @@
   @keyframes ffshake { 0%,100% { transform:translateX(-50%) } 25% { transform:translateX(calc(-50% - 2px)) } 75% { transform:translateX(calc(-50% + 2px)) } }
   body.touch #ffight { bottom:calc(86px + var(--sab)); }
   body.touch #fgauge { bottom:calc(86px + var(--sab)); }
+  #report { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:11; }
+  #report .panel { width:min(94vw,400px); padding:16px; max-height:92dvh; overflow:auto; }
+  #report h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  #report.hidden { display:none; }
   #shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
   #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; max-height:92dvh; overflow:auto; }
   @media (orientation:landscape) and (max-height:520px) { #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,560px); } }
@@ -510,6 +514,7 @@
     <input id="akey" type="password" class="hidden" placeholder="รหัสผู้ดูแล" autocomplete="off" style="margin-top:8px">
     <div id="swatches"></div>
     <button id="go" class="btn" style="width:100%;font-size:18px">เข้าเกม</button>
+    <div id="chatNote" style="margin-top:8px;font-size:12px;line-height:1.35;opacity:.8">💬 แชตถูกบันทึกไว้ 14 วัน ผู้ดูแลเท่านั้นที่เปิดดูได้</div>
   </div>
 </div>
 
@@ -666,6 +671,13 @@
 <div id="pinBox" class="hidden"><div class="panel"><b>🔐 ตั้ง PIN ของบัญชี</b><p style="font-size:13px;margin:6px 0">PIN 4–6 หลัก ใส่ทุกครั้งที่เข้าเกมด้วยชื่อนี้ กันคนอื่นใช้ชื่อคุณ (ลืม PIN แจ้งผู้ดูแลให้รีเซ็ต)</p><input id="pinOld" type="password" inputmode="numeric" maxlength="6" placeholder="PIN เดิม" class="hidden" style="width:100%;margin-bottom:6px"><input id="pinNew" type="password" inputmode="numeric" maxlength="6" placeholder="PIN ใหม่ 4–6 หลัก" style="width:100%"><div class="center" style="margin-top:10px"><button class="btn small muted" id="pinLater">ไว้ทีหลัง</button> <button class="btn small" id="pinSave">บันทึก PIN</button></div></div></div>
 <div id="gift" class="hidden"><div class="panel"><b id="giftTitle">🎁 ของขวัญต้อนรับ!</b><div><span id="giftBox">🎁</span></div><div id="giftText">เพื่อนใหม่ของเมืองได้กล่องของขวัญ 1 กล่อง</div><div class="center" style="margin-top:10px"><button class="btn" id="giftBtn">เปิดกล่อง!</button></div></div></div>
 <div id="greet" class="panel hidden"><div id="greetText"></div><button class="btn small" id="greetWave">👋 โบกมือ</button><button class="btn small" id="greetFlower">🌸 ส่งดอกไม้</button><button class="btn small muted" id="greetNo">✕</button></div>
+<div id="report" class="hidden"><div class="panel">
+  <h2><span>🚩 รายงาน <span id="reportWho"></span></span> <button class="btn small" id="reportClose">ปิด</button></h2>
+  <p style="font-size:13px;margin:0 0 6px">เลือกเหตุผล แล้วผู้ดูแลจะตรวจสอบให้ (รายงานได้ไม่ถี่เกินไปนะ)</p>
+  <div class="chips" id="reportWhy"></div>
+  <input id="reportText" maxlength="100" enterkeyhint="send" placeholder="เล่าเพิ่มสั้นๆ (ไม่บังคับ ไม่เกิน 100 ตัวอักษร)" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-top:8px;border-radius:10px;border:3px solid var(--edge);font:inherit;font-size:15px;user-select:text">
+  <div class="center" style="margin-top:10px"><button class="btn small muted" id="reportCancel" onclick="document.getElementById('reportClose').click()">ยกเลิก</button> <button class="btn small" id="reportSend" disabled>🚩 ส่งรายงาน</button></div>
+</div></div>
 <div id="ask" class="hidden"><div class="panel"><div id="askText"></div><div class="center"><button class="btn small muted" id="askNo">ยกเลิก</button> <button class="btn small" id="askYes">ยืนยัน</button></div></div></div>
 <div id="cinema" class="hidden"><div class="panel" style="width:min(96vw,760px)">
   <h2><span>🎬 หนังกลางแปลง</span> <button class="btn small" id="cinClose">ปิด</button></h2>
