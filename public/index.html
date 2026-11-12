@@ -129,6 +129,11 @@
   #bug .bugnote { font-size:11px; opacity:.6; margin:8px 0 0; text-align:center; }
   #arcade .panel { background:#f3eefc; border-color:#8a6fd1; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
+  @media (max-width:700px), (max-height:500px) { .atabs { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; } .atabs .chip { flex:0 0 auto; white-space:nowrap; min-height:40px; } } /* แท็บผู้ดูแลหลายอัน: เลื่อนแนวนอนแถวเดียว ไม่กินพื้นที่เนื้อหา */
+  #people .prow { flex-wrap:wrap; }
+  #people .pbtns { display:flex; flex-wrap:wrap; gap:8px; align-items:center; } /* ปุ่มโทร/บล็อก/รายงาน เว้นช่องไฟ กันแตะพลาด */
+  body.touch #people .pbtns { flex:1 1 100%; margin-top:4px; }
+  body.touch #report :is(.btn,button) { min-height:44px; min-width:44px; }
   .chip { border:2px solid #8a6fd1; background:#fff; border-radius:999px; padding:6px 14px; font-weight:700; font-size:15px; }
   .chip.sel { background:#8a6fd1; color:#fff; }
   .chip:disabled { opacity:.4; }
