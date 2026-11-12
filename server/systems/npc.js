@@ -4,7 +4,7 @@ const S = require('../../public/shared.js');
 const { TS, T } = S;
 const { rand } = require('../util.js');
 const { NPC_DEFS } = require('../consts.js');
-const PET_DEFS = [{ kind: 'cat', v: 0, max: 15, speed: 36 }, { kind: 'dog', v: 0, max: 20, speed: 54 }, { kind: 'dog', v: 1, max: 20, speed: 50 }]; // max = รัศมีสูงสุดจากศูนย์กลางลาน (ช่อง)
+const PET_DEFS = [{ kind: 'cat', v: 0, max: 15, speed: 36 }, { kind: 'dog', v: 0, max: 20, speed: 54 }, { kind: 'dog', v: 1, max: 20, speed: 50 }]; // max = รัศมีสูงสุดจากกองไฟ (ช่อง)
 
 module.exports = {
   // ----- ชาวเมือง NPC: เดินเล่นแถวบ้านตัวเอง และพิมพ์ข้อความให้อ่านเล่นๆ (ไม่ใช่ผู้เล่น ไม่มีเงิน/สถานะ) -----
@@ -104,7 +104,7 @@ module.exports = {
       n.x = nx; n.y = ny;
     }
   },
-  // ----- สัตว์เลี้ยงประกอบฉาก: แมว 1 ตัว (ห่างศูนย์กลางลานไม่เกิน 15 ช่อง) หมา 2 ตัว (ไม่เกิน 20 ช่อง) เดินเล่นไปมา ทุกคนเห็นตรงกัน -----
+  // ----- สัตว์เลี้ยงประกอบฉาก: แมว 1 ตัว (ห่างกองไฟไม่เกิน 15 ช่อง) หมา 2 ตัว (ไม่เกิน 20 ช่อง) เดินเล่นไปมา ทุกคนเห็นตรงกัน -----
   initPets() {
     const F = S.FIRE;
     this.pets = PET_DEFS.map((d, i) => {
@@ -117,7 +117,7 @@ module.exports = {
     });
   },
   petPub(p) { return { id: p.id, kind: p.kind, v: p.v, x: Math.round(p.x), y: Math.round(p.y), dir: p.dir }; },
-  petOk(x, y, max) { return this.npcWalkable(x, y) && Math.hypot(x - S.FIRE.x, y - S.FIRE.y) <= max; }, // เดินได้ และอยู่ในรัศมี max ช่องจากศูนย์กลางลาน
+  petOk(x, y, max) { return this.npcWalkable(x, y) && Math.hypot(x - S.FIRE.x, y - S.FIRE.y) <= max; }, // เดินได้ และอยู่ในรัศมี max ช่องจากกองไฟ
   petPlan(p) { // BFS เฉพาะช่องในรัศมี แล้วสุ่มจุดหมายห่างไป 3-14 ช่อง (เดินสั้นๆ ไปมา)
     const W = S.W, sx = Math.floor(p.x / TS), sy = Math.floor(p.y / TS), prev = new Map(), q = [[sx, sy]], dist = new Map();
     prev.set(sy * W + sx, null); dist.set(sy * W + sx, 0);

@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
-// ผังที่ผู้ดูแลตั้งเอง (ย้ายร้าน/ตู้เกม) อ่านก่อนโหลด shared.js เพื่อให้ทั้งเซิร์ฟเวอร์และเบราว์เซอร์สร้างแมพจากตำแหน่งเดียวกัน
+// ผังที่ผู้ดูแลตั้งเอง (ย้ายร้าน/ตู้เกม/กองไฟ) อ่านก่อนโหลด shared.js เพื่อให้ทั้งเซิร์ฟเวอร์และเบราว์เซอร์สร้างแมพจากตำแหน่งเดียวกัน
 const LAYOUT_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'layout.json');
 const LAYOUT_HIST = path.join(path.dirname(LAYOUT_FILE), 'layout-history');
 const readLayoutFile = f => { try { const d = JSON.parse(fs.readFileSync(f, 'utf8')); return d && typeof d.items === 'object' && d.items ? d : null; } catch (e) { return null; } };
@@ -859,11 +859,11 @@ function banList() { // รายชื่อที่ถูกแบนทุ�
   for (const r of ROOMS.values()) { const w = worlds.get(r.name); if (!w || !w.banned) continue; for (const key of w.banned) out.push({ room: r.name, name: key }); }
   return out;
 }
-// ----- ผังเมืองที่ผู้ดูแลย้ายได้ (ร้าน/ป้าย Arcade/ตู้เกม/ATM/กระดานข่าว/ตู้เซฟ) -----
-const LAYOUT_IDS = /^(b_[a-z]+|cab[0-9]|atm|board|rank|lotto)$/;
+// ----- ผังเมืองที่ผู้ดูแลย้ายได้ (ร้าน/ป้าย Arcade/ตู้เกม/กองไฟ+ลาน/ATM/กระดานข่าว/ตู้เซฟ) -----
+const LAYOUT_IDS = /^(b_[a-z]+|cab[0-9]|fire|atm|board|rank|lotto)$/;
 const cleanLayoutItems = raw => { const out = {}; if (raw && typeof raw === 'object') for (const [id, v] of Object.entries(raw)) { if (!LAYOUT_IDS.test(id) || !v) continue; const x = Math.trunc(+v.x), y = Math.trunc(+v.y); if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < S.W && y < S.H) out[id] = { x, y }; } return out; };
-const liveLayoutItems = (Sx) => { const o = {}; for (const b of Sx.BUILDINGS) o['b_' + b.kind] = { x: b.x0, y: b.y0 }; Sx.CABINETS.forEach((c, i) => { o['cab' + i] = { x: c.x, y: c.y }; }); o.atm = { x: Sx.ATM.x, y: Sx.ATM.y }; o.board = { x: Sx.BOARD.x, y: Sx.BOARD.y }; o.rank = { x: Sx.RANKBOARD.x, y: Sx.RANKBOARD.y }; o.lotto = { x: Sx.LUCKY.x, y: Sx.LUCKY.y }; return o; };
-const LAYOUT_NAMES = { atm: 'ATM', board: 'กระดานข่าว', rank: 'ป้ายอันดับ', lotto: 'Lucky Lotto' };
+const liveLayoutItems = (Sx) => { const o = {}; for (const b of Sx.BUILDINGS) o['b_' + b.kind] = { x: b.x0, y: b.y0 }; Sx.CABINETS.forEach((c, i) => { o['cab' + i] = { x: c.x, y: c.y }; }); o.fire = { x: Sx.FIRE.x, y: Sx.FIRE.y }; o.atm = { x: Sx.ATM.x, y: Sx.ATM.y }; o.board = { x: Sx.BOARD.x, y: Sx.BOARD.y }; o.rank = { x: Sx.RANKBOARD.x, y: Sx.RANKBOARD.y }; o.lotto = { x: Sx.LUCKY.x, y: Sx.LUCKY.y }; return o; };
+const LAYOUT_NAMES = { fire: 'กองไฟ', atm: 'ATM', board: 'กระดานข่าว', rank: 'ป้ายอันดับ', lotto: 'Lucky Lotto' };
 const layoutName = id => LAYOUT_NAMES[id] || (/^cab/.test(id) ? 'ตู้เกม ' + (+id.slice(3) + 1) : (S.BUILDINGS.find(b => 'b_' + b.kind === id) || {}).name || id);
 function loadSharedWith(lay) { // สร้างสำเนา shared.js ที่ใช้ผังทดลอง โดยไม่แตะตัวที่เกมใช้อยู่
   const key = require.resolve('./public/shared.js'), cached = require.cache[key], prev = globalThis.__LAYOUT;
@@ -896,8 +896,8 @@ function validateLayout(items) { // คืนรายการข้อผิ�
     if (b.counter.length) { const [cx, cy] = b.counter[0]; claim(nm + ' (ช่องยืนหน้าประตู)', cx, cy + 1, true); }
   }
   Sx.CABINETS.forEach((c, i) => claim('ตู้เกม ' + (i + 1), c.x, c.y));
-  claim('ต้นไม้ลานกลางเมือง', Sx.PLAZA_TREE.x, Sx.PLAZA_TREE.y); claim('ATM', Sx.ATM.x, Sx.ATM.y); claim('ป้ายอันดับ', Sx.RANKBOARD.x, Sx.RANKBOARD.y); claim('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); claim('Lucky Lotto', Sx.LUCKY.x, Sx.LUCKY.y);
-  for (const q of Sx.SEATS) claim('ที่นั่งลานกลางเมือง', q.x, q.y);
+  claim('กองไฟ', Sx.FIRE.x, Sx.FIRE.y); claim('ATM', Sx.ATM.x, Sx.ATM.y); claim('ป้ายอันดับ', Sx.RANKBOARD.x, Sx.RANKBOARD.y); claim('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); claim('Lucky Lotto', Sx.LUCKY.x, Sx.LUCKY.y);
+  for (const q of Sx.SEATS) claim('ที่นั่งลานกองไฟ', q.x, q.y);
   if (errs.length) return [...new Set(errs)];
   const now = unreachableCount(S, S.makeMap()), nw = unreachableCount(Sx, m);
   if (nw.n > now.n) errs.push(`มีช่องเดินได้ ${nw.n - now.n} ช่องที่เดินไปไม่ถึง (ร้าน/ตู้อาจล้อมช่องว่างไว้)`);
@@ -1027,7 +1027,7 @@ function adminHandle(p, world, m) {
   if (m.a === 'layoutapply') {
     const want = cleanLayoutItems(m.items), live = liveLayoutItems(S), changed = Object.keys(want).filter(id => live[id] && (live[id].x !== want[id].x || live[id].y !== want[id].y));
     if (!changed.length) return reply({ mapedit: true, ok: 'ตำแหน่งตรงกับผังที่ใช้อยู่แล้ว ไม่มีอะไรต้องเปลี่ยน' });
-    const items = Object.assign({}, (globalThis.__LAYOUT && globalThis.__LAYOUT.items) || {}, want); delete items.fire; const errs = validateLayout(items);
+    const items = Object.assign({}, (globalThis.__LAYOUT && globalThis.__LAYOUT.items) || {}, want), errs = validateLayout(items);
     if (errs.length) return reply({ mapedit: true, err: 'ใช้ผังนี้ไม่ได้ — ' + errs.slice(0, 5).join(' • ') });
     reply({ mapedit: true, ok: 'ย้าย ' + changed.map(layoutName).join(', ') + ' แล้ว กำลังรีสตาร์ทเกม…' });
     return commitLayout(world, p, items, 'ใช้ผังใหม่ ' + changed.length + ' รายการ');

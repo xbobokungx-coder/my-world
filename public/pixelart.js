@@ -98,7 +98,7 @@ const PixelArt = (() => {
   const G = 0, P = 1, SA = 2, WA = 3, FL = 4;
   const gtype = t => (t === T.WATER || t === T.BRIDGE ? WA : t === T.LANDMARK ? P : t === T.SAND ? SA : t === T.FLOOR || t === T.FURN ? FL : t === T.PATH || t === T.BUILD || t === T.SHOP || t === T.CLIFF || t === T.STAIR ? P : G);
   const BLEND = [true, true, true, true, false];
-  // หญ้าเขียวอิ่มแบบ cozy village (ตรง STYLE_GUIDE + ภาพอ้างอิงลานกลางเมือง)
+  // หญ้าเขียวอิ่มแบบ cozy village (ตรง STYLE_GUIDE + ภาพอ้างอิงลานกองไฟ)
   const GRASS = ['#4f9a4a', '#62ae4c', '#76c256', '#8cd062', '#a8de74'].map(rgb); // เงาหญ้าเหลื่อมไปทางเขียวคราม แสงเหลื่อมไปทางเหลือง
   const PATH = ['#c2a06c', '#d2b07a', '#ddbe86'].map(rgb);
   // น้ำใส โทนเทอร์ควอยส์: ลึกกลางสระเข้ม ริมฝั่งอ่อนลง (ไล่ตามระยะจากฝั่ง)
@@ -115,33 +115,27 @@ const PixelArt = (() => {
     if(MAP.length!==H||MAP.some(row=>row.length!==W))throw new Error('Unexpected map dimensions');
     const AW=W*U,AH=H*U,N=AW*AH,base=cv(AW,AH),ctx=base.getContext('2d');
     const types=new Uint8Array(N),paved=new Uint8Array(N),cells=new Uint8Array(W*H);
-    const density=Math.max(0,Math.min(1,Number.isFinite(options.density)?options.density:.78));
+    const density=Math.max(0,Math.min(1,Number.isFinite(options.density)?options.density:.55));
     for(let y=0;y<H;y++)for(let x=0;x<W;x++)cells[y*W+x]=gtype(MAP[y][x]);
     const cell=(x,y)=>x<0||y<0||x>=W||y>=H?G:cells[y*W+x];
-    const TZ=Shared.TOWN_PATH_ZONE||{x0:12,y0:9,x1:44,y1:34},PD=Shared.PLAZA_DISC;
-    const inTZ=(tx,ty)=>tx>=TZ.x0&&tx<=TZ.x1&&ty>=TZ.y0&&ty<=TZ.y1,inTZflat=(tx,ty)=>inTZ(tx,ty)&&tx<=TZ.x1-1; // flat = ปิด warp (เว้นคอลัมน์ขอบ x1 กันกระทบ x>=45)
-    const inDisc=(tx,ty)=>!!PD&&Math.hypot(tx-PD.x,ty-PD.y)<=PD.r;
     // Round only exposed terrain corners, within the original tile footprint.
     // No random boundary jitter and no collision/map-data mutation.
     for(let y=0;y<AH;y++)for(let x=0;x<AW;x++){
       const tx=x>>4,ty=y>>4,lx=x&15,ly=y&15,t=cell(tx,ty),pv=t===P&&isPaved(tx,ty);let out=t;
-      if(t!==G&&t!==FL){
+      if(!pv&&t!==G&&t!==FL){
         const radius=t===WA?6:4;
         const sx=lx<radius?-1:lx>=16-radius?1:0,sy=ly<radius?-1:ly>=16-radius?1:0;
         if(sx&&sy){const a=cell(tx+sx,ty),b=cell(tx,ty+sy);if(a===b&&a!==t&&a!==FL){const dx=sx<0?radius-lx:lx-(15-radius),dy=sy<0?radius-ly:ly-(15-radius);if(dx*dx+dy*dy>radius*radius)out=a;}}
       }
       // Coherent scallops 1–3 pixels deep; no independent pixel noise.
       // Dirt/sand only: traversable visual edge, never change the map grid.
-      if((t===P&&!inTZflat(tx,ty))||t===SA){
+      if(!pv&&(t===P||t===SA)){
         const ex=1+Math.floor(hash(Math.floor(x/5),Math.floor(y/16),810)*3);
         const ey=1+Math.floor(hash(Math.floor(x/16),Math.floor(y/5),811)*3);
         if((cell(tx,ty-1)===G&&ly<ex)||(cell(tx,ty+1)===G&&ly>15-ex)||(cell(tx-1,ty)===G&&lx<ey)||(cell(tx+1,ty)===G&&lx>15-ey))out=G;
       }
       types[y*AW+x]=out;paved[y*AW+x]=pv?1:0;
     }
-    // เขตทางแคบสีทรายขอบหิน (TOWN_PATH_ZONE) • ทางในเขตไม่โดน warp/scallop • ลานวงกลม PLAZA_DISC ปูเรียบ มีวงแหวนหิน • x>=45 (เขตเล้า) ใช้ภาพเดิมทุกพิกเซล
-    // ขอบพื้นคดเคี้ยวแบบวาดมือ (หญ้า/ทาง/ทราย/น้ำ): บิดพิกัดที่อ่านชนิดพื้นด้วยสัญญาณสุ่มเรียบ ±4 พิกเซลศิลป์ • ไม่ยุ่งพื้นในบ้านและใต้อาคาร/รั้ว • ปิดได้ด้วย options.warp=false • เปลี่ยนเฉพาะภาพ
-    if(options.warp!==false){const src=Uint8Array.from(types);for(let y=0;y<AH;y++)for(let x=0;x<AW;x++){const mt=MAP[y>>4][x>>4];if(inTZflat(x>>4,y>>4)&&(src[y*AW+x]===P))continue;if(mt===T.BUILD||mt===T.SHOP||mt===T.FENCE||mt===T.FURN||mt===T.WALL)continue;const sx=Math.min(AW-1,Math.max(0,x+Math.round((vnoise(x,y,26,801)-.5)*9))),sy=Math.min(AH-1,Math.max(0,y+Math.round((vnoise(x,y,26,802)-.5)*9))),sv=src[sy*AW+sx];if(sv===FL||src[y*AW+x]===FL)continue;types[y*AW+x]=sv;}}
     const at=(x,y)=>x<0||y<0||x>=AW||y>=AH?G:types[y*AW+x];
     const near=(x,y,t,n)=>at(x-n,y)===t||at(x+n,y)===t||at(x,y-n)===t||at(x,y+n)===t;
     // Pixel-distance field for broad, clean shallow-water bands.
@@ -158,22 +152,15 @@ const PixelArt = (() => {
         const n=vnoise(x,y,96,701)*.72+vnoise(x,y,40,702)*.28;
         c=colors.grass[n<.40?0:n>.64?2:1];
         if(near(x,y,P,1)||near(x,y,SA,1))c='#4f8136';else if(near(x,y,P,3)||near(x,y,SA,3))c='#a1c45d';
+      }else if(t===P&&paved[i]){
+        // Large staggered slabs: low-contrast grout, no speckle inside stones.
+        const row=Math.floor(y/16),xx=x+(row%2)*12,lx=xx%24,ly=y%16;
+        c=colors.stone[Math.floor(hash(Math.floor(xx/24),row,703)*3)];
+        if(lx===0||ly===0)c='#a4a78a';else if(ly===1)c='#e1ddbf';else if(lx===23||ly===15)c='#b4b69a';
+        if((x>0&&!paved[i-1])||(x<AW-1&&!paved[i+1])||(y>0&&!paved[i-AW])||(y<AH-1&&!paved[i+AW]))c='#969f7a';
       }else if(t===P){
-        const n=vnoise(x,y,66,710),tx=x>>4,ty=y>>4;
-        if(inTZ(tx,ty)){
-          c=['#dcc490','#e3cc9a','#e9d4a4'][n<.38?0:n>.63?2:1];
-          const dsc=inDisc(tx,ty),dcx=PD?(PD.x+.5)*U:0,dcy=PD?(PD.y+.5)*U:0,dd=dsc?Math.hypot(x+.5-dcx,y+.5-dcy):0;
-          if(dsc){
-            if(hash(x>>1,y>>1,717)>.965)c='#bfb49a';else if(hash(x>>1,y>>1,718)>.985)c='#f0dfb4';
-            const R0=PD.r*U+.5*U;if(Math.abs(dd-2.4*U)<.6)c='#c8bfa4';
-            // วงแหวนหินกว้าง 2 พิกเซล: เว้นตรงปากทางที่ต่อถนน
-            if(dd>=R0-2*1.0-1){const ox=(x+.5-dcx)/dd,oy=(y+.5-dcy)/dd,ot=at(Math.round(x+ox*3),Math.round(y+oy*3));if(ot!==P||inDisc(Math.round(x+ox*3)>>4,Math.round(y+oy*3)>>4))c=dd>=R0-1?'#7f7b72':'#b4b0a2';}
-          }
-          if(near(x,y,G,1))c='#7f7b72';else if(near(x,y,G,2))c='#b4b0a2';
-        }else{
-          c=colors.path[n<.38?0:n>.63?2:1];
-          if(near(x,y,G,1))c='#b78e53';else if(near(x,y,G,3))c='#cda364';
-        }
+        const n=vnoise(x,y,66,710);c=colors.path[n<.38?0:n>.63?2:1];
+        if(near(x,y,G,1))c='#b78e53';else if(near(x,y,G,3))c='#cda364';
       }else if(t===SA){
         c=colors.sand[vnoise(x,y,48,720)>.5?1:0];
         if(near(x,y,WA,2))c='#b7c28b';else if(near(x,y,WA,5))c='#d8c17f';

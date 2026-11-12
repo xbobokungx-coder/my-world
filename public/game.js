@@ -347,7 +347,7 @@ function renderAdmin() {
     }).join('') : `<p style="opacity:.7">${bugView === 'fixed' ? 'ยังไม่มีบั๊กที่แก้แล้ว' : 'ไม่มีบั๊กค้าง 🎉'}</p>`;
   } else if (adminTab === 'warp') { // วาปไปฉากต่างๆ ของห้องนี้ (ผู้ดูแลเท่านั้น ข้ามเงื่อนไขเดินและค่าเรือ)
     const W = adminSt.warp || { houses: [], floors: 0 }, btn = to => `<button class="btn small" data-warp="${esc(to)}">🧭 วาป</button>`;
-    h += '<div class="sec">🏘️ เมือง</div>' + `<div class="arow"><span>ลานกลางเมือง</span>${btn('town')}</div>`;
+    h += '<div class="sec">🏘️ เมือง</div>' + `<div class="arow"><span>ลานกองไฟกลางเมือง</span>${btn('town')}</div>`;
     h += '<div class="sec">⛏️ ถ้ำเหมือง</div>' + Array.from({ length: W.floors }, (_, i) => `<div class="arow"><span>ชั้น ${i + 1}</span>${btn('cave:' + (i + 1))}</div>`).join('');
     h += '<div class="sec">🌊 ทะเลลึก</div>' + `<div class="arow"><span>เกาะลึกลับกลางสระ (เรือเช่า)</span>${btn('sea')}</div><div class="arow"><span>ทะเลใหญ่ (ขับเรือ)</span>${btn('ocean')}</div>`;
     h += `<div class="sec">🏠 บ้านของผู้เล่น (${W.houses.length})</div>` + W.houses.map(x => `<div class="arow"><span><b>${esc(x.name)}</b></span>${btn('house:' + x.key)}</div>`).join('');
@@ -478,7 +478,7 @@ function renderBankTab(el) {
     + `<p style="font-size:12px;opacity:.7;margin:6px 0 8px">ที่เก็บเหรียญปลอดภัย ไม่มีดอกเบี้ย (ฝากไว้เฉยๆ ไม่ได้เงินเพิ่ม) ออกไปทำงาน ขายของ หรือลงขันสร้างเมืองดีกว่า 😉</p>`
     + `<div class="sec">⬇️ ฝาก (เหรียญในมือ 🪙 ${coin})</div><div class="center">` + BANK.amts.map(a => `<button class="btn small" data-bank="dep:${a}" ${coin < a || room < 1 ? 'disabled' : ''}>+${a}</button>`).join(' ') + ` <button class="btn small" data-bank="dep:all" ${coin < 1 || room < 1 ? 'disabled' : ''}>ทั้งหมด</button></div>`
     + `<div class="sec">⬆️ ถอน</div><div class="center">` + BANK.amts.map(a => `<button class="btn small" data-bank="wd:${a}" ${bankSt.bal < a ? 'disabled' : ''}>-${a}</button>`).join(' ') + ` <button class="btn small" data-bank="wd:all" ${bankSt.bal < 1 ? 'disabled' : ''}>ทั้งหมด</button></div>`
-    + '<p style="font-size:12px;opacity:.65;margin-top:10px">💡 ต้องยืนใกล้ตู้ ATM ที่ลานกลางเมืองถึงจะฝาก/ถอนได้</p>';
+    + '<p style="font-size:12px;opacity:.65;margin-top:10px">💡 ต้องยืนใกล้ตู้ ATM ที่ลานกองไฟถึงจะฝาก/ถอนได้</p>';
   el.innerHTML = h;
   el.querySelectorAll('[data-bank]').forEach(b => b.onclick = () => { const [a, amt] = b.dataset.bank.split(':'); send({ t: 'bank', a, amt: amt === 'all' ? 'all' : +amt }); });
 }
@@ -2994,7 +2994,7 @@ function buildBase() {
     g.fillStyle = '#111'; g.fillRect(px + 12, py + 25, 8, 1);                        // ปาก
     gh.fillStyle = game ? '#ffffff' : '#ddd'; gh.font = 'bold 8px sans-serif'; gh.fillText(game ? cab.label : '?', px + 16, py - 5); // ชื่อบนป้ายหัวตู้
   }
-  // กระดานข่าวเมือง + ตู้เซฟกองกลาง (ขอบเหนือลานกลางเมือง)
+  // กระดานข่าวเมือง + ตู้เซฟกองกลาง (ขอบเหนือลานกองไฟ)
   // ตกแต่งคอกสัตว์ให้ดูสดใส (ภาพพื้นล้วนๆ ไม่ขวางทาง): บ่อเป็ด รังฟาง รางน้ำ กองฟาง แอ่งโคลนหมู ดอกไม้
   { const bale = (px, py) => { g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(px + 2, py + 23, 28, 5); g.fillStyle = '#d9b44a'; g.fillRect(px + 3, py + 10, 26, 15); g.fillStyle = '#e8cd72'; g.fillRect(px + 3, py + 10, 26, 4); g.fillStyle = '#c29a32'; for (const dx of [9, 16, 23]) g.fillRect(px + dx, py + 10, 1.5, 15); };
     const trough = (px, py) => { g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(px + 1, py + 24, 30, 4); g.fillStyle = '#8b5a2b'; g.fillRect(px + 1, py + 13, 30, 12); g.fillStyle = '#59b6ec'; g.fillRect(px + 4, py + 15, 24, 6); g.fillStyle = 'rgba(255,255,255,.5)'; g.fillRect(px + 7, py + 16, 8, 1.5); };
@@ -3032,7 +3032,7 @@ function buildBase() {
     g.fillStyle = '#222'; g.fillRect(lx + 9, ly + 13, 14, 6); g.fillStyle = '#f1c40f'; g.fillRect(lx + 11, ly + 15, 10, 2); g.fillStyle = '#111'; g.fillRect(lx + 10, ly + 22, 12, 3); }
   { const tag = (txt, cx, y) => { gh.font = 'bold 8px sans-serif'; const w = gh.measureText(txt).width + 8; g.fillStyle = 'rgba(40,28,14,.85)'; g.fillRect(cx - w / 2, y, w, 11); gh.fillStyle = '#fff'; gh.textAlign = 'center'; gh.textBaseline = 'middle'; gh.fillText(txt, cx, y + 5.5); }; // ป้ายชื่อเหนือกระดานข่าว ATM และตู้กองกลาง
     tag('ข่าวเมือง', BOARD.x * TS + 16, BOARD.y * TS - 22); tag('อันดับ', RANKBOARD.x * TS + 16, RANKBOARD.y * TS - 22); tag('ATM', ATM.x * TS + 16, ATM.y * TS - 22); tag('Lucky Lotto', LUCKY.x * TS + 16, LUCKY.y * TS - 22); }
-  // เสาไฟตามทาง + กระถางดอกไม้หน้าร้าน (ภาพพื้นอย่างเดียว ไม่ชนการเดิน/เคาน์เตอร์) ให้หนาแน่นใกล้ภาพอ้างอิง
+  // เสาไฟ + กระถางดอกไม้รอบลาน (ภาพพื้นอย่างเดียว ไม่ชนการเดิน/เคาน์เตอร์) ให้หนาแน่นใกล้ภาพอ้างอิง
   { const lamp = (tx, ty) => {
       const px = tx * TS, py = ty * TS;
       g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(px + 10, py + 28, 12, 4);
@@ -3046,9 +3046,9 @@ function buildBase() {
       g.fillStyle = '#6b4423'; g.fillRect(px, py + 8, 16, 10); g.fillStyle = '#a0692f'; g.fillRect(px, py + 8, 16, 3);
       g.fillStyle = '#3f9a3a'; g.fillRect(px + 4, py + 2, 8, 7); g.fillStyle = col; g.fillRect(px + 2, py, 4, 4); g.fillRect(px + 10, py, 4, 4); g.fillStyle = '#ffe37a'; g.fillRect(px + 6, py - 1, 3, 3);
     };
-    for (const L of Shared.TOWN_LAMPS) lamp(L.x, L.y); // โคมริมทางตามผัง (shared.TOWN_LAMPS)
-    const potCols = ['#ff8fc7', '#9fd4ff', '#ffd24a'];
-    BUILDINGS.forEach((b, i) => { if (b.kind === 'sign') return; pot(b.x0, b.y1 + 1, potCols[i % 3]); pot(b.x1, b.y1 + 1, potCols[(i + 1) % 3]); }); // กระถางดอกไม้หน้าร้าน
+    const P = PLAZA; // เสาไฟ/กระถางวางตามมุมลานกองไฟ (ย้ายตามลานเมื่อผู้ดูแลย้ายกองไฟ)
+    for (const [x, y] of [[P.x0, P.y0 + 1], [P.x1, P.y0 + 1], [P.x0, P.y1], [P.x1, P.y1]]) lamp(x, y);
+    for (const [x, y, c] of [[P.x0, P.y0, '#ff8fc7'], [P.x1, P.y0, '#9fd4ff'], [P.x0 + 1, P.y1, '#ffd24a'], [P.x1 - 1, P.y1, '#ff8fc7']]) pot(x, y, c);
   }
   // สิ่งก่อสร้างจากโครงการพัฒนาเมือง (วาดเมื่อครบเป้า) • ฟังก์ชันใน drawStructures ด้านล่าง
   drawStructures(g, gh);
@@ -3091,10 +3091,55 @@ function drawSeat(s) {
     ctx.fillStyle = '#9a6430'; ctx.fillRect(px + (s.face === 2 ? 20 : 6), py + 2, 6, 14);
   }
 }
+// กองไฟพิกเซล: วงหิน + ฟืนไขว้ + ถ่านแดง (สไปรต์เดียว) แล้วซ้อนเปลวไฟ 4 เฟรม (ขอบส้มเข้ม) + ประกายไฟลอยขึ้น
+const FIRE_ART = (() => {
+  const { mk, r, ell, addOutline } = PixelArt;
+  const stone = (x, sx, sy, w) => { r(x, '#8d8a94', sx, sy, w, 3); r(x, '#b9b6bf', sx, sy, w - 1, 1); r(x, '#5f5c68', sx + 1, sy + 2, w - 1, 1); };
+  const RING = [[-11, 0], [-9, -3], [-5, -4], [0, -5], [5, -4], [9, -3], [11, 0], [9, 3], [5, 4], [0, 5], [-5, 4], [-9, 3]];
+  const log = (x, x0, y0, x1, y1) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let i = 0; i <= n; i++) { const X = Math.round(x0 + (x1 - x0) * i / n), Y = Math.round(y0 + (y1 - y0) * i / n); r(x, '#7a4a24', X, Y, 2, 2); r(x, '#a8703c', X, Y, 1, 1); } r(x, '#e0bb85', x0, y0, 2, 2); r(x, '#c99a5e', x0 + 1, y0 + 1, 1, 1); r(x, '#e0bb85', x1, y1, 2, 2); };
+  const base = mk(28, 13, x => {
+    const cx = 13, cy = 6;
+    ell(x, cx, cy, 10, 4, '#4a3f38'); ell(x, cx, cy, 7, 3, '#3a302b');
+    for (const [dx, dy] of RING) if (dy < 0) stone(x, cx + dx - 1, cy + dy - 1, 4);
+    log(x, cx - 7, cy + 2, cx + 6, cy - 2); log(x, cx - 7, cy - 2, cx + 6, cy + 2);
+    for (const [ex, ey, c] of [[-2, 0, '#e8541c'], [1, 1, '#ff9a2e'], [3, -1, '#e8541c'], [-4, 1, '#c0392b'], [0, -1, '#ffd36a']]) r(x, c, cx + ex, cy + ey, 1, 1);
+    for (const [dx, dy] of RING) if (dy >= 0) stone(x, cx + dx - 1, cy + dy - 1, 4);
+  });
+  const L = ['#e8541c', '#ff8a2a', '#ffc94a', '#fff2b8'];
+  const flames = [0, 1, 2, 3].map(k => {
+    const c = mk(16, 20, x => {
+      const H = 20, cx = 8;
+      const tongue = (bx, h, wMax, ph, layer) => { // เปลวหนึ่งลิ้น: กว้างที่ฐาน แคบลงด้านบน ปลายส่ายตามเฟรม
+        for (let y = 0; y < h; y++) { const t = y / h, w = Math.max(0, Math.round(wMax * Math.pow(1 - t, 0.8) * (t < 0.15 ? 0.8 + t : 1))), off = Math.round(Math.sin(t * 3.2 + ph) * t * 2); if (w > 0 || y < h - 1) r(x, L[layer], bx - w + off, H - 1 - y, w * 2 + 1, 1); }
+      };
+      const sw = [0, 1, 2, 1][k], ph = k * 1.6;
+      tongue(cx - 4, 8 + sw, 2, ph + 1, 0); tongue(cx + 4, 10 - sw, 2, ph + 2.5, 0);
+      tongue(cx, 18 - (k % 2), 5, ph, 0); tongue(cx, 13 - (k % 2), 3, ph + .4, 1); tongue(cx, 8, 2, ph + .8, 2); tongue(cx, 4, 1, ph + 1.2, 3);
+    }, false);
+    addOutline(c, '#7a240c'); return c;
+  });
+  return { base, flames };
+})();
+function drawFire(now) {
+  const px = FIRE.x * TS + 16, py = FIRE.y * TS + 22, A = FIRE_ART;
+  ctx.imageSmoothingEnabled = false;
+  const f = 1 + Math.sin(now / 90) * 0.12 + Math.sin(now / 53) * 0.08;
+  const g = ctx.createRadialGradient(px, py, 2, px, py, 34 * f); g.addColorStop(0, 'rgba(255,170,70,.32)'); g.addColorStop(1, 'rgba(255,150,50,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(px, py + 2, 34 * f, 16 * f, 0, 0, 7); ctx.fill(); // แสงอุ่นบนพื้นรอบกองไฟ
+  ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px, py + 6, 26, 8, 0, 0, 7); ctx.fill();
+  ctx.drawImage(A.base, px - 28, py - 12, A.base.width * 2, A.base.height * 2);
+  const fl = A.flames[Math.floor(now / 160) % 4], fh = Math.round(fl.height * 2 * (0.94 + (f - 1) * 0.4)); // 4 เฟรม ~6 ภาพ/วิ + ยืดหดเบาๆ ตามจังหวะกะพริบ
+  ctx.drawImage(fl, px - fl.width, py - 1 - fh, fl.width * 2, fh); // ฐานเปลวอยู่เหนือจุดไขว้ฟืน ให้ยังเห็นฟืน
+  for (let i = 0; i < 5; i++) { // ประกายไฟลอยขึ้นแล้วจาง
+    const t = ((now / 1000) * 0.6 + i * 0.37) % 1, sx = Math.round(px + Math.sin(i * 2.3 + t * 5) * (4 + t * 8)), sy = Math.round(py - 22 - t * 30);
+    ctx.globalAlpha = 1 - t; ctx.fillStyle = t < 0.5 ? '#ffd36a' : '#ff8a2a'; ctx.fillRect(sx, sy, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+}
 function drawChainTree(now) { // โตตามจำนวนชาเลนจ์ที่สำเร็จทั้งเมือง: <5 ต้นกล้า • <20 ต้นกลาง • ≥20 ต้นใหญ่ มีป้ายจำนวนใบ
-  const n = chSt.chain, k = Shared.PLAZA_TREE.scale[n < 5 ? 0 : n < 20 ? 1 : 2], s = PixelArt.tree(3, 5, 'broad'), w = s.width * k, h = s.height * k, cx = Shared.PLAZA_TREE.x * TS + 16, by = Shared.PLAZA_TREE.y * TS + 24; // ต้นไม้ใหญ่กลางลาน โคนอยู่กลางช่อง
+  const n = chSt.chain, k = n < 5 ? 1.2 : n < 20 ? 1.6 : 2.1, s = PixelArt.tree(3, 5, 'broad'), w = s.width * k, h = s.height * k, cx = (FIRE.x - 3) * TS + 16, by = (FIRE.y + 4) * TS + 32; // มุมล่างซ้ายของกองไฟ ไม่ขวางถนนสายกลาง
   ctx.drawImage(s, cx - w / 2, by - h, w, h); PixelUI.world(ctx, '🪣', cx + w / 4, by - h * 0.55 + Math.sin(now / 500) * 2, 14);
-  if (n > 0) { ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(42,27,20,.8)'; ctx.fillRect(cx - 26, by + 2, 52, 13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`🌳 ${n} ใบ`, cx, by + 12); } // ป้ายจำนวนใบขึ้นเมื่อมีโซ่แล้วเท่านั้น (0 = ซ่อนป้าย ต้นไม้ยังวาด)
+  ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(42,27,20,.8)'; ctx.fillRect(cx - 26, by + 2, 52, 13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`🌳 ${n} ใบ`, cx, by + 12);
 }
 function drawTree(x, y, kind, rot = 0, alpha = 1, ctx = mainCtx) { // สไปรต์ต้นไม้พิกเซล · โคนต้นกลางขอบล่างช่อง · ไม่เบลอตอนขยาย • rot = เอียงรอบโคน (ส่ายตอนโดนฟัน/ล้ม)
   const key = x + ',' + y, s0 = PixelArt.tree(x, y, kind || treeKinds.get(key)), s = winterFlag ? snowSprite(s0, WINTER.tree) : s0, hit = kind ? null : treeHit.get(key), now = performance.now();
@@ -3549,7 +3594,7 @@ function drawCrop(tile, px, py, now, pass) { // pass 0 = ดินทุกช�
     if (tile.o && me && tile.o !== me.name) PixelUI.world(ctx, tile.l ? '🔒' : '✨', px + 25, py + 8, 12); // ผักของคนอื่น: 🔒 ยังเก็บไม่ได้ / ✨ เจ้าของไม่มาเก็บเกิน 1 วัน คนอื่นเก็บได้แล้ว
   }
 }
-function daylight(h) { // ความมืด 0..0.75 (กลางคืนยังพอเห็นทาง สว่างที่โคมไฟ/ตะเกียงชัดกว่า) สว่างนาน มืดสั้น
+function daylight(h) { // ความมืด 0..0.75 (กลางคืนยังพอเห็นทาง สว่างที่กองไฟ/ตะเกียงชัดกว่า) สว่างนาน มืดสั้น
   const MAXD = 0.75;
   if (h >= 6.5 && h < 19) return 0;
   if (h >= 19 && h < 21) return (h - 19) / 2 * MAXD;
@@ -3557,7 +3602,7 @@ function daylight(h) { // ความมืด 0..0.75 (กลางคืน�
   if (h < 5.5) return MAXD * (1 - (h - 4) / 1.5); // 04:00–05:30 ค่อยๆ สว่าง
   return 0;
 }
-// ชั้นความมืด: เติมสีทึบแล้ว "เจาะ" วงสว่างที่โคมไฟตามทางและรอบตัวคนที่ถือตะเกียง (รัศมี 3 ช่อง)
+// ชั้นความมืด: เติมสีทึบแล้ว "เจาะ" วงสว่างที่กองไฟกลางลานและรอบตัวคนที่ถือตะเกียง (รัศมี 3 ช่อง)
 const lightCv = document.createElement('canvas'), lctx = lightCv.getContext('2d');
 const lightMask = { key: '', cv: null, x: 0, y: 0 };
 function houseLightMask() { // ภาพรูแสงของโคมในบ้าน (พิกัดไอโซเมตริก) สร้างใหม่เฉพาะตอนโคมเปลี่ยนที่/จำนวน
@@ -3599,7 +3644,8 @@ function drawNight(dark, now) {
   lctx.fillStyle = `rgba(${winterFlag ? WINTER.nightRGB : '5,9,32'},${dark})`; lctx.fillRect(0, 0, lightCv.width, lightCv.height);
   lctx.globalCompositeOperation = 'destination-out'; lctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
   const hole = (x, y, r, inner) => { const g = lctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(inner, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, r, 0, 7); lctx.fill(); };
-  if (inTown()) { const lr = TS * Shared.LAMP_LIGHT.r * (1 + Math.sin(now / 300) * 0.015), vx0 = camX - lr, vx1 = camX + canvas.width / zoom + lr, vy0 = camY - lr, vy1 = camY + canvas.height / zoom + lr; for (const L of Shared.TOWN_LAMPS) { const hx = L.x * TS + 16, hy = L.y * TS + 6; if (hx >= vx0 && hx <= vx1 && hy >= vy0 && hy <= vy1) hole(hx, hy, lr, 0.3); } } // แสงอุ่นวงเล็กต่อโคม เฉพาะที่อยู่ในจอ
+  const fx = FIRE.x * TS + 16, fy = FIRE.y * TS + 12, fr = TS * 10.5 * (1 + Math.sin(now / 130) * 0.02 + Math.sin(now / 71) * 0.015);
+  if (inTown()) hole(fx, fy, fr, 0.3);
   const [hl, hy] = caveLamp; if (inTown()) hole(hl, hy, TS * 2, 0.35); // ตะเกียงหน้าถ้ำเหมือง
   const LH = inTown() && builtProj.has('lighthouse') && Shared.LIGHTHOUSE, lx = LH ? (LH.x0 + (LH.x1 - LH.x0 + 1) / 2) * TS : 0, ly = LH ? LH.y0 * TS + 39 : 0, lAng = now / 1800; // ประภาคาร: ห้องตะเกียงอยู่ใกล้ยอดหอ ลำแสงหมุนรอบ ~11 วินาที
   const beam = (r, half, ang, a0) => { const g = lctx.createRadialGradient(lx, ly, 0, lx, ly, r); g.addColorStop(0, `rgba(0,0,0,${a0})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(lx, ly); lctx.arc(lx, ly, r, ang - half, ang + half); lctx.closePath(); lctx.fill(); };
@@ -3622,7 +3668,7 @@ function drawNight(dark, now) {
     for (const a of [lAng, lAng + Math.PI]) { wg(lx, ly, TS * 18, 0.22 * Math.min(1, dark * 1.3)); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.arc(lx, ly, TS * 18, a - 0.2, a + 0.2); ctx.closePath(); ctx.fill(); }
   }
   if (cave) for (const [x, y] of caveTorches) { warm(x, y, TS * 3.2, 0.22 + Math.sin(now / 90 + y) * 0.03); ctx.fillStyle = 'rgba(255,190,90,.55)'; ctx.fillRect(x - 3, y - 6 - (Math.sin(now / 80 + x) > 0 ? 2 : 0), 6, 6); } // แสงอุ่น + ไฟวูบ
-  if (inTown()) { const lr2 = TS * Shared.LAMP_LIGHT.r * 0.8; for (const L of Shared.TOWN_LAMPS) { const lx2 = L.x * TS + 16, ly2 = L.y * TS + 6; if (lx2 >= camX - lr2 && lx2 <= camX + canvas.width / zoom + lr2 && ly2 >= camY - lr2 && ly2 <= camY + canvas.height / zoom + lr2) warm(lx2, ly2, lr2, 0.2 * Math.min(1, dark * 1.2)); } warm(hl, hy, TS * 1.8, 0.25 * Math.min(1, dark * 1.2)); } for (const p of players.values()) if (p.lamp) warm(...pj(p.x, p.y, 4), TS * 5, 0.16 * Math.min(1, dark * 1.2));
+  if (inTown()) { warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); warm(hl, hy, TS * 1.8, 0.25 * Math.min(1, dark * 1.2)); } for (const p of players.values()) if (p.lamp) warm(...pj(p.x, p.y, 4), TS * 5, 0.16 * Math.min(1, dark * 1.2));
   ctx.globalCompositeOperation = 'source-over'; ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
@@ -3715,7 +3761,7 @@ function drawMini(now) {
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = `${Math.round((big ? 15 : 11) * k)}px sans-serif`;
   if (inTown()) for (const b of BUILDINGS) g.fillText(b.sign, (b.x0 + b.x1 + 1) / 2 * sx, (b.y0 + b.y1 + 1) / 2 * sy + 2 * k);
-  if (inTown()) { g.fillText('🏠', (Shared.HOUSE_DOOR.x + 0.5) * sx, (Shared.HOUSE_BLD.y0 + 1.5) * sy); g.fillText('🌾', 10.5 * sx, 15.5 * sy); g.fillText('🐄', 54 * sx, 21 * sy); g.fillText('🌊', 43 * sx, 38 * sy); g.fillText('🐖', 59.5 * sx, 11.5 * sy); g.fillText('🌳', FIRE.x * sx + sx / 2, FIRE.y * sy + sy / 2); }
+  if (inTown()) { g.fillText('🏠', (Shared.HOUSE_DOOR.x + 0.5) * sx, (Shared.HOUSE_BLD.y0 + 1.5) * sy); g.fillText('🌾', 10.5 * sx, 15.5 * sy); g.fillText('🐄', 54 * sx, 21 * sy); g.fillText('🌊', 43 * sx, 38 * sy); g.fillText('🐖', 59.5 * sx, 11.5 * sy); g.fillText('🔥', FIRE.x * sx + sx / 2, FIRE.y * sy + sy / 2); }
   g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 1.5 * k; g.strokeRect(camX / TS * sx, camY / TS * sy, vw / TS * sx, vh / TS * sy);
   const list = [...players.values()].sort((a, b) => (a === me) - (b === me));
   g.font = `bold ${Math.round((big ? 11 : 9) * k)}px ${FONT}`;
@@ -4413,10 +4459,11 @@ function step(now) {
   const list = [];
   for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) list.push({ y: y * TS + 30, f: () => drawTree(x, y) });
   for (const [k, f] of felled) { const ty = +k.split(',')[1]; list.push({ y: ty * TS + 30, f: () => drawFelled(k, f, now) }); } // ต้นไม้กำลังล้ม
-  if (inTown() && x0 <= Shared.PLAZA_TREE.x + 3 && x1 >= Shared.PLAZA_TREE.x - 3 && y0 <= Shared.PLAZA_TREE.y + 2 && y1 >= Shared.PLAZA_TREE.y - 5) list.push({ y: Shared.PLAZA_TREE.y * TS + 24, f: () => drawChainTree(now) }); // ต้นไม้ใหญ่กลางลาน = ต้นไม้แห่งการส่งต่อ (ชาเลนจ์ถังน้ำ)
+  if (inTown() && chSt.chain > 0 && x0 <= FIRE.x - 2 && x1 >= FIRE.x - 4 && y0 <= FIRE.y + 5 && y1 >= FIRE.y + 3) list.push({ y: (FIRE.y + 4) * TS + 30, f: () => drawChainTree(now) }); // ต้นไม้แห่งการส่งต่อ (ชาเลนจ์ถังน้ำ)
   if (inTown()) for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
-  // ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
+  // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
   if (inTown()) for (const s of SEATS) if (s.x >= x0 - 1 && s.x <= x1 + 1 && s.y >= y0 - 1 && s.y <= y1 + 1) list.push({ y: s.y * TS + 12, f: () => drawSeat(s) });
+  if (inTown()) if (FIRE.x >= x0 - 1 && FIRE.x <= x1 + 1 && FIRE.y >= y0 - 1 && FIRE.y <= y1 + 1) list.push({ y: FIRE.y * TS + 28, f: () => drawFire(now) });
   if (inTown()) for (const [hx, hy] of Shared.BEE.hives) list.push({ y: (hy + 1) * TS - 2, f: () => drawHive(hx, hy, now) });
   if (inTown()) for (const key of Object.keys(Shared.PENS)) list.push({ y: (Shared.PENS[key].sign[1] + 1) * TS, f: () => drawPenSign(key) });
   if (inTown()) for (const c of animals.values()) list.push({ y: c.y + 8, f: () => { (c.type === 'cow' ? drawCow : c.type === 'pig' ? drawPig : ANIMAL_DRAW[c.type] || drawChicken)(c, now); animalFx(c, now, ANIMAL_TOP[c.type] || 14); hungerMark(c, now); } });
