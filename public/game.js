@@ -248,7 +248,7 @@ function handle(m) {
     case 'hstyle': houseSt = { fl: m.fl, wp: m.wp }; if (scene) syncHouseBg(); if (build.on) renderBuild(); break;
     case 'admin': onAdmin(m); break;
     case 'theme': setSnowMode(m.snow); if (m.rain !== undefined) setRainMode(m.rain); break;
-    case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break;
+    case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = m.text ? '🔁 ' + m.text : 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break; // m.text = ล็อกอินซ้ำจากที่อื่น (เซิร์ฟเวอร์ส่งข้อความมา) • ไม่มี text = ผู้ดูแลเตะ
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
     case 'en': enSt = Object.assign(m, { at: Date.now(), spentAt: m.spent ? Date.now() : (enSt.spentAt || 0), lastSpent: m.spent || enSt.lastSpent || 0 }); renderEnergy(); break;
     case 'cat': catSt = Object.assign(m, { at: Date.now() }); renderSat(); break;

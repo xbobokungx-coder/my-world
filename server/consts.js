@@ -12,4 +12,6 @@ const NPC_DEFS = [
 ];
 const CAVE = '@cave'; // ฉากถ้ำเหมือง (p.scene) ร่วมกันทั้งห้อง: ชื่อผู้เล่นไม่มี @ จึงไม่ชนกับคีย์บ้าน
 const ADMIN_NAME = (process.env.ADMIN_NAME || 'Sira').trim();
-module.exports = { CAVE, HFAST, ADMIN_NAME, PARTY, NPC_DEFS };
+const HEARTBEAT_MS = 20000; // ping ซ็อกเก็ตทุกกี่ ms (ไม่ตอบรอบถัดไป = ตัดทิ้ง ≈ 20–40 วินาที)
+const DUP_PROBE_MS = 1500; // ล็อกอินซ้ำจากคนละที่: ping session เก่า ไม่ตอบ pong ภายในเวลานี้ = ซ็อกเก็ตตาย เตะได้
+module.exports = { HEARTBEAT_MS, DUP_PROBE_MS, CAVE, HFAST, ADMIN_NAME, PARTY, NPC_DEFS };

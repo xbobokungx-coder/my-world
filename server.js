@@ -19,7 +19,7 @@ const PUB = path.join(__dirname, 'public');
 const ROOM = /^[a-z0-9_-]{1,20}$/.test(process.env.ROOM || '') ? process.env.ROOM : 'main';
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const { HFAST } = require('./server/consts.js'); // ย้ายไป server/consts.js
+const { HFAST, HEARTBEAT_MS, DUP_PROBE_MS } = require('./server/consts.js'); // ย้ายไป server/consts.js
 if (process.env.OCEAN_ANYTIME) S.OCEAN.anytime = true; // ทดสอบ: ออกเรือใหญ่ได้ทุกเวลา (ปกติ 06:00–15:00 เวลาเกม)
 const SICK_CHECK = +process.env.SICK_CHECK_MS || S.SICK.checkMs, SICK_GRACE = +process.env.SICK_GRACE_MS || S.SICK.graceMs; // ไว้ทดสอบเท่านั้น // ไว้ทดสอบเท่านั้น: เร่งความหิวของคนและสัตว์
 if (process.env.FRESH_START) S.FRESH.startAt = +process.env.FRESH_START; // ไว้ทดสอบ: เริ่มระบบความสดเร็วขึ้น (ms)
@@ -155,12 +155,18 @@ class World {
 
 
 
-  join(ws, name, color, admin) {
+  join(ws, name, color, admin, takeover) {
     name = Array.from(String(name || '').replace(/\s+/g, ' ').trim()).slice(0, 12).join('');
     if (!name) return { err: 'กรุณาใส่ชื่อตัวละคร' };
     const key = name.toLowerCase();
     if (!admin && this.banned && this.banned.has(key)) return { err: 'ชื่อนี้ถูกระงับโดยผู้ดูแล 🚫 กรุณาใช้ชื่ออื่น' };
-    for (const q of this.players.values()) if (q.key === key) return { err: 'ชื่อนี้กำลังเล่นอยู่ ลองใช้ชื่ออื่น' };
+    for (const q of [...this.players.values()]) if (q.key === key) {
+      if (!takeover) return { err: 'ชื่อนี้กำลังเล่นอยู่ ลองใช้ชื่ออื่น' };
+      // ล็อกอินซ้ำ (เช่น เน็ตหลุดแต่เซิร์ฟเวอร์ยังเห็นออนไลน์): เตะ session เก่าออก เซฟสถานะ แล้วให้ session ใหม่เข้าได้ทันที
+      try { if (q.ws.readyState === 1) q.ws.send(JSON.stringify({ t: 'kicked', text: 'มีการเข้าสู่ระบบด้วยชื่อนี้จากที่อื่น คุณถูกออกจากเกมนี้' })); } catch (e) { /* ปิดไปแล้วก็ไม่เป็นไร */ }
+      try { this.leave(q); } catch (e) { console.error('leave error (ล็อกอินซ้ำ)', e); }
+      try { q.ws.terminate(); } catch (e) { /* เหมือนกัน */ } // ตัดซ็อกเก็ตเก่าทันที ไม่รอ close handshake
+    }
     let rec = this.saved[key];
     if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 4, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
     if (!rec.mig2) { rec.mig2 = true; rec.inv.bait = (rec.inv.bait || 0) + 10; } // แจกเหยื่อตกปลาชุดแรกให้ผู้เล่นเดิม (ระบบเหยื่อเพิ่งเพิ่ม)
@@ -213,6 +219,7 @@ class World {
     return { p };
   }
   leave(p) {
+    if (this.players.get(p.id) !== p) return; // ออกไปแล้ว (เช่น ถูกเตะตอนล็อกอินซ้ำ แล้วซ็อกเก็ตเก่าปิดตามมา) ไม่ทำซ้ำ
     this.arcLeave(p);
     this.tradeCancel(p, 'ผู้เล่นออกจากเกม');
     if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
@@ -1072,8 +1079,15 @@ function adminHandle(p, world, m) {
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16384 });
 // IP ของผู้เล่น: ถ้าอยู่หลัง proxy/tunnel (เช่น Cloudflare, ngrok) ใช้ค่าจาก header ไม่งั้นใช้ IP ของ socket (ผู้ดูแลเห็นเท่านั้น)
 const ipOf = req => { const h = req.headers || {}, f = String(h['cf-connecting-ip'] || h['x-forwarded-for'] || '').split(',')[0].trim(); return (f || (req.socket && req.socket.remoteAddress) || '?').replace(/^::ffff:/, '').slice(0, 64); };
+const probeAlive = ws => new Promise(res => { // ส่ง ping แล้วรอ pong สั้นๆ: ตอบ = ยังเล่นอยู่จริง ไม่ตอบ = ซ็อกเก็ตค้าง
+  if (ws.readyState !== 1) return res(false);
+  let got = false; const on = () => { got = true; };
+  ws.once('pong', on);
+  try { ws.ping(); } catch (e) { return res(false); }
+  setTimeout(() => { ws.off('pong', on); res(got); }, DUP_PROBE_MS);
+});
 wss.on('connection', (ws, req) => {
-  const ip = ipOf(req); let world = null, player = null, count = 0, authFails = 0;
+  const ip = ipOf(req); let world = null, player = null, count = 0, authFails = 0, joining = false;
   const rate = setInterval(() => { count = 0; }, 1000);
   const err = (text, extra) => ws.send(JSON.stringify(Object.assign({ t: 'err', text }, extra)));
   ws.on('message', raw => {
@@ -1082,7 +1096,7 @@ wss.on('connection', (ws, req) => {
     try { m = JSON.parse(raw); } catch (e) { return; }
     if (!m || typeof m.t !== 'string') return;
     if (!player) {
-      if (m.t !== 'join') return;
+      if (m.t !== 'join' || joining) return;
       const room = typeof m.room === 'string' && m.room ? m.room : DEFAULT_ROOM;
       if (!ROOM_RE.test(room) || !ROOMS.has(room)) return err('ไม่พบห้องนี้ ลิงก์อาจผิดหรือถูกปิดแล้ว');
       const w = getWorld(room);
@@ -1102,18 +1116,27 @@ wss.on('connection', (ws, req) => {
         if (pinLocked(pk)) return err('ใส่ PIN ผิดบ่อยเกินไป รอ 1 นาทีแล้วลองใหม่', { need: 'pin' });
         if (!pinOk(prec, pin)) { pinFails.get(pk).push(Date.now()); if (++authFails > 8) { ws.close(); return; } return err(pin ? 'PIN ไม่ถูกต้อง' : 'ชื่อนี้ตั้ง PIN ไว้ กรุณาใส่ PIN', { need: 'pin' }); }
       }
-      const r = w.join(ws, m.name, m.color, admin);
-      if (!r.err && !prec && PIN_RE.test(pin)) { r.p.rec.pin = pinMake(pin); w.dirty = true; } // บัญชีใหม่ที่ใส่ PIN มาตั้งแต่สมัคร
-      if (!r.err && m.ch) w.chJoinInvite(r.p, String(m.ch).slice(0, 16), ip); // เข้ามาจากลิงก์ชาเลนจ์ถังน้ำ
-      if (r.err) err(r.err);
-      else {
-        player = r.p; world = w; player.ip = ip;
-        const rec = player.rec, now = Date.now(); rec.lastSeen = now; rec.ips = [{ ip, t: now }].concat((rec.ips || []).filter(x => x && x.ip !== ip)).slice(0, 5); w.dirty = true;
-        console.log('เข้าเกม:', player.name, '←', ip, '(ห้อง ' + w.room + ')');
-        ws.send(JSON.stringify({ t: 'pinask', has: !!rec.pin, show: !rec.pin && !admin && (rec.joins || 1) > 1 })); // บัญชีเก่าที่ยังไม่มี PIN: ขอให้ตั้ง (คนใหม่ให้เล่นก่อน ค่อยถามครั้งถัดไป)
-      }
+      const old = [...w.players.values()].find(q => q.key === pkey);
+      // ล็อกอินซ้ำ: เตะ session เก่าได้ทันทีเมื่อ (1) พิสูจน์ตัวตนแล้ว: ผู้ดูแลใส่รหัส / บัญชีตั้ง PIN ที่ผ่านด่านด้านบน / IP เดิม หรือ (2) session เก่า "ตายแล้ว" = ไม่ตอบ ping ภายใน DUP_PROBE_MS (เน็ตหลุดแต่เซิร์ฟเวอร์ยังเห็นออนไลน์) • บัญชีไม่มี PIN จาก IP อื่นขณะอีกฝั่งยังตอบ ping อยู่ (เล่นจริง) = ยังเข้าไม่ได้ (กันแอบอ้างชื่อ)
+      const doJoin = takeover => {
+        const r = w.join(ws, m.name, m.color, admin, takeover);
+        if (!r.err && !prec && PIN_RE.test(pin)) { r.p.rec.pin = pinMake(pin); w.dirty = true; } // บัญชีใหม่ที่ใส่ PIN มาตั้งแต่สมัคร
+        if (!r.err && m.ch) w.chJoinInvite(r.p, String(m.ch).slice(0, 16), ip); // เข้ามาจากลิงก์ชาเลนจ์ถังน้ำ
+        if (r.err) err(r.err);
+        else {
+          player = r.p; world = w; player.ip = ip;
+          const rec = player.rec, now = Date.now(); rec.lastSeen = now; rec.ips = [{ ip, t: now }].concat((rec.ips || []).filter(x => x && x.ip !== ip)).slice(0, 5); w.dirty = true;
+          console.log('เข้าเกม:', player.name, '←', ip, '(ห้อง ' + w.room + ')');
+          ws.send(JSON.stringify({ t: 'pinask', has: !!rec.pin, show: !rec.pin && !admin && (rec.joins || 1) > 1 })); // บัญชีเก่าที่ยังไม่มี PIN: ขอให้ตั้ง (คนใหม่ให้เล่นก่อน ค่อยถามครั้งถัดไป)
+        }
+      };
+      if (!old) return doJoin(false);
+      if (admin || (prec && prec.pin) || old.ip === ip) return doJoin(true);
+      joining = true; // ระหว่างรอผลตรวจ ข้อความ join ซ้ำจากซ็อกเก็ตนี้ถูกข้าม
+      probeAlive(old.ws).then(alive => { joining = false; if (ws.readyState === 1 && !player) doJoin(!alive && w.players.get(old.id) === old); }).catch(() => { joining = false; });
       return;
     }
+    if (world.players.get(player.id) !== player) return; // session นี้ถูกเตะ/ออกไปแล้ว (ซ็อกเก็ตปิดช้า) ห้ามแตะเซฟที่ session ใหม่ใช้อยู่
     if (m.t === 'pin') { // ตั้ง/เปลี่ยน PIN ในเกม (มี PIN อยู่แล้วต้องใส่ PIN เดิม)
       const rec = player.rec, pin = String(m.pin || ''), k = world.room + '/' + player.key;
       if (!PIN_RE.test(pin)) return world.toast(player, 'PIN ต้องเป็นตัวเลข 4–6 หลัก');
@@ -1124,9 +1147,14 @@ wss.on('connection', (ws, req) => {
     try { world.handle(player, m); } catch (e) { console.error('handle error', m.t, e); } // ข้อความแปลกๆ จากผู้เล่นคนเดียวต้องไม่ทำให้เซิร์ฟเวอร์ล้ม
   });
   ws.on('close', () => { clearInterval(rate); if (player) world.leave(player); });
+  ws.alive = true; ws.on('pong', () => { ws.alive = true; });
   ws.on('error', () => {});
 });
 
+// หัวใจซ็อกเก็ต: ping ทุก HEARTBEAT_MS ถ้ารอบก่อนไม่ตอบ pong = ตัดทิ้ง (ผู้เล่นที่เน็ตหลุดแล้วไม่ถูกปิดจะไม่ค้างเป็น "ออนไลน์" ตลอดไป)
+const heartbeat = setInterval(() => { for (const c of wss.clients) { if (c.alive === false) { try { c.terminate(); } catch (e) { /* ไม่เป็นไร */ } continue; } c.alive = false; try { c.ping(); } catch (e) { /* ไม่เป็นไร */ } } }, HEARTBEAT_MS);
+heartbeat.unref && heartbeat.unref();
+wss.on('close', () => clearInterval(heartbeat));
 const guard = fn => { try { fn(); } catch (e) { console.error('loop error', e); } }; // ลูปหลักพลาดครั้งเดียวไม่ควรทำให้ทั้งเกมดับ
 let last = Date.now();
 setInterval(() => {
