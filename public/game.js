@@ -4110,8 +4110,10 @@ function fightUI() { // อัปเดตแผงชักเย่อ: หล
 // ===== หิมะตก (เอฟเฟกต์หน้าจอล้วน ไม่เกี่ยวกติกา) ตกเฉพาะฤดูหนาวของเกม ตอนอยู่กลางแจ้งในเมือง =====
 const SNOW = { areaPer: 4500, maxDesk: 120, maxTouch: 60, reducedMul: 1 / 3, seasonCheckMs: 30000, sizes: [3, 4, 6], cols: ['#ffffff', '#ffffff', '#eef8ff', '#d6ecfb'], edge: 'rgba(90,140,190,.55)', vyMin: 28, vyMax: 70, sway: 14, swayHz: 0.8, wind: 10, slowMs: 40, slowRun: 20, fastRun: 120, reducedSlow: 0.5, alpha: 0.95 };
 let snowMode = 'auto', snowForce = null, snowWinter = false, snowChk = -1e9, snowPool = [], snowLast = 0, snowScale = 1, snowSlow = 0, snowFast = 0;
-function snowActive(now) {
-  if (rainActive(now)) return false; // ฝนชนะหิมะ (ตั้งโหมดผู้ดูแลทั้งคู่): ไม่วาดหิมะ/โทนหิมะซ้อน
+function snowActive(now) { // เกล็ดหิมะที่ลอยตก: ตอนฝนตกหิมะหยุดตก (เปลี่ยนเป็นฝนแทน) แต่ฉากหิมะ/โทนหนาวของเมืองยังอยู่ (ดู snowScene)
+  return snowScene(now) && !rainActive(now);
+}
+function snowScene(now) { // ฉากหิมะ/เมืองโทนหนาว (ภาพล้วน): ไม่หายตอนฝนตก
   if (snowForce !== null) return snowForce;
   if (snowMode === 'off') return false;
   if (snowMode === 'on') return true;
@@ -4405,7 +4407,7 @@ function step(now) {
   ctx.fillStyle = scene ? '#17110d' : inSea() ? '#1c5f8f' : cave ? '#0b0a10' : '#2d4a2b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
   ctx.imageSmoothingEnabled = false;
-  winterFlag = inTown() && snowActive(now); // ธีมหิมะระดับ 2 (โทนหนาว) ใช้เงื่อนไขเดียวกับหิมะตก เฉพาะในเมือง
+  winterFlag = inTown() && snowScene(now); // ธีมหิมะระดับ 2 (โทนหนาว) ใช้เงื่อนไขเดียวกับหิมะตก เฉพาะในเมือง
   if (scene) { drawHouseWorld(now); frameTail(now, wall); return; } // ในบ้านวาดแยกแบบไอโซเมตริก
   if (cave) { drawCaveWorld(now); frameTail(now, wall); return; } // ในถ้ำวาดแยก: พื้น/ผนังถ้ำ ก้อนแร่ ผู้เล่น
   ctx.drawImage(winterBase(winterFlag), 0, 0, W * TS, H * TS);
