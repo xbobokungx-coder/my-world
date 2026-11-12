@@ -670,30 +670,56 @@ function renderFameTab(el) {
   }
   el.innerHTML = h;
 }
-function lottoCard() { // Lucky Lotto: กองกลาง (ค่าบริการ+ภาษีขาย+ค่าตั๋ว) จ่ายรางวัลทุกวัน • เลขชนะสุ่มปิดผนึกไว้ก่อน ตรวจ hash ได้หลังเปิดผล
-  const L = lottoSt, esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), medal = Shared.LOTTO.prize.map(q => q.e);
+let lottoTab = 'buy'; // แท็บหวย: rules กติกา • buy ซื้อตั๋ว • result ผลรางวัล
+const LOTTO_INFO = [ // คำอธิบาย/โอกาสของแต่ละรางวัล (ตามลำดับ Shared.LOTTO.prize) — โอกาสเป็นค่าโดยประมาณต่อ 1 ใบ
+  ['เลขตรงรางวัล 1 ครบ 3 หลัก', '1 ใน 1,000'], ['2 หลักท้ายตรงเลขชุดที่ 2', '1 ใน 100'], ['2 หลักท้ายตรงเลขชุดที่ 3', '1 ใน 100'],
+  ['เลข 3 ตัวเดียวกับรางวัล 1 แต่สลับที่ (ไม่ตรงเป๊ะ)', '1 ใน ~240'], ['2 หลักแรกตรงรางวัล 1', '1 ใน 100'],
+  ['เลขมากกว่าหรือน้อยกว่ารางวัล 1 อยู่ 1 (เช่น ออก 123 → 122 / 124)', '1 ใน 500'], ['หลักสุดท้ายตรงรางวัล 1', '1 ใน 10']];
+const fmtN = n => Number(n || 0).toLocaleString('en-US');
+function lottoPrizeAmt(P, pot) { return Math.max(P.min || 0, Math.min(Math.floor(pot * P.pct), P.cap)); } // เงินรางวัลตอนนี้ตามกองจริง
+function lottoCard() { // Lucky Lotto 3 แท็บ: กติกา / ซื้อตั๋ว / ผลรางวัล • เลขชนะสุ่มปิดผนึกไว้ก่อน ตรวจ hash ได้หลังเปิดผล
+  const L = lottoSt, esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), LT = Shared.LOTTO, PZ = LT.prize;
   if (!L) return '<p style="opacity:.7">กำลังโหลด…</p>';
   const left = Math.max(0, L.drawAt - (Date.now() + timeOffset)), hh = Math.floor(left / 3600e3), mm = Math.floor(left % 3600e3 / 60e3);
-  const room = L.max - L.mine.length, total = L.buyers.reduce((n, b) => n + b[1], 0), tax = L.heat > 0 ? `<br><small>🧾 ยอดขายสะสม (ภาษีขายที่ร้าน) ${L.heat} → เหรียญถัดไปเสียภาษี ${Math.round(L.rate * 100)}% • ยอดจางหมดภายใน 24 ชม.</small>` : '';
-  let h = `<div class="row"><span>🏦 กองกลาง</span><b>🪙 ${L.pot}</b></div>`
-    + `<p style="font-size:12px;opacity:.75;margin:4px 0 6px">ออกผลทุกวัน ${Shared.LOTTO.revealHour}:00 น. (อีก <span id="lleft">${hh} ชม. ${mm} นาที</span>) • ตั๋วเลข 3 หลัก ใบละ 🪙${L.price} ซื้อได้ ${L.max} ใบต่องวด • เงินเข้ากองจากค่าตั๋ว ค่าซ่อม ค่าเตา/ช่างไม้ ค่าเช่าแปลง ค่าบริการตู้เกม ภาษีขาย (ร้านสูงสุด 7% แผง 7%)<br>`
-    + `🥇 ตรง 3 หลัก 50% (สูงสุด 100,000) • 🔼 ข้างเคียงรางวัล 1 (±1) 25% (50,000) • 🎯 โต๊ด 3 ตัว (เลขรางวัล 1 สลับที่) 12% (25,000) • 🥈 / 🥉 ตรง 2 หลักท้ายของเลขคนละชุด และ 🔢 ตรง 2 หลักหน้าของรางวัล 1 = 5% (10,000) • 🍀 เลขท้ายตรงรางวัล 1 = 🪙100 ทุกใบที่ถูก • หลายใบถูกรางวัลเดียวกันหารเท่ากัน (ยกเว้น 🍀) ไม่มีผู้ถูกทบไปงวดหน้า<br>`
-    + `🔒 ลายนิ้วมือเลขงวดนี้ (สุ่มไว้แล้ว ก่อนขายตั๋ว): <code>${esc(L.hash.slice(0, 16))}…</code>${tax}</p>`;
-  h += `<div class="sec">🎫 ตั๋วของฉัน (${L.mine.length}/${L.max})</div><div class="row"><span>${L.mine.length ? L.mine.map(n => `<b style="padding:1px 6px;border:1px solid #c9a86a;border-radius:6px">${n}</b>`).join(' ') : '<small style="opacity:.6">ยังไม่มี</small>'}</span></div>`;
-  if (!L.ok) h += `<div class="banner" style="background:#ffe3d6">ซื้อได้เมื่อผ่านคู่มือเริ่มต้นและระดับการเล่นถึง ${L.minLv}</div>`;
-  else if (!L.open) h += '<div class="banner">ปิดรับตั๋วแล้ว เปิดขายอีกครั้งหลังออกผล</div>';
-  else if (!L.near) h += '<div class="banner" style="background:#ffe3d6">ต้องยืนใกล้ตู้ Lucky Lotto ถึงซื้อตั๋วได้</div>';
-  else if (room > 0) h += `<div class="center" style="margin-top:6px"><input id="lnum" maxlength="3" inputmode="numeric" placeholder="เลข 3 หลัก" style="width:92px;text-align:center"> <button class="btn small" id="lbuy">ซื้อเลขนี้</button> <button class="btn small" id="lr1">🎲 สุ่ม 1 ใบ</button> <button class="btn small" id="lrall">🎲 สุ่มที่เหลือ (${room})</button></div>`;
-  h += `<div class="sec">👥 ใครซื้อบ้างงวดนี้ (${L.buyers.length} คน • ${total} ใบ)</div>` + (L.buyers.length ? L.buyers.map(([nm, n]) => `<div class="row"><span>${esc(nm)}</span><b>${n} ใบ</b></div>`).join('') : '<p style="opacity:.6;margin:2px 0">ยังไม่มีใครซื้อ</p>');
-  const hist = L.hist || [], lt = L.last;
-  h += `<div class="sec">🔢 เลขที่ออกย้อนหลัง (${hist.length} งวดล่าสุด)</div>` + (hist.length ? hist.map((x, i) => {
-    const d = x.round.split('-'), win = x.winners.length ? x.winners.map(([nm, k, a]) => `${medal[k - 1]} ${esc(nm)} +🪙${a}`).join(' &nbsp; ') : 'ไม่มีผู้ถูกรางวัล (ทบกอง)';
-    return `<div class="qrow${i ? ' done' : ''}"><b>${d[2]}/${d[1]}</b> &nbsp; 🥇 <b>${x.nums[0]}</b> &nbsp; 🥈 ท้าย 2 หลัก <b>${x.nums[1].slice(1)}</b> &nbsp; 🥉 ท้าย 2 หลัก <b>${x.nums[2].slice(1)}</b> &nbsp; 🎯 โต๊ด <b>${x.nums[0]}</b> &nbsp; 🔢 หน้า 2 ตัว <b>${x.nums[0].slice(0, 2)}</b> &nbsp; 🍀 ท้าย 1 หลัก <b>${x.nums[0][2]}</b> <small>(ตั๋ว ${x.n} ใบ • กอง 🪙${x.pot0})</small><br><small>${win}</small></div>`;
-  }).join('') : '<p style="opacity:.6;margin:2px 0">ยังไม่เคยออกรางวัล</p>');
-  if (lt) h += `<p style="font-size:11px;opacity:.7;margin:6px 0 0">ตรวจงวดล่าสุด: sha256(<code>${esc(lt.salt)}</code>:${lt.nums.join(',')}) = <span id="lchk">…</span></p>`;
+  const room = L.max - L.mine.length, total = L.buyers.reduce((n, b) => n + b[1], 0);
+  let h = `<div class="ltbar"><div><small>🏦 กองกลาง</small><b>🪙 ${fmtN(L.pot)}</b></div><div><small>⏰ ออกผล ${LT.revealHour}:00</small><b>อีก ${hh} ชม. ${mm} นาที</b></div><div><small>🎫 ตั๋วของฉัน</small><b>${L.mine.length}/${L.max} ใบ</b></div></div>`
+    + `<div class="chips ltTabs">${[['rules', '📖 กติกา'], ['buy', '🎫 ซื้อตั๋ว'], ['result', '🏆 ผลรางวัล']].map(([k, n]) => `<button class="chip${lottoTab === k ? ' sel' : ''}" data-lt="${k}">${n}</button>`).join('')}</div>`;
+  if (lottoTab === 'rules') {
+    h += `<div class="sec">วิธีเล่น</div><ul class="ltlist"><li>ซื้อตั๋วเลข <b>3 หลัก</b> ใบละ <b>🪙${LT.price}</b> ซื้อได้ <b>${L.max} ใบต่องวด</b> เลือกเลขเองหรือกดสุ่ม</li>`
+      + `<li>ออกผลทุกวัน <b>${LT.revealHour}:00 น.</b> ปิดรับตั๋ว 1 นาทีก่อนออกผล • ต้องยืนใกล้ตู้ผ่านคู่มือเริ่มต้นและระดับการเล่น ≥ ${L.minLv}</li>`
+      + `<li>เลขที่ออกมี 3 ชุด (รางวัล 1 / 2 / 3) ตั๋ว 1 ใบ <b>ถูกได้หลายรางวัลพร้อมกัน</b></li>`
+      + `<li>เงินรางวัลคิดเป็น % ของ <b>กองกลาง</b> (มีเพดาน) ถ้ามีหลายใบถูกรางวัลเดียวกันจะหารเท่ากัน (🍀 จ่ายเต็มทุกใบ) ไม่มีผู้ถูกกองทบไปงวดหน้า</li></ul>`
+      + `<div class="sec">รางวัลทั้ง ${PZ.length} ชนิด</div>` + PZ.map((P, k) => {
+        const amt = lottoPrizeAmt(P, L.pot), pay = P.each ? `🪙${fmtN(amt)} <small>ต่อใบ</small>` : `🪙${fmtN(amt)}`, rule = P.each ? `ขั้นต่ำ ${P.min} • ${P.pct * 100}% ของกอง ไม่เกิน ${fmtN(P.cap)}` : `${P.pct * 100}% ของกอง ไม่เกิน ${fmtN(P.cap)}`;
+        return `<div class="ltprize"><span class="e">${P.e}</span><span class="d"><b>${esc(P.name)}</b><small>${LOTTO_INFO[k][0]}<br>โอกาส ${LOTTO_INFO[k][1]} ต่อใบ</small></span><span class="a"><b>${pay}</b><small>${rule}</small></span></div>`;
+      }).join('')
+      + `<p class="ltnote">เงินที่แสดงคำนวณจากกองกลางตอนนี้ (🪙${fmtN(L.pot)}) • รวมทุกรางวัลจ่ายไม่เกินกองกลางเสมอ<br>🔒 เลขของงวดนี้สุ่มและปิดผนึกไว้ก่อนขายตั๋ว (ลายนิ้วมือ <code>${esc(L.hash.slice(0, 16))}…</code>) ตรวจได้ในแท็บผลรางวัลหลังออกผล<br>เงินเข้ากองจากค่าตั๋ว ค่าซ่อม ค่าเตา/ช่างไม้ ค่าเช่าแปลง ค่าบริการตู้เกม และภาษีขาย</p>`;
+  } else if (lottoTab === 'buy') {
+    h += `<div class="sec">🎫 ตั๋วของฉันงวดนี้ (${L.mine.length}/${L.max})</div><div class="ltmine">${L.mine.length ? L.mine.map(n => `<b class="ltball">${n}</b>`).join('') : '<small style="opacity:.6">ยังไม่มีตั๋ว</small>'}</div>`;
+    if (!L.ok) h += `<div class="banner" style="background:#ffe3d6">ซื้อได้เมื่อผ่านคู่มือเริ่มต้นและระดับการเล่นถึง ${L.minLv}</div>`;
+    else if (!L.open) h += '<div class="banner">ปิดรับตั๋วแล้ว เปิดขายอีกครั้งหลังออกผล</div>';
+    else if (!L.near) h += '<div class="banner" style="background:#ffe3d6">ต้องยืนใกล้ตู้ Lucky Lotto ถึงซื้อตั๋วได้</div>';
+    else if (room > 0) h += `<div class="ltbuy"><div class="center"><input id="lnum" maxlength="3" inputmode="numeric" placeholder="เลข 3 หลัก" style="width:104px;text-align:center"> <button class="btn small" id="lbuy">ซื้อเลขนี้ 🪙${LT.price}</button></div><div class="center" style="margin-top:6px"><button class="btn small" id="lr1">🎲 สุ่ม 1 ใบ</button> <button class="btn small" id="lrall">🎲 สุ่มที่เหลือ (${room} ใบ = 🪙${fmtN(room * LT.price)})</button></div></div>`;
+    else h += '<div class="banner">ซื้อครบ ' + L.max + ' ใบแล้วสำหรับงวดนี้ 🎉 รอลุ้นผล</div>';
+    h += `<div class="sec">👥 ใครซื้อบ้างงวดนี้ (${L.buyers.length} คน • ${total} ใบ)</div>` + (L.buyers.length ? L.buyers.map(([nm, n]) => `<div class="row"><span>${esc(nm)}</span><b>${n} ใบ</b></div>`).join('') : '<p style="opacity:.6;margin:2px 0">ยังไม่มีใครซื้อ</p>');
+  } else {
+    const hist = L.hist || [], lt = L.last, x = hist[0];
+    const sums = w => w.reduce((n, q) => n + q[2], 0);
+    const drawn = n => `<div class="ltdraw"><div class="ltb"><small>${PZ[0].e} รางวัล 1 (ตรง 3 หลัก)</small><b class="ltball big">${n[0]}</b></div><div class="ltb"><small>${PZ[1].e} รางวัล 2 (ท้าย 2 หลัก)</small><b class="ltball big">${n[1].slice(1)}</b></div><div class="ltb"><small>${PZ[2].e} รางวัล 3 (ท้าย 2 หลัก)</small><b class="ltball big">${n[2].slice(1)}</b></div></div>`
+      + `<div class="ltderived"><span>${PZ[3].e} โต๊ด: เลข ${n[0].split('').sort().join('')} สลับที่</span><span>${PZ[4].e} หน้า 2 ตัว: <b>${n[0].slice(0, 2)}</b></span><span>${PZ[5].e} ข้างเคียง: <b>${String((parseInt(n[0], 10) + 999) % 1000).padStart(3, '0')}</b> / <b>${String((parseInt(n[0], 10) + 1) % 1000).padStart(3, '0')}</b></span><span>${PZ[6].e} ท้าย 1 หลัก: <b>${n[0][2]}</b></span></div>`;
+    const winners = w => { if (!w.length) return '<p class="ltnone">ไม่มีผู้ถูกรางวัล (ทบกองไปงวดหน้า)</p>'; const by = {}; for (const [nm, k, a] of w) (by[k] = by[k] || []).push([nm, a]); return Object.keys(by).sort((a, b) => a - b).map(k => `<div class="ltwin"><span class="e">${(PZ[k - 1] || {}).e || '🏅'}</span><span class="n"><b>${esc((PZ[k - 1] || {}).name || 'รางวัล ' + k)}</b><small>${by[k].map(([nm, a]) => esc(nm) + ' +🪙' + fmtN(a)).join(' • ')}</small></span></div>`).join(''); };
+    if (!x) h += '<p style="opacity:.7;text-align:center;margin:14px 0">ยังไม่เคยออกรางวัล<br><small>งวดแรกจะออกผลตามเวลาที่แจ้งด้านบน</small></p>';
+    else {
+      const d = x.round.split('-');
+      h += `<div class="sec">🏆 ผลงวดล่าสุด ${d[2]}/${d[1]}/${d[0]} <small>(ตั๋ว ${x.n} ใบ • กอง 🪙${fmtN(x.pot0)} • จ่ายรวม 🪙${fmtN(sums(x.winners))})</small></div>` + drawn(x.nums) + `<div class="sec">🎉 ผู้ถูกรางวัล</div>` + winners(x.winners);
+      if (lt) h += `<p class="ltnote">🔒 ตรวจความโปร่งใส: sha256(<code>${esc(lt.salt)}</code>:${lt.nums.join(',')}) = <span id="lchk">…</span></p>`;
+      if (hist.length > 1) h += `<div class="sec">🔢 เลขที่ออกย้อนหลัง (${hist.length - 1} งวด)</div>` + hist.slice(1).map(y => { const e = y.round.split('-'); return `<div class="ltold"><b>${e[2]}/${e[1]}</b> <span>${PZ[0].e}<b class="ltball">${y.nums[0]}</b> ${PZ[1].e}<b class="ltball">${y.nums[1].slice(1)}</b> ${PZ[2].e}<b class="ltball">${y.nums[2].slice(1)}</b></span><small>${y.winners.length ? 'ถูก ' + y.winners.length + ' รายการ • จ่าย 🪙' + fmtN(sums(y.winners)) : 'ไม่มีผู้ถูก'}</small></div>`; }).join('');
+    }
+  }
   return h;
 }
 function bindLotto(el) {
+  el.querySelectorAll('[data-lt]').forEach(b => b.onclick = () => { lottoTab = b.dataset.lt; renderTown(); });
   const buy = nums => send({ t: 'lotto', a: 'buy', nums }), room = lottoSt ? lottoSt.max - lottoSt.mine.length : 0;
   const one = $('lbuy'); if (one) one.onclick = () => { const v = $('lnum').value.trim(); if (!/^\d{3}$/.test(v)) return toast('ใส่เลข 3 หลักก่อนนะ (000–999)'); buy([v]); };
   const r1 = $('lr1'); if (r1) r1.onclick = () => buy([null]);
