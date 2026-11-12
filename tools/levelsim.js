@@ -16,20 +16,32 @@ const M = {
   oreWalk: 6,      // วินาทีเดินหาก้อนแร่ถัดไปในถ้ำ (ชั้นละ ~30–40 ก้อน ห่างกัน ≥ 3 ช่อง) + ขุดครั้งละ 0.7 วินาที
   treeRegen: 60000 / S.TREE.growMs, // ต้นไม้งอกใหม่ต่อนาทีทั้งห้อง (เพดานระยะยาวของการตัดไม้คนเดียว)
   EFF: 0.5,        // ผู้เล่นจริงทำได้กี่เท่าของเพดานนี้
+  season: !process.argv.includes('--noseason'), // คิดข้อจำกัดฤดูของชาวนา (season-planting) • --noseason = ฐานเดิมไม่มีฤดู
 };
 
-function farm(lv) {
+// ชาวนา: ถ้าเปิด M.season (ค่าเริ่ม) คิดข้อจำกัดฤดูของ season-planting (S.SEASONS: พืช lv ≤ freeLv ปลูกได้ทุกฤดู ราคา ×1 • พืช lv > freeLv ปลูกได้เฉพาะฤดูตัวเอง ราคาในฤดู ×inMul) แล้ว "เฉลี่ยทุกฤดูในวงจร" (ฤดูยาวเท่ากัน) • ปิดด้วย --noseason = ไม่มีฤดู (ฐานเดิมก่อน season-planting)
+const seasonList = () => (M.season && S.SEASONS && S.SEASONS.lockCrops !== undefined && S.canPlant && S.cropSeason) ? S.SEASONS.list : null;
+function farmIn(lv, t) { // t = เวลาในฤดูที่ต้องการ (undefined = ไม่คิดฤดู) • byXp = เลือกพืชตาม XP/ชม. แทนเหรียญ/ชม.
   const cap = Math.min(S.FARM_CAP.max, S.FARM_CAP.base + S.FARM_CAP.perLv * (lv - 1)), m = 1 + 0.04 * (lv - 1), wet = S.CANS[lv >= 6 ? 3 : lv >= 3 ? 2 : 1].wet;
-  let best = null;
+  let best = null, bestX = null;
   for (const [k, c] of Object.entries(S.CROPS)) {
     if (c.lv > lv || c.legacy) continue;
+    let pm = 1; // ตัวคูณราคาตามฤดู
+    if (t !== undefined) { if (!S.canPlant(k, t)) continue; pm = S.cropSeason(k, t) === 1 ? S.SEASONS.inMul : 1; }
     const grow = c.time / m, waters = Math.ceil(grow / wet), acts = 3 + waters; // ขุด ปลูก เก็บ + รดน้ำทุกครั้งที่ดินแห้ง
     if (S.cropCan && S.canTier({ can_2: lv >= 3, can_3: lv >= 6 }) < S.cropCan(c)) continue; // ยังไม่มีบัวที่พืชนี้ต้องใช้
     const ppm = Math.min(cap / (grow / 60000), M.apm / acts);                 // ต้นต่อนาที: ติดเพดานแปลงหรือแรงงาน
-    const coin = ppm * (c.sell * M.cropPrice - c.seed) * 60, xp = ppm * (c.xp + 1 + 2 + waters) * 60;
-    if (!best || coin > best.coin) best = { pick: k, coin, xp, gross: ppm * c.sell * 60, cost: ppm * c.seed * 60, pieces: ppm * 60, cat: 'crop' };
+    const coin = ppm * (c.sell * M.cropPrice * pm - c.seed) * 60, xp = ppm * (c.xp + 1 + 2 + waters) * 60;
+    const r = { pick: k, coin, xp, gross: ppm * c.sell * pm * 60, cost: ppm * c.seed * 60, pieces: ppm * 60, cat: 'crop' };
+    if (!best || coin > best.coin) best = r;
+    if (!bestX || xp > bestX.xp) bestX = r;
   }
-  return best;
+  best.byXp = { pick: bestX.pick, coin: bestX.coin, xp: bestX.xp }; return best;
+}
+function farm(lv) {
+  const L = seasonList(); if (!L) return farmIn(lv);
+  const rows = L.map(se => Object.assign({ id: se.id }, farmIn(lv, S.SEASONS.epoch + L.indexOf(se) * S.SEASONS.days * 864e5 + 1))), n = rows.length, avg = k => rows.reduce((a, r) => a + r[k], 0) / n;
+  return { pick: rows.map(r => r.pick.slice(0, 3)).join('/'), coin: avg('coin'), xp: avg('xp'), gross: avg('gross'), cost: avg('cost'), pieces: avg('pieces'), cat: 'crop', seasons: rows };
 }
 function fishPool(lv, rod, tier, sea) { // sea = true: ปลาทะเล (ชุดแยก) • fishWeight รวมสระเลื่อน FISHPOOL (fishPoolMul) แล้ว
   return S.FISH.filter(f => !!f.sea === !!sea && f.lv <= lv).map(f => ({ f, w: S.fishWeight(f, lv, rod, tier) })).filter(x => x.w > 0);
@@ -189,6 +201,21 @@ if (require.main === module) {
     console.log(String(lv).padStart(2) + '  ' + String(m.rod).padStart(3) + '  ' + m.pick.slice(-1).padStart(3) + num(got).padStart(11) + ' ' + num(g).padStart(7) + ' ' + ((dev >= 0 ? '+' : '') + (dev * 100).toFixed(0) + '%').padStart(5) + (Math.abs(dev) > FISH_GOAL.tol ? '!' : ' ') + num(m.coin).padStart(12) + ' ' + (Math.round(cp * 100) + '%').padStart(7) + (cp < 0.75 || cp > 1.25 ? '!' : ' ') + (m.wear / m.gross * 100).toFixed(1).padStart(8) + '%' + (m.wear / m.gross > 0.10 ? '!' : ' ') + m.rare.toFixed(1).padStart(8) + (up ? '' : '  ไม่โต!') + '  | ' + (Math.round(sx.xp / m.xp * 100) + '%').padStart(5) + (Math.round(sx.coin / m.coin * 100) + '%').padStart(7)); }
   console.log('\nคันเบ็ด: ราคา ÷ เหรียญสุทธิจริง/ชม. (เพดาน × EFF) ณ เลเวลที่ปลด (เป้า ≤ ~1 ชม.) • ความทนทาน • สึกหรอ/เหวี่ยง');
   for (const [k, v] of Object.entries(S.RODS)) { if (!v.price) continue; const m = r.fish[v.lv - 1]; console.log(`คัน ${k} Lv${String(v.lv).padStart(2)} ราคา ${num(v.price).padStart(6)}  รายได้จริง/ชม. ${num(m.coin * M.EFF).padStart(6)}  ซื้อได้ใน ${(v.price / (m.coin * M.EFF)).toFixed(2)} ชม.  ทน ${S.DURABILITY.rod.max[k]}  ค่าสึก/เหวี่ยง ${(S.TOOL_PRICE.rod[k] / S.DURABILITY.rod.max[k] * S.WEAR_RATE.base * 1.35).toFixed(2)}`); }
+  // ฤดูของชาวนา (season-planting): เหรียญ/ชม. และ XP/ชม. ต่อฤดู เทียบเฉลี่ย • ชม.ถึง Lv10/Lv20 ต่อฤดู (เริ่มและอยู่ในฤดูนั้นตลอด = ขอบล่าง/บน) • อาชีพอื่น ÷ ชาวนา (เป้า 75–125% ของเหรียญ/ชม.) ที่ฤดูเฉลี่ย/ฤดูที่ชาวนาแย่สุด
+  if (r.farm[0].seasons) {
+    const ids = r.farm[0].seasons.map(x => x.id), fr = id => Array.from({ length: S.MAX_LV }, (_, i) => r.farm[i].seasons.find(x => x.id === id));
+    console.log(`\nชาวนารายฤดู (ฤดูละ ${S.SEASONS.days} วัน วนทุก ${S.SEASONS.list.length} ฤดู) • freeLv ${S.SEASONS.freeLv} inMul ${S.SEASONS.inMul} outMul ${S.SEASONS.outMul} • เหรียญ/ชม. [ฤดู: ${ids.join('/')}] เลือกตามเหรียญ`);
+    console.log('Lv  ' + ids.map(i => i.padStart(8)).join('') + '     เฉลี่ย  ต่ำสุด%เฉลี่ย  พืชเลือก(ต่อฤดู)');
+    for (const lv of [1, 3, 5, 6, 7, 8, 10, 12, 15, 18, 20]) { const x = ids.map(i => fr(i)[lv - 1]), a = r.farm[lv - 1]; console.log(String(lv).padStart(2) + '  ' + x.map(y => num(y.coin).padStart(8)).join('') + num(a.coin).padStart(11) + (Math.round(Math.min(...x.map(y => y.coin)) / a.coin * 100) + '%').padStart(11) + '    ' + x.map(y => y.pick.slice(0, 7)).join('/')); }
+    const rowsOf = (pickFn) => ids.map(i => Array.from({ length: S.MAX_LV }, (_, k) => pickFn(fr(i)[k])));
+    const hrs = (rows) => { const h = [0]; for (let lv = 1; lv < S.MAX_LV; lv++) h.push(h[lv - 1] + (S.xpFor(lv + 1, 'farm') - S.xpFor(lv, 'farm')) / (rows[lv - 1].xp * M.EFF)); return h; };
+    console.log('\nชม.เล่นจริงถึง Lv10 / Lv20 ของชาวนา (เริ่มและเล่นอยู่ในฤดูเดียวตลอด = ขอบ) เทียบเฉลี่ยทุกฤดู');
+    const mk = (label, rows) => { const h = hrs(rows); return label.padEnd(22) + h[9].toFixed(1).padStart(7) + ' /' + h[19].toFixed(1).padStart(6); };
+    console.log('เลือกตามเหรียญ: เฉลี่ย  ' + mk('', r.farm).trim()); ids.forEach((i, k) => console.log('  ' + i.padEnd(6) + '            ' + mk('', fr(i)).trim()));
+    console.log('เลือกตาม XP:    เฉลี่ย  ' + mk('', r.farm.map(x => ({ xp: x.seasons.reduce((a, y) => a + y.byXp.xp, 0) / x.seasons.length }))).trim()); ids.forEach((i, k) => console.log('  ' + i.padEnd(6) + '            ' + mk('', fr(i).map(x => x.byXp)).trim()));
+    console.log('\nเหรียญ/ชม. อาชีพอื่น ÷ ชาวนา: ฤดูเฉลี่ย | ฤดูที่ชาวนาแย่สุด (เป้า ≤ 125%) ที่ Lv 5/10/15/20');
+    for (const k of Object.keys(SIMS)) if (k !== 'farm') console.log(S.SKILLS[k].name.padEnd(12) + [5, 10, 15, 20].map(lv => { const a = r.farm[lv - 1].coin, w = Math.min(...ids.map(i => fr(i)[lv - 1].coin)); return (Math.round(r[k][lv - 1].coin / a * 100) + '%|' + Math.round(r[k][lv - 1].coin / w * 100) + '%').padStart(12); }).join(''));
+  }
   console.log(`\nเหรียญ/ชม. (เพดานคนเดียว ตามทางที่เลือก)`);
   for (const k of Object.keys(SIMS)) console.log(S.SKILLS[k].name.padEnd(12) + r[k].map(x => num(x.coin).padStart(7)).join(''));
 }
