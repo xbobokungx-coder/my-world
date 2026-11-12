@@ -69,6 +69,15 @@ PORT=3001 DATA_DIR=./data-dev npm start   # เปิดที่ http://localho
 
 **สำรองอัตโนมัติ:** `/etc/cron.d/my-world-backup` รัน `tools/backup.sh` ทุกชั่วโมง (นาทีที่ 5) เก็บที่ `backup/auto/hourly/` 48 ชุด และ `backup/auto/daily/` 14 วัน (ตรวจว่าไฟล์ JSON อ่านได้ก่อนเก็บ) log อยู่ที่ `/var/log/my-world-backup.log` กู้คืน: `systemctl stop my-world` → `tar xzf backup/auto/hourly/<ไฟล์>.tar.gz -C /root/my-world` → `systemctl start my-world` (ถ้าย้ายเครื่อง ต้องสร้างไฟล์ cron ใหม่)
 
+### สำรองนอกเครื่อง (WP-05)
+สำรองบน VPS อยู่เครื่องเดียวกับเกม ถ้า VPS พังข้อมูลหายหมด จึงดึงออกมาเครื่องเจ้าของทุกวัน:
+- **Mac:** `tools/launchd/install-pull-backup.sh` (ทุกวัน 21:00 รัน `tools/pull-backup.sh` เก็บที่ `~/my-world-backups/` ล่าสุด 30 ชุด ตั้ง `KEEP=` ได้ ขั้นต่ำควร 14) ถอดด้วย `--remove` log อยู่ `~/my-world-backups/pull.log` • ssh รันแบบไม่ถามรหัส คีย์ของชื่อลัด `my-world` ต้องไม่มีรหัสผ่านหรืออยู่ใน Keychain (`UseKeychain yes` + `AddKeysToAgent yes` ใน `~/.ssh/config`) และอย่าย้ายรีโปไป Desktop/Documents/Downloads (macOS อาจบล็อก launchd)
+- **Windows:** `tools/pull-backup.ps1` ผูกกับ Task Scheduler รายวัน
+- ไฟล์สำรองมี IP ผู้เล่น เก็บนอกโฟลเดอร์รีโปเสมอ ห้ามส่งขึ้น git
+
+**ซ้อมกู้:** `tools/restore-drill.sh [ไฟล์.tar.gz]` แตกลงโฟลเดอร์ชั่วคราว ตรวจ JSON ทุกไฟล์ เปิดเซิร์ฟเวอร์ด้วยข้อมูลนั้นแล้วให้บอทเข้าเกม (ไม่แตะ `data/` จริง ไม่พิมพ์เนื้อหาผู้เล่น) ควรซ้อมหลังเปลี่ยนโครงสร้างเซฟทุกครั้ง
+- บันทึกผลซ้อม: 13 พ.ย. 2026 (Mac) ไฟล์ `data-20261106.tar.gz` (556 KB) JSON อ่านได้ 23 ไฟล์ ไม่มีไฟล์เสีย 2 ห้อง (บัญชี 108 และ 8) เซิร์ฟเวอร์ขึ้นและบอทเข้าเกมได้ ใช้เวลา 1 วินาที ไม่พบปัญหา • **ยังไม่ได้ซ้อมกับสำรองสดจาก VPS** (ต้อง ssh ดึงก่อน) และยังไม่ได้เปิดใช้ตั้งเวลาอัตโนมัติ
+
 ก่อนแก้โครงสร้างข้อมูลหรืออัปเดตใหญ่ สำรองด้วยมืออีกชุด:
 
 ```bash
