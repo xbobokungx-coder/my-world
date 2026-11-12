@@ -1211,9 +1211,10 @@ function cropSeasonTag(c) { // ฤดูที่ปลูกได้ของ�
   const S = Shared.SEASONS; if (!S || CROPS[c].lv <= (S.freeLv || 0)) return null;
   return S.list.find(x => x.crops.includes(c)) || null;
 }
-function seasonInfoText() { // ฤดูปัจจุบัน + นับถอยหลัง + พืชที่ปลูกได้เฉพาะฤดูนี้ (ใช้เป็นทูลทิปและ toast ตอนแตะนาฬิกา)
+function seasonInfoText(short) { // ฤดูปัจจุบัน + นับถอยหลัง + พืชที่ปลูกได้เฉพาะฤดูนี้ (ใช้เป็นทูลทิปและ toast ตอนแตะนาฬิกา)
   const t = seasonNow(), se = Shared.seasonAt(t); if (!se.on) return '🌱 ยังไม่เข้าฤดูกาล ปลูกอะไรก็ได้';
   const free = (Shared.SEASONS.freeLv || 0), names = se.s.crops.filter(c => CROPS[c] && CROPS[c].lv > free).map(c => CROPS[c].name).join(' ');
+  if (short) return `${se.s.emoji} ${se.s.name} เหลือ ${waitTxt(se.end - t)}${names ? '\nปลูกได้: ' + names : ''}`;
   return `${se.s.emoji} ${se.s.name} เหลือ ${waitTxt(se.end - t)}${names ? ' • ปลูกได้: ' + names : ''}${free ? ' • Lv≤' + free + ' ปลูกได้ทุกฤดู' : ''}`;
 }
 function toolInfo(t) { // ข้อมูลเครื่องมือในช่อง 1: e = ไอคอน, n = ชื่อเต็ม, sub = บรรทัดย่อในเมนู, cnt = ตัวเลขมุมช่อง (null = ไม่แสดง)
@@ -1230,7 +1231,7 @@ function renderHud() {
   SLOTS.forEach((s, i) => {
     const info = slotInfo(i), d = document.createElement('div');
     d.className = 'slot' + (i === slot ? ' sel' : '');
-    d.innerHTML = `<span class="k">${i + 1}</span>${info.e}${info.cnt === null ? '' : `<span class="n">${info.lock ? '🔒' : ''}${info.cnt}</span>`}${s.pick ? '<span class="p">▾</span>' : ''}`;
+    d.innerHTML = `<span class="k">${i + 1}</span>${info.e}${info.cnt === null ? '' : `<span class="n">${info.cnt}</span>`}${info.lock ? '<span class="lk" style="position:absolute;top:1px;right:2px;font-size:10px;line-height:1">🔒</span>' : ''}${s.pick ? '<span class="p">▾</span>' : ''}`;
     if (info.cnt === 0 || info.lock) d.style.opacity = .55; // เมล็ดนอกฤดู: หม่น แต่ยังเลือก/กด Action ได้ ให้เซิร์ฟเวอร์บอกเหตุผล
     d.onpointerdown = e => { e.stopPropagation(); pickSlot(i); };
     hb.appendChild(d);
@@ -1289,7 +1290,8 @@ function showPicker() {
     const b = document.createElement('button');
     b.className = 'opt' + ((s === 'seed' ? 'seed_' + selSeed : s === 'rod' ? selBait : selFeed) === k ? ' sel' : ''); b.disabled = !!locked;
     const sl = s === 'seed' && !locked ? plantLock(k.slice(5)) : null; // นอกฤดู: หม่น + 🔒 แต่ยังเลือกได้
-    b.innerHTML = `<b>${info.emoji}</b>${s === 'seed' ? CROPS[k.slice(5)].name : info.name.split(' ')[0]}<br>${locked ? '🔒 Lv' + info.lv : (sl ? '🔒' + (sl.s ? sl.s.emoji : '') + ' ' : '') + '×' + have}`;
+    b.innerHTML = `<b>${info.emoji}</b>${s === 'seed' ? CROPS[k.slice(5)].name : info.name.split(' ')[0]}<br><span style="white-space:nowrap">${locked ? '🔒 Lv' + info.lv : (sl ? '🔒' + (sl.s ? sl.s.emoji : '') + ' ' : '') + '×' + have}</span>`;
+    b.style.minHeight = '64px';
     if (sl) b.style.opacity = .6;
     b.onclick = e => { e.stopPropagation(); if (s === 'seed') selSeed = k.slice(5); else if (s === 'rod') { selBait = k; ls.set('mw_bait', k); } else selFeed = k; hidePicker(); renderHud(); };
     el.appendChild(b);
@@ -1569,6 +1571,7 @@ function renderShop() {
   let keys = sellTab || cookTab || craftTab ? [] : tabs ? sh.buy.filter(k => buyTabOf(shopKind, k) === farmTab && (shopKind !== 'furn' || furnCatOf(k) === furnSub)) : sh.buy;
   const profitRank = seedTab ? keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a)) : [];
   if (seedTab) keys = keys.slice().sort((a, b) => CROPS[a.slice(5)].lv - CROPS[b.slice(5)].lv || CROPS[a.slice(5)].sell - CROPS[b.slice(5)].sell);
+  let freeHdr = false;
   for (const k of keys) {
     const i = itemInfo(k), locked = i.lv && lvl(i.skill) < i.lv, coin = inv.coin || 0;
     let sub = '';
@@ -1576,8 +1579,10 @@ function renderShop() {
     else if (i.once) sub = inv[k] ? 'มีแล้ว ✅' : '';
     else sub = `มี ${inv[k] || 0}${i.food ? ` • อิ่ม +${i.food}` : ''}`;
     if (seedTab) {
-      const cid = k.slice(5), tg = cropSeasonTag(cid), lk = locked ? null : plantLock(cid);
-      sub += !tg ? ' • ✅ ปลูกได้ทุกฤดู' : lk ? ` • 🔒 ${tg.emoji} ${tg.name}${lk.txt ? ' รออีก ' + lk.txt : ''} (ซื้อเก็บไว้ได้)` : ` • ${tg.emoji} ${tg.name} 🌟 ปลูกได้ ราคาดี`;
+      const cid = k.slice(5), tg = cropSeasonTag(cid), lk = plantLock(cid);
+      if (!tg && !freeHdr) { freeHdr = true; const fl = (Shared.SEASONS && Shared.SEASONS.freeLv) || 0; if (fl) h += `<div class="sec">✅ Lv≤${fl} ปลูกได้ทุกฤดู</div>`; }
+      if (tg && freeHdr === true) { freeHdr = 2; h += '<div class="sec">🌦️ ปลูกตามฤดู</div>'; }
+      sub += !tg ? '' : locked ? ` • ${tg.emoji} ${tg.name}` : lk ? ` • 🔒 ${tg.emoji} ${tg.name}${lk.txt ? ' รออีก ' + lk.txt : ''} (ซื้อเก็บไว้ได้)` : ` • ${tg.emoji} ${tg.name} 🌟 ปลูกได้ ราคาดี`;
     }
     if (seedTab) { const c = CROPS[k.slice(5)], pr = seedProfit(k), ix = profitRank.indexOf(k); sub += ` • กำไร ${c.sell - c.seed}/ต้น (${pr.toFixed(1)}/นาที) ${ix < 3 ? '⭐ ดี' : ix >= profitRank.length - 3 ? '▼ ต่ำ' : ''}`; }
     const lockTxt = locked ? ` <small>🔒 Lv${i.lv}</small>` : '';
@@ -4438,7 +4443,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   const icon = dark > 0.45 ? '🌙' : hour < 8 || hour >= 17 ? '🌅' : '☀️';
   const se = Shared.seasonAt(Date.now() + timeOffset), rn = rainActive(now), sem = rn ? '🌧️' : se.s.id === 'rain' && rainMode !== 'off' ? '☁️' : se.s.emoji, txt = `${se.on || rn ? sem + ' ' : ''}${icon} ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')}`; // ฤดูกาล + เวลาในเกม
   if ($('clock').textContent !== txt) $('clock').textContent = txt;
-  const ck = $('clock'); if (!ck.onclick) { ck.style.cursor = 'pointer'; ck.onclick = e => { e.stopPropagation(); toast(seasonInfoText()); }; }
+  const ck = $('clock'); if (!ck.onclick) { ck.style.cursor = 'pointer'; ck.onclick = e => { e.stopPropagation(); toast(seasonInfoText(true)); }; }
   if (se.on) { const tt = seasonInfoText(); if (ck.title !== tt) ck.title = tt; }
   drawMini(now);
 }
