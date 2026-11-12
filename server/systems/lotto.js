@@ -31,31 +31,34 @@ module.exports = {
   lottoDraw() {
     const L = this.lotto, { nums, salt, hash } = L.sealed, base = L.pot, wins = []; let paid = 0, nTickets = 0;
     for (const list of Object.values(L.tickets)) nTickets += list.length;
-    const srt = x => x.split('').sort().join(''); // โต๊ด: เลข 3 ตัวเดียวกันกับรางวัล 1 สลับที่ (ตรงเป๊ะนับเป็นรางวัล 1 ไม่นับโต๊ด)
+    const srt = x => x.split('').sort().join(''), a = nums[0]; // โต๊ด: เลข 3 ตัวเดียวกับรางวัล 1 สลับที่ (ตรงเป๊ะนับเป็นรางวัล 1 ไม่ซ้อน)
+    const isHit = (P, k, t) => P.tote ? t !== a && srt(t) === srt(a) : P.front ? t.slice(0, P.front) === a.slice(0, P.front) : P.near ? ((d) => d === 1 || d === 999)((parseInt(t, 10) - parseInt(a, 10) + 1000) % 1000) : P.last1 ? t[2] === a[2] : t.slice(3 - P.digits) === nums[k].slice(3 - P.digits);
     S.LOTTO.prize.forEach((P, k) => {
-      const hit = []; for (const [key, list] of Object.entries(L.tickets)) for (const t of list) if (P.tote ? t !== nums[0] && srt(t) === srt(nums[0]) : t.slice(3 - P.digits) === nums[k].slice(3 - P.digits)) hit.push(key); // ตั๋วเลขซ้ำถูกกี่ใบ ได้กี่ส่วน
+      const hit = []; for (const [key, list] of Object.entries(L.tickets)) for (const t of list) if (isHit(P, k, t)) hit.push(key); // ตั๋วเลขซ้ำถูกกี่ใบ ได้กี่ส่วน
       if (!hit.length) return;
-      const each = Math.floor(Math.min(Math.floor(base * P.pct), P.cap, Math.max(0, base - paid)) / hit.length); if (each <= 0) return; // รวมทุกรางวัลไม่เกินกองกลาง
-      const by = {}; for (const key of hit) by[key] = (by[key] || 0) + each;
-      for (const [key, amt] of Object.entries(by)) { wins.push([key, k + 1, amt]); paid += amt; }
+      const amt = Math.max(P.min || 0, Math.min(Math.floor(base * P.pct), P.cap)), by = {}; // เงินรางวัลก้อนนี้ (min = ขั้นต่ำต่อใบของรางวัลแบบ each)
+      if (P.each) { for (const key of hit) { const g = Math.min(amt, Math.max(0, base - paid)); if (g <= 0) break; by[key] = (by[key] || 0) + g; paid += g; } } // ทุกใบที่ถูกได้เต็ม ไม่หาร จนกว่ากองจะหมด
+      else { const each = Math.floor(Math.min(amt, Math.max(0, base - paid)) / hit.length); if (each <= 0) return; for (const key of hit) by[key] = (by[key] || 0) + each; paid += each * hit.length; } // รวมทุกรางวัลไม่เกินกองกลาง
+      for (const [key, g] of Object.entries(by)) wins.push([key, k + 1, g]);
     });
     L.pot = Math.max(0, L.pot - paid);
     const winners = wins.map(([key, k, amt]) => { const rec = this.saved[key]; return [rec && rec.name || key, k, amt]; });
     for (const [key, k, amt] of wins) {
       this.creditInv(key, 'coin', amt); logEv(this.room, 'coin', { p: key, n: amt, why: 'lotto' });
       const q = [...this.players.values()].find(o => o.key === key);
-      if (q) { this.toast(q, `🎟️ ถูก Lucky Lotto ${k === 4 ? 'โต๊ด 3 ตัว 🎯' : 'รางวัลที่ ' + k}! ได้ 🪙 ${amt}`); this.sfxTo(q, 'levelup'); }
+      if (q) { this.toast(q, `🎟️ ถูก Lucky Lotto ${this.lottoPrizeName(k)}! ได้ 🪙 ${amt}`); this.sfxTo(q, 'levelup'); }
       else { const rec = this.saved[key]; if (rec) (rec.lottoWins || (rec.lottoWins = [])).push([k, amt]); }
     }
     L.last = { round: L.round, nums, salt, hash, n: nTickets, pot0: base, winners };
     L.hist.unshift({ round: L.round, nums, n: nTickets, pot0: base, winners }); if (L.hist.length > 30) L.hist.length = 30;
     logEv(this.room, 'lotto', { round: L.round, nums, tickets: nTickets, pot: base, paid, winners: wins.length });
     const prize = [...new Set(wins.map(w => w[1]))];
-    this.broadcast({ t: 'msg', text: prize.length ? `🎟️ Lucky Lotto ${nums[0]} / ${nums[1].slice(1)} / ${nums[2].slice(1)} ออกแล้ว มีผู้ถูกรางวัลที่ ${prize.join(', ')} จ่าย 🪙 ${paid} กองกลางเหลือ 🪙 ${L.pot}` : `🎟️ Lucky Lotto ${nums[0]} / ${nums[1].slice(1)} / ${nums[2].slice(1)} ออกแล้ว ไม่มีผู้ถูกรางวัล ทบกองกลาง 🪙 ${L.pot}` }); // ประกาศผลแบบข้อความลอย ไม่ลงข่าวเมือง
+    this.broadcast({ t: 'msg', text: prize.length ? `🎟️ Lucky Lotto ${nums[0]} / ${nums[1].slice(1)} / ${nums[2].slice(1)} ออกแล้ว มีผู้ถูกรางวัล ${prize.map(k => S.LOTTO.prize[k - 1] ? S.LOTTO.prize[k - 1].e : k).join(' ')} จ่าย 🪙 ${paid} กองกลางเหลือ 🪙 ${L.pot}` : `🎟️ Lucky Lotto ${nums[0]} / ${nums[1].slice(1)} / ${nums[2].slice(1)} ออกแล้ว ไม่มีผู้ถูกรางวัล ทบกองกลาง 🪙 ${L.pot}` }); // ประกาศผลแบบข้อความลอย ไม่ลงข่าวเมือง
     const nx = new Date(this.lottoDrawAt(L.round)); nx.setDate(nx.getDate() + 1);
     L.round = this.lottoDate(nx.getTime()); L.sealed = this.lottoSeal(); L.tickets = {}; this.dirty = true; // สุ่มและปิดผนึกเลขงวดถัดไปก่อนเปิดขายตั๋ว
     for (const p of this.players.values()) send(p, { t: 'lotto', l: this.lottoPub(p) });
   },
+  lottoPrizeName(k) { const P = S.LOTTO.prize[k - 1]; return P ? (k <= 3 ? `รางวัลที่ ${k}` : P.e + ' ' + P.name) : `รางวัลที่ ${k}`; }, // ชื่อรางวัลในข้อความ (1–3 เรียกเลขที่ 4+ เรียกชื่อ)
   nearLucky(p) { return Math.hypot(p.x - (S.LUCKY.x + 0.5) * TS, p.y - (S.LUCKY.y + 0.5) * TS) < 4.5 * TS; },
   lottoOk(p) { return !!this.starterOf(p).final && S.playLevel(p.rec.skills) >= S.LOTTO.minLv; },
   lottoPub(p) {
@@ -77,6 +80,6 @@ module.exports = {
   },
   lottoJoin(p) { // ส่งสถานะหวยตอนเข้าเกม + แจ้งรางวัลที่ถูกตอนออฟไลน์
     send(p, { t: 'lotto', l: this.lottoPub(p) });
-    const w = p.rec.lottoWins; if (w && w.length) { delete p.rec.lottoWins; this.dirty = true; setTimeout(() => { if (p.ws.readyState === 1) for (const [k, amt] of w) this.toast(p, `🎟️ คุณถูก Lucky Lotto รางวัลที่ ${k} ขณะออฟไลน์! ได้ 🪙 ${amt}`); }, 3000); }
+    const w = p.rec.lottoWins; if (w && w.length) { delete p.rec.lottoWins; this.dirty = true; setTimeout(() => { if (p.ws.readyState === 1) for (const [k, amt] of w) this.toast(p, `🎟️ คุณถูก Lucky Lotto ${this.lottoPrizeName(k)} ขณะออฟไลน์! ได้ 🪙 ${amt}`); }, 3000); }
   },
 };

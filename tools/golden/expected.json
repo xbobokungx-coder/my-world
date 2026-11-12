@@ -23,7 +23,7 @@
    "alice": {
     "firstSeen": 1793934000000,
     "inv": {
-     "coin": 800,
+     "coin": 650,
      "seed_carrot": 7,
      "feed": 5,
      "bait": 9,
@@ -1607,7 +1607,7 @@
    ]
   ],
   "lotto": {
-   "pot": 30150,
+   "pot": 30300,
    "round": "2026-11-6",
    "sealed": {
     "nums": [
@@ -2634,8 +2634,8 @@
      "now": 1793934000000,
      "hash": "f054b8a12f40aac89428350c2785bab97f3c072eaa4fed3f772febd405e98e2a",
      "mine": [],
-     "max": 6,
-     "price": 50,
+     "max": 10,
+     "price": 100,
      "minLv": 5,
      "ok": false,
      "open": true,
@@ -7167,7 +7167,7 @@
    {
     "t": "inv",
     "inv": {
-     "coin": 757,
+     "coin": 607,
      "seed_carrot": 7,
      "feed": 5,
      "bait": 9,
@@ -7185,7 +7185,7 @@
    },
    {
     "t": "msg",
-    "text": "🎟️ ซื้อ Lucky Lotto 123 456 377 (🪙 150) ออกผล 21:00 น."
+    "text": "🎟️ ซื้อ Lucky Lotto 123 456 377 (🪙 300) ออกผล 21:00 น."
    },
    {
     "t": "sfx",
@@ -7206,7 +7206,7 @@
      ],
      "hist": [],
      "near": true,
-     "pot": 30150,
+     "pot": 30300,
      "drawAt": 1793973600000,
      "now": 1793934071700,
      "hash": "f054b8a12f40aac89428350c2785bab97f3c072eaa4fed3f772febd405e98e2a",
@@ -7215,8 +7215,8 @@
       "456",
       "377"
      ],
-     "max": 6,
-     "price": 50,
+     "max": 10,
+     "price": 100,
      "minLv": 5,
      "ok": true,
      "open": true,
@@ -7338,7 +7338,7 @@
    {
     "t": "inv",
     "inv": {
-     "coin": 757,
+     "coin": 607,
      "seed_carrot": 7,
      "feed": 5,
      "bait": 9,
@@ -7385,7 +7385,7 @@
    {
     "t": "inv",
     "inv": {
-     "coin": 765,
+     "coin": 615,
      "seed_carrot": 7,
      "feed": 5,
      "bait": 9,
@@ -7500,7 +7500,7 @@
    {
     "t": "inv",
     "inv": {
-     "coin": 790,
+     "coin": 640,
      "seed_carrot": 7,
      "feed": 5,
      "bait": 9,
@@ -7618,7 +7618,7 @@
    {
     "t": "inv",
     "inv": {
-     "coin": 800,
+     "coin": 650,
      "seed_carrot": 7,
      "feed": 5,
      "bait": 9,
@@ -7659,7 +7659,7 @@
      "questdone": 1,
      "sell": 3,
      "mine": 1,
-     "wealth": 800,
+     "wealth": 650,
      "streak": 1
     },
     "got": {
@@ -8936,8 +8936,8 @@
      "now": 1793934000000,
      "hash": "f054b8a12f40aac89428350c2785bab97f3c072eaa4fed3f772febd405e98e2a",
      "mine": [],
-     "max": 6,
-     "price": 50,
+     "max": 10,
+     "price": 100,
      "minLv": 5,
      "ok": false,
      "open": true,

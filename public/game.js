@@ -671,13 +671,13 @@ function renderFameTab(el) {
   el.innerHTML = h;
 }
 function lottoCard() { // Lucky Lotto: กองกลาง (ค่าบริการ+ภาษีขาย+ค่าตั๋ว) จ่ายรางวัลทุกวัน • เลขชนะสุ่มปิดผนึกไว้ก่อน ตรวจ hash ได้หลังเปิดผล
-  const L = lottoSt, esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), medal = ['🥇', '🥈', '🥉', '🎯'];
+  const L = lottoSt, esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), medal = Shared.LOTTO.prize.map(q => q.e);
   if (!L) return '<p style="opacity:.7">กำลังโหลด…</p>';
   const left = Math.max(0, L.drawAt - (Date.now() + timeOffset)), hh = Math.floor(left / 3600e3), mm = Math.floor(left % 3600e3 / 60e3);
   const room = L.max - L.mine.length, total = L.buyers.reduce((n, b) => n + b[1], 0), tax = L.heat > 0 ? `<br><small>🧾 ยอดขายสะสม (ภาษีขายที่ร้าน) ${L.heat} → เหรียญถัดไปเสียภาษี ${Math.round(L.rate * 100)}% • ยอดจางหมดภายใน 24 ชม.</small>` : '';
   let h = `<div class="row"><span>🏦 กองกลาง</span><b>🪙 ${L.pot}</b></div>`
     + `<p style="font-size:12px;opacity:.75;margin:4px 0 6px">ออกผลทุกวัน ${Shared.LOTTO.revealHour}:00 น. (อีก <span id="lleft">${hh} ชม. ${mm} นาที</span>) • ตั๋วเลข 3 หลัก ใบละ 🪙${L.price} ซื้อได้ ${L.max} ใบต่องวด • เงินเข้ากองจากค่าตั๋ว ค่าซ่อม ค่าเตา/ช่างไม้ ค่าเช่าแปลง ค่าบริการตู้เกม ภาษีขาย (ร้านสูงสุด 7% แผง 7%)<br>`
-    + `รางวัลที่ 1 ตรง 3 หลัก = 50% ของกอง (สูงสุด 100,000) • รางวัลที่ 2 / 3 ตรง 2 หลักท้ายของเลขคนละชุด = 25% (50,000) / 10% (20,000) • 🎯 โต๊ด 3 ตัว (เลขรางวัลที่ 1 สลับที่ ไม่ตรงเป๊ะ) = 30% (60,000) • หลายใบถูกหารเท่ากัน ไม่มีผู้ถูกทบไปงวดหน้า<br>`
+    + `🥇 ตรง 3 หลัก 50% (สูงสุด 100,000) • 🔼 ข้างเคียงรางวัล 1 (±1) 25% (50,000) • 🎯 โต๊ด 3 ตัว (เลขรางวัล 1 สลับที่) 12% (25,000) • 🥈 / 🥉 ตรง 2 หลักท้ายของเลขคนละชุด และ 🔢 ตรง 2 หลักหน้าของรางวัล 1 = 5% (10,000) • 🍀 เลขท้ายตรงรางวัล 1 = 🪙100 ทุกใบที่ถูก • หลายใบถูกรางวัลเดียวกันหารเท่ากัน (ยกเว้น 🍀) ไม่มีผู้ถูกทบไปงวดหน้า<br>`
     + `🔒 ลายนิ้วมือเลขงวดนี้ (สุ่มไว้แล้ว ก่อนขายตั๋ว): <code>${esc(L.hash.slice(0, 16))}…</code>${tax}</p>`;
   h += `<div class="sec">🎫 ตั๋วของฉัน (${L.mine.length}/${L.max})</div><div class="row"><span>${L.mine.length ? L.mine.map(n => `<b style="padding:1px 6px;border:1px solid #c9a86a;border-radius:6px">${n}</b>`).join(' ') : '<small style="opacity:.6">ยังไม่มี</small>'}</span></div>`;
   if (!L.ok) h += `<div class="banner" style="background:#ffe3d6">ซื้อได้เมื่อผ่านคู่มือเริ่มต้นและระดับการเล่นถึง ${L.minLv}</div>`;
@@ -688,7 +688,7 @@ function lottoCard() { // Lucky Lotto: กองกลาง (ค่าบริ
   const hist = L.hist || [], lt = L.last;
   h += `<div class="sec">🔢 เลขที่ออกย้อนหลัง (${hist.length} งวดล่าสุด)</div>` + (hist.length ? hist.map((x, i) => {
     const d = x.round.split('-'), win = x.winners.length ? x.winners.map(([nm, k, a]) => `${medal[k - 1]} ${esc(nm)} +🪙${a}`).join(' &nbsp; ') : 'ไม่มีผู้ถูกรางวัล (ทบกอง)';
-    return `<div class="qrow${i ? ' done' : ''}"><b>${d[2]}/${d[1]}</b> &nbsp; 🥇 <b>${x.nums[0]}</b> &nbsp; 🥈 ท้าย 2 หลัก <b>${x.nums[1].slice(1)}</b> &nbsp; 🥉 ท้าย 2 หลัก <b>${x.nums[2].slice(1)}</b> &nbsp; 🎯 โต๊ด <b>${x.nums[0]}</b> <small>(ตั๋ว ${x.n} ใบ • กอง 🪙${x.pot0})</small><br><small>${win}</small></div>`;
+    return `<div class="qrow${i ? ' done' : ''}"><b>${d[2]}/${d[1]}</b> &nbsp; 🥇 <b>${x.nums[0]}</b> &nbsp; 🥈 ท้าย 2 หลัก <b>${x.nums[1].slice(1)}</b> &nbsp; 🥉 ท้าย 2 หลัก <b>${x.nums[2].slice(1)}</b> &nbsp; 🎯 โต๊ด <b>${x.nums[0]}</b> &nbsp; 🔢 หน้า 2 ตัว <b>${x.nums[0].slice(0, 2)}</b> &nbsp; 🍀 ท้าย 1 หลัก <b>${x.nums[0][2]}</b> <small>(ตั๋ว ${x.n} ใบ • กอง 🪙${x.pot0})</small><br><small>${win}</small></div>`;
   }).join('') : '<p style="opacity:.6;margin:2px 0">ยังไม่เคยออกรางวัล</p>');
   if (lt) h += `<p style="font-size:11px;opacity:.7;margin:6px 0 0">ตรวจงวดล่าสุด: sha256(<code>${esc(lt.salt)}</code>:${lt.nums.join(',')}) = <span id="lchk">…</span></p>`;
   return h;
