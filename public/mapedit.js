@@ -16,7 +16,7 @@
       else add('b_' + b.kind, b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1, b.name || b.kind, '#ffd24a');
     }
     add('house', HOUSE_BLD.x0, HOUSE_BLD.y0, HOUSE_BLD.x1 - HOUSE_BLD.x0 + 1, HOUSE_BLD.y1 - HOUSE_BLD.y0 + 1, 'บ้านใหญ่', '#ffe08a');
-    add('fire', FIRE.x, FIRE.y, 1, 1, 'กองไฟ', '#ff9a2e');
+    add('plazatree', FIRE.x, FIRE.y, 1, 1, 'ต้นไม้ลาน', '#6fcf6f'); // ตายตัว ไม่อยู่ใน MOVABLE
     add('atm', ATM.x, ATM.y, 1, 1, 'ATM', '#7dffb0');
     add('board', BOARD.x, BOARD.y, 1, 1, 'ข่าว', '#ffffff');
     add('rank', RANKBOARD.x, RANKBOARD.y, 1, 1, 'อันดับ', '#ffd24a');
@@ -27,7 +27,7 @@
     return sanitizeMocks(out);
   }
 
-  const MOVABLE = /^(b_[a-z]+|cab[0-9]|fire|atm|board|lotto)$/;
+  const MOVABLE = /^(b_[a-z]+|cab[0-9]|atm|board|lotto)$/;
   // กล่องที่ลากไปตำแหน่งต่างจากร้าน/ตู้ในเกมจริง (บันทึก Mock อย่างเดียวยังไม่ย้ายของจริง ต้องกด 🚀)
   function pending() { const live = new Map(seedMocks().map(m => [m.id, m])); return mocks.filter(m => MOVABLE.test(m.id) && live.has(m.id) && (live.get(m.id).x !== m.x || live.get(m.id).y !== m.y)).map(m => ({ m, o: live.get(m.id) })); }
 
@@ -122,7 +122,7 @@
     if (a === "apply") {
       const live = seedMocks(), liveById = new Map(live.map(m => [m.id, m])), items = {}, moved = [];
       for (const m of mocks) { if (!/^(b_[a-z]+|cab[0-9]|fire|atm|board|lotto)$/.test(m.id)) continue; items[m.id] = { x: m.x, y: m.y }; const o = liveById.get(m.id); if (o && (o.x !== m.x || o.y !== m.y)) moved.push(m.label || m.id); }
-      if (!moved.length) return toastFn("ยังไม่ได้ขยับร้าน/ตู้/กองไฟ (ตำแหน่งตรงกับเกมอยู่แล้ว)");
+      if (!moved.length) return toastFn("ยังไม่ได้ขยับร้าน/ตู้/ATM/กระดาน (ตำแหน่งตรงกับเกมอยู่แล้ว)");
       if (!confirm("ใช้ผังนี้กับเกมจริง?\n\nจะย้าย: " + moved.join(", ") + "\n\nเกมจะรีสตาร์ท 3–5 วินาที ผู้เล่นทุกคนหลุดชั่วครู่แล้วหน้าเว็บรีเฟรชเอง\n(ขนาดร้านคงเดิม ใช้ตำแหน่งมุมซ้ายบนของกล่อง • ย้อนกลับได้ด้วย ⏪)")) return;
       sendFn({ t: "admin", a: "layoutapply", items }); toastFn("กำลังตรวจผัง…"); return;
     }

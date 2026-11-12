@@ -316,10 +316,29 @@ const PixelVehicle = (() => {
     let s = cache.get(key); if (!s) { if (cache.size > 300) cache.clear(); s = BUILD[kind](d, fr, pc, idle, sc); cache.set(key, s); }
     return s;
   }
-  const lift = kind => ({ bike: 6, scooter: 5, car: 6 }[kind] || 0) * SC; // ความสูงที่ตัวละครยกขึ้นจากพื้น (พิกเซลเกม) ไว้เลื่อนป้ายชื่อ/ฟองแชทตาม
+  // จักรยานสไปรต์ AI (PixelLab 12 พ.ย. 2026): คนปั่นทั้งตัวจากชีต public/pack/bike-rider.png (ช่อง 96×96 แถว 1 ใต้ 2 ตะวันออก 3 เหนือ แถว 0 คือภาพนิ่ง 8 ทิศ ไม่ใช้) ตะวันตกพลิกจากตะวันออก • ภาพยังไม่โหลด/โหลดไม่ได้ → ใช้จักรยานวาดด้วยโค้ดเดิม
+  const BikeAI = (() => {
+    const img = new Image(); let ok = false; img.onload = () => { ok = true; }; img.src = 'pack/bike-rider.png';
+    const CELL = 96, ROWS = { 0: [1, 9, 46], 1: [3, 9, 48], 2: [2, 5, 48], 3: [2, 5, 48] }, FOOT = 84, S = 0.75; // dir → [แถว, จำนวนเฟรม, x กลางตัวในช่อง] • FOOT = แถวพื้นใต้ล้อ
+    const ready = () => ok && img.naturalWidth >= CELL * 9;
+    function draw(ctx, p, now) {
+      if (!ready()) return false;
+      const dir = p.dir || 0, moving = !!p.moving, [row, n, cx] = ROWS[dir] || ROWS[0], f = moving ? Math.floor((p.anim || 0) * 10) % n : 0;
+      const gx = Math.round(p.x), gy = Math.round(p.y + 12), sgn = dir === 2 ? -1 : 1, dw = CELL * S;
+      ctx.fillStyle = 'rgba(24,34,52,.3)'; ctx.beginPath(); ctx.ellipse(gx + (dir >= 2 ? sgn * 2 : 0), gy + 1, dir >= 2 ? 13 : 7, 4, 0, 0, 7); ctx.fill();
+      ctx.imageSmoothingEnabled = false;
+      const dy = gy - FOOT * S + 1;
+      if (dir === 2) { ctx.save(); ctx.translate(gx, 0); ctx.scale(-1, 1); ctx.drawImage(img, f * CELL, row * CELL, CELL, CELL, -cx * S, dy, dw, dw); ctx.restore(); }
+      else ctx.drawImage(img, f * CELL, row * CELL, CELL, CELL, gx - cx * S, dy, dw, dw);
+      return true;
+    }
+    return { draw, ready, lift: 23 };
+  })();
+  const lift = kind => (kind === 'bike' && BikeAI.ready() ? BikeAI.lift : ({ bike: 6, scooter: 5, car: 6 }[kind] || 0) * SC); // ความสูงที่ตัวละครยกขึ้นจากพื้น (พิกเซลเกม) ไว้เลื่อนป้ายชื่อ/ฟองแชทตาม
   // วาดผู้ขี่ + ยานพาหนะ: p.veh = bike|scooter|car, p.moving/p.anim ใช้เป็นจังหวะล้อ
   function draw(ctx, p, now, PC) {
     const kind = p.veh, dir = p.dir || 0, moving = !!p.moving, anim = p.anim || 0;
+    if (kind === 'bike' && BikeAI.draw(ctx, p, now)) return; // สไปรต์ AI ทั้งตัว (ถ้าโหลดภาพแล้ว)
     const wr = Object.assign({}, Shared.WEAR_DEFAULT, p.wear), pc = (p.pc || Shared.PANTS_COLOR);
     const fr = moving ? Math.floor(anim * (kind === 'car' ? 14 : kind === 'scooter' ? 12 : 9)) & 3 : 0;
     const v = sprite(kind, dir, fr, pc, !moving, p.color || '#3498db'), sgn = dir === 2 ? -1 : 1;

@@ -64,7 +64,7 @@ module.exports = {
   },
   lottoBuy(p, m) {
     const L = this.lotto, now = Date.now(), mine = L.tickets[p.key] || [];
-    if (!this.nearLucky(p)) return this.toast(p, '🎟️ ต้องยืนใกล้ตู้ Lucky Lotto ที่ลานกองไฟ');
+    if (!this.nearLucky(p)) return this.toast(p, '🎟️ ต้องยืนใกล้ตู้ Lucky Lotto ที่ลานกลางเมือง');
     if (now >= this.lottoDrawAt(L.round) - S.LOTTO.closeMs) return this.toast(p, '🎟️ ปิดรับตั๋วงวดนี้แล้ว เปิดขายอีกครั้งหลังออกรางวัล');
     if (!this.lottoOk(p)) return this.toast(p, `🎟️ ซื้อหวยได้เมื่อผ่านคู่มือเริ่มต้นและระดับการเล่นถึง ${S.LOTTO.minLv}`);
     const want = Array.isArray(m.nums) ? m.nums.slice(0, S.LOTTO.maxTickets) : [], n = Math.min(want.length, S.LOTTO.maxTickets - mine.length);

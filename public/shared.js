@@ -231,7 +231,7 @@
   };
   // เล้าผึ้ง: ต้นไม้ถาวร 1 ต้น (ตัดไม่ได้) และรังผึ้ง (ลัง) 2 ลังวางในเล้า • ผึ้งบินวนรอบรัง
   const BEE = { trees: [[61, 18]], hives: [[59, 20], [61, 21]] };
-  const SPAWN = { x: 33 * TS + 16, y: 22 * TS + 16 };     // หัวลานกลางเมือง ใกล้กองไฟ/กระดานข่าว/ATM
+  const SPAWN = { x: 33 * TS + 16, y: 22 * TS + 16 };     // หัวลานกลางเมือง ใกล้ต้นไม้ใหญ่/กระดานข่าว/ATM
   const START_SPAWN = { x: 10 * TS, y: 16 * TS + 16 }; // ผู้เล่นที่เข้าเกมครั้งแรกเกิดในแปลงผัก ถือจอบพร้อมขุด (ข้อแรกของคู่มือ) คนเก่าอยู่ตรงที่ออกไว้
   const DAY_MS = 12 * 60 * 1000;                       // หน่วย "วัน" ของเศรษฐกิจ (ดอกเบี้ย ผักสุกค้าง สัตว์ป่วย ตลาด) = 12 นาที
   const FARM_REGROW_MS = DAY_MS;                       // แปลงที่ถางแล้วแต่ไม่มีใครปลูกหรือถางต่อเกินเวลานี้ (นับเฉพาะตอนมีคนออนไลน์) หญ้าขึ้นกลับเป็นเหมือนเดิม ต้องถางใหม่
@@ -1070,11 +1070,13 @@
     { kind: 'vehicle', x0: 40, y0: 12, x1: 42, y1: 13, counter: [[41, 13]], name: 'ร้านยานพาหนะ',   sign: '🚲', roof: '#3b6ea5', wall: '#e4ecf5' },
     { kind: 'furn',   x0: 36, y0: 12, x1: 38, y1: 13, counter: [[37, 13]], name: 'ร้านเฟอร์นิเจอร์', sign: '🛋️', roof: '#7b4fa3', wall: '#efe4f7' },
     { kind: 'mine',   x0: 21, y0: 10, x1: 23, y1: 11, counter: [[22, 11]], name: 'ร้านช่างเหมือง',  sign: '⚒️', roof: '#5a6470', wall: '#e2dcd0' },
+    // ร้านที่ 11: ปิดปรับปรุง (ไม่มีใน SHOPS ห้ามเพิ่ม) แตะแล้วขึ้นข้อความ closed
+    { kind: 'weapon', x0: 26, y0: 17, x1: 28, y1: 18, counter: [[27, 18]], name: 'ร้านอาวุธ',        sign: '⚔️', roof: '#8e2f2f', wall: '#f5e8c8', closed: '🚧 ร้านอาวุธปิดปรับปรุงชั่วคราวน้า แวะมาใหม่เร็วๆ นี้!' },
     // ป้ายลานตู้เกม (ไม่ใช่อาคาร): ตู้เกมวางอยู่ด้านล่างป้าย
     { kind: 'sign',   x0: 30, y0: 1, x1: 33, y1: 1, counter: [],                  name: 'Arcade Hub',     sign: '🎮', roof: '#6a3fb5', wall: '#8b5a2b' },
   ];
-  // พื้นปูหิน (ลานหน้าร้าน ลานกองไฟ ลานตู้เกม ลานหนัง ทางเข้าบ้าน) ต่างจากถนนดิน ให้ผังเมืองอ่านง่าย: ถนน = ดิน • ลาน = ปูหิน (ใช้ตอนวาดพื้นใน pixelart.js)
-  const PAVED_RECTS = [{ x0: 24, y0: 1, x1: 41, y1: 7 }, { x0: 24, y0: 15, x1: 32, y1: 15 }, { x0: 36, y0: 14, x1: 38, y1: 14 }, { x0: 26, y0: 21, x1: 40, y1: 30 }]; // [ลานตู้เกม, ทางหน้าบ้านใหญ่, หน้าร้านเฟอร์นิเจอร์, ลานกองไฟ] (ลำดับใช้ใน applyLayout)
+  // พื้นปูหิน (ลานหน้าร้าน ลานกลางเมือง ลานตู้เกม ลานหนัง ทางเข้าบ้าน) ต่างจากถนนดิน ให้ผังเมืองอ่านง่าย: ถนน = ดิน • ลาน = ปูหิน (ใช้ตอนวาดพื้นใน pixelart.js)
+  const PAVED_RECTS = [{ x0: 24, y0: 1, x1: 41, y1: 7 }, { x0: 24, y0: 15, x1: 32, y1: 15 }, { x0: 36, y0: 14, x1: 38, y1: 14 }, { x0: 30, y0: 23, x1: 36, y1: 29 }]; // [ลานตู้เกม, ทางหน้าบ้านใหญ่, หน้าร้านเฟอร์นิเจอร์, ลานกลางเมือง (กรอบวง)] (ลำดับใช้ใน applyLayout)
   const pavedSet = new Set();
   const rebuildPaved = () => { pavedSet.clear();
     const add = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) pavedSet.add(y * 1000 + x); };
@@ -1093,16 +1095,26 @@
     { x: 33, y: 5, game: 'c4',    name: 'Connect 4',      label: 'C4',  emoji: '🔴' },
   ];
   const GAME_TITLES = { xo: '❌⭕ XO', uno: '🃏 UNO', rps: '✊ เป่ายิ้งฉุบ', react: '⚡ ใครกดเร็วกว่า', pok: '🎴 ไพ่ป๊อก', c4: '🔴 Connect 4' };
-  // ลานพักผ่อนกลางหมู่บ้าน: กองไฟตรงกลาง รอบๆ มีม้านั่ง กองฟาง และเก้าอี้ให้นั่งเล่น (กดที่ที่นั่งเพื่อนั่ง) กลางคืนสว่างเฉพาะรอบกองไฟ
-  const PLAZA = { x0: 26, y0: 21, x1: 40, y1: 30 };
-  const FIRE = { x: 33, y: 26 };
+  // ลานกลางเมือง: วงกลมขอบหินมีต้นไม้ใหญ่ตรงกลาง รอบๆ มีม้านั่ง กองฟาง และเก้าอี้ให้นั่งเล่น (กดที่ที่นั่งเพื่อนั่ง) กลางคืนสว่างจากโคมตามทาง
+  const PLAZA = { x0: 30, y0: 23, x1: 36, y1: 29 };
+  const FIRE = { x: 33, y: 26 }; // ชื่อเดิม: ตอนนี้คือศูนย์กลางลาน/ต้นไม้ใหญ่ (ไม่มีกองไฟแล้ว ห้ามย้าย) ระบบเดิมที่อ้างจุดนี้ (สัตว์เลี้ยง ที่นั่ง) ใช้ต่อได้
+  const PLAZA_TREE = { x: 33, y: 26, scale: [2.2, 2.8, 3.4] }; // scale = ขนาดที่วาดตามจำนวนโซ่ (<5 / <20 / ≥20) • ช่องต้นไม้ใหญ่กลางลาน (เดินผ่านไม่ได้)
+  const TOWN_PATH_ZONE = { x0: 12, y0: 9, x1: 44, y1: 34 };   // เขตทางแคบสีทรายขอบหิน (ภาพเท่านั้น) x>=45 ไม่แตะ
+  const PLAZA_DISC = { x: 33, y: 26, r: 3.6 };   // วงลาน: ช่องที่ระยะจากกลางช่อง <= r เป็นทาง
+  const TOWN_LAMPS = [{ x: 25, y: 10 }, { x: 21, y: 13 }, { x: 25, y: 18 }, { x: 31, y: 18 }, { x: 35, y: 16 }, { x: 39, y: 15 }, { x: 43, y: 18 }, { x: 38, y: 21 }, { x: 35, y: 22 }, { x: 42, y: 25 }, { x: 40, y: 30 }, { x: 32, y: 31 }, { x: 28, y: 31 }, { x: 17, y: 28 }]; // โคมริมทาง (ภาพ ไม่ชน)
+  const LAMP_LIGHT = { r: 2.5 }; // รัศมีแสงอุ่นต่อโคม (ช่อง) กลางคืน
+  const PLAZA_SEATS = [
+    { x: 31, y: 24, kind: 'bench', face: 0 }, { x: 35, y: 24, kind: 'bench', face: 0 },
+    { x: 31, y: 28, kind: 'bench', face: 1 }, { x: 35, y: 28, kind: 'bench', face: 1 },
+  ];
   const SEATS = [
     { x: 32, y: 23, kind: 'bench', face: 0 }, { x: 34, y: 23, kind: 'bench', face: 0 },
     { x: 32, y: 29, kind: 'bench', face: 1 }, { x: 34, y: 29, kind: 'bench', face: 1 },
     { x: 30, y: 25, kind: 'hay',   face: 3 }, { x: 30, y: 27, kind: 'hay',   face: 3 },
     { x: 36, y: 25, kind: 'chair', face: 2 }, { x: 36, y: 27, kind: 'chair', face: 2 },
+    ...PLAZA_SEATS,
   ];
-  // กระดานข่าว (log ของโลก) และตู้เซฟกองกลาง อยู่ขอบเหนือของลานกองไฟ (ช่องเดินผ่านไม่ได้ กดจากช่องติดกัน)
+  // กระดานข่าว (log ของโลก) และตู้เซฟกองกลาง อยู่ขอบเหนือของลานกลางเมือง (ช่องเดินผ่านไม่ได้ กดจากช่องติดกัน)
   const BOARD = { x: 30, y: 21 }, RANKBOARD = { x: 32, y: 21 }, ATM = { x: 34, y: 21 }, LUCKY = { x: 36, y: 21 }; // LUCKY = ตู้ Lucky Lotto
   const TOWN = { logMax: 15, revive: 0.5 };
   // ป้ายอันดับกลางเมือง: top = จำนวนแถวต่อแท็บ, cacheMs = อายุแคชผลคำนวณ, minXp = XP รวมขั้นต่ำถึงจะนับเป็นผู้เล่นจริง (เกณฑ์เดียวกับ tools/realplayers.js)
@@ -1134,7 +1146,7 @@
     eat1:     { cat: 'life',   skill: 'cook',   emoji: '🍜', ev: 'eat',  goal: 1, text: 'กินอาหารให้อิ่ม (ผลผลิตของตัวเองหรือซื้อจากร้านอาหาร)', xp: 20, coin: 15 },
     sell3:    { cat: 'life',   skill: 'farm',   emoji: '🪙', ev: 'sell', goal: 3, text: 'ขายของที่ร้านค้า 3 ครั้ง',  xp: 30, coin: 30 },
     help2:    { cat: 'help',   skill: 'animal', emoji: '🤝', ev: 'help', goal: 2, adv: true, text: 'ช่วยเพื่อนหรือเมือง 2 ครั้ง (รดน้ำ/ให้อาหาร/รักษาของเพื่อน หรือลงขันตู้เซฟ)', xp: 30, coin: 20 },
-    sit1:     { cat: 'life',   skill: 'animal', emoji: '🪑', ev: 'sit',  goal: 1, text: 'นั่งพักที่ม้านั่งลานกองไฟ', xp: 15, coin: 10 },
+    sit1:     { cat: 'life',   skill: 'animal', emoji: '🪑', ev: 'sit',  goal: 1, text: 'นั่งพักที่ม้านั่งลานกลางเมือง', xp: 15, coin: 10 },
   };
   const QUEST_NEWBIE = 5; // เควสสำเร็จสะสมน้อยกว่านี้ = มือใหม่: สุ่มเฉพาะสายฟาร์ม/ตกปลา/(ไม้ถ้ามีขวาน) และเฉพาะข้อง่าย
   const QUEST_PER_DAY = 6;                  // เควสประจำวัน 6 ข้อ (สุ่มให้ครบหลายหมวด) ครบทุกข้อได้โบนัสเพิ่ม
@@ -1225,7 +1237,7 @@
     { id: 'invite3',    e: '🪣', name: 'นักส่งต่อถังน้ำ',      desc: 'ท้าเพื่อนสำเร็จ 3 คน',                 stat: 'invite',  goal: 3,   coin: 0,    title: 'นักส่งต่อถังน้ำ' },
     { id: 'invite10',   e: '🌳', name: 'ตำนานส่งต่อ',          desc: 'ท้าเพื่อนสำเร็จ 10 คน',                stat: 'invite',  goal: 10,  coin: 0,    title: 'ตำนานส่งต่อ' },
     { id: 'trade1',     e: '🤝', name: 'พ่อค้าแลกเปลี่ยน',   desc: 'เทรดของกับผู้เล่นอื่นสำเร็จ',          stat: 'trade',   goal: 1,   coin: 30 },
-    { id: 'sit1',       e: '🪑', name: 'พักผ่อนบ้าง',        desc: 'นั่งพักที่ลานกองไฟ',                  stat: 'sit',     goal: 1,   coin: 10 },
+    { id: 'sit1',       e: '🪑', name: 'พักผ่อนบ้าง',        desc: 'นั่งพักที่ลานกลางเมือง',                  stat: 'sit',     goal: 1,   coin: 10 },
     { id: 'streak3',    e: '🔥', name: 'มาทุกวัน',          desc: 'เข้าเกมติดต่อกัน 3 วัน',               stat: 'streak',  goal: 3,   coin: 50 },
     { id: 'streak7',    e: '🌟', name: 'ชาวเมืองตัวจริง',    desc: 'เข้าเกมติดต่อกัน 7 วัน',               stat: 'streak',  goal: 7,   coin: 200,  title: 'ชาวเมืองตัวจริง' },
     { id: 'rich1k',     e: '💵', name: 'เศรษฐีน้อย',         desc: 'มีเหรียญในกระเป๋าถึง 1,000',          stat: 'wealth',  goal: 1000, coin: 50 },
@@ -1441,7 +1453,7 @@
     };
   }
 
-  function makeMap(opts) { // opts.bare = ภูมิประเทศล้วน ไม่วางร้าน/ตู้/กองไฟ (ใช้ตรวจว่าตำแหน่งใหม่ซ้อนน้ำ รั้ว ผา ฯลฯ ไหม)
+  function makeMap(opts) { // opts.bare = ภูมิประเทศล้วน ไม่วางร้าน/ตู้/ต้นไม้ลาน (ใช้ตรวจว่าตำแหน่งใหม่ซ้อนน้ำ รั้ว ผา ฯลฯ ไหม)
     const bare = !!(opts && opts.bare);
     const m = Array.from({ length: H }, () => new Array(W).fill(T.GRASS));
     const set = (x, y, v) => { if (x >= 0 && y >= 0 && x < W && y < H) m[y][x] = v; };
@@ -1460,17 +1472,21 @@
     for (let x = 8; x <= 13; x++) { set(x, 23, T.WATER); set(x, 24, T.WATER); }
     for (let x = 7; x <= 14; x++) { set(x, 22, T.SAND); set(x, 25, T.SAND); }
     for (let y = 23; y <= 24; y++) { set(7, y, T.SAND); set(14, y, T.SAND); }
-    // ถนน / ลานปูหิน (ผังเมือง v3): ถนนหลักรูปกากบาท ตัดกันที่ลานกองไฟ • เหนือ = ที่ราบ Arcade/เทศกาล (ขึ้นบันได) • ตะวันตก = แปลงผัก+บ่อ
+    // ถนน / ลานปูหิน (ผังเมือง v3): ถนนหลักรูปกากบาท ตัดกันที่ลานกลางเมือง • เหนือ = ที่ราบ Arcade/เทศกาล (ขึ้นบันได) • ตะวันตก = แปลงผัก+บ่อ
     // • ตะวันออก = เล้าสัตว์ 3 แถว • ใต้ = สระใหญ่ • ตะวันตกเฉียงใต้ = ป่า (ร้านช่างไม้) • เหนือถนนหลัก = แถวร้าน + บ้านหลังใหญ่ + ร้านช่างเหมือง
     road(24, 1, 41, 7);                                       // ลานตู้เกม (Arcade Hub) บนที่ราบเหนือ
     road(16, 9, 45, 9);                                       // ทางเลียบหน้าผา: ปากถ้ำ → บันได → เล้าสัตว์
-    road(33, 9, 34, 33);                                      // ถนนสายกลาง เหนือ→ใต้ (บันได → ลานกองไฟ → ชายสระ)
+    road(33, 9, 34, 33);                                      // ถนนสายกลาง เหนือ→ใต้ (บันได → ลานกลางเมือง → ชายสระ)
     road(19, 19, 45, 20);                                     // ถนนหลักตะวันออก–ตะวันตก (ประตูแปลงผัก → เล้าสัตว์)
     road(24, 9, 24, 15); road(24, 15, 32, 15);                // ทางหน้าร้านช่างเหมือง + ทางหน้าบ้านหลังใหญ่
     road(35, 14, 44, 14);                                     // ซอยร้านค้า (ร้านเฟอร์นิเจอร์/ยานพาหนะ) ออกถนนสายกลางและทางเล้าสัตว์
-    road(26, 21, 40, 30);                                     // ลานกองไฟกลางเมือง
+    for (let y = PLAZA_DISC.y - 4; y <= PLAZA_DISC.y + 4; y++) for (let x = PLAZA_DISC.x - 4; x <= PLAZA_DISC.x + 4; x++) if (Math.hypot(x - PLAZA_DISC.x, y - PLAZA_DISC.y) <= PLAZA_DISC.r) setIfGrass(x, y, T.PATH); // ลานวงกลมกลางเมือง (ต้นไม้ใหญ่ตรงกลาง)
+    road(37, 26, 40, 26);                                     // ลาน → ทางข้างร้านปศุสัตว์/สัตว์เลี้ยง
+    road(26, 30, 32, 30);                                     // ลาน → ทางเข้าป่า
+    road(20, 10, 20, 18);                                     // ลิฟต์เหมือง → ร้านเหมือง → ร้านเมล็ดพันธุ์ → ประตูสวน
+    road(11, 26, 11, 29);                                     // ประตูสวนใต้ (บ่อทราย) → ทางเข้าป่า
     road(41, 21, 41, 32); road(39, 31, 45, 32);               // ทางข้างลานไปร้านปศุสัตว์/สัตว์เลี้ยง และลงสะพานริมสระ
-    road(12, 29, 25, 30);                                     // ทางเข้าป่า (ร้านช่างไม้) จากลานกองไฟ
+    road(12, 29, 25, 30);                                     // ทางเข้าป่า (ร้านช่างไม้) จากลานกลางเมือง
     road(45, 9, 45, 31);                                      // ทางเลียบเล้าสัตว์ฝั่งตะวันตก
     road(46, 15, 62, 16); road(46, 24, 62, 25);               // ทางเดินระหว่างเล้า 3 แถว
     // หน้าผาเหนือ (บันได x32–35) แบ่งที่ราบ Arcade ออกจากตัวเมือง • เลิกใช้หน้าผาตะวันออก (เล้าสัตว์อยู่ระดับเดียวกับเมือง เดินถึงง่าย)
@@ -1492,8 +1508,8 @@
     // แถวยืนหน้าประตูปูทางทุกร้าน ให้ต่อกับถนน ร้านจะได้ไม่ลอยอยู่กลางหญ้า
     if (!bare) for (const b of BUILDINGS) if (b.counter.length) for (let x = b.x0; x <= b.x1; x++) setIfGrass(x, b.y1 + 1, T.PATH);
     if (!bare) for (const c of CABINETS) set(c.x, c.y, T.SHOP); // ตู้เกมเป็นช่องที่เดินผ่านไม่ได้ แต่ใช้งานได้จากช่องติดกัน
-    if (!bare) { set(ATM.x, ATM.y, T.SHOP); set(RANKBOARD.x, RANKBOARD.y, T.SHOP); set(BOARD.x, BOARD.y, T.SHOP); set(LUCKY.x, LUCKY.y, T.SHOP); } // กระดานข่าว + ตู้เซฟกองกลาง
-    if (!bare) set(FIRE.x, FIRE.y, T.BUILD);                    // กองไฟ (เดินผ่านไม่ได้)
+    if (!bare) { set(ATM.x, ATM.y, T.SHOP); set(RANKBOARD.x, RANKBOARD.y, T.SHOP); set(BOARD.x, BOARD.y, T.SHOP); set(LUCKY.x, LUCKY.y, T.SHOP); } // กระดานข่าว + ป้ายอันดับ + ตู้เซฟกองกลาง
+    if (!bare) set(PLAZA_TREE.x, PLAZA_TREE.y, T.BUILD);        // ต้นไม้ใหญ่กลางลาน (เดินผ่านไม่ได้)
     // ต้นไม้ขอบแมพ + กระจายในที่ว่าง
     for (let x = 0; x < W; x++) { set(x, 0, T.TREE); set(x, H - 1, T.TREE); }
     for (let y = 0; y < H; y++) { set(0, y, T.TREE); set(W - 1, y, T.TREE); }
@@ -1574,24 +1590,16 @@
 
   // ต้นไม้: ตัดได้ทุกต้นที่ไม่ใช่แนวต้นไม้ขอบแมพ • ต้นไม้ใหม่จะงอกเฉพาะที่สนามหญ้าเขียวที่ห่างจากสิ่งปลูกสร้าง/ถนน/รั้ว/น้ำ อย่างน้อย 3 ช่อง
   // ===== ผังที่ผู้ดูแลตั้งเอง: data/layout.json (เซิร์ฟเวอร์ส่งเป็น /layout.js → globalThis.__LAYOUT) =====
-  // รูปแบบ { items: { id: {x,y} } } id = b_<kind> (ร้าน/ป้าย Arcade) • cab0..cab5 (ตู้เกม) • fire (กองไฟ+ลาน+ที่นั่งย้ายตามกัน) • atm • board • chest
+  // รูปแบบ { items: { id: {x,y} } } id = b_<kind> (ร้าน/ป้าย Arcade) • cab0..cab5 (ตู้เกม) • fire (เลิกใช้ ถูกข้าม) • atm • board • chest
   // x,y = มุมซ้ายบนของกล่อง ขนาดร้านคงเดิม แก้ค่าในที่เดิม (อ้างอิงเดิมใน server/client ยังชี้ถูก) ต้องเรียกก่อนสร้างแมพ
-  const LAYOUT_SHIFT = { x: 0, y: 0 }; // กองไฟถูกย้ายไปกี่ช่อง (ใช้ขยับเสาไฟ/กระถางรอบลานฝั่งหน้าเว็บ)
+  const LAYOUT_SHIFT = { x: 0, y: 0 }; // เลิกใช้ (ลานไม่ย้ายแล้ว) คงไว้เป็น 0 ให้โค้ดที่อ้างอยู่ไม่พัง
   function applyLayout(lay) {
     const it = lay && lay.items; if (!it || typeof it !== 'object') return;
     const num = v => Number.isFinite(+v) ? Math.trunc(+v) : null;
     const shiftRect = (r, dx, dy) => { r.x0 += dx; r.x1 += dx; r.y0 += dy; r.y1 += dy; };
     const furnOld = BUILDINGS.find(b => b.kind === 'furn');
     const furnPrev = { x: furnOld.x0, y: furnOld.y0 };
-    const f = it.fire;
-    if (f && num(f.x) !== null && num(f.y) !== null) {
-      const dx = num(f.x) - FIRE.x, dy = num(f.y) - FIRE.y;
-      FIRE.x += dx; FIRE.y += dy; shiftRect(PLAZA, dx, dy); shiftRect(PAVED_RECTS[3], dx, dy);
-      for (const q of SEATS) { q.x += dx; q.y += dy; }
-      for (const o of [BOARD, RANKBOARD, ATM, LUCKY]) { o.x += dx; o.y += dy; }
-      SPAWN.x += dx * TS; SPAWN.y += dy * TS; STARTER_GO.sit = [STARTER_GO.sit[0] + dx, STARTER_GO.sit[1] + dy];
-      LAYOUT_SHIFT.x = dx; LAYOUT_SHIFT.y = dy;
-    }
+    // item fire เลิกใช้แล้ว (ต้นไม้กลางลานตายตัว) ค่าเก่าใน layout.json ถูกข้าม
     for (const [id, o] of [['board', BOARD], ['rank', RANKBOARD], ['atm', ATM], ['lotto', LUCKY]]) { const v = it[id]; if (v && num(v.x) !== null && num(v.y) !== null) { o.x = num(v.x); o.y = num(v.y); } }
     { // ผังเก่าที่ผู้ดูแลเคยบันทึกไว้อาจวางป้ายอื่นทับช่องป้ายอันดับ → ขยับป้ายอันดับไปช่องว่างใกล้สุดในแถวเดียวกัน (กันกดตู้/ป้ายเดิมไม่ได้)
       const taken = (x, y) => [BOARD, ATM, LUCKY].some(o => o.x === x && o.y === y) || CABINETS.some(c => c.x === x && c.y === y);
@@ -1604,12 +1612,12 @@
       b.x0 += dx; b.x1 += dx; b.y0 += dy; b.y1 += dy; b.counter = b.counter.map(([x, y]) => [x + dx, y + dy]);
     }
     const fb = BUILDINGS.find(b => b.kind === 'furn'); shiftRect(PAVED_RECTS[2], fb.x0 - furnPrev.x, fb.y0 - furnPrev.y); // ลานหน้าร้านเฟอร์นิเจอร์ตามร้าน
-    const door = k => { const b = BUILDINGS.find(q => q.kind === k); return b && b.counter[0] ? [b.counter[0][0], b.counter[0][1] + 1] : null; };
-    STARTER_GO.sell = door('farm') || STARTER_GO.sell; STARTER_GO.buyfeed = STARTER_GO.sellprod = door('animal') || STARTER_GO.buyfeed; // จุดนำทางมือใหม่ตามประตูร้าน
     rebuildPaved();
   }
   applyLayout(typeof globalThis !== 'undefined' ? globalThis.__LAYOUT : null);
-  const NO_TREE = [FARM, ...Object.values(PENS), PLAZA, { x0: 24, y0: 1, x1: 41, y1: 7 }, { x0: MINE.hill.x0, y0: 1, x1: MINE.hill.x1, y1: 8 }].map(z => ({ x0: z.x0 - 2, y0: z.y0 - 2, x1: z.x1 + 2, y1: z.y1 + 2 }));
+  const door = k => { const b = BUILDINGS.find(q => q.kind === k); return b && b.counter[0] ? [b.counter[0][0], b.counter[0][1] + 1] : null; };
+  STARTER_GO.sell = door('farm') || STARTER_GO.sell; STARTER_GO.buyfeed = STARTER_GO.sellprod = door('animal') || STARTER_GO.buyfeed; // จุดนำทางมือใหม่ตามประตูร้าน
+  const NO_TREE = [FARM, ...Object.values(PENS), PLAZA, PAVED_RECTS[0], { x0: MINE.hill.x0, y0: 1, x1: MINE.hill.x1, y1: 8 }, { x0: 19, y0: 9, x1: 44, y1: 34 }].map(z => ({ x0: z.x0 - 2, y0: z.y0 - 2, x1: z.x1 + 2, y1: z.y1 + 2 }));
   const PERM_TREE = new Set(BEE.trees.map(([x, y]) => x + ',' + y)); // ต้นไม้ถาวรของเล้าผึ้ง ตัดไม่ได้
   const isChoppable = (m, x, y) => !!(m[y] && m[y][x] === T.TREE && x >= 1 && y >= 1 && x <= W - 2 && y <= H - 2 && !PERM_TREE.has(x + ',' + y));
   function treeSpotOk(m, x, y) {
@@ -1643,6 +1651,6 @@
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, facing, inFarm,
-    SELLABLE };
+    SELLABLE, PLAZA_TREE, PLAZA_DISC, TOWN_LAMPS, LAMP_LIGHT, PLAZA_SEATS, TOWN_PATH_ZONE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

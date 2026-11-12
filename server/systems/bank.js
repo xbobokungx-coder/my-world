@@ -16,7 +16,7 @@ module.exports = {
   bankPush(p) { const b = this.bankOf(p); send(p, { t: 'bank', bal: b.bal, cap: S.BANK.cap }); },
   nearAtm(p) { return Math.hypot(p.x - (S.ATM.x + 0.5) * TS, p.y - (S.ATM.y + 0.5) * TS) < 4.5 * TS; },
   bankHandle(p, m) {
-    if (!this.nearAtm(p)) return this.toast(p, 'ต้องอยู่ใกล้ตู้ ATM ที่ลานกองไฟ');
+    if (!this.nearAtm(p)) return this.toast(p, 'ต้องอยู่ใกล้ตู้ ATM ที่ลานกลางเมือง');
     const b = this.bankOf(p), want = m.amt === 'all' ? Infinity : m.amt | 0;
     if (!(want > 0)) return;
     if (m.a === 'dep') {
