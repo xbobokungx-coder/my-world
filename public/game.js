@@ -160,7 +160,7 @@ function handle(m) {
     case 'use': { const p = players.get(m.id); if (p) { p.useAt = performance.now(); p.useK = PixelAction.kindOf(p.held) === 'fish' && p.fs ? 'reel' : ''; } break; } // ตกปลาอยู่แล้ว = ท่าดึงเบ็ด
     case 'oh': { const now = performance.now(); oreHit.set(m.x + ',' + m.y, { t: now, f: m.f }); if (m.d > 0 && cave) { oreDmg.push({ x: m.x, y: m.y, t: now, d: m.d, c: !!m.c }); if (oreDmg.length > 12) oreDmg.shift(); if (m.c) playSfx('crit'); } break; } // ก้อนแร่โดนฟาด: สั่น + รอยร้าวตาม HP ที่เหลือ
     case 'th': treeHit.set(m.x + ',' + m.y, { t: performance.now(), f: m.f }); break; // ต้นไม้โดนฟัน: ส่าย + รอยบากที่โคน
-    case 'catch': { const p = players.get(m.id), F = Shared.FISH_ALL.find(f => f.id === m.f); if (p && F) p.catchFx = { t: performance.now(), e: F.emoji, big: F.sell >= 100, x: p.fx || p.x, y: p.fy || p.y }; break; } // ปลากระโดดขึ้นมาอยู่เหนือหัว
+    case 'catch': { const p = players.get(m.id), F = Shared.FISH_ALL.find(f => f.id === m.f); if (p && F) p.catchFx = { t: performance.now(), e: F.emoji, big: F.sell >= Shared.RARE_SELL, x: p.fx || p.x, y: p.fy || p.y }; break; } // ปลากระโดดขึ้นมาอยู่เหนือหัว
     case 'held': { const p = players.get(m.id); if (p) p.held = m.e || ''; break; }
     case 'status': presence(m.id, p => { p.status = m.s || ''; }); if (peopleShown()) renderPeople(true); break;
     case 'voice': presence(m.id, p => { p.voice = m.on; if (!m.on) p.speaking = false; }); if (peopleShown()) renderPeople(true); break;

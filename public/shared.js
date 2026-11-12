@@ -264,7 +264,10 @@
   const XP_TABLE = [0, 0, 700, 2000, 4350, 7600, 12650, 20150, 31300, 43900, 63550, 91950, 126900, 165700, 209800, 259000, 314200, 380800, 449800, 526900, 613650]; // Lv11–20 ขั้นละ ×1.12 ของขั้นก่อน (ถึง Lv20 ≈ 100 ชม.เล่นจริง)
   // 6 พ.ย. 2026 (xpv 4): หลอดนักขุดแร่แยกตารางเอง (ถึง Lv20 ≈ 20 ชม.เล่นจริง XP แร่โตตามชั้นที่ลงลึกแทนตัวคูณเลเวล) อาชีพอื่นยังใช้ XP_TABLE
   const XP_TABLE_MINE = [0, 0, 250, 535, 959, 1442, 2158, 2976, 4189, 5573, 7627, 9970, 13447, 17415, 23301, 30018, 39983, 51355, 68225, 87477, 116038];
-  const xpTable = skill => skill === 'mine' ? XP_TABLE_MINE : XP_TABLE; // ไม่ส่ง skill = ตารางเดิม
+  // 6 พ.ย. 2026 (xpv 5): ตารางหลอดมาตรฐานรายเลเวล (Lv1→2 = 15 นาที ถึง Lv20 ≈ 20 ชม.เล่นจริง) ใช้กับชาวประมง • อาชีพต่อไปเพิ่มบรรทัดเดียวใน XP_TABLES + ชื่อใน STD_V5_SKILLS
+  const XP_TABLE_STD = [0, 0, 250, 576, 1000, 1552, 2271, 3208, 4428, 6017, 8086, 10780, 14289, 18859, 24810, 32561, 42655, 55801, 72921, 95218, 124256];
+  const XP_TABLES = { mine: XP_TABLE_MINE, fish: XP_TABLE_STD }; // อาชีพที่ไม่อยู่ในนี้ใช้ XP_TABLE เดิม
+  const xpTable = skill => XP_TABLES[skill] || XP_TABLE; // ไม่ส่ง skill = ตารางเดิม
   const xpFor = (lv, skill) => xpTable(skill)[Math.max(1, Math.min(MAX_LV, lv))];
   const levelOf = (xp, skill) => { const T = xpTable(skill); let lv = 1; while (lv < MAX_LV && (xp || 0) >= T[lv + 1]) lv++; return lv; };
   // ย้าย XP จากตาราง xpv 2 มาตารางใหม่: เลเวลเท่าเดิม ความคืบหน้าในเลเวลเป็นสัดส่วนเท่าเดิม (เลเวลสูงสุดเก็บส่วนเกินไว้)
@@ -334,54 +337,54 @@
   };
   const cropSeason = (c, t) => { const se = seasonAt(t); if (!se.on || !CROPS[c] || CROPS[c].lv <= 1) return 0; return se.s.crops.includes(c) ? 1 : -1; }; // 1 ในฤดู • -1 นอกฤดู • 0 ไม่มีผล
   // ความชำนาญหลัง Lv10: ดาว 1–max ต่ออาชีพ ดาวที่ n ต้องมี XP ≥ XP Lv10 + n × xpPer และจ่าย costBase × n เหรียญ (ใช้เงินระยะยาว ไม่เพิ่มพลังหรือรายได้) ครบ max ดาวได้ฉายา "ปรมาจารย์<อาชีพ>"
-  const MASTERY = { xpPer: 25000, costBase: 2000, max: 5, xpPerSkill: { mine: 8000 } }; // xpPerSkill = XP ต่อดาวของอาชีพที่หลอดเล็กกว่า (นักขุด 8,000 ≈ 28% ของหลอด Lv19→20 เท่าสัดส่วนอาชีพอื่น)
+  const MASTERY = { xpPer: 25000, costBase: 2000, max: 5, xpPerSkill: { mine: 8000, fish: 8000 } }; // xpPerSkill = XP ต่อดาวของอาชีพที่หลอดเล็กกว่า (นักขุด 8,000 ≈ 28% ของหลอด Lv19→20 เท่าสัดส่วนอาชีพอื่น)
   const masteryXp = skill => MASTERY.xpPerSkill[skill] || MASTERY.xpPer;
   // ปลา: lv = เลเวลชาวประมงที่เริ่มตกได้, w = น้ำหนักความน่าจะเป็น (หายาก = ราคาแพง: ราคาแปรผันตามความหายาก)
-  // XP ปลา ≈ 6 × ราคา^0.36 (ปลาแพงให้ XP มากขึ้นแต่ไม่ตามราคา) ให้ XP/ชม. ใกล้ชาวนาที่เลเวลเดียวกัน ตรวจด้วย node tools/levelsim.js
+  // 7 พ.ย. 2026 (ชาวประมงเส้น 20 ชม. รอบ 2: เจ้าของสั่ง "คงราคาปลาเดิม ปลาแพงตกยาก"): ปลา lv10–20 (ราคา ≥ 100) ราคา = เท่าเดิมก่อนปรับเป๊ะ ปลา lv1–9 (ราคา < 100) ปรับขึ้นเท่านั้น (ผู้เล่นถืออยู่ ห้ามลด) • XP ต่อปลา = fit ด้วย node tools/levelsim.js ให้ XP/ชม.จริง = 1,000×1.1412^(Lv−1) ±10% (ปลาแพงให้ XP สูงมาก เพราะติดพักรอบ ตกได้น้อย) ปลาทะเลคู่ XP เท่าน้ำจืดเลเวลเดียวกัน • เหรียญ/ชม. คุมด้วยพักรอบปลาหายากที่สั้นลงตามเลเวล (RARE_CD.endMul) ไม่ใช่ราคาปลา
   // 31 ต.ค. 2026: เหลือปลาที่ตกได้ 20 ชนิด (+รองเท้า) เลเวลละ 1 ชนิดเรียงตามราคา ปลา 12 ชนิดที่เลิกตก (LEGACY_FISH) ยังขาย/ดูในกระเป๋าได้
   const FISH = [
     { id: 'boot',    name: 'รองเท้าเก่า',  emoji: '👢', sell: 1,   xp: 1,  w: 8,  lv: 1 },
-    { id: 'carp',    name: 'ปลาตะเพียน',  emoji: '🐟', sell: 12,  xp: 15,  w: 40, lv: 1 },
-    { id: 'bass',    name: 'ปลากะพง',     emoji: '🐠', sell: 20,  xp: 18, w: 20, lv: 2 },
-    { id: 'shrimp',  name: 'กุ้ง',        emoji: '🦐', sell: 26,  xp: 19, w: 15, lv: 3 },
-    { id: 'crab',    name: 'ปู',          emoji: '🦀', sell: 32,  xp: 21, w: 12, lv: 4 },
-    { id: 'koi',     name: 'ปลาคอยทอง',   emoji: '🎏', sell: 50,  xp: 25, w: 6,  lv: 5 },
-    { id: 'lobster', name: 'กุ้งมังกร',    emoji: '🦞', sell: 55,  xp: 25, w: 5,  lv: 6 },
-    { id: 'squid',   name: 'หมึก',        emoji: '🦑', sell: 65,  xp: 27, w: 4,  lv: 7 },
-    { id: 'octopus', name: 'ปลาหมึกยักษ์', emoji: '🐙', sell: 75, xp: 28, w: 3,  lv: 8 },
-    { id: 'shark',   name: 'ฉลามน้อย',    emoji: '🦈', sell: 90, xp: 30,  w: 1.3, lv: 9 },
-    { id: 'dolphin', name: 'โลมา',         emoji: '🐬', sell: 140, xp: 36, w: 0.5, lv: 10 },
-    { id: 'jelly', name: 'แมงกะพรุน', emoji: '🪼', sell: 210, xp: 41, w: 3, lv: 11, rod: 4 },
-    { id: 'beaver', name: 'บีเวอร์', emoji: '🦫', sell: 250, xp: 44, w: 2, lv: 12, rod: 4 },
-    { id: 'flamingo', name: 'ฟลามิงโก', emoji: '🦩', sell: 290, xp: 46, w: 1.6, lv: 13, rod: 5 },
-    { id: 'coral', name: 'ปะการังแดง', emoji: '🪸', sell: 330, xp: 48, w: 1.4, lv: 14, rod: 5 },
-    { id: 'swan', name: 'หงส์ดำ', emoji: '🦢', sell: 380, xp: 51, w: 1.1, lv: 15, rod: 5 },
-    { id: 'mermaid', name: 'นางเงือกน้อย', emoji: '🧜', sell: 450, xp: 55, w: 0.8, lv: 16, rod: 6 },
-    { id: 'dragon', name: 'มังกรน้ำ', emoji: '🐉', sell: 520, xp: 58, w: 0.6, lv: 17, rod: 6 },
-    { id: 'sdragon', name: 'มังกรทะเล', emoji: '🐲', sell: 600, xp: 62, w: 0.45, lv: 18, rod: 6 },
-    { id: 'unicorn', name: 'ม้าน้ำวิเศษ', emoji: '🦄', sell: 700, xp: 66, w: 0.3, lv: 19, rod: 7 },
-    { id: 'star', name: 'ดาวทะเลทอง', emoji: '🌟', sell: 800, xp: 70, w: 0.2, lv: 20, rod: 7 },
+    { id: 'carp',    name: 'ปลาตะเพียน',  emoji: '🐟', sell: 14,  xp: 9,  w: 40, lv: 1 },
+    { id: 'bass',    name: 'ปลากะพง',     emoji: '🐠', sell: 22,  xp: 12, w: 20, lv: 2 },
+    { id: 'shrimp',  name: 'กุ้ง',        emoji: '🦐', sell: 33,  xp: 16, w: 15, lv: 3 },
+    { id: 'crab',    name: 'ปู',          emoji: '🦀', sell: 41,  xp: 16, w: 12, lv: 4 },
+    { id: 'koi',     name: 'ปลาคอยทอง',   emoji: '🎏', sell: 50,  xp: 16, w: 6,  lv: 5 },
+    { id: 'lobster', name: 'กุ้งมังกร',    emoji: '🦞', sell: 60,  xp: 17, w: 5,  lv: 6 },
+    { id: 'squid',   name: 'หมึก',        emoji: '🦑', sell: 65,  xp: 20, w: 4,  lv: 7 },
+    { id: 'octopus', name: 'ปลาหมึกยักษ์', emoji: '🐙', sell: 75, xp: 23, w: 3,  lv: 8 },
+    { id: 'shark',   name: 'ฉลามน้อย',    emoji: '🦈', sell: 90, xp: 27,  w: 1.3, lv: 9 },
+    { id: 'dolphin', name: 'โลมา',         emoji: '🐬', sell: 140, xp: 61, w: 0.5, lv: 10 },
+    { id: 'jelly', name: 'แมงกะพรุน', emoji: '🪼', sell: 210, xp: 138, w: 3, lv: 11, rod: 4 },
+    { id: 'beaver', name: 'บีเวอร์', emoji: '🦫', sell: 250, xp: 310, w: 2, lv: 12, rod: 4 },
+    { id: 'flamingo', name: 'ฟลามิงโก', emoji: '🦩', sell: 290, xp: 411, w: 1.6, lv: 13, rod: 5 },
+    { id: 'coral', name: 'ปะการังแดง', emoji: '🪸', sell: 330, xp: 545, w: 1.4, lv: 14, rod: 5 },
+    { id: 'swan', name: 'หงส์ดำ', emoji: '🦢', sell: 380, xp: 724, w: 1.1, lv: 15, rod: 5 },
+    { id: 'mermaid', name: 'นางเงือกน้อย', emoji: '🧜', sell: 450, xp: 826, w: 0.8, lv: 16, rod: 6 },
+    { id: 'dragon', name: 'มังกรน้ำ', emoji: '🐉', sell: 520, xp: 943, w: 0.6, lv: 17, rod: 6 },
+    { id: 'sdragon', name: 'มังกรทะเล', emoji: '🐲', sell: 600, xp: 1076, w: 0.45, lv: 18, rod: 6 },
+    { id: 'unicorn', name: 'ม้าน้ำวิเศษ', emoji: '🦄', sell: 700, xp: 1267, w: 0.3, lv: 19, rod: 7 },
+    { id: 'star', name: 'ดาวทะเลทอง', emoji: '🌟', sell: 800, xp: 1491, w: 0.2, lv: 20, rod: 7 },
     // ปลาทะเล (sea: true) 20 ชนิด เป็นชุดแยกจากปลาน้ำจืด มีบันไดเลเวล/เบ็ด/ความหายากของตัวเอง (ตกได้เฉพาะตอนออกเรือ) ราคาเทียบเท่าปลาสระระดับเดียวกัน ไม่ให้ทะเลรวยกว่าสระ
-    { id: 'sardine', name: 'ปลาซาร์ดีน', emoji: '🐟', sell: 15, xp: 16, w: 30, lv: 1, sea: true },
-    { id: 'anchovy', name: 'ปลากะตัก', emoji: '🐟', sell: 19, xp: 17, w: 26, lv: 2, sea: true },
-    { id: 'mackerel', name: 'ปลาทู', emoji: '🐟', sell: 25, xp: 19, w: 20, lv: 3, sea: true },
-    { id: 'snapper', name: 'ปลากะพงแดง', emoji: '🐠', sell: 34, xp: 21, w: 14, lv: 4, sea: true },
-    { id: 'seabass', name: 'ปลากะพงขาว', emoji: '🐠', sell: 48, xp: 24, w: 9, lv: 5, sea: true },
-    { id: 'tuna', name: 'ปลาทูน่า', emoji: '🐟', sell: 58, xp: 26, w: 8, lv: 6, sea: true },
-    { id: 'bonito', name: 'ปลาโอ', emoji: '🐟', sell: 68, xp: 27, w: 5, lv: 7, sea: true },
-    { id: 'barracuda', name: 'ปลาสากทะเล', emoji: '🐟', sell: 78, xp: 29, w: 4, lv: 8, sea: true },
-    { id: 'puffer', name: 'ปลาปักเป้า', emoji: '🐡', sell: 95, xp: 31, w: 2.5, lv: 9, sea: true },
-    { id: 'sword', name: 'ปลากระโทงแทง', emoji: '🐟', sell: 145, xp: 36, w: 1.8, lv: 10, sea: true },
-    { id: 'manta', name: 'ปลากระเบนราหู', emoji: '🐟', sell: 215, xp: 41, w: 1.6, lv: 11, rod: 4, sea: true },
-    { id: 'hammer', name: 'ฉลามหัวค้อน', emoji: '🦈', sell: 245, xp: 43, w: 1.4, lv: 12, rod: 4, sea: true },
-    { id: 'turtle', name: 'เต่าทะเล', emoji: '🐢', sell: 285, xp: 46, w: 1.2, lv: 13, rod: 5, sea: true },
-    { id: 'seal', name: 'แมวน้ำ', emoji: '🦭', sell: 325, xp: 48, w: 1, lv: 14, rod: 5, sea: true },
-    { id: 'orca', name: 'วาฬเพชฌฆาต', emoji: '🐳', sell: 380, xp: 51, w: 0.8, lv: 15, rod: 5, sea: true },
-    { id: 'whaleshark', name: 'ฉลามวาฬ', emoji: '🦈', sell: 450, xp: 54, w: 0.65, lv: 16, rod: 6, sea: true },
-    { id: 'bluewhale', name: 'วาฬสีน้ำเงิน', emoji: '🐋', sell: 560, xp: 59, w: 0.5, lv: 17, rod: 6, sea: true },
-    { id: 'kraken', name: 'คราเคนน้อย', emoji: '🦑', sell: 620, xp: 61, w: 0.4, lv: 18, rod: 6, sea: true },
-    { id: 'angler', name: 'ปลาแองเกลอร์', emoji: '🐡', sell: 710, xp: 64, w: 0.28, lv: 19, rod: 7, sea: true },
-    { id: 'pearl', name: 'หอยมุกทอง', emoji: '🐚', sell: 820, xp: 67, w: 0.18, lv: 20, rod: 7, sea: true },
+    { id: 'sardine', name: 'ปลาซาร์ดีน', emoji: '🐟', sell: 15, xp: 9, w: 30, lv: 1, sea: true },
+    { id: 'anchovy', name: 'ปลากะตัก', emoji: '🐟', sell: 23, xp: 12, w: 26, lv: 2, sea: true },
+    { id: 'mackerel', name: 'ปลาทู', emoji: '🐟', sell: 34, xp: 16, w: 20, lv: 3, sea: true },
+    { id: 'snapper', name: 'ปลากะพงแดง', emoji: '🐠', sell: 42, xp: 16, w: 14, lv: 4, sea: true },
+    { id: 'seabass', name: 'ปลากะพงขาว', emoji: '🐠', sell: 52, xp: 16, w: 9, lv: 5, sea: true },
+    { id: 'tuna', name: 'ปลาทูน่า', emoji: '🐟', sell: 62, xp: 17, w: 8, lv: 6, sea: true },
+    { id: 'bonito', name: 'ปลาโอ', emoji: '🐟', sell: 68, xp: 20, w: 5, lv: 7, sea: true },
+    { id: 'barracuda', name: 'ปลาสากทะเล', emoji: '🐟', sell: 78, xp: 23, w: 4, lv: 8, sea: true },
+    { id: 'puffer', name: 'ปลาปักเป้า', emoji: '🐡', sell: 95, xp: 27, w: 2.5, lv: 9, sea: true },
+    { id: 'sword', name: 'ปลากระโทงแทง', emoji: '🐟', sell: 145, xp: 61, w: 1.8, lv: 10, sea: true },
+    { id: 'manta', name: 'ปลากระเบนราหู', emoji: '🐟', sell: 215, xp: 138, w: 1.6, lv: 11, rod: 4, sea: true },
+    { id: 'hammer', name: 'ฉลามหัวค้อน', emoji: '🦈', sell: 245, xp: 310, w: 1.4, lv: 12, rod: 4, sea: true },
+    { id: 'turtle', name: 'เต่าทะเล', emoji: '🐢', sell: 285, xp: 411, w: 1.2, lv: 13, rod: 5, sea: true },
+    { id: 'seal', name: 'แมวน้ำ', emoji: '🦭', sell: 325, xp: 545, w: 1, lv: 14, rod: 5, sea: true },
+    { id: 'orca', name: 'วาฬเพชฌฆาต', emoji: '🐳', sell: 380, xp: 724, w: 0.8, lv: 15, rod: 5, sea: true },
+    { id: 'whaleshark', name: 'ฉลามวาฬ', emoji: '🦈', sell: 450, xp: 826, w: 0.65, lv: 16, rod: 6, sea: true },
+    { id: 'bluewhale', name: 'วาฬสีน้ำเงิน', emoji: '🐋', sell: 560, xp: 943, w: 0.5, lv: 17, rod: 6, sea: true },
+    { id: 'kraken', name: 'คราเคนน้อย', emoji: '🦑', sell: 620, xp: 1076, w: 0.4, lv: 18, rod: 6, sea: true },
+    { id: 'angler', name: 'ปลาแองเกลอร์', emoji: '🐡', sell: 710, xp: 1267, w: 0.28, lv: 19, rod: 7, sea: true },
+    { id: 'pearl', name: 'หอยมุกทอง', emoji: '🐚', sell: 820, xp: 1491, w: 0.18, lv: 20, rod: 7, sea: true },
   ];
   // สระ = ปลาที่ไม่ใช่ sea • ทะเล = ปลา sea เท่านั้น (ชุดแยกเด็ดขาด) • MARINE คือชื่อสัตว์ทะเลในสระที่ค้างไว้ก่อน (ย้ายออกในเฟส B)
   const MARINE = new Set(['shrimp', 'crab', 'lobster', 'squid', 'octopus', 'shark', 'dolphin', 'jelly', 'coral']);
@@ -514,6 +517,25 @@
       rec.dur.pick = ratio > 0 ? Math.max(1, Math.round(ratio * nm)) : 0;
     }
     rec.xpv = 4; return { refund };
+  };
+  // ย้ายเซฟ xpv 4 → 5 (6 พ.ย. 2026): XP หลอดของอาชีพที่ใช้ XP_TABLE_STD → ตารางใหม่ (เลเวลและสัดส่วนความคืบหน้าเท่าเดิม) • อาชีพต่อไปใส่ชื่อใน STD_V5_SKILLS
+  const STD_V5_SKILLS = ['fish'];
+  const ROD_MIG = { oldDur: [0, 100, 140, 200, 280, 360, 450, 560] }; // ความทนทานสูงสุดเดิมของคันเบ็ดแต่ละระดับ (ก่อน xpv 5) ใช้คงสัดส่วนความทนทานตอนย้ายเซฟ
+  const xpStdV5 = (xp, skill) => { // pure: XP ตาราง XP_TABLE → xpTable(skill) (เลเวลสูงสุดแปลงส่วนเกินตามสัดส่วนหลอดต่อดาว)
+    const N = xpTable(skill); xp = Math.max(0, +xp || 0); let L = 1; while (L < MAX_LV && xp >= XP_TABLE[L + 1]) L++;
+    if (L >= MAX_LV) return N[MAX_LV] + Math.floor((xp - XP_TABLE[MAX_LV]) * masteryXp(skill) / MASTERY.xpPer);
+    return N[L] + Math.floor((xp - XP_TABLE[L]) / (XP_TABLE[L + 1] - XP_TABLE[L]) * (N[L + 1] - N[L]));
+  };
+  const migrateStdV5 = (rec, skills) => { // แก้ rec ตรงๆ (idempotent: rec.xpv >= 5 ข้าม) คืน true ถ้าได้ทำ • ผู้เรียกต้องแปลง xpv ถึง 4 ก่อน
+    if (!rec || typeof rec !== 'object' || (rec.xpv | 0) >= 5) return false;
+    if (rec.skills && typeof rec.skills === 'object') for (const k of (skills || STD_V5_SKILLS)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = xpStdV5(rec.skills[k], k);
+    if ((skills || STD_V5_SKILLS).includes('fish') && rec.dur && typeof rec.dur === 'object' && Number.isFinite(rec.dur.rod)) { // ความทนทานเบ็ดคงสัดส่วนของค่าสูงสุดตามจำนวนครั้งที่ซ่อม
+      const tier = Math.min(ROD_MIG.oldDur.length - 1, rodTier(rec.inv)), fx = Math.max(0, Math.floor(+(rec.fix && rec.fix.rod) || 0));
+      const oldMax = Math.max(1, Math.floor(ROD_MIG.oldDur[tier] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fx))));
+      const ratio = Math.max(0, Math.min(1, rec.dur.rod / oldMax)), nm = durMax('rod', tier, fx);
+      rec.dur.rod = ratio > 0 ? Math.max(1, Math.round(ratio * nm)) : 0;
+    }
+    rec.xpv = 5; return true;
   };
   const SWING_MS = 570; // ความยาวท่าขุดแร่/ตัดไม้ (pixelaction.js 6 เฟรม × 95 ms) = ระยะห่างขั้นต่ำระหว่างการฟาด (levelsim คิด 0.7 วินาที/ครั้ง)
   const MINE = {
@@ -762,7 +784,7 @@
   // ความทนทานเครื่องมือ: ใช้งานทุกครั้งสึกหรอ 1 หน่วย ใช้ครบแล้วใช้ไม่ได้จนกว่าจะซ่อมที่ร้านเสียเหรียญ (ค่าซ่อมคิดตามส่วนที่สึกหรอ) = รายจ่ายที่เกิดขึ้นสม่ำเสมอ
   const DURABILITY = {
     hoe:   { max: [0, 120, 120, 120], fix: [0, 24, 24, 24],  shop: 'farm',   name: 'จอบ' },
-    rod:   { max: [0, 100, 140, 200, 280, 360, 450, 560], fix: [0, 30, 72, 168, 400, 900, 2400, 6000], shop: 'fish',   name: 'เบ็ดตกปลา' },
+    rod:   { max: [0, 200, 370, 850, 1360, 2860, 5030, 5580], fix: [0, 25, 63, 225, 625, 1500, 2750, 3250], shop: 'fish',   name: 'เบ็ดตกปลา' },
     axe:   { max: [0, 90, 140, 220, 320, 450],  fix: [0, 36, 96, 216, 480, 1320], shop: 'wood',   name: 'ขวาน' },
     pick:  { max: [0, 140, 320, 460, 600, 800, 1000, 1300, 1650, 2100, 2600], fix: [0, 15, 65, 150, 275, 475, 750, 1125, 1625, 2250, 3125], shop: 'mine',  name: 'อีเต้อ' }, // ขุดแตก 1 ก้อน = สึก 1 ครั้ง (ไม่ใช่ทุกครั้งที่ฟาด) ตัวเลขเป็นจำนวนก้อน (6 พ.ย. 2026 ปรับให้ต้นทุนสึกหรอ ≈ 8% ของรายได้ทุกระดับ ตามซิม levelsim)
   };
@@ -772,7 +794,7 @@
   // ซ่อมได้จำกัด: ซ่อมแต่ละครั้งความทนทานสูงสุดลดลง decay ของค่าเดิม ค่าซ่อมแพงขึ้น growth ต่อครั้ง ซ่อมครบ maxFixes ครั้งแล้วซ่อมไม่ได้อีก ต้องซื้อใหม่ (ราคา TOOL_PRICE)
   // สมดุล: ค่าซ่อมเต็ม = pct × ราคาซื้อ × (1 + growth × ครั้งที่ซ่อมมาแล้ว) แต่ได้ความทนทานน้อยลงเรื่อยๆ → ซ่อมครั้งที่ ~4 ขึ้นไปต่อหน่วยการใช้งานแพงกว่าซื้อใหม่
   const REPAIR = { decay: 0.15, maxFixes: 3, growth: 0.5, pct: 0.25 };
-  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500, 6000, 16000, 40000], axe: [0, 50, 220, 700, 2000, 5500], pick: [0, 60, 260, 600, 1100, 1900, 3000, 4500, 6500, 9000, 12500] };
+  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500, 6000, 11000, 13000], axe: [0, 50, 220, 700, 2000, 5500], pick: [0, 60, 260, 600, 1100, 1900, 3000, 4500, 6500, 9000, 12500] };
   const tierN = t => Math.max(1, Math.min(10, t || 1)); // คันเบ็ดมี 7 ระดับ ขวาน 5 อุปกรณ์ขุด 10
   const durMax = (tool, tier, fixes) => Math.max(1, Math.floor(DURABILITY[tool].max[tierN(tier)] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fixes || 0))));
   const toolPrice = (tool, tier) => TOOL_PRICE[tool][tierN(tier)];
@@ -808,7 +830,7 @@
   // **พลังงานที่เสียผูกกับรายได้ของงานนั้น**: ทุกงานแลกพลังงาน 1 หน่วย ต่อมูลค่าผลงาน coinsPerEnergy เหรียญ (ราคาฐานของของที่ได้) จึงทำเงินได้ไม่เกิน ~ (60000/regenMs × coinsPerEnergy) เหรียญฐาน/นาที ไม่ว่าทำงานอะไร
   //   ผักหนึ่งรอบ (ขุด+ปลูก+รดน้ำ+เก็บ) รวม = ราคาขาย/coinsPerEnergy (ขั้นต่ำ 4) • ปลา = ราคาปลาที่ได้ • ตัดไม้ = มูลค่าไม้ที่ได้
   // เกินพลังงานที่มี = ติด "หนี้พลังงาน" (ค่าติดลบ ต่ำสุด -max) ต้องพักจนถึง resume: งานแพงๆ จึงพักนานตามมูลค่า ไม่มีช่องโหว่ทำงานแพงตอนเหลือพลังงานนิดเดียว
-  // regenMs = กี่ มิลลิวินาทีต่อ 1 หน่วย • rareCdMs = ตกปลาหายาก (ราคา ≥ 100) ได้อีกครั้งหลังพักกี่มิลลิวินาที
+  // regenMs = กี่ มิลลิวินาทีต่อ 1 หน่วย • rareCdMs = ตกปลาหายาก (ราคา ≥ RARE_SELL) ได้อีกครั้งหลังพักกี่มิลลิวินาที
   const ENERGY = { on: false, max: 100, regenMs: 4000, sitMul: 3, resume: 10, eatMul: 0.4, rareCdMs: 6 * 60 * 1000, coinsPerEnergy: 6, cost: { dig: 1, water: 1, plant: 1 },
     // ความล้างานซ้ำกลุ่มเดียว: ทำงานกลุ่มเดียวต่อเนื่อง (ไร่/ตกปลา/ตัดไม้) ต้นทุนพลังงานของกลุ่มนั้นแพงขึ้นสูงสุด +max (×1.5) สลับกลุ่มจึงทำเงินต่อพลังงานได้ดีกว่า
     // ความล้าของกลุ่ม += ต้นทุนฐานของงาน, เพิ่มต้นทุน = ความล้า/scale (เพดาน max), ลดครึ่งหนึ่งทุก halfLifeMs (นั่งที่ม้านั่งลดเร็วขึ้น sitMul เท่า, นับแม้ออฟไลน์ กันออกเกมเข้าใหม่เพื่อล้างค่า) • ใส่ var: null เพื่อปิด
@@ -929,14 +951,21 @@
   const gaugeHit = (f, t) => gaugeDist(f, t) <= f.half;
   // "เป๊ะ" = ตำแหน่งตัวชี้ (ชดเชยหน่วง lag แบบเดียวกันทุกครั้ง ไม่ขยายโซนข้างเดียว) อยู่ในแกนกลางโซน
   const gaugeCore = (f, t) => Math.abs(gaugePos(f, t - FISH_GAUGE.lag / 2) - (f.c === undefined ? 0.5 : f.c)) <= f.half * FISH_GAUGE.perfect; // ชดเชยหน่วงครึ่งเดียว: คนเน็ตเร็ว/ช้าผิดพลาดไม่เกินครึ่งหนึ่งของแกนกลาง
-  const RODS = { 1: { name: 'คันเบ็ดไม้ไผ่' }, 2: { name: 'คันเบ็ดไฟเบอร์', price: 250, lv: 3 }, 3: { name: 'คันเบ็ดคาร์บอน', price: 900, lv: 6 }, 4: { name: 'คันเบ็ดไทเทเนียม', price: 2500, lv: 9 }, 5: { name: 'คันเบ็ดทองคำ', price: 6000, lv: 12 }, 6: { name: 'คันเบ็ดมรกต', price: 16000, lv: 15 }, 7: { name: 'คันเบ็ดเพชร', price: 40000, lv: 18 } };
+  const RODS = { 1: { name: 'คันเบ็ดไม้ไผ่' }, 2: { name: 'คันเบ็ดไฟเบอร์', price: 250, lv: 3 }, 3: { name: 'คันเบ็ดคาร์บอน', price: 900, lv: 6 }, 4: { name: 'คันเบ็ดไทเทเนียม', price: 2500, lv: 9 }, 5: { name: 'คันเบ็ดทองคำ', price: 6000, lv: 12 }, 6: { name: 'คันเบ็ดมรกต', price: 11000, lv: 15 }, 7: { name: 'คันเบ็ดเพชร', price: 13000, lv: 18 } };
   const rodTier = inv => { for (let t = 7; t >= 2; t--) if (inv && inv['rod_' + t]) return t; return 1; }; // ระดับคันเบ็ดสูงสุดที่มี
   const ROD_WAIT = [0, 1, 0.88, 0.76, 0.64, 0.59, 0.54, 0.49];   // ตัวคูณเวลารอปลากินเบ็ด (ระดับ 1–4 ลด 12%/ระดับ ระดับ 5–7 ลด 5%/ระดับ)
   const ROD_RARE = [0, 0, 0.35, 0.7, 1.05, 1.25, 1.45, 1.65];    // โบนัสความถี่ปลาราคา ≥ 100 ตามคันเบ็ด (เดิม 0.35×(ระดับ−1))
   // คันเบ็ดปลดความหายากเป็นขั้น (fishClass: 0 = ราคา < 20, 1 = < 60, 2 = < 120, 3 = 120+): ไม้ไผ่ตกได้ถึงกลุ่ม 1 • ไฟเบอร์ถึงกลุ่ม 2 • คาร์บอนขึ้นไปได้ทุกกลุ่ม
   // ปลาราคา ≥ 100 เจอบ่อยขึ้นตามเลเวล (+12%/เลเวล) และคันเบ็ด (+35%/ระดับ) • ปลากลุ่ม 3 ต้องกด "เป๊ะ" (FISH_GAUGE.edgeMul[3] = 0) • ตกปลา ≥ 100 ได้แล้วพักรอบ RARE_CD_MS
   const ROD_MAXCLASS = [0, 1, 2, 3, 3, 3, 3, 3], RARE_CD_MS = 6 * 60 * 1000;
-  const fishWeight = (f, fl, rod, bait) => fishClass(f) > ROD_MAXCLASS[rod] ? 0 : (rod < (f.rod || 0) ? 0 : f.w * (f.sell >= 100 ? 1 + 0.12 * (perkLv(fl) - 1) + ROD_RARE[rod] : 1)) / (f.id === 'boot' ? 1 + rod : 1) * baitWeight(f, bait);
+  // พักรอบปลาหายากตามเลเวลชาวประมง: ตัวคูณเริ่ม 1 ที่ Lv from ไล่เชิงเส้นถึง endMul ที่ Lv to (endMul 1 = ไม่ลด เท่า RARE_CD_MS ทุกเลเวล)
+  const RARE_CD = { from: 10, to: 20, endMul: 0.5 };
+  function rareCdMs(fl, cfg) { const c = cfg || RARE_CD, f = Number(fl), a = Number(c.from), b = Number(c.to), e = Number(c.endMul); if (!Number.isFinite(f) || !Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(e)) return RARE_CD_MS; const t = b > a ? Math.min(1, Math.max(0, (f - a) / (b - a))) : (f >= b ? 1 : 0); return Math.max(0, Math.round(RARE_CD_MS * (1 + (Math.max(0, e) - 1) * t))); }
+  const RARE_SELL = 100; // ปลาราคา ≥ นี้ = ปลาหายาก ติดพักรอบ rareCdMs(เลเวล) (กลับเป็น 100 เท่าเกณฑ์เดิม 7 พ.ย. 2026 รอบ 2) • ปลาแพงยังตกยาก แต่ระยะพักสั้นลงตามเลเวลชาวประมง (6 นาที → 3 นาทีที่ Lv20) ให้ปลาหายาก/ชม. โต ~8 → ~19 ตัว
+  const FISHPOOL = { keep: 2, decay: 0.75 }; // สระปลาเลื่อนตามเลเวล: ปลาเลเวลต่ำกว่าปลาใหม่สุดที่ตกได้เกิน keep ระดับ น้ำหนัก ×decay^(ส่วนที่เกิน)
+  const fishNewestLv = (sea, fl, rod) => FISH.reduce((m, g) => (!!g.sea === !!sea && g.id !== 'boot' && g.lv <= fl && fishClass(g) <= ROD_MAXCLASS[rod] && rod >= (g.rod || 0) && g.lv > m ? g.lv : m), 0); // เลเวลปลาใหม่สุดที่ตกได้ (ชุดน้ำจืด/ทะเลเดียวกัน)
+  const fishPoolMul = (f, fl, rod) => f.id === 'boot' ? 1 : Math.pow(FISHPOOL.decay, Math.max(0, fishNewestLv(f.sea, fl, rod) - f.lv - FISHPOOL.keep)); // ตัวลดน้ำหนักปลาเก่า (pure)
+  const fishWeight = (f, fl, rod, bait) => fishClass(f) > ROD_MAXCLASS[rod] ? 0 : fishPoolMul(f, fl, rod) * (rod < (f.rod || 0) ? 0 : f.w * (f.sell >= 100 ? 1 + 0.12 * (perkLv(fl) - 1) + ROD_RARE[rod] : 1)) / (f.id === 'boot' ? 1 + rod : 1) * baitWeight(f, bait);
 
   // เสื้อผ้า: ซื้อแล้วสวมได้ (ราคา 0 = มีให้ฟรีตั้งแต่ต้น) สีของเสื้อ/กางเกง/หมวกเลือกเองได้ฟรีในแท็บ "ตัวละคร"
   const WEAR = {
@@ -1443,7 +1472,7 @@
     };
   }
 
-  function makeMap(opts) { // opts.bare = ภูมิประเทศล้วน ไม่วางร้าน/ตู้/กองไฟ (ใช้ตรวจว่าตำแหน่งใหม่ซ้อนน้ำ รั้ว ผา ฯลฯ ไหม)
+  function makeMap(opts) { // opts.bare = ภูมิประเทศล้วน ไม่วางร้าน/ตู้/ต้นไม้ลาน (ใช้ตรวจว่าตำแหน่งใหม่ซ้อนน้ำ รั้ว ผา ฯลฯ ไหม)
     const bare = !!(opts && opts.bare);
     const m = Array.from({ length: H }, () => new Array(W).fill(T.GRASS));
     const set = (x, y, v) => { if (x >= 0 && y >= 0 && x < W && y < H) m[y][x] = v; };
@@ -1645,6 +1674,7 @@
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, facing, inFarm,
+    FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, fishNewestLv, fishPoolMul, migrateStdV5, rareCdMs, xpStdV5,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

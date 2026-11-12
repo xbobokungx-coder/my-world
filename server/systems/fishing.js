@@ -65,7 +65,7 @@ module.exports = {
     const fi = p.fish;
     const fl = fi.fl, rod = fi.rod, perfect = true;
     const rareCd = (p.rec.rareAt || 0) > Date.now(); // ปลาหายากเพิ่งตกได้ พักรอบก่อน (ยังตกปลาธรรมดาได้)
-    const pool = S.fishPool(!!fi.sea).filter(f => f.lv <= fl && !(rareCd && f.sell >= 100)).map(f => ({ f, w: S.fishWeight(f, fl, rod, fi.bt || 1)  * (fi.zone ? S.oceanZoneMul(fi.zone, f.lv) : 1) })).filter(x => x.w > 0); // ทะเลใหญ่: ปลาระดับที่ตรงโซนออกบ่อยขึ้น
+    const pool = S.fishPool(!!fi.sea).filter(f => f.lv <= fl && !(rareCd && f.sell >= S.RARE_SELL)).map(f => ({ f, w: S.fishWeight(f, fl, rod, fi.bt || 1) * (perfect || f.id === 'boot' ? 1 : G.edgeMul[S.fishClass(f)]) * (fi.zone ? S.oceanZoneMul(fi.zone, f.lv) : 1) })).filter(x => x.w > 0); // ทะเลใหญ่: ปลาระดับที่ตรงโซนออกบ่อยขึ้น
     if (!pool.length) { p.fish = null; return this.toast(p, 'ปลาหนีไปแล้ว...'); } // กันสระปลาว่างทำ tick ทั้งห้องค้าง
     let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
     for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
@@ -90,10 +90,10 @@ module.exports = {
       this.add(p, 'fish_' + f.id, 1);
       this.addXp(p, 'fish', Math.round(f.xp * xpMul)); this.tire(p, 'fish', f.sell);
       if (this.petLuck(p, f.emoji + ' ' + f.name)) this.add(p, 'fish_' + f.id, 1);
-      if (f.sell >= 100) { p.rec.rareAt = Date.now() + S.RARE_CD_MS; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(S.RARE_CD_MS / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
-      this.toast(p, firstFish ? `🎉 ปลาตัวแรกของคุณเป็น ${f.emoji} ${f.name}! โชคดีสุดๆ` : `${perfect ? '🎯 เป๊ะ! ' : ''}${clean ? '✨ ชักเย่อสวย! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (firstFish) this.addLog(`🎣 ${p.name} ตกปลาครั้งแรกได้${f.emoji} ${f.name}!`); if (f.sell >= 100) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
+      if (f.sell >= S.RARE_SELL) { const cdMs = S.rareCdMs(this.lv(p, 'fish')); p.rec.rareAt = Date.now() + cdMs; this.enPush(p); this.toast(p, `🐟 ปลาหายากพักรอบ ${Math.round(cdMs / 60000)} นาที (ตกปลาธรรมดาได้ตามปกติ)`); }
+      this.toast(p, firstFish ? `🎉 ปลาตัวแรกของคุณเป็น ${f.emoji} ${f.name}! โชคดีสุดๆ` : `${perfect ? '🎯 เป๊ะ! ' : ''}${clean ? '✨ ชักเย่อสวย! ' : ''}ได้ ${f.emoji} ${f.name}!`); if (firstFish) this.addLog(`🎣 ${p.name} ตกปลาครั้งแรกได้${f.emoji} ${f.name}!`); if (f.sell >= S.RARE_SELL) this.addLog(`${f.emoji} ${p.name} ตกได้${f.name}ตัวใหญ่!`);
       this.event(p, 'fish', f.sell); this.bookAdd(p, 'fish', f.id); this.broadcast({ t: 'catch', id: p.id, f: f.id }); // ทุกคนเห็นปลากระโดดขึ้นมาอยู่เหนือหัว
-      this.sfx(p, f.sell >= 100 ? 'catch_big' : 'catch');
+      this.sfx(p, f.sell >= S.RARE_SELL ? 'catch_big' : 'catch');
     p.fish = null;
   },
   castFish(p, tx, ty, now, sea, zone) { // โยนเบ็ด (ตรวจช่องน้ำ/ระยะไว้แล้วที่ผู้เรียก) หักเหยื่อ ตั้งเวลาปลากิน

@@ -31,31 +31,46 @@ function farm(lv) {
   }
   return best;
 }
-function fishPool(lv, rod, tier) {
-  return S.FISH.filter(f => !f.sea && f.lv <= lv).map(f => ({ f, w: S.fishWeight(f, lv, rod, tier) })).filter(x => x.w > 0);
+function fishPool(lv, rod, tier, sea) { // sea = true: ปลาทะเล (ชุดแยก) • fishWeight รวมสระเลื่อน FISHPOOL (fishPoolMul) แล้ว
+  return S.FISH.filter(f => !!f.sea === !!sea && f.lv <= lv).map(f => ({ f, w: S.fishWeight(f, lv, rod, tier) })).filter(x => x.w > 0);
 }
 // ชักเย่อกับปลา (5 พ.ย. 2026): เวลาต่อสู้เฉลี่ย/โอกาสชนะ ตามกลุ่มราคาปลา 0–3 (จากบอทมือคน tools/test-fight.js ตอบสนอง 250 ms คันที่ปลากลุ่มนั้นออกได้) ถ่วงด้วยน้ำหนักปลาที่ตกได้ ณ เลเวลนั้น
 const FIGHT_SEC = [1.0, 3.4, 5.6, 7.5], FIGHT_WIN = [1, 1, 0.97, 0.8];
-function fightMix(lv, rod) { const pool = fishPool(lv, rod, 1), W = pool.reduce((a, x) => a + x.w, 0) || 1; let sec = 0, win = 0; for (const x of pool) { const c = S.fishClass(x.f); sec += x.w * FIGHT_SEC[c]; win += x.w * FIGHT_WIN[c]; } return { sec: sec / W, win: win / W }; }
-function fishCpm(lv, rod) { const fm = fightMix(lv, rod); return 60 / (8.75 * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(lv) - 1)) * S.ROD_WAIT[rod] + M.fishOver + fm.sec) * M.fishHit * fm.win; }
-function fish(lv) {
-  const rod = lv >= 18 ? 7 : lv >= 15 ? 6 : lv >= 12 ? 5 : lv >= 9 ? 4 : lv >= 6 ? 3 : lv >= 3 ? 2 : 1, cpm = fishCpm(lv, rod);
+function mixOf(pool) { const W = pool.reduce((a, x) => a + x.w, 0) || 1; let sec = 0, win = 0; for (const x of pool) { const c = S.fishClass(x.f); sec += x.w * FIGHT_SEC[c]; win += x.w * FIGHT_WIN[c]; } return { sec: sec / W, win: win / W }; }
+// rs = สัดส่วนที่จับได้เป็นปลาหายากจริง (ติดพักรอบ จึงน้อยกว่าน้ำหนักสุ่ม) • ไม่ส่ง rs = ไม่คิดพักรอบ (ใช้ใน cook)
+function fightMix(lv, rod, sea, rs) {
+  const pool = fishPool(lv, rod, 1, sea), rare = pool.filter(x => x.f.sell >= S.RARE_SELL), com = pool.filter(x => x.f.sell < S.RARE_SELL);
+  if (rs === undefined || !rare.length || !com.length) return mixOf(pool);
+  const a = mixOf(rare), c = mixOf(com); return { sec: rs * a.sec + (1 - rs) * c.sec, win: rs * a.win + (1 - rs) * c.win };
+}
+function fishCpm(lv, rod, sea, rs) { const fm = fightMix(lv, rod, sea, rs); return 60 / (8.75 * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(lv) - 1)) * S.ROD_WAIT[rod] + M.fishOver + fm.sec) * M.fishHit * fm.win; }
+const rodAt = lv => { let r = 1; for (const [k, v] of Object.entries(S.RODS)) if (v.lv && lv >= v.lv) r = Math.max(r, +k); return r; }; // คันที่ซื้อได้ตามเลเวล (ซื้อทันทีที่ปลด)
+// ตกปลา (6 พ.ย. 2026): จำลองสระเลื่อน (FISHPOOL ผ่าน S.fishWeight) + พักรอบเฉพาะปลา ≥ RARE_SELL (เวลาชักเย่อคิดตามสัดส่วนปลาหายากจริงหลังพักรอบ) • ต้นทุน = เหยื่อ + เบ็ดสึกต่อ "การเหวี่ยง" (เหวี่ยงพลาดก็เสียเหยื่อและสึก จึงหารด้วยโอกาสโดน×ชนะ) • sea = ปลาทะเล (หักค่าเรือ SEA.fee ต่อ SEA.ms ถ้าไม่มีเรือ)
+function fish(lv, sea) {
+  const rod = rodAt(lv), wearCast = S.TOOL_PRICE.rod[rod] / S.DURABILITY.rod.max[rod] * S.WEAR_RATE.base * 1.35; // ซ่อม/ซื้อใหม่เฉลี่ยต่อการเหวี่ยง (ตัวคูณ 1.35 แบบเดียวกับนักขุด)
+  const seaFee = sea ? S.SEA.fee * 3600000 / S.SEA.ms / 60 : 0; // ค่าเรือต่อนาที (ไม่ทำค่าเดินทางไปท่า)
   let best = null;
   for (const t of [1, 2, 3]) {
     const b = S.BAITS[t]; if (b.lv && lv < b.lv) continue;
-    const pool = fishPool(lv, rod, t).map(x => ({ f: Object.assign({}, x.f, { xp: x.f.xp * S.FIGHT.xpMul[S.fishClass(x.f)] }), w: x.w })), W = pool.reduce((a, x) => a + x.w, 0); // XP คูณตามกลุ่มปลา (ชักเย่อ)
-    // ปลาราคา ≥ 100 ติดคูลดาวน์ RARE_CD_MS หลังได้หนึ่งตัว (ตัวถัดไปรอเวลา + รอสุ่มโดน): อัตราปลาหายาก/ชม. = 1 / (1/(ครั้งตกที่สุ่มโดน/ชม.) + คูลดาวน์) ส่วนที่เหลือเป็นปลาทั่วไป
-    const WR = pool.filter(x => x.f.sell >= 100).reduce((a, x) => a + x.w, 0), N = cpm * 60, cd = S.RARE_CD_MS / 3600000;
-    const rare = pool.filter(x => x.f.sell >= 100), com = pool.filter(x => x.f.sell < 100), WC = com.reduce((a, x) => a + x.w, 0) || 1;
-    const rr = WR > 0 ? 1 / (1 / (N * WR / W) + cd) : 0, cr = Math.max(0, N - rr);
+    const pool = fishPool(lv, rod, t, sea).map(x => ({ f: Object.assign({}, x.f, { xp: x.f.xp * S.FIGHT.xpMul[S.fishClass(x.f)] }), w: x.w })), W = pool.reduce((a, x) => a + x.w, 0); // XP คูณตามกลุ่มปลา (ชักเย่อ)
+    // ปลาราคา ≥ RARE_SELL ติดคูลดาวน์ RARE_CD_MS หลังได้หนึ่งตัว (ตัวถัดไปรอเวลา + รอสุ่มโดน): อัตราปลาหายาก/ชม. = 1 / (1/(ครั้งตกที่สุ่มโดน/ชม.) + คูลดาวน์) ส่วนที่เหลือเป็นปลาทั่วไป
+    const rare = pool.filter(x => x.f.sell >= S.RARE_SELL), com = pool.filter(x => x.f.sell < S.RARE_SELL), WR = rare.reduce((a, x) => a + x.w, 0), WC = com.reduce((a, x) => a + x.w, 0) || 1, cd = S.rareCdMs(lv) / 3600000;
+    let rs = 0, cpm, N, rr; // วนหาสัดส่วนปลาหายากจริง (อัตรา ↔ เวลาต่อครั้ง)
+    for (let i = 0; i < 6; i++) { cpm = fishCpm(lv, rod, sea, rs); N = cpm * 60; rr = WR > 0 ? 1 / (1 / (N * WR / W) + cd) : 0; rs = rr / N; }
+    const fm = fightMix(lv, rod, sea, rs), cast = cpm / (M.fishHit * fm.win), cr = Math.max(0, N - rr); // cast = เหวี่ยงต่อนาที
     const avg = (arr, k, w0) => arr.reduce((a, x) => a + x.w * x.f[k], 0) / (w0 || 1);
     const sellH = rr * avg(rare, 'sell', WR) + cr * avg(com, 'sell', WC), xpH = rr * avg(rare, 'xp', WR) + cr * avg(com, 'xp', WC);
-    const sell = sellH / N, xp = xpH / N;
-    const coin = cpm * (sell - b.price) * 60;
-    if (!best || coin > best.coin) best = { pick: 'เหยื่อ' + t, coin, xp: cpm * xp * 60, gross: cpm * sell * 60, cost: cpm * b.price * 60, pieces: cpm * 60, cat: 'fish' };
+    const sell = sellH / N, xp = xpH / N, cost = cast * (b.price + wearCast) + seaFee, wear = cast * wearCast;
+    const coin = cpm * sell * 60 - cost * 60;
+    if (!best || coin > best.coin) best = { pick: 'เหยื่อ' + t, coin, xp: cpm * xp * 60, gross: cpm * sell * 60, cost: cost * 60, wear: wear * 60, pieces: cpm * 60, rare: rr, cat: 'fish', rod, bait: t };
   }
   return best;
 }
+const fishSea = lv => Object.assign({ lv }, fish(lv, true)); // ทะเล: เทียบกับ fish(lv) น้ำจืด (ไม่อยู่ใน SIMS ไม่นับเข้าตารางหลัก)
+// เป้าชาวประมง (ล็อก 6 พ.ย. 2026, docs/plans/fish-rework.md): ถึง Lv20 = 20 ชม.เล่นจริง • Lv1→2 = 15 นาที โตเวลาต่อเลเวล ×1.1412 • XP/ชม.จริงเลเวล L = 1,000 × 1.1412^(L−1) (ตรงตาราง XP_TABLE_STD) • ในซิมเป็นเพดาน = จริง ÷ EFF
+const FISH_GOAL = { lv1Min: 15, growth: 1.1412, xpH: 1000, tol: 0.10 };
+const fishGoalXpH = lv => FISH_GOAL.xpH * Math.pow(FISH_GOAL.growth, lv - 1) / M.EFF; // เพดานต่อชม. ของเลเวล lv
+const fishGoalHours = lv => { let m = 0; for (let k = 1; k < lv; k++) m += FISH_GOAL.lv1Min * Math.pow(FISH_GOAL.growth, k - 1); return m / 60; };
 // สัดส่วนชนิดต้นไม้ที่งอกใหม่ ใช้คิดว่าต้นที่งอกมีกี่ส่วนที่เลเวล/ขวานนี้ฟันได้
 const KIND_SHARE = (() => { if (!S.TREE_KINDS) return { broad: 1 }; const d = {}; for (const [k, K] of Object.entries(S.TREE_KINDS)) d[k] = K.pct / 100; return d; })(); // ต้นไม้ที่งอกใหม่ถูกคุมสัดส่วนตามโควตา % ของแต่ละชนิด (S.TREE_KINDS[..].pct)
 function wood(lv) {
@@ -153,6 +168,7 @@ if (require.main === module) {
   console.log(`\nชั่วโมงเล่นจริงโดยประมาณถึงเลเวล (XP/ชม. × ${M.EFF})`);
   console.log('อาชีพ'.padEnd(12) + [3, 5, 7, 10, 15, 20].map(l => ('Lv' + l).padStart(7)).join(''));
   for (const k of Object.keys(SIMS)) { const h = hoursTo(r[k], k); console.log(S.SKILLS[k].name.padEnd(12) + [3, 5, 7, 10, 15, 20].map(l => h[l - 1].toFixed(1).padStart(7)).join('') + (k === 'mine' ? '   (ตารางหลอด XP_TABLE_MINE)' : '')); }
+  console.log('เป้าชาวประมง'.padEnd(12) + [3, 5, 7, 10, 15, 20].map(l => fishGoalHours(l).toFixed(1).padStart(7)).join('') + '   (ตารางหลอด XP_TABLE_STD เป้า Lv1→2 = 15 นาที ×1.1412 ต่อเลเวล)');
   console.log('เป้านักขุด'.padEnd(12) + [3, 5, 7, 10, 15, 20].map(l => mineGoalHours(l).toFixed(1).padStart(7)).join('') + '   (Lv1→2 = 15 นาที ×1.141 ต่อเลเวล)');
   // นักขุดแร่: XP/ชม. ต่อชั้นเทียบเป้า 1,000×1.3^(f−1) (จริง) และเหรียญเทียบชาวนา และต้นทุนสึกหรอ
   console.log(`\nนักขุดแร่ รายชั้น: XP/ชม.จริง (เพดาน × ${M.EFF}) เทียบเป้า ±${MINE_GOAL.tol * 100}% • เหรียญ/ชม.สุทธิเทียบชาวนาเลเวลเดียวกัน (เป้า ≤ 125%) • ต้นทุนสึกหรอ % ของรายได้ (เป้า ≤ 10%)`);
@@ -164,7 +180,16 @@ if (require.main === module) {
   console.log('Lv    ' + [1, 2, 3].map(l => ('ต่ำกว่า ' + l).padStart(17)).join('') + '   ' + [0, 1, 2, 3].map(l => ('ฟาด d-' + l).padStart(9)).join(''));
   for (const lv of [3, 5, 7, 10, 13, 15, 17, 20]) { const b = mine(lv), t = Math.ceil(lv / 2), main = Object.keys(S.ORES).find(k => S.ORES[k].pick === t && !S.ORES[k].legacy);
     console.log(String(lv).padStart(2) + '    ' + [1, 2, 3].map(l => { const x = mine(lv, l); return (Math.round(x.xp / b.xp * 100) + '% | ' + Math.round(x.coin / b.coin * 100) + '%').padStart(17); }).join('') + '   ' + [0, 1, 2, 3].map(l => { const pk = Math.max(1, t - l), mh = S.mineHit({ ['pick_' + pk]: 1 }, main, 2); return (mh.hits + (mh.hits >= S.MINE.maxHits ? '*' : '')).padStart(9); }).join('')); }
+  // ชาวประมง: XP/ชม.จริงเทียบเป้า 1,000×1.1412^(L−1) ±10% • เหรียญสุทธิเทียบชาวนา (เป้า 75–125%) • สึกหรอ+เหยื่อ % ของรายได้ • คันเบ็ดซื้อได้ภายในกี่ชม.ของรายได้จริง ณ เลเวลที่ปลด
+  console.log(`\nชาวประมง รายเลเวล: XP/ชม.จริง (เพดาน × ${M.EFF}) เทียบเป้า ±${FISH_GOAL.tol * 100}% • เหรียญสุทธิ/ชม. (เพดาน) เทียบชาวนา (เป้า 75–125%) • เบ็ดสึก% • ปลาหายาก(≥${S.RARE_SELL})/ชม. • ทะเล: XP% เหรียญ% เทียบน้ำจืด`);
+  console.log('Lv  คัน เหยื่อ   XP/ชม.จริง   เป้า  ตรง    เหรียญ/ชม. %ชาวนา  เบ็ดสึก%  หายาก/ชม.  | ทะเล XP% เหรียญ% (เสียค่าเรือ)');
+  let prevX = 0, prevC = 0;
+  for (let lv = 1; lv <= S.MAX_LV; lv++) { const m = r.fish[lv - 1], g = fishGoalXpH(lv) * M.EFF, got = m.xp * M.EFF, dev = got / g - 1, cp = m.coin / r.farm[lv - 1].coin, sx = fishSea(lv);
+    const up = got > prevX && m.coin > prevC; prevX = got; prevC = m.coin;
+    console.log(String(lv).padStart(2) + '  ' + String(m.rod).padStart(3) + '  ' + m.pick.slice(-1).padStart(3) + num(got).padStart(11) + ' ' + num(g).padStart(7) + ' ' + ((dev >= 0 ? '+' : '') + (dev * 100).toFixed(0) + '%').padStart(5) + (Math.abs(dev) > FISH_GOAL.tol ? '!' : ' ') + num(m.coin).padStart(12) + ' ' + (Math.round(cp * 100) + '%').padStart(7) + (cp < 0.75 || cp > 1.25 ? '!' : ' ') + (m.wear / m.gross * 100).toFixed(1).padStart(8) + '%' + (m.wear / m.gross > 0.10 ? '!' : ' ') + m.rare.toFixed(1).padStart(8) + (up ? '' : '  ไม่โต!') + '  | ' + (Math.round(sx.xp / m.xp * 100) + '%').padStart(5) + (Math.round(sx.coin / m.coin * 100) + '%').padStart(7)); }
+  console.log('\nคันเบ็ด: ราคา ÷ เหรียญสุทธิจริง/ชม. (เพดาน × EFF) ณ เลเวลที่ปลด (เป้า ≤ ~1 ชม.) • ความทนทาน • สึกหรอ/เหวี่ยง');
+  for (const [k, v] of Object.entries(S.RODS)) { if (!v.price) continue; const m = r.fish[v.lv - 1]; console.log(`คัน ${k} Lv${String(v.lv).padStart(2)} ราคา ${num(v.price).padStart(6)}  รายได้จริง/ชม. ${num(m.coin * M.EFF).padStart(6)}  ซื้อได้ใน ${(v.price / (m.coin * M.EFF)).toFixed(2)} ชม.  ทน ${S.DURABILITY.rod.max[k]}  ค่าสึก/เหวี่ยง ${(S.TOOL_PRICE.rod[k] / S.DURABILITY.rod.max[k] * S.WEAR_RATE.base * 1.35).toFixed(2)}`); }
   console.log(`\nเหรียญ/ชม. (เพดานคนเดียว ตามทางที่เลือก)`);
   for (const k of Object.keys(SIMS)) console.log(S.SKILLS[k].name.padEnd(12) + r[k].map(x => num(x.coin).padStart(7)).join(''));
 }
-module.exports = { M, SIMS, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours };
+module.exports = { M, SIMS, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours, FISH_GOAL, fishGoalXpH, fishGoalHours, fishSea };

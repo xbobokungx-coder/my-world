@@ -72,7 +72,7 @@ assert.strictEqual(S.BANK.rate, undefined, 'BANK.rate ต้องไม่ม�
   assert.strictEqual(S.sellQuote(100, 1, 1).total, 100, 'ชิ้นแรกได้เต็ม'); { const d = S.sellDrop(100); assert.strictEqual(S.sellQuote(100, 1, 30).total, (() => { let m = 1, t = 0; for (let i = 0; i < 30; i++) { t += Math.round(100 * m); m = Math.max(S.MARKET.min, m - d); } return t; })(), 'ขาย 30 ชิ้นลดตาม sellDrop (ตามมูลค่า B3)'); }
   assert.ok(S.sellDrop(5) < S.sellDrop(67) && S.sellDrop(67) < S.sellDrop(180) && S.sellDrop(1e6) === S.CATFAT.dropMax, 'ของแพงลดต่อชิ้นมากกว่าของถูก มีเพดาน');
   w.event = () => {}; w.nearShopKind = () => 'fish'; p.rec.cat = null; p.rec.sold = null; p.rec.mk = {};
-  const kinds = S.FISH.filter(f => f.id !== 'boot').slice(0, 12).map(f => 'fish_' + f.id); let paid = 0, itemOnly = 0, units = 0;
+  const kinds = S.FISH.filter(f => f.id !== 'boot').sort((x, y) => y.sell - x.sell).slice(0, 12).map(f => 'fish_' + f.id); let paid = 0, itemOnly = 0, units = 0;
   for (const k of kinds) w.market[k] = w.market[k] || { m: 1, t: 1 };
   for (let round = 0; round < 5; round++) for (const k of kinds) { // สลับชนิดทีละ 1 ชิ้น หนีความอิ่มตัวรายชนิด
     p.rec.inv[k] = 1; const mE = w.effMult(p, k) / w.catOf(p, 'fish'), c0 = p.rec.inv.coin; w.sell(p, k, 1);
