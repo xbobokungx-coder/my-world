@@ -510,6 +510,7 @@ class World {
       this.sfx(p, 'chop'); this.durUse(p, 'axe');
       if (h.hp > 0) { this.treeHp.set(key, h); this.broadcast({ t: 'th', x: tx, y: ty, f: +(h.hp / K.hp).toFixed(2) }); if (K.hp > 4) this.toast(p, `🪓 ${K.emoji} ${K.name} อีก ${Math.ceil(h.hp / S.AXES[axe].power)} ครั้ง`); return; }
       this.treeHp.delete(key); this.treeKind.delete(key); this.map[ty][tx] = T.GRASS; this.dirty = true;
+      p.fellAt = (p.fellAt || []).filter(t => now - t < S.TREE.activeMs).concat(now); // เวลาล้มต้นไม้ล่าสุดของคนนี้ (ในหน่วยความจำ ไม่ลงเซฟ) ใช้นับ 'ช่างไม้ที่ทำงานจริง'
       this.broadcast({ t: 'tree', x: tx, y: ty, on: false });
       const got = {}; for (const [it, n] of K.drop) got[it] = (got[it] || 0) + n;
       if (Math.random() < 0.04 * (S.perkLv(wl) - 1)) got[K.drop[0][0]]++; // ฝีมือ: ได้ชิ้นหลักเพิ่ม
@@ -614,11 +615,13 @@ class World {
       // ต้นไม้งอกใหม่ในที่โล่งสีเขียวที่ห่างจากสิ่งปลูกสร้าง
       if (this.treeTimer < 0) this.treeTimer = 0; // กันค่าติดลบจากนาฬิกาย้อน (ก่อนแก้ dt)
       this.treeTimer += dt;
-      if (this.treeTimer >= S.TREE.growMs / 1000) { // ต้นไม้งอกใหม่ (เพดานตาม S.TREE.cap)
+      // this.treeCap = เพดานฐาน (ช่างไม้ 1 คน) • treeCap ในบล็อกนี้ = เพดานจริงตอนนี้ (ฐาน + เพิ่มตามช่างไม้) • ช่างไม้ = ล้มต้นสำเร็จ ≥ TREE.minFells ต้นใน activeMs (ฟันทิ้งไว้ไม่นับ)
+      const cutters = [...this.players.values()].filter(q => q.fellAt && q.fellAt.filter(t => now - t < S.TREE.activeMs).length >= S.TREE.minFells).length, treeCap = this.treeCap + S.treeCapFor(cutters) - S.TREE.cap; // WP-31: ช่างไม้ที่ฟันเมื่อเร็วๆ นี้ ยิ่งมากยิ่งงอกเร็ว/เพดานสูง (คนเดียว = เดิม)
+      if (this.treeTimer >= S.treeGrowMs(cutters) / 1000) { // ต้นไม้งอกใหม่ (เพดานตาม S.TREE.cap)
         this.treeTimer = 0;
         const tl = this.treeList(), counts = {}; for (const t of tl) counts[t[2]] = (counts[t[2]] || 0) + 1; let n = tl.length;
         // ถ้าน้อยกว่าครึ่งเพดาน งอกทีละหลายต้น (ไล่ทันหลังถูกตัดเกลี้ยง/นาฬิกาพัง) ไม่เกิน 8 ต้น/รอบ
-        const want = n >= this.treeCap ? 0 : Math.min(n * 2 < this.treeCap ? 8 : 1, this.treeCap - n);
+        const want = n >= treeCap ? 0 : Math.min(n * 2 < treeCap ? 8 : 1, treeCap - n);
         for (let spawned = 0; spawned < want; spawned++) {
           const spots = []; // ช่องที่งอกได้ตอนนี้ (ห่างผู้เล่น 4 ช่อง ห่างสัตว์ 3 ช่อง)
           for (let y = 2; y < S.H - 2; y++) for (let x = 2; x < S.W - 2; x++) {
@@ -627,12 +630,12 @@ class World {
             if (this.animals.some(a => Math.hypot(a.x - (x + 0.5) * TS, a.y - (y + 0.5) * TS) < 3 * TS)) continue;
             spots.push([x, y]);
           }
-          const pick = S.pickTreeSpawn(this.map, Math.random, spots, counts, this.treeCap, Date.now()); if (!pick) break; if (pick.skip) continue; // ชนิดที่สุ่มได้เต็มโควตาแล้ว รอบนี้ไม่งอก
+          const pick = S.pickTreeSpawn(this.map, Math.random, spots, counts, treeCap, Date.now()); if (!pick) break; if (pick.skip) continue; // ชนิดที่สุ่มได้เต็มโควตาแล้ว รอบนี้ไม่งอก
           const { x, y, k } = pick; this.treeKind.set(x + ',' + y, k); counts[k] = (counts[k] || 0) + 1;
           this.map[y][x] = T.TREE; this.dirty = true; this.broadcast({ t: 'tree', x, y, on: true, k }); n++;
         }
         { // ถอนต้นที่เกินโควตาทีละต้นต่อรอบ (ไม่ถอนต้นที่มีคนอยู่ใกล้หรือกำลังฟัน) เพื่อเปิดที่ให้ชนิดที่ขาด • ปกติไม่มีต้นเกินโควตา (งอกกันไว้แล้ว) ใช้เคลียร์แมพเก่าที่ต้นแพงสะสมไว้
-          const pl = [...this.players.values()], cut = S.pickTreeTrim(this.treeList(), this.treeCap, Math.random, (x, y) => !(this.treeHp && this.treeHp.has(x + ',' + y)) && !pl.some(q => Math.hypot(q.x - (x + 0.5) * TS, q.y - (y + 0.5) * TS) < 4 * TS), Date.now());
+          const pl = [...this.players.values()], cut = S.pickTreeTrim(this.treeList(), treeCap, Math.random, (x, y) => !(this.treeHp && this.treeHp.has(x + ',' + y)) && !pl.some(q => Math.hypot(q.x - (x + 0.5) * TS, q.y - (y + 0.5) * TS) < 4 * TS), Date.now());
           if (cut) { const [x, y] = cut; this.map[y][x] = T.GRASS; this.treeKind.delete(x + ',' + y); this.dirty = true; this.broadcast({ t: 'tree', x, y, on: false }); }
         }
       }
