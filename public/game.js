@@ -1587,7 +1587,7 @@ addEventListener('keydown', e => {
   if (c === 'KeyM') { setMini(miniState === 'off' ? 'small' : miniState === 'small' ? 'big' : 'off'); return; }
   const dg = /^(?:Digit|Numpad)([1-9])$/.exec(c);
   if (dg && +dg[1] <= SLOTS.length) { pickSlot(+dg[1] - 1); return; }
-  if (c === 'Space') { e.preventDefault(); spHeld = true; if (ft) { setReel(true); return; } if (e.repeat) return; act(); return; } // e.repeat: กดค้างไม่ให้ยิง act ซ้ำ (ไม่งั้นตอนรอปลากินจะดึงเบ็ดกลับเอง ตกไม่ได้) // ชักเย่ออยู่ = กดค้างกรอสาย
+  if (c === 'Space') { e.preventDefault(); spHeld = true; if (ft) { setReel(true); return; } if (e.repeat) return; act(); holdSpace(); return; } // e.repeat: กดค้างไม่ให้ยิง act ซ้ำ (ไม่งั้นตอนรอปลากินจะดึงเบ็ดกลับเอง ตกไม่ได้) // ชักเย่ออยู่ = กดค้างกรอสาย
   if (c.startsWith('Arrow')) e.preventDefault();
   keys[c] = true;
   mouse.active = false;
@@ -1595,7 +1595,7 @@ addEventListener('keydown', e => {
 // กันปุ่มเดินค้าง (ตัวละครเดินเองและยกเลิกการคลิกเดิน): ถ้าไม่ได้รับ keyup (เช่น เปิดเมนูคลิกขวา/สลับหน้าต่าง/IME ภาษาไทย) ปุ่มจะค้างจนรีเฟรช
 const keyName = {};
 const clearKeys = () => { for (const k in keys) keys[k] = false; };
-addEventListener('keyup', e => { if (e.code === 'Space') { spHeld = false; setReel(false); } keys[e.code] = false; for (const k in keyName) if (keyName[k] === e.key.toLowerCase()) keys[k] = false; delete keyName[e.code]; });
+addEventListener('keyup', e => { if (e.code === 'Space') { spHeld = false; setReel(false); stopHoldAct(); } keys[e.code] = false; for (const k in keyName) if (keyName[k] === e.key.toLowerCase()) keys[k] = false; delete keyName[e.code]; });
 addEventListener('keydown', e => { keyName[e.code] = String(e.key).toLowerCase(); }, true);
 addEventListener('blur', clearKeys);
 addEventListener('focusout', e => { if (!e.relatedTarget) clearKeys(); });
@@ -1617,7 +1617,7 @@ function contextAct(now) {
   const [fx, fy] = Shared.facing(me.x, me.y, me.dir), [px, py] = myTile(), dk = Shared.SEA.dock;
   if (Shared.nearLift(me.x, me.y)) { stopWalk(); lastAct = now; actGap = 300; openLift(); return true; }
   if (hubSignAt(fx, fy)) { stopWalk(); lastAct = now; actGap = 300; openHub(); return true; }
-  if (!Shared.shopAt(fx, fy)) { // ยืนแถวหน้าประตูร้าน (ช่องใต้ประตู ±1 ช่อง) แล้วกด A/Space ทิศไหนก็เปิดร้านนั้น (กฎ Action: เดิมต้องหันหน้าชนอาคารถึงเปิด มือถือหันตรงๆ ยาก) • ร้านปิดจะได้ข้อความจากเซิร์ฟเวอร์เอง
+  if (!holdAct && !Shared.shopAt(fx, fy)) { // ยืนแถวหน้าประตูร้าน (ช่องใต้ประตู ±1 ช่อง) แล้วกด A/Space ทิศไหนก็เปิดร้านนั้น (กฎ Action: เดิมต้องหันหน้าชนอาคารถึงเปิด มือถือหันตรงๆ ยาก) • ร้านปิดจะได้ข้อความจากเซิร์ฟเวอร์เอง
     const sb = BUILDINGS.find(q => q.counter[0] && py === q.counter[0][1] + 1 && Math.abs(px - q.counter[0][0]) <= 1);
     if (sb) { stopWalk(); lastAct = now; actGap = 300; send({ t: 'act', tool: toolId(), tx: sb.counter[0][0], ty: sb.counter[0][1] }); return true; }
   }
@@ -1772,6 +1772,8 @@ canvas.addEventListener('pointercancel', endPtr);
 // กดค้างปุ่ม A = ทำงานซ้ำตามจังหวะท่าเดิม (ขุด/ตัด/ขุดดิน/รดน้ำ ฯลฯ) ปล่อยนิ้วหยุด • เบ็ดไม่วนซ้ำ (ต้องจับจังหวะเอง) • act() กันจังหวะด้วย actGap เองและเซิร์ฟเวอร์ตัดสินกติกาเหมือนเดิม
 let holdAct = 0, abHeld = false, spHeld = false; // abHeld/spHeld = ปุ่ม A/Space กำลังถูกกดค้าง (ตกปลา: กดค้างมาก่อนปลากิน เริ่มชักเย่อแล้วต้องกรอสายทันที) // วนซ้ำเฉพาะช่องเครื่องมือ (ไม่รวมเบ็ด/เมล็ด/อาหาร กันข้อความเตือนรัว)
 const stopHoldAct = () => { if (holdAct) { clearInterval(holdAct); holdAct = 0; } };
+// PC: กด Space ค้างทำงานซ้ำเหมือนกดค้างปุ่ม A บนมือถือ (เครื่องมือที่ไม่ใช่เบ็ด) ปล่อยแล้วหยุด • เบ็ดยังกดครั้งเดียว (ค้างไว้ใช้กรอสายตอนชักเย่อ) • ตัวจับเวลาเดียวกับปุ่ม A จึงไม่ซ้อนกัน
+const holdSpace = () => { if (SLOTS[slot].id !== 'tool' || toolId() === 'rod') return; stopHoldAct(); holdAct = setInterval(() => { if (!spHeld || ft || modalOpen()) { stopHoldAct(); return; } if (SLOTS[slot].id === 'tool' && toolId() !== 'rod') act(); }, 60); };
 $('abtn').addEventListener('pointerdown', e => {
   abHeld = true; e.preventDefault(); stopWalk(); if (ft) { setReel(true); return; } act();
   stopHoldAct(); holdAct = setInterval(() => { if (ft || modalOpen()) { stopHoldAct(); return; } if (SLOTS[slot].id === 'tool' && toolId() !== 'rod') act(); }, 60);
