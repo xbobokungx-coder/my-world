@@ -457,7 +457,7 @@ class World {
       { const rb = this.rentBlock(tx, ty, p); if (rb) return this.toast(p, rb); }
       if (tile) {
         if (tile.c) return this.toast(p, 'มีพืชอยู่ ขุดไม่ได้');
-        delete this.farm[k]; this.tileUpdate(k, null); this.sfx(p, 'hoe'); this.durUse(p, 'hoe');
+        return; // ขุดซ้ำช่องที่ขุดแล้ว: ไม่เกิดอะไรขึ้น (เดิมคืนเป็นหญ้า เสียความทนทานจอบ) ช่องยังเป็นดินขุด ไม่เสียพลังงาน/จอบ/ไม่ให้ XP
       } else if (tt === T.GRASS && S.inFarm(tx, ty)) {
         this.farm[k] = {}; this.tileUpdate(k, this.farm[k]); this.addXp(p, 'farm', 1); this.tire(p, 'dig'); this.sfx(p, 'hoe'); this.durUse(p, 'hoe'); this.event(p, 'dig');
       } else this.toast(p, 'ขุดได้เฉพาะในแปลงผัก');
