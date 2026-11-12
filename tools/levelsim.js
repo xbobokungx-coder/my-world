@@ -95,7 +95,14 @@ function cook(lv) {
   for (const r of S.COOK) {
     if (r.lv > lv) continue;
     let min = r.time / 60000 + 1 / M.apm;
-    for (const x of r.in) min += x.n * (need[x.c || x.k] || 0);
+    for (const x of r.in) {
+      let m = need[x.c || x.k];
+      if (m === undefined && x.k) { // ของเจาะจงชนิด (ปลาทู ไข่เป็ด ฯลฯ): เวลาหา ∝ ราคาขายเทียบของถูกสุดในหมวด (หายากกว่า = ใช้เวลามากกว่า) ไม่ให้นับเป็นของฟรี
+        const cat = /^fish_/.test(x.k) ? 'fish' : /^crop_/.test(x.k) ? 'crop' : x.k === 'duck_egg' ? 'egg' : null, base = { fish: Math.min(...S.FISH_ALL.filter(f => f.id !== 'boot').map(f => f.sell)), crop: Math.min(...Object.values(S.CROPS).map(c => c.sell)), egg: S.itemInfo('egg').sell }[cat], it = S.itemInfo(x.k); // ราคาของถูกสุดในหมวด ดึงจากข้อมูลกลาง
+        m = cat && it && it.sell ? need[cat] * Math.max(1, it.sell / base) : 0;
+      }
+      min += x.n * (m || 0);
+    }
     const fee = r.sell * S.COOK_FEE, coin = 60 / min * (r.sell - fee), xp = 60 / min * r.xp;
     if (!best || xp > best.xp) best = { pick: r.id.replace('dish_', ''), coin, xp, gross: 60 / min * r.sell, cost: 60 / min * fee, pieces: 60 / min, cat: 'dish' };
   }

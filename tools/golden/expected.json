@@ -1040,6 +1040,98 @@
    "dish_banquet": {
     "m": 1,
     "t": 1
+   },
+   "dish_sardinecarrot": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_bassgreen": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_mackegg": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_shrimptomyum": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_crabcurry": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_seabassegg": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_duckomelet": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_tunasalad": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_pumpkinmilk": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_bonitoveg": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_squidegg": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_pufferegg": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_melonmilk": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_mangocake": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_peachmilk": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_kiwiegg": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_lobstercoco": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_avoshrimp": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_blueegg": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_cocoacake": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_truffleomelet": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_trufflesoup": {
+    "m": 1,
+    "t": 1
+   },
+   "dish_lobstermilk": {
+    "m": 1,
+    "t": 1
    }
   },
   "mktDay": 2491575,
@@ -2483,7 +2575,30 @@
      "dish_cake": 1,
      "dish_sharksoup": 1,
      "dish_party": 1,
-     "dish_banquet": 1
+     "dish_banquet": 1,
+     "dish_sardinecarrot": 1,
+     "dish_bassgreen": 1,
+     "dish_mackegg": 1,
+     "dish_shrimptomyum": 1,
+     "dish_crabcurry": 1,
+     "dish_seabassegg": 1,
+     "dish_duckomelet": 1,
+     "dish_tunasalad": 1,
+     "dish_pumpkinmilk": 1,
+     "dish_bonitoveg": 1,
+     "dish_squidegg": 1,
+     "dish_pufferegg": 1,
+     "dish_melonmilk": 1,
+     "dish_mangocake": 1,
+     "dish_peachmilk": 1,
+     "dish_kiwiegg": 1,
+     "dish_lobstercoco": 1,
+     "dish_avoshrimp": 1,
+     "dish_blueegg": 1,
+     "dish_cocoacake": 1,
+     "dish_truffleomelet": 1,
+     "dish_trufflesoup": 1,
+     "dish_lobstermilk": 1
     }
    },
    {
@@ -5286,7 +5401,30 @@
      "dish_cake": 1,
      "dish_sharksoup": 1,
      "dish_party": 1,
-     "dish_banquet": 1
+     "dish_banquet": 1,
+     "dish_sardinecarrot": 1,
+     "dish_bassgreen": 1,
+     "dish_mackegg": 1,
+     "dish_shrimptomyum": 1,
+     "dish_crabcurry": 1,
+     "dish_seabassegg": 1,
+     "dish_duckomelet": 1,
+     "dish_tunasalad": 1,
+     "dish_pumpkinmilk": 1,
+     "dish_bonitoveg": 1,
+     "dish_squidegg": 1,
+     "dish_pufferegg": 1,
+     "dish_melonmilk": 1,
+     "dish_mangocake": 1,
+     "dish_peachmilk": 1,
+     "dish_kiwiegg": 1,
+     "dish_lobstercoco": 1,
+     "dish_avoshrimp": 1,
+     "dish_blueegg": 1,
+     "dish_cocoacake": 1,
+     "dish_truffleomelet": 1,
+     "dish_trufflesoup": 1,
+     "dish_lobstermilk": 1
     }
    },
    {
@@ -6133,7 +6271,30 @@
      "dish_cake": 1,
      "dish_sharksoup": 1,
      "dish_party": 1,
-     "dish_banquet": 1
+     "dish_banquet": 1,
+     "dish_sardinecarrot": 1,
+     "dish_bassgreen": 1,
+     "dish_mackegg": 1,
+     "dish_shrimptomyum": 1,
+     "dish_crabcurry": 1,
+     "dish_seabassegg": 1,
+     "dish_duckomelet": 1,
+     "dish_tunasalad": 1,
+     "dish_pumpkinmilk": 1,
+     "dish_bonitoveg": 1,
+     "dish_squidegg": 1,
+     "dish_pufferegg": 1,
+     "dish_melonmilk": 1,
+     "dish_mangocake": 1,
+     "dish_peachmilk": 1,
+     "dish_kiwiegg": 1,
+     "dish_lobstercoco": 1,
+     "dish_avoshrimp": 1,
+     "dish_blueegg": 1,
+     "dish_cocoacake": 1,
+     "dish_truffleomelet": 1,
+     "dish_trufflesoup": 1,
+     "dish_lobstermilk": 1
     }
    },
    {
@@ -6716,7 +6877,30 @@
      "dish_cake": 1,
      "dish_sharksoup": 1,
      "dish_party": 1,
-     "dish_banquet": 1
+     "dish_banquet": 1,
+     "dish_sardinecarrot": 1,
+     "dish_bassgreen": 1,
+     "dish_mackegg": 1,
+     "dish_shrimptomyum": 1,
+     "dish_crabcurry": 1,
+     "dish_seabassegg": 1,
+     "dish_duckomelet": 1,
+     "dish_tunasalad": 1,
+     "dish_pumpkinmilk": 1,
+     "dish_bonitoveg": 1,
+     "dish_squidegg": 1,
+     "dish_pufferegg": 1,
+     "dish_melonmilk": 1,
+     "dish_mangocake": 1,
+     "dish_peachmilk": 1,
+     "dish_kiwiegg": 1,
+     "dish_lobstercoco": 1,
+     "dish_avoshrimp": 1,
+     "dish_blueegg": 1,
+     "dish_cocoacake": 1,
+     "dish_truffleomelet": 1,
+     "dish_trufflesoup": 1,
+     "dish_lobstermilk": 1
     }
    },
    {
@@ -6935,7 +7119,30 @@
      "dish_cake": 1,
      "dish_sharksoup": 1,
      "dish_party": 1,
-     "dish_banquet": 1
+     "dish_banquet": 1,
+     "dish_sardinecarrot": 1,
+     "dish_bassgreen": 1,
+     "dish_mackegg": 1,
+     "dish_shrimptomyum": 1,
+     "dish_crabcurry": 1,
+     "dish_seabassegg": 1,
+     "dish_duckomelet": 1,
+     "dish_tunasalad": 1,
+     "dish_pumpkinmilk": 1,
+     "dish_bonitoveg": 1,
+     "dish_squidegg": 1,
+     "dish_pufferegg": 1,
+     "dish_melonmilk": 1,
+     "dish_mangocake": 1,
+     "dish_peachmilk": 1,
+     "dish_kiwiegg": 1,
+     "dish_lobstercoco": 1,
+     "dish_avoshrimp": 1,
+     "dish_blueegg": 1,
+     "dish_cocoacake": 1,
+     "dish_truffleomelet": 1,
+     "dish_trufflesoup": 1,
+     "dish_lobstermilk": 1
     }
    },
    {
@@ -7675,7 +7882,30 @@
      "dish_cake": 1,
      "dish_sharksoup": 1,
      "dish_party": 1,
-     "dish_banquet": 1
+     "dish_banquet": 1,
+     "dish_sardinecarrot": 1,
+     "dish_bassgreen": 1,
+     "dish_mackegg": 1,
+     "dish_shrimptomyum": 1,
+     "dish_crabcurry": 1,
+     "dish_seabassegg": 1,
+     "dish_duckomelet": 1,
+     "dish_tunasalad": 1,
+     "dish_pumpkinmilk": 1,
+     "dish_bonitoveg": 1,
+     "dish_squidegg": 1,
+     "dish_pufferegg": 1,
+     "dish_melonmilk": 1,
+     "dish_mangocake": 1,
+     "dish_peachmilk": 1,
+     "dish_kiwiegg": 1,
+     "dish_lobstercoco": 1,
+     "dish_avoshrimp": 1,
+     "dish_blueegg": 1,
+     "dish_cocoacake": 1,
+     "dish_truffleomelet": 1,
+     "dish_trufflesoup": 1,
+     "dish_lobstermilk": 1
     }
    },
    {
@@ -8647,7 +8877,30 @@
      "dish_cake": 1,
      "dish_sharksoup": 1,
      "dish_party": 1,
-     "dish_banquet": 1
+     "dish_banquet": 1,
+     "dish_sardinecarrot": 1,
+     "dish_bassgreen": 1,
+     "dish_mackegg": 1,
+     "dish_shrimptomyum": 1,
+     "dish_crabcurry": 1,
+     "dish_seabassegg": 1,
+     "dish_duckomelet": 1,
+     "dish_tunasalad": 1,
+     "dish_pumpkinmilk": 1,
+     "dish_bonitoveg": 1,
+     "dish_squidegg": 1,
+     "dish_pufferegg": 1,
+     "dish_melonmilk": 1,
+     "dish_mangocake": 1,
+     "dish_peachmilk": 1,
+     "dish_kiwiegg": 1,
+     "dish_lobstercoco": 1,
+     "dish_avoshrimp": 1,
+     "dish_blueegg": 1,
+     "dish_cocoacake": 1,
+     "dish_truffleomelet": 1,
+     "dish_trufflesoup": 1,
+     "dish_lobstermilk": 1
     }
    },
    {
@@ -10543,7 +10796,30 @@
      "dish_cake": 1,
      "dish_sharksoup": 1,
      "dish_party": 1,
-     "dish_banquet": 1
+     "dish_banquet": 1,
+     "dish_sardinecarrot": 1,
+     "dish_bassgreen": 1,
+     "dish_mackegg": 1,
+     "dish_shrimptomyum": 1,
+     "dish_crabcurry": 1,
+     "dish_seabassegg": 1,
+     "dish_duckomelet": 1,
+     "dish_tunasalad": 1,
+     "dish_pumpkinmilk": 1,
+     "dish_bonitoveg": 1,
+     "dish_squidegg": 1,
+     "dish_pufferegg": 1,
+     "dish_melonmilk": 1,
+     "dish_mangocake": 1,
+     "dish_peachmilk": 1,
+     "dish_kiwiegg": 1,
+     "dish_lobstercoco": 1,
+     "dish_avoshrimp": 1,
+     "dish_blueegg": 1,
+     "dish_cocoacake": 1,
+     "dish_truffleomelet": 1,
+     "dish_trufflesoup": 1,
+     "dish_lobstermilk": 1
     }
    },
    {
@@ -11060,7 +11336,30 @@
      "dish_cake": 1,
      "dish_sharksoup": 1,
      "dish_party": 1,
-     "dish_banquet": 1
+     "dish_banquet": 1,
+     "dish_sardinecarrot": 1,
+     "dish_bassgreen": 1,
+     "dish_mackegg": 1,
+     "dish_shrimptomyum": 1,
+     "dish_crabcurry": 1,
+     "dish_seabassegg": 1,
+     "dish_duckomelet": 1,
+     "dish_tunasalad": 1,
+     "dish_pumpkinmilk": 1,
+     "dish_bonitoveg": 1,
+     "dish_squidegg": 1,
+     "dish_pufferegg": 1,
+     "dish_melonmilk": 1,
+     "dish_mangocake": 1,
+     "dish_peachmilk": 1,
+     "dish_kiwiegg": 1,
+     "dish_lobstercoco": 1,
+     "dish_avoshrimp": 1,
+     "dish_blueegg": 1,
+     "dish_cocoacake": 1,
+     "dish_truffleomelet": 1,
+     "dish_trufflesoup": 1,
+     "dish_lobstermilk": 1
     }
    },
    {

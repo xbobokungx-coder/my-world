@@ -1012,6 +1012,30 @@
     { id: 'dish_sharksoup', name: 'ซุปปลารวมมหาสมุทร', emoji: '🥣', sell: 590, food: 105, lv: 18, xp: 215, time: 14000, in: [{ c: 'fish', n: 5, u: true }, { c: 'egg', n: 1 }] },
     { id: 'dish_party', name: 'เค้กฉลองงานเมือง', emoji: '🎂', sell: 640, food: 105, lv: 19, xp: 235, time: 14000, in: [{ c: 'egg', n: 4 }, { c: 'crop', n: 4 }] },
     { id: 'dish_banquet', name: 'โต๊ะจีนมหาราช', emoji: '🥂', sell: 720, food: 105, lv: 20, xp: 270, time: 16000, in: [{ c: 'fish', n: 6, u: true }, { c: 'crop', n: 3 }, { c: 'egg', n: 3 }] },
+    // เมนูเจาะจงวัตถุดิบ (11 พ.ย. 2026, docs/plans/cooking-rework.md ระยะ 2): ระบุชนิดปลา/ผัก/ไข่/นมตรงตัว (in.k) ไม่กินของชนิดอื่นแทน • ใช้เฉพาะของที่หาได้จริง (ไม่ใช้ปลา legacy/พืช legacy) • ราคาขาย ≈ มูลค่าวัตถุดิบ ×1.9–2.3 ใกล้เคียงสูตรเดิมเลเวลเดียวกัน หลังค่าเตา 30% ยังเหลือ ≥ 1.2 เท่าของมูลค่าวัตถุดิบดิบ
+    { id: 'dish_sardinecarrot', name: 'ซาร์ดีนย่างแครอท', emoji: '🐟', sell: 65, food: 55, lv: 1, xp: 30, time: 3000, in: [{ k: 'fish_sardine', n: 1 }, { k: 'crop_carrot', n: 1 }] },
+    { id: 'dish_bassgreen', name: 'ปลากะพงทอดกะหล่ำ', emoji: '🐠', sell: 85, food: 55, lv: 2, xp: 39, time: 3500, in: [{ k: 'fish_bass', n: 1 }, { k: 'crop_cabbage', n: 1 }] },
+    { id: 'dish_mackegg', name: 'ปลาทูทอดไข่ดาว', emoji: '🍳', sell: 100, food: 60, lv: 3, xp: 46, time: 4000, in: [{ k: 'fish_mackerel', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_shrimptomyum', name: 'ต้มยำกุ้งมะเขือเทศ', emoji: '🍲', sell: 150, food: 65, lv: 4, xp: 69, time: 5000, in: [{ k: 'fish_shrimp', n: 1 }, { k: 'crop_tomato', n: 1 }] },
+    { id: 'dish_crabcurry', name: 'ปูผัดผงกะหรี่ไข่', emoji: '🦀', sell: 145, food: 65, lv: 5, xp: 67, time: 5000, in: [{ k: 'fish_crab', n: 1 }, { k: 'egg', n: 2 }] },
+    { id: 'dish_seabassegg', name: 'ปลากะพงขาวทอดน้ำปลา', emoji: '🐠', sell: 140, food: 65, lv: 5, xp: 64, time: 4500, in: [{ k: 'fish_seabass', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_duckomelet', name: 'ไข่เจียวเป็ดมะเขือม่วง', emoji: '🍳', sell: 240, food: 80, lv: 6, xp: 96, time: 6500, in: [{ k: 'duck_egg', n: 2 }, { k: 'crop_eggplant', n: 1 }] },
+    { id: 'dish_tunasalad', name: 'สลัดทูน่าข้าวโพดมะเขือเทศ', emoji: '🥗', sell: 280, food: 85, lv: 6, xp: 112, time: 7500, in: [{ k: 'fish_tuna', n: 1 }, { k: 'crop_corn', n: 1 }, { k: 'crop_tomato', n: 1 }] },
+    { id: 'dish_pumpkinmilk', name: 'ฟักทองนึ่งนมสด', emoji: '🎃', sell: 330, food: 90, lv: 7, xp: 132, time: 8500, in: [{ k: 'crop_pumpkin', n: 1 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_bonitoveg', name: 'ปลาโอเผาผักรวม', emoji: '🔥', sell: 270, food: 85, lv: 7, xp: 108, time: 7000, in: [{ k: 'fish_bonito', n: 1 }, { k: 'crop_carrot', n: 1 }, { k: 'crop_cabbage', n: 1 }] },
+    { id: 'dish_squidegg', name: 'หมึกย่างซอสมะเขือเทศไข่', emoji: '🦑', sell: 300, food: 85, lv: 8, xp: 108, time: 7500, in: [{ k: 'fish_squid', n: 1 }, { k: 'egg', n: 1 }, { k: 'crop_tomato', n: 1 }] },
+    { id: 'dish_pufferegg', name: 'ปลาปักเป้าซาชิมิไข่', emoji: '🐡', sell: 300, food: 85, lv: 9, xp: 108, time: 7500, in: [{ k: 'fish_puffer', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_melonmilk', name: 'สมูทตี้แตงโมนมสด', emoji: '🍉', sell: 400, food: 100, lv: 10, xp: 144, time: 9500, in: [{ k: 'crop_melon', n: 1 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_mangocake', name: 'เค้กไข่มะม่วง', emoji: '🥭', sell: 440, food: 105, lv: 11, xp: 163, time: 10500, in: [{ k: 'crop_mango', n: 1 }, { k: 'egg', n: 2 }] },
+    { id: 'dish_peachmilk', name: 'พีชอบนมสด', emoji: '🍑', sell: 500, food: 105, lv: 12, xp: 185, time: 11500, in: [{ k: 'crop_peach', n: 1 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_kiwiegg', name: 'พุดดิ้งกีวีไข่', emoji: '🥝', sell: 490, food: 105, lv: 13, xp: 181, time: 11500, in: [{ k: 'crop_kiwi', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_lobstercoco', name: 'ซุปมะพร้าวกุ้งมังกร', emoji: '🥥', sell: 540, food: 105, lv: 14, xp: 200, time: 12500, in: [{ k: 'fish_lobster', n: 1 }, { k: 'crop_coconut', n: 1 }] },
+    { id: 'dish_avoshrimp', name: 'สลัดอะโวคาโดกุ้ง', emoji: '🥑', sell: 540, food: 105, lv: 15, xp: 200, time: 12500, in: [{ k: 'fish_shrimp', n: 1 }, { k: 'crop_avocado', n: 1 }] },
+    { id: 'dish_blueegg', name: 'ทาร์ตบลูเบอร์รีไข่', emoji: '🫐', sell: 560, food: 105, lv: 16, xp: 207, time: 12500, in: [{ k: 'crop_blueberry', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_cocoacake', name: 'เค้กโกโก้เข้มข้น', emoji: '🍫', sell: 600, food: 105, lv: 17, xp: 222, time: 13500, in: [{ k: 'crop_beans', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_truffleomelet', name: 'ไข่เจียวทรัฟเฟิล', emoji: '🍄', sell: 650, food: 105, lv: 18, xp: 241, time: 14500, in: [{ k: 'crop_mushroom', n: 1 }, { k: 'egg', n: 2 }] },
+    { id: 'dish_trufflesoup', name: 'ซุปทรัฟเฟิลนมสด', emoji: '🥣', sell: 700, food: 105, lv: 19, xp: 259, time: 15500, in: [{ k: 'crop_mushroom', n: 1 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_lobstermilk', name: 'กุ้งมังกรอบมะพร้าวนม', emoji: '🦞', sell: 740, food: 105, lv: 20, xp: 274, time: 16000, in: [{ k: 'fish_lobster', n: 1 }, { k: 'crop_coconut', n: 1 }, { k: 'milk', n: 1 }] },
   ];
   const cookCat = (c, k) => c === 'fish' ? /^fish_/.test(k) && k !== 'fish_boot' : c === 'crop' ? /^crop_/.test(k) : c === 'egg' ? (k === 'egg' || k === 'duck_egg') : false;
   // โครงการพัฒนาเมือง: ที่เก็บเงินขนาดใหญ่ ทุกคนลงขันที่ตู้เซฟกองกลาง ปลดล็อกตามลำดับ ครบเป้าแล้วขึ้นข่าวและประกาศชื่อผู้ร่วมสร้าง
@@ -1030,6 +1054,7 @@
     dish_grill: 45, dish_omelet: 55, dish_seafood: 70, dish_feast: 100,
     dish_fishsoup: 50, dish_sashimi: 55, dish_fishburger: 80, dish_fishpie: 90,
     dish_fishmix: 65, dish_fishstew: 85, dish_platter: 105,
+    dish_sardinecarrot: 55, dish_bassgreen: 55, dish_mackegg: 60, dish_shrimptomyum: 65, dish_crabcurry: 65, dish_seabassegg: 65, dish_duckomelet: 80, dish_tunasalad: 85, dish_pumpkinmilk: 90, dish_bonitoveg: 85, dish_squidegg: 85, dish_pufferegg: 85, dish_melonmilk: 100, dish_mangocake: 105, dish_peachmilk: 105, dish_kiwiegg: 105, dish_lobstercoco: 105, dish_avoshrimp: 105, dish_blueegg: 105, dish_cocoacake: 105, dish_truffleomelet: 105, dish_trufflesoup: 105, dish_lobstermilk: 105, // เมนูเจาะจงวัตถุดิบ
   };
 
   // อาคาร: counter = ช่อง "ประตูร้าน" (1 ช่อง แถวล่างของอาคาร) กดที่ประตูหรือยืนหน้าประตูเพื่อเปิดร้าน ไม่มีเคาน์เตอร์ตั้งหน้าร้านแล้ว
