@@ -3248,7 +3248,7 @@ function drawHeldTool(p, now, ctx = mainCtx) {
       const [pb, ph, ps] = PixelUI.PICK_PAL[e] || ['#8d99a6', '#c9d3dc', '#6c7782'];
       ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD);
       R(-8, -16, 17, 5, OUT); R(-10, -13, 3, 4, OUT); R(8, -13, 3, 4, OUT); R(-7, -15, 15, 3, pb); R(-7, -15, 15, 1, ph); R(-9, -12, 2, 2, ps); R(8, -12, 2, 2, ps); R(-2, -13, 4, 2, ps);
-      if (/[🏹🪃🔌💣]/u.test(e) && Math.floor(now / 280) % 2) { R(-5, -15, 1, 1, '#ffffff'); R(5, -14, 1, 1, '#ffffff'); } } // มรกต/เพชรมีประกาย
+      if (/[💨🔌🧨💣]/u.test(e) && Math.floor(now / 280) % 2) { R(-5, -15, 1, 1, '#ffffff'); R(5, -14, 1, 1, '#ffffff'); } } // ทองคำ/มรกต/เพชร/มิทริลมีประกาย
     else if (isHoe) { ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(-6, -14, 13, 5, OUT); R(-5, -13, 11, 3, STEEL); R(-5, -13, 11, 1, STH); R(-5, -11, 2, 2, STEEL); R(4, -11, 2, 2, STEEL); }
     else if (isAxe) { ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, STEEL); R(1, -13, 6, 1, STH); R(6, -13, 2, 6, STH); }
     else if (isCan) { // บัวรดน้ำตามระดับที่ซื้อ: 1 สังกะสี (เทาเงิน) • 2 ทองแดง • 3 ทองคำ (ประกาย) ใหญ่ขึ้นตามความจุ

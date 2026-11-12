@@ -154,7 +154,7 @@ assert.strictEqual(last(wa, 'scene').sc, null);
   assert.deepStrictEqual(S.SHOPS.mine.buy.filter(x => /^pick_/.test(x)), Array.from({ length: 10 }, (_, i) => 'pick_' + (i + 1)));
   assert.ok(!S.SHOPS.mine.buy.some(x => /^(glove|hammer)_/.test(x)), 'ไม่มีถุงมือ/ค้อนแยกแล้ว'); assert.ok(S.SHOPS.mine.buy.includes('lamp'), 'ตะเกียงคงไว้');
   assert.deepStrictEqual(Object.values(S.PICKS).map(p => p.price), [60, 260, 600, 1100, 1900, 3000, 4500, 6500, 9000, 12500]);
-  assert.deepStrictEqual(Object.values(S.PICKS).map(p => p.name), ['ถุงมือ', 'จอบไม้', 'อีเต้อเหล็ก', 'ค้อนทุบหิน', 'ชะแลง', 'สว่านมือ', 'สว่านลม', 'สว่านไฟฟ้า', 'ไดนาไมต์', 'ระเบิด']);
+  assert.deepStrictEqual(Object.values(S.PICKS).map(p => p.name), ['อีเต้อไม้', 'อีเต้อหิน', 'อีเต้อทองแดง', 'อีเต้อเหล็ก', 'อีเต้อเหล็กกล้า', 'อีเต้อไทเทเนียม', 'อีเต้อทองคำ', 'อีเต้อมรกต', 'อีเต้อเพชร', 'อีเต้อมิทริล'], 'ทุกระดับเป็นอีเต้อ');
   for (let i = 1; i <= 10; i++) { // เลเวลปลดล็อก 1,3,5,..,19 = เลเวลของแร่ลำดับเดียวกัน • power = เลขระดับ • ราคา/ความทนทานตรงตาราง
     assert.strictEqual(S.PICKS[i].power, i); assert.strictEqual(S.ORES[S.ORE_ORDER[i - 1]].pick, i, 'แร่ลำดับ ' + i + ' ใช้อุปกรณ์ระดับ ' + i);
     assert.strictEqual(S.PICKS[i].lv || 1, 2 * i - 1, 'ระดับ ' + i + ' ปลดที่เลเวล ' + (2 * i - 1)); assert.strictEqual(S.TOOL_PRICE.pick[i], S.PICKS[i].price);
@@ -162,9 +162,9 @@ assert.strictEqual(last(wa, 'scene').sc, null);
     assert.strictEqual(S.pickTier({ ['pick_' + i]: 1 }), i);
   }
   assert.strictEqual(S.DURABILITY.pick.max.length, 11); assert.strictEqual(S.pickTier({ pick_11: 1 }), 0, 'ไม่มี pick_11');
-  w.handle(a, { t: 'buy', item: 'pick_2', n: 1 }); assert.ok(!a.rec.inv.pick_2, 'จอบไม้ต้อง Lv3');
-  w.handle(a, { t: 'buy', item: 'pick_10', n: 1 }); assert.ok(!a.rec.inv.pick_10, 'ระเบิดต้อง Lv19');
-  w.handle(a, { t: 'buy', item: 'pick_1', n: 1 }); assert.ok(a.rec.inv.pick_1, 'ซื้อถุงมือ (ระดับ 1) ได้'); assert.strictEqual(a.rec.dur.pick, undefined, 'ซื้อใหม่ความทนทานเต็ม');
+  w.handle(a, { t: 'buy', item: 'pick_2', n: 1 }); assert.ok(!a.rec.inv.pick_2, 'อีเต้อหินต้อง Lv3');
+  w.handle(a, { t: 'buy', item: 'pick_10', n: 1 }); assert.ok(!a.rec.inv.pick_10, 'อีเต้อมิทริลต้อง Lv19');
+  w.handle(a, { t: 'buy', item: 'pick_1', n: 1 }); assert.ok(a.rec.inv.pick_1, 'ซื้ออีเต้อไม้ (ระดับ 1) ได้'); assert.strictEqual(a.rec.dur.pick, undefined, 'ซื้อใหม่ความทนทานเต็ม');
   for (const k of S.ORE_ORDER) assert.ok(S.SHOPS.mine.sell.includes(k), 'ร้านรับซื้อแร่ ' + k);
   a.rec.inv.mythril = 3; { const c1 = a.rec.inv.coin; w.handle(a, { t: 'sell', item: 'mythril', n: 'all' }); assert.ok(a.rec.inv.coin > c1 && !a.rec.inv.mythril, 'ขายมิทริลได้'); }
   a.rec.inv.coal = 10; const c0 = a.rec.inv.coin; w.handle(a, { t: 'sell', item: 'coal', n: 'all' }); assert.ok(a.rec.inv.coin > c0 && !a.rec.inv.coal, 'ขายแร่ได้'); }
