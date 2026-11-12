@@ -57,6 +57,19 @@ const draw = () => w.lottoDraw();
   assert.strictEqual(w.lottoHash(L.last.nums, L.last.salt), L.last.hash, 'ตรวจ hash ตรงกับเลขที่เปิด');
   console.log('  ออกรางวัล: หารเท่ากัน เลขซ้ำนับต่อใบ เพดาน และ hash ตรวจได้');
 }
+{ // โต๊ด 3 ตัว (รางวัล 4): สลับที่ของเลขรางวัล 1 = 30% ของกอง สูงสุด 60,000 • ตรงเป๊ะไม่นับโต๊ด • เลขซ้ำกันหมดไม่มีโต๊ด • จ่ายรวมไม่เกินกอง
+  const L = w.lotto, T = S.LOTTO.prize[3]; assert.ok(T && T.tote && T.pct === 0.3 && T.cap === 60000, 'ตั้งค่าโต๊ด 30% / 60,000');
+  L.tickets = { a: ['321'], b: ['123'], c: ['999', '112'] }; seal('123', '000', '001'); L.pot = 100000; let b4 = { a: a.rec.inv.coin, b: b.rec.inv.coin, c: c.rec.inv.coin }; draw();
+  assert.strictEqual(a.rec.inv.coin - b4.a, 30000, 'a ถือ 321 (สลับของ 123) ได้โต๊ด 30% ของกอง');
+  assert.strictEqual(b.rec.inv.coin - b4.b, 50000, 'b ถือ 123 ตรงเป๊ะ ได้รางวัล 1 ไม่ได้โต๊ดซ้ำ'); assert.strictEqual(c.rec.inv.coin - b4.c, 0, 'c ไม่ถูกอะไร');
+  L.tickets = { a: ['321', '213'] }; seal('123', '000', '001'); L.pot = 1000000; b4 = a.rec.inv.coin; draw();
+  assert.strictEqual(a.rec.inv.coin - b4, 60000, 'โต๊ดเพดาน 60,000 หารตามจำนวนใบที่ถูก (2 ใบ ได้ครบเพดานรวม)');
+  L.tickets = { a: ['111'] }; seal('111', '000', '001'); L.pot = 100000; b4 = a.rec.inv.coin; draw();
+  assert.strictEqual(a.rec.inv.coin - b4, 50000, 'เลขซ้ำหมด 111 ได้แค่รางวัล 1 ไม่มีโต๊ด');
+  L.tickets = { a: ['123', '321', '023', '000'], b: ['789', '987'] }; seal('123', '023', '000'); L.pot = 10000; const p0 = L.pot, sum0 = a.rec.inv.coin + b.rec.inv.coin; draw();
+  assert.ok(a.rec.inv.coin + b.rec.inv.coin - sum0 <= p0, 'จ่ายรวมทุกรางวัลไม่เกินกองกลาง');
+  console.log('  โต๊ด 3 ตัว: 30% เพดาน 60,000 ตรงเป๊ะไม่ซ้ำ เลขซ้ำไม่มี จ่ายไม่เกินกอง');
+}
 { // ไม่มีผู้ถูก = ทบกอง ไม่ถูกรีเซ็ต • สัดส่วนของกอง
   const L = w.lotto; L.tickets = { a: ['001'] }; seal('555', '555', '555'); L.pot = 40000; draw();
   assert.strictEqual(L.pot, 40000, 'ไม่มีผู้ถูก กองไม่ลด'); 

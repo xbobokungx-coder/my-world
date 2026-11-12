@@ -31,10 +31,11 @@ module.exports = {
   lottoDraw() {
     const L = this.lotto, { nums, salt, hash } = L.sealed, base = L.pot, wins = []; let paid = 0, nTickets = 0;
     for (const list of Object.values(L.tickets)) nTickets += list.length;
+    const srt = x => x.split('').sort().join(''); // โต๊ด: เลข 3 ตัวเดียวกันกับรางวัล 1 สลับที่ (ตรงเป๊ะนับเป็นรางวัล 1 ไม่นับโต๊ด)
     S.LOTTO.prize.forEach((P, k) => {
-      const hit = []; for (const [key, list] of Object.entries(L.tickets)) for (const t of list) if (t.slice(3 - P.digits) === nums[k].slice(3 - P.digits)) hit.push(key); // ตั๋วเลขซ้ำถูกกี่ใบ ได้กี่ส่วน
+      const hit = []; for (const [key, list] of Object.entries(L.tickets)) for (const t of list) if (P.tote ? t !== nums[0] && srt(t) === srt(nums[0]) : t.slice(3 - P.digits) === nums[k].slice(3 - P.digits)) hit.push(key); // ตั๋วเลขซ้ำถูกกี่ใบ ได้กี่ส่วน
       if (!hit.length) return;
-      const each = Math.floor(Math.min(Math.floor(base * P.pct), P.cap) / hit.length); if (each <= 0) return;
+      const each = Math.floor(Math.min(Math.floor(base * P.pct), P.cap, Math.max(0, base - paid)) / hit.length); if (each <= 0) return; // รวมทุกรางวัลไม่เกินกองกลาง
       const by = {}; for (const key of hit) by[key] = (by[key] || 0) + each;
       for (const [key, amt] of Object.entries(by)) { wins.push([key, k + 1, amt]); paid += amt; }
     });
@@ -43,7 +44,7 @@ module.exports = {
     for (const [key, k, amt] of wins) {
       this.creditInv(key, 'coin', amt); logEv(this.room, 'coin', { p: key, n: amt, why: 'lotto' });
       const q = [...this.players.values()].find(o => o.key === key);
-      if (q) { this.toast(q, `🎟️ ถูก Lucky Lotto รางวัลที่ ${k}! ได้ 🪙 ${amt}`); this.sfxTo(q, 'levelup'); }
+      if (q) { this.toast(q, `🎟️ ถูก Lucky Lotto ${k === 4 ? 'โต๊ด 3 ตัว 🎯' : 'รางวัลที่ ' + k}! ได้ 🪙 ${amt}`); this.sfxTo(q, 'levelup'); }
       else { const rec = this.saved[key]; if (rec) (rec.lottoWins || (rec.lottoWins = [])).push([k, amt]); }
     }
     L.last = { round: L.round, nums, salt, hash, n: nTickets, pot0: base, winners };
