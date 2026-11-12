@@ -81,14 +81,28 @@ $('pin').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); }
 // ตั้ง/เปลี่ยน PIN ในเกม (เซิร์ฟเวอร์ขอให้ตั้งถ้ายังไม่มี หรือกดจากแท็บข้อมูลฉัน)
 function showPinBox(has) { $('pinOld').classList.toggle('hidden', !has); $('pinOld').value = ''; $('pinNew').value = ''; $('pinBox').classList.remove('hidden'); setTimeout(() => (has ? $('pinOld') : $('pinNew')).focus(), 50); }
 $('pinLater').onclick = () => $('pinBox').classList.add('hidden');
-$('pinSave').onclick = () => { const p = $('pinNew').value.trim(); if (!/^\d{4,6}$/.test(p)) return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก'); send({ t: 'pin', pin: p, old: $('pinOld').value.trim() }); $('pinBox').classList.add('hidden'); };
+$('pinSave').onclick = () => { const p = $('pinNew').value.trim(); if (!/^\d{4,6}$/.test(p)) return toast('PIN ต้องเป็นตัวเลข 4–6 หลัก'); send({ t: 'pin', pin: p, old: $('pinOld').value.trim() }); $('pin').value = p; // ค้างไว้ในหน้าเว็บเท่านั้น เพื่อต่อเกมใหม่อัตโนมัติด้วย PIN ใหม่ (ไม่ลง localStorage)
+    $('pinBox').classList.add('hidden'); };
 
+// ต่อเกมใหม่อัตโนมัติ (WP-03): หลุดกลางเกมแล้วลองต่อใหม่ถอยหลัง 1,2,4,8,16,30 วิ ด้วยชื่อ/สี/ห้อง/PIN ในหน้าเว็บ (PIN ไม่เก็บลง localStorage)
+// ไม่ต่อใหม่เมื่อโดนเตะ/ล็อกอินซ้ำ (kicked) หรือเซิร์ฟเวอร์ปฏิเสธ (err) เพื่อไม่ให้เตะกันวนลูปสองแท็บ
+const RC_WAIT = [1, 2, 4, 8, 16, 30, 30, 30, 30, 30]; // วินาที รวมราว 3 นาที แล้วขึ้นกล่องหลุดเดิม
+let rc = null, noRetry = false; // rc = { n, timer } ตอนกำลังต่อใหม่
+function rcStop(showDc) { if (rc && rc.timer) clearTimeout(rc.timer); rc = null; $('rcBar').classList.add('hidden'); if (showDc) $('dc').classList.remove('hidden'); }
+function rcSchedule(name) {
+  if (noRetry || !joined) return rcStop(true);
+  rc = rc || { n: 0, timer: 0 };
+  if (rc.n >= RC_WAIT.length) return rcStop(true);
+  const sec = RC_WAIT[rc.n++]; $('rcBar').textContent = `🔄 กำลังเชื่อมต่อใหม่… (ครั้งที่ ${rc.n}/${RC_WAIT.length})`; $('rcBar').classList.remove('hidden');
+  rc.timer = setTimeout(() => connect(name), sec * 1000);
+}
 function connect(name) {
-  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
-  ws.onopen = () => ws.send(JSON.stringify({ t: 'join', name, color, room: roomParam(), pin: $('pin').value.trim(), ch: (() => { try { return new URLSearchParams(location.search).get('ch') || ''; } catch (e) { return ''; } })(), akey: $('akey').value || ls.get('mw_akey') || '' }));
-  ws.onmessage = e => handle(JSON.parse(e.data));
-  ws.onclose = () => {
-    if (joined) $('dc').classList.remove('hidden');
+  const sock = ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+  sock.onopen = () => sock.send(JSON.stringify({ t: 'join', name, color, room: roomParam(), pin: $('pin').value.trim(), ch: (() => { try { return new URLSearchParams(location.search).get('ch') || ''; } catch (e) { return ''; } })(), akey: $('akey').value || ls.get('mw_akey') || '' }));
+  sock.onmessage = e => { if (ws === sock) handle(JSON.parse(e.data)); };
+  sock.onclose = () => {
+    if (ws !== sock) return;
+    if (joined) rcSchedule(name); // หลุดกลางเกม (หรือรอบต่อใหม่ล้มเหลว) → ลองใหม่
     else { $('go').disabled = false; if (!$('loginErr').textContent) $('loginErr').textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'; }
   };
 }
@@ -129,9 +143,9 @@ function applyMapCells(cells) {
 }
 function handle(m) {
   switch (m.t) {
-    case 'err': $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'pin' || m.need === 'setpin') $('pin').focus(); if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
+    case 'err': if (joined && rc) { const d = $('dc').firstElementChild; if (d) d.textContent = m.text || 'เชื่อมต่อใหม่ไม่สำเร็จ'; noRetry = true; rcStop(true); break; } $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'pin' || m.need === 'setpin') $('pin').focus(); if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
     case 'w':
-      resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; if (m.fr) freshSt = m.fr; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
+      if (rc) rcStop(false); resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; if (m.fr) freshSt = m.fr; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
       dur = m.dur || {}; deepFloor = m.deep || 1; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
       if (m.trees) applyTrees(m.trees);
       if (m.mapOv) applyMapOv(m.mapOv);
@@ -248,7 +262,7 @@ function handle(m) {
     case 'hstyle': houseSt = { fl: m.fl, wp: m.wp }; if (scene) syncHouseBg(); if (build.on) renderBuild(); break;
     case 'admin': onAdmin(m); break;
     case 'theme': setSnowMode(m.snow); if (m.rain !== undefined) setRainMode(m.rain); break;
-    case 'kicked': { const d = $('dc').firstElementChild; if (d) d.textContent = m.text ? '🔁 ' + m.text : 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break; // m.text = ล็อกอินซ้ำจากที่อื่น (เซิร์ฟเวอร์ส่งข้อความมา) • ไม่มี text = ผู้ดูแลเตะ
+    case 'kicked': noRetry = true; rcStop(false); { const d = $('dc').firstElementChild; if (d) d.textContent = m.text ? '🔁 ' + m.text : 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break; // m.text = ล็อกอินซ้ำจากที่อื่น (เซิร์ฟเวอร์ส่งข้อความมา) • ไม่มี text = ผู้ดูแลเตะ
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
     case 'en': enSt = Object.assign(m, { at: Date.now(), spentAt: m.spent ? Date.now() : (enSt.spentAt || 0), lastSpent: m.spent || enSt.lastSpent || 0 }); renderEnergy(); break;
     case 'cat': catSt = Object.assign(m, { at: Date.now() }); renderSat(); break;
