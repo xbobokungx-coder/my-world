@@ -141,5 +141,17 @@ for (let y = S.ISLAND.y0; y <= S.ISLAND.y1; y++) for (let x = S.ISLAND.x0; x <= 
 for (let x = S.ISLAND.x0 + 1; x <= S.BRIDGE.x0; x++) assert.ok(walk(x, S.ISLAND.walk.y), 'ต้องเดินจากสะพานขึ้นเกาะได้'); // ช่องซ้ายสุดของแถวนี้คือท่าเรือ (ตัน)
 const orig = S.makeMap(); let changed = 0; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (orig[y][x] !== all[y][x]) { changed++; assert.ok([T.WATER, T.GRASS, T.TREE, T.PATH].includes(orig[y][x]), `ทับช่องที่ไม่ควรทับที่ ${x},${y}`); }
 console.log('  โครงการทั้ง 3 แปลงแมพ', changed, 'ช่อง');
-console.log('✓ ผ่าน: ยอดโครงการอยู่ครบหลังโหลดใหม่ และสะพานเดินข้ามได้ทั้งตอนสร้างเสร็จและหลังรีสตาร์ต');
-process.exit(0);
+// เซฟปลอดภัย (WP-01): เขียนผ่านไฟล์ .tmp แล้ว rename • เขียนพลาดต้องคง dirty=true ให้รอบหน้าลองใหม่ • เซฟสำเร็จไม่ทิ้ง .tmp
+{
+  const real = w2.file; w2.dirty = true; w2.save(true);
+  assert.strictEqual(w2.dirty, false, 'เซฟสำเร็จแล้วต้องเคลียร์ dirty'); assert.ok(!fs.existsSync(real + '.tmp'), 'เซฟสำเร็จต้องไม่เหลือ .tmp'); JSON.parse(fs.readFileSync(real, 'utf8'));
+  const before = fs.readFileSync(real, 'utf8'), bad = path.join(os.tmpdir(), 'mw-nodir-' + process.pid, 'x', 'world.json');
+  w2.file = bad; w2.dirty = true;
+  assert.throws(() => w2.save(true), 'เขียนซิงก์พลาดต้องโยน error'); assert.strictEqual(w2.dirty, true, 'เขียนซิงก์พลาด dirty ต้องยังเป็น true');
+  w2.save(false); w2.dirty = true; w2.save(false); // เขียนอะซิงก์พลาด (ไม่มีโฟลเดอร์) ผ่าน callback
+  setTimeout(() => { assert.strictEqual(w2.dirty, true, 'เขียนอะซิงก์พลาด dirty ต้องกลับเป็น true'); w2.file = real; assert.strictEqual(fs.readFileSync(real, 'utf8'), before, 'ไฟล์จริงต้องไม่เสียตอนเขียนพลาด'); // แข่งกัน: async เริ่มก่อน แล้ว sync (ข้อมูลใหม่กว่า) ตามมา ไฟล์จริงต้องเป็นของ sync และไม่เหลือ .tmp
+    w2.stats = { marker: 'old' }; w2.dirty = true; w2.save(false); w2.stats = { marker: 'new' }; w2.dirty = true; w2.save(true);
+    setTimeout(() => { assert.strictEqual(JSON.parse(fs.readFileSync(real, 'utf8')).stats.marker, 'new', 'เซฟซิงก์ใหม่กว่าต้องไม่ถูก async เก่าทับ'); assert.deepStrictEqual(fs.readdirSync(path.dirname(real)).filter(f => f.endsWith('.tmp')), [], 'ต้องไม่เหลือ .tmp');
+      console.log('  เซฟปลอดภัย: tmp+rename, เขียนพลาดแล้ว dirty คงเดิม, sync/async ไม่ทับกัน'); console.log('✓ ผ่าน: ยอดโครงการอยู่ครบหลังโหลดใหม่ และสะพานเดินข้ามได้ทั้งตอนสร้างเสร็จและหลังรีสตาร์ต'); process.exit(0); }, 200); }, 200);
+}
+

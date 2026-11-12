@@ -692,8 +692,13 @@ class World {
     this.dirty = false;
     for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; this.syncHerd(p); } // เซฟฝูงลง rec.herd ก่อนเขียนไฟล์
     const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), treeMix: this.treeMixV | 0, house: { houses: this.houses }, log: this.log, lotto: this.lotto, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])], mocks: this.mocks || [], mapOv: this.mapOv || {} }, replacer);
-    if (sync) { fs.writeFileSync(this.file, data); return; }
-    fs.writeFile(this.file + '.tmp', data, err => { if (!err) fs.rename(this.file + '.tmp', this.file, () => {}); });
+    const seq = this.saveSeq = (this.saveSeq | 0) + 1, tmp = this.file + '.' + seq + '.tmp'; // ชื่อ .tmp ไม่ซ้ำต่อรอบ: เขียนซ้อนกันไม่ชนไฟล์เดียวกัน
+    if (sync) { try { fs.writeFileSync(tmp, data); fs.renameSync(tmp, this.file); } catch (e) { this.dirty = true; try { fs.unlinkSync(tmp); } catch (_) {} throw e; } return; } // เขียน .tmp แล้ว rename ทับ: ไฟล์จริงไม่เสียครึ่งๆ กลางๆ ถ้าดับ/ดิสก์เต็ม
+    fs.writeFile(tmp, data, err => {
+      if (err) { this.dirty = true; fs.unlink(tmp, () => {}); return; } // เขียนพลาด: ให้รอบหน้าเซฟใหม่
+      if (seq !== this.saveSeq) { fs.unlink(tmp, () => {}); return; } // มีเซฟรอบใหม่กว่าแล้ว ไม่เอาไฟล์เก่าไปทับ
+      fs.rename(tmp, this.file, e2 => { if (e2) { this.dirty = true; fs.unlink(tmp, () => {}); } });
+    });
   }
 }
 const { mix } = require('./server/mixin.js');
