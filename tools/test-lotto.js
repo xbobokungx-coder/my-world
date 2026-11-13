@@ -25,7 +25,7 @@ assert.strictEqual(w.lotto.pot, S.LOTTO.seed, 'กองตั้งต้น 30
 const mk = (name, coin = 10000) => { const p = { name, key: name.toLowerCase(), id: name, x: 0, y: 0, ws: { readyState: 0, send() {} }, rec: { name, inv: { coin }, skills: { farm: 400, fish: 400, animal: 400, wood: 400, cook: 400 }, starter: { done: {}, final: true } } }; w.players.set(name, p); w.saved[p.key] = p.rec; return p; };
 const a = mk('A'), b = mk('B'), c = mk('C'), newbie = mk('N'); newbie.rec.skills = {}; newbie.rec.starter = { done: {}, final: false };
 const seal = (n1, n2, n3) => { const nums = [n1, n2, n3], salt = 'x'; w.lotto.sealed = { nums, salt, hash: w.lottoHash(nums, salt) }; };
-const draw = () => w.lottoDraw();
+const draw = () => { w.lottoDraw(); for (const p of [a, b, c]) if (w.players.has(p.name)) w.lottoClaim(p, true); }; // ผู้เล่นออนไลน์ที่ยืนที่ตู้รับรางวัลรอรับทันที (ทดสอบยอดเหรียญเดิมได้)
 {
   const L = w.lotto, pot0 = L.pot;
   w.lottoBuy(newbie, { nums: ['123'] }); assert.strictEqual(L.tickets.n, undefined, 'คนใหม่ซื้อไม่ได้');
@@ -106,7 +106,7 @@ const draw = () => w.lottoDraw();
 { // ออกย้อนหลังเมื่อเซิร์ฟเวอร์ดับข้ามเวลา + ไม่สุ่มใหม่ (ใช้เลขที่ปิดผนึกไว้)
   const L = w.lotto, sealedNums = L.sealed.nums.slice(); L.tickets = { a: [sealedNums[0]] }; L.pot = 10000; const c0 = a.rec.inv.coin, r0 = L.round;
   w.lottoTick(w.lottoDrawAt(r0) + 5000);
-  assert.ok(a.rec.inv.coin - c0 >= 5000, 'ถูกรางวัล 1 ด้วยเลขที่ปิดผนึกไว้');
+  assert.strictEqual(a.rec.inv.coin, c0, 'ย้อนหลังก็ยังไม่เข้ากระเป๋า'); assert.ok(w.lottoPendSum(a.rec) >= 5000, 'ถูกรางวัล 1 ด้วยเลขที่ปิดผนึกไว้ (รอรับ)'); w.lottoClaim(a, true); assert.ok(a.rec.inv.coin - c0 >= 5000, 'รับแล้วเงินเข้า');
   assert.strictEqual(w.lotto.last.round, r0); assert.ok(w.lotto.round !== r0);
   const before = w.lotto.round; w.lottoTick(w.lottoDrawAt(before) - 1000); assert.strictEqual(w.lotto.round, before, 'ยังไม่ถึงเวลา ไม่ออก');
   const nxt = w.lotto.round; w.lottoTick(w.lottoDrawAt(nxt) + 3 * 86400e3); assert.ok(w.lotto.round !== nxt, 'ดับหลายวัน ออกย้อนหลังทีละงวดจนทัน');
@@ -114,12 +114,21 @@ const draw = () => w.lottoDraw();
 }
 { // ผู้ชนะออฟไลน์ได้เงินเข้าเซฟ + แจ้งตอนเข้าเกม • บันทึก/โหลดคงที่
   w.players.delete('C'); const L = w.lotto; L.tickets = { c: ['321'] }; seal('321', '000', '000'); L.pot = 10000; const c0 = w.saved.c.inv.coin; draw();
-  assert.strictEqual(w.saved.c.inv.coin - c0, 5600); assert.deepStrictEqual(w.saved.c.lottoWins, [[1, 5000], [5, 500], [7, 100]], 'รางวัล 1 + หน้า2 + ท้าย1');
-  assert.ok(w.lotto.hist.length >= 5 && w.lotto.hist[0].nums.length === 3, 'เก็บประวัติเลขที่ออกย้อนหลัง');
+  assert.strictEqual(w.saved.c.inv.coin - c0, 0, 'ถูกแล้วเงินยังไม่เข้ากระเป๋า รอรับที่ตู้'); assert.deepStrictEqual(w.saved.c.lottoPend.map(e => e.slice(1, 3)), [[1, 5000], [5, 500], [7, 100]], 'รางวัล 1 + หน้า2 + ท้าย1 รอรับ'); assert.strictEqual(w.saved.c.lottoWins, undefined, 'ไม่สร้าง lottoWins อีก');
+  assert.strictEqual(w.lottoPub(c).pend.length, 3, 'lottoPub ส่ง pend เมื่อมีของรอรับ'); assert.strictEqual(w.lottoPub(a).pend, undefined, 'ไม่มีของรอรับ = ไม่ส่ง pend');
   w.dirty = true; w.save(true);
+  { const w3 = new World('main'); assert.strictEqual(w3.saved.c.lottoPend.length, 3, 'บันทึกแล้วโหลดใหม่ยังรอรับ'); assert.strictEqual(w3.lottoPendSum(w3.saved.c), 5600); }
+  c.x = 0; c.y = 0; w.players.set('C', c); // กลับมาออนไลน์ แต่อยู่ไกลตู้
+  assert.strictEqual(w.lottoClaim(c), 0, 'อยู่ไกลตู้รับไม่ได้'); assert.strictEqual(c.rec.inv.coin, c0); assert.strictEqual(w.lottoPendSum(c.rec), 5600, 'ยังรอรับ');
+  c.x = (S.LUCKY.x + 0.5) * S.TS; c.y = (S.LUCKY.y + 0.5) * S.TS;
+  assert.strictEqual(w.lottoClaim(c), 5600, 'ออฟไลน์แล้วกลับมารับได้'); assert.strictEqual(c.rec.inv.coin - c0, 5600); assert.strictEqual(c.rec.lottoPend, undefined);
+  assert.strictEqual(w.lottoClaim(c), 0, 'รับซ้ำได้ 0'); assert.strictEqual(c.rec.inv.coin - c0, 5600);
+  c.rec.lottoPend = [['x', 1, NaN], ['x', 1, -5], 'zz', ['x', 1, 7.9]]; assert.strictEqual(w.lottoClaim(c), 7, 'รายการเสีย/ติดลบ/NaN ไม่นับ'); c.rec.inv.coin = c0 + 5600;
+  { const q = mk('Q', 0); w.lottoAward('q', 1, 10); for (let i = 0; i < S.LOTTO.pendMax + 5; i++) w.lottoAward('q', 7, 100); assert.strictEqual(q.rec.lottoPend.length, S.LOTTO.pendMax, 'เกินเพดานรวมก้อนเก่า'); assert.strictEqual(w.lottoPendSum(q.rec), 10 + (S.LOTTO.pendMax + 5) * 100, 'รวมแล้วยอดไม่หาย'); w.players.delete('Q'); delete w.saved.q; }
+  assert.ok(w.lotto.hist.length >= 5 && w.lotto.hist[0].nums.length === 3, 'เก็บประวัติเลขที่ออกย้อนหลัง');
   const w2 = new World('main'); assert.strictEqual(w2.lotto.pot, w.lotto.pot, 'กองคงอยู่หลังโหลดใหม่'); assert.strictEqual(w2.lotto.round, w.lotto.round); assert.deepStrictEqual(w2.lotto.hist, w.lotto.hist.map(h => ({ round: h.round, nums: h.nums, n: h.n, pot0: h.pot0, winners: h.winners })), 'ประวัติคงอยู่หลังโหลดใหม่');
   assert.deepStrictEqual(w2.lotto.sealed.nums, w.lotto.sealed.nums, 'เลขปิดผนึกคงเดิมหลังรีสตาร์ต'); assert.strictEqual(w2.lotto.sealed.hash, w.lotto.sealed.hash);
-  console.log('  ผู้ชนะออฟไลน์ได้เงิน + บันทึก/โหลดกองและเลขปิดผนึก');
+  console.log('  ผู้ชนะออฟไลน์รอรับ/รับซ้ำ 0/อยู่ไกลรับไม่ได้ + บันทึก/โหลดกองและเลขปิดผนึก');
 }
 { // โควตาตั๋วรวมต่อ IP ต่องวด (ipMax) นับทุกบัญชีจากเครือข่ายเดียวกัน
   const L = w.lotto, pos = p => { p.x = (S.LUCKY.x + 0.5) * S.TS; p.y = (S.LUCKY.y + 0.5) * S.TS; return p; };
@@ -149,5 +158,10 @@ const draw = () => w.lottoDraw();
   s.rec.inv.egg = 3; const pot2 = L.pot; for (let i = 0; i < 3; i++) w.sell(s, 'egg', 1); assert.ok(L.pot - pot2 >= 0);
   console.log('  ภาษีขายเข้ากองกลาง ' + tax + ' จากการขาย ' + (got + tax));
 }
+// claimMs: > 0 รายการรอรับเก่าเกินกำหนดคืนกองกลาง เหรียญรวมคงที่ • 0 = ไม่หมดอายุ
+{ const q = mk('Exp', 0), tot = () => w.lotto.pot + w.lottoPendSum(q.rec) + q.rec.inv.coin, old = S.LOTTO.claimMs;
+  w.lottoAward('exp', 1, 500); const t0 = tot(); w.lottoExpire(q.rec, Date.now() + 10 * 86400000); assert.strictEqual(w.lottoPendSum(q.rec), 500, 'claimMs 0 ไม่หมดอายุ');
+  S.LOTTO.claimMs = 86400000; try { w.lottoExpire(q.rec, Date.now() + 1000); assert.strictEqual(w.lottoPendSum(q.rec), 500, 'ยังไม่ถึงกำหนด'); const p0 = w.lotto.pot; w.lottoExpire(q.rec, Date.now() + 86400000 + 5000); assert.strictEqual(w.lottoPendSum(q.rec), 0, 'หมดอายุ'); assert.ok(!q.rec.lottoPend); assert.strictEqual(w.lotto.pot, p0 + 500, 'คืนกองกลาง'); assert.strictEqual(tot(), t0, 'เหรียญรวมคงที่'); } finally { S.LOTTO.claimMs = old; }
+  w.players.delete('Exp'); delete w.saved.exp; }
 console.log('✓ ผ่าน: หวย/กองกลาง/ภาษีขาย');
 process.exit(0);

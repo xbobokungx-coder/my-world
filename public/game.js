@@ -3,7 +3,7 @@
 const { QUEST_ALL, ACH, REPAIR, toolPrice, canRepair, TS, W, H, T, FARM, DAY_MS, CLOCK_MS, CANS, canTier, gaugePos, FISH_GAUGE, MAX_LV, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, SKILLS, DIRS,
   WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, PLAYER_HUNGER, AXES, SELLBACK, sellbackValue, PLAZA, FIRE, SEATS, seatAt, isChoppable,
   DURABILITY, durMax, repairCost, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
-  GAME_TITLES, COOK, COOK_FEE, craftFee, COOK_CATS, cookCat, PROJECTS, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, woodXp, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, RANKBOARD, LUCKY, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, playLevel, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, SELLABLE } = Shared;
+  GAME_TITLES, COOK, COOK_FEE, craftFee, COOK_CATS, cookCat, PROJECTS, sellQuote, sellCat, CABINETS, BETS, makeMap, blockedAt, facing, itemInfo, shopSells, shopAt, levelOf, xpFor, woodXp, inFarm, HOUSING, plotAt, plotSignAt, FURN, TOWN, BOARD, RANKBOARD, LUCKY, FLEA, reviveCost, QUESTS, titleFor, TITLES, POINTS, BUFFS, FAME, ATM, BANK, VILLAGE, BOTBET, playLevel, CRAFT, STARTER, STARTER_GO, START_SPAWN, STARTER_FINAL, BOOK, WEEKLY, bookInfo, SELLABLE } = Shared;
 const MAP = makeMap();
 const $ = id => document.getElementById(id);
 const canvas = $('c'), ctx = canvas.getContext('2d'), mainCtx = ctx;
@@ -34,11 +34,12 @@ const players = new Map(), animals = new Map(), npcs = new Map(); const roster =
 const presence = (id, fn) => { for (const p of [players.get(id), roster.get(id)]) if (p) fn(p); }; // roster = ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้รายชื่อและการโทร • players = คนในฉากเดียวกัน (วาดและเสียงรอบตัว) // npcs = ชาวเมือง NPC (ไม่นับเป็นผู้เล่น)
 let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, hunger = 80;
 const furn = new Map();               // เฟอร์นิเจอร์ในบ้านที่เปิดอยู่ (ฉากบ้าน): id -> { i, f, x, y, r, z, on, wl, u } พิกัดหน่วยช่อง
-let townLog = [], townTab = 'log', lottoSt = null, rankSt = null, rankTab = 'lv', rankSub = 'all';
+let townLog = [], townTab = 'log', lottoSt = null, rankSt = null, rankTab = 'lv', rankSub = 'all', fleaTab = 'sell', bidSt = [];
 // ประกาศถึงผู้เล่น (public/notices.js) ปักหมุดบนสุดของแท็บข่าวเมือง • จำว่าอ่านแล้วต่อเบราว์เซอร์ (localStorage) • ข่าวเมืองซ่อนคนเข้า-ออกได้
 const NOTICES = (window.Notices && window.Notices.NOTICES) || [];
 const noticeSeenId = () => ls.get('mw_notice_seen') || '', noticeUnread = () => !!NOTICES.length && noticeSeenId() !== NOTICES[0].id;
-function updateNoticeDot() { const b = $('townBtn'); if (b) b.classList.toggle('hasnew', noticeUnread()); }
+const lottoPendSum = () => lottoSt && lottoSt.pend ? lottoSt.pend.reduce((n, e) => n + (e[2] > 0 ? e[2] : 0), 0) : 0; // รางวัลหวยรอรับ (เซิร์ฟเวอร์เป็นคนนับ)
+function updateNoticeDot() { const b = $('townBtn'); if (b) b.classList.toggle('hasnew', noticeUnread() || lottoPendSum() > 0); }
 let noticeToasted = false;
 function noticeIntro() { updateNoticeDot(); if (noticeUnread() && !noticeToasted) { noticeToasted = true; toast('📢 มีประกาศใหม่ เปิดดูที่ 📰 ข่าวเมือง'); } } // เด้งครั้งเดียวต่อการเปิดหน้าเว็บ (ต่อใหม่อัตโนมัติไม่เด้งซ้ำ) ถ้ายังไม่ได้อ่าน
 let townNoticeOpen = '', townNoticeFreshId = '', newsHideNoise = ls.get('mw_news_noise') !== '0'; // ค่าเริ่มต้นซ่อน 👋 เข้ามา / 🚪 ออกไป ให้เห็นข่าวที่สำคัญก่อน
@@ -118,7 +119,7 @@ const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 // ---------- messages ----------
 function mkPlayer(o) {
-  return { id: o.id, wet: !!o.wet, veh: o.veh || '', held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', pm: o.pm || 'follow', pax: o.pax || o.x, pay: o.pay || o.y, psick: !!o.psick, pname: o.pname || '', x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
+  return { id: o.id, wet: !!o.wet, veh: o.veh || '', held: o.held || '', status: o.status || '', title: o.title || '', name: o.name, color: o.color, hat: o.hat || '#e8c66a', pc: o.pc || PANTS_COLOR, wear: Object.assign({}, WEAR_DEFAULT, o.wear), pet: o.pet || '', pm: o.pm || 'follow', pax: o.pax || o.x, pay: o.pay || o.y, psick: !!o.psick, plv: o.plv | 0 || 1, pname: o.pname || '', x: o.x, y: o.y, tx: o.x, ty: o.y, dir: o.dir || 0, fs: 0, fx: 0, fy: 0, anim: 0, moving: false, chat: '', chatAt: 0, voice: !!o.voice, speaking: false, lamp: !!o.lamp, sit: false, deaf: !!o.deaf };
 }
 const treeKinds = new Map(); // 'x,y' → ชนิดต้นไม้ (Shared.TREE_KINDS) จากเซิร์ฟเวอร์ ใช้เลือกสไปรต์
 function applyTrees(list) { // ซิงก์ต้นไม้ที่ตัดได้ให้ตรงกับเซิร์ฟเวอร์ (ต้นไม้ขอบแมพไม่เปลี่ยน)
@@ -153,7 +154,7 @@ function handle(m) {
   switch (m.t) {
     case 'err': if (joined && rc) { const d = $('dc').firstElementChild; if (d) d.textContent = m.text || 'เชื่อมต่อใหม่ไม่สำเร็จ'; noRetry = true; rcStop(true); break; } $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'pin' || m.need === 'setpin') $('pin').focus(); if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
     case 'w':
-      setTimeout(noticeIntro, 2500);
+      setTimeout(noticeIntro, 2500); send({ t: 'lotto', a: 'get' }); // ถามหวยรอรับไว้ขึ้นจุดแดง
       if (rc) rcStop(false); resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; if (m.fr) freshSt = m.fr; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
       dur = m.dur || {}; deepFloor = m.deep || 1; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
       if (m.trees) applyTrees(m.trees);
@@ -172,7 +173,7 @@ function handle(m) {
       ['hudTop', 'hotbar', 'chat', 'mini'].forEach(i => $(i).classList.remove('hidden'));
       layoutHud(); setMini(miniState);
       if (isTouch) { $('joy').classList.remove('hidden'); $('abtn').classList.remove('hidden'); }
-      roomName = m.room || 'main'; isAdmin = !!m.admin; setSnowMode(m.snow); if (isAdmin && $('akey').value) ls.set('mw_akey', $('akey').value); $('adminBtn').classList.toggle('hidden', !isAdmin);
+      setDev(m.dev); roomName = m.room || 'main'; isAdmin = !!m.admin; setSnowMode(m.snow); if (isAdmin && $('akey').value) ls.set('mw_akey', $('akey').value); $('adminBtn').classList.toggle('hidden', !isAdmin);
       history.replaceState(null, '', roomLink(roomName).slice(location.origin.length)); // คงชื่อห้องไว้ใน URL เผื่อรีเฟรช
       renderHud(); updateOnline();
       players.forEach((p, id) => { if (id < myId) callPeer(id); }); // ผู้เล่นใหม่เป็นฝ่ายโทรหาคนที่อยู่ก่อน
@@ -188,11 +189,12 @@ function handle(m) {
     case 'status': presence(m.id, p => { p.status = m.s || ''; }); if (peopleShown()) renderPeople(true); break;
     case 'voice': presence(m.id, p => { p.voice = m.on; if (!m.on) p.speaking = false; }); if (peopleShown()) renderPeople(true); break;
     case 'look': { const p = players.get(m.id); if (p) { p.color = m.color; p.hat = m.hat; if (m.pc) p.pc = m.pc; if (m.wear) p.wear = Object.assign({}, WEAR_DEFAULT, m.wear); if (m.lamp !== undefined) p.lamp = !!m.lamp; if (arcOpenNow() || bagShown() || shopKind) refreshOpen(); updateLampBtn(); } break; }
-    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.cp = null; if (p.id === myId) { refreshOpen(); updatePetBtn(); } } break; }
+    case 'pet': { const p = players.get(m.id); if (p) { p.pet = m.pet || ''; p.pm = m.mode || 'follow'; p.pax = m.ax; p.pay = m.ay; p.psick = !!m.sick; p.pname = m.name || ''; p.plv = m.plv | 0 || 1; p.cp = null; if (p.id === myId) { refreshOpen(); updatePetBtn(); } } break; }
     case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
     case 'ore': { if (cave) { const k = m.x + ',' + m.y; if (m.k) { oreK.set(k, m.k); oreS.set(k, m.s | 0); MAP[m.y][m.x] = T.ORE; oreBurst.delete(k); } else { oreBurst.set(k, { t: performance.now(), k: oreK.get(k), s: oreS.get(k) | 0 }); oreK.delete(k); oreS.delete(k); oreHit.delete(k); MAP[m.y][m.x] = T.CAVE; } } break; } // ก้อนแร่ในถ้ำเกิด/แตก
     case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; if (m.k) treeKinds.set(m.x + ',' + m.y, m.k); } else if (isChoppable(tm, m.x, m.y)) { const tk = m.x + ',' + m.y; if (inTown()) felled.set(tk, { t: performance.now(), k: treeKinds.get(tk), side: me && me.x > (m.x + 0.5) * TS ? -1 : 1 }); tm[m.y][m.x] = T.GRASS; treeKinds.delete(tk); treeHit.delete(tk); } } break; }
-    case 'lotto': lottoSt = m.l; if (townShown()) renderTown(); break;
+    case 'lotto': lottoSt = m.l; updateNoticeDot(); if (townShown()) renderTown(); break;
+    case 'cookcd': cookReadyAt = Date.now() + (+m.ms || 0); if (!$('shop').classList.contains('hidden') && shopKind === 'food' && farmTab === 'cook') renderShop(); break;
     case 'mapcell': applyMapCells(m.cells); break;
     case 'reload': { toast('🗺️ ผู้ดูแลเปลี่ยนผังเมือง กำลังรีเฟรช…'); const tryReload = n => fetch('/healthz', { cache: 'no-store' }).then(r => { if (r.ok) location.reload(); else throw 0; }).catch(() => { if (n < 40) setTimeout(() => tryReload(n + 1), 1000); }); setTimeout(() => tryReload(0), 3000); break; }
     case 'mapreset': {
@@ -270,6 +272,7 @@ function handle(m) {
     case 'furn': applyFurnOp(m); break;
     case 'hstyle': houseSt = { fl: m.fl, wp: m.wp }; if (scene) syncHouseBg(); if (build.on) renderBuild(); break;
     case 'admin': onAdmin(m); break;
+    case 'dev': setDev(m); break;
     case 'theme': setSnowMode(m.snow); if (m.rain !== undefined) setRainMode(m.rain); break;
     case 'kicked': noRetry = true; rcStop(false); { const d = $('dc').firstElementChild; if (d) d.textContent = m.text ? '🔁 ' + m.text : 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break; // m.text = ล็อกอินซ้ำจากที่อื่น (เซิร์ฟเวอร์ส่งข้อความมา) • ไม่มี text = ผู้ดูแลเตะ
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
@@ -286,13 +289,14 @@ function handle(m) {
     case 'village': villageSt = m; villageEnd = m.left ? Date.now() + m.left : 0; updateHappyChip(); if (townShown()) renderTown(); break;
     case 'fame': fameSt = m.f; if (townShown()) renderTown(); break;
     case 'title': { const p = players.get(m.id); if (p) p.title = m.title; if (achShown()) renderAch(); break; }
+    case 'horn': { const p = players.get(m.id); if (p && p.id !== myId && me) { const d = Math.hypot(p.x - me.x, p.y - me.y) / TS; hornSound(m.v || 'bike', Math.max(0, 1 - d / 22)); } break; }
     case 'veh': { const p = players.get(m.id); if (p) p.veh = m.v || ''; if (m.id === myId && !$('shop').classList.contains('hidden')) renderShop(); break; }
     case 'ch': chSt = { ch: m.ch, wet: m.wet, chain: m.chain }; if (questShown()) renderQuestPanel(); break;
     case 'chain': chSt.chain = m.n; break;
     case 'stars': starsSt = m.s || {}; if (bagShown()) renderBag(); break;
     case 'evt': evtSt = m.e; renderEvChip(); if (townShown() && townTab === 'log') renderTown(); break;
     case 'wet': { const p = players.get(m.id); if (p) p.wet = !!m.on; break; }
-    case 'stall': stallSt = m.l || []; if (townShown() && townTab === 'stall') renderTown(); break;
+    case 'stall': stallSt = m.l || []; bidSt = m.b || []; if (townShown() && townTab === 'stall' && !(document.activeElement && $('townBody').contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName))) renderTown(); break; // กำลังพิมพ์ช่องกรอกอยู่ ไม่วาดทับให้หลุดโฟกัส
     case 'orders': ordersSt = m.o; if (townShown() && townTab === 'orders') renderTown(); break;
     case 'orders_upd': if (townShown() && townTab === 'orders') send({ t: 'orders', a: 'list' }); break;
     case 'rents': rentsSt = m.r || {}; if (!$('shop').classList.contains('hidden')) renderShop(); break;
@@ -305,7 +309,7 @@ function handle(m) {
       }
       if (m.win && !m.win.ok) { toast(m.win.why); break; }
       ask(`⛵ เช่าเรือออกทะเลใหญ่? ค่าเช่า 🪙${m.fee} • ขับเรือเองได้ราว ${Math.max(1, Math.round(m.win.ms / 60000))} นาทีจนร้านเช่าปิด 19:00 (เปิด 06:00–19:00 เวลาเกม) • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • (ซื้อเรือของตัวเองที่ร้านยานพาหนะ ออกได้ทุกเวลาไม่จำกัดเวลา)`, () => send({ t: 'sea' })); break;
-    } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : m.w === 'rank' ? 'rank' : 'log'); break;
+    } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : m.w === 'rank' ? 'rank' : m.w === 'flea' ? 'stall' : 'log'); break;
     case 'scene': applyScene(m); break;
     case 'hboard': hboard = m; if (plotsShown()) renderPlots(); break;
     case 'blocks': onBlocks(m); break;
@@ -353,6 +357,15 @@ const bugImgs = {}; // ภาพรายงานบั๊กที่โหล
 let rView = 'open', clName = '', clDay = '', tgNameVal = '', tgRoomVal = ''; // รายงานผู้เล่น: open/closed • ค้นแชตย้อนหลัง
 let bugView = 'open'; // หน้ารายงานบั๊ก: open = ยังไม่แก้ • fixed = แก้แล้ว
 const adminShown = () => !$('admin').classList.contains('hidden');
+let adminHungerOn = true, devOn = false, devBase = 0, devAt = 0, devAsk = 0; // On Develop: แอดมินออนเกมมานานเท่าไร (เซิร์ฟเวอร์ส่ง sec มา เว็บนับต่อเอง)
+function setDev(d) { if (!d) return; devOn = !!d.on; devBase = +d.sec || 0; devAt = Date.now(); devAsk = devAt; tickDev(); }
+function tickDev() {
+  const el = $('devChip'); if (!el) return;
+  el.classList.toggle('hidden', !devOn); if (!devOn) return;
+  const s = devBase + Math.floor((Date.now() - devAt) / 1000), h = Math.floor(s / 3600), mi = Math.floor(s % 3600 / 60);
+  el.textContent = '🛠️ On Develop ' + (h ? h + ' ชม. ' : '') + mi + ' นาที';
+}
+setInterval(() => { if (!joined) return; tickDev(); if (Date.now() - devAsk > 120000) { devAsk = Date.now(); send({ t: 'dev' }); } }, 1000);
 function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); send({ t: 'admin', a: 'bugs' }); send({ t: 'admin', a: 'reports' }); renderAdmin(); }
 function setSnowMode(v) { snowMode = v === 'on' || v === 'off' ? v : 'auto'; if (typeof adminShown === 'function' && adminShown()) renderAdmin(); }
 function setRainMode(v) { rainMode = v === 'on' || v === 'off' ? v : 'auto'; if (typeof adminShown === 'function' && adminShown()) renderAdmin(); }
@@ -364,6 +377,7 @@ function onAdmin(m) {
   if (m.created) { const url = roomLink(m.created); try { navigator.clipboard.writeText(url).catch(() => {}); } catch (e) { /* ไม่ได้ก็ไม่เป็นไร */ } toast('สร้างห้อง ' + m.created + ' แล้ว คัดลอกลิงก์ให้แล้ว 🔗'); }
   if (m.err && m.mapedit) toast('⚠️ ' + m.err);
   if (m.coinmsg) toast(m.coinmsg);
+  if (typeof m.hungerOn === 'boolean') { adminHungerOn = m.hungerOn; if (m.ok) toast(m.ok); }
   if (m.warpmsg) toast(m.warpmsg);
   if (m.lvmsg) toast(m.lvmsg);
   if (m.kicked) { toast('เตะ ' + m.kicked + ' ออกแล้ว'); setTimeout(() => send({ t: 'admin', a: 'users' }), 700); }
@@ -450,6 +464,7 @@ function renderAdmin() {
       + `<button class="btn small" data-copy="${esc(r.name)}">🔗 คัดลอกลิงก์</button> `
       + (r.name !== adminSt.current ? `<button class="btn small" data-go="${esc(r.name)}">↪️ ไปห้องนี้</button> ` : '')
       + (!r.main ? `<button class="btn small muted" data-rm="${esc(r.name)}">🗑️ เลิกใช้</button>` : '') + '</span></div>').join('');
+    h += `<div class="sec">🔧 ทดสอบ</div><div class="row"><span>🍗 ความหิวของตัวเอง</span><span><button class="btn small${adminHungerOn ? '' : ' muted'}" id="admHunger">${adminHungerOn ? '🍗 เปิดอยู่' : '🍗 ปิดอยู่'}</button> <button class="btn small" id="admCoin1k">🪙 +1,000 เหรียญ</button></span></div>`;
     h += `<div class="sec">🪙 เหรียญของตัวเอง</div><div class="row"><span>${me ? esc(me.name) : ''}</span><span><button class="btn small" data-admcoin="100">➕ 100</button> <button class="btn small muted" data-admcoin="-100">➖ 100</button></span></div>`;
     h += '<div class="sec">❄️ ธีมหิมะตก (ทุกคนในเกม)</div><div class="chips" style="margin-bottom:6px">' + [['auto', 'อัตโนมัติ (ตามฤดูหนาว)'], ['on', 'เปิดตลอด'], ['off', 'ปิด']].map(([k, n]) => `<button class="chip${snowMode === k ? ' sel' : ''}" data-snowmode="${k}" style="min-height:40px">${n}</button>`).join('') + '</div>';
     h += '<div class="sec">🌧️ ฝนตก (ทุกคนในเกม)</div><div class="chips" style="margin-bottom:6px">' + [['auto', 'อัตโนมัติ (ตามฤดูฝน)'], ['on', 'ฝนตกตลอด'], ['off', 'ปิด']].map(([k, n]) => `<button class="chip${rainMode === k ? ' sel' : ''}" data-rainmode="${k}" style="min-height:40px">${n}</button>`).join('') + '</div>';
@@ -491,6 +506,8 @@ function renderAdmin() {
   const bR = $('bugRefresh'); if (bR) bR.onclick = () => send({ t: 'admin', a: 'bugs' });
   el.querySelectorAll('[data-pinreset]').forEach(b => b.onclick = () => ask('ล้าง PIN ของ ' + b.dataset.pinreset + '? (ให้เขาตั้งใหม่ตอนเข้าเกม)', () => send({ t: 'admin', a: 'pinreset', name: b.dataset.pinreset, room: b.dataset.proom })));
   el.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => ask('เตะ ' + b.dataset.kick + ' ออกจากห้อง?\n(เขาเข้ามาใหม่ได้ทันที)', () => send({ t: 'admin', a: 'kick', room: b.dataset.kroom, name: b.dataset.kick })));
+  if ($('admHunger')) $('admHunger').onclick = () => send({ t: 'admin', a: 'hunger', on: !adminHungerOn });
+  if ($('admCoin1k')) $('admCoin1k').onclick = () => send({ t: 'admin', a: 'coin1k' });
   el.querySelectorAll('[data-admcoin]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'coin', n: +b.dataset.admcoin }));
   el.querySelectorAll('[data-ban]').forEach(b => b.onclick = () => ask('แบน ' + b.dataset.ban + '?\n(เข้าเกมด้วยชื่อนี้ไม่ได้อีก จนกว่าจะใช้ชื่ออื่น • เตะออกทันทีถ้าออนไลน์)', () => send({ t: 'admin', a: 'ban', room: b.dataset.broom, name: b.dataset.ban })));
   el.querySelectorAll('[data-unban]').forEach(b => b.onclick = () => send({ t: 'admin', a: 'unban', room: b.dataset.uroom, name: b.dataset.unban }));
@@ -508,7 +525,8 @@ if (typeof MapEdit !== 'undefined') MapEdit.bind();
 
 // ---------- เมือง: ข่าว + ตู้เซฟกองกลาง ----------
 const townShown = () => !$('town').classList.contains('hidden');
-function openTown(tab) { closeOthers('town'); townTab = tab || townTab; if (townTab === 'lotto') send({ t: 'lotto', a: 'get' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); if (townTab === 'rank') send({ t: 'rank' }); $('town').classList.remove('hidden'); renderTown(); }
+function openTown(tab) { closeOthers('town'); townTab = tab || townTab; if (townTab === 'lotto') send({ t: 'lotto', a: 'get' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); if (townTab === 'rank') send({ t: 'rank' }); if (townTab === 'stall') send({ t: 'stall', a: 'list' }); $('town').classList.remove('hidden'); renderTown(); }
+const nearFlea = () => !!me && Math.hypot(me.x - (FLEA.x + 0.5) * TS, me.y - (FLEA.y + 0.5) * TS) < 4.5 * TS; // ตรงกับ nearFlea ฝั่งเซิร์ฟเวอร์ (ใช้แค่เตือน)
 function closeTown() { $('town').classList.add('hidden'); townNoticeFreshId = ''; townNoticeOpen = ''; } // ปิดแล้วเปิดใหม่ = ประกาศเก่าพับกลับ ป้าย 'ใหม่' หาย
 function updateHappyChip() {
   const el = $('happyChip'); if (!el) return;
@@ -559,6 +577,7 @@ function renderEvChip() {
   el.title = `${E.name}: แข่งกันที่${E.unit} ${E.mins} นาที • มือใหม่แยกอันดับ • ที่ 1 ได้ถ้วยรางวัล + แต้มตู้เกม`;
 }
 setInterval(renderEvChip, 1000);
+setInterval(() => { const e = $('ckCd'); if (!e) return; const s = Math.ceil((cookReadyAt - Date.now()) / 1000); if (s > 0) e.textContent = `⏳ เตายังร้อน ทำจานต่อไปได้อีก ${s} วิ`; else if (!$('shop').classList.contains('hidden')) renderShop(); }, 1000); // นับถอยหลังเตา แตะแค่ข้อความ ปุ่มไม่หลุด จนครบเวลาค่อยวาดใหม่ครั้งเดียว
 $('evChip').onclick = () => openTown('log');
 function eventCard() { // การ์ดอีเวนต์ในข่าวเมือง: เวลา + อันดับ 3 คนแรกของแต่ละกลุ่ม
   const e = evtSt, E = e && Shared.EVENTS.list.find(x => x.id === e.id); if (!E) return '';
@@ -788,8 +807,9 @@ function lottoCard() { // Lucky Lotto 3 แท็บ: กติกา / ซื�
   if (!L) return '<p style="opacity:.7">กำลังโหลด…</p>';
   const left = Math.max(0, L.drawAt - (Date.now() + timeOffset)), hh = Math.floor(left / 3600e3), mm = Math.floor(left % 3600e3 / 60e3);
   const room = L.left ?? (L.max - L.mine.length), total = L.buyers.reduce((n, b) => n + b[1], 0);
+  const pendSum = lottoPendSum(), pendBar = pendSum ? `<div class="banner" style="background:#fff3cf;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>🎁 มีรางวัลรอรับ 🪙${fmtN(pendSum)}${L.near ? '' : ' <small>(ไปที่ตู้ Lucky Lotto ที่ลานกองไฟก่อนนะ)</small>'}</span><button class="btn small" id="lclaim" style="min-height:44px;min-width:44px">รับรางวัล</button></div>` : '';
   let h = `<div class="ltbar"><div><small>🏦 กองกลาง</small><b>🪙 ${fmtN(L.pot)}</b></div><div><small>⏰ ออกผล ${LT.revealHour}:00</small><b>อีก ${hh} ชม. ${mm} นาที</b></div><div><small>🎫 ตั๋วของฉัน</small><b>${L.mine.length}/${L.max} ใบ</b></div></div>`
-    + `<div class="chips ltTabs">${[['rules', '📖 กติกา'], ['buy', '🎫 ซื้อตั๋ว'], ['result', '🏆 ผลรางวัล']].map(([k, n]) => `<button class="chip${lottoTab === k ? ' sel' : ''}" data-lt="${k}">${n}</button>`).join('')}</div>`;
+    + pendBar + `<div class="chips ltTabs">${[['rules', '📖 กติกา'], ['buy', '🎫 ซื้อตั๋ว'], ['result', '🏆 ผลรางวัล']].map(([k, n]) => `<button class="chip${lottoTab === k ? ' sel' : ''}" data-lt="${k}">${n}</button>`).join('')}</div>`;
   if (lottoTab === 'rules') {
     h += `<div class="sec">วิธีเล่น</div><ul class="ltlist"><li>ซื้อตั๋วเลข <b>3 หลัก</b> ใบละ <b>🪙${LT.price}</b> ซื้อได้ <b>${L.max} ใบต่องวด</b> เลือกเลขเองหรือกดสุ่ม</li>`
       + `<li>ออกผลทุกวัน <b>${LT.revealHour}:00 น.</b> ปิดรับตั๋ว 1 นาทีก่อนออกผล • ต้องยืนใกล้ตู้ผ่านคู่มือเริ่มต้นและระดับการเล่น ≥ ${L.minLv}</li>`
@@ -827,6 +847,7 @@ function lottoCard() { // Lucky Lotto 3 แท็บ: กติกา / ซื�
 function bindLotto(el) {
   el.querySelectorAll('[data-lt]').forEach(b => b.onclick = () => { lottoTab = b.dataset.lt; renderTown(); });
   const buy = nums => send({ t: 'lotto', a: 'buy', nums }), room = lottoSt ? lottoSt.max - lottoSt.mine.length : 0;
+  const cl = $('lclaim'); if (cl) cl.onclick = () => { if (!lottoSt.near) return toast('🎟️ ไปยืนใกล้ตู้ Lucky Lotto ที่ลานกองไฟก่อนนะ ถึงจะรับรางวัลได้'); send({ t: 'lotto', a: 'claim' }); };
   const one = $('lbuy'); if (one) one.onclick = () => { const v = $('lnum').value.trim(); if (!/^\d{3}$/.test(v)) return toast('ใส่เลข 3 หลักก่อนนะ (000–999)'); buy([v]); };
   const r1 = $('lr1'); if (r1) r1.onclick = () => buy([null]);
   const ra = $('lrall'); if (ra) ra.onclick = () => buy(Array(room).fill(null));
@@ -835,7 +856,7 @@ function bindLotto(el) {
 }
 function renderRankTab(el) {
   const R = rankSt, medal = ['🥇', '🥈', '🥉'], myName = me && me.name;
-  const tabs = [['lv', '⭐ เลเวล'], ['wk', '📅 สัปดาห์นี้'], ['rich', '💰 เศรษฐี']];
+  const tabs = [['lv', '⭐ เลเวล'], ['wk', '📅 สัปดาห์นี้'], ['rich', '💰 เศรษฐี'], ['on', '⏱️ ออนไลน์สัปดาห์นี้']];
   let h = `<div class="chips" style="margin:0 0 8px">${tabs.map(([k, n]) => `<button class="chip${rankTab === k ? ' sel' : ''}" data-rtab="${k}">${n}</button>`).join('')}</div>`;
   if (!R) { el.innerHTML = h + '<p style="opacity:.7">กำลังโหลด...</p>'; }
   else {
@@ -856,6 +877,9 @@ function renderRankTab(el) {
         + '<p style="font-size:12px;opacity:.65;margin-top:10px">รีเซ็ตทุกสัปดาห์ คนใหม่ก็ขึ้นอันดับได้</p>';
     } else if (rankTab === 'rich') {
       h += '<div class="sec">💰 เศรษฐี (Top 10)</div>' + list(R.rich, x => `🪙 <b>${esc(x.coin)}</b>`, mine.rich) + '<p style="font-size:12px;opacity:.65;margin-top:10px">จัดอันดับจากความมั่งคั่งรวม: เหรียญ (รวมในธนาคาร) + ของและอุปกรณ์ในกระเป๋า + เฟอร์นิเจอร์ที่วางในบ้าน ปิดบังหลักหน้า เห็นแค่สามหลักท้าย เช่น xxx,xxx,123</p>';
+    } else if (rankTab === 'on') {
+      h += '<div class="sec">⏱️ ออนไลน์สัปดาห์นี้ (Top 10)</div>' + list(R.on, x => `<b>${x.h}</b> ชม.`, mine.on)
+        + '<p style="font-size:12px;opacity:.65;margin-top:10px">นับเฉพาะตอนเชื่อมต่ออยู่ รีเซ็ตทุกวันจันทร์</p>';
     }
     el.innerHTML = h;
   }
@@ -863,31 +887,58 @@ function renderRankTab(el) {
   el.querySelectorAll('[data-rsub]').forEach(b => b.onclick = () => { rankSub = b.dataset.rsub; renderTown(); });
 }
 function renderTown() {
-  $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM', lotto: '🎟️ Lucky Lotto', rank: '🏆 ป้ายอันดับ' })[townTab] || '📰 ข่าวเมือง';
+  $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM', lotto: '🎟️ Lucky Lotto', rank: '🏆 ป้ายอันดับ', stall: '🛒 ตลาดนัด' })[townTab] || '📰 ข่าวเมือง';
   document.querySelectorAll('[data-ttab]').forEach(t => t.classList.toggle('on', t.dataset.ttab === townTab));
   const el = $('townBody'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   if (townTab === 'bank') return renderBankTab(el);
   if (townTab === 'lotto') { el.innerHTML = lottoCard(); bindLotto(el); return; }
   if (townTab === 'fame') return renderFameTab(el);
   if (townTab === 'rank') return renderRankTab(el);
-  const tabs = ['log', 'stall', 'orders'].includes(townTab) ? `<div class="chips" style="margin:0 0 8px">${[['log', '📰 ข่าว'], ['stall', '🛒 ตลาดนัด'], ['orders', '📋 ใบงาน']].map(([k, n]) => `<button class="chip${townTab === k ? ' sel' : ''}" data-ttab2="${k}">${n}</button>`).join('')}</div>` : '';
-  const bindTabs = () => el.querySelectorAll('[data-ttab2]').forEach(b => b.onclick = () => { townTab = b.dataset.ttab2; if (townTab === 'stall') send({ t: 'stall', a: 'list' }); if (townTab === 'orders') send({ t: 'orders', a: 'list' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); renderTown(); });
-  if (townTab === 'stall') { // แผงฝากขาย: ซื้อของจากผู้เล่น / วางขายของตัวเอง
-    const S0 = Shared.STALL, myKey = me ? me.name.toLowerCase() : '', coin = inv.coin || 0, tradable = Object.keys(inv).filter(k => Shared.isTradable(k) && inv[k] > 0);
-    let h = tabs + `<p style="font-size:12px;opacity:.7;margin:0 0 6px">ซื้อขายกับผู้เล่นด้วยเหรียญ ราคาต่อชิ้น ${Math.round(S0.min * 100)}–${Math.round(S0.max * 100)}% ของราคามาตรฐาน • คนขายได้เงินหักภาษี ${Math.round(S0.tax * 100)}% • ไม่มีคนซื้อใน ${S0.days} วันของคืน • ต้องตั้ง PIN ก่อน</p>`;
-    if (!pinSt) h += '<div class="banner" style="background:#ffe3d6">🔐 ตั้ง PIN ก่อนถึงจะซื้อขายที่แผงได้ <button class="btn small" data-pinset="1">ตั้ง PIN</button></div>';
-    const others = stallSt.filter(x => x.mine !== myKey), mine = stallSt.filter(x => x.mine === myKey);
-    h += '<div class="sec">🛒 ของบนแผง</div>' + (others.length ? others.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n}<br><small>ชิ้นละ 🪙${x.price} • โดย ${esc(x.name)}</small></span><span><button class="btn small" data-sbuy="${x.id}" data-sn="1" ${coin < x.price || !pinSt ? 'disabled' : ''}>ซื้อ 1</button>${x.n > 1 ? ` <button class="btn small" data-sbuy="${x.id}" data-sn="${x.n}" ${coin < x.price * x.n || !pinSt ? 'disabled' : ''}>ทั้งหมด 🪙${x.price * x.n}</button>` : ''}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีใครวางขาย</p>');
-    h += `<div class="sec">📦 ของที่ฉันวางขาย (${mine.length}/${S0.slots})</div>` + mine.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} • ชิ้นละ 🪙${x.price}</span><button class="btn small muted" data-scancel="${x.id}">เก็บคืน</button></div>`; }).join('');
-    if (tradable.length && pinSt && mine.length < S0.slots) {
-      h += `<div class="sec">➕ วางขาย</div><div class="row" style="flex-wrap:wrap;gap:6px"><select id="stItem">${tradable.map(k => { const i = itemInfo(k); return `<option value="${k}">${i.emoji} ${i.name} (มี ${inv[k]})</option>`; }).join('')}</select>`
-        + `<input id="stN" type="number" min="1" value="1" style="width:64px" title="จำนวน"> <input id="stPrice" type="number" min="1" style="width:84px" title="ราคาต่อชิ้น"> <button class="btn small" id="stPost">วางขาย</button></div><small id="stHint" style="opacity:.7"></small>`;
+  const tabs = ['log', 'orders'].includes(townTab) ? `<div class="chips" style="margin:0 0 8px">${[['log', '📰 ข่าว'], ['orders', '📋 ใบงาน']].map(([k, n]) => `<button class="chip${townTab === k ? ' sel' : ''}" data-ttab2="${k}">${n}</button>`).join('')}</div>` : '';
+  const bindTabs = () => el.querySelectorAll('[data-ttab2]').forEach(b => b.onclick = () => { townTab = b.dataset.ttab2; if (townTab === 'orders') send({ t: 'orders', a: 'list' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); renderTown(); });
+  if (townTab === 'stall') { // ตลาดนัด (ป้ายที่ลานกองไฟ): แท็บขาย/เสนอขาย + รับซื้อ/เสนอซื้อ
+    const S0 = Shared.STALL, myKey = me ? me.name.toLowerCase() : '', coin = inv.coin || 0, tax = Math.round(S0.tax * 100), B44 = 'min-height:44px;min-width:44px';
+    const frTxt = f => f ? `<small>🟢${f[0]} 🟡${f[1]} 🔴${f[2]}</small>` : '', frName = ['สดเท่านั้น', 'รับถึงของค้าง', 'รับทุกสภาพ'];
+    let h = `<div class="chips" style="margin:0 0 8px">${[['sell', '🛒 ขาย/เสนอขาย'], ['buy', '🤝 รับซื้อ/เสนอซื้อ']].map(([k, n]) => `<button class="chip${fleaTab === k ? ' sel' : ''}" style="${B44}" data-ftab="${k}">${n}</button>`).join('')}</div>`
+      + `<p style="font-size:12px;opacity:.7;margin:0 0 6px">ซื้อขายกับผู้เล่นด้วยเหรียญ ตั้งราคาต่อชิ้นได้ ${Math.round(S0.min * 100)}–${Math.round(S0.max * 100)}% ของราคามาตรฐาน • คนขายโดนหักภาษี ${tax}% • ไม่มีคนซื้อใน ${S0.days} วันของคืน • ต้องตั้ง PIN ก่อน • ต้องยืนใกล้ป้ายตลาดนัดถึงจะซื้อขายได้</p>`;
+    if (!pinSt) h += '<div class="banner" style="background:#ffe3d6">🔐 ตั้ง PIN ก่อนถึงจะซื้อขายที่ตลาดนัดได้ <button class="btn small" style="' + B44 + '" data-pinset="1">ตั้ง PIN</button></div>';
+    const fleaFar = () => { if (!nearFlea()) { toast('🛒 เดินไปที่ป้ายตลาดนัดตรงลานกองไฟก่อนนะ'); return true; } return false; };
+    const priceBox = (id, sel) => `<input id="${id}" type="number" min="1" inputmode="numeric" style="width:84px;min-height:36px" title="ราคาต่อชิ้น"> <small id="${id}H" style="opacity:.7"></small>`;
+    if (fleaTab === 'sell') {
+      const others = stallSt.filter(x => x.mine !== myKey), mine = stallSt.filter(x => x.mine === myKey), tradable = Object.keys(inv).filter(k => Shared.isTradable(k) && inv[k] > 0);
+      h += '<div class="sec">🛒 ของที่คนอื่นวางขาย</div>' + (others.length ? others.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} ${frTxt(x.fr)}<br><small>ชิ้นละ 🪙${x.price} • โดย ${esc(x.name)}</small></span><span><button class="btn small" style="${B44}" data-sbuy="${x.id}" data-sn="1" ${coin < x.price || !pinSt ? 'disabled' : ''}>ซื้อ 1</button>${x.n > 1 ? ` <button class="btn small" style="${B44}" data-sbuy="${x.id}" data-sn="${x.n}" ${coin < x.price * x.n || !pinSt ? 'disabled' : ''}>ทั้งหมด 🪙${x.price * x.n}</button>` : ''}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีใครวางขาย</p>');
+      h += `<div class="sec">📦 ของที่ฉันวางขาย (${mine.length}/${S0.slots})</div>` + (mine.length ? mine.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} ${frTxt(x.fr)} • ชิ้นละ 🪙${x.price}</span><button class="btn small muted" style="${B44}" data-scancel="${x.id}">เก็บคืน</button></div>`; }).join('') : '<p style="opacity:.7">ยังไม่ได้วางอะไร</p>');
+      if (tradable.length && pinSt && mine.length < S0.slots) {
+        h += `<div class="sec">➕ ลงประกาศขาย</div><div class="row" style="flex-wrap:wrap;gap:6px"><select id="stItem" style="min-height:36px">${tradable.map(k => { const i = itemInfo(k); return `<option value="${k}">${i.emoji} ${i.name} (มี ${inv[k]})</option>`; }).join('')}</select>`
+          + `<input id="stN" type="number" min="1" inputmode="numeric" value="1" style="width:64px;min-height:36px" title="จำนวน"> ${priceBox('stPrice')} <button class="btn small" style="${B44}" id="stPost">วางขาย</button></div><small id="stHint" style="opacity:.7"></small>`;
+      }
+    } else {
+      const myBids = bidSt.filter(x => x.mine === myKey), others = bidSt.filter(x => x.mine !== myKey);
+      h += '<div class="sec">🤝 คำเสนอซื้อ (ขายให้ได้เลย)</div>' + (others.length ? others.map(x => { const i = itemInfo(x.item), have = inv[x.item] || 0, q = Math.min(x.n, have);
+        let worst = 0; if (Shared.perishable(x.item) && freshSt.l[x.item]) { const c = Shared.freshCount(freshSt.l[x.item], Date.now() + timeOffset, false); worst = c[2] ? 2 : c[1] ? 1 : 0; }
+        const old = worst > x.fresh, off = !pinSt || q < 1 || old, net = p => p * x.price - Math.floor(p * x.price * S0.tax);
+        return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} <small>(${frName[x.fresh]})</small><br><small>ชิ้นละ 🪙${x.price} • โดย ${esc(x.name)} • ฉันมี ${have}${old ? ' • ของเก่าเกินที่เขารับ' : ''}</small></span><span><button class="btn small" style="${B44}" data-sfill="${x.id}" data-sn="1" ${off ? 'disabled' : ''}>ขาย 1 ได้ 🪙${net(1)}</button>${q > 1 ? ` <button class="btn small" style="${B44}" data-sfill="${x.id}" data-sn="${q}" ${off ? 'disabled' : ''}>ขาย ${q} ได้ 🪙${net(q)}</button>` : ''}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีใครเสนอซื้อ</p>');
+      h += `<div class="sec">📋 คำเสนอซื้อของฉัน (${myBids.length}/${S0.bidSlots})</div>` + (myBids.length ? myBids.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} • ชิ้นละ 🪙${x.price} <small>(${frName[x.fresh]} • กันเงินไว้ 🪙${x.n * x.price})</small></span><button class="btn small muted" style="${B44}" data-sbcancel="${x.id}">ยกเลิก คืนเงิน</button></div>`; }).join('') : '<p style="opacity:.7">ยังไม่ได้เสนอซื้อ</p>');
+      if (pinSt && myBids.length < S0.bidSlots) {
+        const all = Shared.SELLABLE.filter(k => Shared.isTradable(k));
+        h += `<div class="sec">➕ ตั้งเสนอซื้อ (กันเงินไว้ก่อน คืนเต็มเมื่อยกเลิก)</div><div class="row" style="flex-wrap:wrap;gap:6px"><select id="bdItem" style="min-height:36px">${all.map(k => { const i = itemInfo(k); return `<option value="${k}">${i.emoji} ${i.name}</option>`; }).join('')}</select>`
+          + `<input id="bdN" type="number" min="1" inputmode="numeric" value="1" style="width:64px;min-height:36px" title="จำนวน"> ${priceBox('bdPrice')}</div>`
+          + `<div class="row" style="flex-wrap:wrap;gap:6px"><select id="bdFresh" style="min-height:36px"><option value="0">🟢 ${frName[0]}</option><option value="1">🟡 ${frName[1]}</option><option value="2">🔴 ${frName[2]}</option></select> <button class="btn small" style="${B44}" id="bdPost">เสนอซื้อ</button></div><small id="bdHint" style="opacity:.7"></small>`;
+      }
     }
-    el.innerHTML = h; bindTabs();
-    const sel = $('stItem'), hint = () => { if (!sel) return; const b = Shared.tradeValue(sel.value); $('stPrice').value = $('stPrice').value || b; $('stHint').textContent = `ราคามาตรฐาน 🪙${b} • ตั้งได้ ${Math.max(1, Math.ceil(b * S0.min))}–${Math.floor(b * S0.max)} ต่อชิ้น`; };
-    if (sel) { sel.onchange = () => { $('stPrice').value = ''; hint(); }; hint(); $('stPost').onclick = () => send({ t: 'stall', a: 'post', item: sel.value, n: +$('stN').value, price: +$('stPrice').value }); }
-    el.querySelectorAll('[data-sbuy]').forEach(b => b.onclick = () => ask(`ซื้อ ${b.dataset.sn} ชิ้น?`, () => send({ t: 'stall', a: 'buy', id: +b.dataset.sbuy, n: +b.dataset.sn })));
+    el.innerHTML = h;
+    el.querySelectorAll('[data-ftab]').forEach(b => b.onclick = () => { fleaTab = b.dataset.ftab; renderTown(); });
+    const range = b => `ราคามาตรฐาน 🪙${b} • ตั้งได้ ${Math.max(1, Math.ceil(b * S0.min))}–${Math.floor(b * S0.max)} ต่อชิ้น`;
+    const sel = $('stItem'); if (sel) { const hint = () => { const b = Shared.tradeValue(sel.value), n = Math.max(1, +$('stN').value || 1), p = +$('stPrice').value || 0; $('stPrice').value = $('stPrice').value || b; $('stHint').textContent = `${range(b)} • ขายครบได้รับสุทธิ ~🪙${n * (+$('stPrice').value) - Math.floor(n * (+$('stPrice').value) * S0.tax)} (หักภาษี ${tax}%)`; };
+      sel.onchange = () => { $('stPrice').value = ''; hint(); }; $('stN').oninput = $('stPrice').oninput = hint; hint();
+      $('stPost').onclick = () => { if (fleaFar()) return; send({ t: 'stall', a: 'post', item: sel.value, n: +$('stN').value, price: +$('stPrice').value }); }; }
+    const bs = $('bdItem'); if (bs) { const hint = () => { const b = Shared.tradeValue(bs.value), n = Math.max(1, +$('bdN').value || 1); $('bdPrice').value = $('bdPrice').value || b; $('bdHint').textContent = `${range(b)} • จะกันเงินไว้ 🪙${n * (+$('bdPrice').value || 0)} (มี 🪙${coin})`; };
+      bs.onchange = () => { $('bdPrice').value = ''; hint(); }; $('bdN').oninput = $('bdPrice').oninput = hint; hint();
+      $('bdPost').onclick = () => { if (fleaFar()) return; send({ t: 'stall', a: 'bid', item: bs.value, n: +$('bdN').value, price: +$('bdPrice').value, fresh: +$('bdFresh').value }); }; }
+    el.querySelectorAll('[data-sbuy]').forEach(b => b.onclick = () => { if (fleaFar()) return; ask(`ซื้อ ${b.dataset.sn} ชิ้น?`, () => send({ t: 'stall', a: 'buy', id: +b.dataset.sbuy, n: +b.dataset.sn })); });
+    el.querySelectorAll('[data-sfill]').forEach(b => b.onclick = () => { if (fleaFar()) return; ask(`ขาย ${b.dataset.sn} ชิ้นให้คำเสนอซื้อนี้? (หักภาษี ${tax}%)`, () => send({ t: 'stall', a: 'fill', id: +b.dataset.sfill, n: +b.dataset.sn })); });
     el.querySelectorAll('[data-scancel]').forEach(b => b.onclick = () => send({ t: 'stall', a: 'cancel', id: +b.dataset.scancel }));
+    el.querySelectorAll('[data-sbcancel]').forEach(b => b.onclick = () => send({ t: 'stall', a: 'bcancel', id: +b.dataset.sbcancel }));
     el.querySelectorAll('[data-pinset]').forEach(b => b.onclick = () => showPinBox(pinSt));
     return;
   }
@@ -1016,7 +1067,6 @@ function toggleBuild(on) {
 function renderBuild() {
   const el = $('build'); el.classList.toggle('dragging', !!dragNew); el.classList.toggle('hidden', !build.on); document.body.classList.toggle('building', build.on);
   $('houseBtn').style.opacity = build.on ? 1 : .8;
-  $('homeQuick').classList.toggle('hidden', build.on); // ปิดเมนูตกแต่งแล้ว ปุ่มบ้านเด้งกลับมาข้างไฟฉาย
   if (!build.on) return;
   const ks = furnKeys();
   if (build.sel && !(inv['furn_' + build.sel] > 0)) build.sel = (ks[0] || '').slice(5) || null;
@@ -1094,7 +1144,6 @@ function bindDragNew(btn, f) { // ลากของจากรายการ�
 const renderBuildFlags = () => { if ($('build')) $('build').classList.toggle('dragging', !!dragNew); };
 function zoomBy(f) { if (scene && build.on) { bz.z = Math.max(1, Math.min(3, bz.z * f)); resize(); } else setZoom(userZoom * f); }
 $('houseBtn').onclick = homeAction;
-$('homeQuick').onclick = homeAction;
 // บ้านเพื่อน: ลีดเดอร์บอร์ดเรียงตามมูลค่าเฟอร์นิเจอร์ในบ้าน (ราคาร้าน) แล้วตามจำนวนชิ้น • กดชื่อเพื่อเข้าไปเยี่ยม
 const plotsShown = () => !$('plots').classList.contains('hidden');
 function openPlots() { closeOthers('plots'); $('plots').classList.remove('hidden'); send({ t: 'house', a: 'board' }); renderPlots(); }
@@ -1227,6 +1276,10 @@ function plantLock(c) { // null = ปลูกได้ตอนนี้ • �
   const w = Shared.plantWait ? Shared.plantWait(c, null, t) : null;
   return { s: w && w.s, txt: w ? waitTxt(w.ms) : '' };
 }
+function offSeason(c) { // พืชนอกฤดู (ปลูกได้ แต่ติดผลแค่ตามโอกาส) → ข้อความเตือน • ในฤดู = ''
+  if (!Shared.inSeason || !Shared.OFFSEASON || Shared.inSeason(c, seasonNow())) return '';
+  return '🍂 นอกฤดู ติดผลน้อย (~' + Math.round(Shared.OFFSEASON.chance * 100) + '%)';
+}
 function cropSeasonTag(c) { // ฤดูที่ปลูกได้ของพืชนี้ (null = ทุกฤดู)
   const S = Shared.SEASONS; if (!S || CROPS[c].lv <= (S.freeLv || 0)) return null;
   return S.list.find(x => x.crops.includes(c)) || null;
@@ -1312,7 +1365,8 @@ function showPicker() {
     const b = document.createElement('button');
     b.className = 'opt' + ((s === 'seed' ? 'seed_' + selSeed : s === 'rod' ? selBait : selFeed) === k ? ' sel' : ''); b.disabled = !!locked;
     const sl = s === 'seed' && !locked ? plantLock(k.slice(5)) : null; // นอกฤดู: หม่น + 🔒 แต่ยังเลือกได้
-    b.innerHTML = `<b>${info.emoji}</b>${s === 'seed' ? CROPS[k.slice(5)].name : info.name.split(' ')[0]}<br><span>${locked ? '🔒 Lv' + info.lv : (sl ? '🔒' + (sl.s ? sl.s.emoji : '') + ' ' : '') + '×' + have}</span>`;
+    b.innerHTML = `<b>${info.emoji}</b>${s === 'seed' ? CROPS[k.slice(5)].name : info.name.split(' ')[0]}<br><span>${locked ? '🔒 Lv' + info.lv : (s === 'seed' && offSeason(k.slice(5)) ? '🍂 ' : '') + (sl ? '🔒' + (sl.s ? sl.s.emoji : '') + ' ' : '') + '×' + have}</span>`;
+    if (s === 'seed' && !locked && offSeason(k.slice(5))) b.title = offSeason(k.slice(5));
     b.style.minHeight = '64px';
     if (sl) b.style.opacity = .6;
     b.onclick = e => { e.stopPropagation(); if (s === 'seed') selSeed = k.slice(5); else if (s === 'rod') { selBait = k; ls.set('mw_bait', k); } else selFeed = k; hidePicker(); renderHud(); };
@@ -1353,13 +1407,24 @@ $('bagBtn').onclick = () => (bagShown() && bagTab === 'items' ? closeBag() : ope
 $('statBtn').onclick = () => (bagShown() && bagTab === 'status' ? closeBag() : openBag('status'));
 $('lookBtn').onclick = () => (bagShown() && bagTab === 'look' ? closeBag() : openBag('look'));
 $('bookBtn').onclick = () => (bagShown() && bagTab === 'book' ? closeBag() : openBag('book'));
-setInterval(() => { if (bagShown() && bagTab === 'status') renderBag(); }, 1000);
+let volHold = false; // กำลังลากแถบเสียง ห้ามวาดแท็บใหม่ ไม่งั้นแถบหลุดมือ
+addEventListener('pointerup', () => { volHold = false; }); addEventListener('pointercancel', () => { volHold = false; });
+$('bagBody').addEventListener('pointerdown', e => { if (e.target.closest('[data-vol]')) volHold = true; });
+$('bagBody').addEventListener('input', e => {
+  const r = e.target.closest('[data-vol]'); if (!r) return;
+  const v = Math.max(0, Math.min(1, (+r.value || 0) / 100)), which = r.dataset.vol;
+  if (which === 'sfx') { sfxVol = v; ls.set('mw_sfxvol', String(v)); if (smaster) smaster.gain.value = sfxGain(); } else { musicVol = v; ls.set('mw_musvol', String(v)); }
+  const lab = document.querySelector('[data-volv="' + which + '"]'); if (lab) lab.textContent = Math.round(v * 100) + '%';
+});
+$('bagBody').addEventListener('change', e => { if (e.target.closest('[data-vol=sfx]')) playSfx('coin'); });
+setInterval(() => { if (bagShown() && bagTab === 'status' && !volHold && !(document.activeElement && document.activeElement.type === 'range')) renderBag(); }, 1000);
 $('bagClose').onclick = closeBag;
 $('bag').addEventListener('pointerdown', e => { if (e.target === $('bag')) closeBag(); });
 document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => { bagTab = t.dataset.tab; renderBag(); });
 $('bagBody').addEventListener('click', e => {
   if (e.target.closest('[data-pinset]')) { showPinBox(pinSt); return; }
   { const b = e.target.closest('[data-star]'); if (b) { send({ t: 'star', skill: b.dataset.star }); return; } }
+  { const sc = e.target.closest('[data-stat]'), ss = e.target.closest('[data-skillsel]'); if (!e.target.closest('button')) { if (sc) { statSel = statSel === 'c' + sc.dataset.stat ? '' : 'c' + sc.dataset.stat; renderBag(); return; } if (ss) { statSel = statSel === 's' + ss.dataset.skillsel ? '' : 's' + ss.dataset.skillsel; renderBag(); return; } } } // เมนูสถานะ: กดอันไหนก็โชว์รายละเอียดในหน้าเดิม ไม่ปิดหน้าต่าง กดอันอื่นต่อได้
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
   const sb = e.target.closest('[data-sub]'); if (sb) { bagSub = sb.dataset.sub; renderBag(); return; }
   const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); return; }
@@ -1386,7 +1451,27 @@ function syncVehBtn() { // เรียกทุกเฟรม แต่แต�
   if (!own.length) setVehMenu(false);
   $('vehMenu').innerHTML = '<div class="mtitle">🚲 ยานพาหนะ</div>' + own.map(v => `<button class="btn small${v === cur ? ' on' : ''}" data-v="${v}">${V[v].emoji} ${V[v].name}${v === cur ? ' ✅' : ''}</button>`).join('') + (cur ? '<button class="btn small off" data-v="">🚶 ลงรถ</button>' : '');
 }
-$('vehBtn').onclick = () => { setVehMenu($('vehMenu').classList.contains('hidden')); playSfx('click'); };
+// แตรยานพาหนะ: ปุ่มบนจอ + ปุ่ม N (ขับรถ/จักรยาน/เรือเท่านั้น) กดเองเล่นเสียงทันที คูลดาวน์ 1.2 วิ เซิร์ฟเวอร์ broadcast {t:'horn', id, v} ให้คนอื่นได้ยินตามระยะ
+let hornAt = 0, hornKey = '';
+const hornKind = () => me && me.veh && inTown() ? me.veh : me && inOcean() ? 'boat' : '';
+function syncHornBtn() { const k = hornKind(), b = $('hornBtn'); if (k === hornKey) return; hornKey = k; b.classList.toggle('hidden', !k); b.textContent = k === 'car' ? '📢' : k === 'boat' ? '🚢' : '📣'; }
+function hornSound(v, k) { // แตรสังเคราะห์ ต่างโทนตามชนิด k = ความดัง 0..1 ตามระยะ
+  if (!sfxOn || !(k > 0.02)) return;
+  if (v === 'car') { tone(392, 0.32, { type: 'square', vol: 0.22, k, lp: 1800 }); tone(494, 0.32, { type: 'square', vol: 0.18, k, lp: 1800 }); }
+  else if (v === 'boat') { tone(130, 0.9, { type: 'sawtooth', vol: 0.3, k, lp: 700, attack: 0.08 }); tone(98, 0.9, { type: 'sawtooth', vol: 0.22, k, lp: 600, attack: 0.08 }); }
+  else if (v === 'scooter') { tone(700, 0.14, { type: 'square', vol: 0.16, k, lp: 2200 }); tone(700, 0.14, { type: 'square', vol: 0.16, k, delay: 0.18, lp: 2200 }); }
+  else { tone(1800, 0.1, { type: 'triangle', vol: 0.2, k }); tone(2200, 0.14, { type: 'triangle', vol: 0.2, k, delay: 0.12 }); } // จักรยาน: กริ๊ง
+}
+// ตั๋ววาปกลับกองไฟ: ปุ่มบนจอ (ในถ้ำชั้น minFloor+ และมีตั๋ว) + Action ที่ไม่ได้หันหาแร่ กดซ้ำภายใน 3 วิ = ยืนยัน (ตั๋วเสียเงิน)
+let recallKey = '', recallAskAt = 0;
+const recallOk = () => !!me && cave && !inSea() && caveFlr >= Shared.MINE.recall.minFloor && caveFlr <= Shared.MINE.floors && (inv.recall | 0) > 0;
+function syncRecallBtn() { const n = recallOk() ? inv.recall | 0 : 0, k = String(n); if (k === recallKey) return; recallKey = k; const b = $('recallBtn'); b.classList.toggle('hidden', !n); b.textContent = `🎫 ใช้ตั๋ววาป (เหลือ ${n})`; }
+function askRecall(now) { if (now - recallAskAt < 3000) { recallAskAt = 0; send({ t: 'recall' }); return; } recallAskAt = now; toast(`🎫 จะใช้ตั๋ววาปกลับกองไฟใช่ไหม (เหลือ ${inv.recall | 0} ใบ) กด Action ซ้ำอีกครั้งเพื่อยืนยัน`); }
+$('recallBtn').addEventListener('pointerdown', e => { e.preventDefault(); askRecall(performance.now()); });
+function honk() { const now = performance.now(); if (!me || !hornKind() || now - hornAt < 1200) return; hornAt = now; hornSound(hornKind(), 1); send({ t: 'horn' }); }
+$('hornBtn').addEventListener('pointerdown', e => { e.preventDefault(); honk(); });
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"][data-stat],[role="button"][data-skillsel]')) { e.preventDefault(); e.target.click(); } }); // การ์ดสถานะ/สกิลกดด้วยคีย์บอร์ดได้
+$('vehBtn').onclick =() => { setVehMenu($('vehMenu').classList.contains('hidden')); playSfx('click'); };
 $('vehMenu').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || !me) return; send({ t: 'veh', v: b.dataset.v === me.veh ? '' : b.dataset.v }); setVehMenu(false); playSfx('click'); }); // กดรถที่ขี่อยู่ซ้ำ = ลงรถ
 addEventListener('pointerdown', e => { if (!$('vehMenu').classList.contains('hidden') && !e.target.closest('#vehMenu') && !e.target.closest('#vehBtn')) setVehMenu(false); });
 $('petBtn').onclick = $('petQuick').onclick = () => { if (me) { openPetMenu(); playSfx('click'); } };
@@ -1395,7 +1480,7 @@ $('lampBtn').onclick = () => { if (me) { send({ t: 'lamp', on: !me.lamp }); play
 const CATS = [['furn', '🛋️ เฟอร์นิเจอร์ (วางในบ้านด้วยปุ่ม 🏠)'], ['food', '🍽️ อาหารสำเร็จรูป (กินแล้วหายหิว)'], ['seed', '🌱 เมล็ดพันธุ์'], ['crop', '🥬 พืชผล'], ['fish', '🐟 ปลาที่ตกได้'], ['animal', '🥚 ผลผลิตจากสัตว์'], ['feed', '🌾 อาหารสัตว์ / ยา'], ['tool', '🪱 เหยื่อตกปลา'], ['wood', '🪵 ไม้'], ['gear', '🎒 อุปกรณ์ที่ซื้อ']];
 // แท็บย่อยในกระเป๋า: ชื่อ, ป้าย, หมวดของที่รวมอยู่ (เหยื่อตกปลาอยู่กับปลา)
 const BAG_SUBS = [['furn', '🛋️ เฟอร์นิเจอร์', ['furn']], ['crop', '🥬 ผัก-ผลไม้', ['crop']], ['fish', '🐟 ปลา', ['fish', 'tool']], ['wood', '🪵 ไม้', ['wood']], ['gear', '🧰 อุปกรณ์', ['gear']], ['other', '🗂️ อื่นๆ', ['seed', 'animal', 'feed']]]; // อาหารไม่อยู่ในกระเป๋า กินได้จากไอคอนความหิว
-let bagSub = 'furn';
+let bagSub = 'furn', statSel = '';
 function renderBag() {
   document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('on', t.dataset.tab === bagTab));
   const el = $('bagBody');
@@ -1412,17 +1497,20 @@ function renderBag() {
       ['🐔 ไก่ในฟาร์ม', animalCount('chicken') + ' ตัว'], ['🐄 วัวในฟาร์ม', animalCount('cow') + ' ตัว'], ['🐖 หมูในฟาร์ม', animalCount('pig') + ' ตัว'],
       ['🪱 เหยื่อตกปลา', BAIT_KEYS.map(k => itemInfo(k).emoji + (inv[k] || 0)).join(' ')], ['⭐ ระดับการเล่น', 'Lv ' + playLevel(skills)],
     ];
+    const CARD_INFO = { '🪙 เหรียญ': 'เหรียญที่มีอยู่ ใช้ซื้อของ อัปเกรดเครื่องมือ และรับดาวความชำนาญ', '💰 ของที่ขายได้ (รวม)': 'ราคารวมถ้าขายของในกระเป๋าทั้งหมดตอนนี้ (ราคาจริงขึ้นลงตามตลาดและความสด)', '📦 ของในกระเป๋า': 'จำนวนของทุกชิ้นที่ถืออยู่ ไม่นับเหรียญ', '📍 ตำแหน่ง': 'พิกัดช่องที่ยืนอยู่ตอนนี้ (x, y)', '🕒 เวลาในเกม': 'เวลาในเกมตอนนี้ กลางคืนมืดลง ตะเกียงช่วยให้เห็นได้', '👥 ออนไลน์': 'จำนวนผู้เล่นในแมพนี้ตอนนี้ กดปุ่ม 👥 เพื่อดูรายชื่อ', '🎙️ ไมค์': 'สถานะไมค์ของเรา กดปุ่ม 🎤 บนแถบบนเพื่อเปิดหรือปิด', '🪱 เหยื่อตกปลา': 'เหยื่อที่เหลือแต่ละแบบ ใช้ตอนตกปลาเพื่อให้ปลาตัวใหญ่หรือหายากขึ้น', '⭐ ระดับการเล่น': 'ระดับรวมคิดจากเลเวลอาชีพทุกสาย ยิ่งสูงยิ่งปลดล็อกของใหม่' };
+    const cardDetail = c => CARD_INFO[c[0]] || (/คันเบ็ด|บัวรดน้ำ|จอบ|ตะกร้า|กระทะ/.test(c[0]) ? 'เครื่องมือที่ใช้อยู่ตอนนี้ อัปเกรดได้ที่ร้านอุปกรณ์เพื่อทำงานได้ไวขึ้นหรือได้ของดีขึ้น' : /ในฟาร์ม/.test(c[0]) ? 'จำนวนสัตว์ที่เลี้ยงไว้ในฟาร์ม ให้อาหารทุกวันเพื่อให้ผลผลิต' : '');
     const hl = hunger <= 0 ? 'หิวจนไม่มีแรง!' : hunger <= 20 ? 'หิวมาก' : hunger <= 50 ? 'เริ่มหิว' : 'อิ่มดี';
     el.innerHTML = `<div class="row"><b style="font-size:17px">👤 ${me.name.replace(/</g, '&lt;')}</b><span><span class="sw" style="display:inline-block;width:18px;height:18px;vertical-align:middle;background:${me.color}"></span> <span class="sw" style="display:inline-block;width:18px;height:18px;vertical-align:middle;background:${me.hat}"></span></span></div>`
       + `<div class="sec">🍖 ความอิ่ม — ${hl} (${hunger}/100)</div><div class="hbar"><i style="width:${hunger}%;${hunger <= 20 ? 'background:#e74c3c' : ''}"></i></div><small style="opacity:.7;font-size:12px">ลดลงเรื่อยๆ ขณะออนไลน์ • ต่ำกว่า 15 เดินช้าลง • ถึง 0 ใช้เครื่องมือไม่ได้ • กินอาหารที่ร้านอาหารหรือกินผลผลิตของตัวเองได้</small>`
-      + `<div class="stat">${cards.map(c => `<div>${c[0]}<b>${c[1]}</b></div>`).join('')}</div>`
+      + `<div class="stat">${cards.map((c, i) => `<div data-stat="${i}" tabindex="0" role="button" style="cursor:pointer${statSel === 'c' + i ? ';background:#fff1c9' : ''}">${c[0]}<b>${c[1]}</b></div>`).join('')}</div>`
+      + (/^c\d+$/.test(statSel) && cards[+statSel.slice(1)] ? `<div class="skill" style="border:2px solid var(--edge);border-radius:10px;padding:8px;background:#fff8e0;margin-bottom:6px"><b>${cards[+statSel.slice(1)][0]}</b>: ${esc(String(cards[+statSel.slice(1)][1]))}<small style="display:block;opacity:.85">${esc(cardDetail(cards[+statSel.slice(1)]))}</small></div>` : '')
       + `<button class="btn small" data-pinset="1" style="margin:4px 6px 6px 0">🔐 ${pinSt ? 'เปลี่ยน PIN' : 'ตั้ง PIN'}</button>`
-      + `<button class="btn small" data-sfx="1" style="margin:4px 0 6px">${sfxOn ? '🔊 เอฟเฟกต์เสียง: เปิด' : '🔇 เอฟเฟกต์เสียง: ปิด'}</button><div class="sec">เลเวลอาชีพ</div>`
+      + `<div class="sec">🔊 เสียง</div><div class="row"><button class="btn small" data-sfx="1">${sfxOn ? '🔊 เสียงเกม: เปิด' : '🔇 เสียงเกม: ปิด'}</button></div><label class="row" style="font-size:13px"><span>🎮 เสียงเกม</span><input type="range" min="0" max="100" value="${Math.round(sfxVol * 100)}" data-vol="sfx" style="flex:1;margin:0 8px"><b data-volv="sfx">${Math.round(sfxVol * 100)}%</b></label><label class="row" style="font-size:13px"><span>🎵 ดนตรี</span><input type="range" min="0" max="100" value="${Math.round(musicVol * 100)}" data-vol="music" style="flex:1;margin:0 8px"><b data-volv="music">${Math.round(musicVol * 100)}%</b></label><small style="opacity:.65">ดนตรียังไม่มีเพลง ตั้งค่าไว้ก่อนได้เลย</small><div class="sec">เลเวลอาชีพ</div>`
       + Object.keys(SKILLS).map(k => {
         const L = lvl(k), xp = skills[k] || 0, base = xpFor(L, k), need = L >= MAX_LV ? 0 : xpFor(L + 1, k) - base;
         const st = starsSt[k] || 0, M = Shared.MASTERY, nxt = st < M.max && L >= MAX_LV ? xpFor(MAX_LV, k) + (st + 1) * Shared.masteryXp(k) : 0;
-        return `<div class="skill"><b>${SKILLS[k].emoji} ${SKILLS[k].name}</b> — เลเวล ${L}${L >= MAX_LV ? ' (สูงสุด)' : ''} ${'⭐'.repeat(st)} <small style="display:inline">XP ${xp}</small><div class="bar"><i style="width:${need ? Math.min(100, Math.round((xp - base) / need * 100)) : 100}%"></i></div>`
-          + (nxt ? `<small>ดาวความชำนาญที่ ${st + 1}: XP ${nxt.toLocaleString()} + 🪙${M.costBase * (st + 1)} <button class="btn small" data-star="${k}" ${xp < nxt || (inv.coin || 0) < M.costBase * (st + 1) ? 'disabled' : ''}>รับดาว</button></small>` : '') + '</div>';
+        return `<div class="skill" data-skillsel="${k}" tabindex="0" role="button" style="cursor:pointer${statSel === 's' + k ? ';background:#fff8e0' : ''}"><b>${SKILLS[k].emoji} ${SKILLS[k].name}</b> — เลเวล ${L}${L >= MAX_LV ? ' (สูงสุด)' : ''} ${'⭐'.repeat(st)} <small style="display:inline">XP ${xp}</small><div class="bar"><i style="width:${need ? Math.min(100, Math.round((xp - base) / need * 100)) : 100}%"></i></div>`
+          + (statSel === 's' + k ? `<small style="opacity:1">${L >= MAX_LV ? 'เลเวลสูงสุดแล้ว' : `อีก ${(need - (xp - base)).toLocaleString()} XP ถึงเลเวล ${L + 1} (ตอนนี้ ${(xp - base).toLocaleString()}/${need.toLocaleString()})`} • ดาวที่ได้ ${st}/${M.max}</small>` : '') + (nxt ? `<small>ดาวความชำนาญที่ ${st + 1}: XP ${nxt.toLocaleString()} + 🪙${M.costBase * (st + 1)} <button class="btn small" data-star="${k}" ${xp < nxt || (inv.coin || 0) < M.costBase * (st + 1) ? 'disabled' : ''}>รับดาว</button></small>` : '') + '</div>';
       }).join('');
   } else if (bagTab === 'eat') { // กดไอคอนความหิว: แสดงอาหารที่มีในตัวให้กินได้ ถ้าไม่มีก็แสดงเมนูว่าง ๆ
     const ks = Object.keys(inv).filter(k => { const i = itemInfo(k); return i && i.food && inv[k] > 0; });
@@ -1497,6 +1585,8 @@ function closeShop() { shopKind = null; $('shop').classList.add('hidden'); }
 $('shopClose').onclick = closeShop;
 $('shop').addEventListener('pointerdown', e => { if (e.target === $('shop')) closeShop(); });
 const animalCount = type => { let n = 0; const my = me && me.name; animals.forEach(a => { if (a.type === type && (!a.on || a.on === my)) n++; }); return n; }; // นับเฉพาะสัตว์ของฉัน (cap ต่อคน)
+let cookPins = []; try { const a = JSON.parse(ls.get('mw_cookpins') || '[]'); if (Array.isArray(a)) cookPins = a.filter(x => typeof x === 'string').slice(0, 100); } catch (e) {} // สูตรที่ปักหมุด (localStorage)
+let cookReadyAt = 0; // เตาพักถึงเมื่อไร (ms ของเครื่อง) จาก cookcd
 let farmTab = 'gear', cookFilter = null, cookOpen = null; // เมนูเชฟ: ตัวกรอง (null = อัตโนมัติ) / สูตรที่ขยายอยู่
 // ทุกร้านที่รับซื้อมีแท็บ 💰 ขาย ไว้ท้ายสุด (แท็บซื้อของร้านที่ไม่มีแท็บเดิม)
 const SHOP_TABS = { // ทุกร้านที่มีซื้อขายใช้รูปแบบเดียวกัน: 🛒 ซื้อ → 🧰 อุปกรณ์ → (ทำ/ประดิษฐ์) → 💰 ขาย
@@ -1513,6 +1603,14 @@ const furnCatOf = k => (FURN[k.slice(5)] || {}).cat; // หมวดของท
 const FISH_DISH_SELL_TAB = new Set(['dish_fishsoup', 'dish_sashimi', 'dish_fishburger', 'dish_fishpie']);
 const seedProfit = k => { const c = CROPS[k.slice(5)]; return (c.sell - c.seed) / (c.time / 60000); };
 let petNames = {}, petSt = {}; // สถานะสัตว์เลี้ยงของเรา: { dog: { h: ความอิ่ม, sick } }
+const petLvOf = st => Shared.petLevel(st && st.b); // ระดับสัตว์ 1-5 จากความผูกพัน (คำนวณเหมือนเซิร์ฟเวอร์)
+function petBondHtml(st) { // ระดับ + แถบความผูกพันไปเป้าหมายถัดไป
+  const N = Shared.PETLV.need, lv = petLvOf(st), b = Math.max(0, (st && st.b) || 0);
+  if (lv >= N.length) return `<br><small>💞 ระดับ ${lv} (สูงสุด)</small>`;
+  const lo = N[lv - 1], span = N[lv] - lo, got = Math.min(span, Math.max(0, b - lo)), pc = Math.round(got / span * 100);
+  return `<br><small>💞 ระดับ ${lv} • ผูกพัน ${Math.floor(got)}/${span} (ถึงระดับ ${lv + 1})</small><div class="hbar" style="width:120px;height:7px"><i style="width:${pc}%;background:#e67eb0"></i></div>`;
+}
+function petPatLeft(st) { return Math.max(0, ((st && st.pat) || 0) + Shared.PETLV.patCdMs - Date.now()); } // ms ที่ต้องรอก่อนลูบหัวได้อีก
 function petStatHtml(c, st, out) { // บรรทัดค่าสถานะ + สถานะผลตอนนี้ (พาออก/หิว/ป่วย)
   const C = COMPANIONS[c], b = Shared.petBonus(c, st.h, st.sick);
   const stats = Shared.PETSTAT.keys.filter(([k]) => C.st && C.st[k]).map(([k, ic, nm]) => `${ic} ${nm} +${Math.round(C.st[k] * Shared.PETSTAT.unit * 100)}%`).join(' • ');
@@ -1525,7 +1623,7 @@ function petPanelHtml() { // เมนูสัตว์เลี้ยง: พ�
   if (!own.length) return h + '<p style="opacity:.7;margin:6px 0">ยังไม่มีสัตว์เลี้ยง ซื้อได้ที่ร้านสัตว์เลี้ยง (36,10) 🐶🐱🐦</p>';
   for (const c of own) {
     const C = COMPANIONS[c], st = petSt[c] || { h: 100, sick: false }, out = cur === c, hp = Math.round(st.h);
-    h += `<div class="row"><span>${C.emoji} ${petNames[c] ? esc(petNames[c]) + ' <small>(' + C.name + ')</small>' : C.name}${st.sick ? ' 🤒 <small style="color:#c0392b">ป่วย</small>' : ''}${petStatHtml(c, st, out)}<br><small>${out ? (mode === 'play' ? '🎾 กำลังวิ่งเล่น' : '🚶 เดินตามคุณ') : '🏠 อยู่บ้าน'} • อิ่ม ${hp}/100${out ? '' : ' (ไม่หิวตอนอยู่บ้าน)'}</small><div class="hbar" style="width:120px;height:7px"><i style="width:${hp}%;${hp <= 25 ? 'background:#e74c3c' : ''}"></i></div></span><span>`
+    h += `<div class="row"><span>${C.emoji} ${petNames[c] ? esc(petNames[c]) + ' <small>(' + C.name + ')</small>' : C.name}${st.sick ? ' 🤒 <small style="color:#c0392b">ป่วย</small>' : ''}${petStatHtml(c, st, out)}<br><small>${out ? (mode === 'play' ? '🎾 กำลังวิ่งเล่น' : '🚶 เดินตามคุณ') : '🏠 อยู่บ้าน'} • อิ่ม ${hp}/100${out ? '' : ' (ไม่หิวตอนอยู่บ้าน)'}</small><div class="hbar" style="width:120px;height:7px"><i style="width:${hp}%;${hp <= 25 ? 'background:#e74c3c' : ''}"></i></div>${petBondHtml(st)}</span><span>`
       + (out ? `<button class="btn small${mode === 'follow' ? ' muted' : ''}" data-petmode="follow" data-pet="${c}">🚶 เดินตาม</button> <button class="btn small${mode === 'play' ? ' muted' : ''}" data-petmode="play" data-pet="${c}">🎾 ปล่อยเล่น</button> <button class="btn small muted" data-petmode="store" data-pet="">🏠 เก็บ</button>`
         : `<button class="btn small" data-petmode="follow" data-pet="${c}">🐾 พาออกมา</button>`)
       + ` <button class="btn small muted" data-petname="${c}">✏️ ตั้งชื่อ</button></span></div>`;
@@ -1533,6 +1631,7 @@ function petPanelHtml() { // เมนูสัตว์เลี้ยง: พ�
   const ci = cur ? petSt[cur] || { h: 100, sick: false } : null;
   h += '<div class="sec">🦴 ดูแลสัตว์เลี้ยง</div>'
     + `<div class="row"><span>🦴 ให้อาหาร<br><small>มีอาหาร ${inv.petfood || 0} ชิ้น • +${PETCARE.food} อิ่ม • ซื้อที่ร้านสัตว์เลี้ยง</small></span><span><button class="btn small" data-petcare="feed" ${cur && inv.petfood > 0 && ci.h < 95 ? '' : 'disabled'}>ให้อาหาร</button></span></div>`
+    + `<div class="row"><span>🤚 ลูบหัว<br><small>+${Shared.PETLV.pat} ผูกพัน • ${petPatLeft(ci) > 0 ? 'รออีก ' + Math.ceil(petPatLeft(ci) / 60000) + ' นาที' : 'ลูบได้ทุก ' + Math.round(Shared.PETLV.patCdMs / 60000) + ' นาที'} • หันหน้าหาสัตว์แล้วกด Action ก็ได้</small></span><span><button class="btn small" data-petcare="pat" ${cur && !ci.sick && petPatLeft(ci) <= 0 ? '' : 'disabled'}>🤚 ลูบหัว</button></span></div>`
     + `<div class="row"><span>💊 รักษาสัตว์ป่วย<br><small>มียา ${inv.medicine || 0} ขวด • สัตว์หิวจัดจะป่วย (เดินช้า เศร้า)</small></span><span><button class="btn small" data-petcare="heal" ${cur && ci.sick && inv.medicine > 0 ? '' : 'disabled'}>รักษา</button></span></div>`
     + '<p style="font-size:12px;opacity:.65;margin:8px 0 0">📚 ฉลาด = XP ทุกสายเพิ่ม • 🏃 ว่องไว = เดินเร็วขึ้น • 🍀 โชค = ลุ้นได้ผลผลิตเพิ่ม 1 ชิ้น (เก็บผัก ตกปลา ขุดแร่ ตัดไม้ เก็บของจากสัตว์) • ผลทำงานเมื่อพาออกมา ไม่ป่วย และอิ่มพอ (หิว = ครึ่งเดียว)<br>💡 ต้องพาสัตว์ออกมาก่อนถึงจะให้อาหาร/รักษาได้ • ปล่อยเล่นแล้วสัตว์จะซนอยู่รอบจุดที่ปล่อย • เดินตาม: ห่างเกิน 2 ช่องจะวิ่งมาหา ยืนเฉยๆ จะเดินไปมาใกล้ตัว</p>';
   return h;
@@ -1557,7 +1656,7 @@ function renderLift() {
 function openPetMenu() { closeOthers('shop'); shopKind = 'petmenu'; $('shop').classList.remove('hidden'); renderShop(); }
 function petSpeedMul() { // 🏃 สัตว์เลี้ยงที่พาออกมา เดินเร็วขึ้นตามค่าสถานะ (ไม่ป่วย/อิ่มพอ)
   const c = me && me.pet; if (!c || !COMPANIONS[c]) return 1;
-  const st = petSt[c] || { h: 100, sick: false }; return 1 + Shared.petBonus(c, st.h, st.sick).spd;
+  const st = petSt[c] || { h: 100, sick: false }; return 1 + Shared.petBonus(c, st.h, st.sick, petLvOf(st)).spd;
 }
 function updatePetBtn() {
   const own = Object.keys(COMPANIONS).some(c => inv['pet_' + c] > 0), b = $('petBtn'), q = $('petQuick');
@@ -1616,7 +1715,8 @@ function renderShop() {
       const cid = k.slice(5), tg = cropSeasonTag(cid), lk = plantLock(cid);
       if (!tg && !freeHdr) { freeHdr = true; const fl = (Shared.SEASONS && Shared.SEASONS.freeLv) || 0; if (fl) h += `<div class="sec">✅ Lv≤${fl} ปลูกได้ทุกฤดู</div>`; }
       if (tg && freeHdr === true) { freeHdr = 2; h += '<div class="sec">🌦️ ปลูกตามฤดู</div>'; }
-      sub += !tg ? '' : locked ? ` • ${tg.emoji} ${tg.name}` : lk ? ` • 🔒 ${tg.emoji} ${tg.name}${lk.txt ? ' รออีก ' + lk.txt : ''} (ซื้อเก็บไว้ได้)` : ` • ${tg.emoji} ${tg.name} 🌟 ปลูกได้ ราคาดี`;
+      const os = offSeason(cid);
+      sub += os && !locked ? ' • ' + os : !tg ? '' : locked ? ` • ${tg.emoji} ${tg.name}` : lk ? ` • 🔒 ${tg.emoji} ${tg.name}${lk.txt ? ' รออีก ' + lk.txt : ''} (ซื้อเก็บไว้ได้)` : ` • ${tg.emoji} ${tg.name} 🌟 ปลูกได้ ราคาดี`;
     }
     if (seedTab) { const c = CROPS[k.slice(5)], pr = seedProfit(k), ix = profitRank.indexOf(k); sub += ` • กำไร ${c.sell - c.seed}/ต้น (${pr.toFixed(1)}/นาที) ${ix < 3 ? '⭐ ดี' : ix >= profitRank.length - 3 ? '▼ ต่ำ' : ''}`; }
     const lockTxt = locked ? ` <small>🔒 Lv${i.lv}</small>` : '';
@@ -1666,6 +1766,8 @@ function renderShop() {
   }
   if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายชนิดเดิมซ้ำๆ ราคาของคุณจะตกเร็วและฟื้นช้า (ตกเหลือต่ำสุด ~20–25% ของราคาปกติ) • ขายหมวดหนึ่งเยอะ หมวดนั้นตกเร็ว แต่หมวดอื่นฟื้นเร็วขึ้น • มีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
   if (cookTab) {
+    const cdLeft = () => Math.max(0, Math.ceil((cookReadyAt - Date.now()) / 1000)), cd = cdLeft() > 0;
+    if (cd) h += `<div class="banner" id="ckCd" style="background:#ffe3d6">⏳ เตายังร้อน ทำจานต่อไปได้อีก ${cdLeft()} วิ</div>`;
     h += `<div class="sec">👨‍🍳 ห้องครัวเชฟ — เชฟเลเวล ${lvl('cook')} (ทำอาหารข้ามสาย ได้ XP เชฟ ยิ่งเลเวลสูงปลดสูตรแพงขึ้น)</div>`;
     const have = c => Object.keys(inv).reduce((s, k) => s + (inv[k] > 0 && cookCat(c, k) ? inv[k] : 0), 0);
     const haveU = c => Object.keys(inv).filter(k => inv[k] > 0 && cookCat(c, k)).length; // จำนวนชนิดที่มี (สูตรที่ต้องคนละชนิด)
@@ -1678,7 +1780,8 @@ function renderShop() {
     h += `<div class="ck-filters">${FILTERS.map(([c, n]) => `<button class="chip${filt === c ? ' on' : ''}" data-ckf="${c}">${n}</button>`).join('')}</div>`;
     let list = st.filter(x => filt === 'now' ? x.can : filt === 'lock' ? x.locked : filt === 'all' ? true : catOf(x.r, filt));
     const grp = x => x.locked ? 2 : x.ok ? 0 : 1;
-    list.sort((a, b) => grp(a) - grp(b) || a.r.lv - b.r.lv || a.i - b.i);
+    const pinN = x => cookPins.includes(x.r.id) ? 0 : 1; // สูตรที่ปักหมุดขึ้นบนสุด
+    list.sort((a, b) => pinN(a) - pinN(b) || grp(a) - grp(b) || a.r.lv - b.r.lv || a.i - b.i);
     const nextLock = st.filter(x => x.locked).reduce((m, x) => !m || x.r.lv < m.r.lv ? x : m, null);
     if (!list.length) h += '<p style="opacity:.7;margin:6px 0">' + (filt === 'now' ? 'ตอนนี้ยังไม่มีสูตรที่ทำได้ ลองดูแท็บ "ทั้งหมด" เพื่อเช็กว่าขาดอะไร' : 'ไม่มีสูตรในหมวดนี้') + '</p>';
     for (const x of list) {
@@ -1686,7 +1789,7 @@ function renderShop() {
       if (x.locked) { h += `<div class="ck-card lock${nextLock && nextLock.r.id === r.id ? ' next' : ''}"><div class="ck-head"><span class="ck-ic">${r.emoji}</span><span class="ck-nm">${r.name}<small>🔒 ปลดที่เชฟ Lv ${r.lv}</small></span></div></div>`; continue; }
       const chips = r.in.map(n => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, got = hv(n); return `<span class="ck-chip ${got >= n.n ? 'ok' : 'no'}">${emo}${n.k ? itemInfo(n.k).name.replace(/ \(.*$/, '') : ''}×${n.n}${n.u ? ' คนละชนิด' : ''}${got >= n.n ? '' : ` (มี ${got})`}</span>`; }).join('');
       const mk = Math.min(...r.in.map(n => n.u ? (hv(n) >= n.n ? 1 : 0) : n.c ? Math.floor(hv(n) / r.in.filter(m => m.c === n.c && !m.u).reduce((t, m) => t + m.n, 0)) : Math.floor(hv(n) / n.n)), f > 0 ? Math.floor(coin / f) : 99), open = cookOpen === r.id;
-      h += `<div class="ck-card${x.can ? '' : ' miss'}"><div class="ck-head" data-ckx="${r.id}"><span class="ck-ic">${r.emoji}</span><span class="ck-nm">${r.name}<small>ขายได้ราว 🪙${r.sell} ${open ? '▴' : '▾'}</small></span><button class="btn small" data-cook="${r.id}" ${x.can ? '' : 'disabled'}>ทำ (×${Math.max(0, mk)})</button></div><div class="ck-chips">${chips}</div>`
+      h += `<div class="ck-card${x.can ? '' : ' miss'}"><div class="ck-head" data-ckx="${r.id}"><span class="ck-ic">${r.emoji}</span><span class="ck-nm">${r.name}<small>ขายได้ราว 🪙${r.sell} ${open ? '▴' : '▾'}</small></span><button class="btn small${cookPins.includes(r.id) ? '' : ' muted'}" data-ckpin="${r.id}" title="${cookPins.includes(r.id) ? 'เลิกปักหมุด' : 'ปักหมุดสูตรนี้ไว้บนสุด'}" aria-label="ปักหมุด" style="padding:2px 6px">${cookPins.includes(r.id) ? '📌' : '📍'}</button><button class="btn small" data-cook="${r.id}" style="min-height:44px;min-width:44px" ${x.can && !cd ? '' : 'disabled'}>${cd ? '⏳ รอ' : `ทำ (×${Math.max(0, mk)})`}</button></div><div class="ck-chips">${chips}</div>`
         + (open ? `<div class="ck-more">+${r.xp} XP • เวลาทำ ${Math.round(r.time / 1000)} วิ • ค่าเตา 🪙${f}${coin < f ? ' <b style="color:#c0392b">(เหรียญไม่พอ)</b>' : ''} • กำไรสุทธิ 🪙${r.sell - f} • กินอิ่ม +${r.food}</div>` : '') + '</div>';
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน หรือใช้กระดานใบสั่งซื้อ 📋 • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ (ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';
@@ -1708,7 +1811,8 @@ function renderShop() {
   body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft }));
   body.querySelectorAll('[data-rent]').forEach(b => b.onclick = () => send({ t: 'rent', id: b.dataset.rent }));
   body.querySelectorAll('[data-ckf]').forEach(b => b.onclick = () => { cookFilter = b.dataset.ckf; renderShop(); });
-  body.querySelectorAll('[data-ckx]').forEach(b => b.onclick = e => { if (e.target.closest('[data-cook]')) return; cookOpen = cookOpen === b.dataset.ckx ? null : b.dataset.ckx; renderShop(); });
+  body.querySelectorAll('[data-ckx]').forEach(b => b.onclick = e => { if (e.target.closest('[data-cook],[data-ckpin]')) return; cookOpen = cookOpen === b.dataset.ckx ? null : b.dataset.ckx; renderShop(); });
+  body.querySelectorAll('[data-ckpin]').forEach(b => b.onclick = () => { const id = b.dataset.ckpin, i = cookPins.indexOf(id); if (i >= 0) cookPins.splice(i, 1); else cookPins.push(id); ls.set('mw_cookpins', JSON.stringify(cookPins)); renderShop(); });
   body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook }));
   bindPet(body);
   body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: +b.dataset.n }));
@@ -1763,6 +1867,7 @@ addEventListener('keydown', e => {
   if (build.on && c === 'KeyZ') { undoBuild(); return; }
   if (build.on && (c === 'Delete' || c === 'Backspace') && build.pick != null) { e.preventDefault(); send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; return; }
   if (c === 'Escape') { closeReport(); closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); setVehMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'KeyN') { honk(); return; }
   if (c === 'KeyV' && me && inTown()) { const own = Object.keys(Shared.VEHICLES).filter(v => inv['veh_' + v] > 0); if (me.veh) send({ t: 'veh', v: '' }); else if (own.length) send({ t: 'veh', v: own[own.length - 1] }); else toast('ยังไม่มียานพาหนะ ซื้อได้ที่ร้านยานพาหนะ 🚲'); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (toolLocked(TOOL_LIST[n])); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (modalOpen() && ((c === 'KeyP' && !peopleShown()) || ((c === 'KeyB' || c === 'KeyI') && !bagShown()) || (c === 'KeyC' && !bagShown()) || c === 'KeyH')) return; // มีหน้าต่างอื่นเปิดอยู่ = ไม่เปิดซ้อน
@@ -1809,6 +1914,8 @@ function contextAct(now) {
     const sb = BUILDINGS.find(q => q.counter[0] && py === q.counter[0][1] + 1 && Math.abs(px - q.counter[0][0]) <= 1);
     if (sb) { stopWalk(); lastAct = now; actGap = 300; send({ t: 'act', tool: toolId(), tx: sb.counter[0][0], ty: sb.counter[0][1] }); return true; }
   }
+  const pcp = me.pet && !me.veh && !me.psick ? me.cp : null, pst0 = me.pet ? petSt[me.pet] : null; // ลูบหัวสัตว์ตัวเอง: หันหน้าหาสัตว์ และพ้นคูลดาวน์ (คูลดาวน์ 10 นาที จึงไม่แย่งปุ่ม Action เวลาทำงานบ่อย)
+  if (pcp && pst0 && !pst0.sick && petPatLeft(pst0) <= 0 && Math.hypot(pcp.x - (fx + 0.5) * TS, pcp.y - (fy + 0.5) * TS) <= TS * 0.8) { stopWalk(); lastAct = now; actGap = 300; pst0.pat = Date.now(); send({ t: 'petcare', a: 'pat' }); return true; }
   if ((fx === dk.x && fy === dk.y) || (cheb(px, py, dk.x, dk.y) <= 2 && toolId() !== 'rod')) { stopWalk(); lastAct = now; actGap = 300; send({ t: 'act', tool: toolId(), tx: dk.x, ty: dk.y }); return true; } // บนเกาะ: ยืนใกล้เรือ/ป้ายแล้วกด A = ออกทะเล (ถือเบ็ดต้องหันหน้าหาเรือ ไม่งั้นเป็นการตกปลารอบเกาะ)
   return false;
 }
@@ -1826,6 +1933,7 @@ function act(tx, ty) {
   if (scene && tx === undefined) { houseAct(now); return; } // ในบ้านใช้เครื่องมือฟาร์มไม่ได้ ปุ่ม A = นั่ง/นอนที่ใกล้สุด หรือออกจากบ้านถ้ายืนที่พรมหน้าประตู
   if (tx === undefined && inTown() && !ft && contextAct(now)) return;
   if (inSea() && toolId() !== 'rod') { toast('บนเรือใช้เบ็ด 🎣 ตกปลา (เลือกที่ช่องเครื่องมือ)'); return; }
+  if (tx === undefined && recallOk() && !oreK.has(Shared.facing(me.x, me.y, me.dir).join(','))) { lastAct = now; actGap = 300; askRecall(now); return; } // ไม่ได้หันหาแร่ = ถามยืนยันใช้ตั๋ววาป
   if (cave && !inSea() && toolId() !== 'pick') { toast('ในถ้ำใช้อุปกรณ์ขุด ⚒️ ขุดแร่ (เลือกที่ช่องเครื่องมือ)'); return; }
   const o = { t: 'act', tool: scene ? '' : toolId() }; if (o.tool === 'rod') o.bait = selBait;
   if (tx !== undefined) {
@@ -1995,7 +2103,7 @@ function setReel(on) { if (on) clearSel(); if (!ft || ft.end || ftHold === on) r
 // ---------- แชทเสียง (WebRTC, ต่อตรงระหว่างผู้เล่น / signaling ผ่าน WebSocket เดิม) ----------
 const RTC_CFG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 const peers = new Map(), levels = new Map();
-window.__mw = { rain(on) { rainForce = on === undefined || on === null ? null : !!on; }, snow(on) { snowForce = on === undefined || on === null ? null : !!on; }, openShop: (k, t) => { openShop(k); if (t) { farmTab = t; renderShop(); } }, get base() { return base; }, actionSheet: () => actionSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
+window.__mw = { rain(on) { rainForce = on === undefined || on === null ? null : !!on; }, snow(on) { snowForce = on === undefined || on === null ? null : !!on; }, openShop: (k, t) => { openShop(k); if (t) { farmTab = t; renderShop(); } }, get base() { return base; }, actionSheet: () => actionSheet().toDataURL(), petSheet: () => petSheet().toDataURL(), get caveFlr() { return caveFlr; }, get oreS() { return oreS; }, peers, keys, openHub: () => openHub(), hubSignAt: (x, y) => hubSignAt(x, y), renderArcade: () => renderArcade(), setArc: t => { arcTable = t; }, get npcs() { return npcs; }, get pets() { return pets; }, get drawPlayer() { return drawPlayer; }, get me() { return me; }, get cave() { return cave; }, get oreK() { return oreK; }, get inv() { return inv; }, get skills() { return skills; }, get selTool() { return selTool; }, get MAP() { return MAP; }, handle, send, setHour(h) { timeOffset = ((h - 6 + 24) % 24) / 24 * CLOCK_MS - (Date.now() % CLOCK_MS); } }; // สำหรับดีบัก
 let micStream = null, micTrack = null, micOn = false, actx = null;
 let callWith = 0, callPend = 0, callIn = 0, callMicOn = false, callTimer = 0; // callWith = คู่สายที่ต่อแล้ว, callPend = เรากำลังโทรหา, callIn = กำลังมีคนโทรหาเรา
 const pcSend = (to, k) => send({ t: 'pcall', to, k });
@@ -2149,8 +2257,11 @@ $('micBtn').onclick = async () => {
 
 // ---------- เสียงเอฟเฟกต์ (สังเคราะห์ด้วย WebAudio ไม่ต้องใช้ไฟล์เสียง) ----------
 let sfxOn = ls.get('mw_sfx') !== '0', sctx = null, smaster = null;
+const volGet = (k, d) => { const v = parseFloat(ls.get(k)); return v >= 0 && v <= 1 ? v : d; };
+let sfxVol = volGet('mw_sfxvol', 1), musicVol = volGet('mw_musvol', 0.7); // เสียงเอฟเฟกต์ / เสียงดนตรี (เตรียมไว้ ยังไม่มีเพลง) 0..1 เก็บใน localStorage
+const sfxGain = () => 0.55 * sfxVol; // ตัวคูณเสียงรวมของเอฟเฟกต์ทั้งหมด (ทุกเสียงผ่าน smaster)
 function sAudio() {
-  if (!sctx) { try { sctx = new (window.AudioContext || window.webkitAudioContext)(); smaster = sctx.createGain(); smaster.gain.value = 0.55; smaster.connect(sctx.destination); } catch (e) { return null; } }
+  if (!sctx) { try { sctx = new (window.AudioContext || window.webkitAudioContext)(); smaster = sctx.createGain(); smaster.gain.value = sfxGain(); smaster.connect(sctx.destination); } catch (e) { return null; } }
   if (sctx.state === 'suspended') sctx.resume().catch(() => {});
   return sctx;
 }
@@ -3090,7 +3201,7 @@ function drawCaveWorld(now) {
     for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
     for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
   }
-  list.sort((a, b) => a.y - b.y).forEach(o => o.f());
+  list.sort((a, b) => a.y - b.y).forEach(o => safeDraw(o, 'list'));
   if (oreDmg.length) drawOreDmg(now);
   if (inSea()) for (const p of players.values()) if (p.fs) drawFishing(p, now); // เอ็นเบ็ด ทุ่น ระลอกน้ำ น้ำกระเซ็น (เดิมวาดเฉพาะรอบวาดของเมือง ฉากทะเลเลยไม่เห็นแอนิเมชันตกปลา)
 }
@@ -3248,8 +3359,15 @@ function buildBase() {
     g.fillStyle = '#f1c40f'; g.fillRect(lx + 3, ly - 10, 26, 3); g.fillStyle = '#7a1a16'; g.fillRect(lx + 4, ly + 28, 24, 1);
     g.fillStyle = '#fff3c4'; g.fillRect(lx + 8, ly - 2, 16, 11); g.fillStyle = '#c0392b'; g.fillRect(lx + 10, ly + 1, 3, 5); g.fillRect(lx + 14, ly + 1, 3, 5); g.fillRect(lx + 18, ly + 1, 3, 5);
     g.fillStyle = '#222'; g.fillRect(lx + 9, ly + 13, 14, 6); g.fillStyle = '#f1c40f'; g.fillRect(lx + 11, ly + 15, 10, 2); g.fillStyle = '#111'; g.fillRect(lx + 10, ly + 22, 12, 3); }
+  { const fx = FLEA.x * TS, fy = FLEA.y * TS; // ป้ายตลาดนัด: กระดานไม้ มีถุงเหรียญกับกล่องของวางบนแผง
+    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(fx + 2, fy + 27, 28, 5);
+    g.fillStyle = '#6b4423'; g.fillRect(fx + 5, fy + 10, 4, 21); g.fillRect(fx + 23, fy + 10, 4, 21);
+    g.fillStyle = '#8b5a2b'; g.fillRect(fx, fy - 8, 32, 24); g.fillStyle = '#e9f2dc'; g.fillRect(fx + 3, fy - 5, 26, 18);
+    g.fillStyle = '#e8a33d'; g.fillRect(fx + 6, fy - 2, 9, 9); g.fillStyle = '#f1c40f'; g.fillRect(fx + 20, fy + 2, 6, 6); g.fillStyle = '#a8731f'; g.fillRect(fx + 22, fy + 4, 2, 2);
+    g.fillStyle = '#c9a869'; g.fillRect(fx + 6, fy + 9, 20, 2);
+    g.fillStyle = '#d63a2f'; g.fillRect(fx + 14, fy - 6, 4, 3); }
   { const tag = (txt, cx, y) => { gh.font = 'bold 8px sans-serif'; const w = gh.measureText(txt).width + 8; g.fillStyle = 'rgba(40,28,14,.85)'; g.fillRect(cx - w / 2, y, w, 11); gh.fillStyle = '#fff'; gh.textAlign = 'center'; gh.textBaseline = 'middle'; gh.fillText(txt, cx, y + 5.5); }; // ป้ายชื่อเหนือกระดานข่าว ATM และตู้กองกลาง
-    tag('ข่าวเมือง', BOARD.x * TS + 16, BOARD.y * TS - 22); tag('อันดับ', RANKBOARD.x * TS + 16, RANKBOARD.y * TS - 22); tag('ATM', ATM.x * TS + 16, ATM.y * TS - 22); tag('Lucky Lotto', LUCKY.x * TS + 16, LUCKY.y * TS - 22); }
+    tag('ข่าวเมือง', BOARD.x * TS + 16, BOARD.y * TS - 22); tag('อันดับ', RANKBOARD.x * TS + 16, RANKBOARD.y * TS - 22); tag('ATM', ATM.x * TS + 16, ATM.y * TS - 22); tag('Lucky Lotto', LUCKY.x * TS + 16, LUCKY.y * TS - 22); tag('ตลาดนัด', FLEA.x * TS + 16, FLEA.y * TS - 22); }
   // เสาไฟ + กระถางดอกไม้รอบลาน (ภาพพื้นอย่างเดียว ไม่ชนการเดิน/เคาน์เตอร์) ให้หนาแน่นใกล้ภาพอ้างอิง
   { const lamp = (tx, ty) => {
       const px = tx * TS, py = ty * TS;
@@ -3709,17 +3827,17 @@ function drawPenSign(key) {
   ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#3d2a1a';
   ctx.fillText(`${A.emoji} ${A.name} ${animalCount(key)}/${A.cap}`, cx, cy - 6);
 }
-function drawPet(q, now) { // แมว (นั่งเมื่อหยุด) และหมา 2 สี (ยืนกระดิกหางเมื่อหยุด)
+function drawPet(q, now, ctx = mainCtx) { // แมว (นั่งเมื่อหยุด) และหมา 2 สี (ยืนกระดิกหางเมื่อหยุด)
   const type = q.kind === 'dog' ? 'dog' + (q.v || 0) : 'cat', cat = q.kind !== 'dog', idle = !q.moving;
   ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(q.x, q.y + (cat ? 6 : 7), cat ? 4 : 6, cat ? 1.6 : 2, 0, 0, 7); ctx.fill();
   const ph = Math.sin(q.anim * (cat ? 9 : 11)), wag = Math.floor(now / (cat ? 700 : 220)) % 2;
   PixelUI.animal(ctx, type, q, { f: q.dx || 1, step: idle ? wag : (ph > 0 ? 1 : 0), blink: blinkOf(q, now), idle });
 }
 const PET_TOP = { dog: 14, cat: 12, bird: 20, monkey: 18, capy: 14 }; // ความสูงจากพื้นถึงหัว ใช้วางชื่อ/อีโมจิ
-function drawCompanion(q, now) { // สัตว์เลี้ยงคู่ใจ: หมา/แมวใช้ภาพเดียวกับสัตว์ประกอบฉาก นกวาดเองตัวเล็กๆ บินต่ำเกาะตามหลังเจ้าของ
-  if (q.x < camX - 40 || q.x > camX + vw + 40 || q.y < camY - 40 || q.y > camY + vh + 40) return;
+function drawCompanionBody(q, now, ctx = mainCtx) { // ตัวสัตว์อย่างเดียว (ไม่มีชื่อ/อีโมจิ) คืนระยะที่ตัวลอยจากพื้น (ติดลบ = ลอยขึ้น) ไว้วางของประดับ
+  let dy = 0;
   if (q.kind === 'bird') {
-    const fly = q.moving, hop = fly ? Math.abs(Math.sin(q.anim * 14)) * 3 : Math.max(0, Math.sin(now / 900 + q.id) * 2 - 1.2), by = q.y - 4 - (fly ? 7 : 0) - hop, f = q.dx || 1;
+    const fly = q.moving, hop = fly ? Math.abs(Math.sin(q.anim * 14)) * 3 : Math.max(0, Math.sin(now / 900 + q.id) * 2 - 1.2), by = q.y - 4 - (fly ? 7 : 0) - hop, f = q.dx || 1; dy = by - q.y;
     if (!q.boat) { ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(q.x, q.y + 6, 4, 1.4, 0, 0, 7); ctx.fill(); }
     const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(q.x + x * f - (f < 0 ? w : 0)), Math.round(by + y), w, h); };
     R(PixelArt.OUT, -5, -5, 10, 9); R(PixelArt.OUT, 3, -8, 6, 6);                        // ขอบ 1 px
@@ -3730,7 +3848,7 @@ function drawCompanion(q, now) { // สัตว์เลี้ยงคู่�
     R('#2f7fb8', -2, fly ? -6 - Math.round(Math.sin(q.anim * 28) * 2) : -2, 4, 2);       // ปีก (กระพือเมื่อบิน)
     if (!fly) { R('#f2a33a', -1, 4, 1, 2); R('#f2a33a', 1, 4, 1, 2); }
   } else if (q.kind === 'monkey' || q.kind === 'capy') {
-    const f = q.dx || 1, walk = q.moving, ph = Math.sin(q.anim * 12), bob = walk ? Math.abs(ph) * 1.5 : 0, y0 = q.y - bob, O = PixelArt.OUT;
+    const f = q.dx || 1, walk = q.moving, ph = Math.sin(q.anim * 12), bob = walk ? Math.abs(ph) * 1.5 : 0, y0 = q.y - bob, O = PixelArt.OUT; dy = -bob;
     ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(q.x, q.y + 6, q.kind === 'capy' ? 8 : 5, 2, 0, 0, 7); ctx.fill();
     const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(q.x + x * f - (f < 0 ? w : 0)), Math.round(y0 + y), w, h); };
     const blink = blinkOf(q, now);
@@ -3753,11 +3871,52 @@ function drawCompanion(q, now) { // สัตว์เลี้ยงคู่�
       R(O, -8, 5, 4, 4); R('#7d5430', -7 + s1, 5, 2, 3); R(O, 4, 5, 4, 4); R('#7d5430', 5 - s1, 5, 2, 3);      // ขาสั้นๆ
     }
   } else {
-    drawPet(q, now);
+    drawPet(q, now, ctx);
   }
-  if (q.name) { ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; const ny = q.y - (PET_TOP[q.kind] || 12), nw = Math.ceil(ctx.measureText(q.name).width) + 6; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(Math.round(q.x - nw / 2), ny - 10, nw, 11); ctx.fillStyle = '#fff3d6'; ctx.fillText(q.name, q.x, ny - 1); }
-  if (q.sick) PixelUI.world(ctx, '🤒', q.x, q.y - (PET_TOP[q.kind] || 12) - 4 + Math.sin(now / 200), 13);
-  else if (q.sayAt && now - q.sayAt < 1800) { const t = (now - q.sayAt) / 1800; PixelUI.world(ctx, '💕', q.x + 6, q.y - (PET_TOP[q.kind] || 12) - 2 - t * 12, 11); }
+  return dy;
+}
+// ---- สัตว์เลี้ยงตามระดับ 1–5: วาดลงแคนวาสแยก 1× แล้วขยายแบบไม่เบลอ ยึดที่เท้า + ของประดับ (L2 ปลอกคอ L3 ผ้าพันคอ L4 กระดิ่ง L5 มงกุฎดอกไม้+ประกาย สะสมขึ้นไป) ----
+const PETLV_W = 96, PETLV_H = 80, PETLV_FX = 48, PETLV_FY = 64;
+let petLvCv = null;
+const PET_NECK = { dog: [5, -5, 9, -11], cat: [4, -6, 6, -14], catIdle: [-2, -6, -2, -14], bird: [4, -2, 6, -7], monkey: [3, -5, 6, -14], capy: [8, -2, 12, -10] }; // [คอ x, คอ y, ยอดหัว x, ยอดหัว y] เทียบเท้า ทิศหน้า = +x
+function petLvScale(q) { const P = Shared.PETLV, lv = Math.max(1, Math.min(P.scale.length, q.lv | 0 || 1)), s = P.scale[lv - 1]; return q.boat ? Math.min(s, P.seaMax) : s; }
+function drawPetGear(g, q, now, lv, dy) { // ของประดับลงแคนวาสแยก (1×) ที่ตำแหน่งหัว/คอของสัตว์แต่ละชนิด
+  const key = q.kind === 'cat' && !q.moving ? 'catIdle' : q.kind, A = PET_NECK[key] || PET_NECK.dog, f = q.dx || 1, fx = Math.round(q.x), fy = Math.round(q.y), oy = Math.round(dy);
+  const R = (c, x, y, w, h) => { x = Math.round(x); g.fillStyle = c; g.fillRect(fx + x * f - (f < 0 ? w : 0), fy + oy + y, w, h); };
+  const nx = A[0], ny = A[1], hx = A[2], hy = A[3];
+  if (lv === 2) { R('#b8322e', nx - 2, ny, 5, 2); R('#e0524a', nx - 2, ny, 5, 1); } // ปลอกคอแดง
+  if (lv >= 3) { R('#2f6fb0', nx - 3, ny - 1, 6, 3); R('#5aa0e0', nx - 3, ny - 1, 6, 1); R('#2f6fb0', nx - 3, ny + 2, 2, 3); R('#1f4f86', nx - 3, ny + 4, 2, 1); } // ผ้าพันคอฟ้า มีชายห้อย
+  if (lv >= 4) { R('#8a5a14', nx, ny + 2, 3, 3); R('#f2c94c', nx, ny + 2, 2, 2); R('#fff3a8', nx, ny + 2, 1, 1); } // กระดิ่งทอง
+  if (lv >= 5) { // มงกุฎดอกไม้ + ประกายเบาๆ (เปลี่ยนตำแหน่ง 4 ครั้ง/วินาที)
+    const cy = hy - 1, cols = ['#ff8fc7', '#fff3a8', '#b99cff', '#ff8fc7', '#fff3a8'];
+    R('#3f9a3a', hx - 3, cy + 1, 7, 1);
+    for (let i = 0; i < 5; i++) R(cols[i], hx - 3 + i * 1.5, cy - (i % 2), 2, 2);
+    const k = Math.floor(now / 250);
+    for (let i = 0; i < 2; i++) { const sx = ((k * 7 + i * 5) % 11) - 5, sy = -((k * 3 + i * 4) % 9) - 2; R('#fffbe0', hx + sx, hy + sy, 1, 1); if ((k + i) % 2) { R('#fffbe0', hx + sx - 1, hy + sy, 1, 1); R('#fffbe0', hx + sx + 1, hy + sy, 1, 1); } }
+  }
+}
+function drawCompanion(q, now, ctx = mainCtx, noCull = false) { // สัตว์เลี้ยงคู่ใจ: หมา/แมวใช้ภาพเดียวกับสัตว์ประกอบฉาก นกวาดเองตัวเล็กๆ บินต่ำเกาะตามหลังเจ้าของ
+  if (!noCull && (q.x < camX - 40 || q.x > camX + vw + 40 || q.y < camY - 40 || q.y > camY + vh + 40)) return;
+  const lv = Math.max(1, Math.min(5, q.lv | 0 || 1)), sc = lv > 1 ? petLvScale(q) : 1;
+  let top = PET_TOP[q.kind] || 12;
+  if (lv > 1) {
+    if (!petLvCv) { petLvCv = document.createElement('canvas'); petLvCv.width = PETLV_W; petLvCv.height = PETLV_H; }
+    const g = petLvCv.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, PETLV_W, PETLV_H); g.imageSmoothingEnabled = false;
+    g.translate(PETLV_FX - Math.round(q.x), PETLV_FY - Math.round(q.y));
+    const dy = drawCompanionBody(q, now, g); drawPetGear(g, q, now, lv, dy);
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(petLvCv, Math.round(q.x - PETLV_FX * sc), Math.round(q.y - PETLV_FY * sc), Math.round(PETLV_W * sc), Math.round(PETLV_H * sc));
+    top = top * sc + (lv >= 5 ? 3 : 0);
+  } else drawCompanionBody(q, now, ctx);
+  if (q.name) { ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; const ny = q.y - top, nw = Math.ceil(ctx.measureText(q.name).width) + 6; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(Math.round(q.x - nw / 2), ny - 10, nw, 11); ctx.fillStyle = '#fff3d6'; ctx.fillText(q.name, q.x, ny - 1); }
+  if (q.sick) PixelUI.world(ctx, '🤒', q.x, q.y - top - 4 + Math.sin(now / 200), 13);
+  else if (q.sayAt && now - q.sayAt < 1800) { const t = (now - q.sayAt) / 1800; PixelUI.world(ctx, '💕', q.x + 6, q.y - top - 2 - t * 12, 11); }
+}
+function petSheet() { // ชีตตัวอย่างสัตว์เลี้ยง แถว = ชนิด (หมา 2 สี แมว นก ลิง คาปิบารา) คอลัมน์ = ระดับ 1–5 (ดีบัก: __mw.petSheet())
+  const kinds = [['dog', 0], ['dog', 1], ['cat', 0], ['bird', 0], ['monkey', 0], ['capy', 0]], cw = 110, ch = 100, c = document.createElement('canvas'); c.width = cw * 5; c.height = ch * kinds.length;
+  const g = c.getContext('2d');
+  kinds.forEach(([kind, v], r) => { for (let lv = 1; lv <= 5; lv++) { g.fillStyle = (r + lv) & 1 ? '#7fb452' : '#8bbf5a'; g.fillRect((lv - 1) * cw, r * ch, cw, ch);
+    drawCompanion({ id: 1, kind, v, x: (lv - 1) * cw + 55, y: r * ch + 80, dx: 1, anim: 0, moving: false, lv, name: 'L' + lv }, 1000, g, true); } });
+  return c;
 }
 function hungerMark(c, now) { // สัตว์ที่หิว: แถบความอิ่มเล็กๆ + หน้าตาเศร้า (หิวจนหมดแล้วจะตายถ้าไม่มีใครให้อาหาร) / สัตว์ป่วยมี 🤒
   const h = c.h === undefined ? 100 : c.h;
@@ -3810,6 +3969,7 @@ function drawCrop(tile, px, py, now, pass) { // pass 0 = ดินทุกช�
     const sp = PixelUI.crop(s);
     ctx.drawImage(sp, cx - sp.width, cy - sp.height * 2, sp.width * 2, sp.height * 2);
   }
+  if (tile.os) PixelUI.world(ctx, '🍂', px + 7, py + 25, 10); // ต้นนอกฤดู: ใบไม้ร่วงเล็กๆ ที่โคนต้น (อาจไม่ติดผล)
   if (s >= 3) {
     PixelUI.world(ctx, CROPS[tile.c].emoji, px + 8, py + 8 + Math.sin(now / 400 + px) * 1, 11); // ไอคอนผลผลิตเล็กๆ มุมช่อง ไม่บังต้น
     if (tile.o && me && tile.o !== me.name) PixelUI.world(ctx, tile.l ? '🔒' : '✨', px + 25, py + 8, 12); // ผักของคนอื่น: 🔒 ยังเก็บไม่ได้ / ✨ เจ้าของไม่มาเก็บเกิน 1 วัน คนอื่นเก็บได้แล้ว
@@ -4165,7 +4325,7 @@ function drawHouseWorld(now) {
   for (const it of its) { if (it === held) continue; const d = FURN[it.f]; if (!d.wall && !d.flat) list.push({ k: (it.x + it.y) * TS + (it.on ? 1 : 0), f: () => drawFurnIso(ctx, it, now) }); }
   // นั่ง/นอนอยู่บนเตียง/โซฟา: วาดทับหลังตัวเฟอร์นิเจอร์นั้น ไม่ให้ตัวละครไปอยู่ข้างหลัง (ดันลำดับวาดให้ไม่ต่ำกว่าชิ้นนั้น)
   for (const p of players.values()) { const sit = p.sit ? sitNear(p) : null; list.push({ k: sit ? Math.max(p.x + p.y, (sit.x + sit.y) * TS + 2) : p.x + p.y, f: () => drawIsoPlayer(p, now, sit) }); if (p.cp) list.push({ k: p.cp.x + p.cp.y, f: () => drawIsoCompanion(p.cp, now) }); }
-  list.sort((a, b) => a.k - b.k).forEach(o => o.f());
+  list.sort((a, b) => a.k - b.k).forEach(o => safeDraw(o, 'caveList'));
   drawHouseOverlay(now);
 }
 function footprintPts(it, z = 0) { const [w, d] = Shared.furnDims(it.f, it.r), X = it.x * TS, Y = it.y * TS, W = w * TS / 2, D = d * TS / 2; return [iso(X - W, Y - D, z), iso(X + W, Y - D, z), iso(X + W, Y + D, z), iso(X - W, Y + D, z)]; }
@@ -4490,11 +4650,20 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   drawMini(now);
 }
 const blk = (x, y, fx, fy) => (scene ? Shared.houseBlockedAt(MAP, houseRects, x, y, fx, fy) : inOcean() ? blockedAt(MAP, x, y, Shared.BOAT.hull.r) : blockedAt(MAP, x, y)); // ชนผนัง/ของ (ในบ้านรวมเฟอร์นิเจอร์ตัน)
+// กันของหายทั้งเฟรม: ถ้าของชิ้นใดชิ้นหนึ่งวาดพัง (error) ชิ้นอื่นที่ต้องวาดต่อจากนั้นไม่หายตามไปด้วย + รายงานกลับเซิร์ฟเวอร์ครั้งเดียวต่อข้อความ
+const drawErrSeen = new Set();
+function reportClientErr(tag, e) {
+  const msg = tag + ': ' + String(e && e.stack ? e.stack.split('\n').slice(0, 3).join(' | ') : e).slice(0, 220);
+  if (drawErrSeen.has(msg) || drawErrSeen.size >= 12) return; drawErrSeen.add(msg); console.error('[draw]', msg);
+  try { send({ t: 'cerr', m: msg }); } catch (_) { /* ยังไม่ได้ต่อ */ }
+}
+window.addEventListener('error', e => /^ResizeObserver/.test(e.message || '') || reportClientErr('win', (e.message || '') + ' @' + String(e.filename || '').split('/').pop() + ':' + (e.lineno || 0)));
+const safeDraw = (o, tag) => { ctx.save(); try { o.f(); } catch (e) { reportClientErr(tag, e); } finally { ctx.restore(); } };
 function step(now) {
   requestAnimationFrame(step);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (!joined || !me) return;
-  syncVehBtn();
+  syncVehBtn(); syncHornBtn(); syncRecallBtn();
   { const bf = !!(scene && build.on); if (bf !== bfLast) { bfLast = bf; bz.z = 1; bz.px = bz.py = 0; resize(); } }
   const wall = Date.now() + timeOffset;
 
@@ -4539,7 +4708,7 @@ function step(now) {
     if (!p.pet || !COMPANIONS[p.pet]) { p.cp = null; continue; }
     const C = COMPANIONS[p.pet], bird = C.kind === 'bird', play = p.pm === 'play';
     const cp = p.cp || (p.cp = { id: p.id, kind: C.kind, v: C.v, x: p.x - 18, y: p.y + 6, dx: 1, anim: Math.random() * 6, moving: false, chase: false, wait: 0, gx: p.x, gy: p.y, nextSay: now + 8000 + Math.random() * 15000 });
-    cp.sick = p.psick; cp.name = p.pname;
+    cp.sick = p.psick; cp.name = p.pname; cp.lv = p.id === myId ? Shared.petLevel((petSt[p.pet] || {}).b) : (p.plv | 0) || 1; // ระดับสัตว์: ของเรา = คำนวณจากแต้มผูกพัน คนอื่น = plv จากเซิร์ฟเวอร์
     if (inOcean() && !bird) { // ทะเลใหญ่: สัตว์เดินล็อกที่ที่นั่งบนเรือ (นกบินตามเรือเองด้านล่าง ไม่ล็อก) ไม่มี AI เดิน ไม่ลงน้ำ โยกตามคลื่นเท่าเรือ • นกเกาะยอดเสา
       const H = Shared.BOAT.hull, dir = p.dir | 0, bob = boatBob(p, now), o = Shared.boatSeat(dir, 0), dd = Shared.DIRS[dir] || Shared.DIRS[0];
       if (bird) { cp.x = p.x + dd[0] * H.mast.u - dd[1] * H.mast.v; cp.y = p.y + 6 + bob + dd[1] * H.mast.u + dd[0] * H.mast.v - H.mast.h - 2; }
@@ -4705,7 +4874,7 @@ function step(now) {
   for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
   for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
   if (inTown()) for (const n of npcs.values()) if (n.x > camX - 40 && n.x < camX + vw + 40 && n.y > camY - 60 && n.y < camY + vh + 60) list.push({ y: n.y + 12, f: () => drawPlayer(n, now) });
-  list.sort((a, b) => a.y - b.y).forEach(o => o.f());
+  list.sort((a, b) => a.y - b.y).forEach(o => safeDraw(o, 'list'));
 
   // โรงหนัง: ป้ายสถานะใต้จอ + 🍿 เหนือหัวคนที่กำลังดู (เลิกมีอาคารจอแล้ว)
   if (cin && inTown() && BUILDINGS.some(b => b.kind === 'cinema')) {

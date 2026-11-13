@@ -25,7 +25,7 @@ module.exports = {
   nameOfKey(key) { return (this.saved[key] && this.saved[key].name) || key; },
   sceneMates(scene, except) { const sc = scene || null; return [...this.players.values()].filter(q => q !== except && (q.scene || null) === sc); },
   sceneBroadcast(scene, o, except) { const s = JSON.stringify(o); for (const q of this.sceneMates(scene, except)) if (q.ws.readyState === 1) q.ws.send(s); },
-  pubFull(q) { return { id: q.id, wet: q.rec && q.rec.wet > Date.now() ? 1 : 0, veh: q.veh || '', held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, pm: q.pm, pax: q.pax, pay: q.pay, psick: !!(q.pet && this.petSt(q, q.pet).sick), pname: q.pet ? this.petName(q, q.pet) : '', x: q.x, y: q.y, dir: q.dir, voice: !!q.voice }; },
+  pubFull(q) { return { id: q.id, wet: q.rec && q.rec.wet > Date.now() ? 1 : 0, veh: q.veh || '', held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, pm: q.pm, pax: q.pax, pay: q.pay, psick: !!(q.pet && this.petSt(q, q.pet).sick), pname: q.pet ? this.petName(q, q.pet) : '', ...(q.pet && this.petLv(q, q.pet) > 1 ? { plv: this.petLv(q, q.pet) } : {}), x: q.x, y: q.y, dir: q.dir, voice: !!q.voice }; },
   townPos(p) { const r = p.scene ? p.ret : { x: p.x, y: p.y }; return r && !S.blockedAt(this.map, r.x, r.y) ? r : { x: SPAWN.x, y: SPAWN.y }; }, // ตำแหน่งในเมืองที่จะบันทึก/กลับไป (ถ้าอยู่ในบ้านคือที่ที่ยืนก่อนเข้า)
   changeScene(p, scene, x, y) { // ย้ายผู้เล่นไปฉากใหม่: คนฉากเก่าเห็นเขาหายไป คนฉากใหม่เห็นเขาโผล่ ตัวเองได้รับฉากใหม่
     const old = p.scene || null; scene = scene || null;
@@ -37,8 +37,9 @@ module.exports = {
     this.dirty = true;
   },
   addLog(text) { const e = [Date.now(), text]; this.log.push(e); if (this.log.length > S.TOWN.logMax) this.log.shift(); this.dirty = true; this.broadcast({ t: 'log', e }); },
-  creditInv(key, item, n) { // เพิ่มของให้ผู้เล่น (อาจออฟไลน์): อัปเดตทั้งในเกมและไฟล์เซฟ
+  creditInv(key, item, n, lots) { // เพิ่มของให้ผู้เล่น (อาจออฟไลน์): อัปเดตทั้งในเกมและไฟล์เซฟ
     const p = [...this.players.values()].find(q => q.key === key), rec = (p && p.rec) || this.saved[key]; if (!rec) return;
+    if (lots && n > 0 && S.perishable(item)) this.lotPut(rec, item, lots); // ส่งอายุของต่อ (lots ไม่ใส่ = เหมือนเดิม)
     rec.inv[item] = Math.max(0, (rec.inv[item] || 0) + n); if (!rec.inv[item]) delete rec.inv[item];
     if (p) send(p, { t: 'inv', inv: S.invPub(rec) }); this.dirty = true;
   },
@@ -128,6 +129,13 @@ module.exports = {
     v = typeof v === 'string' && S.VEHICLES[v] && p.rec.inv['veh_' + v] > 0 && !p.scene ? v : '';
     if ((p.veh || '') === v) return; p.veh = p.rec.veh = v; this.dirty = true;
     this.broadcast({ t: 'veh', id: p.id, v }); if (v) this.toast(p, `${S.VEHICLES[v].emoji} ขี่${S.VEHICLES[v].name}แล้ว (กด V เพื่อลง)`);
+  },
+  horn(p) { // แตรยานพาหนะ: ขับรถ/จักรยานในเมือง หรืออยู่บนเรือในทะเล • เว้นช่วง S.HORN.cdMs • ส่งให้เฉพาะคนในซีนเดียวกัน ไม่เก็บเซฟ • v กำหนดจากสถานะฝั่งเซิร์ฟเวอร์ ไม่เชื่อเว็บ
+    const cf = S.caveFloor(p.scene), onBoat = !!cf && S.isSeaScene(cf);
+    const v = onBoat ? 'boat' : (p.veh && S.VEHICLES[p.veh] && !p.scene ? p.veh : '');
+    if (!v) return;
+    const now = Date.now(); if (now - (p.hornAt || 0) < S.HORN.cdMs) return;
+    p.hornAt = now; const o = { t: 'horn', id: p.id, v }; send(p, o); this.sceneBroadcast(p.scene, o, p);
   },
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); },
   // ร้านที่ผู้เล่นยืนอยู่ใกล้ประตู (หรือ null)

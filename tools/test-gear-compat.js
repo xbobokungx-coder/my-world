@@ -32,8 +32,8 @@ const w = new World('gearcompat'), sv = w.saved;
 // ---- โหลด: ไม่ย้ายเซฟ ไม่เพิ่ม/ลบคีย์ ไม่แตะเหรียญ ----
 for (const k of Object.keys(players)) {
   const o = players[k], r = sv[k];
-  assert.strictEqual(r.xpv, 7, k + ' xpv ต้องคง 7 (ไม่ bump)'); assert.strictEqual(r.tmig, undefined, k + ' ไม่มี tmig (ไม่ย้ายเซฟ)');
-  assert.deepStrictEqual(r.inv, o.inv, k + ' inv เท่าเดิมเป๊ะ (ไม่เพิ่ม/ลบคีย์ ไม่แตะเหรียญ)'); assert.deepStrictEqual(r.dur, o.dur, k + ' dur เท่าเดิม'); assert.deepStrictEqual(r.fix, o.fix, k + ' fix เท่าเดิม');
+  assert.strictEqual(r.xpv, 8, k + ' xpv ต้องเป็น 8 (ย้ายความทนครั้งเดียว)'); assert.strictEqual(r.tmig, undefined, k + ' ไม่มี tmig (ไม่ย้ายเซฟ)');
+  assert.deepStrictEqual(r.inv, o.inv, k + ' inv เท่าเดิมเป๊ะ (ไม่เพิ่ม/ลบคีย์ ไม่แตะเหรียญ)'); { const e = JSON.parse(JSON.stringify(o)); S.migrateDurV8(e); assert.deepStrictEqual(r.dur, e.dur, k + ' dur เท่าเดิม (ยกเว้น rod/axe/pick ย้ายตามสัดส่วน xpv 8)'); } assert.deepStrictEqual(r.fix, o.fix, k + ' fix เท่าเดิม');
   assert.ok(!r.dur || (!('pail' in r.dur) && !('pan' in r.dur)), k + ' ไม่สร้าง dur.pail/pan ให้ (ของฟรีเต็มโดยปริยาย)');
 }
 assert.strictEqual(S.canTier(sv.c2.inv), 2); assert.strictEqual(S.canTier(sv.c3.inv), 3); assert.strictEqual(S.canTier(sv.c23.inv), 3); assert.strictEqual(S.canTier(sv.bare.inv), 1);
@@ -41,7 +41,7 @@ for (const k of Object.keys(players)) { assert.strictEqual(S.hoeTier(sv[k].inv),
 // เซฟแล้วโหลดซ้ำไม่เปลี่ยน
 w.dirty = true; w.save(true); const snap = clone(sv), w2 = new World('gearcompat'); assert.deepStrictEqual(clone(w2.saved), snap, 'โหลดรอบสอง = ไม่เปลี่ยน');
 w2.dirty = true; w2.save(true); assert.deepStrictEqual(clone(new World('gearcompat').saved), snap, 'รอบสามก็เหมือนเดิม');
-for (const k of Object.keys(players)) assert.strictEqual(snap[k].xpv, 7);
+for (const k of Object.keys(players)) assert.strictEqual(snap[k].xpv, 8);
 
 // ---- เข้าเกม: ความทน/น้ำ/บัวเท่าเดิม ----
 const J = {}, get = name => J[name] || (() => { const ws = mkWs(), p = w2.join(ws, name, '#e74c3c').p; p.ws2 = ws; p.rec.hunger = 100; return (J[name] = p); })();
@@ -50,7 +50,7 @@ const durMsg = p => { const m = p.ws2.msgs.find(x => x.t === 'dur') || p.ws2.msg
 {
   const c2 = get('c2'), c3 = get('c3'), bare = get('bare'), brk = get('brk');
   assert.strictEqual(w2.durCur(c2, 'hoe'), 90); assert.strictEqual(w2.durMx(c2, 'hoe'), 120); assert.strictEqual(w2.durCur(c3, 'hoe'), 30, 'dur.hoe เดิม 30 ใช้ต่อได้'); assert.strictEqual(w2.fixN(c3, 'hoe'), 2); assert.strictEqual(w2.durMx(c3, 'hoe'), Math.floor(120 * (1 - S.REPAIR.decay * 2)), 'ทนสูงสุดตามซ่อม 2 ครั้ง เท่าสูตรเดิม');
-  assert.strictEqual(w2.durCur(bare, 'hoe'), 0, 'จอบพังเดิมยังพัง'); assert.strictEqual(w2.durCur(brk, 'hoe'), 0); assert.strictEqual(w2.fixN(brk, 'hoe'), 3); assert.strictEqual(w2.durCur(brk, 'rod'), 50, 'ความทนเครื่องมืออื่นไม่เปลี่ยน');
+  assert.strictEqual(w2.durCur(bare, 'hoe'), 0, 'จอบพังเดิมยังพัง'); assert.strictEqual(w2.durCur(brk, 'hoe'), 0); assert.strictEqual(w2.fixN(brk, 'hoe'), 3); assert.strictEqual(w2.durCur(brk, 'rod'), 52, 'ความทน rod ย้ายตามสัดส่วน xpv 8 (50 → 52) เครื่องมืออื่นไม่เปลี่ยน');
   assert.strictEqual(w2.durCur(c2, 'pail'), S.DURABILITY.pail.max[1], 'ถัง/กระทะที่ไม่เคยมี = เต็มของระดับ 1'); assert.strictEqual(w2.durCur(c2, 'pan'), S.DURABILITY.pan.max[1]);
   const d = durMsg(c2); assert.ok(d, 'มีข้อความ dur ตอนเข้าเกม'); assert.deepStrictEqual(d.hoe, [90, 120, 0]); assert.deepStrictEqual(durMsg(c3).hoe, [30, 84, 2]);
   assert.strictEqual(w2.canOf(c2).cap, 20); assert.strictEqual(w2.canOf(c2).wet, 120000); assert.strictEqual(w2.canOf(c3).cap, 50); assert.strictEqual(w2.canOf(c3).wet, 180000); assert.strictEqual(w2.canOf(bare).cap, 10); assert.strictEqual(w2.canOf(bare).wet, 90000);
@@ -60,9 +60,9 @@ const durMsg = p => { const m = p.ws2.msgs.find(x => x.t === 'dur') || p.ws2.msg
 // ---- ปลูก: เกณฑ์บัวเดิม (องุ่น Lv8 ต้องบัว 3; ฟักทอง Lv6–7 ต้องบัว 2) ----
 {
   // องุ่นอยู่ฤดูหนาว ฟักทองอยู่ฤดูฝน ปลูกพร้อมกันไม่ได้ — หาคนละช่วง
-  const findSeason = crop => { const epoch = Date.parse('2026-11-01T00:00:00+07:00'); for (let i = 0; i < 21; i++) { const t = epoch + i * 864e5; if (S.canPlant(crop, t)) return t; } return 0; };
+  const findSeason = crop => { const epoch = Date.parse('2026-11-01T00:00:00+07:00'); for (let i = 0; i < 21; i++) { const t = epoch + i * 864e5; if (S.inSeason(crop, t)) return t; } return 0; };
   const tGrape = findSeason('grape'), tPump = findSeason('pumpkin');
-  assert.ok(S.canPlant('grape', tGrape) && S.canPlant('pumpkin', tPump) && S.canPlant('carrot', tGrape), 'หาฤดูองุ่นและฟักทองได้');
+  assert.ok(S.inSeason('grape', tGrape) && S.inSeason('pumpkin', tPump) && S.inSeason('carrot', tGrape), 'หาฤดูองุ่นและฟักทองได้');
   assert.strictEqual(S.cropCan(S.CROPS.grape), 3, 'องุ่นยังต้องบัว 3'); assert.strictEqual(S.CROPS.grape.lv, 8);
   const FARM = S.FARM, cells = []; for (let y = FARM.y0; y <= FARM.y1; y++) for (let x = FARM.x0; x <= FARM.x1; x++) if (y >= 14 && w2.map[y][x] === S.T.GRASS && !w2.farm[x + ',' + y]) cells.push([x, y]);
   let ci = 0; const plant = (p, seed) => { const [x, y] = cells[ci++], k = x + ',' + y; w2.farm[k] = {}; p.x = (x + 0.5) * TS; p.y = (y + 1.5) * TS; p.dir = 1; NOW += 1000; w2.handle(p, { t: 'act', tool: seed, tx: x, ty: y }); return w2.farm[k] && w2.farm[k].c; };

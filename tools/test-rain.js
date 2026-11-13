@@ -20,7 +20,7 @@ for (const id of ['rain', 'hot']) {
     else if (run) { runs++; assert.ok(run >= cfg.minMs - 10e3 && run <= cfg.maxMs + 10e3, id + ' ยาว ' + run); run = 0; }
     if (run && t % R.slotMs === 0 && t > st) assert.ok(false, 'ฝนข้ามช่อง');
   }
-  assert.ok(runs > 5, id + ' มีฝนหลายครั้ง');
+  assert.ok(runs > (id === 'rain' ? 5 : 1), id + ' มีฝนหลายครั้ง'); // ฤดูละ 1 วัน: ฤดูร้อน (p 0.12 × 48 ช่อง) มีฝนปรอยอย่างน้อย 2 ครั้ง
 }
 assert.strictEqual(S.rainAt(E - 1, 'auto'), false, 'ก่อนเริ่มฤดู');
 assert.strictEqual(S.rainAt(E - 1, 'on'), true); assert.strictEqual(S.rainAt(rs + 1, 'off'), false);

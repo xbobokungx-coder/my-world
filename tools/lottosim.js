@@ -18,7 +18,7 @@ function mkWorld() {
   w.lotto = { pot: 0, round: '2999-1-1', sealed: null, tickets: {}, last: null, hist: [] };
   w.lotto.sealed = w.lottoSeal();
   w.toast = () => {}; w.sfxTo = () => {}; w.broadcast = () => {}; w.nearLucky = () => true; w.lottoOk = () => true;
-  w.creditInv = (key, _c, n) => { w.paid[key] = (w.paid[key] || 0) + n; };
+  w.lottoAward = (key, _k, n) => { w.paid[key] = (w.paid[key] || 0) + n; };
   w.add = (p, _c, n) => { p.rec.inv.coin += n; };
   return w;
 }

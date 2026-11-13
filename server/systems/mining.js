@@ -88,6 +88,17 @@ module.exports = {
     this.enterCave(p); if (S.caveFloor(p.scene) !== 1) { this.add(p, 'coin', fee, 'mineticket'); return; } // เข้าถ้ำไม่ได้ (เช่นมีเงื่อนไขอื่นขวาง) คืนเงิน
     this.caveMove(p, 1, f); this.toast(p, `🎫 ใช้ตั๋วลงชั้น ${f} (-🪙${fee})`); this.sfxTo(p, 'coin');
   },
+  recallUse(p) { // ตั๋ววาปกลับกองไฟ: ใช้ในถ้ำเหมืองชั้น S.MINE.recall.minFloor ขึ้นไป (ไม่ใช่ทะเล) ใช้แล้วหมด 1 ใบ
+    const f = S.caveFloor(p.scene);
+    if (!f || S.isSeaScene(f)) return this.toast(p, 'ตั๋ววาปกลับกองไฟใช้ได้ตอนอยู่ในถ้ำเหมืองเท่านั้น');
+    if (p.veh) return;
+    if (f < S.MINE.recall.minFloor || f > S.MINE.floors) return this.toast(p, `ชั้นตื้นเดินขึ้นเองง่ายกว่า ตั๋วใช้ได้ตั้งแต่ชั้น ${S.MINE.recall.minFloor} ลงไป`);
+    if (!((p.rec.inv.recall | 0) > 0)) return this.toast(p, 'ไม่มีตั๋ววาปกลับกองไฟ ซื้อได้ที่ร้านช่างเหมือง ⚒️');
+    this.tradeCancel(p, 'ผู้เล่นวาปกลับเมือง');
+    this.add(p, 'recall', -1, 'recall'); p.ret = null; logEv(this.room, 'recall', { p: p.key, f });
+    this.changeScene(p, null, S.SPAWN.x, S.SPAWN.y);
+    this.toast(p, '🎫 ใช้ตั๋ววาปแล้ว กลับมาที่ลานกองไฟเรียบร้อย'); this.sfxTo(p, 'collect'); this.dirty = true;
+  },
   caveAct(p, m) { // ใช้เครื่องมือในถ้ำ: ขุดแร่ด้วยอีเต้ออย่างเดียว
     const now = Date.now();
     if (now - p.lastAct < 150) return;

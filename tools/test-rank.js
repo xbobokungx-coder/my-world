@@ -38,7 +38,7 @@ fresh();
 let r = ask(a);
 const names = x => x.map(y => y.n);
 for (const list of [r.lv.all, r.lv.farm, r.wk, r.rich]) assert.ok(!names(list).includes(ADMIN_NAME) && !names(list).includes('Bot1'), 'ต้องไม่มี Sira/บัญชีทดลอง');
-assert.deepStrictEqual(me(ask(adm)), me({ me: { lv: Object.fromEntries(Object.keys(r.me.lv).map(k => [k, 0])), wk: 0, rich: 0 } }), 'ผู้ดูแลได้ me เป็น 0');
+assert.deepStrictEqual(me(ask(adm)), me({ me: { lv: Object.fromEntries(Object.keys(r.me.lv).map(k => [k, 0])), wk: 0, rich: 0, on: 0 } }), 'ผู้ดูแลได้ me เป็น 0');
 function me(x) { return x.me; }
 
 // เรียงถูก + me ถูก

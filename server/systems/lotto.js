@@ -27,6 +27,15 @@ module.exports = {
     this.lotto.hist = Array.isArray(o.hist) ? o.hist.filter(okH).slice(0, 30).map(cleanH) : []; // ประวัติเลขที่ออกย้อนหลัง 30 งวด
     const l = o.last; if (l && Array.isArray(l.nums) && Array.isArray(l.winners)) this.lotto.last = { round: String(l.round || ''), nums: l.nums.filter(ok3), salt: String(l.salt || ''), hash: String(l.hash || ''), n: Number.isFinite(l.n) ? l.n : 0, pot0: Number.isFinite(l.pot0) ? l.pot0 : 0, winners: l.winners.slice(0, 40).filter(w => Array.isArray(w) && w.length === 3) };
     if (!this.lotto.round || !this.lotto.sealed) { this.lotto.round = this.lotto.round || this.lottoRoundAfter(Date.now()); this.lotto.sealed = this.lottoSeal(); this.dirty = true; }
+    if (S.LOTTO.claimMs > 0 && this.saved) for (const r of Object.values(this.saved)) this.lottoExpire(r, Date.now()); // รางวัลที่ไม่มารับเกินกำหนดคืนกองกลางตอนโหลด
+  },
+  lottoExpire(rec, now) { // claimMs > 0: รายการรอรับที่เก่ากว่าเวลาที่กำหนด (e[3] = เวลาที่ได้) หมดอายุ คืนกองกลาง • 0 = ไม่หมดอายุ
+    if (!(S.LOTTO.claimMs > 0) || !rec || !Array.isArray(rec.lottoPend)) return;
+    const keep = []; let back = 0;
+    for (const e of rec.lottoPend) { if (Array.isArray(e) && Number.isFinite(e[3]) && Number.isFinite(e[2]) && e[2] > 0 && now - e[3] > S.LOTTO.claimMs) back += Math.floor(e[2]); else keep.push(e); }
+    if (!back) return;
+    if (keep.length) rec.lottoPend = keep; else delete rec.lottoPend;
+    this.toPot(back); this.dirty = true;
   },
   lottoTick(now) { let n = 0; while (now >= this.lottoDrawAt(this.lotto.round) && n++ < 30) this.lottoDraw(); }, // ถึงเวลาแล้วออกผล (ถ้าเซิร์ฟเวอร์ดับข้ามเวลา ออกย้อนหลังด้วยเลขที่ปิดผนึกไว้)
   lottoDraw() {
@@ -45,10 +54,7 @@ module.exports = {
     L.pot = Math.max(0, L.pot - paid);
     const winners = wins.map(([key, k, amt]) => { const rec = this.saved[key]; return [rec && rec.name || key, k, amt]; });
     for (const [key, k, amt] of wins) {
-      this.creditInv(key, 'coin', amt); logEv(this.room, 'coin', { p: key, n: amt, why: 'lotto' });
-      const q = [...this.players.values()].find(o => o.key === key);
-      if (q) { this.toast(q, `🎟️ ถูก Lucky Lotto ${this.lottoPrizeName(k)}! ได้ 🪙 ${amt}`); this.sfxTo(q, 'levelup'); }
-      else { const rec = this.saved[key]; if (rec) (rec.lottoWins || (rec.lottoWins = [])).push([k, amt]); }
+      this.lottoAward(key, k, amt); // เงินรางวัลรอรับที่ตู้ (ไม่เข้ากระเป๋าเอง) ย้ายเข้ากระเป๋าตอนรับ
     }
     L.last = { round: L.round, nums, salt, hash, n: nTickets, pot0: base, winners };
     L.hist.unshift({ round: L.round, nums, n: nTickets, pot0: base, winners }); if (L.hist.length > 30) L.hist.length = 30;
@@ -59,7 +65,24 @@ module.exports = {
     L.round = this.lottoDate(nx.getTime()); L.sealed = this.lottoSeal(); L.tickets = {}; delete L.ipTickets; this.dirty = true; // สุ่มและปิดผนึกเลขงวดถัดไปก่อนเปิดขายตั๋ว
     for (const p of this.players.values()) send(p, { t: 'lotto', l: this.lottoPub(p) });
   },
-  lottoPrizeName(k) { const P = S.LOTTO.prize[k - 1]; return P ? (k <= 3 ? `รางวัลที่ ${k}` : P.e + ' ' + P.name) : `รางวัลที่ ${k}`; }, // ชื่อรางวัลในข้อความ (1–3 เรียกเลขที่ 4+ เรียกชื่อ)
+  lottoAward(key, k, amt) { // มอบรางวัล = เขียนลง rec.lottoPend [[งวด, รางวัล, เหรียญ]] + แจ้งคนออนไลน์ให้ไปรับที่ตู้ (e[3] = เวลาที่ได้ • ไม่หมดอายุถ้า claimMs = 0 ถ้า > 0 หมดอายุแล้วคืน lotto.pot ตอนโหลด/เข้าเกม)
+    amt = Math.floor(amt); const rec = this.saved[key]; if (!rec || !Number.isFinite(amt) || amt <= 0) return false;
+    const pend = rec.lottoPend || (rec.lottoPend = []); pend.push([this.lotto.round, k, amt, Date.now()]);
+    while (pend.length > S.LOTTO.pendMax) { const a = pend.shift(), b = pend[0]; pend[0] = [b[0], 0, a[2] + b[2], Math.min(Number.isFinite(a[3]) ? a[3] : Infinity, Number.isFinite(b[3]) ? b[3] : Infinity)].filter(x => x !== Infinity); } // เกินเพดาน รวมรายการเก่าสุดเป็นก้อนเดียว (k 0 = รวมหลายรางวัล)
+    this.dirty = true;
+    const q = [...this.players.values()].find(o => o.key === key);
+    if (q) { this.toast(q, `🎟️ ถูก Lucky Lotto ${this.lottoPrizeName(k)}! ไปรับ 🪙 ${amt} ที่ตู้ Lucky Lotto ได้เลย`); this.sfxTo(q, 'levelup'); }
+    return true;
+  },
+  lottoPendSum(rec) { let s = 0; for (const e of (rec && Array.isArray(rec.lottoPend) ? rec.lottoPend : [])) if (Array.isArray(e) && Number.isFinite(e[2]) && e[2] > 0) s += Math.floor(e[2]); return s; },
+  lottoClaim(p, quiet) { // รับรางวัลรอรับ: ต้องยืนใกล้ตู้ • ลบรายการก่อนค่อยเพิ่มเหรียญ (รับซ้ำได้ 0)
+    const rec = p.rec, sum = this.lottoPendSum(rec); if (!sum) { if (rec.lottoPend) { delete rec.lottoPend; this.dirty = true; } return 0; }
+    if (!this.nearLucky(p)) { if (!quiet) this.toast(p, '🎟️ ต้องยืนใกล้ตู้ Lucky Lotto ที่ลานกองไฟถึงจะรับรางวัลได้'); return 0; }
+    delete rec.lottoPend; this.add(p, 'coin', sum, 'lotto'); this.dirty = true;
+    this.toast(p, `🎟️ รับรางวัล Lucky Lotto รวม 🪙 ${sum} เรียบร้อย!`); this.sfxTo(p, 'coin'); send(p, { t: 'inv', inv: S.invPub(rec) });
+    return sum;
+  },
+  lottoPrizeName(k) { if (!k) return 'รางวัลรวม'; const P = S.LOTTO.prize[k - 1]; return P ? (k <= 3 ? `รางวัลที่ ${k}` : P.e + ' ' + P.name) : `รางวัลที่ ${k}`; }, // ชื่อรางวัลในข้อความ (1–3 เรียกเลขที่ 4+ เรียกชื่อ)
   nearLucky(p) { return Math.hypot(p.x - (S.LUCKY.x + 0.5) * TS, p.y - (S.LUCKY.y + 0.5) * TS) < 4.5 * TS; },
   lottoOk(p) { return !!this.starterOf(p).final && S.playLevel(p.rec.skills) >= S.LOTTO.minLv; },
   // left ใน lottoPub ส่งเฉพาะตอนโควตาเครือข่ายตึงกว่าโควตาบัญชี (ไม่มี = ใช้ max - mine.length)
@@ -67,7 +90,7 @@ module.exports = {
   lottoPub(p) {
     const L = this.lotto, now = Date.now(), heat = Math.round(S.heatOf(p.rec.sales, now));
     const buyers = Object.entries(L.tickets).map(([k, l]) => [(this.saved[k] && this.saved[k].name) || k, l.length]).sort((a, b) => b[1] - a[1]); // ใครซื้อกี่ใบ (ไม่เผยเลขของแต่ละคน)
-    return { buyers, hist: L.hist.map(h => ({ round: h.round, nums: h.nums, n: h.n, pot0: h.pot0, winners: h.winners })), near: this.nearLucky(p), pot: L.pot, drawAt: this.lottoDrawAt(L.round), now, hash: L.sealed.hash, mine: L.tickets[p.key] || [], max: S.LOTTO.maxTickets, ...(this.lottoIpLeft(p) < S.LOTTO.maxTickets - (L.tickets[p.key] || []).length ? { left: this.lottoIpLeft(p) } : {}), price: S.LOTTO.price, minLv: S.LOTTO.minLv, ok: this.lottoOk(p), open: now < this.lottoDrawAt(L.round) - S.LOTTO.closeMs, last: L.last, heat, rate: S.taxRate(heat) };
+    return { buyers, hist: L.hist.map(h => ({ round: h.round, nums: h.nums, n: h.n, pot0: h.pot0, winners: h.winners })), near: this.nearLucky(p), pot: L.pot, drawAt: this.lottoDrawAt(L.round), now, hash: L.sealed.hash, mine: L.tickets[p.key] || [], max: S.LOTTO.maxTickets, ...(this.lottoIpLeft(p) < S.LOTTO.maxTickets - (L.tickets[p.key] || []).length ? { left: this.lottoIpLeft(p) } : {}), price: S.LOTTO.price, minLv: S.LOTTO.minLv, ok: this.lottoOk(p), open: now < this.lottoDrawAt(L.round) - S.LOTTO.closeMs, last: L.last, ...(this.lottoPendSum(p.rec) ? { pend: p.rec.lottoPend.filter(e => Array.isArray(e) && e[2] > 0).map(e => e.slice(0, 3)) } : {}), heat, rate: S.taxRate(heat) };
   },
   lottoBuy(p, m) {
     const L = this.lotto, now = Date.now(), mine = L.tickets[p.key] || [];
@@ -83,7 +106,9 @@ module.exports = {
     this.toast(p, `🎟️ ซื้อ Lucky Lotto ${nums.join(' ')} (🪙 ${cost}) ออกผล ${S.LOTTO.revealHour}:00 น.`); this.sfxTo(p, 'coin');
   },
   lottoJoin(p) { // ส่งสถานะหวยตอนเข้าเกม + แจ้งรางวัลที่ถูกตอนออฟไลน์
+    this.lottoExpire(p.rec, Date.now());
     send(p, { t: 'lotto', l: this.lottoPub(p) });
+    const ps = this.lottoPendSum(p.rec); if (ps) setTimeout(() => { if (p.ws.readyState === 1 && this.lottoPendSum(p.rec)) this.toast(p, `🎟️ มีรางวัล Lucky Lotto รอรับ 🪙 ${this.lottoPendSum(p.rec)} ที่ตู้ลานกองไฟ`); }, 3000);
     const w = p.rec.lottoWins; if (w && w.length) { delete p.rec.lottoWins; this.dirty = true; setTimeout(() => { if (p.ws.readyState === 1) for (const [k, amt] of w) this.toast(p, `🎟️ คุณถูก Lucky Lotto ${this.lottoPrizeName(k)} ขณะออฟไลน์! ได้ 🪙 ${amt}`); }, 3000); }
   },
 };

@@ -63,7 +63,7 @@ module.exports = {
     if (info.can) this.waterSet(p, S.CANS[info.can].cap); // ซื้อบัวใหม่ได้น้ำเต็มให้เลย
     if (/^(rod|axe|pick|hoe|pail|pan)_/.test(item)) { const tl = item.split('_')[0]; if (p.rec.dur) delete p.rec.dur[tl]; if (p.rec.fix) delete p.rec.fix[tl]; send(p, { t: 'dur', d: this.durPub(p) }); } // อุปกรณ์ใหม่ความทนทานเต็ม
     this.toast(p, `ซื้อ ${info.emoji} ${info.name}${n > 1 ? ' x' + n : ''}`);
-    if (item.startsWith('seed_')) { const sw = S.plantWait(item.slice(5), null, Date.now()); if (sw) this.toast(p, `🔒 ซื้อได้ แต่ปลูกได้ตอน${sw.s.emoji} ${sw.s.name} (อีก ${S.seasonWaitText(sw.ms)}) เก็บเมล็ดไว้ก่อนนะ`); } // เมล็ดนอกฤดู: ซื้อเก็บได้ แต่ปลูกไม่ได้
+    if (item.startsWith('seed_')) { const sw = S.plantWait(item.slice(5), null, Date.now()); if (sw) this.toast(p, `🔒 ซื้อได้ แต่ปลูกได้ตอน${sw.s.emoji} ${sw.s.name} (อีก ${S.seasonWaitText(sw.ms)}) เก็บเมล็ดไว้ก่อนนะ`); else if (!S.inSeason(item.slice(5), Date.now())) { const sx = S.seasonOf('crops', item.slice(5)); if (sx) this.toast(p, `🍂 ตอนนี้นอกฤดู ปลูกได้แต่ติดผลน้อย (ฤดูที่เหมาะคือ${sx.emoji} ${sx.name}) ปลูกตอนในฤดูจะได้ผลเต็ม`); } } // เมล็ดนอกฤดู: ซื้อเก็บได้ แต่ปลูกไม่ได้
     this.sfxTo(p, 'coin');
     if (info.wear) p.rec.wear[info.wear.cat] = info.wear.id; // ซื้อแล้วสวมให้เลย
     if (info.pet) this.setPet(p, info.pet);                  // ซื้อสัตว์เลี้ยงแล้วให้เดินตามเลย

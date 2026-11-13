@@ -38,7 +38,7 @@ const rodOf = inv => S.rodTier(inv);
 const { NPC_DEFS } = require('./server/consts.js'); // ย้ายไป server/consts.js
 
 const { CAVE, ADMIN_NAME } = require('./server/consts.js'); // ฉากถ้ำเหมือง (ย้ายไป server/consts.js)
-const HOUSE_MSG = new Set(['m', 'act', 'sw', 'reel', 'held', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'block', 'report', 'house', 'gift', 'greet']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
+const HOUSE_MSG = new Set(['m', 'act', 'sw', 'reel', 'held', 'cerr', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'block', 'report', 'house', 'gift', 'greet', 'recall', 'horn']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
 class World {
   constructor(room) {
     this.room = room;
@@ -61,21 +61,23 @@ class World {
         this.farm = moved; this.dirty = true;
       }
       this.saved = Object.assign(Object.create(null), d.players); // ไม่มี prototype: ชื่อผู้เล่นอย่าง "__proto__" จะได้ไม่ไปชนของในระบบ
-      let mineRefund = 0, mineMoved = 0, stdMoved = 0, toolMoved = 0, xpMoved = 0; // สรุปการย้ายเซฟนักขุดแร่ (xpv 4) ลง log ครั้งเดียว เหรียญที่คืนไม่ผ่าน telemetry
+      let mineRefund = 0, mineMoved = 0, stdMoved = 0, toolMoved = 0, xpMoved = 0, durMoved = 0; // สรุปการย้ายเซฟนักขุดแร่ (xpv 4) ลง log ครั้งเดียว เหรียญที่คืนไม่ผ่าน telemetry
       for (const rec of Object.values(this.saved)) { // ย้าย XP มาตาราง XP_TABLE (ครั้งเดียวต่อบัญชี) เลเวลเท่าเดิม
-        if (!rec || rec.xpv >= 7) continue;
-        if (rec.xpv === 6) { if (S.migrateStdV7(rec)) xpMoved++; this.dirty = true; continue; } // xpv 7 (13 พ.ย. 2026, WP-20): หลอด XP มาตรฐานทุกอาชีพ (ไม่คืน/ไม่หักเหรียญ)
-        if (rec.xpv === 5) { if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; this.dirty = true; continue; } // xpv 6 (13 พ.ย. 2026): ขวาน/คันเบ็ด 10 ระดับ (เพิ่มอย่างเดียว ไม่คืน/ไม่หักเหรียญ)
-        if (rec.xpv === 4) { if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; this.dirty = true; continue; } // xpv 5 (6 พ.ย. 2026): ตารางหลอดมาตรฐานชาวประมง
-        if (rec.xpv === 3) { const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; this.dirty = true; continue; } // xpv 4 (6 พ.ย. 2026): นักขุดแร่ตารางหลอดใหม่ + อีเต้อ 10 ชนิด + คืนเหรียญถุงมือ/ค้อน
+        if (!rec || rec.xpv >= 8) continue;
+        if (rec.xpv === 7) { if (S.migrateDurV8(rec)) durMoved++; this.dirty = true; continue; } // xpv 8 (14 พ.ย. 2026): ตารางความทน rod/axe/pick ใหม่ ย้าย dur ตามสัดส่วนความสึก (เซฟเก่ากว่า xpv 7 ผ่าน migrateToolsV6 ด้วยตารางใหม่แล้ว จึงไม่คูณซ้ำ)
+        if (rec.xpv === 6) { if (S.migrateStdV7(rec)) xpMoved++; if (S.migrateDurV8(rec)) durMoved++; this.dirty = true; continue; } // xpv 7 (13 พ.ย. 2026, WP-20): หลอด XP มาตรฐานทุกอาชีพ (ไม่คืน/ไม่หักเหรียญ)
+        if (rec.xpv === 5) { if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; S.migrateDurV8(rec, true); this.dirty = true; continue; } // xpv 6 (13 พ.ย. 2026): ขวาน/คันเบ็ด 10 ระดับ (เพิ่มอย่างเดียว ไม่คืน/ไม่หักเหรียญ)
+        if (rec.xpv === 4) { if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; S.migrateDurV8(rec, true); this.dirty = true; continue; } // xpv 5 (6 พ.ย. 2026): ตารางหลอดมาตรฐานชาวประมง
+        if (rec.xpv === 3) { const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; S.migrateDurV8(rec, true); this.dirty = true; continue; } // xpv 4 (6 พ.ย. 2026): นักขุดแร่ตารางหลอดใหม่ + อีเต้อ 10 ชนิด + คืนเหรียญถุงมือ/ค้อน
         if (rec.xpv !== 2 && rec.skills) for (const k of Object.keys(rec.skills)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = S.xpFromV1(rec.skills[k]);
         if (rec.skills) for (const k of Object.keys(rec.skills)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = S.xpFromV2(rec.skills[k]); // xpv 3 (31 ต.ค. 2026): ยืดเลเวลต้น เลเวลเท่าเดิม
-        rec.xpv = 3; const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; this.dirty = true;
+        rec.xpv = 3; const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; S.migrateDurV8(rec, true); this.dirty = true;
       }
       if (mineMoved) console.log(`[migrate] นักขุดแร่ xpv 4: ย้าย ${mineMoved} บัญชี คืนเหรียญถุงมือ/ค้อนรวม ${mineRefund}`);
       if (stdMoved) console.log(`[migrate] ตารางหลอดมาตรฐาน xpv 5: ย้าย ${stdMoved} บัญชี`);
       if (toolMoved) console.log(`[migrate] อุปกรณ์ xpv 6: ย้าย ${toolMoved} บัญชี`);
       if (xpMoved) console.log(`[migrate] หลอด XP อาชีพ xpv 7: ย้าย ${xpMoved} บัญชี`);
+      if (durMoved) console.log(`[migrate] ความทนอุปกรณ์ xpv 8: ย้าย ${durMoved} บัญชี`);
       for (const rec of Object.values(this.saved)) { // ย้อนพิกัดจากทดลอง TS=64 กลับ TS=32
         if (!rec || !rec.px64) continue;
         if (Number.isFinite(rec.x)) rec.x /= 2;
@@ -88,7 +90,7 @@ class World {
         for (const [x, y, k] of d.trees) if (Number.isInteger(x) && Number.isInteger(y) && this.map[y] && this.map[y][x] === T.GRASS && x >= 1 && y >= 1 && x <= S.W - 2 && y <= S.H - 2 && !(x >= S.MINE.hill.x0 && x <= S.MINE.hill.x1 && y <= 7) && !Object.values(S.PENS).some(P => x >= P.x0 - 2 && x <= P.x1 + 2 && y >= P.y0 - 2 && y <= P.y1 + 2)) { this.map[y][x] = T.TREE; if (Object.hasOwn(S.TREE_KINDS, k)) treeKinds[x + ',' + y] = k; } // เล้า ±2 เท่า NO_TREE: ต้นไม้เก่าไม่ขวางทางเข้าประตูเล้า
       }
       mk = d.market || {}; this.mktDay = Number.isInteger(d.mktDay) ? d.mktDay : -1;
-      houseSaved = d.house || {}; townSaved = { evt: d.evt, chain: d.chain, invites: d.invites, stall: d.stall, orders: d.orders, rents: d.rents, log: d.log, lotto: d.lotto, stats: d.stats, village: d.village, week: d.week, banned: d.banned, banUntil: d.banUntil };
+      houseSaved = d.house || {}; townSaved = { evt: d.evt, chain: d.chain, invites: d.invites, stall: d.stall, bids: d.bids, orders: d.orders, rents: d.rents, log: d.log, lotto: d.lotto, stats: d.stats, village: d.village, week: d.week, banned: d.banned, banUntil: d.banUntil };
       this._loadMocks = d.mocks; this._loadMapOv = d.mapOv;
     } catch (e) {
       // ไม่มีไฟล์ = โลกใหม่ แต่ถ้ามีไฟล์แต่อ่านไม่ได้ ให้สำรองไว้ก่อน ไม่งั้นการบันทึกครั้งต่อไปจะเขียนทับข้อมูลเดิมทิ้ง
@@ -135,7 +137,7 @@ class World {
   loadTown(d) {
     this.evt = d.evt && typeof d.evt === 'object' ? d.evt : { key: '', scores: {}, done: true }; // อีเวนต์ประจำสัปดาห์ที่กำลังนับคะแนน
     this.chain = Number.isFinite(d.chain) ? d.chain : 0; this.invites = d.invites && typeof d.invites === 'object' ? d.invites : {}; // ชาเลนจ์ถังน้ำ: จำนวนที่ทำสำเร็จทั้งเมือง + รหัสลิงก์ท้า
-    this.stall = (Array.isArray(d.stall) ? d.stall : []).filter(x => x && typeof x.seller === 'string' && typeof x.item === 'string' && x.n > 0 && x.price > 0); this.stallNext = this.stall.reduce((a, x) => Math.max(a, x.id || 0), 0) + 1;
+    this.stall = (Array.isArray(d.stall) ? d.stall : []).filter(x => x && typeof x.seller === 'string' && typeof x.item === 'string' && x.n > 0 && x.price > 0); this.loadBids(d.bids); this.stallNext = Math.max(this.stall.reduce((a, x) => Math.max(a, x.id || 0), 0), this.bids.reduce((a, x) => Math.max(a, x.id || 0), 0)) + 1;
     this.orders = d.orders && Array.isArray(d.orders.list) ? d.orders : { day: '', list: [], by: {} };
     this.rents = {}; for (const P of S.FARM_RENT.plots) { const r = d.rents && d.rents[P.id]; if (r && typeof r.key === 'string' && Number.isFinite(r.until)) { if (r.until - Date.now() > S.FARM_RENT.ms) { this.dirty = true; continue; } /* เช่าเกิน 1 วันจริง (สัญญาเก่า) ตัดออกเลย */ this.rents[P.id] = { key: r.key, name: String(r.name || r.key).slice(0, 12), until: r.until }; } } // แปลงเช่า
     this.log = (Array.isArray(d.log) ? d.log : []).filter(e => Array.isArray(e) && Number.isFinite(e[0]) && typeof e[1] === 'string').slice(-S.TOWN.logMax).map(e => [e[0], e[1].slice(0, 120)]);
@@ -175,7 +177,7 @@ class World {
       try { q.ws.terminate(); } catch (e) { /* เหมือนกัน */ } // ตัดซ็อกเก็ตเก่าทันที ไม่รอ close handshake
     }
     let rec = this.saved[key];
-    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 7, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
+    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 8, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
     if (!rec.mig2) { rec.mig2 = true; rec.inv.bait = (rec.inv.bait || 0) + 10; } // แจกเหยื่อตกปลาชุดแรกให้ผู้เล่นเดิม (ระบบเหยื่อเพิ่งเพิ่ม)
     rec.name = name;
     if (!rec.firstSeen) rec.firstSeen = rec.lastSeen || Date.now(); // บัญชีเก่าก่อนมีตัวนับ: ใช้เวลาเข้าล่าสุดแทน (ใกล้เคียงเท่านั้น)
@@ -201,7 +203,7 @@ class World {
     const now = Date.now(), farm = {};
     for (const k in this.farm) farm[k] = this.pub(this.farm[k], now);
     send(p, {
-      t: 'w', deep: rec.deep || 1, first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: S.invPub(rec), fr: this.freshPub(rec, key), skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
+      t: 'w', dev: devStatus(), deep: rec.deep || 1, first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: S.invPub(rec), fr: this.freshPub(rec, key), skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
       players: [...this.players.values()].filter(q => !q.scene).map(q => this.pubFull(q)),
       roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
@@ -221,7 +223,7 @@ class World {
     this.starterStep(p, '');
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
     this.broadcast(Object.assign({ t: 'on', voice: !!p.voice }, this.pubFull(p)), p); // รายชื่อออนไลน์ทุกฉาก
-    this.sceneBroadcast(null, { t: 'p+', id: p.id, held: p.held || '', title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, pet: p.pet, pm: p.pm, pax: p.pax, pay: p.pay, psick: !!(p.pet && this.petSt(p, p.pet).sick), pname: p.pet ? this.petName(p, p.pet) : '', x: p.x, y: p.y }, p);
+    this.sceneBroadcast(null, { t: 'p+', id: p.id, held: p.held || '', title: p.title, name, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp, pet: p.pet, pm: p.pm, pax: p.pax, pay: p.pay, psick: !!(p.pet && this.petSt(p, p.pet).sick), pname: p.pet ? this.petName(p, p.pet) : '', ...(p.pet && this.petLv(p, p.pet) > 1 ? { plv: this.petLv(p, p.pet) } : {}), x: p.x, y: p.y }, p);
     this.dirty = true;
     return { p };
   }
@@ -230,7 +232,7 @@ class World {
     this.arcLeave(p);
     this.tradeCancel(p, 'ผู้เล่นออกจากเกม');
     if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
-    this.telFlush(p); this.wealthLog(p);
+    this.telFlush(p); this.wealthLog(p); this.onlineFlush(p, Date.now(), true);
     this.unloadHerd(p); // สัตว์หายจากเล้า + เซฟสถานะแช่แข็งใน rec.herd
     logEv(this.room, 'leave', { p: p.key, sec: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000) });
     p.rec.catAt = p.rec.leftAt = Date.now(); // leftAt = เวลาออกจากเกมล่าสุด (สรุประหว่างที่ไม่อยู่)
@@ -276,9 +278,17 @@ class World {
         const now = Date.now();
         if (now - p.lastAct < 150) return;
         p.lastAct = p.activeAt = now;
+        if (p.veh && TOOLS.has(m.tool)) { // ขับยานพาหนะอยู่แล้วทำอย่างอื่น (ปลูก ตัดไม้ ขุด ตกปลา ฯลฯ) = ลงจากรถทันที ไม่ทำการกระทำนั้นรอบนี้ (มือเปล่าที่ช่องร้านยังคุยได้)
+          const [fx, fy] = S.facing(p.x, p.y, p.dir), onShop = m.tool === 'hand' && this.map[fy] && this.map[fy][fx] === T.SHOP;
+          if (!onShop) { const vn = S.VEHICLES[p.veh] ? S.VEHICLES[p.veh].name : 'ยานพาหนะ'; this.setVeh(p, ''); this.toast(p, `🚶 ลงจาก${vn}แล้ว ทำงานตอนขับไม่ได้ ลองกดอีกครั้งนะ`); send(p, { t: 'veh', id: p.id, v: '', forced: 1 }); return; }
+        }
         if (TOOLS.has(m.tool)) { p.workAt = now; if (now - (p.swAt || 0) > 1500) this.broadcast({ t: 'use', id: p.id }, p); } // ใช้เครื่องมือ = กำลังทำกิจกรรม (ความหิวลดเร็วขึ้น) + ให้คนอื่นเห็นท่าแกว่ (ส่ง 'sw' มาก่อนแล้วไม่ต้องซ้ำ)ง
         if (m.tool === 'rod') p.baitSel = typeof m.bait === 'string' && /^bait(_[23])?$/.test(m.bait) ? m.bait : 'bait'; // เหยื่อที่เลือกไว้ที่ช่องเบ็ด
         if (TOOLS.has(m.tool)) this.act(p, m.tool, now, m.tx, m.ty);
+        break;
+      }
+      case 'cerr': { // ฝั่งเว็บรายงาน error ตอนวาดภาพ (ของหายเป็นช่วงๆ) บันทึกลงล็อกไม่เกิน 5 ครั้ง/คน/เชื่อมต่อ ไม่แตะเกม
+        p._cerr = (p._cerr || 0) + 1; if (p._cerr <= 5) console.log('[client-err]', p.name, String(m.m || '').replace(/[\r\n]+/g, ' ').slice(0, 240));
         break;
       }
       case 'held': { // อุปกรณ์ที่ถืออยู่ (อีโมจิเดี่ยวเท่านั้น) ให้ผู้เล่นอื่นเห็นว่าใช้อะไรอยู่
@@ -358,15 +368,17 @@ class World {
       case 'arcbuy': this.arcBuy(p, m.id); break;
       case 'rent': this.rentHandle(p, String(m.id || '')); break;
       case 'veh': this.setVeh(p, m.v); break;
+      case 'horn': this.horn(p); break;
+      case 'recall': this.recallUse(p); break;
       case 'star': this.starClaim(p, String(m.skill || '')); break;
       case 'ch': if (m.a === 'start') this.chStart(p); else if (m.a === 'redeem') this.chRedeem(p); else this.chPush(p); break;
-      case 'stall': if (m.a === 'list') send(p, { t: 'stall', l: this.stallPub() }); else this.stallHandle(p, m); break;
+      case 'stall': if (m.a === 'list') send(p, { t: 'stall', ...this.stallPubAll() }); else this.stallHandle(p, m); break;
       case 'orders': if (m.a === 'fill') this.orderFill(p, m.id); send(p, { t: 'orders', o: this.ordersPub(p) }); break;
       case 'mineticket': this.mineTicket(p, m.f | 0); break;
       case 'buy': this.buy(p, m.item, Math.min(10, Math.max(1, m.n | 0))); break;
       case 'sell': this.sell(p, m.item, m.n); break;
       case 'sea': this.seaGo(p); break;
-      case 'lotto': if (m.a === 'buy') this.lottoBuy(p, m); send(p, { t: 'lotto', l: this.lottoPub(p) }); break;
+      case 'lotto': if (m.a === 'buy') this.lottoBuy(p, m); else if (m.a === 'claim') this.lottoClaim(p); send(p, { t: 'lotto', l: this.lottoPub(p) }); break;
     }
   }
 
@@ -405,10 +417,10 @@ class World {
     }
     // 1) เก็บผลผลิตจากสัตว์ (ไข่/นม) ที่อยู่ใกล้ตัวหรือที่ช่องที่เลือก
     const near = this.animals.filter(a => a.prod && (Math.hypot(a.x - p.x, a.y - p.y) < 52 || Math.hypot(a.x - tcx, a.y - tcy) < 44));
-    const prodLocked = a => !!(a.feeder && a.feeder !== p.key && (a.pm || 0) < S.DAY_MS); // ของคนเลี้ยงคนอื่น และยังไม่ครบ 1 วัน
+    const prodLocked = a => !!(a.feeder && a.feeder !== p.key && (a.pm || 0) < S.animalLockMs(a)); // ของคนเลี้ยงคนอื่น และยังไม่ครบเวลาล็อก (ตัวเอง 1 วัน • ป้อนให้เพื่อน 3 นาที)
     const prod = near.find(a => !prodLocked(a));
     if (!prod && near.length && !['feed', 'hay', 'slop', 'medicine'].includes(tool)) { // เหลือแต่ผลผลิตที่ล็อกอยู่ (ถ้ากำลังให้อาหาร/รักษาสัตว์ตัวอื่น ปล่อยให้ทำต่อ)
-      const a0 = near[0]; return this.toast(p, `🔒 ${ANIMALS[a0.type].emoji} ผลผลิตนี้เป็นของ ${a0.fn || 'ผู้เลี้ยง'} • ถ้าเขาไม่มาเก็บภายใน 1 วัน (${Math.round(S.DAY_MS / 60000)} นาที) ใครก็เก็บได้`);
+      const a0 = near[0]; return this.toast(p, `🔒 ${ANIMALS[a0.type].emoji} ผลผลิตนี้เป็นของ ${a0.fn || 'ผู้เลี้ยง'} • ถ้าเขาไม่มาเก็บภายใน ${Math.max(1, Math.ceil((S.animalLockMs(a0) - (a0.pm || 0)) / 60000))} นาที ใครก็เก็บได้`);
     }
     if (prod) {
       const A = ANIMALS[prod.type], info = S.itemInfo(A.product);
@@ -421,7 +433,7 @@ class World {
       if (mine) { this.addXp(p, 'animal', S.animalXp(A.xp, al)); const pOk = this.durCur(p, 'pail') > 0, ph = S.pailHit(p.rec.inv, A); // ถัง/ตะกร้าติดตัว: พังแล้วได้โอกาสพื้น ANIMAL_BONUS เดิม (สุ่มครั้งเดียวเหมือนเดิม)
         if (Math.random() < (pOk ? S.pailChance(p.rec.inv, A) : S.ANIMAL_BONUS)) { extra = 1; this.add(p, A.product, 1); }
         if (pOk && ph.wear > 0) this.durUse(p, 'pail', ph.wear); } // เลี้ยงเอง = XP เต็ม + ลุ้นผลผลิตงาม ×2
-      else { this.addXp(p, 'animal', Math.max(1, Math.floor(S.animalXp(A.xp, al) / 2))); if (prod.feeder) { this.toast(p, `🦊 เก็บผลผลิตของ ${prod.fn || 'ผู้เลี้ยง'} ที่ไม่มาเก็บเกิน 1 วัน`); this.addLog(`🔓 ${p.name} เก็บ${info.emoji} ${info.name}ของ ${prod.fn || 'ผู้เลี้ยง'} (หมดเวลาจอง 1 วัน)`); } } // คนอื่นเก็บได้เมื่อเจ้าของไม่มาเก็บครบ 1 วัน = XP ครึ่ง เจ้าของเสียผลผลิต
+      else { this.addXp(p, 'animal', Math.max(1, Math.floor(S.animalXp(A.xp, al) / 2))); if (prod.feeder) { const lk = S.animalLockMs(prod), lockTxt = lk >= S.DAY_MS ? '1 วัน' : Math.round(lk / 60000) + ' นาที'; this.toast(p, `🦊 เก็บผลผลิตของ ${prod.fn || 'ผู้เลี้ยง'} ที่ไม่มาเก็บเกินเวลาจอง (${lockTxt})`); this.addLog(`🔓 ${p.name} เก็บ${info.emoji} ${info.name}ของ ${prod.fn || 'ผู้เลี้ยง'} (หมดเวลาจอง ${lockTxt})`); } } // คนอื่นเก็บได้เมื่อเจ้าของไม่มาเก็บครบ 1 วัน = XP ครึ่ง เจ้าของเสียผลผลิต
       prod.feeder = ''; prod.fn = ''; prod.pm = 0;
       this.event(p, 'collect');
       this.toast(p, `ได้${info.name} ${info.emoji}${mine ? (extra ? ' ×2 ✨ (คุณเลี้ยงเอง ได้ผลงาม!)' : ' (คุณเลี้ยงเอง)') : ''}`);
@@ -433,22 +445,32 @@ class World {
     if (tile && tile.c && S.cropStage(tile) === 3) {
       { const rr = this.rentAt(tx, ty); if (rr && rr.key !== p.key && tile.o !== p.key) return this.toast(p, `🔒 แปลงนี้ ${rr.name} เช่าอยู่ เก็บผักในแปลงเช่าของคนอื่นไม่ได้`); } // แปลงเช่า: ระหว่างสัญญาคนอื่นเก็บไม่ได้เลย (ไม่ใช้กฎสุกค้าง 1 วัน)
       if (this.cropLocked(tile, p)) return this.toast(p, `🌱 ต้นนี้เป็นของ ${tile.on || 'ผู้เล่นอื่น'} — ถ้าเขาไม่มาเก็บภายใน ${Math.max(1, Math.ceil((S.DAY_MS - (tile.rm || 0)) / 60000))} นาที (1 วันในเกม) คนอื่นถึงจะมาเก็บได้`);
-      const c = CROPS[tile.c];
+      const c = CROPS[tile.c], OS = S.OFFSEASON, miss = !!tile.os && Math.random() >= OS.chance; // ปลูกนอกฤดู: ลุ้นติดผลตอนเก็บ (เซิร์ฟเวอร์สุ่ม)
+      if (miss) { // ไม่ติดผล: ได้เมล็ดชนิดเดิมแทน (ไม่มีผลผลิต/ไม่ลุ้นโบนัส) XP ลดตาม OFFSEASON.xpFail
+        const n = OS.seedMin + Math.floor(Math.random() * (OS.seedMax - OS.seedMin + 1));
+        this.add(p, 'seed_' + tile.c, n); this.addXp(p, 'farm', Math.max(1, Math.round(c.xp * OS.xpFail))); this.tire(p, 'harvest', c.sell);
+        this.toast(p, `🍂 ${c.emoji} ${c.name}นอกฤดู ไม่ติดผล ได้เมล็ด ×${n} คืน เอาไปปลูกใหม่ได้`);
+        this.sfx(p, 'harvest');
+        delete tile.c; delete tile.g; delete tile.m; delete tile.o; delete tile.on; delete tile.rm; delete tile.os; tile.idle = 0;
+        this.tileUpdate(k, tile);
+        return;
+      }
       this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp); this.tire(p, 'harvest', c.sell);
       if (this.petLuck(p, c.emoji + ' ' + c.name)) this.add(p, 'crop_' + tile.c, 1);
-      this.toast(p, `เก็บ ${c.emoji} ${c.name}`);
+      this.toast(p, tile.os ? `เก็บ ${c.emoji} ${c.name} (นอกฤดูแต่ติดผล!)` : `เก็บ ${c.emoji} ${c.name}`);
       if (this.durCur(p, 'hoe') > 0) { const hh = S.hoeHit(p.rec.inv, c); // จอบติดตัว: ลุ้นผลผลิต +1 (พังแล้วไม่บล็อกการเก็บ แค่ไม่ได้โบนัส)
         if (hh.bonus > 0) { if (Math.random() < hh.bonus) { this.add(p, 'crop_' + tile.c, 1); this.toast(p, '✨ จอบดี ผลผลิตงาม +1'); } if (hh.wear > 0) this.durUse(p, 'hoe', hh.wear); } }
       if (tile.o && tile.o !== p.key) this.addLog(`🔓 ${p.name} เก็บ${c.emoji} ${c.name}ของ ${tile.on || 'ผู้เล่นอื่น'} (หมดเวลาจอง 1 วัน)`); // ข่าว: ใครเก็บผลผลิตของคนอื่นที่ปลดล็อกแล้ว
       else if (c.sell >= 100) this.addLog(`${c.emoji} ${p.name} เก็บเกี่ยว${c.name}สำเร็จ`);
       this.sfx(p, 'harvest'); this.event(p, 'harvest', tile.c); this.bookAdd(p, 'crop', tile.c);
-      delete tile.c; delete tile.g; delete tile.m; delete tile.o; delete tile.on; delete tile.rm; tile.idle = 0;
+      delete tile.c; delete tile.g; delete tile.m; delete tile.o; delete tile.on; delete tile.rm; delete tile.os; tile.idle = 0;
       this.tileUpdate(k, tile);
       return;
     }
     // 3) ตู้เกม
     if (tt === T.BUILD && S.cinemaAt(tx, ty)) { send(p, { t: 'cin', open: true, st: this.cinemaPub() }); return; } // จอหนังกลางแปลง
     const town = tt === T.SHOP ? S.townAt(tx, ty) : null;
+    if (town === 'lotto' && this.lottoClaim(p, true)) send(p, { t: 'lotto', l: this.lottoPub(p) }); // กด Action ที่ตู้ = รับรางวัลรอรับอัตโนมัติ
     if (town) { send(p, { t: 'town', w: town, fee: town === 'sea' ? this.seaFee(p) : undefined, boat: town === 'sea' ? p.rec.inv.boat > 0 : undefined, win: town === 'sea' && !(p.rec.inv.boat > 0) ? S.oceanWindow(Date.now()) : undefined, min: town === 'sea' ? S.SEA.minFishLv : undefined, ms: town === 'sea' ? S.SEA.ms : undefined }); return; }
     const cab = tt === T.SHOP ? S.cabinetAt(tx, ty) : null;
     if (cab) { this.arcOpen(p, cab); return; }
@@ -499,7 +521,7 @@ class World {
       let mine = 0; for (const q in this.farm) if (this.farm[q].c && this.farm[q].o === p.key) { const [qx, qy] = q.split(',').map(Number), r2 = this.rentAt(qx, qy); if (!(r2 && r2.key === p.key)) mine++; } // ต้นในแปลงเช่าของตัวเองไม่นับ
       if (!(rr && rr.key === p.key) && mine >= cap) return this.toast(p, `🌱 ปลูกค้างอยู่ครบ ${cap} ต้นแล้ว เก็บเกี่ยวก่อน หรือแบ่งที่ให้คนอื่นปลูกบ้างนะ (เลเวลชาวนาสูงขึ้นปลูกได้มากขึ้น)`);
       this.add(p, tool, -1);
-      tile.c = tool.slice(5); tile.o = p.key; tile.on = p.name; tile.rm = 0; tile.g = 0; tile.m = 1 + 0.04 * (S.perkLv(this.lv(p, 'farm')) - 1);
+      tile.c = tool.slice(5); tile.o = p.key; tile.on = p.name; tile.rm = 0; tile.g = 0; if (S.inSeason(tile.c, Date.now())) delete tile.os; else { tile.os = 1; this.toast(p, `🍂 ${C0.emoji} ${C0.name}นอกฤดู ปลูกได้แต่ต้นอาจไม่ติดผล (ได้เมล็ดคืนแทน) ปลูกในฤดูที่เหมาะจะได้ผลเต็ม`); } tile.m = 1 + 0.04 * (S.perkLv(this.lv(p, 'farm')) - 1);
       if ((p.rec.quick || 0) < S.NEWBIE.quickSeeds && !this.starterOf(p).final) { p.rec.quick = (p.rec.quick || 0) + 1; tile.m = S.NEWBIE.quickMul; this.toast(p, `🌱 เมล็ดมือใหม่ โตไวพิเศษ! (${p.rec.quick}/${S.NEWBIE.quickSeeds}) รดน้ำแล้วรอแป๊บเดียว`); }
       this.tileUpdate(k, tile); this.addXp(p, 'farm', 2); this.tire(p, 'plant'); this.sfx(p, 'plant'); this.event(p, 'plant');
     } else if (tool === 'rod') {
@@ -565,7 +587,7 @@ class World {
 
 
   tick(dt, now) {
-    this.rainTick(now);
+    this.rainTick(now); this.onlineTick(now);
     this.lottoTick(now);
     for (const p of this.players.values()) {
       const cf = S.caveFloor(p.scene); if (!S.isSeaScene(cf)) continue;
@@ -586,7 +608,7 @@ class World {
     // ความหิว: นับเฉพาะตอนมีผู้เล่นออนไลน์ (กันสัตว์/คนหิวตายตอนทุกคนไม่อยู่)
     if (this.players.size) {
       this.hunTick = (this.hunTick || 0) + dt * 1000;
-      if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) this.petTick15(p); for (const p of this.players.values()) { if (p.sit) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul)); } } // นั่งพักอยู่ = ความหิวไม่ลด
+      if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) this.petTick15(p); for (const p of this.players.values()) { if (p.sit || (p.admin && p.noHunger)) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul)); } } // นั่งพักอยู่ = ความหิวไม่ลด
       this.sitTick = (this.sitTick || 0) + dt * 1000;
       if (this.sitTick >= S.PLAYER_HUNGER.sitMs) { this.sitTick = 0; for (const p of this.players.values()) if (p.sit && p.rec.hunger < 100) this.setHunger(p, p.rec.hunger + S.PLAYER_HUNGER.sitGain, true); } // นั่งพักค่อยๆ อิ่มขึ้นทีละนิด
       this.energyTick(dt); this.chAcc = (this.chAcc || 0) + dt; if (this.chAcc >= 2) { this.chAcc = 0; this.chTick(); this.evTick(); }
@@ -665,7 +687,7 @@ class World {
     }
     for (const a of this.animals) {
       if (a.fed && now >= a.layAt && a.hunger > 0 && !a.sick) { a.fed = false; a.prod = true; a.pm = 0; }
-      if (a.prod && a.feeder && (a.pm || 0) < S.DAY_MS) a.pm = (a.pm || 0) + dt * 1000; // ผลผลิตเป็นของคนเลี้ยง: นับเวลาที่ยังไม่มีใครมาเก็บ ครบ 1 วันคนอื่นเก็บได้ (เหมือนผัก)
+      if (a.prod && a.feeder && (a.pm || 0) < S.animalLockMs(a)) a.pm = (a.pm || 0) + dt * 1000; // ผลผลิตเป็นของคนเลี้ยง: นับเวลาที่ยังไม่มีใครมาเก็บ ครบ 1 วันคนอื่นเก็บได้ (เหมือนผัก)
       a.wait -= dt;
       if (a.wait <= 0) {
         const bee = a.type === 'bee', z = bee ? this.hiveBox(a.hive) : this.zone(a.type);
@@ -691,7 +713,7 @@ class World {
       if (!k) {
         msg.n = this.npcs.map(n => n.fs ? [n.id, Math.round(n.x), Math.round(n.y), n.dir, n.fs, n.fx, n.fy] : [n.id, Math.round(n.x), Math.round(n.y), n.dir]);
         msg.pt = this.pets.map(q => [q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? 1 : 0]);
-        msg.c = this.animals.map(a => [a.id, a.type, Math.round(a.x), Math.round(a.y), a.prod ? 1 : 0, a.fed ? 1 : 0, a.dx, Math.round(a.hunger), a.sick ? 1 : 0, a.prod && a.feeder && (a.pm || 0) < S.DAY_MS ? 1 : 0, a.prod ? a.fn || '' : '', a.on || '']);
+        msg.c = this.animals.map(a => [a.id, a.type, Math.round(a.x), Math.round(a.y), a.prod ? 1 : 0, a.fed ? 1 : 0, a.dx, Math.round(a.hunger), a.sick ? 1 : 0, a.prod && a.feeder && (a.pm || 0) < S.animalLockMs(a) ? 1 : 0, a.prod ? a.fn || '' : '', a.on || '']);
       }
       const str = JSON.stringify(msg); for (const q of ps) if (q.ws.readyState === 1) q.ws.send(str);
     }
@@ -702,7 +724,7 @@ class World {
     if (!this.dirty) return;
     this.dirty = false;
     for (const p of this.players.values()) { const r = this.townPos(p); p.rec.x = r.x; p.rec.y = r.y; this.syncHerd(p); } // เซฟฝูงลง rec.herd ก่อนเขียนไฟล์
-    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), treeMix: this.treeMixV | 0, house: { houses: this.houses }, log: this.log, lotto: this.lotto, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, banned: [...(this.banned || [])], ...(this.banUntil && Object.keys(this.banUntil).length ? { banUntil: this.banUntil } : {}), mocks: this.mocks || [], mapOv: this.mapOv || {} }, replacer);
+    const data = JSON.stringify({ evt: this.evt, chain: this.chain, invites: this.invites, layout: 2, rents: this.rents, farm: this.farm, players: this.saved, animals: {}, market: this.market, mktDay: this.mktDay, trees: this.treeList(), treeMix: this.treeMixV | 0, house: { houses: this.houses }, log: this.log, lotto: this.lotto, stats: this.stats, village: this.village, week: this.week, orders: this.orders, stall: this.stall, ...(this.bids && this.bids.length ? { bids: this.bids } : {}), banned: [...(this.banned || [])], ...(this.banUntil && Object.keys(this.banUntil).length ? { banUntil: this.banUntil } : {}), mocks: this.mocks || [], mapOv: this.mapOv || {} }, replacer);
     const seq = this.saveSeq = (this.saveSeq | 0) + 1, tmp = this.file + '.' + seq + '.tmp'; // ชื่อ .tmp ไม่ซ้ำต่อรอบ: เขียนซ้อนกันไม่ชนไฟล์เดียวกัน
     if (sync) { try { fs.writeFileSync(tmp, data); fs.renameSync(tmp, this.file); } catch (e) { this.dirty = true; try { fs.unlinkSync(tmp); } catch (_) {} throw e; } return; } // เขียน .tmp แล้ว rename ทับ: ไฟล์จริงไม่เสียครึ่งๆ กลางๆ ถ้าดับ/ดิสก์เต็ม
     fs.writeFile(tmp, data, err => {
@@ -749,9 +771,9 @@ mix(World, require('./server/systems/theme.js')); // ธีมหิมะที
 mix(World, require('./server/systems/core.js')); // บริการกลาง ฉาก วันที่ (ย้ายไป server/systems/core.js)
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
-if (require.main !== module) { module.exports = { World }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)
-
 const worlds = new Map();
+if (require.main !== module) { module.exports = { World, adminHandle, devStatus, worlds }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)
+
 function getWorld(room) {
   let w = worlds.get(room);
   if (!w) {
@@ -879,10 +901,10 @@ function banList() { // รายชื่อที่ถูกแบนทุ�
   return out;
 }
 // ----- ผังเมืองที่ผู้ดูแลย้ายได้ (ร้าน/ป้าย Arcade/ตู้เกม/กองไฟ+ลาน/ATM/กระดานข่าว/ตู้เซฟ) -----
-const LAYOUT_IDS = /^(b_[a-z]+|cab[0-9]|fire|atm|board|rank|lotto)$/;
+const LAYOUT_IDS = /^(b_[a-z]+|cab[0-9]|fire|atm|board|rank|lotto|flea)$/;
 const cleanLayoutItems = raw => { const out = {}; if (raw && typeof raw === 'object') for (const [id, v] of Object.entries(raw)) { if (!LAYOUT_IDS.test(id) || !v) continue; const x = Math.trunc(+v.x), y = Math.trunc(+v.y); if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < S.W && y < S.H) out[id] = { x, y }; } return out; };
-const liveLayoutItems = (Sx) => { const o = {}; for (const b of Sx.BUILDINGS) o['b_' + b.kind] = { x: b.x0, y: b.y0 }; Sx.CABINETS.forEach((c, i) => { o['cab' + i] = { x: c.x, y: c.y }; }); o.fire = { x: Sx.FIRE.x, y: Sx.FIRE.y }; o.atm = { x: Sx.ATM.x, y: Sx.ATM.y }; o.board = { x: Sx.BOARD.x, y: Sx.BOARD.y }; o.rank = { x: Sx.RANKBOARD.x, y: Sx.RANKBOARD.y }; o.lotto = { x: Sx.LUCKY.x, y: Sx.LUCKY.y }; return o; };
-const LAYOUT_NAMES = { fire: 'กองไฟ', atm: 'ATM', board: 'กระดานข่าว', rank: 'ป้ายอันดับ', lotto: 'Lucky Lotto' };
+const liveLayoutItems = (Sx) => { const o = {}; for (const b of Sx.BUILDINGS) o['b_' + b.kind] = { x: b.x0, y: b.y0 }; Sx.CABINETS.forEach((c, i) => { o['cab' + i] = { x: c.x, y: c.y }; }); o.fire = { x: Sx.FIRE.x, y: Sx.FIRE.y }; o.atm = { x: Sx.ATM.x, y: Sx.ATM.y }; o.board = { x: Sx.BOARD.x, y: Sx.BOARD.y }; o.rank = { x: Sx.RANKBOARD.x, y: Sx.RANKBOARD.y }; o.lotto = { x: Sx.LUCKY.x, y: Sx.LUCKY.y }; o.flea = { x: Sx.FLEA.x, y: Sx.FLEA.y }; return o; };
+const LAYOUT_NAMES = { fire: 'กองไฟ', atm: 'ATM', board: 'กระดานข่าว', rank: 'ป้ายอันดับ', lotto: 'Lucky Lotto', flea: 'ตลาดนัด' };
 const layoutName = id => LAYOUT_NAMES[id] || (/^cab/.test(id) ? 'ตู้เกม ' + (+id.slice(3) + 1) : (S.BUILDINGS.find(b => 'b_' + b.kind === id) || {}).name || id);
 function loadSharedWith(lay) { // สร้างสำเนา shared.js ที่ใช้ผังทดลอง โดยไม่แตะตัวที่เกมใช้อยู่
   const key = require.resolve('./public/shared.js'), cached = require.cache[key], prev = globalThis.__LAYOUT;
@@ -915,14 +937,14 @@ function validateLayout(items) { // คืนรายการข้อผิ�
     if (b.counter.length) { const [cx, cy] = b.counter[0]; claim(nm + ' (ช่องยืนหน้าประตู)', cx, cy + 1, true); }
   }
   Sx.CABINETS.forEach((c, i) => claim('ตู้เกม ' + (i + 1), c.x, c.y));
-  claim('กองไฟ', Sx.FIRE.x, Sx.FIRE.y); claim('ATM', Sx.ATM.x, Sx.ATM.y); claim('ป้ายอันดับ', Sx.RANKBOARD.x, Sx.RANKBOARD.y); claim('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); claim('Lucky Lotto', Sx.LUCKY.x, Sx.LUCKY.y);
+  claim('กองไฟ', Sx.FIRE.x, Sx.FIRE.y); claim('ATM', Sx.ATM.x, Sx.ATM.y); claim('ป้ายอันดับ', Sx.RANKBOARD.x, Sx.RANKBOARD.y); claim('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); claim('Lucky Lotto', Sx.LUCKY.x, Sx.LUCKY.y); claim('ตลาดนัด', Sx.FLEA.x, Sx.FLEA.y);
   for (const q of Sx.SEATS) claim('ที่นั่งลานกองไฟ', q.x, q.y);
   if (errs.length) return [...new Set(errs)];
   const now = unreachableCount(S, S.makeMap()), nw = unreachableCount(Sx, m);
   if (nw.n > now.n) errs.push(`มีช่องเดินได้ ${nw.n - now.n} ช่องที่เดินไปไม่ถึง (ร้าน/ตู้อาจล้อมช่องว่างไว้)`);
   for (const b of Sx.BUILDINGS) if (b.counter.length) { const [cx, cy] = b.counter[0]; if (!nw.walk(cx, cy + 1) || !nw.seen.has((cy + 1) * 1000 + cx)) errs.push(`เดินไปหน้าประตู ${b.name} ไม่ถึง`); }
   const adj = (nm, x, y) => { if (!Sx.DIRS.some(([dx, dy]) => nw.seen.has((y + dy) * 1000 + (x + dx)))) errs.push(nm + ' ไม่มีช่องเดินติดอยู่เลย (ใช้งานไม่ได้)'); };
-  Sx.CABINETS.forEach((c, i) => adj('ตู้เกม ' + (i + 1), c.x, c.y)); adj('ATM', Sx.ATM.x, Sx.ATM.y); adj('ป้ายอันดับ', Sx.RANKBOARD.x, Sx.RANKBOARD.y); adj('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); adj('Lucky Lotto', Sx.LUCKY.x, Sx.LUCKY.y);
+  Sx.CABINETS.forEach((c, i) => adj('ตู้เกม ' + (i + 1), c.x, c.y)); adj('ATM', Sx.ATM.x, Sx.ATM.y); adj('ป้ายอันดับ', Sx.RANKBOARD.x, Sx.RANKBOARD.y); adj('กระดานข่าว', Sx.BOARD.x, Sx.BOARD.y); adj('Lucky Lotto', Sx.LUCKY.x, Sx.LUCKY.y); adj('ตลาดนัด', Sx.FLEA.x, Sx.FLEA.y);
   return [...new Set(errs)];
 }
 function layoutHistory() { try { return fs.readdirSync(LAYOUT_HIST).filter(f => f.endsWith('.json')).sort(); } catch (e) { return []; } }
@@ -937,7 +959,14 @@ function commitLayout(world, p, items, how) { // เก็บของเดิ�
   world.broadcast({ t: 'reload', why: 'layout' });
   if (!process.env.LAYOUT_NO_EXIT) setTimeout(() => process.exit(0), 1500);
 }
+// On Develop: ผู้ดูแลออนเกมอยู่ไหม (ทุกห้อง) และออนมากี่วินาทีนับจากเข้าเกม (ใช้คนที่เข้าก่อนสุด) • ไม่มีรหัส/ชื่อผู้ดูแลหลุดไปกับข้อมูล
+function devStatus() {
+  const now = Date.now(); let since = 0;
+  for (const w of worlds.values()) for (const q of w.players.values()) if (q.admin && q.joinedAt && (!since || q.joinedAt < since)) since = q.joinedAt;
+  return since ? { t: 'dev', on: true, sec: Math.max(0, Math.floor((now - since) / 1000)) } : { t: 'dev', on: false, sec: 0 };
+}
 function adminHandle(p, world, m) {
+  if (!p || !p.admin) return; // กันซ้ำที่ด่านนี้ด้วย: ผู้เล่นทั่วไปสั่งไม่ได้เด็ดขาด
   const reply = o => send(p, Object.assign({ t: 'admin', rooms: roomsPub(), current: world.room }, o));
   if (m.a === 'rooms') return reply({ snow: world.themeSnow(), rain: world.themeRain() });
   if (m.a === 'snowget') return reply({ snow: world.themeSnow(), rain: world.themeRain() });
@@ -1018,6 +1047,15 @@ function adminHandle(p, world, m) {
     world.add(p, 'coin', n, 'admin');
     console.log('ผู้ดูแลปรับเหรียญตัวเอง:', p.name, (n > 0 ? '+' : '') + n, '→', p.rec.inv.coin, '(ห้อง ' + world.room + ')');
     return reply({ coinmsg: `🪙 ${p.name}: ${n > 0 ? '+' : ''}${n} (เหลือ ${p.rec.inv.coin})`, users: userList() });
+  }
+  if (m.a === 'hunger') { // ผู้ดูแลเปิด/ปิดความหิวของตัวเอง (เฉพาะรอบเล่นนี้ ไม่เซฟ): on = true เปิดความหิวตามปกติ • false ปิด (ไม่ลด)
+    if (typeof m.on !== 'boolean') return reply({ err: 'on ต้องเป็น true/false' });
+    p.noHunger = !m.on; return reply({ hungerOn: m.on, ok: m.on ? '🍗 เปิดความหิวแล้ว' : '🍗 ปิดความหิวแล้ว (ไม่ลดจนกว่าจะเปิดใหม่)' });
+  }
+  if (m.a === 'coin1k') { // ผู้ดูแลเพิ่มเหรียญให้ตัวเองทีละ S.ADMIN_COIN_STEP (1,000)
+    world.add(p, 'coin', S.ADMIN_COIN_STEP, 'admin');
+    console.log('ผู้ดูแลเพิ่มเหรียญตัวเอง:', p.name, '+' + S.ADMIN_COIN_STEP, '→', p.rec.inv.coin, '(ห้อง ' + world.room + ')');
+    return reply({ coinmsg: `🪙 ${p.name}: +${S.ADMIN_COIN_STEP} (เหลือ ${p.rec.inv.coin})`, coin: p.rec.inv.coin });
   }
   if (m.a === 'lvl') { // ผู้ดูแลปรับเลเวลอาชีพของตัวเองเพื่อทดสอบ: d = +1/-1 เลเวล หรือ to = เลเวลที่ต้องการ (ตั้ง XP ให้พอดีขั้นนั้น)
     const sk = String(m.skill || ''); if (!Object.hasOwn(S.SKILLS, sk)) return reply({ err: 'ไม่รู้จักอาชีพนี้' });
@@ -1176,6 +1214,7 @@ wss.on('connection', (ws, req) => {
       if (rec.pin) { if (pinLocked(k)) return world.toast(player, 'ใส่ PIN ผิดบ่อยเกินไป รอ 1 นาที'); if (!pinOk(rec, String(m.old || ''))) { pinFails.get(k).push(Date.now()); return world.toast(player, 'PIN เดิมไม่ถูกต้อง'); } }
       rec.pin = pinMake(pin); world.dirty = true; ws.send(JSON.stringify({ t: 'pinask', has: true })); return world.toast(player, '🔐 ตั้ง PIN แล้ว ครั้งหน้าเข้าเกมใส่ PIN ด้วยนะ');
     }
+    if (m.t === 'dev') return send(player, devStatus()); // ผู้เล่นทุกคนถามได้: { t:'dev' } → { t:'dev', on, sec }
     if (m.t === 'admin') { if (player.admin) { try { adminHandle(player, world, m); } catch (e) { console.error('admin error', e); } } return; }
     try { world.handle(player, m); } catch (e) { console.error('handle error', m.t, e); } // ข้อความแปลกๆ จากผู้เล่นคนเดียวต้องไม่ทำให้เซิร์ฟเวอร์ล้ม
   });

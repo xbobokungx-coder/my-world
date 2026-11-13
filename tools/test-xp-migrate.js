@@ -63,7 +63,7 @@ const { World } = require('../server.js');
   };
   fs.writeFileSync(path.join(dataDir, 'xpmig.json'), JSON.stringify({ players: clone(players), farm: {}, layout: 2 }));
   const w = new World('xpmig'), sv = w.saved;
-  for (const k of Object.keys(players)) { assert.strictEqual(sv[k].xpv, 7, k + ' xpv 7'); assert.strictEqual(sv[k].inv.coin, k === 'nos' ? 9 : 1234, k + ' เหรียญไม่เปลี่ยน (ไม่คืน/ไม่หัก)'); }
+  for (const k of Object.keys(players)) { assert.strictEqual(sv[k].xpv, 8, k + ' xpv 8'); assert.strictEqual(sv[k].inv.coin, k === 'nos' ? 9 : 1234, k + ' เหรียญไม่เปลี่ยน (ไม่คืน/ไม่หัก)'); }
   assert.strictEqual(sv.p7.skills.farm, 7600, 'xpv 7 ไม่ถูกแตะ'); assert.strictEqual(S.levelOf(sv.p6.skills.farm, 'farm'), S.levelOf(7600), 'p6 เลเวลเท่าเดิม'); assert.deepStrictEqual(sv.p6.stars, { farm: 2 });
   assert.strictEqual(S.levelOf(sv.p3.skills.farm, 'farm'), S.levelOf(7600), 'p3 โซ่ยาว เลเวลเท่าเดิม'); // xpv3 อยู่บน XP_TABLE แล้ว
   assert.strictEqual(sv.p3.skills.farm, S.xpStdV5(7600, 'farm')); assert.strictEqual(S.levelOf(sv.p3.skills.cook, 'cook'), S.levelOf(20150)); assert.strictEqual(S.levelOf(sv.p5.skills.wood, 'wood'), 20);
@@ -72,7 +72,7 @@ const { World } = require('../server.js');
   // เซฟแล้วโหลดซ้ำไม่เปลี่ยน
   w.dirty = true; w.save(true); const snap = clone(sv); assert.deepStrictEqual(clone(new World('xpmig').saved), snap, 'โหลดซ้ำไม่เปลี่ยน');
   // ผู้เล่นใหม่ = xpv 7
-  const ws = { readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } }; const j = w.join(ws, 'newbie', '#e74c3c'); assert.strictEqual(j.p.rec.xpv, 7, 'ผู้เล่นใหม่ xpv 7');
+  const ws = { readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } }; const j = w.join(ws, 'newbie', '#e74c3c'); assert.strictEqual(j.p.rec.xpv, 8, 'ผู้เล่นใหม่ xpv 7');
 }
 
 // ---- (จ) tools-unmigrate กับสำเนาชั่วคราว ----

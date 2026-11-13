@@ -74,7 +74,7 @@ const { World } = require('../server.js'), clone = o => JSON.parse(JSON.stringif
   };
   fs.writeFileSync(path.join(process.env.DATA_DIR, 'fishmig.json'), JSON.stringify({ players: clone(players), farm: {}, layout: 2 }));
   const w = new World('fishmig'), sv = w.saved;
-  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 7, k + ' xpv 7 (โซ่ 5 → 6 → 7 ต่อท้าย)');
+  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 8, k + ' xpv 8 (โซ่ 5 → 6 → 7 ต่อท้าย)');
   assert.strictEqual(S.levelOf(sv.c4.skills.fish, 'fish'), 10, 'c4 ชาวประมงเลเวลเดิม'); assert.strictEqual(sv.c4.skills.farm, S.xpStdV5(lvXp(10), 'farm'), 'ชาวนาแปลงที่ V7 (WP-20)'); assert.strictEqual(S.levelOf(sv.c4.skills.farm, 'farm'), 10);
   assert.strictEqual(sv.c4.skills.mine, 777); assert.strictEqual(sv.c4.skills.wood, S.xpStdV5(5, 'wood'), 'ช่างไม้แปลงที่ V7');
   assert.strictEqual(S.levelOf(sv.c3.skills.fish, 'fish'), 10, 'c3 (xpv 3 → 5)'); assert.strictEqual(sv.c3.skills.farm, S.xpStdV5(lvXp(10), 'farm'));

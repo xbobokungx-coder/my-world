@@ -6,6 +6,8 @@ admin.key
 .env
 .claude/settings.local.json
 .claude/agent-memory-local/
+.claude/worktrees/
+.claude/launch.json
 art/raw/
 data-dev/
 .DS_Store

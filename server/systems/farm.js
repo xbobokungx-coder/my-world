@@ -6,7 +6,7 @@ const { CROPS } = S;
 module.exports = {
   // พืชเป็นของคนปลูก (t.o = key, t.on = ชื่อ): เก็บได้เฉพาะเจ้าของ แต่ถ้าสุกแล้วไม่มีใครมาเก็บครบ 1 วันในเกม (t.rm = เวลาที่สุกค้างอยู่ นับเฉพาะตอนมีคนออนไลน์) คนอื่นก็มาเก็บได้ ต้นเก่าที่ไม่มีเจ้าของ = ใครเก็บก็ได้
   cropLocked(t, p) { return !!(t.o && p.key !== t.o && (t.rm || 0) < S.DAY_MS); },
-  pub(t, now) { return { c: t.c || null, s: t.c ? S.cropStage(t) : 0, f: t.c ? S.cropFrame(t) : 0, w: t.wu > now || this.rainWet(now) ? 1 : 0, o: t.on || '', l: t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS ? 1 : 0 }; },
+  pub(t, now) { return { c: t.c || null, s: t.c ? S.cropStage(t) : 0, f: t.c ? S.cropFrame(t) : 0, w: t.wu > now || this.rainWet(now) ? 1 : 0, o: t.on || '', ...(t.c && t.os ? { os: 1 } : {}), l: t.c && t.o && S.cropStage(t) === 3 && (t.rm || 0) < S.DAY_MS ? 1 : 0 }; },
   tileUpdate(k, t) {
     if (t) { t._p = JSON.stringify(this.pub(t, Date.now())); this.broadcast({ t: 'tile', k, v: JSON.parse(t._p) }); }
     else this.broadcast({ t: 'tile', k, v: null });

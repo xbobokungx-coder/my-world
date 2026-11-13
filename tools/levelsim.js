@@ -40,7 +40,7 @@ function farmIn(lv, t, lag = 0) { // lag = ไม่อัปจอบ • t = �
   for (const [k, c] of Object.entries(S.CROPS)) {
     if (c.lv > lv || c.legacy) continue;
     let pm = 1; // ตัวคูณราคาตามฤดู
-    if (t !== undefined) { if (!S.canPlant(k, t)) continue; pm = S.cropSeason(k, t) === 1 ? S.SEASONS.inMul : 1; }
+    if (t !== undefined) { if (!(S.inSeason || S.canPlant)(k, t)) continue; pm = S.cropSeason(k, t) === 1 ? S.SEASONS.inMul : 1; }
     const grow = c.time / m, waters = Math.ceil(grow / wet), acts = 3 + waters; // ขุด ปลูก เก็บ + รดน้ำทุกครั้งที่ดินแห้ง
     if (S.cropCan && canAt(lv) < S.cropCan(c)) continue; // ยังไม่มีบัวที่พืชนี้ต้องใช้
     const ppm = Math.min(cap / (grow / 60000), M.apm / acts);                 // ต้นต่อนาที: ติดเพดานแปลงหรือแรงงาน

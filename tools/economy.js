@@ -20,11 +20,13 @@ if (fs.existsSync(evDir)) for (const f of fs.readdirSync(evDir).filter(f => f.en
 
 // ----- 1) เงินในระบบตอนนี้ (จากไฟล์เซฟ) -----
 const players = [], recs = [];
-let chest = 0;
+let chest = 0, bidHold = 0, lottoPendAll = 0; // เงินกันไว้ใน bids ตลาดนัด / หวยรอรับ (นับทุกบัญชี)
 for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.startsWith('rooms.'))) {
   let d; try { d = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8').replace(/^﻿/, '')); } catch (e) { continue; }
   chest += (d.lotto && d.lotto.pot) || (d.chest && d.chest.coin) || 0;
+  for (const b of (Array.isArray(d.bids) ? d.bids : [])) if (b && Number.isFinite(b.coin) && b.coin > 0) bidHold += Math.floor(b.coin);
   const room = f.replace(/\.json$/, '');
+  for (const [k, r] of Object.entries(d.players || {})) { for (const e of (Array.isArray(r.lottoPend) ? r.lottoPend : [])) if (Array.isArray(e) && Number.isFinite(e[2]) && e[2] > 0) lottoPendAll += Math.floor(e[2]); } // รวมก่อนบรรทัด recs
   for (const [k, r] of Object.entries(d.players || {})) recs.push({ room, key: k, rec: r, money: ((r.inv && r.inv.coin) || 0) + ((r.bank && r.bank.bal) || 0), seen: r.lastSeen || 0 });
 }
 const real = realSet(recs, allEvs), isReal = (room, k) => ALL || real.has(room + '/' + k);
@@ -37,6 +39,7 @@ const money = players.map(p => p.money), total = money.reduce((a, b) => a + b, 0
 const act7 = players.filter(p => p.seen >= Date.now() - 7 * 864e5).map(p => p.money);
 console.log(`=== เงินในระบบ (ตอนนี้) ===`);
 console.log(`บัญชี ${players.length} | เงินรวม (กระเป๋า+ธนาคาร) ${num(total)} | ค่ากลาง ${med(money) ?? '-'} | Gini ${gini(money).toFixed(2)} | อันดับ 1 ถือ ${pct(sorted[0] || 0, total)} | 5 อันดับแรก ${pct(sorted.slice(0, 5).reduce((a, b) => a + b, 0), total)}`);
+console.log(`หวยรอรับ (lottoPend ทุกบัญชี) ${num(lottoPendAll)} | เงินกันไว้ในตลาดนัด (bids) ${num(bidHold)} | เงินรวมนับเงินกันไว้ ${num(total + lottoPendAll + bidHold)} (เหรียญ+ธนาคาร+หวยรอรับ+bids ใช้คำนวณเงินออก/เข้า ไม่นับเป็นเงินหายหรือเกิดใหม่)`);
 console.log(`เล่นภายใน 7 วัน ${act7.length} คน ค่ากลางเงิน ${med(act7) ?? '-'} | เงินกองกลาง(หวย) ${num(chest)}`);
 
 // ----- 2) เงินเข้า–ออกต่อวัน แยกเหตุผล (ไม่นับฝาก/ถอน ATM) -----

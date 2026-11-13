@@ -20,7 +20,7 @@ const catchable = (f, rod) => S.fishWeight(f, 20, rod, 1) > 0, oldCatchable = (f
   assert.strictEqual(S.ROD_MAX, 10); assert.strictEqual(Object.keys(S.RODS).length, 10);
   for (let t = 1; t <= 7; t++) assert.ok(MIG.map[t] >= t, 'ระดับใหม่ไม่ต่ำกว่าเดิม ' + t);
   for (let t = 2; t <= 7; t++) assert.ok(MIG.map[t] > MIG.map[t - 1]);
-  assert.deepStrictEqual(S.DURABILITY.rod.max, [0, 160, 330, 560, 820, 1100, 1400, 1750, 2100, 2500, 2900]);
+  assert.deepStrictEqual(S.DURABILITY.rod.max, [0, 165, 395, 630, 715, 960, 1215, 1540, 1845, 2110, 2325]); // 14 พ.ย. 2026 สมดุลความทนทาน: ค่าสึก ~5.8% ของรายได้ทุกระดับ (เดิม 160…2900 ค่าสึก 4.6–7.5%)
   for (let t = 2; t <= 10; t++) assert.strictEqual(S.TOOL_PRICE.rod[t], S.RODS[t].price);
   assert.deepStrictEqual(S.ROD_MAXCLASS, [0, 1, 2, 2, 3, 3, 3, 3, 3, 3, 3]); assert.strictEqual(S.rodTier({}), 1, 'ไม่มีคันที่ซื้อ = คัน 1 แจกฟรี');
   assert.strictEqual(S.RODS[1].price, undefined, 'คัน 1 แจกฟรี');
@@ -57,7 +57,7 @@ const catchable = (f, rod) => S.fishWeight(f, 20, rod, 1) > 0, oldCatchable = (f
   { const rec = { xpv: 5, inv: invOf([3]), dur: { rod: 99999 } }; S.migrateToolsV6(rec); assert.strictEqual(rec.dur.rod, S.durMax('rod', 4, 0)); }
   { const rec = { xpv: 5, inv: invOf([3]), dur: { rod: -50 } }; S.migrateToolsV6(rec); assert.strictEqual(rec.dur.rod, 0); }
   { const rec = { xpv: 5, inv: invOf([3]), dur: { rod: 'x' } }; S.migrateToolsV6(rec); assert.strictEqual(rec.dur.rod, 'x', 'dur ไม่ใช่ตัวเลข ไม่แตะ'); }
-  { const rec = { xpv: 5, dur: { rod: 100 } }; S.migrateToolsV6(rec); assert.strictEqual(rec.dur.rod, 80, 'ไม่มี inv: ถือเป็นคัน 1 คงสัดส่วน 100/200 → 80/160'); }
+  { const rec = { xpv: 5, dur: { rod: 100 } }; S.migrateToolsV6(rec); assert.strictEqual(rec.dur.rod, 83, 'ไม่มี inv: ถือเป็นคัน 1 คงสัดส่วน 100/200 → 83/165'); }
   { const rec = { xpv: 5, inv: invOf([4]), dur: { rod: oldMaxOf(4, 3) }, fix: { rod: 9 } }; S.migrateToolsV6(rec); assert.ok(rec.dur.rod >= 1 && rec.dur.rod <= S.durMax('rod', 6, 9), 'fix เกินเพดานตัดที่ 3'); }
   // คีย์ชน: rod_5/rod_6 เดิม (→ 8/9) เป็นคีย์ที่ระดับใหม่ 5/6 ใช้ความหมายใหม่ ต้องไม่ถูกอ่านเป็นคัน 5/6 ใหม่หลังย้าย
   for (const t of [5, 6]) { const rec = { xpv: 5, inv: invOf([t]) }; S.migrateToolsV6(rec); assert.strictEqual(S.rodTier(rec.inv), EXPECT_MAP[t], `rod_${t} เดิม ไม่ใช่คัน ${t} ใหม่`); assert.ok(S.tmigLocked(rec, 'rod_' + t) > 0, `rod_${t} เดิมเป็นของค้าง ล็อกขายคืน`); }
@@ -141,13 +141,13 @@ const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.par
   };
   fs.writeFileSync(path.join(process.env.DATA_DIR, 'rodmig.json'), JSON.stringify({ players: clone(players), farm: {}, layout: 2 }));
   const w = new World('rodmig'), sv = w.saved;
-  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 7, k + ' ต้องเป็น xpv 7 หลังโหลด');
+  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 8, k + ' ต้องเป็น xpv 8 หลังโหลด');
   assert.strictEqual(sv.r3.inv.coin, 5000, 'เหรียญไม่เปลี่ยน'); assert.strictEqual(sv.r7.inv.coin, 123); assert.strictEqual(sv.r2.inv.coin, 321); assert.strictEqual(sv.old4.inv.coin, 99); assert.strictEqual(sv.old3.inv.coin, 99);
-  assert.strictEqual(S.rodTier(sv.r3.inv), 4); assert.strictEqual(S.rodTier(sv.r7.inv), 10); assert.strictEqual(S.rodTier(sv.r2.inv), 2); assert.strictEqual(S.rodTier(sv.old4.inv), 4); assert.strictEqual(S.rodTier(sv.old3.inv), 2); assert.strictEqual(S.rodTier(sv.new6.inv), 10); assert.strictEqual(sv.new6.dur.rod, 7); assert.strictEqual(sv.new6.tmig, undefined);
+  assert.strictEqual(S.rodTier(sv.r3.inv), 4); assert.strictEqual(S.rodTier(sv.r7.inv), 10); assert.strictEqual(S.rodTier(sv.r2.inv), 2); assert.strictEqual(S.rodTier(sv.old4.inv), 4); assert.strictEqual(S.rodTier(sv.old3.inv), 2); assert.strictEqual(S.rodTier(sv.new6.inv), 10); assert.strictEqual(sv.new6.dur.rod, 6, 'xpv 6 ย้ายความทนต่อ xpv 8 (7/2900 × 2325 ปัดเป็น 6)'); assert.strictEqual(sv.new6.tmig, undefined);
   assert.strictEqual(sv.r7.dur.rod, S.durMax('rod', 10, 0), 'r7 เต็มยังเต็ม'); assert.deepStrictEqual(sv.r7.tmig.add.slice().sort(), ['rod_10', 'rod_8'], 'ถือ {2,5,7} → N = {2,8,10}'); assert.deepStrictEqual(sv.r7.tmig.left, { rod_5: 1, rod_7: 1 });
   assert.deepStrictEqual(sv.r3.fix, { rod: 1 }); assert.strictEqual(sv.r3.tmig.dur.rod, 425);
   assert.ok(sv.old4.dur.rod > 0 && sv.old4.dur.rod <= S.durMax('rod', 4, 0), 'โซ่ xpv 4 → 5 → 6 ความทนอยู่ในช่วง'); if (sv.old4.dur.rod !== S.durMax('rod', 4, 0)) leaks.push(`old4 (xpv 4, rod_3 เต็ม 200/200) ควรเต็มคัน 4 ใหม่ ${S.durMax('rod', 4, 0)} แต่ได้ ${sv.old4.dur.rod}: migrateStdV5 (shared.js ~บรรทัด 559-561) ใช้ durMax ตารางใหม่ 10 ระดับกับระดับเดิม ทำให้ migrateToolsV6 คำนวณสัดส่วนจาก oldMax ผิด`);
-  assert.strictEqual(sv.bare.dur.rod, 80, 'คัน 1 คงสัดส่วน 100/200 → 80/160'); assert.strictEqual(sv.bare.tmig && sv.bare.tmig.add.length, 0);
+  assert.strictEqual(sv.bare.dur.rod, 83, 'คัน 1 คงสัดส่วน 100/200 → 83/165'); assert.strictEqual(sv.bare.tmig && sv.bare.tmig.add.length, 0);
   w.dirty = true; w.save(true); const snap = clone(sv), w2 = new World('rodmig'); assert.deepStrictEqual(clone(w2.saved), snap, 'โหลดรอบสอง = ไม่เปลี่ยน'); w2.dirty = true; w2.save(true); assert.deepStrictEqual(clone(new World('rodmig').saved), snap, 'รอบสามเหมือนเดิม');
   for (const [name, lockedKeys] of [['r3', ['rod_3']], ['r7', ['rod_7']], ['old4', ['rod_3']]]) {
     const ws = mkWs(), p = w2.join(ws, name, '#e74c3c').p; w2.add(p, 'coin', 1);
@@ -172,7 +172,7 @@ const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.par
     w3.handle(q, { t: 'buy', item: 'rod_3', n: 1 }); assert.strictEqual(q.rec.inv.coin, 99999, 'ซื้อระดับต่ำกว่าที่ใช้อยู่ ไม่ได้'); w3.handle(q, { t: 'buy', item: 'rod_4', n: 1 }); assert.strictEqual(q.rec.inv.coin, 99999, 'ซื้อเท่ากันไม่ได้');
     w3.handle(q, { t: 'buy', item: 'rod_5', n: 1 }); assert.strictEqual(q.rec.inv.coin, 99999 - S.RODS[5].price); assert.strictEqual(S.rodTier(q.rec.inv), 5);
     w3.handle(q, { t: 'sellback', item: 'rod_5' }); assert.strictEqual(q.rec.inv.coin, 99999 - S.RODS[5].price + S.sellbackValue('rod_5'), 'ซื้อเองขายคืนได้'); w3.handle(q, { t: 'sellback', item: 'rod_4' }); assert.strictEqual(q.rec.inv.rod_4, 1, 'rod_4 ที่ระบบเพิ่มยังล็อก'); }
-  w2.join(mkWs(), 'newbie', '#e74c3c'); assert.strictEqual(w2.saved.newbie.xpv, 7); assert.strictEqual(w2.saved.newbie.tmig, undefined);
+  w2.join(mkWs(), 'newbie', '#e74c3c'); assert.strictEqual(w2.saved.newbie.xpv, 8); assert.strictEqual(w2.saved.newbie.tmig, undefined);
 }
 
 // ---- (ญ) rodHit / fishTier / fightNew down ----

@@ -5,13 +5,36 @@ const { HFAST } = require('../consts.js');
 const { send } = require('../util.js');
 
 module.exports = {
-  petSt(p, id) { const o = p.rec.pst || (p.rec.pst = {}); return o[id] || (o[id] = { h: 100, sick: false }); }, // สถานะสัตว์เลี้ยงแต่ละตัว: h = ความอิ่ม 0-100, sick = ป่วย (เฉพาะตัวที่พาออกมาถึงจะหิว/ป่วย)
-  petBonus(p) { return p.pet ? S.petBonus(p.pet, this.petSt(p, p.pet).h, this.petSt(p, p.pet).sick) : { xp: 0, spd: 0, luck: 0, mood: 0 }; }, // โบนัสสัตว์เลี้ยงที่พาออกมาอยู่ (ดู PETSTAT ใน shared.js)
+  petSt(p, id) { const o = p.rec.pst || (p.rec.pst = {}), st = o[id] || (o[id] = { h: 100, sick: false }); for (const k of ['b', 'bn', 'gn']) if (k in st && !(Number.isFinite(st[k]) && st[k] >= 0)) st[k] = 0; return st; }, // สถานะสัตว์เลี้ยงแต่ละตัว: h = ความอิ่ม 0-100, sick = ป่วย (เฉพาะตัวที่พาออกมาถึงจะหิว/ป่วย)
+  petLv(p, id) { const o = p.rec.pst && p.rec.pst[id]; return S.petLevel(o && o.b); }, // ระดับสัตว์ (คำนวณจาก bond ไม่เก็บ) เซฟเก่าไม่มี b = ระดับ 1
+  petBond(p, id, n, why) { // เพิ่ม bond ไม่เกิน dayCap ต่อตัวต่อวัน คืนจำนวนที่ได้จริง • why: 'tick'|'feed'|'pat'
+    if (!(n > 0) || !Number.isFinite(n)) return 0;
+    const st = this.petSt(p, id), L = S.PETLV, today = this.dayStr(0);
+    if (st.bd !== today) { st.bd = today; st.bn = 0; st.gn = 0; }
+    const got = Math.min(n, L.dayCap - (st.bn || 0)); if (!(got > 0)) return 0;
+    const before = S.petLevel(st.b); st.bn = (st.bn || 0) + got; st.b = (st.b || 0) + got; this.dirty = true;
+    const lv = S.petLevel(st.b);
+    if (lv > before) {
+      const C = S.COMPANIONS[id], nm = this.petName(p, id) || C.name;
+      this.toast(p, `🎉 ${C.emoji} ${nm}สนิทกับคุณขึ้นเป็นระดับ ${lv} แล้ว!`); this.addLog(`${C.emoji} ${p.name}: ${nm} โตขึ้นเป็นระดับ ${lv}`); this.sfx(p, 'heal'); this.petPush(p);
+    }
+    return got;
+  },
+  petGift(p, id, st) { // ของขวัญรายวัน: ตามระดับ ไม่เกิน perDay ต่อวัน (เรียกหลัง petBond ที่รีเซ็ตวันแล้ว)
+    const G = S.PETLV.gift, lv = S.petLevel(st.b), cap = G.perDay[lv - 1] || 0;
+    if (!(cap > (st.gn || 0)) || Math.random() >= G.chance) return;
+    let r = Math.random() * G.table.reduce((a, [, w]) => a + w, 0), item = G.table[0][0];
+    for (const [k, w] of G.table) { if ((r -= w) < 0) { item = k; break; } }
+    st.gn = (st.gn || 0) + 1; this.add(p, item, 1, 'petgift'); this.dirty = true;
+    const C = S.COMPANIONS[id], it = S.itemInfo(item);
+    this.toast(p, `🎁 ${C.emoji} ${this.petName(p, id) || C.name}คาบ ${it.emoji || ''} ${it.name} มาให้!`);
+  },
+  petBonus(p) { return p.pet ? S.petBonus(p.pet, this.petSt(p, p.pet).h, this.petSt(p, p.pet).sick, this.petLv(p, p.pet)) : { xp: 0, spd: 0, luck: 0, mood: 0 }; }, // โบนัสสัตว์เลี้ยงที่พาออกมาอยู่ (ดู PETSTAT ใน shared.js)
   petLuck(p, label) { // 🍀 ลุ้นได้ผลผลิตเพิ่ม 1 ชิ้น คืน true ถ้าได้ (ผู้เรียกเป็นคนเพิ่มของ)
     const b = this.petBonus(p).luck; if (!(b > 0) || Math.random() >= b) return false;
     const C = S.COMPANIONS[p.pet]; this.toast(p, `🍀 ${C.emoji} ${C.name}นำโชค! ได้${label}เพิ่ม 1`); return true;
   },
-  petPubOf(p) { const id = p.pet || ''; return { t: 'pet', id: p.id, pet: id, mode: p.pm || 'follow', ax: Math.round(p.pax || 0), ay: Math.round(p.pay || 0), sick: !!(id && this.petSt(p, id).sick), name: id ? this.petName(p, id) : '' }; },
+  petPubOf(p) { const id = p.pet || ''; return { t: 'pet', id: p.id, pet: id, mode: p.pm || 'follow', ax: Math.round(p.pax || 0), ay: Math.round(p.pay || 0), sick: !!(id && this.petSt(p, id).sick), name: id ? this.petName(p, id) : '', ...(id && this.petLv(p, id) > 1 ? { plv: this.petLv(p, id) } : {}) }; },
   petName(p, id) { const n = p.rec.pnames && p.rec.pnames[id]; return typeof n === 'string' ? n : ''; }, // ชื่อที่เจ้าของตั้งให้สัตว์แต่ละตัว (ไม่เกิน 12 ตัวอักษร)
   petRename(p, id, name) {
     if (typeof id !== 'string' || !S.COMPANIONS[id] || !(p.rec.inv['pet_' + id] > 0)) return;
@@ -33,12 +56,19 @@ module.exports = {
       if (!(p.rec.inv.petfood > 0)) return this.toast(p, 'ไม่มีอาหารสัตว์เลี้ยง ซื้อได้ที่ร้านสัตว์เลี้ยง');
       if (st.h >= 95) return this.toast(p, `${C.emoji} ${C.name}อิ่มอยู่แล้ว`);
       this.add(p, 'petfood', -1); st.h = Math.min(100, st.h + S.PETCARE.food);
-      this.toast(p, `🦴 ให้อาหาร${C.emoji} ${C.name} (อิ่ม ${Math.round(st.h)}/100)`); this.sfx(p, 'eat');
+      this.toast(p, `🦴 ให้อาหาร${C.emoji} ${C.name} (อิ่ม ${Math.round(st.h)}/100)`); this.sfx(p, 'eat'); if (!st.sick) this.petBond(p, id, S.PETLV.feed, 'feed');
     } else if (a === 'heal') {
       if (!st.sick) return this.toast(p, `${C.emoji} ${C.name}ไม่ได้ป่วย`);
       if (!(p.rec.inv.medicine > 0)) return this.toast(p, 'ไม่มียา 💊 ซื้อได้ที่ร้านสัตว์เลี้ยง');
       this.add(p, 'medicine', -1); st.sick = false; st.sickMs = 0; st.h = Math.max(st.h, 30);
       this.toast(p, `💊 รักษา${C.emoji} ${C.name}หายป่วยแล้ว!`); this.sfx(p, 'heal');
+    } else if (a === 'pat') { // ลูบหัว: ต้องไม่ป่วย พ้นคูลดาวน์ และอยู่ใกล้ (โหมดปล่อยเล่น)
+      if (st.sick) return this.toast(p, `${C.emoji} ${C.name}ป่วยอยู่ ลูบหัวไม่ได้ รักษาก่อนนะ`);
+      const now = Date.now(), L = S.PETLV;
+      if (now - (st.pat || 0) < L.patCdMs) return this.toast(p, `${C.emoji} ${C.name}เพิ่งโดนลูบไป รอสักพักนะ`);
+      if (p.pm === 'play' && Math.hypot(p.x - (p.pax || 0), p.y - (p.pay || 0)) > L.patRange) return this.toast(p, `${C.emoji} ${C.name}อยู่ไกลไป เดินเข้าไปใกล้ๆ ก่อน`);
+      st.pat = now; const got = this.petBond(p, id, L.pat, 'pat');
+      this.toast(p, got > 0 ? `🤚 ลูบหัว${C.emoji} ${C.name} ดีใจใหญ่เลย (ความผูกพัน +${Math.round(got)})` : `🤚 ลูบหัว${C.emoji} ${C.name} วันนี้สนิทเต็มที่แล้ว`); this.sfx(p, 'eat');
     } else return;
     this.dirty = true; this.petPush(p);
   },
@@ -55,7 +85,13 @@ module.exports = {
         this.toast(p, `💀 ${C.emoji} ${C.name}ตายแล้ว เพราะป่วยนานเกิน 1 วัน ซื้อตัวใหม่ได้ที่ 🐾 ร้านสัตว์เลี้ยง`); this.sfx(p, 'die');
         this.petPush(p); return;
       }
-    } else st.sickMs = 0;
+    } else {
+      st.sickMs = 0;
+      if (Date.now() - (p.activeAt || 0) <= S.PETLV.activeMs) { // bond เฉพาะตอนเจ้าของมีกิจกรรม และสัตว์ไม่ป่วย (× อารมณ์)
+        const m = S.petMood(st.h, false); if (m > 0) this.petBond(p, id, S.PETLV.out * m, 'tick');
+        this.petGift(p, id, st);
+      }
+    }
     if (st.sick !== was) this.petPush(p); else send(p, { t: 'pst', pst: p.rec.pst, names: p.rec.pnames || {} });
   },
 };
