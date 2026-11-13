@@ -269,7 +269,7 @@
   const XP_TABLE_MINE = [0, 0, 250, 535, 959, 1442, 2158, 2976, 4189, 5573, 7627, 9970, 13447, 17415, 23301, 30018, 39983, 51355, 68225, 87477, 116038];
   // 6 พ.ย. 2026 (xpv 5): ตารางหลอดมาตรฐานรายเลเวล (Lv1→2 = 15 นาที ถึง Lv20 ≈ 20 ชม.เล่นจริง) ใช้กับชาวประมง • อาชีพต่อไปเพิ่มบรรทัดเดียวใน XP_TABLES + ชื่อใน STD_V5_SKILLS
   const XP_TABLE_STD = [0, 0, 250, 576, 1000, 1552, 2271, 3208, 4428, 6017, 8086, 10780, 14289, 18859, 24810, 32561, 42655, 55801, 72921, 95218, 124256];
-  const XP_TABLES = { mine: XP_TABLE_MINE, fish: XP_TABLE_STD }; // อาชีพที่ไม่อยู่ในนี้ใช้ XP_TABLE เดิม
+  const XP_TABLES = { mine: XP_TABLE_MINE, fish: XP_TABLE_STD, farm: XP_TABLE_STD, animal: XP_TABLE_STD, wood: XP_TABLE_STD, cook: XP_TABLE_STD }; // 13 พ.ย. 2026 (xpv 7, WP-20): ทุกอาชีพใช้หลอดมาตรฐาน • ไม่ส่ง skill = ตารางเดิม XP_TABLE (ใช้ย้ายเซฟ xpv ≤ 6 เท่านั้น)
   const xpTable = skill => XP_TABLES[skill] || XP_TABLE; // ไม่ส่ง skill = ตารางเดิม
   const xpFor = (lv, skill) => xpTable(skill)[Math.max(1, Math.min(MAX_LV, lv))];
   const levelOf = (xp, skill) => { const T = xpTable(skill); let lv = 1; while (lv < MAX_LV && (xp || 0) >= T[lv + 1]) lv++; return lv; };
@@ -291,32 +291,32 @@
   // เวลาโตผูกกำไร (sell−seed) ≈ 0.22 เหรียญ/วิ (ขั้นต่ำ 60 วิ สูงสุด 480 วิ) ให้พืชแพงไม่คุ้มเวลากว่าพืชกลาง — สลับชนิดแทนจ้องแต่ของแพง (พลังงานปิด)
   // 31 ต.ค. 2026: เหลือพืชที่ขายจริง 20 ชนิด เลเวลละ 1 ชนิด (เรียงตามราคา) • potato chili broccoli cherry olive = legacy: ซ่อนจากร้าน/สมุด/ฤดู แต่ยังเก็บเกี่ยวและขายของเดิมได้
   const CROPS = {
-    carrot:     { name: 'แครอท',      emoji: '🥕', seed: 8, sell: 20,  time: 60000,  lv: 1, xp: 5 },
-    cabbage:    { name: 'กะหล่ำปลี',   emoji: '🥬', seed: 11, sell: 28,  time: 77000,  lv: 2, xp: 7 },
-    corn:       { name: 'ข้าวโพด',     emoji: '🌽', seed: 15, sell: 39,  time: 109000, lv: 3, xp: 9 },
-    tomato:     { name: 'มะเขือเทศ',   emoji: '🍅', seed: 19, sell: 50,  time: 141000, lv: 4, xp: 12 },
-    eggplant:   { name: 'มะเขือม่วง',  emoji: '🍆', seed: 26, sell: 67,  time: 186000, lv: 5, xp: 16 },
-    strawberry: { name: 'สตรอว์เบอร์รี', emoji: '🍓', seed: 34, sell: 84,  time: 227000, lv: 6, xp: 20 },
-    pumpkin:    { name: 'ฟักทอง',      emoji: '🎃', seed: 45, sell: 102, time: 259000, lv: 7, xp: 26 },
+    carrot:     { name: 'แครอท',      emoji: '🥕', seed: 8, sell: 20,  time: 60000,  lv: 1, xp: 3 },
+    cabbage:    { name: 'กะหล่ำปลี',   emoji: '🥬', seed: 11, sell: 28,  time: 77000,  lv: 2, xp: 4 },
+    corn:       { name: 'ข้าวโพด',     emoji: '🌽', seed: 15, sell: 39,  time: 109000, lv: 3, xp: 5 },
+    tomato:     { name: 'มะเขือเทศ',   emoji: '🍅', seed: 19, sell: 50,  time: 141000, lv: 4, xp: 7 },
+    eggplant:   { name: 'มะเขือม่วง',  emoji: '🍆', seed: 26, sell: 67,  time: 186000, lv: 5, xp: 9 },
+    strawberry: { name: 'สตรอว์เบอร์รี', emoji: '🍓', seed: 34, sell: 84,  time: 227000, lv: 6, xp: 12 },
+    pumpkin:    { name: 'ฟักทอง',      emoji: '🎃', seed: 45, sell: 102, time: 259000, lv: 7, xp: 16 },
     potato:     { name: 'มันฝรั่ง',     emoji: '🥔', seed: 14,  sell: 35,  time: 95000,  lv: 1, legacy: true, xp: 10 },
     chili:      { name: 'พริก',        emoji: '🌶️', seed: 21,  sell: 55,  time: 155000, lv: 1, legacy: true, xp: 14 },
     broccoli:   { name: 'บรอกโคลี',     emoji: '🥦', seed: 28,  sell: 72,  time: 200000, lv: 1, legacy: true, xp: 18 },
     cherry:     { name: 'เชอร์รี',      emoji: '🍒', seed: 41,  sell: 99, time: 264000, lv: 1, legacy: true, xp: 22 },
-    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 52,  sell: 116, time: 291000, lv: 8, xp: 28 },
-    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 64,  sell: 143, time: 359000, lv: 9, xp: 34 },
-    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 82, sell: 188, time: 480000, lv: 11, xp: 42 },
-    melon:      { name: 'แตงโม',       emoji: '🍉', seed: 68, sell: 150, time: 373000, lv: 10, xp: 38 },
+    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 52,  sell: 116, time: 291000, lv: 8, xp: 17 },
+    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 64,  sell: 143, time: 359000, lv: 9, xp: 24 },
+    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 82, sell: 188, time: 480000, lv: 11, xp: 28 },
+    melon:      { name: 'แตงโม',       emoji: '🍉', seed: 68, sell: 150, time: 373000, lv: 10, xp: 26 },
     // เลเวล 11–20 (30 ต.ค. 2026): เมล็ด ≈ 43% ของราคาขาย เวลาโตตามกำไร (≈ 0.22 เหรียญ/วิ) สูงสุด 12 นาที
-    peach: { name: 'พีช', emoji: '🍑', seed: 86, sell: 200, time: 518000, lv: 12, xp: 44 },
-    kiwi: { name: 'กีวี', emoji: '🥝', seed: 90, sell: 210, time: 545000, lv: 13, xp: 45 },
-    coconut: { name: 'มะพร้าวน้ำหอม', emoji: '🥥', seed: 95, sell: 222, time: 577000, lv: 14, xp: 46 },
-    avocado: { name: 'อะโวคาโด', emoji: '🥑', seed: 101, sell: 234, time: 605000, lv: 15, xp: 47 },
-    blueberry: { name: 'บลูเบอร์รี', emoji: '🫐', seed: 106, sell: 246, time: 636000, lv: 16, xp: 49 },
+    peach: { name: 'พีช', emoji: '🍑', seed: 86, sell: 200, time: 518000, lv: 12, xp: 41 },
+    kiwi: { name: 'กีวี', emoji: '🥝', seed: 90, sell: 210, time: 545000, lv: 13, xp: 52 },
+    coconut: { name: 'มะพร้าวน้ำหอม', emoji: '🥥', seed: 95, sell: 222, time: 577000, lv: 14, xp: 61 },
+    avocado: { name: 'อะโวคาโด', emoji: '🥑', seed: 101, sell: 234, time: 605000, lv: 15, xp: 71 },
+    blueberry: { name: 'บลูเบอร์รี', emoji: '🫐', seed: 106, sell: 246, time: 636000, lv: 16, xp: 83 },
     olive: { name: 'มะกอก', emoji: '🫒', seed: 111, sell: 258, time: 668000, lv: 1, legacy: true, xp: 50 },
-    beans: { name: 'เมล็ดโกโก้', emoji: '🫘', seed: 115, sell: 268, time: 695000, lv: 17, xp: 51 },
-    mushroom: { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', seed: 120, sell: 278, time: 718000, lv: 18, xp: 52 },
-    sunflower: { name: 'ทานตะวันทอง', emoji: '🌻', seed: 124, sell: 288, time: 720000, lv: 19, xp: 53 },
-    tulip: { name: 'ทิวลิปทอง', emoji: '🌷', seed: 128, sell: 298, time: 720000, lv: 20, xp: 54 },
+    beans: { name: 'เมล็ดโกโก้', emoji: '🫘', seed: 115, sell: 268, time: 695000, lv: 17, xp: 107 },
+    mushroom: { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', seed: 120, sell: 278, time: 718000, lv: 18, xp: 109 },
+    sunflower: { name: 'ทานตะวันทอง', emoji: '🌻', seed: 124, sell: 288, time: 720000, lv: 19, xp: 113 },
+    tulip: { name: 'ทิวลิปทอง', emoji: '🌷', seed: 128, sell: 298, time: 720000, lv: 20, xp: 153 },
   };
   // ฤดูกาล: ร้อน → ฝน → หนาว วนทุก days วันจริง นับจาก epoch • พืช lv ≤ freeLv ปลูกได้ทุกฤดูและไม่มีผลฤดูเลย • พืช lv > freeLv ปลูกได้เฉพาะฤดูของตัวเอง (crops) ในฤดู: ราคาเป้าตลาด ×inMul นอกฤดู ×outMul
   // lockCrops/lockTrees = สวิตช์ถอยด่วน (false = ไม่ล็อก) • trees = ต้นไม้ที่งอกใหม่เฉพาะฤดูนั้น (ชนิดที่ไม่อยู่ในฤดูไหนเลยงอกทุกฤดู) ต้นที่งอกอยู่แล้วคงอยู่และตัดได้
@@ -348,7 +348,7 @@
   const plantWait = (c, kind, t) => { if (canPlant(c, t)) return null; const s = seasonOf('crops', c); return { s, ms: msToSeason(s, t) }; };
   const seasonWaitText = ms => { const m = Math.max(1, Math.ceil(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60), mi = m % 60; return d ? `${d} วัน${h ? ' ' + h + ' ชม.' : ''}` : h ? `${h} ชม.${mi ? ' ' + mi + ' นาที' : ''}` : `${mi} นาที`; };
   // ความชำนาญหลัง Lv10: ดาว 1–max ต่ออาชีพ ดาวที่ n ต้องมี XP ≥ XP Lv10 + n × xpPer และจ่าย costBase × n เหรียญ (ใช้เงินระยะยาว ไม่เพิ่มพลังหรือรายได้) ครบ max ดาวได้ฉายา "ปรมาจารย์<อาชีพ>"
-  const MASTERY = { xpPer: 25000, costBase: 2000, max: 5, xpPerSkill: { mine: 8000, fish: 8000 } }; // xpPerSkill = XP ต่อดาวของอาชีพที่หลอดเล็กกว่า (นักขุด 8,000 ≈ 28% ของหลอด Lv19→20 เท่าสัดส่วนอาชีพอื่น)
+  const MASTERY = { xpPer: 25000, costBase: 2000, max: 5, xpPerSkill: { mine: 8000, fish: 8000, farm: 8000, animal: 8000, wood: 8000, cook: 8000 } }; // xpPerSkill = XP ต่อดาวของอาชีพที่หลอดเล็กกว่า (นักขุด 8,000 ≈ 28% ของหลอด Lv19→20 เท่าสัดส่วนอาชีพอื่น)
   const masteryXp = skill => MASTERY.xpPerSkill[skill] || MASTERY.xpPer;
   // ปลา: lv = เลเวลชาวประมงที่เริ่มตกได้, w = น้ำหนักความน่าจะเป็น (หายาก = ราคาแพง: ราคาแปรผันตามความหายาก)
   // 7 พ.ย. 2026 (ชาวประมงเส้น 20 ชม. รอบ 2: เจ้าของสั่ง "คงราคาปลาเดิม ปลาแพงตกยาก"): ปลา lv10–20 (ราคา ≥ 100) ราคา = เท่าเดิมก่อนปรับเป๊ะ ปลา lv1–9 (ราคา < 100) ปรับขึ้นเท่านั้น (ผู้เล่นถืออยู่ ห้ามลด) • XP ต่อปลา = fit ด้วย node tools/levelsim.js ให้ XP/ชม.จริง = 1,000×1.1412^(Lv−1) ±10% (ปลาแพงให้ XP สูงมาก เพราะติดพักรอบ ตกได้น้อย) ปลาทะเลคู่ XP เท่าน้ำจืดเลเวลเดียวกัน • เหรียญ/ชม. คุมด้วยพักรอบปลาหายากที่สั้นลงตามเลเวล (RARE_CD.endMul) ไม่ใช่ราคาปลา
@@ -423,42 +423,42 @@
   const axeTier = inv => { for (let t = AXE_MAX; t >= 1; t--) if (inv && inv['axe_' + t]) return t; return 0; }; // ระดับขวานสูงสุดที่มี (0 = ไม่มี)
   const ACTION_TUNE = { wood: { swings: 5, perLv: 0.15 }, fish: 0.9, mine: 0.46 }; // ตัวคูณ "เวลาต่อการกระทำ" (31 ต.ค. 2026; ตัดไม้/ขุดแร่ปรับใหม่รอบสอง): ตัดไม้ = จำนวนครั้งที่ฟันต้นไม้ด้วยขวานขั้นต่ำที่ต้องใช้ (swings + perLv × (เลเวลที่ปลดล็อก−1)) แทนตัวคูณ HP, ตกปลารอปลากินเบ็ด ×1.15, ขุดแร่ HP ก้อนแร่ ×0.85 ให้สามอาชีพสมดุลกัน
   const TREE_HP = 4;                       // ต้องฟันกี่แต้มถึงล้ม (ขวานหิน = 4 ครั้ง, เหล็ก 2, เหล็กกล้า 2)
-  const WOOD = { log: { sell: 18, xp: 9 }, hardwood: { sell: 66, xp: 14, chance: 0.22 }, xpPerLv: 0.075 }; // xpPerLv (0.15 → 0.1 เมื่อมีต้นไม้หลายชนิด 25 ต.ค. 2026): XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
+  const WOOD = { log: { sell: 18, xp: 8 }, hardwood: { sell: 66, xp: 34, chance: 0.22 }, xpPerLv: 0 }; // xpPerLv (0.15 → 0.1 เมื่อมีต้นไม้หลายชนิด 25 ต.ค. 2026): XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
   const woodXp = (xp, lv) => Math.round(xp * (1 + WOOD.xpPerLv * (perkLv(lv) - 1)));
   // ของที่ได้จากต้นไม้ (ขายที่ร้านช่างไม้ หมวด "ไม้" ไม่เสื่อม) • xp = XP ช่างไม้ต่อชิ้นก่อนคูณเลเวล (≈ 0.3 XP ต่อเหรียญเหมือนไม้ท่อน)
   const WOOD_ITEMS = {
     log:       { name: 'ไม้ท่อน',      emoji: '🪵', sell: WOOD.log.sell,      xp: WOOD.log.xp },
     hardwood:  { name: 'ไม้เนื้อแข็ง',  emoji: '🟫', sell: WOOD.hardwood.sell, xp: WOOD.hardwood.xp },
-    bamboo:    { name: 'ไม้ไผ่',       emoji: '🎋', sell: 9,   xp: 3 },
-    shoot:     { name: 'หน่อไม้',      emoji: '🌱', sell: 12,  xp: 3 },
-    pinewood:  { name: 'ไม้สน',        emoji: '🌲', sell: 18,  xp: 7 },
-    resin:     { name: 'ยางสน',        emoji: '🍯', sell: 32,  xp: 10 },
-    palmwood:  { name: 'ไม้มะพร้าว',    emoji: '🌴', sell: 20,  xp: 8 },
-    coconut:   { name: 'ลูกมะพร้าว',    emoji: '🥥', sell: 30,  xp: 6 },
-    teak:      { name: 'ไม้สัก',        emoji: '🍂', sell: 36,  xp: 13 },
-    goldwood:  { name: 'ไม้ราชพฤกษ์',   emoji: '🌼', sell: 48,  xp: 16 },
-    kunflower: { name: 'ดอกคูน',        emoji: '💛', sell: 28,  xp: 8 },
-    rosewood:  { name: 'ไม้พะยูง',      emoji: '🟥', sell: 96, xp: 30 },
+    bamboo:    { name: 'ไม้ไผ่',       emoji: '🎋', sell: 9,   xp: 2 },
+    shoot:     { name: 'หน่อไม้',      emoji: '🌱', sell: 12,  xp: 4 },
+    pinewood:  { name: 'ไม้สน',        emoji: '🌲', sell: 18,  xp: 2 },
+    resin:     { name: 'ยางสน',        emoji: '🍯', sell: 32,  xp: 3 },
+    palmwood:  { name: 'ไม้มะพร้าว',    emoji: '🌴', sell: 20,  xp: 2 },
+    coconut:   { name: 'ลูกมะพร้าว',    emoji: '🥥', sell: 30,  xp: 3 },
+    teak:      { name: 'ไม้สัก',        emoji: '🍂', sell: 36,  xp: 4 },
+    goldwood:  { name: 'ไม้ราชพฤกษ์',   emoji: '🌼', sell: 48,  xp: 5 },
+    kunflower: { name: 'ดอกคูน',        emoji: '💛', sell: 28,  xp: 3 },
+    rosewood:  { name: 'ไม้พะยูง',      emoji: '🟥', sell: 96, xp: 12 },
     // เลเวล 11–20 (30 ต.ค. 2026)
-    maplewood: { name: 'ไม้เมเปิล',     emoji: '🍁', sell: 70,  xp: 22 },
-    syrup:     { name: 'น้ำเชื่อมเมเปิล', emoji: '🫙', sell: 55,  xp: 14 },
-    sakurawood: { name: 'ไม้ซากุระ',    emoji: '🌸', sell: 110, xp: 30 },
-    petal:     { name: 'กลีบซากุระ',    emoji: '🪷', sell: 45,  xp: 10 },
-    ebony:     { name: 'ไม้มะเกลือ',    emoji: '⬛', sell: 160, xp: 38 },
-    amber:     { name: 'อำพัน',        emoji: '🔶', sell: 120, xp: 25 },
-    ancientwood: { name: 'ไม้พันปี',   emoji: '🎄', sell: 260, xp: 52 },
+    maplewood: { name: 'ไม้เมเปิล',     emoji: '🍁', sell: 70,  xp: 148 },
+    syrup:     { name: 'น้ำเชื่อมเมเปิล', emoji: '🫙', sell: 55,  xp: 104 },
+    sakurawood: { name: 'ไม้ซากุระ',    emoji: '🌸', sell: 110, xp: 362 },
+    petal:     { name: 'กลีบซากุระ',    emoji: '🪷', sell: 45,  xp: 151 },
+    ebony:     { name: 'ไม้มะเกลือ',    emoji: '⬛', sell: 160, xp: 1258 },
+    amber:     { name: 'อำพัน',        emoji: '🔶', sell: 120, xp: 908 },
+    ancientwood: { name: 'ไม้พันปี',   emoji: '🎄', sell: 260, xp: 2662 },
     // 31 ต.ค. 2026: ต้นไม้ใหม่ 9 ชนิด รวมเป็น 20 ชนิด เลเวลละ 1 ชนิด
-    padaukwood: { name: 'ไม้ประดู่',     emoji: '🧡', sell: 60,  xp: 20 },
-    oakwood:   { name: 'ไม้โอ๊ก',       emoji: '🌰', sell: 66,  xp: 22 },
-    acorn:     { name: 'ลูกโอ๊ก',       emoji: '🌰', sell: 38,  xp: 9 },
-    willowwood: { name: 'ไม้หลิว',      emoji: '🌿', sell: 75,  xp: 24 },
-    diptwood:  { name: 'ไม้ยางนา',      emoji: '🟤', sell: 84,  xp: 26 },
-    takianwood: { name: 'ไม้ตะเคียนทอง', emoji: '🟠', sell: 100, xp: 28 },
-    ginkgowood: { name: 'ไม้แปะก๊วย',   emoji: '🍃', sell: 118, xp: 29 },
-    ginkgonut: { name: 'ผลแปะก๊วย',     emoji: '🥜', sell: 70,  xp: 14 },
-    makhawood: { name: 'ไม้มะค่าโมง',   emoji: '🔸', sell: 132, xp: 33 },
-    raintreewood: { name: 'ไม้จามจุรี', emoji: '🌳', sell: 145, xp: 36 },
-    shingwood: { name: 'ไม้ชิงชัน',     emoji: '🟥', sell: 205, xp: 44 },
+    padaukwood: { name: 'ไม้ประดู่',     emoji: '🧡', sell: 60,  xp: 6 },
+    oakwood:   { name: 'ไม้โอ๊ก',       emoji: '🌰', sell: 66,  xp: 19 },
+    acorn:     { name: 'ลูกโอ๊ก',       emoji: '🌰', sell: 38,  xp: 11 },
+    willowwood: { name: 'ไม้หลิว',      emoji: '🌿', sell: 75,  xp: 52 },
+    diptwood:  { name: 'ไม้ยางนา',      emoji: '🟤', sell: 84,  xp: 107 },
+    takianwood: { name: 'ไม้ตะเคียนทอง', emoji: '🟠', sell: 100, xp: 213 },
+    ginkgowood: { name: 'ไม้แปะก๊วย',   emoji: '🍃', sell: 118, xp: 283 },
+    ginkgonut: { name: 'ผลแปะก๊วย',     emoji: '🥜', sell: 70,  xp: 181 },
+    makhawood: { name: 'ไม้มะค่าโมง',   emoji: '🔸', sell: 132, xp: 649 },
+    raintreewood: { name: 'ไม้จามจุรี', emoji: '🌳', sell: 145, xp: 847 },
+    shingwood: { name: 'ไม้ชิงชัน',     emoji: '🟥', sell: 205, xp: 1761 },
   };
   // ต้นไม้หลายชนิด (B5 ใน ECONOMY-PLAN.md): lv/axe = เลเวลช่างไม้และระดับขวานที่ต้องมี • hp = แต้มฟัน (ขวานหิน 1/ครั้ง เหล็ก 2 เหล็กกล้า 3)
   // drop = ได้แน่ [ชิ้น, จำนวน] (ชิ้นแรกมีโอกาส +1 อีก 4%/เลเวล) • bonus = ลุ้น [ชิ้น, โอกาส] (+1%/เลเวล, +10% ช่วง Happy Village)
@@ -563,6 +563,23 @@
       rec.dur.rod = ratio > 0 ? Math.max(1, Math.round(ratio * nm)) : 0;
     }
     rec.xpv = 5; return true;
+  };
+  // ย้ายเซฟ xpv 6 → 7 (13 พ.ย. 2026, WP-20): XP หลอดของชาวนา/คนเลี้ยงสัตว์/ช่างไม้/เชฟ → XP_TABLE_STD (เลเวลไม่ตก สัดส่วนในเลเวลคงเดิม ส่วนเกินหลัง Lv20 แปลงตามสัดส่วนดาว) • ไม่แตะเหรียญ/ดาว/ความสำเร็จ (rec.stars เก็บเลขดาวที่ซื้อแล้ว)
+  const STD_V7_SKILLS = ['farm', 'animal', 'wood', 'cook'];
+  const migrateStdV7 = rec => { // แก้ rec ตรงๆ (idempotent: rec.xpv >= 7 ข้าม) คืน true ถ้าได้ทำ • ผู้เรียกต้องแปลง xpv ถึง 6 ก่อน
+    if (!rec || typeof rec !== 'object' || (rec.xpv | 0) >= 7) return false;
+    if (rec.skills && typeof rec.skills === 'object') for (const k of STD_V7_SKILLS) if (Number.isFinite(rec.skills[k])) rec.skills[k] = xpStdV5(rec.skills[k], k);
+    rec.xpv = 7; return true;
+  };
+  const xpUnStdV7 = (xp, skill) => { // pure: ผกผันของ xpStdV5 (XP_TABLE_STD → XP_TABLE) เลเวลเท่าเดิม (ปัดเศษอาจคลาดไม่กี่ XP)
+    const N = xpTable(skill); xp = Math.max(0, +xp || 0); let L = 1; while (L < MAX_LV && xp >= N[L + 1]) L++;
+    if (L >= MAX_LV) return XP_TABLE[MAX_LV] + Math.floor((xp - N[MAX_LV]) * MASTERY.xpPer / masteryXp(skill));
+    return XP_TABLE[L] + Math.floor((xp - N[L]) / (N[L + 1] - N[L]) * (XP_TABLE[L + 1] - XP_TABLE[L]));
+  };
+  const unmigrateStdV7 = rec => { // ถอยกลับ xpv 7 → 6 (tools/tools-unmigrate.js) คืน true ถ้าได้ทำ • แปลงกลับไม่เป๊ะ 1:1 (ปัดเศษ) แต่เลเวลเท่าเดิม
+    if (!rec || typeof rec !== 'object' || (rec.xpv | 0) !== 7) return false;
+    if (rec.skills && typeof rec.skills === 'object') for (const k of STD_V7_SKILLS) if (Number.isFinite(rec.skills[k])) rec.skills[k] = xpUnStdV7(rec.skills[k], k);
+    rec.xpv = 6; return true;
   };
   // ย้ายเซฟ xpv 5 → 6 (13 พ.ย. 2026) ขวาน 5→10 ระดับ คัน 7→10 ระดับ: เพิ่มคีย์ระดับใหม่อย่างเดียว ไม่ลบ/ไม่แตะเหรียญ • คีย์เดิมที่ไม่อยู่ในชุดใหม่ = ของค้าง บันทึกใน rec.tmig (ขายคืนไม่ได้ ไม่แสดงในกระเป๋า)
   // rec.tmig = { add: [คีย์ที่เพิ่ม], left: { คีย์: จำนวน }, old: { axe, rod }, dur: { axe, rod ก่อนย้าย }, nd: { axe, rod หลังย้าย } } • ผู้เรียกต้องแปลง xpv ถึง 5 ก่อน
@@ -957,16 +974,16 @@
   // init ไม่ใช้แล้ว (เคยเป็นฝูงกลาง) • มือใหม่ได้ไก่ตัวแรกใน rec.herd • ตายแล้วจบ ไม่มีชุบจากกองกลาง
   const ANIMALS = {
     // starveMin = กี่นาที (เจ้าของออนไลน์และอยู่ในเมือง) ที่สัตว์หิวจากอิ่มเต็มจนหมด (ปรับขึ้น 5 พ.ย. 2026: ไก่/เป็ด 25→40 ผึ้ง 30→45 ตัวอื่น 35→50 ไม่กระทบรายได้ เพราะป้อนอาหารตามรอบผลิต ไม่ใช่ตามความหิว), หลังหมดแล้วเหลือเวลาอีก ANIMAL_GRACE_MS ก่อนจะตาย
-    chicken: { name: 'ไก่', emoji: '🐔', product: 'egg',  feedItem: 'feed', price: 120, lv: 1, cap: 4, init: 0, time: [25000, 45000], xp: 4, starveMin: 40 },
-    cow:     { name: 'วัว', emoji: '🐄', product: 'milk', feedItem: 'hay',  price: 600, lv: 3, cap: 4, init: 0, time: [45000, 75000], xp: 8, starveMin: 50 },
-    duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 4, init: 0, time: [30000, 50000], xp: 5, starveMin: 40 },
-    sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 850, lv: 4, cap: 4, init: 0, time: [50000, 80000], xp: 10, starveMin: 50 },
-    pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1100, lv: 5, cap: 4, init: 0, time: [60000, 90000], xp: 12, starveMin: 50 },
+    chicken: { name: 'ไก่', emoji: '🐔', product: 'egg',  feedItem: 'feed', price: 120, lv: 1, cap: 4, init: 0, time: [25000, 45000], xp: 2, starveMin: 40 },
+    cow:     { name: 'วัว', emoji: '🐄', product: 'milk', feedItem: 'hay',  price: 600, lv: 3, cap: 4, init: 0, time: [45000, 75000], xp: 2, starveMin: 50 },
+    duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 4, init: 0, time: [30000, 50000], xp: 1, starveMin: 40 },
+    sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 850, lv: 4, cap: 4, init: 0, time: [50000, 80000], xp: 5, starveMin: 50 },
+    pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1100, lv: 5, cap: 4, init: 0, time: [60000, 90000], xp: 6, starveMin: 50 },
     // เลเวล 11–20 (30 ต.ค. 2026): คอกแถวที่ 3 (PENS ด้านล่าง) ราคาสัตว์สูง ผลผลิตแพงตามเลเวล
-    alpaca:  { name: 'อัลปากา', emoji: '🦙', product: 'alpaca_wool', feedItem: 'hay', price: 2400, lv: 12, cap: 4, init: 0, time: [70000, 100000], xp: 14, starveMin: 50 },
-    horse:   { name: 'ม้าด่าง', emoji: '🐴', product: 'horse_milk', feedItem: 'hay', price: 4200, lv: 15, cap: 4, init: 0, time: [80000, 110000], xp: 17, starveMin: 50 },
-    boar:    { name: 'หมูป่า', emoji: '🐗', product: 'chestnut', feedItem: 'slop', price: 7000, lv: 18, cap: 4, init: 0, time: [90000, 120000], xp: 20, starveMin: 50 },
-    bee:     { name: 'ผึ้ง', emoji: '🐝', product: 'honey', feedItem: 'nectar', price: 360, lv: 2, cap: 4, init: 0, time: [40000, 60000], xp: 6, starveMin: 45 },
+    alpaca:  { name: 'อัลปากา', emoji: '🦙', product: 'alpaca_wool', feedItem: 'hay', price: 2400, lv: 12, cap: 4, init: 0, time: [70000, 100000], xp: 29, starveMin: 50 },
+    horse:   { name: 'ม้าด่าง', emoji: '🐴', product: 'horse_milk', feedItem: 'hay', price: 4200, lv: 15, cap: 4, init: 0, time: [80000, 110000], xp: 56, starveMin: 50 },
+    boar:    { name: 'หมูป่า', emoji: '🐗', product: 'chestnut', feedItem: 'slop', price: 7000, lv: 18, cap: 4, init: 0, time: [90000, 120000], xp: 97, starveMin: 50 },
+    bee:     { name: 'ผึ้ง', emoji: '🐝', product: 'honey', feedItem: 'nectar', price: 360, lv: 2, cap: 4, init: 0, time: [40000, 60000], xp: 1, starveMin: 45 },
   };
   // สัตว์เลี้ยงคู่ใจ (ซื้อที่ร้านสัตว์เลี้ยง): เดินตามเจ้าของ ทุกคนเห็น ไม่ต้องให้อาหาร • ซื้อได้หลายตัว แต่พาไปได้ทีละตัว (เลือกในร้าน)
   const COMPANIONS = {
@@ -983,7 +1000,7 @@
   const petMood = (h, sick) => (sick ? 0 : h >= PETSTAT.full ? 1 : h >= PETSTAT.half ? 0.5 : 0);
   const petBonus = (id, h, sick) => { const C = COMPANIONS[id], m = petMood(h, sick), o = { xp: 0, spd: 0, luck: 0, mood: m }; if (C && C.st) for (const k of Object.keys(o)) if (C.st[k]) o[k] = C.st[k] * PETSTAT.unit * m; return o; }; // คืนเป็นสัดส่วน (0.06 = 6%)
   const petStatText = id => { const C = COMPANIONS[id]; return C && C.st ? PETSTAT.keys.filter(([k]) => C.st[k]).map(([k, ic]) => ic + '+' + Math.round(C.st[k] * PETSTAT.unit * 100) + '%').join(' ') : ''; };
-  const ANIMAL_XP = { from: 5, perLv: 0.2 }; // XP เลี้ยงสัตว์ ×(1 + perLv × (เลเวล − from)) เมื่อเลเวลเกิน from (สัตว์ปลดครบที่ Lv5 แล้ว XP/ชม. ตันที่ 52% ของชาวนา ดู tools/levelsim.js)
+  const ANIMAL_XP = { from: 5, perLv: 0.22 }; // XP เลี้ยงสัตว์ ×(1 + perLv × (เลเวล − from)) เมื่อเลเวลเกิน from (สัตว์ปลดครบที่ Lv5 แล้ว XP/ชม. ตันที่ 52% ของชาวนา ดู tools/levelsim.js)
   const animalXp = (xp, lv) => Math.round(xp * (1 + ANIMAL_XP.perLv * Math.max(0, perkLv(lv) - ANIMAL_XP.from)));
   const ANIMAL_BONUS = 0.25; // โอกาสได้ผลผลิต ×2 เมื่อเก็บจากสัตว์ที่ตัวเองเลี้ยง (เดิม 0.5 ลดเมื่อ 25 ต.ค. 2026: เลี้ยงสัตว์ได้มากกว่าอาชีพอื่นใน tools/econsim.js)
   const ANIMAL_GRACE_MS = 8 * 60 * 1000;   // สัตว์ที่หิวจนหมดแล้ว ถ้าไม่มีใครให้อาหารภายใน 8 นาทีจะตาย (เดิม 4 นาที • 5 พ.ย. 2026)
@@ -1113,57 +1130,57 @@
   // XP สูตร = XP เดิม × (2.3 − 0.08×เลเวลสูตร) (ปรับ 25 ต.ค. 2026) ให้ XP/ชม. ของเชฟรวมเวลาหาวัตถุดิบใกล้ชาวนา ตรวจด้วย node tools/levelsim.js
   const COOK = [
     // เมนูง่ายทำกินเอง (2 พ.ย. 2026): ใช้ของที่ผลิตเองล้วน อิ่มกว่ากินดิบ ราคาขาย ≈ มูลค่าวัตถุดิบ (ไม่ใช่ทางทำเงิน)
-    { id: 'dish_vegbowl',   name: 'ผัดผักรวม',   emoji: '🥬', sell: 20, food: 35, lv: 1, xp: 8, time: 2000, in: [{ c: 'crop', n: 2 }] },
-    { id: 'dish_boiledegg', name: 'ไข่ต้ม',      emoji: '🥚', sell: 12, food: 25, lv: 1, xp: 6, time: 2000, in: [{ c: 'egg', n: 1 }] },
-    { id: 'dish_saltfish',  name: 'ปลาเผาเกลือ', emoji: '🐟', sell: 15, food: 30, lv: 1, xp: 7, time: 2000, in: [{ c: 'fish', n: 1 }] },
-    { id: 'dish_grill',   name: 'ปลาย่างผักสด',     emoji: '🍱', sell: 60,  food: 45,  lv: 1, xp: 27, time: 3000,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_omelet',  name: 'ไข่เจียวผักรวม',    emoji: '🍳', sell: 80,  food: 55,  lv: 3, xp: 41, time: 4000,  in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_seafood', name: 'ซีฟู้ดไข่นุ่ม',     emoji: '🍤', sell: 135, food: 70,  lv: 5, xp: 65, time: 6000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_feast',   name: 'ชุดเลี้ยงฉลอง',     emoji: '🍽️', sell: 330, food: 100, lv: 7, xp: 122, time: 9000,  in: [{ c: 'fish', n: 2 }, { c: 'crop', n: 2 }, { c: 'egg', n: 2 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_vegbowl',   name: 'ผัดผักรวม',   emoji: '🥬', sell: 20, food: 35, lv: 1, xp: 16, time: 2000, in: [{ c: 'crop', n: 2 }] },
+    { id: 'dish_boiledegg', name: 'ไข่ต้ม',      emoji: '🥚', sell: 12, food: 25, lv: 1, xp: 4, time: 2000, in: [{ c: 'egg', n: 1 }] },
+    { id: 'dish_saltfish',  name: 'ปลาเผาเกลือ', emoji: '🐟', sell: 15, food: 30, lv: 1, xp: 11, time: 2000, in: [{ c: 'fish', n: 1 }] },
+    { id: 'dish_grill',   name: 'ปลาย่างผักสด',     emoji: '🍱', sell: 60,  food: 45,  lv: 1, xp: 18, time: 3000,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_omelet',  name: 'ไข่เจียวผักรวม',    emoji: '🍳', sell: 80,  food: 55,  lv: 3, xp: 20, time: 4000,  in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_seafood', name: 'ซีฟู้ดไข่นุ่ม',     emoji: '🍤', sell: 135, food: 70,  lv: 5, xp: 50, time: 6000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_feast',   name: 'ชุดเลี้ยงฉลอง',     emoji: '🍽️', sell: 330, food: 100, lv: 7, xp: 91, time: 9000,  in: [{ c: 'fish', n: 2 }, { c: 'crop', n: 2 }, { c: 'egg', n: 2 }, { k: 'milk', n: 1 }] },
     // เมนูปลา: ปลาทุกชนิดในกระเป๋า (ยกเว้นรองเท้าเก่า) ใช้ทำได้
-    { id: 'dish_fishsoup', name: 'ต้มยำปลา',         emoji: '🍲', sell: 75,  food: 50,  lv: 2, xp: 34, time: 3500,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_sashimi',  name: 'ซาชิมิปลา',         emoji: '🍣', sell: 120, food: 55,  lv: 4, xp: 51, time: 4000,  in: [{ c: 'fish', n: 2 }] },
-    { id: 'dish_fishburger', name: 'เบอร์เกอร์ปลา',   emoji: '🍔', sell: 170, food: 80,  lv: 6, xp: 69, time: 5000,  in: [{ c: 'fish', n: 1 }, { k: 'meal_bread', n: 1 }, { c: 'crop', n: 1 }] },
-    { id: 'dish_fishpie',  name: 'พายปลาไข่',         emoji: '🥧', sell: 250, food: 90,  lv: 8, xp: 83, time: 7000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_fishsoup', name: 'ต้มยำปลา',         emoji: '🍲', sell: 75,  food: 50,  lv: 2, xp: 21, time: 3500,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_sashimi',  name: 'ซาชิมิปลา',         emoji: '🍣', sell: 120, food: 55,  lv: 4, xp: 29, time: 4000,  in: [{ c: 'fish', n: 2 }] },
+    { id: 'dish_fishburger', name: 'เบอร์เกอร์ปลา',   emoji: '🍔', sell: 170, food: 80,  lv: 6, xp: 36, time: 5000,  in: [{ c: 'fish', n: 1 }, { k: 'meal_bread', n: 1 }, { c: 'crop', n: 1 }] },
+    { id: 'dish_fishpie',  name: 'พายปลาไข่',         emoji: '🥧', sell: 250, food: 90,  lv: 8, xp: 79, time: 7000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
     // เมนูปลารวม: u = ปลาต้องเป็นคนละชนิดกัน (ชนิดละ 1 ตัว) ปลาชนิดเดียวกันหลายตัวใช้ทำไม่ได้
-    { id: 'dish_fishmix',  name: 'ปลารวมทอดกรอบ',    emoji: '🥘', sell: 110, food: 65,  lv: 3, xp: 45, time: 4000,  in: [{ c: 'fish', n: 2, u: true }, { c: 'crop', n: 1 }] },
-    { id: 'dish_fishstew', name: 'แกงปลารวมหม้อใหญ่', emoji: '🫕', sell: 220, food: 85,  lv: 6, xp: 80, time: 7000,  in: [{ c: 'fish', n: 3, u: true }, { c: 'crop', n: 1 }] },
-    { id: 'dish_platter',  name: 'จานปลาทะเลรวม',    emoji: '🥡', sell: 380, food: 105, lv: 8, xp: 133, time: 10000, in: [{ c: 'fish', n: 4, u: true }, { c: 'egg', n: 1 }] },
+    { id: 'dish_fishmix',  name: 'ปลารวมทอดกรอบ',    emoji: '🥘', sell: 110, food: 65,  lv: 3, xp: 34, time: 4000,  in: [{ c: 'fish', n: 2, u: true }, { c: 'crop', n: 1 }] },
+    { id: 'dish_fishstew', name: 'แกงปลารวมหม้อใหญ่', emoji: '🫕', sell: 220, food: 85,  lv: 6, xp: 67, time: 7000,  in: [{ c: 'fish', n: 3, u: true }, { c: 'crop', n: 1 }] },
+    { id: 'dish_platter',  name: 'จานปลาทะเลรวม',    emoji: '🥡', sell: 380, food: 105, lv: 8, xp: 99, time: 10000, in: [{ c: 'fish', n: 4, u: true }, { c: 'egg', n: 1 }] },
     // เลเวล 11–20 (30 ต.ค. 2026)
-    { id: 'dish_curry', name: 'แกงเขียวหวานปลา', emoji: '🍛', sell: 430, food: 105, lv: 11, xp: 150, time: 10000, in: [{ c: 'fish', n: 2 }, { c: 'crop', n: 2 }] },
-    { id: 'dish_salad', name: 'สลัดผักผลไม้รวม', emoji: '🥗', sell: 450, food: 105, lv: 12, xp: 160, time: 10000, in: [{ c: 'crop', n: 4, u: true }] },
-    { id: 'dish_noodle', name: 'ก๋วยเตี๋ยวทะเลรวม', emoji: '🍜', sell: 480, food: 105, lv: 13, xp: 170, time: 11000, in: [{ c: 'fish', n: 3, u: true }, { c: 'crop', n: 1 }, { c: 'egg', n: 1 }] },
-    { id: 'dish_pizza', name: 'พิซซ่าซีฟู้ด', emoji: '🍕', sell: 450, food: 105, lv: 14, xp: 180, time: 11000, in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 2 }, { c: 'crop', n: 2 }] },
-    { id: 'dish_pasta', name: 'สปาเกตตีกุ้งซอสครีม', emoji: '🍝', sell: 480, food: 105, lv: 15, xp: 190, time: 12000, in: [{ c: 'fish', n: 2, u: true }, { c: 'egg', n: 1 }, { c: 'crop', n: 2 }] },
-    { id: 'dish_pie', name: 'พายผลไม้อบร้อน', emoji: '🥮', sell: 510, food: 105, lv: 16, xp: 195, time: 12000, in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 3, u: true }] },
-    { id: 'dish_cake', name: 'เค้กไข่สตรอว์เบอร์รี', emoji: '🍰', sell: 550, food: 105, lv: 17, xp: 205, time: 13000, in: [{ c: 'egg', n: 3 }, { c: 'crop', n: 3 }] },
-    { id: 'dish_sharksoup', name: 'ซุปปลารวมมหาสมุทร', emoji: '🥣', sell: 590, food: 105, lv: 18, xp: 215, time: 14000, in: [{ c: 'fish', n: 5, u: true }, { c: 'egg', n: 1 }] },
-    { id: 'dish_party', name: 'เค้กฉลองงานเมือง', emoji: '🎂', sell: 640, food: 105, lv: 19, xp: 235, time: 14000, in: [{ c: 'egg', n: 4 }, { c: 'crop', n: 4 }] },
-    { id: 'dish_banquet', name: 'โต๊ะจีนมหาราช', emoji: '🥂', sell: 720, food: 105, lv: 20, xp: 270, time: 16000, in: [{ c: 'fish', n: 6, u: true }, { c: 'crop', n: 3 }, { c: 'egg', n: 3 }] },
+    { id: 'dish_curry', name: 'แกงเขียวหวานปลา', emoji: '🍛', sell: 430, food: 105, lv: 11, xp: 132, time: 10000, in: [{ c: 'fish', n: 2 }, { c: 'crop', n: 2 }] },
+    { id: 'dish_salad', name: 'สลัดผักผลไม้รวม', emoji: '🥗', sell: 450, food: 105, lv: 12, xp: 145, time: 10000, in: [{ c: 'crop', n: 4, u: true }] },
+    { id: 'dish_noodle', name: 'ก๋วยเตี๋ยวทะเลรวม', emoji: '🍜', sell: 480, food: 105, lv: 13, xp: 187, time: 11000, in: [{ c: 'fish', n: 3, u: true }, { c: 'crop', n: 1 }, { c: 'egg', n: 1 }] },
+    { id: 'dish_pizza', name: 'พิซซ่าซีฟู้ด', emoji: '🍕', sell: 450, food: 105, lv: 14, xp: 223, time: 11000, in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 2 }, { c: 'crop', n: 2 }] },
+    { id: 'dish_pasta', name: 'สปาเกตตีกุ้งซอสครีม', emoji: '🍝', sell: 480, food: 105, lv: 15, xp: 244, time: 12000, in: [{ c: 'fish', n: 2, u: true }, { c: 'egg', n: 1 }, { c: 'crop', n: 2 }] },
+    { id: 'dish_pie', name: 'พายผลไม้อบร้อน', emoji: '🥮', sell: 510, food: 105, lv: 16, xp: 238, time: 12000, in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 3, u: true }] },
+    { id: 'dish_cake', name: 'เค้กไข่สตรอว์เบอร์รี', emoji: '🍰', sell: 550, food: 105, lv: 17, xp: 294, time: 13000, in: [{ c: 'egg', n: 3 }, { c: 'crop', n: 3 }] },
+    { id: 'dish_sharksoup', name: 'ซุปปลารวมมหาสมุทร', emoji: '🥣', sell: 590, food: 105, lv: 18, xp: 450, time: 14000, in: [{ c: 'fish', n: 5, u: true }, { c: 'egg', n: 1 }] },
+    { id: 'dish_party', name: 'เค้กฉลองงานเมือง', emoji: '🎂', sell: 640, food: 105, lv: 19, xp: 518, time: 14000, in: [{ c: 'egg', n: 4 }, { c: 'crop', n: 4 }] },
+    { id: 'dish_banquet', name: 'โต๊ะจีนมหาราช', emoji: '🥂', sell: 720, food: 105, lv: 20, xp: 925, time: 16000, in: [{ c: 'fish', n: 6, u: true }, { c: 'crop', n: 3 }, { c: 'egg', n: 3 }] },
     // เมนูเจาะจงวัตถุดิบ (11 พ.ย. 2026, docs/plans/cooking-rework.md ระยะ 2): ระบุชนิดปลา/ผัก/ไข่/นมตรงตัว (in.k) ไม่กินของชนิดอื่นแทน • ใช้เฉพาะของที่หาได้จริง (ไม่ใช้ปลา legacy/พืช legacy) • ราคาขาย ≈ มูลค่าวัตถุดิบ ×1.9–2.3 ใกล้เคียงสูตรเดิมเลเวลเดียวกัน หลังค่าเตา 30% ยังเหลือ ≥ 1.2 เท่าของมูลค่าวัตถุดิบดิบ
-    { id: 'dish_sardinecarrot', name: 'ซาร์ดีนย่างแครอท', emoji: '🐟', sell: 65, food: 55, lv: 1, xp: 30, time: 3000, in: [{ k: 'fish_sardine', n: 1 }, { k: 'crop_carrot', n: 1 }] },
-    { id: 'dish_bassgreen', name: 'ปลากะพงทอดกะหล่ำ', emoji: '🐠', sell: 85, food: 55, lv: 2, xp: 39, time: 3500, in: [{ k: 'fish_bass', n: 1 }, { k: 'crop_cabbage', n: 1 }] },
-    { id: 'dish_mackegg', name: 'ปลาทูทอดไข่ดาว', emoji: '🍳', sell: 100, food: 60, lv: 3, xp: 46, time: 4000, in: [{ k: 'fish_mackerel', n: 1 }, { k: 'egg', n: 1 }] },
-    { id: 'dish_shrimptomyum', name: 'ต้มยำกุ้งมะเขือเทศ', emoji: '🍲', sell: 150, food: 65, lv: 4, xp: 69, time: 5000, in: [{ k: 'fish_shrimp', n: 1 }, { k: 'crop_tomato', n: 1 }] },
-    { id: 'dish_crabcurry', name: 'ปูผัดผงกะหรี่ไข่', emoji: '🦀', sell: 145, food: 65, lv: 5, xp: 67, time: 5000, in: [{ k: 'fish_crab', n: 1 }, { k: 'egg', n: 2 }] },
-    { id: 'dish_seabassegg', name: 'ปลากะพงขาวทอดน้ำปลา', emoji: '🐠', sell: 140, food: 65, lv: 5, xp: 64, time: 4500, in: [{ k: 'fish_seabass', n: 1 }, { k: 'egg', n: 1 }] },
-    { id: 'dish_duckomelet', name: 'ไข่เจียวเป็ดมะเขือม่วง', emoji: '🍳', sell: 240, food: 80, lv: 6, xp: 96, time: 6500, in: [{ k: 'duck_egg', n: 2 }, { k: 'crop_eggplant', n: 1 }] },
-    { id: 'dish_tunasalad', name: 'สลัดทูน่าข้าวโพดมะเขือเทศ', emoji: '🥗', sell: 280, food: 85, lv: 6, xp: 112, time: 7500, in: [{ k: 'fish_tuna', n: 1 }, { k: 'crop_corn', n: 1 }, { k: 'crop_tomato', n: 1 }] },
-    { id: 'dish_pumpkinmilk', name: 'ฟักทองนึ่งนมสด', emoji: '🎃', sell: 330, food: 90, lv: 7, xp: 132, time: 8500, in: [{ k: 'crop_pumpkin', n: 1 }, { k: 'milk', n: 1 }] },
-    { id: 'dish_bonitoveg', name: 'ปลาโอเผาผักรวม', emoji: '🔥', sell: 270, food: 85, lv: 7, xp: 108, time: 7000, in: [{ k: 'fish_bonito', n: 1 }, { k: 'crop_carrot', n: 1 }, { k: 'crop_cabbage', n: 1 }] },
-    { id: 'dish_squidegg', name: 'หมึกย่างซอสมะเขือเทศไข่', emoji: '🦑', sell: 300, food: 85, lv: 8, xp: 108, time: 7500, in: [{ k: 'fish_squid', n: 1 }, { k: 'egg', n: 1 }, { k: 'crop_tomato', n: 1 }] },
-    { id: 'dish_pufferegg', name: 'ปลาปักเป้าซาชิมิไข่', emoji: '🐡', sell: 300, food: 85, lv: 9, xp: 108, time: 7500, in: [{ k: 'fish_puffer', n: 1 }, { k: 'egg', n: 1 }] },
-    { id: 'dish_melonmilk', name: 'สมูทตี้แตงโมนมสด', emoji: '🍉', sell: 400, food: 100, lv: 10, xp: 144, time: 9500, in: [{ k: 'crop_melon', n: 1 }, { k: 'milk', n: 1 }] },
-    { id: 'dish_mangocake', name: 'เค้กไข่มะม่วง', emoji: '🥭', sell: 440, food: 105, lv: 11, xp: 163, time: 10500, in: [{ k: 'crop_mango', n: 1 }, { k: 'egg', n: 2 }] },
-    { id: 'dish_peachmilk', name: 'พีชอบนมสด', emoji: '🍑', sell: 500, food: 105, lv: 12, xp: 185, time: 11500, in: [{ k: 'crop_peach', n: 1 }, { k: 'milk', n: 1 }] },
-    { id: 'dish_kiwiegg', name: 'พุดดิ้งกีวีไข่', emoji: '🥝', sell: 490, food: 105, lv: 13, xp: 181, time: 11500, in: [{ k: 'crop_kiwi', n: 1 }, { k: 'egg', n: 1 }] },
-    { id: 'dish_lobstercoco', name: 'ซุปมะพร้าวกุ้งมังกร', emoji: '🥥', sell: 540, food: 105, lv: 14, xp: 200, time: 12500, in: [{ k: 'fish_lobster', n: 1 }, { k: 'crop_coconut', n: 1 }] },
-    { id: 'dish_avoshrimp', name: 'สลัดอะโวคาโดกุ้ง', emoji: '🥑', sell: 540, food: 105, lv: 15, xp: 200, time: 12500, in: [{ k: 'fish_shrimp', n: 1 }, { k: 'crop_avocado', n: 1 }] },
-    { id: 'dish_blueegg', name: 'ทาร์ตบลูเบอร์รีไข่', emoji: '🫐', sell: 560, food: 105, lv: 16, xp: 207, time: 12500, in: [{ k: 'crop_blueberry', n: 1 }, { k: 'egg', n: 1 }] },
-    { id: 'dish_cocoacake', name: 'เค้กโกโก้เข้มข้น', emoji: '🍫', sell: 600, food: 105, lv: 17, xp: 222, time: 13500, in: [{ k: 'crop_beans', n: 1 }, { k: 'egg', n: 1 }] },
-    { id: 'dish_truffleomelet', name: 'ไข่เจียวทรัฟเฟิล', emoji: '🍄', sell: 650, food: 105, lv: 18, xp: 241, time: 14500, in: [{ k: 'crop_mushroom', n: 1 }, { k: 'egg', n: 2 }] },
-    { id: 'dish_trufflesoup', name: 'ซุปทรัฟเฟิลนมสด', emoji: '🥣', sell: 700, food: 105, lv: 19, xp: 259, time: 15500, in: [{ k: 'crop_mushroom', n: 1 }, { k: 'milk', n: 1 }] },
-    { id: 'dish_lobstermilk', name: 'กุ้งมังกรอบมะพร้าวนม', emoji: '🦞', sell: 740, food: 105, lv: 20, xp: 274, time: 16000, in: [{ k: 'fish_lobster', n: 1 }, { k: 'crop_coconut', n: 1 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_sardinecarrot', name: 'ซาร์ดีนย่างแครอท', emoji: '🐟', sell: 65, food: 55, lv: 1, xp: 18, time: 3000, in: [{ k: 'fish_sardine', n: 1 }, { k: 'crop_carrot', n: 1 }] },
+    { id: 'dish_bassgreen', name: 'ปลากะพงทอดกะหล่ำ', emoji: '🐠', sell: 85, food: 55, lv: 2, xp: 30, time: 3500, in: [{ k: 'fish_bass', n: 1 }, { k: 'crop_cabbage', n: 1 }] },
+    { id: 'dish_mackegg', name: 'ปลาทูทอดไข่ดาว', emoji: '🍳', sell: 100, food: 60, lv: 3, xp: 34, time: 4000, in: [{ k: 'fish_mackerel', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_shrimptomyum', name: 'ต้มยำกุ้งมะเขือเทศ', emoji: '🍲', sell: 150, food: 65, lv: 4, xp: 59, time: 5000, in: [{ k: 'fish_shrimp', n: 1 }, { k: 'crop_tomato', n: 1 }] },
+    { id: 'dish_crabcurry', name: 'ปูผัดผงกะหรี่ไข่', emoji: '🦀', sell: 145, food: 65, lv: 5, xp: 54, time: 5000, in: [{ k: 'fish_crab', n: 1 }, { k: 'egg', n: 2 }] },
+    { id: 'dish_seabassegg', name: 'ปลากะพงขาวทอดน้ำปลา', emoji: '🐠', sell: 140, food: 65, lv: 5, xp: 60, time: 4500, in: [{ k: 'fish_seabass', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_duckomelet', name: 'ไข่เจียวเป็ดมะเขือม่วง', emoji: '🍳', sell: 240, food: 80, lv: 6, xp: 66, time: 6500, in: [{ k: 'duck_egg', n: 2 }, { k: 'crop_eggplant', n: 1 }] },
+    { id: 'dish_tunasalad', name: 'สลัดทูน่าข้าวโพดมะเขือเทศ', emoji: '🥗', sell: 280, food: 85, lv: 6, xp: 131, time: 7500, in: [{ k: 'fish_tuna', n: 1 }, { k: 'crop_corn', n: 1 }, { k: 'crop_tomato', n: 1 }] },
+    { id: 'dish_pumpkinmilk', name: 'ฟักทองนึ่งนมสด', emoji: '🎃', sell: 330, food: 90, lv: 7, xp: 94, time: 8500, in: [{ k: 'crop_pumpkin', n: 1 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_bonitoveg', name: 'ปลาโอเผาผักรวม', emoji: '🔥', sell: 270, food: 85, lv: 7, xp: 127, time: 7000, in: [{ k: 'fish_bonito', n: 1 }, { k: 'crop_carrot', n: 1 }, { k: 'crop_cabbage', n: 1 }] },
+    { id: 'dish_squidegg', name: 'หมึกย่างซอสมะเขือเทศไข่', emoji: '🦑', sell: 300, food: 85, lv: 8, xp: 149, time: 7500, in: [{ k: 'fish_squid', n: 1 }, { k: 'egg', n: 1 }, { k: 'crop_tomato', n: 1 }] },
+    { id: 'dish_pufferegg', name: 'ปลาปักเป้าซาชิมิไข่', emoji: '🐡', sell: 300, food: 85, lv: 9, xp: 157, time: 7500, in: [{ k: 'fish_puffer', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_melonmilk', name: 'สมูทตี้แตงโมนมสด', emoji: '🍉', sell: 400, food: 100, lv: 10, xp: 194, time: 9500, in: [{ k: 'crop_melon', n: 1 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_mangocake', name: 'เค้กไข่มะม่วง', emoji: '🥭', sell: 440, food: 105, lv: 11, xp: 280, time: 10500, in: [{ k: 'crop_mango', n: 1 }, { k: 'egg', n: 2 }] },
+    { id: 'dish_peachmilk', name: 'พีชอบนมสด', emoji: '🍑', sell: 500, food: 105, lv: 12, xp: 329, time: 11500, in: [{ k: 'crop_peach', n: 1 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_kiwiegg', name: 'พุดดิ้งกีวีไข่', emoji: '🥝', sell: 490, food: 105, lv: 13, xp: 392, time: 11500, in: [{ k: 'crop_kiwi', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_lobstercoco', name: 'ซุปมะพร้าวกุ้งมังกร', emoji: '🥥', sell: 540, food: 105, lv: 14, xp: 632, time: 12500, in: [{ k: 'fish_lobster', n: 1 }, { k: 'crop_coconut', n: 1 }] },
+    { id: 'dish_avoshrimp', name: 'สลัดอะโวคาโดกุ้ง', emoji: '🥑', sell: 540, food: 105, lv: 15, xp: 658, time: 12500, in: [{ k: 'fish_shrimp', n: 1 }, { k: 'crop_avocado', n: 1 }] },
+    { id: 'dish_blueegg', name: 'ทาร์ตบลูเบอร์รีไข่', emoji: '🫐', sell: 560, food: 105, lv: 16, xp: 673, time: 12500, in: [{ k: 'crop_blueberry', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_cocoacake', name: 'เค้กโกโก้เข้มข้น', emoji: '🍫', sell: 600, food: 105, lv: 17, xp: 832, time: 13500, in: [{ k: 'crop_beans', n: 1 }, { k: 'egg', n: 1 }] },
+    { id: 'dish_truffleomelet', name: 'ไข่เจียวทรัฟเฟิล', emoji: '🍄', sell: 650, food: 105, lv: 18, xp: 1009, time: 14500, in: [{ k: 'crop_mushroom', n: 1 }, { k: 'egg', n: 2 }] },
+    { id: 'dish_trufflesoup', name: 'ซุปทรัฟเฟิลนมสด', emoji: '🥣', sell: 700, food: 105, lv: 19, xp: 1133, time: 15500, in: [{ k: 'crop_mushroom', n: 1 }, { k: 'milk', n: 1 }] },
+    { id: 'dish_lobstermilk', name: 'กุ้งมังกรอบมะพร้าวนม', emoji: '🦞', sell: 740, food: 105, lv: 20, xp: 1353, time: 16000, in: [{ k: 'fish_lobster', n: 1 }, { k: 'crop_coconut', n: 1 }, { k: 'milk', n: 1 }] },
   ];
   const cookCat = (c, k) => c === 'fish' ? /^fish_/.test(k) && k !== 'fish_boot' : c === 'crop' ? /^crop_/.test(k) : c === 'egg' ? (k === 'egg' || k === 'duck_egg') : false;
   // โครงการพัฒนาเมือง: ที่เก็บเงินขนาดใหญ่ ทุกคนลงขันที่ตู้เซฟกองกลาง ปลดล็อกตามลำดับ ครบเป้าแล้วขึ้นข่าวและประกาศชื่อผู้ร่วมสร้าง
@@ -1785,7 +1802,7 @@
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
-    FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, fishNewestLv, fishPoolMul, migrateStdV5, migrateToolsV6, unmigrateToolsV6, tmigLocked, invPub, rareCdMs, xpStdV5,
+    FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, fishNewestLv, fishPoolMul, migrateStdV5, migrateStdV7, unmigrateStdV7, xpUnStdV7, STD_V7_SKILLS, migrateToolsV6, unmigrateToolsV6, tmigLocked, invPub, rareCdMs, xpStdV5,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

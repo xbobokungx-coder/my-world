@@ -61,19 +61,21 @@ class World {
         this.farm = moved; this.dirty = true;
       }
       this.saved = Object.assign(Object.create(null), d.players); // ไม่มี prototype: ชื่อผู้เล่นอย่าง "__proto__" จะได้ไม่ไปชนของในระบบ
-      let mineRefund = 0, mineMoved = 0, stdMoved = 0, toolMoved = 0; // สรุปการย้ายเซฟนักขุดแร่ (xpv 4) ลง log ครั้งเดียว เหรียญที่คืนไม่ผ่าน telemetry
+      let mineRefund = 0, mineMoved = 0, stdMoved = 0, toolMoved = 0, xpMoved = 0; // สรุปการย้ายเซฟนักขุดแร่ (xpv 4) ลง log ครั้งเดียว เหรียญที่คืนไม่ผ่าน telemetry
       for (const rec of Object.values(this.saved)) { // ย้าย XP มาตาราง XP_TABLE (ครั้งเดียวต่อบัญชี) เลเวลเท่าเดิม
-        if (!rec || rec.xpv >= 6) continue;
-        if (rec.xpv === 5) { if (S.migrateToolsV6(rec)) toolMoved++; this.dirty = true; continue; } // xpv 6 (13 พ.ย. 2026): ขวาน/คันเบ็ด 10 ระดับ (เพิ่มอย่างเดียว ไม่คืน/ไม่หักเหรียญ)
-        if (rec.xpv === 4) { if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; this.dirty = true; continue; } // xpv 5 (6 พ.ย. 2026): ตารางหลอดมาตรฐานชาวประมง
-        if (rec.xpv === 3) { const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; this.dirty = true; continue; } // xpv 4 (6 พ.ย. 2026): นักขุดแร่ตารางหลอดใหม่ + อีเต้อ 10 ชนิด + คืนเหรียญถุงมือ/ค้อน
+        if (!rec || rec.xpv >= 7) continue;
+        if (rec.xpv === 6) { if (S.migrateStdV7(rec)) xpMoved++; this.dirty = true; continue; } // xpv 7 (13 พ.ย. 2026, WP-20): หลอด XP มาตรฐานทุกอาชีพ (ไม่คืน/ไม่หักเหรียญ)
+        if (rec.xpv === 5) { if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; this.dirty = true; continue; } // xpv 6 (13 พ.ย. 2026): ขวาน/คันเบ็ด 10 ระดับ (เพิ่มอย่างเดียว ไม่คืน/ไม่หักเหรียญ)
+        if (rec.xpv === 4) { if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; this.dirty = true; continue; } // xpv 5 (6 พ.ย. 2026): ตารางหลอดมาตรฐานชาวประมง
+        if (rec.xpv === 3) { const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; this.dirty = true; continue; } // xpv 4 (6 พ.ย. 2026): นักขุดแร่ตารางหลอดใหม่ + อีเต้อ 10 ชนิด + คืนเหรียญถุงมือ/ค้อน
         if (rec.xpv !== 2 && rec.skills) for (const k of Object.keys(rec.skills)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = S.xpFromV1(rec.skills[k]);
         if (rec.skills) for (const k of Object.keys(rec.skills)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = S.xpFromV2(rec.skills[k]); // xpv 3 (31 ต.ค. 2026): ยืดเลเวลต้น เลเวลเท่าเดิม
-        rec.xpv = 3; const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; this.dirty = true;
+        rec.xpv = 3; const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; if (S.migrateStdV7(rec)) xpMoved++; this.dirty = true;
       }
       if (mineMoved) console.log(`[migrate] นักขุดแร่ xpv 4: ย้าย ${mineMoved} บัญชี คืนเหรียญถุงมือ/ค้อนรวม ${mineRefund}`);
       if (stdMoved) console.log(`[migrate] ตารางหลอดมาตรฐาน xpv 5: ย้าย ${stdMoved} บัญชี`);
       if (toolMoved) console.log(`[migrate] อุปกรณ์ xpv 6: ย้าย ${toolMoved} บัญชี`);
+      if (xpMoved) console.log(`[migrate] หลอด XP อาชีพ xpv 7: ย้าย ${xpMoved} บัญชี`);
       for (const rec of Object.values(this.saved)) { // ย้อนพิกัดจากทดลอง TS=64 กลับ TS=32
         if (!rec || !rec.px64) continue;
         if (Number.isFinite(rec.x)) rec.x /= 2;
@@ -173,7 +175,7 @@ class World {
       try { q.ws.terminate(); } catch (e) { /* เหมือนกัน */ } // ตัดซ็อกเก็ตเก่าทันที ไม่รอ close handshake
     }
     let rec = this.saved[key];
-    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 6, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
+    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 7, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
     if (!rec.mig2) { rec.mig2 = true; rec.inv.bait = (rec.inv.bait || 0) + 10; } // แจกเหยื่อตกปลาชุดแรกให้ผู้เล่นเดิม (ระบบเหยื่อเพิ่งเพิ่ม)
     rec.name = name;
     if (!rec.firstSeen) rec.firstSeen = rec.lastSeen || Date.now(); // บัญชีเก่าก่อนมีตัวนับ: ใช้เวลาเข้าล่าสุดแทน (ใกล้เคียงเท่านั้น)

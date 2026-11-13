@@ -151,7 +151,7 @@ const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.par
   };
   fs.writeFileSync(path.join(process.env.DATA_DIR, 'axemig.json'), JSON.stringify({ players: clone(players), farm: {}, layout: 2 }));
   const w = new World('axemig'), sv = w.saved;
-  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv >= 6 ? sv[k].xpv : 0, 6, k + ' ต้องเป็น xpv 6 หลังโหลด');
+  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 7, k + ' ต้องเป็น xpv 7 หลังโหลด');
   assert.strictEqual(sv.a3.inv.coin, 5000, 'a3 เหรียญไม่เปลี่ยน'); assert.strictEqual(sv.a5.inv.coin, 123); assert.strictEqual(sv.a2.inv.coin, 321);
   assert.strictEqual(sv.old4.inv.coin, 99, 'xpv 4 ไม่มีของอื่นให้คืนเงิน'); assert.strictEqual(sv.old3.inv.coin, 99 + 0, 'xpv 3 ไม่มีถุงมือ/ค้อน เหรียญเท่าเดิม');
   assert.strictEqual(S.axeTier(sv.a3.inv), 4); assert.strictEqual(S.axeTier(sv.a5.inv), 9); assert.strictEqual(S.axeTier(sv.a2.inv), 2); assert.strictEqual(S.axeTier(sv.old4.inv), 6); assert.strictEqual(S.axeTier(sv.old3.inv), 4); assert.strictEqual(S.axeTier(sv.new6.inv), 7, 'xpv 6 ไม่ถูกแตะ'); assert.strictEqual(sv.new6.dur.axe, 7); assert.strictEqual(sv.new6.tmig, undefined);
@@ -197,7 +197,7 @@ const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.par
     w3.handle(q, { t: 'sellback', item: 'axe_4' }); assert.strictEqual(q.rec.inv.axe_4, 1, 'axe_4 ที่ระบบเพิ่มให้ยังล็อก');
   }
   // ผู้เล่นใหม่เริ่มที่ xpv 6
-  const nj = w2.join(mkWs(), 'newbie', '#e74c3c'); assert.strictEqual(w2.saved.newbie.xpv, 6); assert.strictEqual(w2.saved.newbie.tmig, undefined);
+  const nj = w2.join(mkWs(), 'newbie', '#e74c3c'); assert.strictEqual(w2.saved.newbie.xpv, 7); assert.strictEqual(w2.saved.newbie.tmig, undefined);
 }
 
 // ---- (ญ) chopHit: ดาเมจ ความสึก ไม้เพิ่ม ----

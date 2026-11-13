@@ -12,13 +12,13 @@ const clone = o => JSON.parse(JSON.stringify(o));
   for (let i = 3; i < S.XP_TABLE_MINE.length; i++) assert.ok(S.XP_TABLE_MINE[i] > S.XP_TABLE_MINE[i - 1], 'ตารางต้องเพิ่มขึ้น');
   for (let lv = 1; lv <= S.MAX_LV; lv++) {
     assert.strictEqual(S.xpFor(lv, 'mine'), S.XP_TABLE_MINE[lv]); assert.strictEqual(S.xpFor(lv), S.XP_TABLE[lv], 'ไม่ส่ง skill = ตารางเดิม');
-    for (const sk of ['farm', 'animal', 'wood', 'cook']) assert.strictEqual(S.xpFor(lv, sk), S.XP_TABLE[lv], sk + ' ใช้ตารางเดิม'); assert.strictEqual(S.xpFor(lv, 'fish'), S.XP_TABLE_STD[lv], 'fish ใช้ XP_TABLE_STD (xpv 5 ปรับชาวประมง 6 พ.ย. 2026)');
+    for (const sk of ['farm', 'animal', 'wood', 'cook']) assert.strictEqual(S.xpFor(lv, sk), S.XP_TABLE_STD[lv], sk + ' ใช้หลอดมาตรฐาน (xpv 7, WP-20)'); assert.strictEqual(S.xpFor(lv, 'fish'), S.XP_TABLE_STD[lv], 'fish ใช้ XP_TABLE_STD (xpv 5 ปรับชาวประมง 6 พ.ย. 2026)');
     assert.strictEqual(S.levelOf(S.XP_TABLE_MINE[lv], 'mine'), lv, 'ขอบเลเวล mine ' + lv);
     if (lv > 1) assert.strictEqual(S.levelOf(S.XP_TABLE_MINE[lv] - 1, 'mine'), lv - 1);
-    assert.strictEqual(S.levelOf(S.XP_TABLE[lv], 'farm'), lv); assert.strictEqual(S.levelOf(S.XP_TABLE[lv]), lv);
+    assert.strictEqual(S.levelOf(S.XP_TABLE_STD[lv], 'farm'), lv); assert.strictEqual(S.levelOf(S.XP_TABLE[lv]), lv);
   }
   assert.strictEqual(S.levelOf(1000, 'mine'), 4, 'XP 1000 ที่ตารางนักขุด = Lv4 (959 ≤ 1000 < 1442)');
-  assert.strictEqual(S.levelOf(1000, 'farm'), 2, 'XP เดียวกันที่ชาวนาเป็น Lv2 (700 ≤ 1000 < 2000)');
+  assert.strictEqual(S.levelOf(1000, 'farm'), 4, 'XP เดียวกันที่ชาวนา (หลอดมาตรฐาน xpv 7) เป็น Lv4 (1000 ≤ 1000 < 1552)'); assert.strictEqual(S.levelOf(1000), 2, 'ไม่ส่ง skill = ตารางเดิม Lv2');
   assert.strictEqual(S.levelOf(1e9, 'mine'), S.MAX_LV); assert.strictEqual(S.levelOf(0, 'mine'), 1); assert.strictEqual(S.levelOf(undefined, 'mine'), 1);
 }
 
@@ -94,18 +94,18 @@ const clone = o => JSON.parse(JSON.stringify(o));
   };
   fs.writeFileSync(path.join(process.env.DATA_DIR, 'minemig.json'), JSON.stringify({ players, farm: {}, layout: 2 }));
   const w = new World('minemig'), sv = w.saved;
-  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 6, k + ' ต้องเป็น xpv 6 หลังโหลด (โซ่ 4 → 5 → 6 ต่อท้าย)');
-  const o3 = sv.old3; assert.strictEqual(S.levelOf(o3.skills.mine, 'mine'), 8, 'old3 เลเวลเดิม Lv8'); assert.strictEqual(o3.skills.farm, 5000, 'xpv 3: อาชีพอื่นไม่ถูกแตะ');
+  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 7, k + ' ต้องเป็น xpv 7 หลังโหลด (โซ่ 4 → 5 → 6 → 7 ต่อท้าย)');
+  const o3 = sv.old3; assert.strictEqual(S.levelOf(o3.skills.mine, 'mine'), 8, 'old3 เลเวลเดิม Lv8'); assert.strictEqual(o3.skills.farm, S.xpStdV5(5000, 'farm'), 'xpv 3: ชาวนาแปลงที่ V7 เท่านั้น');
   assert.ok(o3.inv.pick_4 === 1 && !o3.inv.pick_3 && !o3.inv.glove_2 && !o3.inv.hammer_1 && o3.inv.coin >= 100 + 1200 + 600, 'old3 (เหรียญ ≥ เดิม + คืนถุงมือ 1,200 + ค้อน 600 ความสำเร็จเหรียญอาจบวกเพิ่ม): pick_3→pick_4 + คืนเงินถุงมือ 1,200 + ค้อน 600');
   assert.ok(o3.dur.pick > 0 && o3.dur.pick <= S.durMax('pick', 4, 0));
   assert.strictEqual(S.levelOf(sv.old2.skills.mine, 'mine'), S.levelOf(S.xpFromV2(3000)), 'old2 (xpv 2) เลเวลเดิม'); assert.ok(sv.old2.inv.pick_1);
   assert.strictEqual(S.levelOf(sv.v1.skills.mine, 'mine'), S.levelOf(S.xpFromV2(S.xpFromV1(400))), 'ไม่มี xpv (v1) เลเวลเดิม');
-  assert.deepStrictEqual([sv.new4.skills, sv.new4.inv.pick_10, sv.new4.inv.glove_1, sv.new4.xpv], [{ mine: 777 }, 1, 1, 6], 'xpv 4 อยู่แล้ว: ไม่แปลง XP นักขุด ไม่ลบถุงมือ (ขยับเป็น xpv 6 เท่านั้น)');
+  assert.deepStrictEqual([sv.new4.skills, sv.new4.inv.pick_10, sv.new4.inv.glove_1, sv.new4.xpv], [{ mine: 777 }, 1, 1, 7], 'xpv 4 อยู่แล้ว: ไม่แปลง XP นักขุด ไม่ลบถุงมือ (ขยับเป็น xpv 6 เท่านั้น)');
   // เซฟแล้วโหลดใหม่ ไม่แปลงซ้ำ
   w.dirty = true; w.save(true); const snap = clone(sv);
   const w2 = new World('minemig'); assert.deepStrictEqual(clone(w2.saved), snap, 'โหลดรอบสอง = ไม่เปลี่ยน (ไม่คืนเงินซ้ำ)');
   // ผู้เล่นใหม่เริ่มที่ xpv 6
-  const ws = { readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } }; const j = w2.join(ws, 'newbie', '#e74c3c'); assert.strictEqual(w2.saved.newbie.xpv, 6);
+  const ws = { readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } }; const j = w2.join(ws, 'newbie', '#e74c3c'); assert.strictEqual(w2.saved.newbie.xpv, 7);
 }
 
 // ---- (ค) เวลา × XP/ชม. ตามเป้า (levelsim): ถึง Lv10 ≈ 4.0 ชม., Lv20 = 20 ชม. ----
@@ -142,7 +142,7 @@ const clone = o => JSON.parse(JSON.stringify(o));
 // ---- (จ) ดาวความชำนาญของนักขุดใช้ masteryXp ----
 {
   assert.strictEqual(S.masteryXp('mine'), S.MASTERY.xpPerSkill.mine); assert.ok(S.masteryXp('mine') < S.MASTERY.xpPer, 'หลอดนักขุดเล็กกว่า จึงดาวละน้อยกว่า');
-  for (const sk of ['farm', 'animal', 'wood', 'cook']) assert.strictEqual(S.masteryXp(sk), S.MASTERY.xpPer, sk + ' ดาวละ 25,000'); assert.strictEqual(S.masteryXp('fish'), 8000, 'fish ดาวละ 8,000 (ชาวประมงตั้งใจ)');
+  for (const sk of ['farm', 'animal', 'wood', 'cook']) assert.strictEqual(S.masteryXp(sk), 8000, sk + ' ดาวละ 8,000 (หลอดมาตรฐาน xpv 7, WP-20)'); assert.strictEqual(S.masteryXp('fish'), 8000, 'fish ดาวละ 8,000 (ชาวประมงตั้งใจ)');
   const { World } = require('../server.js'), w = new World('minestar'), ws = { readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } }, p = w.join(ws, 'starry', '#e74c3c').p;
   const need = (sk, n) => S.xpFor(S.MAX_LV, sk) + n * S.masteryXp(sk), stars = () => (p.rec.stars && p.rec.stars.mine) || 0;
   p.rec.inv.coin = 1e6;

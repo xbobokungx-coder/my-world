@@ -141,7 +141,7 @@ const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.par
   };
   fs.writeFileSync(path.join(process.env.DATA_DIR, 'rodmig.json'), JSON.stringify({ players: clone(players), farm: {}, layout: 2 }));
   const w = new World('rodmig'), sv = w.saved;
-  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 6, k + ' ต้องเป็น xpv 6 หลังโหลด');
+  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 7, k + ' ต้องเป็น xpv 7 หลังโหลด');
   assert.strictEqual(sv.r3.inv.coin, 5000, 'เหรียญไม่เปลี่ยน'); assert.strictEqual(sv.r7.inv.coin, 123); assert.strictEqual(sv.r2.inv.coin, 321); assert.strictEqual(sv.old4.inv.coin, 99); assert.strictEqual(sv.old3.inv.coin, 99);
   assert.strictEqual(S.rodTier(sv.r3.inv), 4); assert.strictEqual(S.rodTier(sv.r7.inv), 10); assert.strictEqual(S.rodTier(sv.r2.inv), 2); assert.strictEqual(S.rodTier(sv.old4.inv), 4); assert.strictEqual(S.rodTier(sv.old3.inv), 2); assert.strictEqual(S.rodTier(sv.new6.inv), 10); assert.strictEqual(sv.new6.dur.rod, 7); assert.strictEqual(sv.new6.tmig, undefined);
   assert.strictEqual(sv.r7.dur.rod, S.durMax('rod', 10, 0), 'r7 เต็มยังเต็ม'); assert.deepStrictEqual(sv.r7.tmig.add.slice().sort(), ['rod_10', 'rod_8'], 'ถือ {2,5,7} → N = {2,8,10}'); assert.deepStrictEqual(sv.r7.tmig.left, { rod_5: 1, rod_7: 1 });
@@ -172,7 +172,7 @@ const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.par
     w3.handle(q, { t: 'buy', item: 'rod_3', n: 1 }); assert.strictEqual(q.rec.inv.coin, 99999, 'ซื้อระดับต่ำกว่าที่ใช้อยู่ ไม่ได้'); w3.handle(q, { t: 'buy', item: 'rod_4', n: 1 }); assert.strictEqual(q.rec.inv.coin, 99999, 'ซื้อเท่ากันไม่ได้');
     w3.handle(q, { t: 'buy', item: 'rod_5', n: 1 }); assert.strictEqual(q.rec.inv.coin, 99999 - S.RODS[5].price); assert.strictEqual(S.rodTier(q.rec.inv), 5);
     w3.handle(q, { t: 'sellback', item: 'rod_5' }); assert.strictEqual(q.rec.inv.coin, 99999 - S.RODS[5].price + S.sellbackValue('rod_5'), 'ซื้อเองขายคืนได้'); w3.handle(q, { t: 'sellback', item: 'rod_4' }); assert.strictEqual(q.rec.inv.rod_4, 1, 'rod_4 ที่ระบบเพิ่มยังล็อก'); }
-  w2.join(mkWs(), 'newbie', '#e74c3c'); assert.strictEqual(w2.saved.newbie.xpv, 6); assert.strictEqual(w2.saved.newbie.tmig, undefined);
+  w2.join(mkWs(), 'newbie', '#e74c3c'); assert.strictEqual(w2.saved.newbie.xpv, 7); assert.strictEqual(w2.saved.newbie.tmig, undefined);
 }
 
 // ---- (ญ) rodHit / fishTier / fightNew down ----

@@ -84,7 +84,7 @@ adv(600); w.handle(a, { t: 'buy', item: 'bait', n: 5 });
 for (const k of Object.keys(a.rec.inv)) if (k.startsWith('fish_')) { adv(600); w.handle(a, { t: 'sell', item: k, n: 'all' }); }
 
 // ซื้อหวย (alice ที่ตู้ Lucky Lotto) แล้วเดินเวลาผ่านไปอีกหน่อย
-a.rec.skills = { farm: 400, fish: 400, animal: 400, wood: 400, cook: 400, mine: 0 }; a.rec.starter = { done: {}, final: true }; // ผ่านเงื่อนไขซื้อหวย
+a.rec.skills = { farm: 200, fish: 200, animal: 200, wood: 200, cook: 200, mine: 0 }; a.rec.starter = { done: {}, final: true }; // ผ่านเงื่อนไขซื้อหวย
 at(a, S.LUCKY.x, S.LUCKY.y, 0);
 adv(600); w.handle(a, { t: 'lotto', a: 'buy', nums: ['123', '456', null] });
 

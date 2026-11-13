@@ -5,7 +5,7 @@ const assert = require('assert'), S = require('../public/shared.js');
   for (let lv = 1; lv <= S.MAX_LV; lv++) {
     assert.strictEqual(S.xpFor(lv, 'fish'), S.XP_TABLE_STD[lv]); assert.strictEqual(S.levelOf(S.XP_TABLE_STD[lv], 'fish'), lv);
     if (lv > 1) assert.strictEqual(S.levelOf(S.XP_TABLE_STD[lv] - 1, 'fish'), lv - 1);
-    assert.strictEqual(S.xpFor(lv, 'farm'), S.XP_TABLE[lv], 'อาชีพอื่นใช้ตารางเดิม'); assert.strictEqual(S.xpFor(lv), S.XP_TABLE[lv]);
+    for (const sk of ['farm', 'animal', 'wood', 'cook']) assert.strictEqual(S.xpFor(lv, sk), S.XP_TABLE_STD[lv], sk + ' ใช้หลอดมาตรฐาน (xpv 7, WP-20)'); assert.strictEqual(S.xpFor(lv), S.XP_TABLE[lv], 'ไม่ส่ง skill = ตารางเดิม');
   }
   assert.strictEqual(S.xpFor(20, 'mine'), S.XP_TABLE_MINE[20]); assert.strictEqual(S.masteryXp('fish'), 8000);
 }
@@ -74,12 +74,12 @@ const { World } = require('../server.js'), clone = o => JSON.parse(JSON.stringif
   };
   fs.writeFileSync(path.join(process.env.DATA_DIR, 'fishmig.json'), JSON.stringify({ players: clone(players), farm: {}, layout: 2 }));
   const w = new World('fishmig'), sv = w.saved;
-  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 6, k + ' xpv 6 (โซ่ 5 → 6 ต่อท้าย)');
-  assert.strictEqual(S.levelOf(sv.c4.skills.fish, 'fish'), 10, 'c4 ชาวประมงเลเวลเดิม'); assert.strictEqual(sv.c4.skills.farm, lvXp(10), 'ชาวนาไม่แตะ'); assert.strictEqual(S.levelOf(sv.c4.skills.farm), 10);
-  assert.strictEqual(sv.c4.skills.mine, 777); assert.strictEqual(sv.c4.skills.wood, 5, 'อาชีพอื่นไม่แตะ');
-  assert.strictEqual(S.levelOf(sv.c3.skills.fish, 'fish'), 10, 'c3 (xpv 3 → 5)'); assert.strictEqual(sv.c3.skills.farm, lvXp(10));
+  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 7, k + ' xpv 7 (โซ่ 5 → 6 → 7 ต่อท้าย)');
+  assert.strictEqual(S.levelOf(sv.c4.skills.fish, 'fish'), 10, 'c4 ชาวประมงเลเวลเดิม'); assert.strictEqual(sv.c4.skills.farm, S.xpStdV5(lvXp(10), 'farm'), 'ชาวนาแปลงที่ V7 (WP-20)'); assert.strictEqual(S.levelOf(sv.c4.skills.farm, 'farm'), 10);
+  assert.strictEqual(sv.c4.skills.mine, 777); assert.strictEqual(sv.c4.skills.wood, S.xpStdV5(5, 'wood'), 'ช่างไม้แปลงที่ V7');
+  assert.strictEqual(S.levelOf(sv.c3.skills.fish, 'fish'), 10, 'c3 (xpv 3 → 5)'); assert.strictEqual(sv.c3.skills.farm, S.xpStdV5(lvXp(10), 'farm'));
   assert.strictEqual(S.levelOf(sv.c2.skills.fish, 'fish'), S.levelOf(S.xpFromV2(3000)), 'c2 เลเวลเดิมตลอดโซ่'); assert.strictEqual(S.levelOf(sv.c1.skills.fish, 'fish'), S.levelOf(S.xpFromV2(S.xpFromV1(400))), 'c1 (ไม่มี xpv) เลเวลเดิมตลอดโซ่');
-  assert.strictEqual(sv.c5.skills.fish, 12345, 'xpv 5 ไม่แตะ'); assert.strictEqual(sv.c5.skills.farm, 12345); assert.strictEqual(sv.nos.skills, undefined);
+  assert.strictEqual(sv.c5.skills.fish, 12345, 'xpv 5 ไม่แตะ'); assert.strictEqual(sv.c5.skills.farm, S.xpStdV5(12345, 'farm'), 'xpv 5 → ชาวนาแปลงที่ V7'); assert.strictEqual(sv.nos.skills, undefined);
   assert.strictEqual(sv.c4.inv.rod_3, 1, 'คันเบ็ดไม่ถูกย้าย');
   w.dirty = true; w.save(true); const snap = clone(sv); assert.deepStrictEqual(clone(new World('fishmig').saved), snap, 'โหลดซ้ำไม่แปลงซ้ำ');
   // (ค) ความทนทานเบ็ด: เล่นเดิมที่ dur.rod เกินค่าสูงสุดใหม่ (dur 999 ในคัน 3 = สูงสุด 420) ไม่เสียหาย
@@ -90,10 +90,10 @@ const { World } = require('../server.js'), clone = o => JSON.parse(JSON.stringif
   assert.doesNotThrow(() => wp.durPub(pj));
 }
 { // (ข) levelOf/xpFor + playLevel นับตารางใหม่
-  assert.strictEqual(S.levelOf(1000, 'fish'), 4); assert.strictEqual(S.levelOf(1000, 'farm'), 2); assert.strictEqual(S.levelOf(1000), 2);
+  assert.strictEqual(S.levelOf(1000, 'fish'), 4); assert.strictEqual(S.levelOf(1000, 'farm'), 4, 'ชาวนาใช้หลอดมาตรฐาน xpv 7'); assert.strictEqual(S.levelOf(1000), 2, 'ไม่ส่ง skill = ตารางเดิม');
   const base = S.playLevel({}), sk = { fish: S.XP_TABLE_STD[10] }; assert.strictEqual(S.playLevel(sk), base + 9, 'playLevel นับชาวประมงด้วย XP_TABLE_STD');
   assert.strictEqual(S.playLevel({ fish: S.XP_TABLE[10] }), base + S.levelOf(S.XP_TABLE[10], 'fish') - 1, 'XP ตารางเก่าให้เลเวลตามตารางใหม่');
-  assert.strictEqual(S.playLevel({ farm: S.XP_TABLE[10] }), base + 9, 'ชาวนายังตารางเดิม');
+  assert.strictEqual(S.playLevel({ farm: S.XP_TABLE_STD[10] }), base + 9, 'ชาวนาใช้หลอดมาตรฐาน xpv 7 (WP-20)');
 }
 { // (ง) พักรอบปลาหายาก
   const ws = { readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } }, w = new World('fishrare'), p = w.join(ws, 'rr', '#e74c3c').p;

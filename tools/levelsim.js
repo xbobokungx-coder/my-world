@@ -113,7 +113,7 @@ function animal(lv) {
     if (A.lv > lv) continue;
     const per = A.cap / ((A.time[0] + A.time[1]) / 2 * sp / 60000); // รอบผลิตต่อนาทีของเล้าเต็ม
     const prod = S.itemInfo(A.product), feed = S.itemInfo(A.feedItem);
-    cyc += per; xpc += per * (S.animalXp ? S.animalXp(A.xp + 3, lv) : A.xp + 3); const yld = 1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS); coinc += per * ((prod.sell || 0) * yld * 0.65 - feed.buy); gr += per * (prod.sell || 0) * yld; fc += per * feed.buy;
+    cyc += per; xpc += per * (S.animalXp ? S.animalXp(A.xp, lv) + S.animalXp(3, lv) : A.xp + 3); const yld = 1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS); coinc += per * ((prod.sell || 0) * yld * 0.65 - feed.buy); gr += per * (prod.sell || 0) * yld; fc += per * feed.buy;
   }
   const f = Math.min(1, M.apm / 2 / cyc); // ให้อาหาร + เก็บ = 2 การกระทำต่อรอบ
   return { pick: 'เล้าเต็ม', coin: coinc * f * 60, xp: xpc * f * 60, gross: gr * f * 60, cost: fc * f * 60, pieces: cyc * (1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS)) * f * 60, cat: 'animal' };
@@ -161,6 +161,11 @@ function mine(lv, lag = 0) { // 6 พ.ย. 2026: ใช้ S.mineHit จริ�
 const MINE_GOAL = { lv1Min: 15, growth: 1.141, floorXpH: 1000, floorGrow: 1.3, tol: 0.10 };
 const mineGoalXpH = f => MINE_GOAL.floorXpH * Math.pow(MINE_GOAL.floorGrow, f - 1) / M.EFF; // เพดานต่อชม. ของชั้น f
 const mineGoalHours = lv => { let m = 0; for (let k = 1; k < lv; k++) m += MINE_GOAL.lv1Min * Math.pow(MINE_GOAL.growth, k - 1); return m / 60; };
+// เป้าอาชีพที่เหลือ (WP-20, 13 พ.ย. 2026): ชาวนา คนเลี้ยงสัตว์ ช่างไม้ เชฟ ใช้เส้นเดียวกับชาวประมง (ตาราง XP_TABLE_STD) • XP/ชม.จริงเลเวล L = 1,000 × 1.1412^(L−1) ยอมคลาด ±10% • ถึง Lv20 = 18–22 ชม. • ในซิมเป็นเพดาน = จริง ÷ EFF • แยกค่าต่ออาชีพไว้ให้ปรับเป้าทีละอาชีพได้
+const FARM_GOAL = Object.assign({}, FISH_GOAL), ANIMAL_GOAL = Object.assign({}, FISH_GOAL), WOOD_GOAL = Object.assign({}, FISH_GOAL), COOK_GOAL = Object.assign({}, FISH_GOAL);
+const GOALS = { farm: FARM_GOAL, fish: FISH_GOAL, animal: ANIMAL_GOAL, wood: WOOD_GOAL, cook: COOK_GOAL };
+const goalXpH = (sk, lv) => GOALS[sk].xpH * Math.pow(GOALS[sk].growth, lv - 1) / M.EFF; // เพดานต่อชม. ของเลเวล lv ตามเป้าอาชีพ sk
+const goalHours = (sk, lv) => { let m = 0; for (let k = 1; k < lv; k++) m += GOALS[sk].lv1Min * Math.pow(GOALS[sk].growth, k - 1); return m / 60; };
 const SIMS = { farm, fish, animal, wood, cook, mine };
 function simulate() {
   const out = {};
@@ -186,6 +191,13 @@ if (require.main === module) {
   for (const k of Object.keys(SIMS)) { const h = hoursTo(r[k], k); console.log(S.SKILLS[k].name.padEnd(12) + [3, 5, 7, 10, 15, 20].map(l => h[l - 1].toFixed(1).padStart(7)).join('') + (k === 'mine' ? '   (ตารางหลอด XP_TABLE_MINE)' : '')); }
   console.log('เป้าชาวประมง'.padEnd(12) + [3, 5, 7, 10, 15, 20].map(l => fishGoalHours(l).toFixed(1).padStart(7)).join('') + '   (ตารางหลอด XP_TABLE_STD เป้า Lv1→2 = 15 นาที ×1.1412 ต่อเลเวล)');
   console.log('เป้านักขุด'.padEnd(12) + [3, 5, 7, 10, 15, 20].map(l => mineGoalHours(l).toFixed(1).padStart(7)).join('') + '   (Lv1→2 = 15 นาที ×1.141 ต่อเลเวล)');
+  // ชาวนา คนเลี้ยงสัตว์ ช่างไม้ เชฟ (WP-20): XP/ชม.จริงเทียบเป้า 1,000×1.1412^(L−1) ±10% • เหรียญสุทธิ/ชม. % ของชาวนา (เป้า 85–120%) • ! = นอกเป้า
+  const WP20 = ['farm', 'animal', 'wood', 'cook'];
+  console.log(`\nหลอด XP รวม (WP-20) รายเลเวล: XP/ชม.จริง (เพดาน × ${M.EFF}) | เป้า | ตรง% | เหรียญ/ชม. % ของชาวนา`);
+  console.log('Lv ' + WP20.map(k => S.SKILLS[k].name.padEnd(30)).join(''));
+  for (let lv = 1; lv <= S.MAX_LV; lv++) console.log(String(lv).padStart(2) + ' ' + WP20.map(k => { const x = r[k][lv - 1], g = goalXpH(k, lv) * M.EFF, got = x.xp * M.EFF, dev = got / g - 1, cp = x.coin / r.farm[lv - 1].coin, bad = Math.abs(dev) > GOALS[k].tol;
+    return (num(got).padStart(7) + num(g).padStart(7) + ((dev >= 0 ? '+' : '') + (dev * 100).toFixed(0) + '%').padStart(5) + (bad ? '!' : ' ') + (k === 'farm' ? '' : (Math.round(cp * 100) + '%').padStart(5) + (cp < 0.85 || cp > 1.20 ? '!' : ' '))).padEnd(30); }).join(''));
+  console.log('ชม.ถึง Lv10/Lv20 (เป้า 18–22 ชม. ที่ Lv20): ' + WP20.map(k => { const h = hoursTo(r[k], k); return S.SKILLS[k].name + ' ' + h[9].toFixed(1) + '/' + h[19].toFixed(1) + (h[19] < 18 || h[19] > 22 ? '!' : ''); }).join(' • ') + ' • เป้า ' + goalHours('farm', 10).toFixed(1) + '/' + goalHours('farm', 20).toFixed(1));
   // นักขุดแร่: XP/ชม. ต่อชั้นเทียบเป้า 1,000×1.3^(f−1) (จริง) และเหรียญเทียบชาวนา และต้นทุนสึกหรอ
   console.log(`\nนักขุดแร่ รายชั้น: XP/ชม.จริง (เพดาน × ${M.EFF}) เทียบเป้า ±${MINE_GOAL.tol * 100}% • เหรียญ/ชม.สุทธิเทียบชาวนาเลเวลเดียวกัน (เป้า ≤ 125%) • ต้นทุนสึกหรอ % ของรายได้ (เป้า ≤ 10%)`);
   console.log('ชั้น Lv     XP/ชม.จริง   เป้า  ตรง    เหรียญ/ชม. %ชาวนา  สึกหรอ%  ก้อน/ชม.');
@@ -237,4 +249,4 @@ if (require.main === module) {
   console.log(`\nเหรียญ/ชม. (เพดานคนเดียว ตามทางที่เลือก)`);
   for (const k of Object.keys(SIMS)) console.log(S.SKILLS[k].name.padEnd(12) + r[k].map(x => num(x.coin).padStart(7)).join(''));
 }
-module.exports = { M, SIMS, wood, fish, axeAt, rodAt, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours, FISH_GOAL, fishGoalXpH, fishGoalHours, fishSea };
+module.exports = { M, SIMS, FARM_GOAL, ANIMAL_GOAL, WOOD_GOAL, COOK_GOAL, GOALS, goalXpH, goalHours, wood, fish, axeAt, rodAt, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours, FISH_GOAL, fishGoalXpH, fishGoalHours, fishSea };

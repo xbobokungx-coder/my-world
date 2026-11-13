@@ -36,7 +36,7 @@
      "copper": 2
     },
     "mig2": true,
-    "xpv": 6,
+    "xpv": 7,
     "gift": "wear_hat_flower",
     "x": 1072,
     "y": 720,
@@ -44,11 +44,11 @@
     "name": "alice",
     "hat": "#e8c66a",
     "skills": {
-     "farm": 400,
-     "fish": 400,
-     "animal": 400,
-     "wood": 400,
-     "cook": 400,
+     "farm": 200,
+     "fish": 200,
+     "animal": 200,
+     "wood": 200,
+     "cook": 200,
      "mine": 5106
     },
     "lamp": false,
@@ -199,7 +199,7 @@
     },
     "wkx": {
      "k": "2026-W45",
-     "xp": 203
+     "xp": 201
     },
     "dur": {
      "pick": 459
@@ -231,7 +231,7 @@
      "furn_chair": 1
     },
     "mig2": true,
-    "xpv": 6,
+    "xpv": 7,
     "gift": "wear_hat_chef",
     "x": 1072,
     "y": 720,
@@ -239,7 +239,7 @@
     "name": "bob",
     "hat": "#e8c66a",
     "skills": {
-     "farm": 9,
+     "farm": 7,
      "fish": 0,
      "animal": 0,
      "wood": 0,
@@ -386,7 +386,7 @@
     },
     "wkx": {
      "k": "2026-W45",
-     "xp": 9
+     "xp": 7
     },
     "dur": {
      "hoe": 119
@@ -3849,7 +3849,7 @@
    {
     "t": "skills",
     "skills": {
-     "farm": 9,
+     "farm": 7,
      "fish": 0,
      "animal": 0,
      "wood": 0,
@@ -4420,7 +4420,7 @@
    {
     "t": "skills",
     "skills": {
-     "farm": 9,
+     "farm": 7,
      "fish": 18,
      "animal": 0,
      "wood": 0,
@@ -4998,7 +4998,7 @@
    {
     "t": "skills",
     "skills": {
-     "farm": 9,
+     "farm": 7,
      "fish": 28,
      "animal": 0,
      "wood": 0,
@@ -5577,7 +5577,7 @@
    {
     "t": "skills",
     "skills": {
-     "farm": 9,
+     "farm": 7,
      "fish": 38,
      "animal": 0,
      "wood": 0,
@@ -5603,7 +5603,7 @@
    {
     "t": "skills",
     "skills": {
-     "farm": 9,
+     "farm": 7,
      "fish": 78,
      "animal": 0,
      "wood": 0,
@@ -5925,7 +5925,7 @@
    {
     "t": "skills",
     "skills": {
-     "farm": 9,
+     "farm": 7,
      "fish": 88,
      "animal": 0,
      "wood": 0,
@@ -7359,22 +7359,22 @@
    {
     "t": "skills",
     "skills": {
-     "farm": 400,
-     "fish": 400,
-     "animal": 400,
-     "wood": 400,
-     "cook": 400,
+     "farm": 200,
+     "fish": 200,
+     "animal": 200,
+     "wood": 200,
+     "cook": 200,
      "mine": 5010
     }
    },
    {
     "t": "skills",
     "skills": {
-     "farm": 400,
-     "fish": 400,
-     "animal": 400,
-     "wood": 400,
-     "cook": 400,
+     "farm": 200,
+     "fish": 200,
+     "animal": 200,
+     "wood": 200,
+     "cook": 200,
      "mine": 5106
     }
    },
@@ -10065,7 +10065,7 @@
    {
     "t": "skills",
     "skills": {
-     "farm": 9,
+     "farm": 7,
      "fish": 0,
      "animal": 0,
      "wood": 0,
