@@ -14,7 +14,8 @@ module.exports = {
       fed: !!a.fed, prod: !!a.prod, feeder: a.feeder || '', fn: a.fn || '', pm: a.pm || 0,
       layLeft: a.fed && a.layAt ? Math.max(0, a.layAt - now) : 0, warned: !!a.warned };
   },
-  syncHerd(p) { const now = Date.now(); p.rec.herd = this.animals.filter(a => a.owner === p.key && !a.dead).map(a => this.packAnimal(a, now)); this.dirty = true; },
+  syncHerd(p) { const now = Date.now(); const unk = this.herdOf(p.rec).filter(st => st && !ANIMALS[st.type]); // ชนิดที่โค้ดนี้ไม่รู้จัก (เช่น ถอยเวอร์ชัน) เก็บไว้ไม่ลบ
+    p.rec.herd = this.animals.filter(a => a.owner === p.key && !a.dead).map(a => this.packAnimal(a, now)).concat(unk); this.dirty = true; },
   ownerCount(key, type) { return this.animals.filter(a => a.owner === key && a.type === type && !a.dead).length; },
   count(type) { return this.animals.filter(a => a.type === type && !a.dead).length; },
   spawnAnimal(type, p, st) {
@@ -41,7 +42,8 @@ module.exports = {
     this.ensureGiftChicken(p);
     const herd = this.herdOf(p.rec), kept = [], nBy = {};
     for (const st of herd) {
-      if (!st || !ANIMALS[st.type]) continue;
+      if (!st) continue;
+      if (!ANIMALS[st.type]) { kept.push(st); continue; } // ชนิดไม่รู้จัก: เก็บไว้ในเซฟ ไม่ spawn ไม่ลบ
       nBy[st.type] = (nBy[st.type] || 0) + 1;
       if (nBy[st.type] > ANIMALS[st.type].cap) continue;
       kept.push(st); this.spawnAnimal(st.type, p, st);

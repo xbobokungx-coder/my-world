@@ -3183,7 +3183,8 @@ function buildBase() {
     const pond = (cx, cy) => { const D = PixelArt.duckPond(); g.imageSmoothingEnabled = false; g.drawImage(D.spr, Math.round(cx - D.w), Math.round(cy - D.h), D.w * 2, D.h * 2); }; // บ่อเป็ดพิกเซล (ขอบดิน หิน กอกก ใบบัว)
     const nest = (px, py) => { g.fillStyle = '#e0bd5a'; g.beginPath(); g.ellipse(px + 16, py + 20, 14, 8, 0, 0, 7); g.fill(); g.fillStyle = '#c9a143'; g.beginPath(); g.ellipse(px + 16, py + 22, 10, 4, 0, 0, 7); g.fill(); g.fillStyle = '#fff'; for (const ex of [-5, 1, 6]) { g.beginPath(); g.ellipse(px + 16 + ex, py + 19, 2.2, 3, 0, 0, 7); g.fill(); } };
     const CH = Shared.PENS.chicken, DK = Shared.PENS.duck, PA = Shared.PENS.cow, SH = Shared.PENS.sheep, PG = Shared.PENS.pig;
-    { const AL = Shared.PENS.alpaca, HO = Shared.PENS.horse, BO = Shared.PENS.boar; trough(AL.x0 * TS + 4, AL.y1 * TS); bale(AL.x1 * TS, AL.y0 * TS); trough(HO.x0 * TS + 4, HO.y1 * TS); trough((HO.x0 + 1) * TS + 8, HO.y1 * TS); bale(BO.x1 * TS, BO.y0 * TS); } // คอกแถวที่ 3
+    { const AL = Shared.PENS.alpaca, HO = Shared.PENS.horse, BO = Shared.PENS.boar; trough(AL.x0 * TS + 4, AL.y1 * TS); bale(AL.x1 * TS, AL.y0 * TS); trough(HO.x0 * TS + 4, HO.y1 * TS); trough((HO.x0 + 1) * TS + 8, HO.y1 * TS); bale(BO.x1 * TS, BO.y0 * TS); }
+    { const TU = Shared.PENS.turkey, GO = Shared.PENS.goat; trough(TU.x0 * TS + 4, TU.y1 * TS); bale(TU.x1 * TS, TU.y0 * TS); trough(GO.x0 * TS + 4, GO.y1 * TS); bale(GO.x1 * TS, GO.y0 * TS); } // คอกแถวที่ 4 (WP-21 ไก่งวง/แพะ) // คอกแถวที่ 3
     pond((DK.x1 - 1) * TS, (DK.y1 - 0.4) * TS, TS * 0.9, TS * 0.7); nest(CH.x0 * TS, CH.y0 * TS); bale(CH.x1 * TS, CH.y0 * TS);
     trough(PA.x0 * TS + 4, PA.y1 * TS); trough((PA.x0 + 1) * TS + 8, PA.y1 * TS); bale(SH.x1 * TS, SH.y0 * TS); bale((SH.x0 + 1) * TS + 2, (SH.y0 + 1) * TS - 8);
     g.fillStyle = '#654225'; g.beginPath(); g.ellipse((PG.x1 - 1) * TS, (PG.y1 - 0.5) * TS, TS * 1, TS * 0.6, 0, 0, 7); g.fill(); g.fillStyle = '#7a5230'; g.beginPath(); g.ellipse((PG.x1 - 1) * TS - 4, (PG.y1 - 0.5) * TS - 3, TS * 0.8, TS * 0.4, 0, 0, 7); g.fill(); trough(PG.x0 * TS, PG.y0 * TS);
@@ -3609,8 +3610,8 @@ function drawPlayer(p, now, cx) {
 const blinkOf = (c, now) => ((now / 1000 + (c.id || 0) * 1.3) % 4) < 0.14;
 const blush = (bx, by, r) => { ctx.fillStyle = 'rgba(255,120,145,.55)'; ctx.beginPath(); ctx.arc(bx, by, r, 0, 7); ctx.fill(); };
 // สัตว์: สไปรต์พิกเซลจาก pixelui.js (หันขวา ซ้ายพลิกกลับ) ส่วนอีโมจิผลผลิต/หัวใจลอยเหนือหัววาดแบบพิกเซลเช่นกัน
-const ANIMAL_SHADOW = { chicken: [7, 3, 7], duck: [7, 3, 7], sheep: [13, 4, 10], cow: [15, 5, 11], pig: [12, 4, 9], alpaca: [13, 4, 10], horse: [16, 5, 12], boar: [12, 4, 9]};
-const ANIMAL_STEP = { chicken: 5, duck: 4.5, pig: 4, sheep: 3.5, cow: 3, alpaca: 3.5, horse: 3.5, boar: 4}; // เฟรมเดินต่อวินาที (ตัวใหญ่ก้าวช้ากว่า)
+const ANIMAL_SHADOW = { chicken: [7, 3, 7], duck: [7, 3, 7], sheep: [13, 4, 10], cow: [15, 5, 11], pig: [12, 4, 9], alpaca: [13, 4, 10], horse: [16, 5, 12], boar: [12, 4, 9], turkey: [11, 4, 10], goat: [13, 4, 10]};
+const ANIMAL_STEP = { chicken: 5, duck: 4.5, pig: 4, sheep: 3.5, cow: 3, alpaca: 3.5, horse: 3.5, boar: 4, turkey: 4.5, goat: 3.5}; // เฟรมเดินต่อวินาที (ตัวใหญ่ก้าวช้ากว่า)
 function drawAnimalPx(type, c, now, top, prodE) {
   const x = c.x, y = c.y, moving = !!c.moving, sh = ANIMAL_SHADOW[type] || ANIMAL_SHADOW.pig; // กันสัตว์ชนิดใหม่ที่ลืมใส่เงา (เคยทำให้วาดล้มทั้งเฟรม)
   const eat = !moving && (c.still || 0) > 0.8 && !c.sick && !c.prod && ((c.happyAt && now - c.happyAt < 1800) || ((now / 1000 + (c.id || 0) * 2.7) % 11) < 3); // หยุดนิ่งสักพักแล้วค่อยก้มกิน ไม่ก้มทันทีที่หยุด
@@ -3626,7 +3627,9 @@ function drawSheep(c, now) { drawAnimalPx('sheep', c, now, 22, '🧶'); }
 function drawAlpaca(c, now) { drawAnimalPx('alpaca', c, now, 22, '🧵'); }
 function drawHorse(c, now) { drawAnimalPx('horse', c, now, 20, '🍼'); }
 function drawBoar(c, now) { drawAnimalPx('boar', c, now, 18, '🌰'); }
-const ANIMAL_DRAW = { duck: drawDuck, sheep: drawSheep, bee: drawBee, alpaca: drawAlpaca, horse: drawHorse, boar: drawBoar }, ANIMAL_TOP = { chicken: 14, duck: 14, pig: 18, cow: 20, sheep: 20, bee: 9, alpaca: 20, horse: 20, boar: 18 };
+function drawTurkey(c, now) { drawAnimalPx('turkey', c, now, 26, '🪺'); }
+function drawGoat(c, now) { drawAnimalPx('goat', c, now, 28, '🧉'); }
+const ANIMAL_DRAW = { duck: drawDuck, sheep: drawSheep, bee: drawBee, alpaca: drawAlpaca, horse: drawHorse, boar: drawBoar, turkey: drawTurkey, goat: drawGoat }, ANIMAL_TOP = { chicken: 14, duck: 14, pig: 18, cow: 20, sheep: 20, bee: 9, alpaca: 20, horse: 20, boar: 18, turkey: 22, goat: 24 };
 function animalFx(c, now, top) { // หัวใจลอยตอนเพิ่งได้กินอาหาร / ความสุขเล็กๆ ตอนอิ่มดี / ประกายตอนมีผลผลิตพร้อมเก็บ
   const h = c.h === undefined ? 100 : c.h, t = now / 1000, ph = (t + (c.id || 0) * 3.7) % 9;
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';

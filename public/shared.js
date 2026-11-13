@@ -228,6 +228,8 @@
     alpaca:  { x0: 47, y0: 27, x1: 49, y1: 30, gate: [[46, 28], [46, 29]], sign: [48, 25] }, // แถวที่ 3 (เลเวล 11–20)
     horse:   { x0: 53, y0: 27, x1: 55, y1: 30, gate: [[52, 28], [52, 29]], sign: [54, 25] },
     boar:    { x0: 59, y0: 27, x1: 61, y1: 30, gate: [[58, 28], [58, 29]], sign: [60, 25] },
+    turkey:  { x0: 59, y0: 34, x1: 61, y1: 37, gate: [[58, 35], [58, 36]], sign: [60, 32] }, // แถวที่ 4 (WP-21 ตะวันออกเฉียงใต้ ต่อทางลง x57)
+    goat:    { x0: 59, y0: 41, x1: 61, y1: 43, gate: [[58, 41], [58, 42]], sign: [60, 39] }, // เตี้ย 3 แถว (แมพ H=46 รั้วล่างสุด y44 ก่อนแนวต้นไม้ขอบ y45)
   };
   // เล้าผึ้ง: ต้นไม้ถาวร 1 ต้น (ตัดไม่ได้) และรังผึ้ง (ลัง) 2 ลังวางในเล้า • ผึ้งบินวนรอบรัง
   const BEE = { trees: [[61, 18]], hives: [[59, 20], [61, 21]] };
@@ -952,7 +954,7 @@
   //   0.00015 = ของราคา 67 ลดชิ้นละ 1% (เท่าเดิม) • แครอท 20 ลด 0.3% • มะม่วง 188 ลด 2.8% • ชุดเลี้ยงฉลอง 330 ลด 5% (ไม่เกิน dropMax) เลือกจาก tools/econsim.js (G2 ผ่าน Gini 0.37 ชาวนายังมีกำไร)
   const CATFAT = { min: 0.3, recover: 0.03, spread: 0.01, spreadMax: 0.25, perCoin: 0.00015, dropMax: 0.1 };
   const CAT_KEYS = ['fish', 'crop', 'animal', 'wood', 'ore', 'dish', 'other'];
-  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut'].includes(k) ? 'animal' : (k === 'plank' || Object.hasOwn(WOOD_ITEMS, k)) ? 'wood' : Object.hasOwn(ORES, k) ? 'ore' : 'other';
+  const sellCat = k => /^fish_/.test(k) ? 'fish' : /^crop_/.test(k) ? 'crop' : /^dish_/.test(k) ? 'dish' : ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', 'turkey_egg', 'goat_milk'].includes(k) ? 'animal' : (k === 'plank' || Object.hasOwn(WOOD_ITEMS, k)) ? 'wood' : Object.hasOwn(ORES, k) ? 'ore' : 'other';
   // ขายเป็นชุดใหญ่ (ถือของได้ไม่จำกัดจำนวน): คิดราคาทีละชิ้นตามชนิด ราคาต่อชิ้นลดลงเชิงเส้นชิ้นละ 1% ของราคาฐาน (MARKET.drop) จนถึงพื้น 20% แล้วคงที่
   // ตัวอย่างขาย 100 ชิ้นเมื่อราคาตั้งต้น 100%: ชิ้นที่ 1 = 100%, 2 = 99% … 80 = 21%, ชิ้นที่ 81-100 = 20% รวม 5,240 จากราคาฐาน 100/ชิ้น (กด "ขายทั้งหมด" คำนวณทั้งชุดให้เลย)
   // ตลาดจำการขายด้วยการลดเท่ากันทุกชิ้น (server แบ่งเข้าตลาดชนิด/ส่วนตัว/หมวด) ขายรวดหรือทยอยขายติดกันทีละชิ้นจึงได้เงินเท่ากัน ต่างกันเฉพาะ "รอให้ตลาดฟื้น" ที่ได้ราคาดีขึ้น
@@ -966,7 +968,7 @@
   // ของคงทน (ไม้ ขนแกะ น้ำผึ้ง ทรัฟเฟิล มะพร้าว) ไม่เสื่อม • ใช้/ขาย/เทรด ของเก่าก่อนเสมอ (เทรดแล้วอายุติดไปด้วย) • มีตู้เย็นวางในบ้าน = อายุนับช้าลงครึ่งหนึ่ง
   // startAt: วันเริ่มระบบ ของที่ได้ก่อนวันนี้นับเป็นของสด ณ วันนั้น (ผู้เล่นมีเวลาขายของที่ตุนไว้ก่อน)
   const FRESH = { startAt: Date.parse('2026-11-01T00:00:00+07:00'), freshMs: 24 * 3600e3, staleMs: 72 * 3600e3, mul: [1, 0.7, 0.4], fridgeMul: 0.5, names: ['สด', 'ค้าง', 'เก่า'], emoji: ['🟢', '🟡', '🔴'] };
-  const perishable = k => /^(crop_|fish_|dish_)/.test(k) || ['egg', 'duck_egg', 'milk', 'shoot'].includes(k);
+  const perishable = k => /^(crop_|fish_|dish_)/.test(k) || ['egg', 'duck_egg', 'milk', 'shoot', 'turkey_egg', 'goat_milk'].includes(k);
   const freshTier = (t, now, fridge) => { if (now < FRESH.startAt) return 0; const age = (now - Math.max(t, FRESH.startAt)) * (fridge ? FRESH.fridgeMul : 1); return age < FRESH.freshMs ? 0 : age < FRESH.staleMs ? 1 : 2; };
   const freshMuls = (lots, q, now, fridge) => { const out = []; for (const [t, n] of lots || []) for (let i = 0; i < n && out.length < q; i++) out.push(FRESH.mul[freshTier(t, now, fridge)]); while (out.length < q) out.push(1); return out; }; // ตัวคูณต่อชิ้น เรียงของเก่าก่อน
   const freshCount = (lots, now, fridge) => { const c = [0, 0, 0]; for (const [t, n] of lots || []) c[freshTier(t, now, fridge)] += n; return c; };
@@ -974,16 +976,20 @@
   // init ไม่ใช้แล้ว (เคยเป็นฝูงกลาง) • มือใหม่ได้ไก่ตัวแรกใน rec.herd • ตายแล้วจบ ไม่มีชุบจากกองกลาง
   const ANIMALS = {
     // starveMin = กี่นาที (เจ้าของออนไลน์และอยู่ในเมือง) ที่สัตว์หิวจากอิ่มเต็มจนหมด (ปรับขึ้น 5 พ.ย. 2026: ไก่/เป็ด 25→40 ผึ้ง 30→45 ตัวอื่น 35→50 ไม่กระทบรายได้ เพราะป้อนอาหารตามรอบผลิต ไม่ใช่ตามความหิว), หลังหมดแล้วเหลือเวลาอีก ANIMAL_GRACE_MS ก่อนจะตาย
-    chicken: { name: 'ไก่', emoji: '🐔', product: 'egg',  feedItem: 'feed', price: 120, lv: 1, cap: 4, init: 0, time: [25000, 45000], xp: 2, starveMin: 40 },
-    cow:     { name: 'วัว', emoji: '🐄', product: 'milk', feedItem: 'hay',  price: 600, lv: 3, cap: 4, init: 0, time: [45000, 75000], xp: 2, starveMin: 50 },
-    duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 4, init: 0, time: [30000, 50000], xp: 1, starveMin: 40 },
-    sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 850, lv: 4, cap: 4, init: 0, time: [50000, 80000], xp: 5, starveMin: 50 },
-    pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1100, lv: 5, cap: 4, init: 0, time: [60000, 90000], xp: 6, starveMin: 50 },
+    // WP-21 (13 พ.ย. 2026): รอบผลิตยาวขึ้น (ไก่ 30–50 วิ ตัวอื่น ~4–6 นาที) XP ต่อรอบสูงขึ้นชดเชย เหรียญ/ชม. ลดเหลือ ~85–120% ของชาวนา XP/ชม. เท่าเดิม ค่าเดิม: ไก่ 25–45 วัว 45–75 เป็ด 30–50 แกะ 50–80 หมู 60–90 วิ XP 2/2/1/5/6
+    chicken: { name: 'ไก่', emoji: '🐔', product: 'egg',  feedItem: 'feed', price: 120, lv: 1, cap: 4, init: 0, time: [30000, 50000], xp: 3, starveMin: 40 },
+    cow:     { name: 'วัว', emoji: '🐄', product: 'milk', feedItem: 'hay',  price: 600, lv: 3, cap: 4, init: 0, time: [230000, 385000], xp: 3, starveMin: 50 },
+    duck:    { name: 'เป็ด', emoji: '🦆', product: 'duck_egg', feedItem: 'feed', price: 220, lv: 2, cap: 4, init: 0, time: [230000, 385000], xp: 2, starveMin: 40 },
+    sheep:   { name: 'แกะ', emoji: '🐑', product: 'wool',     feedItem: 'hay',  price: 800, lv: 4, cap: 4, init: 0, time: [300000, 500000], xp: 7, starveMin: 50 },
+    pig:     { name: 'หมู', emoji: '🐖', product: 'truffle', feedItem: 'slop', price: 1000, lv: 5, cap: 4, init: 0, time: [230000, 385000], xp: 6, starveMin: 50 },
     // เลเวล 11–20 (30 ต.ค. 2026): คอกแถวที่ 3 (PENS ด้านล่าง) ราคาสัตว์สูง ผลผลิตแพงตามเลเวล
-    alpaca:  { name: 'อัลปากา', emoji: '🦙', product: 'alpaca_wool', feedItem: 'hay', price: 2400, lv: 12, cap: 4, init: 0, time: [70000, 100000], xp: 29, starveMin: 50 },
-    horse:   { name: 'ม้าด่าง', emoji: '🐴', product: 'horse_milk', feedItem: 'hay', price: 4200, lv: 15, cap: 4, init: 0, time: [80000, 110000], xp: 56, starveMin: 50 },
-    boar:    { name: 'หมูป่า', emoji: '🐗', product: 'chestnut', feedItem: 'slop', price: 7000, lv: 18, cap: 4, init: 0, time: [90000, 120000], xp: 97, starveMin: 50 },
-    bee:     { name: 'ผึ้ง', emoji: '🐝', product: 'honey', feedItem: 'nectar', price: 360, lv: 2, cap: 4, init: 0, time: [40000, 60000], xp: 1, starveMin: 45 },
+    alpaca:  { name: 'อัลปากา', emoji: '🦙', product: 'alpaca_wool', feedItem: 'hay', price: 2400, lv: 12, cap: 4, init: 0, time: [200000, 330000], xp: 20, starveMin: 50 },
+    horse:   { name: 'ม้าด่าง', emoji: '🐴', product: 'horse_milk', feedItem: 'hay', price: 3000, lv: 15, cap: 4, init: 0, time: [230000, 380000], xp: 30, starveMin: 50 },
+    boar:    { name: 'หมูป่า', emoji: '🐗', product: 'chestnut', feedItem: 'slop', price: 3600, lv: 18, cap: 4, init: 0, time: [230000, 380000], xp: 45, starveMin: 50 },
+    // WP-21 (13 พ.ย. 2026): สัตว์กลางเกม จูนแล้วโดย economy-designer (ค่าตั้งต้น: ไก่งวง time 65–95 วิ xp 8 / แพะ 70–100 วิ xp 12 • สัตว์เดิมระดับสูง: อัลปากา 70–100 xp 29 / ม้า 80–110 xp 56 / หมูป่า 90–120 xp 97)
+    turkey:  { name: 'ไก่งวง', emoji: '🦃', product: 'turkey_egg', feedItem: 'feed', price: 1500, lv: 7, cap: 4, init: 0, time: [230000, 380000], xp: 5, starveMin: 50 },
+    goat:    { name: 'แพะ', emoji: '🐐', product: 'goat_milk', feedItem: 'hay', price: 1900, lv: 9, cap: 4, init: 0, time: [230000, 380000], xp: 10, starveMin: 50 },
+    bee:     { name: 'ผึ้ง', emoji: '🐝', product: 'honey', feedItem: 'nectar', price: 360, lv: 2, cap: 4, init: 0, time: [230000, 385000], xp: 2, starveMin: 45 },
   };
   // สัตว์เลี้ยงคู่ใจ (ซื้อที่ร้านสัตว์เลี้ยง): เดินตามเจ้าของ ทุกคนเห็น ไม่ต้องให้อาหาร • ซื้อได้หลายตัว แต่พาไปได้ทีละตัว (เลือกในร้าน)
   const COMPANIONS = {
@@ -1000,8 +1006,8 @@
   const petMood = (h, sick) => (sick ? 0 : h >= PETSTAT.full ? 1 : h >= PETSTAT.half ? 0.5 : 0);
   const petBonus = (id, h, sick) => { const C = COMPANIONS[id], m = petMood(h, sick), o = { xp: 0, spd: 0, luck: 0, mood: m }; if (C && C.st) for (const k of Object.keys(o)) if (C.st[k]) o[k] = C.st[k] * PETSTAT.unit * m; return o; }; // คืนเป็นสัดส่วน (0.06 = 6%)
   const petStatText = id => { const C = COMPANIONS[id]; return C && C.st ? PETSTAT.keys.filter(([k]) => C.st[k]).map(([k, ic]) => ic + '+' + Math.round(C.st[k] * PETSTAT.unit * 100) + '%').join(' ') : ''; };
-  const ANIMAL_XP = { from: 5, perLv: 0.22 }; // XP เลี้ยงสัตว์ ×(1 + perLv × (เลเวล − from)) เมื่อเลเวลเกิน from (สัตว์ปลดครบที่ Lv5 แล้ว XP/ชม. ตันที่ 52% ของชาวนา ดู tools/levelsim.js)
-  const animalXp = (xp, lv) => Math.round(xp * (1 + ANIMAL_XP.perLv * Math.max(0, perkLv(lv) - ANIMAL_XP.from)));
+  const ANIMAL_XP = { from: 5, perLv: 0.17, feed: 2, cap: 20 }; // XP เลี้ยงสัตว์ ×(1 + perLv × (min(เลเวล, cap) − from)) เมื่อเลเวลเกิน from • WP-21: cap PERK_LV→20 (เดิมตันที่ Lv10 ทำให้ XP/ชม. ขั้นบันได) perLv 0.22→0.17 feed 3→2 (XP ให้อาหารต่อครั้ง)
+  const animalXp = (xp, lv) => Math.round(xp * (1 + ANIMAL_XP.perLv * Math.max(0, Math.min(lv, ANIMAL_XP.cap) - ANIMAL_XP.from)));
   const ANIMAL_BONUS = 0.25; // โอกาสได้ผลผลิต ×2 เมื่อเก็บจากสัตว์ที่ตัวเองเลี้ยง (เดิม 0.5 ลดเมื่อ 25 ต.ค. 2026: เลี้ยงสัตว์ได้มากกว่าอาชีพอื่นใน tools/econsim.js)
   const ANIMAL_GRACE_MS = 8 * 60 * 1000;   // สัตว์ที่หิวจนหมดแล้ว ถ้าไม่มีใครให้อาหารภายใน 8 นาทีจะตาย (เดิม 4 นาที • 5 พ.ย. 2026)
   const PLAYER_HUNGER = { tickMs: 15000, start: 80, sitMs: 5000, sitGain: 1, workMul: 1.8, idleMul: 0.5, workMs: 20000 }; // ทำกิจกรรม (ตัดไม้/ตกปลา/ปลูก/ให้อาหารสัตว์ ฯลฯ ภายใน workMs) หิวเร็ว ×workMul • เดินเฉยๆ/ไม่ทำอะไร หิวช้า ×idleMul • // ผู้เล่นหิวลง 1 แต้มทุก 15 วินาที (เต็ม 100 อยู่ได้ ~25 นาที) ออฟไลน์ไม่ลด
@@ -1489,7 +1495,7 @@
   const SHOPS = {
     farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: CROP_IDS().map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
     fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3'].concat(Object.keys(RODS).filter(t => RODS[t].price).map(t => 'rod_' + t)),                sell: ['fish_'] },
-    animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee', 'animal_alpaca', 'animal_horse', 'animal_boar'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut'] },
+    animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee', 'animal_alpaca', 'animal_horse', 'animal_boar', 'animal_turkey', 'animal_goat'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', 'turkey_egg', 'goat_milk'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
     mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'pick_7', 'pick_8', 'pick_9', 'pick_10', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: Object.keys(AXES).map(t => 'axe_' + t), sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
@@ -1525,17 +1531,19 @@
     if (am && AXES[am[1]]) return { name: AXES[am[1]].name, emoji: AXE_EMOJI[am[1]], buy: AXES[am[1]].price, lv: AXES[am[1]].lv, skill: 'wood', once: true, cat: 'gear', axe: +am[1] };
     if (k === 'egg')  return { name: 'ไข่ไก่', emoji: '🥚', sell: 20, cat: 'animal' };
     if (k === 'duck_egg') return { name: 'ไข่เป็ด', emoji: '🥚', sell: 30, cat: 'animal' };
-    if (k === 'wool') return { name: 'ขนแกะ', emoji: '🧶', sell: 85, cat: 'animal' };
+    if (k === 'wool') return { name: 'ขนแกะ', emoji: '🧶', sell: 60, cat: 'animal' };
     if (k === 'milk') return { name: 'นมวัว', emoji: '🥛', sell: 55, cat: 'animal' };
-    if (k === 'feed') return { name: 'อาหารไก่', emoji: '🌾', buy: 5, cat: 'feed' };
-    if (k === 'hay')  return { name: 'หญ้าแห้ง (อาหารวัว)', emoji: '🌿', buy: 12, cat: 'feed' };
-    if (k === 'slop') return { name: 'อาหารหมู', emoji: '🥣', buy: 15, cat: 'feed' };
-    if (k === 'nectar') return { name: 'น้ำหวานดอกไม้ (อาหารผึ้ง)', emoji: '🌼', buy: 10, cat: 'feed' };
-    if (k === 'honey') return { name: 'น้ำผึ้ง', emoji: '🍯', sell: 80, cat: 'animal' };
-    if (k === 'truffle') return { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', sell: 110, cat: 'animal' };
-    if (k === 'alpaca_wool') return { name: 'ขนอัลปากา', emoji: '🧵', sell: 95, cat: 'animal' };
-    if (k === 'horse_milk') return { name: 'นมม้า', emoji: '🍼', sell: 110, cat: 'animal' };
-    if (k === 'chestnut') return { name: 'เกาลัดป่า', emoji: '🌰', sell: 130, cat: 'animal' };
+    if (k === 'feed') return { name: 'อาหารไก่', emoji: '🌾', buy: 11, cat: 'feed' }; // WP-21: ราคาอาหารเดิม 5/12/15/10 (ไก่/หญ้า/หมู/ผึ้ง) → 11/24/30/20 เป็นตัวลดกำไรต่อรอบ (ราคาผลผลิตไข่/นมเดิมคงไว้ เชฟใช้)
+    if (k === 'hay')  return { name: 'หญ้าแห้ง (อาหารวัว)', emoji: '🌿', buy: 24, cat: 'feed' };
+    if (k === 'slop') return { name: 'อาหารหมู', emoji: '🥣', buy: 30, cat: 'feed' };
+    if (k === 'nectar') return { name: 'น้ำหวานดอกไม้ (อาหารผึ้ง)', emoji: '🌼', buy: 20, cat: 'feed' };
+    if (k === 'honey') return { name: 'น้ำผึ้ง', emoji: '🍯', sell: 35, cat: 'animal' }; // WP-21: เดิม 80 (สูงกว่านมวัวที่ปลดทีหลัง ทำให้ผึ้ง Lv2 ได้เกินชาวนาหลายเท่า)
+    if (k === 'truffle') return { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', sell: 85, cat: 'animal' }; // เดิม 110
+    if (k === 'alpaca_wool') return { name: 'ขนอัลปากา', emoji: '🧵', sell: 150, cat: 'animal' }; // เดิม 95
+    if (k === 'horse_milk') return { name: 'นมม้า', emoji: '🍼', sell: 175, cat: 'animal' }; // เดิม 110
+    if (k === 'turkey_egg') return { name: 'ไข่ไก่งวง', emoji: '🪺', sell: 110, cat: 'animal' }; // ตั้งต้น 120
+    if (k === 'goat_milk') return { name: 'นมแพะ', emoji: '🧉', sell: 135, cat: 'animal' }; // ตั้งต้น 150
+    if (k === 'chestnut') return { name: 'เกาลัดป่า', emoji: '🌰', sell: 200, cat: 'animal' };
     if (k === 'bait') return { name: 'เหยื่อตกปลา (ไส้เดือน)', emoji: '🪱', buy: BAIT_PRICE, cat: 'tool', bait: 1 };
     const bm = /^bait_(\d)$/.exec(k);
     if (bm && BAITS[bm[1]]) { const b = BAITS[bm[1]]; return { name: `เหยื่อ${b.name} (ปลาแพงขึ้น)`, emoji: b.emoji, buy: b.price, lv: b.lv, skill: 'fish', cat: 'tool', bait: +bm[1] }; }
@@ -1619,6 +1627,7 @@
     road(41, 21, 41, 32); road(39, 31, 45, 32);               // ทางข้างลานไปร้านปศุสัตว์/สัตว์เลี้ยง และลงสะพานริมสระ
     road(12, 29, 25, 30);                                     // ทางเข้าป่า (ร้านช่างไม้) จากลานกองไฟ
     road(45, 9, 45, 31);                                      // ทางเลียบเล้าสัตว์ฝั่งตะวันตก
+    road(46, 32, 57, 32); road(57, 33, 57, 44);               // ทางไปเล้าไก่งวง/แพะ (WP-21) ต่อจากถนนริมสระ
     road(46, 15, 62, 16); road(46, 24, 62, 25);               // ทางเดินระหว่างเล้า 3 แถว
     // หน้าผาเหนือ (บันได x32–35) แบ่งที่ราบ Arcade ออกจากตัวเมือง • เลิกใช้หน้าผาตะวันออก (เล้าสัตว์อยู่ระดับเดียวกับเมือง เดินถึงง่าย)
     for (let x = 0; x < W; x++) set(x, 8, (x >= 32 && x <= 35) ? T.STAIR : T.CLIFF);
@@ -1645,7 +1654,7 @@
     for (let x = 0; x < W; x++) { set(x, 0, T.TREE); set(x, H - 1, T.TREE); }
     for (let y = 0; y < H; y++) { set(0, y, T.TREE); set(W - 1, y, T.TREE); }
     const r = rng(11);
-    const reserved = [[2, 9, 20, 26], [19, 9, 34, 33], [35, 9, 46, 34], [21, 0, 53, 8], [29, 30, 57, 45], [44, 8, 63, 32], [10, 27, 26, 31]]; // ที่โล่งของเมือง (ต้นไม้ขึ้นได้ที่ป่าตะวันตกเฉียงใต้ ที่ราบเหนือฝั่งซ้าย และมุมตะวันออกเฉียงใต้)
+    const reserved = [[2, 9, 20, 26], [19, 9, 34, 33], [35, 9, 46, 34], [21, 0, 53, 8], [29, 30, 57, 45], [44, 8, 63, 46], [10, 27, 26, 31]]; // ที่โล่งของเมือง (ต้นไม้ขึ้นได้ที่ป่าตะวันตกเฉียงใต้ ที่ราบเหนือฝั่งซ้าย และมุมตะวันออกเฉียงใต้)
     for (let i = 0; i < 330; i++) {
       const x = 1 + Math.floor(r() * (W - 2)), y = 1 + Math.floor(r() * (H - 2));
       if (reserved.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3])) continue;
@@ -1790,7 +1799,7 @@
   }
   function inFarm(tx, ty) { return tx >= FARM.x0 && tx <= FARM.x1 && ty >= FARM.y0 && ty <= FARM.y1; }
   // ของที่ตลาดรับซื้อทั้งหมด (ใช้เป็นรายการสินค้าที่ตั้งใบสั่งซื้อได้ด้วย) — ต้องตรงกับ SELLABLE ฝั่งเซิร์ฟเวอร์
-  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
+  const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', 'turkey_egg', 'goat_milk', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
   // ----- ดูแลชุมชน (WP-06): ตัวเลขทั้งหมดของกรองคำ/บล็อก/รายงาน/แชตย้อนหลัง/ปิดเสียง/แบนตามเวลา (ฝั่งเซิร์ฟเวอร์ตัดสิน) -----
   const MODERATION = { chatlogDays: 14, chatMax: 80, blockMax: 50, reportTextMax: 100, reportGapMs: 30000, reportPerHour: 10, reportChatLines: 10, reportKeep: 300, chatlogRows: 200, chatlogQueryMax: 24, wordsRefreshMs: 60000, mask: '***',

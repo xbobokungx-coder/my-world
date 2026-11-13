@@ -549,7 +549,7 @@ class World {
       this.event(p, 'feed');
       a.hunger = 100; a.zero = 0; // อิ่มเต็ม และหลุดจากอันตรายอดตาย
       if (!a.fed && !a.prod) { a.fed = true; a.feeder = p.key; a.fn = p.name; a.layAt = now + rand(A.time[0], A.time[1]) * Math.max(0.5, 1 - 0.05 * (S.perkLv(this.lv(p, 'animal')) - 1)); } // จำคนที่เริ่มเลี้ยงรอบนี้ไว้ปันผลตอนเก็บ
-      this.addXp(p, 'animal', S.animalXp(3, this.lv(p, 'animal')));
+      this.addXp(p, 'animal', S.animalXp(A.feedXp != null ? A.feedXp : S.ANIMAL_XP.feed, this.lv(p, 'animal')));
       this.toast(p, `${A.name}กินอิ่มแล้ว ${A.emoji}`);
       this.sfx(p, 'feed_' + a.type);
     }

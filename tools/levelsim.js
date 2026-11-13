@@ -10,6 +10,7 @@ const S = require('../public/shared.js');
 const M = {
   apm: 20,         // จำนวนการกระทำต่อนาที รวมเดิน (ขุด ปลูก รดน้ำ เก็บ ให้อาหาร ประดิษฐ์ ฯลฯ)
   cropPrice: 0.76, // ราคาขายจริงของผัก ÷ ราคาฐาน (ข้อมูลจริง 7 วัน)
+  animalPrice: 0.65, // ราคาขายจริงของผลผลิตสัตว์ ÷ ราคาฐาน (ข้อมูลจริง 7 วัน เหมือน cropPrice • econsim มีตลาดอิ่มตัวของมันเอง cal.animal 0.4 อีกชั้น)
   fishOver: 3,     // วินาทีนอกเวลารอปลาต่อการเหวี่ยง 1 ครั้ง (เหวี่ยง กดเกจ เก็บ)
   fishHit: 0.8,    // สัดส่วนที่กดเกจโดน
   treeWalk: 5,     // วินาทีเดินระหว่างต้นไม้ + ฟันครั้งละ 0.7 วินาที
@@ -109,13 +110,13 @@ function wood(lv, lag = 0) {
   return { pick: best ? best.id.replace('furn_', '').slice(0, 6) : 'ขาย', coin: tpm * (val - wearC) * 60, xp: tpm * (xp + craftXp) * wl * 60, gross: tpm * val * 60, cost: tpm * wearC * 60, pieces: tpm * pcs * 60, cat: 'wood', axe, trees: tpm * 60 };
 }
 function animal(lv) {
-  const sp = Math.max(0.5, 1 - 0.05 * (lv - 1));
+  const sp = Math.max(0.5, 1 - 0.05 * (S.perkLv(lv) - 1)); // เซิร์ฟเวอร์ใช้ perkLv (ตัน Lv10) ที่ server.js:551 (WP-21: เดิมใช้ lv เลยเร็วเกินจริงที่ Lv11+)
   let cyc = 0, xpc = 0, coinc = 0, gr = 0, fc = 0;
   for (const A of Object.values(S.ANIMALS)) {
     if (A.lv > lv) continue;
     const per = A.cap / ((A.time[0] + A.time[1]) / 2 * sp / 60000); // รอบผลิตต่อนาทีของเล้าเต็ม
     const prod = S.itemInfo(A.product), feed = S.itemInfo(A.feedItem);
-    cyc += per; xpc += per * (S.animalXp ? S.animalXp(A.xp, lv) + S.animalXp(3, lv) : A.xp + 3); const yld = 1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS); coinc += per * ((prod.sell || 0) * yld * 0.65 - feed.buy); gr += per * (prod.sell || 0) * yld; fc += per * feed.buy;
+    cyc += per; xpc += per * (S.animalXp ? S.animalXp(A.xp, lv) + S.animalXp(A.feedXp != null ? A.feedXp : S.ANIMAL_XP.feed, lv) : A.xp + 3); const yld = 1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS); coinc += per * ((prod.sell || 0) * yld * M.animalPrice - feed.buy); gr += per * (prod.sell || 0) * yld; fc += per * feed.buy;
   }
   const f = Math.min(1, M.apm / 2 / cyc); // ให้อาหาร + เก็บ = 2 การกระทำต่อรอบ
   return { pick: 'เล้าเต็ม', coin: coinc * f * 60, xp: xpc * f * 60, gross: gr * f * 60, cost: fc * f * 60, pieces: cyc * (1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS)) * f * 60, cat: 'animal' };

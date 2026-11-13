@@ -81,7 +81,8 @@ const MAX_UNREACH = +(process.env.TOWN_RING_MAX_UNREACH || 0); // ผังป�
 assert(unreach <= MAX_UNREACH, `ช่องเดินไม่ถึง ${unreach} > ${MAX_UNREACH}`);
 
 // (7) ขอบตะวันออก x>=45 ต้องไม่ถูกแตะ: hash ของ m[y][x] ทุกแถว x=45..W-1 วัดจากผัง ณ 12 พ.ย. 2026 (ก่อนทำลานต้นไม้) — ถ้าตั้งใจแก้เขตนี้ ต้องวัดใหม่และแจ้งผู้ดูแล
-const EAST_HASH = '00d83cc8e88738d7339257450c75e514';
+// 13 พ.ย. 2026 WP-21: เพิ่มเล้าไก่งวง/แพะ + ทางลง x57 → วัด hash ใหม่ (ตั้งใจ)
+const EAST_HASH = '17f59b5becc750452f6a8e4aeb62ba54';
 const eastHash = require('crypto').createHash('md5').update(m.map(r => r.slice(45).join(',')).join('\n')).digest('hex');
 assert.strictEqual(eastHash, EAST_HASH, `ผัง x>=45 เปลี่ยนไป (hash ${eastHash})`);
 
