@@ -778,7 +778,7 @@ function lottoCard() { // Lucky Lotto 3 แท็บ: กติกา / ซื�
   const L = lottoSt, esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), LT = Shared.LOTTO, PZ = LT.prize;
   if (!L) return '<p style="opacity:.7">กำลังโหลด…</p>';
   const left = Math.max(0, L.drawAt - (Date.now() + timeOffset)), hh = Math.floor(left / 3600e3), mm = Math.floor(left % 3600e3 / 60e3);
-  const room = L.max - L.mine.length, total = L.buyers.reduce((n, b) => n + b[1], 0);
+  const room = L.left ?? (L.max - L.mine.length), total = L.buyers.reduce((n, b) => n + b[1], 0);
   let h = `<div class="ltbar"><div><small>🏦 กองกลาง</small><b>🪙 ${fmtN(L.pot)}</b></div><div><small>⏰ ออกผล ${LT.revealHour}:00</small><b>อีก ${hh} ชม. ${mm} นาที</b></div><div><small>🎫 ตั๋วของฉัน</small><b>${L.mine.length}/${L.max} ใบ</b></div></div>`
     + `<div class="chips ltTabs">${[['rules', '📖 กติกา'], ['buy', '🎫 ซื้อตั๋ว'], ['result', '🏆 ผลรางวัล']].map(([k, n]) => `<button class="chip${lottoTab === k ? ' sel' : ''}" data-lt="${k}">${n}</button>`).join('')}</div>`;
   if (lottoTab === 'rules') {

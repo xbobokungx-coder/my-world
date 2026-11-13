@@ -121,6 +121,25 @@ const draw = () => w.lottoDraw();
   assert.deepStrictEqual(w2.lotto.sealed.nums, w.lotto.sealed.nums, 'เลขปิดผนึกคงเดิมหลังรีสตาร์ต'); assert.strictEqual(w2.lotto.sealed.hash, w.lotto.sealed.hash);
   console.log('  ผู้ชนะออฟไลน์ได้เงิน + บันทึก/โหลดกองและเลขปิดผนึก');
 }
+{ // โควตาตั๋วรวมต่อ IP ต่องวด (ipMax) นับทุกบัญชีจากเครือข่ายเดียวกัน
+  const L = w.lotto, pos = p => { p.x = (S.LUCKY.x + 0.5) * S.TS; p.y = (S.LUCKY.y + 0.5) * S.TS; return p; };
+  const X1 = pos(mk('X1', 100000)), X2 = pos(mk('X2', 100000)), Y1 = pos(mk('Y1', 100000)), Z1 = pos(mk('Z1', 100000));
+  X1.ip = '10.0.0.1'; X2.ip = '10.0.0.1'; Y1.ip = '10.0.0.2'; Z1.ip = '';
+  assert.strictEqual(S.LOTTO.ipMax, 10, 'ค่าตั้งต้นโควตา IP = 10');
+  const c0 = X2.rec.inv.coin;
+  w.lottoBuy(X1, { nums: new Array(6).fill('123') }); assert.strictEqual(L.tickets.x1.length, 6);
+  w.lottoBuy(X2, { nums: new Array(10).fill('456') }); assert.strictEqual(L.tickets.x2.length, 4, 'IP เดียวกัน 2 บัญชีรวมไม่เกิน 10');
+  assert.strictEqual(c0 - X2.rec.inv.coin, 4 * S.LOTTO.price, 'หักเงินเฉพาะใบที่ซื้อได้จริง');
+  assert.strictEqual(w.lottoPub(X2).left, 0, 'ฝั่งเว็บเห็น left = 0'); assert.strictEqual(w.lottoPub(X1).left, 0, 'บัญชีแรกก็เต็มเพราะโควตาเครือข่าย');
+  const c1 = X1.rec.inv.coin, pot = L.pot; w.lottoBuy(X1, { nums: ['111'] }); assert.strictEqual(L.tickets.x1.length, 6, 'โควตาเต็มซื้อเพิ่มไม่ได้'); assert.strictEqual(X1.rec.inv.coin, c1, 'ไม่หักเงินตอนปฏิเสธ'); assert.strictEqual(L.pot, pot);
+  w.lottoBuy(Y1, { nums: new Array(10).fill('789') }); assert.strictEqual(L.tickets.y1.length, 10, 'IP ต่างกันซื้อครบ 10 ได้');
+  w.lottoBuy(Z1, { nums: new Array(10).fill('321') }); assert.strictEqual(L.tickets.z1.length, 10, 'IP ว่างไม่พัง ไม่นับตามเครือข่าย'); assert.ok(!(L.ipTickets || {})['']);
+  delete Z1.ip; assert.strictEqual(w.lottoPub(Z1).left, undefined, 'ไม่รู้ IP: ไม่มี left ใช้ max - mine');
+  const keep = JSON.parse(JSON.stringify(L)); w.loadLotto(keep); assert.strictEqual(w.lotto.ipTickets['10.0.0.1'], 10, 'ตัวนับ IP คงอยู่หลังโหลดเซฟ'); w.loadLotto({ ...keep, ipTickets: { a: -5, b: 'x', c: 99 } }); assert.deepStrictEqual(w.lotto.ipTickets, { c: 10 }, 'ตัวนับเสียรูปแบบถูกทิ้ง/ถูกจำกัด'); w.loadLotto(keep);
+  seal('000', '000', '000'); draw(); assert.ok(!w.lotto.ipTickets || !Object.keys(w.lotto.ipTickets).length, 'ล้างตัวนับ IP หลังออกรางวัล');
+  w.lottoBuy(X1, { nums: new Array(10).fill('111') }); assert.strictEqual(w.lotto.tickets.x1.length, 10, 'งวดใหม่ซื้อได้เต็มอีกครั้ง');
+  console.log('  โควตาต่อ IP: รวมทุกบัญชี ≤ ' + S.LOTTO.ipMax, 'IP ต่างกัน/ว่างไม่กระทบ ล้างหลังออกผล');
+}
 { // ภาษีขายร้าน/แผง/ค่าบริการ เข้ากองกลางจริง
   const L = w.lotto, p0 = L.pot; w.toPot(123.9); assert.strictEqual(L.pot, p0 + 123); w.toPot(-5); w.toPot(0); assert.strictEqual(L.pot, p0 + 123);
   w.nearShopKind = () => 'animal'; w.event = () => {}; const s = mk('Seller', 0); s.rec.inv.egg = 3000; const pot1 = L.pot;
