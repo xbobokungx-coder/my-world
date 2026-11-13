@@ -12,19 +12,29 @@ const wsA = mkWs(), wsB = mkWs();
 const a = w.join(wsA, 'alice', '#e74c3c').p, b = w.join(wsB, 'bob', '#3498db').p;
 const last = (ws, t) => ws.msgs.filter(m => m.t === t).pop();
 
-// 1) เล้า: ประตูขวา (เฉพาะเล้าที่ด้านนอกเป็นพื้นที่เดินได้) เป็นทางเดิน ส่วนรั้วที่เหลือยังอยู่
+// 1) เล้า: ประตูขวา (ทั้ง 11 เล้า) เป็นทางเดิน ส่วนรั้วที่เหลือยังอยู่
 {
   const m = S.makeMap(); let n = 0;
   for (const [id, P] of Object.entries(S.PENS)) {
     assert.ok(P.gate.every(([x]) => m[P.gate[0][1]][x] === T.PATH), id + ' ประตูซ้ายเป็นทาง');
-    if (P.x1 + 2 <= S.W - 2) {
-      assert.strictEqual(P.gateR.length, P.gate.length, id + ' มีประตูขวา');
-      for (const [x, y] of P.gateR) { assert.strictEqual(x, P.x1 + 1); assert.strictEqual(m[y][x], T.PATH, id + ' ประตูขวาเป็นทาง'); assert.ok(!S.blockedAt(m, (x + 0.5) * TS, (y + 0.5) * TS), id + ' เดินผ่านได้'); assert.ok(!S.blockedAt(m, (x + 1.5) * TS, (y + 0.5) * TS), id + ' ด้านนอกประตูขวาเดินต่อได้'); n++; }
-    } else assert.deepStrictEqual(P.gateR, [], id + ' ติดขอบแมพ ไม่เปิดประตูขวา');
+    // ทั้ง 11 เล้ามีประตูขวา (เล้า x1=61 ใช้แถบทางเดินแคบ x63 ต่อเข้าถนน)
+    assert.strictEqual(P.gateR.length, P.gate.length, id + ' มีประตูขวา');
+    for (const [x, y] of P.gateR) { assert.strictEqual(x, P.x1 + 1); assert.strictEqual(m[y][x], T.PATH, id + ' ประตูขวาเป็นทาง'); assert.ok(!S.blockedAt(m, (x + 0.5) * TS, (y + 0.5) * TS), id + ' เดินผ่านได้'); assert.ok(!S.blockedAt(m, (x + 1.5) * TS, (y + 0.5) * TS) || x + 1 >= S.W, id + ' ด้านนอกประตูขวาเดินต่อได้'); n++; }
+    if (P.x1 + 1 === S.W - 2) { assert.ok(P.edgeR.length > 0, id + ' มีแถบขอบ x63'); for (const [x, y] of P.edgeR) { assert.strictEqual(x, S.W - 1); assert.strictEqual(m[y][x], T.PATH, id + ' แถบขอบเป็นทาง'); assert.ok(!S.blockedAt(m, (x + 0.5) * TS, (y + 0.5) * TS), id + ' ยืนที่ x63 ได้'); } }
+    // BFS จากถนน (ช่องถนน x45 หรือแถวทางเดิน) เข้าประตูซ้าย/ขวา โดยไม่ลัดผ่านในเล้า
+    {
+      const inPen = (x, y) => x >= P.x0 && x <= P.x1 && y >= P.y0 && y <= P.y1;
+      const st = [45, P.gate[0][1] < 9 ? 8 : P.gate[0][1]], seen = new Set([st + '']), q = [st];
+      while (q.length) { const [x, y] = q.shift(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, k = nx + ',' + ny; if (seen.has(k) || inPen(nx, ny) || S.blockedAt(m, (nx + 0.5) * TS, (ny + 0.5) * TS)) continue; seen.add(k); q.push([nx, ny]); } }
+      for (const g of P.gate) assert.ok(seen.has(g + ''), id + ' ถนนถึงประตูซ้าย');
+      for (const g of P.gateR) assert.ok(seen.has(g + ''), id + ' ถนนถึงประตูขวา (ไม่ลัดผ่านในเล้า)');
+      // ช่องในเล้าข้างประตู (แถวใดแถวหนึ่ง) เดินได้ทั้งฝั่งซ้ายและขวา
+      for (const x of [P.x0, P.x1]) assert.ok(P.gate.some(([, y]) => !S.blockedAt(m, (x + 0.5) * TS, (y + 0.5) * TS)), id + ' ในเล้าเดินได้');
+    }
     // รั้วที่เหลือต้องยังเป็นรั้ว (มุม + ตำแหน่งนอกประตู)
     assert.strictEqual(m[P.y0 - 1][P.x1 + 1], T.FENCE); assert.strictEqual(m[P.y1 + 1][P.x0 - 1], T.FENCE);
   }
-  assert.ok(n >= 12, 'ประตูขวาอย่างน้อย 6 เล้า x 2 ช่อง');
+  assert.strictEqual(n, 22, 'ประตูขวา 11 เล้า x 2 ช่อง');
   // ไม่มีผู้เล่นถูกเตะกลับจุดเกิดเพราะช่องประตู (เปิดทางอย่างเดียว ไม่เพิ่มรั้ว)
   for (const P of Object.values(S.PENS)) for (const [x, y] of P.gate.concat(P.gateR)) assert.ok(!S.blockedAt(m, (x + 0.5) * TS, (y + 0.5) * TS));
 }
