@@ -1300,7 +1300,7 @@
   ];
   // กระดานข่าว (log ของโลก) และตู้เซฟกองกลาง อยู่ขอบเหนือของลานกองไฟ (ช่องเดินผ่านไม่ได้ กดจากช่องติดกัน)
   const BOARD = { x: 30, y: 21 }, RANKBOARD = { x: 32, y: 21 }, ATM = { x: 34, y: 21 }, LUCKY = { x: 36, y: 21 }; // LUCKY = ตู้ Lucky Lotto
-  const TOWN = { logMax: 15, revive: 0.5 };
+  const TOWN = { logMax: 30, revive: 0.5 }; // ข่าวเมืองเก็บ 30 ข่าว (เดิม 15 ถูกคนเข้า-ออกดันข่าวสำคัญหายเร็ว)
   // ป้ายอันดับกลางเมือง: top = จำนวนแถวต่อแท็บ, cacheMs = อายุแคชผลคำนวณ, minXp = XP รวมขั้นต่ำถึงจะนับเป็นผู้เล่นจริง (เกณฑ์เดียวกับ tools/realplayers.js)
   const RANK = { top: 10, cacheMs: 45000, minXp: 150 };
   const townAt = (tx, ty) => (tx === BOARD.x && ty === BOARD.y ? 'board' : tx === RANKBOARD.x && ty === RANKBOARD.y ? 'rank' : tx === ATM.x && ty === ATM.y ? 'atm' : tx === LUCKY.x && ty === LUCKY.y ? 'lotto' : tx === SEA.dock.x && ty === SEA.dock.y ? 'sea' : null);

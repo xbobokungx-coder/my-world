@@ -35,6 +35,14 @@ const presence = (id, fn) => { for (const p of [players.get(id), roster.get(id)]
 let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, hunger = 80;
 const furn = new Map();               // เฟอร์นิเจอร์ในบ้านที่เปิดอยู่ (ฉากบ้าน): id -> { i, f, x, y, r, z, on, wl, u } พิกัดหน่วยช่อง
 let townLog = [], townTab = 'log', lottoSt = null, rankSt = null, rankTab = 'lv', rankSub = 'all';
+// ประกาศถึงผู้เล่น (public/notices.js) ปักหมุดบนสุดของแท็บข่าวเมือง • จำว่าอ่านแล้วต่อเบราว์เซอร์ (localStorage) • ข่าวเมืองซ่อนคนเข้า-ออกได้
+const NOTICES = (window.Notices && window.Notices.NOTICES) || [];
+const noticeSeenId = () => ls.get('mw_notice_seen') || '', noticeUnread = () => !!NOTICES.length && noticeSeenId() !== NOTICES[0].id;
+function updateNoticeDot() { const b = $('townBtn'); if (b) b.classList.toggle('hasnew', noticeUnread()); }
+let noticeToasted = false;
+function noticeIntro() { updateNoticeDot(); if (noticeUnread() && !noticeToasted) { noticeToasted = true; toast('📢 มีประกาศใหม่ เปิดดูที่ 📰 ข่าวเมือง'); } } // เด้งครั้งเดียวต่อการเปิดหน้าเว็บ (ต่อใหม่อัตโนมัติไม่เด้งซ้ำ) ถ้ายังไม่ได้อ่าน
+let townNoticeOpen = '', townNoticeFreshId = '', newsHideNoise = ls.get('mw_news_noise') !== '0'; // ค่าเริ่มต้นซ่อน 👋 เข้ามา / 🚪 ออกไป ให้เห็นข่าวที่สำคัญก่อน
+
 let arcSt = { pts: 0, total: 0, wk: 0 };                               // แต้มตู้เกมของเรา
 let lbSt = { total: [], wk: [], me: null }, hubTab = 'rank';           // Leaderboard + ศูนย์รวมแต้ม/รางวัล
 let questSt = { list: [], total: 0, title: '', pts: { bal: 0, earned: 0 } }, fameSt = {};
@@ -145,6 +153,7 @@ function handle(m) {
   switch (m.t) {
     case 'err': if (joined && rc) { const d = $('dc').firstElementChild; if (d) d.textContent = m.text || 'เชื่อมต่อใหม่ไม่สำเร็จ'; noRetry = true; rcStop(true); break; } $('loginErr').textContent = m.text; $('go').disabled = false; if (m.need === 'pin' || m.need === 'setpin') $('pin').focus(); if (m.need === 'akey') { $('akey').classList.remove('hidden'); $('akey').focus(); ls.set('mw_akey', ''); } break;
     case 'w':
+      setTimeout(noticeIntro, 2500);
       if (rc) rcStop(false); resetScene(); lastHeld = null; joined = true; myId = m.id; inv = m.inv; if (m.fr) freshSt = m.fr; farm = m.farm; skills = Object.assign({ farm: 0, fish: 0, animal: 0, wood: 0 }, m.skills); if (m.arc) arcSt = m.arc; timeOffset = m.time - Date.now(); setHunger(m.hunger === undefined ? 80 : m.hunger);
       dur = m.dur || {}; deepFloor = m.deep || 1; wtr = m.wtr === undefined ? CANS[canTier(inv)].cap : m.wtr; setCin(m.cin);
       if (m.trees) applyTrees(m.trees);
@@ -500,7 +509,7 @@ if (typeof MapEdit !== 'undefined') MapEdit.bind();
 // ---------- เมือง: ข่าว + ตู้เซฟกองกลาง ----------
 const townShown = () => !$('town').classList.contains('hidden');
 function openTown(tab) { closeOthers('town'); townTab = tab || townTab; if (townTab === 'lotto') send({ t: 'lotto', a: 'get' }); if (townTab === 'log') send({ t: 'quest', a: 'fame' }); if (townTab === 'rank') send({ t: 'rank' }); $('town').classList.remove('hidden'); renderTown(); }
-function closeTown() { $('town').classList.add('hidden'); }
+function closeTown() { $('town').classList.add('hidden'); townNoticeFreshId = ''; townNoticeOpen = ''; } // ปิดแล้วเปิดใหม่ = ประกาศเก่าพับกลับ ป้าย 'ใหม่' หาย
 function updateHappyChip() {
   const el = $('happyChip'); if (!el) return;
   const on = happyOn(); el.classList.toggle('hidden', !on);
@@ -893,7 +902,18 @@ function renderTown() {
     return;
   }
   if (townTab === 'log') {
-    el.innerHTML = tabs + eventCard() + villageCard() + weeklyCard() + '<div class="sec">🏆 อันดับวันนี้</div>' + fameHTML() + '<div class="sec">📰 ข่าวล่าสุด (' + TOWN.logMax + ' ข่าว)</div>' + (townLog.length ? townLog.slice().reverse().map(([t, s]) => { const d = new Date(t); return `<div class="logrow"><time>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</time><span>${esc(s)}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีข่าว</p>');
+    if (NOTICES.length && noticeUnread() && !townNoticeOpen) townNoticeOpen = townNoticeFreshId = NOTICES[0].id; // เปิดดูครั้งแรก: คลี่ประกาศใหม่ให้อ่านเลย
+    const noisy = x => /^(👋|🚪)/.test(x[1]), rows = (newsHideNoise ? townLog.filter(x => !noisy(x)) : townLog.slice()).reverse(), hid = townLog.length - townLog.filter(x => !noisy(x)).length;
+    const nCard = (n, i) => { const open = i === 0 && townNoticeOpen === n.id, fresh = townNoticeFreshId === n.id && i === 0;
+      const body = open ? `<p class="nintro">${esc(n.intro || '')}</p>` + n.sections.map(sc => `<div class="nsec">${esc(sc.h)}</div><ul>${sc.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>`).join('') + (n.outro ? `<p class="nintro">${esc(n.outro)}</p>` : '') : `<p class="nintro">${esc((n.intro || '').slice(0, 90))}…</p>`;
+      return `<div class="ncard${fresh ? ' new' : ''}"><div class="nhead"><b>${n.emoji} ${esc(n.title)}</b>${fresh ? ' <span class="nbadge">ใหม่</span>' : ''}<small>${esc(n.date)}</small></div>${body}<button class="btn small" data-notice="${esc(n.id)}">${open ? 'ย่อ' : 'อ่านทั้งหมด'}</button></div>`; };
+    el.innerHTML = tabs + (NOTICES.length ? '<div class="sec">📢 ประกาศจากผู้ดูแล</div>' + NOTICES.map(nCard).join('') : '') + eventCard() + villageCard() + weeklyCard()
+      + '<div class="sec">📰 ข่าวล่าสุด</div><div class="chips" style="margin:2px 0 6px"><button class="chip' + (newsHideNoise ? ' sel' : '') + '" data-newsnoise="1">ซ่อนคนเข้า-ออก' + (hid ? ' (' + hid + ')' : '') + '</button></div>'
+      + (rows.length ? rows.map(([t, s]) => { const d = new Date(t); return `<div class="logrow"><time>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</time><span>${esc(s)}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีข่าว</p>')
+      + '<div class="sec">🏆 อันดับวันนี้</div>' + fameHTML();
+    if (NOTICES.length && townNoticeOpen === NOTICES[0].id && noticeUnread()) { ls.set('mw_notice_seen', townNoticeOpen); updateNoticeDot(); } // วาดแล้วถือว่าอ่านแล้ว (ป้าย 'ใหม่' โชว์แค่รอบแรก)
+    el.querySelectorAll('[data-notice]').forEach(b => b.onclick = () => { const id = b.dataset.notice; townNoticeOpen = townNoticeOpen === id ? '' : id; if (townNoticeOpen && NOTICES[0] && id === NOTICES[0].id) { ls.set('mw_notice_seen', id); updateNoticeDot(); } renderTown(); });
+    el.querySelectorAll('[data-newsnoise]').forEach(b => b.onclick = () => { newsHideNoise = !newsHideNoise; ls.set('mw_news_noise', newsHideNoise ? '1' : '0'); renderTown(); });
     bindTabs();
     el.querySelectorAll('[data-wkclaim]').forEach(b => b.onclick = () => send({ t: 'quest', a: 'weekly' }));
     return;

@@ -385,6 +385,18 @@
   #townBody .qrow.done, #bagBody .qrow.done { opacity:.6; }
   #townBody .rkrow { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:7px 6px; border-bottom:1px dashed rgba(0,0,0,.12); } #townBody .rkrow > span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } #townBody .rkrow > span:last-child { white-space:nowrap; flex:none; } #townBody .rkrow.me { background:#fff3cf; border-radius:6px; }
   #townBody .tabs-note, #bagBody .tabs-note { font-size:12px; opacity:.7; margin:4px 0 8px; }
+  #townBody .ncard { background:#fff3cf; border:2px solid #e8c66a; border-radius:12px; padding:8px 10px; margin-bottom:8px; font-size:14px; line-height:1.45; }
+  #townBody .ncard.new { background:#ffe9b8; border-color:#e08a1e; }
+  #townBody .ncard .nhead { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; }
+  #townBody .ncard .nhead small { margin-left:auto; opacity:.6; }
+  #townBody .ncard .nbadge { background:#d9372a; color:#fff; font-size:11px; font-weight:800; padding:1px 7px; border-radius:10px; }
+  #townBody .ncard .nintro { margin:6px 0; }
+  #townBody .ncard .nsec { font-weight:800; margin-top:8px; }
+  #townBody .ncard ul { margin:2px 0 4px; padding-left:20px; }
+  #townBody .ncard li { margin:2px 0; }
+  #hudMenu #townBtn.hasnew { position:relative; }
+  #hudMenu #townBtn.hasnew::before { content:''; position:absolute; top:-3px; right:-3px; width:11px; height:11px; border-radius:50%; background:#d9372a; border:2px solid #fff; z-index:2; } /* จุดแดงมีประกาศใหม่ (ใช้ ::before เพราะ ::after เป็นป้ายชื่อเมนู) */
+  body.touch #townBody .ncard .btn.small, body.touch #townBody [data-newsnoise] { min-height:40px; }
   #townBody .vcard, #bagBody .vcard { background:#fff3cf; border:2px solid #e8c66a; border-radius:12px; padding:8px 10px; margin-bottom:8px; font-size:14px; }
   #townBody .vcard.on, #bagBody .vcard.on { background:#dff7e1; border-color:#4caf6a; }
   #town .tabs { flex-wrap:wrap; gap:4px; }
@@ -709,6 +721,7 @@
 <script src="pixelfurn.js"></script>
 <script src="pixelboat.js"></script>
 <script src="mapedit.js"></script>
+<script src="notices.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
