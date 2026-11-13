@@ -15,6 +15,8 @@ const M = {
   treeWalk: 5,     // วินาทีเดินระหว่างต้นไม้ + ฟันครั้งละ 0.7 วินาที
   oreWalk: 6,      // วินาทีเดินหาก้อนแร่ถัดไปในถ้ำ (ชั้นละ ~30–40 ก้อน ห่างกัน ≥ 3 ช่อง) + ขุดครั้งละ 0.7 วินาที
   treeRegen: 60000 / S.TREE.growMs, // ต้นไม้งอกใหม่ต่อนาทีทั้งห้อง (เพดานระยะยาวของการตัดไม้คนเดียว)
+  mktMul: 1.0,     // ราคาตลาดผู้เล่นของวัตถุดิบ ÷ ราคาขายฐาน (เชฟซื้อ, WP-22) • แผงขายตั้งได้ 0.5–2 เท่า (STALL.min/max)
+  buyAct: 0.25,    // จำนวนการกระทำต่อวัตถุดิบ 1 ชิ้นตอนซื้อจากตลาด (ซื้อทีละหลายชิ้น)
   EFF: 0.5,        // ผู้เล่นจริงทำได้กี่เท่าของเพดานนี้
   season: !process.argv.includes('--noseason'), // คิดข้อจำกัดฤดูของชาวนา (season-planting) • --noseason = ฐานเดิมไม่มีฤดู
 };
@@ -118,15 +120,18 @@ function animal(lv) {
   const f = Math.min(1, M.apm / 2 / cyc); // ให้อาหาร + เก็บ = 2 การกระทำต่อรอบ
   return { pick: 'เล้าเต็ม', coin: coinc * f * 60, xp: xpc * f * 60, gross: gr * f * 60, cost: fc * f * 60, pieces: cyc * (1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS)) * f * 60, cat: 'animal' };
 }
-function cook(lv) {
+function cook(lv, buy = false, tol = 0.01) { // buy = true: เชฟซื้อวัตถุดิบจากตลาดผู้เล่น (WP-22) แทนหาเอง • เลือกสูตรที่ XP/ชม. ≥ (1−tol)×สูงสุด แล้วเอาที่เหรียญ/ชม.มากสุด (tol 1% = XP-pick กัน tie สลับไปมา, 10% = เชฟที่ไล่เหรียญแต่ยังไม่หลุดเส้น XP, 1 = ไล่เหรียญล้วน)
   // นาทีที่ต้องใช้หาวัตถุดิบ 1 ชิ้น เมื่ออาชีพอื่นเลเวลเท่ากัน: ปลาถูกสุด/ผักถูกสุด/ไข่ = เวลาลงมือ (ไม่นับรอโต)
   const rod = lv >= 6 ? 3 : lv >= 3 ? 2 : 1, fishMin = 1 / fishCpm(lv, rod), cropMin = 4 / M.apm, eggMin = 2 / M.apm / 1.5;
   const need = { fish: fishMin, crop: cropMin, egg: eggMin, milk: eggMin, meal_bread: 0 };
-  let best = null;
+  let best = null; const cand = [];
   for (const r of S.COOK) {
     if (r.lv > lv) continue;
-    let min = r.time / 60000 + 1 / M.apm;
+    let min = r.time / 60000 + 1 / M.apm, ing = 0;
     for (const x of r.in) {
+      if (buy) { // ซื้อจากตลาด: เสียเงินตามราคาตลาดของวัตถุดิบ (หมวด = ชนิดถูกสุดในหมวด เหมือนที่ครัวหยิบใช้ก่อน) + เสียเวลาซื้อต่อชิ้น ไม่เสียเวลาหา
+        const it = x.k ? S.itemInfo(x.k) : null, base = x.k ? (it.sell || it.buy || 0) : ({ fish: Math.min(...S.FISH_ALL.filter(f => f.id !== 'boot').map(f => f.sell)), crop: Math.min(...Object.values(S.CROPS).map(c => c.sell)), egg: S.itemInfo('egg').sell })[x.c];
+        ing += x.n * base * (it && it.buy && !it.sell ? 1 : M.mktMul); min += x.n * M.buyAct / M.apm; continue; }
       let m = need[x.c || x.k];
       if (m === undefined && x.k) { // ของเจาะจงชนิด (ปลาทู ไข่เป็ด ฯลฯ): เวลาหา ∝ ราคาขายเทียบของถูกสุดในหมวด (หายากกว่า = ใช้เวลามากกว่า) ไม่ให้นับเป็นของฟรี
         const cat = /^fish_/.test(x.k) ? 'fish' : /^crop_/.test(x.k) ? 'crop' : x.k === 'duck_egg' ? 'egg' : null, base = { fish: Math.min(...S.FISH_ALL.filter(f => f.id !== 'boot').map(f => f.sell)), crop: Math.min(...Object.values(S.CROPS).map(c => c.sell)), egg: S.itemInfo('egg').sell }[cat], it = S.itemInfo(x.k); // ราคาของถูกสุดในหมวด ดึงจากข้อมูลกลาง
@@ -134,9 +139,12 @@ function cook(lv) {
       }
       min += x.n * (m || 0);
     }
-    const fee = r.sell * S.COOK_FEE, coin = 60 / min * (r.sell - fee), xp = 60 / min * r.xp;
-    if (!best || xp > best.xp) best = { pick: r.id.replace('dish_', ''), coin, xp, gross: 60 / min * r.sell, cost: 60 / min * fee, pieces: 60 / min, cat: 'dish' };
+    const fee = r.sell * S.COOK_FEE, coin = 60 / min * (r.sell - fee - ing), xp = 60 / min * r.xp;
+    if (buy && coin <= 0) continue; // ซื้อแล้วขาดทุน = ไม่ทำ
+    cand.push({ pick: r.id.replace('dish_', ''), coin, xp, gross: 60 / min * r.sell, cost: 60 / min * (fee + ing), pieces: 60 / min, cat: 'dish' });
   }
+  const mx = Math.max(...cand.map(c => c.xp));
+  for (const c of cand) if (c.xp >= mx * (1 - tol) - 1e-9 && (!best || c.coin > best.coin)) best = c;
   return best;
 }
 
@@ -198,6 +206,11 @@ if (require.main === module) {
   for (let lv = 1; lv <= S.MAX_LV; lv++) console.log(String(lv).padStart(2) + ' ' + WP20.map(k => { const x = r[k][lv - 1], g = goalXpH(k, lv) * M.EFF, got = x.xp * M.EFF, dev = got / g - 1, cp = x.coin / r.farm[lv - 1].coin, bad = Math.abs(dev) > GOALS[k].tol;
     return (num(got).padStart(7) + num(g).padStart(7) + ((dev >= 0 ? '+' : '') + (dev * 100).toFixed(0) + '%').padStart(5) + (bad ? '!' : ' ') + (k === 'farm' ? '' : (Math.round(cp * 100) + '%').padStart(5) + (cp < 0.85 || cp > 1.20 ? '!' : ' '))).padEnd(30); }).join(''));
   console.log('ชม.ถึง Lv10/Lv20 (เป้า 18–22 ชม. ที่ Lv20): ' + WP20.map(k => { const h = hoursTo(r[k], k); return S.SKILLS[k].name + ' ' + h[9].toFixed(1) + '/' + h[19].toFixed(1) + (h[19] < 18 || h[19] > 22 ? '!' : ''); }).join(' • ') + ' • เป้า ' + goalHours('farm', 10).toFixed(1) + '/' + goalHours('farm', 20).toFixed(1));
+  // เชฟ 2 โหมด (WP-22): เหรียญ/ชม. % ของชาวนา • หาเอง vs ซื้อวัตถุดิบจากตลาด (ราคา ×M.mktMul ของราคาฐาน) • เลือกสูตร XP/ชม. ≥ 99% / ≥ 90% ของสูงสุด / ไล่เหรียญล้วน (เป้า 85–120%)
+  console.log(`\nเชฟ 2 โหมด: เหรียญ/ชม. % ของชาวนา (ซื้อ: ราคาตลาด ×${M.mktMul} เวลาซื้อ ${M.buyAct} ครั้ง/ชิ้น) • สูตร XP≥99% | XP≥90% | ไล่เหรียญล้วน`);
+  console.log('Lv   หาเอง 99%  90%  ล้วน  | ซื้อ 99%  90%  ล้วน');
+  for (let lv = 1; lv <= S.MAX_LV; lv++) { const F = r.farm[lv - 1].coin, p = (b, t) => { const c = cook(lv, b, t); return c ? Math.round(c.coin / F * 100) : 0; }, f = v => (String(v) + (v < 85 || v > 120 ? '!' : ' ')).padStart(5);
+    console.log(String(lv).padStart(2) + '        ' + f(p(false, 0.01)) + f(p(false, 0.1)) + f(p(false, 1)) + '   |      ' + f(p(true, 0.01)) + f(p(true, 0.1)) + f(p(true, 1))); }
   // นักขุดแร่: XP/ชม. ต่อชั้นเทียบเป้า 1,000×1.3^(f−1) (จริง) และเหรียญเทียบชาวนา และต้นทุนสึกหรอ
   console.log(`\nนักขุดแร่ รายชั้น: XP/ชม.จริง (เพดาน × ${M.EFF}) เทียบเป้า ±${MINE_GOAL.tol * 100}% • เหรียญ/ชม.สุทธิเทียบชาวนาเลเวลเดียวกัน (เป้า ≤ 125%) • ต้นทุนสึกหรอ % ของรายได้ (เป้า ≤ 10%)`);
   console.log('ชั้น Lv     XP/ชม.จริง   เป้า  ตรง    เหรียญ/ชม. %ชาวนา  สึกหรอ%  ก้อน/ชม.');
@@ -249,4 +262,4 @@ if (require.main === module) {
   console.log(`\nเหรียญ/ชม. (เพดานคนเดียว ตามทางที่เลือก)`);
   for (const k of Object.keys(SIMS)) console.log(S.SKILLS[k].name.padEnd(12) + r[k].map(x => num(x.coin).padStart(7)).join(''));
 }
-module.exports = { M, SIMS, FARM_GOAL, ANIMAL_GOAL, WOOD_GOAL, COOK_GOAL, GOALS, goalXpH, goalHours, wood, fish, axeAt, rodAt, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours, FISH_GOAL, fishGoalXpH, fishGoalHours, fishSea };
+module.exports = { M, SIMS, cook, mine, FARM_GOAL, ANIMAL_GOAL, WOOD_GOAL, COOK_GOAL, GOALS, goalXpH, goalHours, wood, fish, axeAt, rodAt, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours, FISH_GOAL, fishGoalXpH, fishGoalHours, fishSea };
