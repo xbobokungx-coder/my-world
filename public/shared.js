@@ -243,7 +243,7 @@
   const rentPlotAt = (x, y) => FARM_RENT.plots.find(q => x >= q.x0 && x <= q.x1 && y >= q.y0 && y <= q.y1) || null;
   const FARM_CAP = { base: 20, perLv: 2, max: 40 };       // เพดานจำนวนต้นที่ผู้เล่นหนึ่งคนปลูกค้างในแปลงกลางได้พร้อมกัน (ฐาน + เลเวลชาวนา×perLv) กันคนเดียวปลูกเต็มจนคนอื่นไม่มีที่ ช่องว่างหลังเก็บเกี่ยวนับคืนทันที
   // พืชชั้นสูงต้องมีบัวรดน้ำระดับสูงถึงปลูกได้: Lv6–7 บัวทองแดง • Lv8+ บัวทอง (ใช้เงินระหว่างทาง) • ลองให้พืชใหญ่กินโควตาแปลงมากกว่าแล้ว XP/ชม. ของ Lv9–10 ตกต่ำกว่า Lv7 จึงไม่ใช้
-  const cropCan = c => (c.lv >= 8 ? 3 : c.lv >= 6 ? 2 : 1);
+  const cropCan = c => (c.lv >= 8 ? 3 : c.lv >= 6 ? 2 : 1); // เลขนี้คือ "ระดับบัวรดน้ำเดิม" (can_2/can_3) ไม่ขยายไประดับ 4–10 • พืชชั้นสูงปลูกได้ด้วยบัวระดับ ≥ 3 เสมอ
   const CLOCK_MS = 24 * 60 * 1000;                     // 1 รอบกลางวัน-กลางคืนบนนาฬิกาเกม = 24 นาทีจริง (แยกจาก DAY_MS เพื่อไม่ให้เศรษฐกิจช้าลง)
   const TREE = { cap: 132, growMs: 20000, activeMs: 5 * 60 * 1000, maxCutters: 6, capPer: 66, minFells: 10 }; // เพดานต้นไม้ในแมพ (ตัดทั้งแมพก็ไม่ใช่ทางรวยสุด) + งอกใหม่ทุก growMs • WP-31: ช่างไม้ที่ล้มต้นไม้สำเร็จ ≥ minFells ต้นใน activeMs ล่าสุดนับเป็น 'ช่างไม้ที่ใช้งานอยู่' อัตรางอกคูณตามจำนวน (สูงสุด maxCutters คน) และเพดานเพิ่มคนละ capPer (คนเดียว = ค่าเดิมทุกอย่าง)
   const treeCutters = n => Math.max(1, Math.min(TREE.maxCutters, Math.floor(n) || 1)); // จำนวนช่างไม้ที่คิด (อย่างน้อย 1)
@@ -304,21 +304,21 @@
     chili:      { name: 'พริก',        emoji: '🌶️', seed: 21,  sell: 55,  time: 155000, lv: 1, legacy: true, xp: 14 },
     broccoli:   { name: 'บรอกโคลี',     emoji: '🥦', seed: 28,  sell: 72,  time: 200000, lv: 1, legacy: true, xp: 18 },
     cherry:     { name: 'เชอร์รี',      emoji: '🍒', seed: 41,  sell: 99, time: 264000, lv: 1, legacy: true, xp: 22 },
-    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 52,  sell: 116, time: 291000, lv: 8, xp: 17 },
-    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 64,  sell: 143, time: 359000, lv: 9, xp: 24 },
-    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 82, sell: 188, time: 480000, lv: 11, xp: 28 },
+    grape:      { name: 'องุ่น',        emoji: '🍇', seed: 52,  sell: 116, time: 291000, lv: 8, xp: 16 },
+    pineapple:  { name: 'สับปะรด',      emoji: '🍍', seed: 64,  sell: 143, time: 359000, lv: 9, xp: 25 },
+    mango:      { name: 'มะม่วง',       emoji: '🥭', seed: 82, sell: 188, time: 480000, lv: 11, xp: 26 },
     melon:      { name: 'แตงโม',       emoji: '🍉', seed: 68, sell: 150, time: 373000, lv: 10, xp: 26 },
     // เลเวล 11–20 (30 ต.ค. 2026): เมล็ด ≈ 43% ของราคาขาย เวลาโตตามกำไร (≈ 0.22 เหรียญ/วิ) สูงสุด 12 นาที
     peach: { name: 'พีช', emoji: '🍑', seed: 86, sell: 200, time: 518000, lv: 12, xp: 41 },
-    kiwi: { name: 'กีวี', emoji: '🥝', seed: 90, sell: 210, time: 545000, lv: 13, xp: 52 },
+    kiwi: { name: 'กีวี', emoji: '🥝', seed: 90, sell: 210, time: 545000, lv: 13, xp: 49 },
     coconut: { name: 'มะพร้าวน้ำหอม', emoji: '🥥', seed: 95, sell: 222, time: 577000, lv: 14, xp: 61 },
-    avocado: { name: 'อะโวคาโด', emoji: '🥑', seed: 101, sell: 234, time: 605000, lv: 15, xp: 71 },
-    blueberry: { name: 'บลูเบอร์รี', emoji: '🫐', seed: 106, sell: 246, time: 636000, lv: 16, xp: 83 },
+    avocado: { name: 'อะโวคาโด', emoji: '🥑', seed: 101, sell: 234, time: 605000, lv: 15, xp: 65 },
+    blueberry: { name: 'บลูเบอร์รี', emoji: '🫐', seed: 106, sell: 246, time: 636000, lv: 16, xp: 76 },
     olive: { name: 'มะกอก', emoji: '🫒', seed: 111, sell: 258, time: 668000, lv: 1, legacy: true, xp: 50 },
-    beans: { name: 'เมล็ดโกโก้', emoji: '🫘', seed: 115, sell: 268, time: 695000, lv: 17, xp: 107 },
-    mushroom: { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', seed: 120, sell: 278, time: 718000, lv: 18, xp: 109 },
-    sunflower: { name: 'ทานตะวันทอง', emoji: '🌻', seed: 124, sell: 288, time: 720000, lv: 19, xp: 113 },
-    tulip: { name: 'ทิวลิปทอง', emoji: '🌷', seed: 128, sell: 298, time: 720000, lv: 20, xp: 153 },
+    beans: { name: 'เมล็ดโกโก้', emoji: '🫘', seed: 115, sell: 268, time: 695000, lv: 17, xp: 89 },
+    mushroom: { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', seed: 120, sell: 278, time: 718000, lv: 18, xp: 101 },
+    sunflower: { name: 'ทานตะวันทอง', emoji: '🌻', seed: 124, sell: 288, time: 720000, lv: 19, xp: 115 },
+    tulip: { name: 'ทิวลิปทอง', emoji: '🌷', seed: 128, sell: 298, time: 720000, lv: 20, xp: 135 },
   };
   // ฤดูกาล: ร้อน → ฝน → หนาว วนทุก days วันจริง นับจาก epoch • พืช lv ≤ freeLv ปลูกได้ทุกฤดูและไม่มีผลฤดูเลย • พืช lv > freeLv ปลูกได้เฉพาะฤดูของตัวเอง (crops) ในฤดู: ราคาเป้าตลาด ×inMul นอกฤดู ×outMul
   // lockCrops/lockTrees = สวิตช์ถอยด่วน (false = ไม่ล็อก) • trees = ต้นไม้ที่งอกใหม่เฉพาะฤดูนั้น (ชนิดที่ไม่อยู่ในฤดูไหนเลยงอกทุกฤดู) ต้นที่งอกอยู่แล้วคงอยู่และตัดได้
@@ -884,7 +884,9 @@
   const PMARKET = { share: 0.75, min: 0.25, recover: 0.03 };
   // ความทนทานเครื่องมือ: ใช้งานทุกครั้งสึกหรอ 1 หน่วย ใช้ครบแล้วใช้ไม่ได้จนกว่าจะซ่อมที่ร้านเสียเหรียญ (ค่าซ่อมคิดตามส่วนที่สึกหรอ) = รายจ่ายที่เกิดขึ้นสม่ำเสมอ
   const DURABILITY = {
-    hoe:   { max: [0, 120, 120, 120], fix: [0, 24, 24, 24],  shop: 'farm',   name: 'จอบ' },
+    hoe:   { max: [0, 120, 155, 230, 305, 325, 360, 420, 540, 615, 655], fix: [0, 24, 63, 150, 275, 425, 625, 875, 1150, 1475, 1850], shop: 'farm',   name: 'จอบ' }, // WP-23: 10 ระดับ ระดับ 1 = 120 เท่าเดิม (ล็อก) • fix = ค่าแสดงผล ≈ 25% ของราคา
+    pail:  { max: [0, 65, 230, 440, 660, 860, 1155, 1480, 1765, 2160, 2550], fix: [0, 15, 75, 175, 300, 450, 650, 900, 1200, 1550, 1950], shop: 'animal', name: 'ตะกร้า/ถัง' },
+    pan:   { max: [0, 200, 80, 120, 130, 170, 175, 215, 285, 305, 350], fix: [0, 20, 75, 175, 300, 450, 650, 900, 1200, 1550, 1950], shop: 'food',   name: 'กระทะ' },
     rod:   { max: [0, 160, 330, 560, 820, 1100, 1400, 1750, 2100, 2500, 2900], fix: [0, 15, 63, 150, 300, 525, 825, 1225, 1700, 2250, 2875], shop: 'fish',   name: 'เบ็ดตกปลา' },
     axe:   { max: [0, 120, 310, 580, 790, 1010, 1370, 1690, 2050, 2350, 2610], fix: [0, 13, 50, 125, 238, 400, 625, 925, 1300, 1750, 2250], shop: 'wood',   name: 'ขวาน' },
     pick:  { max: [0, 115, 320, 460, 600, 800, 1000, 1300, 1650, 2100, 2600], fix: [0, 15, 65, 150, 275, 475, 750, 1125, 1625, 2250, 3125], shop: 'mine',  name: 'อีเต้อ' }, // ขุดแตก 1 ก้อน = สึก 1 ครั้ง (ไม่ใช่ทุกครั้งที่ฟาด) ตัวเลขเป็นจำนวนก้อน (6 พ.ย. 2026 ปรับให้ต้นทุนสึกหรอ ≈ 8% ของรายได้ทุกระดับ ตามซิม levelsim • 13 พ.ย. WP-22 ระดับ 1 140→115 ลดรายได้ Lv1 ให้ ≤ ~115% ของชาวนา)
@@ -895,10 +897,37 @@
   // ซ่อมได้จำกัด: ซ่อมแต่ละครั้งความทนทานสูงสุดลดลง decay ของค่าเดิม ค่าซ่อมแพงขึ้น growth ต่อครั้ง ซ่อมครบ maxFixes ครั้งแล้วซ่อมไม่ได้อีก ต้องซื้อใหม่ (ราคา TOOL_PRICE)
   // สมดุล: ค่าซ่อมเต็ม = pct × ราคาซื้อ × (1 + growth × ครั้งที่ซ่อมมาแล้ว) แต่ได้ความทนทานน้อยลงเรื่อยๆ → ซ่อมครั้งที่ ~4 ขึ้นไปต่อหน่วยการใช้งานแพงกว่าซื้อใหม่
   const REPAIR = { decay: 0.15, maxFixes: 3, growth: 0.5, pct: 0.25 };
-  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 60, 250, 600, 1200, 2100, 3300, 4900, 6800, 9000, 11500], axe: AXE_PRICE.slice(), pick: [0, 60, 260, 600, 1100, 1900, 3000, 4500, 6500, 9000, 12500] };
+  const TOOL_PRICE = { hoe: [0, 80, 250, 600, 1100, 1700, 2500, 3500, 4600, 5900, 7400], pail: [0, 60, 300, 700, 1200, 1800, 2600, 3600, 4800, 6200, 7800], pan: [0, 80, 300, 700, 1200, 1800, 2600, 3600, 4800, 6200, 7800], rod: [0, 60, 250, 600, 1200, 2100, 3300, 4900, 6800, 9000, 11500], axe: AXE_PRICE.slice(), pick: [0, 60, 260, 600, 1100, 1900, 3000, 4500, 6500, 9000, 12500] };
   const tierN = t => Math.max(1, Math.min(10, t || 1)); // คันเบ็ด/ขวาน/อุปกรณ์ขุด 10 ระดับ
   const durMax = (tool, tier, fixes) => Math.max(1, Math.floor(DURABILITY[tool].max[tierN(tier)] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fixes || 0))));
   const toolPrice = (tool, tier) => TOOL_PRICE[tool][tierN(tier)];
+  // === WP-23 อุปกรณ์ 10 ระดับของชาวนา/คนเลี้ยงสัตว์/เชฟ (จอบ hoe • ตะกร้า-ถัง pail • กระทะ pan) ===
+  // แบบติดตัว: ไม่ต้องถือ ทำงานเมื่อมีในกระเป๋าและความทน > 0 • ระดับ 1 แจกฟรี (ไม่มีคีย์ใน inv) • พังแล้วไม่บล็อกงาน แค่ไม่ได้โบนัส • ระดับ ≥ 2 ซื้อได้ที่ร้านสายตัวเอง ที่เลเวลอาชีพ 2t−1
+  const GEAR_MAX = 10;
+  const HOE_NAMES = ['', 'จอบเหล็กดำ', 'จอบทองแดง', 'จอบเหล็กกล้า', 'จอบสแตนเลส', 'จอบเงิน', 'จอบไทเทเนียม', 'จอบทองคำ', 'จอบมรกต', 'จอบเพชร', 'จอบมิทริล'];
+  const PAIL_NAMES = ['', 'ตะกร้าสานใบตาล', 'ตะกร้าหวาย', 'ถังไม้สัก', 'ถังสังกะสี', 'ถังทองแดง', 'ถังเงิน', 'ถังทองคำ', 'ถังมรกต', 'ถังเพชร', 'ถังมิทริล'];
+  const PAN_NAMES = ['', 'หม้อดินเผา', 'กระทะเหล็กดำ', 'กระทะเหล็กหล่อ', 'กระทะสแตนเลส', 'กระทะทองแดง', 'กระทะไทเทเนียม', 'กระทะทองคำ', 'กระทะมรกต', 'กระทะเพชร', 'กระทะมังกร'];
+  // คีย์ไอคอนพิกเซลต่อระดับ (วาดใน pixelui.js) • ต้องเป็นอีโมจิเดี่ยว ไม่ซ้ำกันเองและไม่ซ้ำไอเทมอื่นในเกม (ระดับ 1 ของจอบคง ⛏ เดิม)
+  const HOE_EMOJI = { 1: '⛏', 2: '🔬', 3: '🔭', 4: '🔮', 5: '🔯', 6: '🔰', 7: '🔹', 8: '🔺', 9: '🔻', 10: '🔽' };
+  const PAIL_EMOJI = { 1: '🧺', 2: '🧳', 3: '🧴', 4: '🧷', 5: '🧻', 6: '🧼', 7: '🧽', 8: '🧯', 9: '🧪', 10: '🧫' };
+  const PAN_EMOJI = { 1: '🥄', 2: '🥫', 3: '🥌', 4: '🥎', 5: '🥏', 6: '🥅', 7: '🥋', 8: '🥊', 9: '🥃', 10: '🥨' };
+  const mkGear = (names, tool) => { const o = {}; for (let t = 1; t <= GEAR_MAX; t++) o[t] = t === 1 ? { name: names[1], price: TOOL_PRICE[tool][1], power: 1 } : { name: names[t], price: TOOL_PRICE[tool][t], lv: 2 * t - 1, power: t }; return o; }; // ระดับ 1 ไม่ขาย (price = ราคาซื้อใหม่ตอนของฟรีพัง ไว้คิดซ่อม) • lv = เลเวลที่ซื้อได้ 3,5,…,19
+  const HOES = mkGear(HOE_NAMES, 'hoe'), PAILS = mkGear(PAIL_NAMES, 'pail'), PANS = mkGear(PAN_NAMES, 'pan');
+  const gearTier = (inv, tool) => { for (let t = GEAR_MAX; t >= 2; t--) if (inv && inv[tool + '_' + t]) return t; return 1; }; // ไม่มีคีย์ = ระดับ 1 (ฟรี)
+  const hoeTier = inv => gearTier(inv, 'hoe'), pailTier = inv => gearTier(inv, 'pail'), panTier = inv => gearTier(inv, 'pan');
+  const cropTier = c => Math.ceil(((c && c.lv) || 1) / 2), animalTier = A => Math.ceil(((A && A.lv) || 1) / 2), cookTier = r => Math.ceil(((r && r.lv) || 1) / 2); // ระดับของไอเทม (ปลดทุก 2 เลเวล)
+  // base = โบนัสเมื่อตรงระดับ • d<0 (อุปกรณ์ต่ำกว่าไอเทม): ×max(0,1+under×d) ทั้งโบนัสและการสึก (ปัจจุบัน under=1 ⇒ ต่ำกว่า 1 ระดับขึ้นไป = ไม่มีผล ไม่สึก (E1 จูน 13 พ.ย. 2026)) • d≥0: โบนัส +bonus×d ไม่เกิน cap, สึก ÷(1+wear×d)
+  const GEAR_TUNE = {
+    hoe: { base: 0.107, under: 1, over: { bonus: 0, cap: 0.107, wear: 0 } },  // โอกาสได้ผลผลิต +1 ตอนเก็บเกี่ยว
+    pail: { base: 0.156, under: 1, over: { bonus: 0, cap: 0.156, wear: 0 }, max: 0.75 },  // บวกเพิ่มจาก ANIMAL_BONUS (รวมไม่เกิน max)
+    pan: { base: 0.088, under: 1, over: { bonus: 0, cap: 0.088, wear: 0 }, minFee: 0.15 },  // ลดค่าเตา COOK_FEE (ไม่ต่ำกว่า minFee)
+  };
+  // คืน { d, bonus, wear } (wear = ตัวคูณการสึกต่อครั้งใช้ 0 = ไม่สึก) • กฎ: อัประดับแล้วกำไรสุทธิต้องไม่ลด และไม่ต่ำกว่าพื้น (ไม่มี/พัง = เกมเดิม)
+  const gearHit = (tool, tier, itemTier) => {
+    const G = GEAR_TUNE[tool], d = Math.floor(tier || 1) - Math.floor(itemTier || 1);
+    if (d >= 0) return { d, bonus: Math.min(G.over.cap, G.base + G.over.bonus * d), wear: 1 / (1 + G.over.wear * d) };
+    const k = Math.max(0, 1 + G.under * d); return { d, bonus: G.base * k, wear: k };
+  };
   // ค่าซ่อมครั้งถัดไป (ซ่อมแล้วเต็มที่ความทนทานสูงสุดใหม่ที่ต่ำลง) เทียบกับความเสียหายของค่าสูงสุดปัจจุบัน
   const repairCost = (tool, tier, cur, fixes) => { const n = fixes || 0, mx = durMax(tool, tier, n); return Math.max(1, Math.ceil(toolPrice(tool, tier) * REPAIR.pct * (1 + REPAIR.growth * n) * Math.max(0, mx - cur) / mx)); };
   const canRepair = (tool, tier, cur, fixes) => (fixes || 0) < REPAIR.maxFixes && cur < durMax(tool, tier, (fixes || 0) + 1);
@@ -1012,12 +1041,19 @@
   const ANIMAL_GRACE_MS = 8 * 60 * 1000;   // สัตว์ที่หิวจนหมดแล้ว ถ้าไม่มีใครให้อาหารภายใน 8 นาทีจะตาย (เดิม 4 นาที • 5 พ.ย. 2026)
   const PLAYER_HUNGER = { tickMs: 15000, start: 80, sitMs: 5000, sitGain: 1, workMul: 1.8, idleMul: 0.5, workMs: 20000 }; // ทำกิจกรรม (ตัดไม้/ตกปลา/ปลูก/ให้อาหารสัตว์ ฯลฯ ภายใน workMs) หิวเร็ว ×workMul • เดินเฉยๆ/ไม่ทำอะไร หิวช้า ×idleMul • // ผู้เล่นหิวลง 1 แต้มทุก 15 วินาที (เต็ม 100 อยู่ได้ ~25 นาที) ออฟไลน์ไม่ลด
   // บัวรดน้ำ 3 ระดับ: cap = ตักน้ำได้ครั้งละกี่ครั้งรด (หมดต้องกลับไปตักที่สระ), wet = ดินเปียกนานแค่ไหนหลังรด (ms), ต้องมีเลเวลชาวนาตามกำหนดถึงซื้อได้
-  const CANS = {
+  const CANS = { // WP-23: 10 ระดับ • คีย์ can_2/can_3 ความหมายเดิม (จุ/เปียก/ราคาไม่ต่ำกว่าเดิม) • ระดับ 4–10 เปียกคงที่ 180 วิ เพิ่มแค่ความจุ
     1: { name: 'บัวรดน้ำสังกะสี', emoji: '🫗', cap: 10, wet: 90000 },
     2: { name: 'บัวรดน้ำทองแดง', emoji: '🚿', price: 180, lv: 3, cap: 20, wet: 120000 },
-    3: { name: 'บัวรดน้ำทองคำ',  emoji: '🚰', price: 600, lv: 6, cap: 50, wet: 180000 },
+    3: { name: 'บัวรดน้ำทองคำ', emoji: '🚰', price: 600, lv: 6, cap: 50, wet: 180000 }, // lv 6 เท่าเดิม (ถ้าปลดที่ Lv5 ดินเปียก 180 วิ ทำให้ชาวนา Lv5 รดน้ำน้อยลง รายได้ +30% XP +16% หลุดเป้า WP-20)
+    4: { name: 'บัวรดน้ำหยก', emoji: '🔔', price: 900, lv: 7, cap: 70, wet: 180000 },
+    5: { name: 'บัวรดน้ำคริสตัล', emoji: '🔕', price: 1300, lv: 9, cap: 90, wet: 180000 },
+    6: { name: 'บัวรดน้ำไพลิน', emoji: '🔖', price: 1800, lv: 11, cap: 110, wet: 180000 },
+    7: { name: 'บัวรดน้ำทับทิม', emoji: '🔘', price: 2300, lv: 13, cap: 130, wet: 180000 },
+    8: { name: 'บัวรดน้ำมรกต', emoji: '🔙', price: 2800, lv: 15, cap: 150, wet: 180000 },
+    9: { name: 'บัวรดน้ำเพชร', emoji: '🔚', price: 3300, lv: 17, cap: 175, wet: 180000 },
+    10: { name: 'บัวรดน้ำสายรุ้ง', emoji: '🔛', price: 3800, lv: 19, cap: 200, wet: 180000 },
   };
-  const canTier = inv => (inv.can_3 ? 3 : inv.can_2 ? 2 : 1);
+  const canTier = inv => { for (let t = GEAR_MAX; t >= 2; t--) if (inv && inv['can_' + t]) return t; return 1; };
   // มินิเกมเกจตอนปลากินเบ็ด: ตัวชี้วิ่ง 0→1→0 ไป-กลับ (per = เวลาวิ่งทางเดียว ms) กดตอนอยู่ในโซนกลาง |ตำแหน่ง-0.5| <= half ถึงจะได้ปลา
   const FISH_GAUGE = { per: 1000, perRod: 70, half: 0.10, halfRod: 0.018, window: 4200, lag: 60, // 5 พ.ย. 2026: โซนกว้างขึ้น (เดิม 0.07/0.015: คัน 1 โซนแค่ 140 ms โดนจริง ~50%) เพราะมีชักเย่อเป็นด่านที่สองแล้ว
     // สุ่มใหม่ทุกครั้งที่ปลากินเบ็ด: จุดกึ่งกลางโซน cMin–cMax, ความเร็วตัวชี้ ×perVar, ความกว้างโซน ×halfVar, จุดเริ่มของตัวชี้ (จับทางไม่ได้)
@@ -1131,6 +1167,13 @@
   // ห้องครัวที่ร้านอาหาร: ทำอาหารจากวัตถุดิบข้ามสาย (ปลา + ผัก + ไข่/นม) ได้ราคาขายสูงกว่าขายของดิบแยกหลายเท่า
   // in: c = หมวด (fish = ปลาชนิดใดก็ได้ [ใช้ชนิดที่ถูกสุดก่อน], crop = ผัก, egg = ไข่ไก่/ไข่เป็ด) หรือ k = ไอเทมระบุชนิด
   const COOK_FEE = 0.3; // ค่าเช่าเตา = สัดส่วนของราคาขายอาหาร จ่ายเป็นเหรียญทุกครั้งที่ทำ (0.2 → 0.3 เมื่อ 25 ต.ค. 2026: เชฟได้มากกว่าอาชีพอื่นใน tools/econsim.js)
+  // ตัวห่ออุปกรณ์ WP-23 (ใช้ทั้งเซิร์ฟเวอร์และหน้าเว็บ) • ok=false (ไม่มี/ความทน 0) = เกมเดิม
+  const hoeHit = (inv, crop) => gearHit('hoe', hoeTier(inv), cropTier(crop));
+  const hoeBonus = (inv, crop) => hoeHit(inv, crop).bonus; // โอกาสได้พืช +1 ตอนเก็บเกี่ยว
+  const pailHit = (inv, A) => gearHit('pail', pailTier(inv), animalTier(A));
+  const pailChance = (inv, A) => Math.min(GEAR_TUNE.pail.max, ANIMAL_BONUS + pailHit(inv, A).bonus); // โอกาสผลผลิต ×2 (เฉพาะสัตว์ที่ตัวเองเลี้ยง)
+  const panHit = (r, tier) => gearHit('pan', tier, cookTier(r));
+  const panFee = (r, tier, ok) => ok === false ? COOK_FEE : Math.max(GEAR_TUNE.pan.minFee, COOK_FEE - panHit(r, tier).bonus); // สัดส่วนค่าเตา
   const COOK_CATS = { fish: { name: 'ปลา/สัตว์น้ำ', emoji: '🐟' }, crop: { name: 'ผัก/ผลไม้', emoji: '🥕' }, egg: { name: 'ไข่', emoji: '🥚' } };
   // เชฟ (อาชีพที่ 5): แต่ละสูตรปลดล็อกตามเลเวลเชฟ (lv) ได้ XP เชฟ (xp) และใช้เวลาทำ (time มิลลิวินาที = เตาต้องพักก่อนทำจานถัดไป)
   // XP สูตร = XP เดิม × (2.3 − 0.08×เลเวลสูตร) (ปรับ 25 ต.ค. 2026) ให้ XP/ชม. ของเชฟรวมเวลาหาวัตถุดิบใกล้ชาวนา ตรวจด้วย node tools/levelsim.js
@@ -1493,16 +1536,16 @@
   const WISH_EXTRA = Object.values(VEHICLES).map(v => ({ k: 'veh', p: v.price })).concat([{ k: 'boat', p: BOAT.price }]); // ที่ใช้เงินแบบซื้อครั้งเดียวที่เพิ่มในขั้น 2 (tools/econsim.js ใช้ทำรายการของที่อยากได้)
   // ร้านแต่ละสาย: buy = สินค้าที่ขาย, sell = คำนำหน้าไอเทมที่ร้านรับซื้อ
   const SHOPS = {
-    farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: CROP_IDS().map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
+    farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: CROP_IDS().map(c => 'seed_' + c).concat(Object.keys(CANS).filter(t => CANS[t].price).map(t => 'can_' + t), Object.keys(HOES).filter(t => HOES[t].lv).map(t => 'hoe_' + t)), sell: ['crop_'] },
     fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3'].concat(Object.keys(RODS).filter(t => RODS[t].price).map(t => 'rod_' + t)),                sell: ['fish_'] },
-    animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee', 'animal_alpaca', 'animal_horse', 'animal_boar', 'animal_turkey', 'animal_goat'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', 'turkey_egg', 'goat_milk'] },
+    animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee', 'animal_alpaca', 'animal_horse', 'animal_boar', 'animal_turkey', 'animal_goat'].concat(Object.keys(PAILS).filter(t => PAILS[t].lv).map(t => 'pail_' + t)), sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', 'turkey_egg', 'goat_milk'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
     mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'pick_7', 'pick_8', 'pick_9', 'pick_10', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: Object.keys(AXES).map(t => 'axe_' + t), sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
     // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือ ⛵ (BOAT) ซื้อครั้งเดียว ไม่ได้ขี่บนบก มีเรือ = ออกทะเลฟรีทุกเที่ยว (ไม่มี = จ่าย SEA.fee)
     vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v).concat(['boat']), sell: [] },
     cloth:  { name: '👕 ร้านเสื้อผ้า',    skill: null,     buy: Object.keys(WEAR).flatMap(c => WEAR[c].filter(i => i.price > 0).map(i => wearKey(c, i.id))), sell: [] },
-    food:   { name: '🍜 ร้านอาหาร',      skill: null,     buy: ['meal_bread'], // 2 พ.ย. 2026: ขายแค่ขนมปัง (อาหารฉุกเฉิน + วัตถุดิบเบอร์เกอร์ปลา) อาหารอื่นทำเองที่ครัว เมนูอื่นใน MEALS ยังกินได้และยังแจกจากกองกลาง
+    food:   { name: '🍜 ร้านอาหาร',      skill: null,     buy: ['meal_bread'].concat(Object.keys(PANS).filter(t => PANS[t].lv).map(t => 'pan_' + t)), // 2 พ.ย. 2026: ขายแค่ขนมปัง (อาหารฉุกเฉิน + วัตถุดิบเบอร์เกอร์ปลา) อาหารอื่นทำเองที่ครัว เมนูอื่นใน MEALS ยังกินได้และยังแจกจากกองกลาง
                                                         sell: ['dish_'] },
     furn:   { name: '🛋️ ร้านเฟอร์นิเจอร์', skill: null,     buy: Object.keys(FURN).filter(f => !FURN[f].rare && !FURN[f].craft && !FURN[f].noshop && !FURN[f].legacy).map(f => 'furn_' + f), sell: ['furn_'] }, // รับซื้อเฟอร์นิเจอร์ในกระเป๋า (ที่ยังไม่ได้วาง) คืนที่ SELLBACK ของราคา
   };
@@ -1525,8 +1568,10 @@
     if (k === 'medicine') return { name: 'ยารักษาสัตว์', emoji: '💊', buy: 20, cat: 'feed' };
     const fm = /^furn_(\w+)$/.exec(k);
     if (fm) return FURN[fm[1]] ? { name: FURN[fm[1]].name, emoji: FURN[fm[1]].emoji, buy: FURN[fm[1]].price, sell: FURN[fm[1]].rare ? undefined : Math.floor(FURN[fm[1]].price * FURN_SELL), std: FURN[fm[1]].noshop ? FURN[fm[1]].price : undefined, cat: 'furn', furn: fm[1] } : null; // std = ราคามาตรฐานที่แผงฝากขาย (ของทำเองอย่างเดียว ใช้ราคาเต็ม ช่างไม้จึงขายได้กำไร)
-    const cm = /^can_(\d)$/.exec(k);
+    const cm = /^can_(\d+)$/.exec(k);
     if (cm && CANS[cm[1]] && CANS[cm[1]].price) { const c = CANS[cm[1]]; return { name: `${c.name} (น้ำ ${c.cap} ครั้ง • ดินเปียก ${c.wet / 1000} วิ)`, emoji: c.emoji, buy: c.price, lv: c.lv, skill: 'farm', once: true, cat: 'gear', can: +cm[1] }; }
+    const gm = /^(hoe|pail|pan)_(\d+)$/.exec(k); // WP-23
+    if (gm) { const G = { hoe: [HOES, HOE_EMOJI, 'farm'], pail: [PAILS, PAIL_EMOJI, 'animal'], pan: [PANS, PAN_EMOJI, 'cook'] }[gm[1]], g = G[0][gm[2]]; if (g && g.lv) return { name: g.name, emoji: G[1][gm[2]], buy: g.price, lv: g.lv, skill: G[2], once: true, cat: 'gear', [gm[1]]: +gm[2] }; }
     let am = /^axe_(\d+)$/.exec(k);
     if (am && AXES[am[1]]) return { name: AXES[am[1]].name, emoji: AXE_EMOJI[am[1]], buy: AXES[am[1]].price, lv: AXES[am[1]].lv, skill: 'wood', once: true, cat: 'gear', axe: +am[1] };
     if (k === 'egg')  return { name: 'ไข่ไก่', emoji: '🥚', sell: 20, cat: 'animal' };
@@ -1564,7 +1609,9 @@
     return null;
   }
   // ขายของที่ซื้อมาคืนร้านได้ในราคา 70% ของราคาซื้อ (เฉพาะของชิ้นเดียวที่ซื้อครั้งเดียว: เสื้อผ้า คันเบ็ด ขวาน ตะเกียง)
-  const sellbackValue = k => { const i = itemInfo(k); return i && i.once && i.buy ? Math.floor(i.buy * SELLBACK) : 0; };
+  // frac = สัดส่วนความทนที่เหลือของอุปกรณ์ (ทนเหลือ ÷ ทนเต็มของระดับนั้น) ไม่ใส่ = 1 (ราคาเต็ม 70%) • ต่ำสุด SELLBACK_MIN_FRAC กันขายคืนของพังแล้วซื้อใหม่ถูกกว่าซ่อม
+  const SELLBACK_MIN_FRAC = 0.1;
+  const sellbackValue = (k, frac) => { const i = itemInfo(k); if (!(i && i.once && i.buy)) return 0; const f = Number.isFinite(frac) ? Math.max(SELLBACK_MIN_FRAC, Math.min(1, frac)) : 1; return Math.floor(i.buy * SELLBACK * f); };
   // ของที่เทรดได้: ไม่ใช่เหรียญ ไม่ใช่ของชิ้นเดียวที่ผูกกับตัว (เสื้อผ้า คันเบ็ด ขวาน ตะเกียง) ไม่ใช่สัตว์ที่ซื้อ
   const tradeValue = k => { const i = itemInfo(k); return i ? (i.std || i.sell || i.buy || 0) : 0; };
   // มูลค่าสินทรัพย์ในกระเป๋า (ไม่นับเหรียญ) สำหรับป้ายอันดับเศรษฐี: เฟอร์นิเจอร์ = ราคาร้านเต็ม (เท่า houseScore) • อุปกรณ์/ยานพาหนะ/สัตว์เลี้ยง/เสื้อผ้า (ของชิ้นเดียว) = ราคาซื้อเต็ม • ของขายได้ (ปลา แร่ ผลผลิต อาหาร) = ราคาขายฐาน • ของที่ขายคืนไม่ได้ (เมล็ด เหยื่อ อาหารสัตว์) ไม่นับ
@@ -1806,7 +1853,7 @@
     reportWhy: [{ id: 'abuse', name: 'พูดจาไม่ดี' }, { id: 'cheat', name: 'โกง' }, { id: 'other', name: 'อื่นๆ' }],
     muteMs: { '10m': 10 * 60000, '1h': 3600000, '1d': 86400000 }, banMs: { '1d': 86400000, '7d': 7 * 86400000 } }; // banMs ไม่มี perm: ถาวร = ระบบแบนเดิม
 
-  const api = { THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, AXE_MAX, ROD_MAX, AXE_TUNE, ROD_TUNE, chopHit, rodHit, fishTier, AXE_MIG6, ROD_MIG6, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, treeCutters, treeCapFor, treeGrowMs, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, AXE_EMOJI, ROD_EMOJI, BUILDINGS, SHOPS, DIRS,
+  const api = { THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, AXE_MAX, ROD_MAX, AXE_TUNE, ROD_TUNE, chopHit, rodHit, fishTier, AXE_MIG6, ROD_MIG6, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, treeCutters, treeCapFor, treeGrowMs, WATER_MS, CANS, canTier, GEAR_MAX, GEAR_TUNE, gearHit, HOES, PAILS, PANS, HOE_EMOJI, PAIL_EMOJI, PAN_EMOJI, hoeTier, SELLBACK_MIN_FRAC, pailTier, panTier, cropTier, animalTier, cookTier, hoeHit, hoeBonus, pailHit, pailChance, panHit, panFee, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, AXE_EMOJI, ROD_EMOJI, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

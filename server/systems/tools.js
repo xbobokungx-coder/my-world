@@ -6,7 +6,7 @@ const rodOf = inv => S.rodTier(inv);
 
 module.exports = {
   // ---------- ความทนทานเครื่องมือ (รายจ่ายสม่ำเสมอ): ใช้ทุกครั้งสึก 1 หมดแล้วต้องซ่อมที่ร้านเสียเหรียญ ----------
-  toolTier(p, tool) { const inv = p.rec.inv; return tool === 'rod' ? rodOf(inv) : tool === 'axe' ? (S.axeTier(inv) || 1) : tool === 'pick' ? (S.pickTier(inv) || 1) : 1; },
+  toolTier(p, tool) { const inv = p.rec.inv; return tool === 'rod' ? rodOf(inv) : tool === 'axe' ? (S.axeTier(inv) || 1) : tool === 'pick' ? (S.pickTier(inv) || 1) : tool === 'hoe' ? S.hoeTier(inv) : tool === 'pail' ? S.pailTier(inv) : tool === 'pan' ? S.panTier(inv) : 1; },
   fixN(p, tool) { return (p.rec.fix && p.rec.fix[tool]) || 0; },
   durMx(p, tool) { return S.durMax(tool, this.toolTier(p, tool), this.fixN(p, tool)); },
   durCur(p, tool) { const mx = this.durMx(p, tool), d = p.rec.dur && p.rec.dur[tool]; return d === undefined ? mx : Math.max(0, Math.min(d, mx)); },

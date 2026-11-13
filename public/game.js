@@ -1217,9 +1217,11 @@ function seasonInfoText(short) { // ฤดูปัจจุบัน + นั�
   if (short) return `${se.s.emoji} ${se.s.name} เหลือ ${waitTxt(se.end - t)}${list.length ? '\nปลูกได้: ' + list.slice(0, 2).join(' ') + (list.length > 2 ? ' +' + (list.length - 2) : '') : ''}`; // toast บนมือถือแคบ ย่อเหลือ 2 ชื่อ
   return `${se.s.emoji} ${se.s.name} เหลือ ${waitTxt(se.end - t)}${names ? ' • ปลูกได้: ' + names : ''}${free ? ' • Lv≤' + free + ' ปลูกได้ทุกฤดู' : ''}`;
 }
+const GEAR_SETS = { hoe: [Shared.HOES, Shared.HOE_EMOJI, 'farm'], pail: [Shared.PAILS, Shared.PAIL_EMOJI, 'animal'], pan: [Shared.PANS, Shared.PAN_EMOJI, 'cook'] }; // อุปกรณ์ติดตัว 10 ระดับ (ระดับ 1 ฟรี ไม่มีไอเทม)
+const gearTierOf = t => t === 'hoe' ? Shared.hoeTier(inv) : t === 'pail' ? Shared.pailTier(inv) : t === 'pan' ? Shared.panTier(inv) : 1;
 function toolInfo(t) { // ข้อมูลเครื่องมือในช่อง 1: e = ไอคอน, n = ชื่อเต็ม, sub = บรรทัดย่อในเมนู, cnt = ตัวเลขมุมช่อง (null = ไม่แสดง)
   if (t === 'hand') return { e: '✋', n: 'มือเปล่า (เก็บผลผลิต เปิดร้าน นั่ง)', sub: 'เก็บ/เปิดร้าน', cnt: null };
-  if (t === 'hoe') return { e: '⛏️', n: 'จอบ', sub: 'ขุดดิน', cnt: null };
+  if (t === 'hoe') { const ht = Shared.hoeTier(inv); return { e: '⛏️', n: `${Shared.HOES[ht].name} ระดับ ${ht}/${Shared.GEAR_MAX} (ขุดดิน)`, sub: `ระดับ ${ht}/${Shared.GEAR_MAX}`, cnt: null }; } // ไอคอนคง ⛏️ เพราะท่าทาง/ที่ถือผูกกับอีโมจิ (ภาพจอบใหม่รอขั้น 2)
   if (t === 'water') { const c = CANS[canTier(inv)], cap = buffOn('bigcan') ? Math.round(c.cap * BUFFS.bigcan.capMul) : c.cap; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${cap} • แตะสระเพื่อตักน้ำ)`, sub: `น้ำ ${wtr}/${cap}`, cnt: wtr }; }
   if (t === 'rod') { const b = itemInfo(selBait); return { e: Shared.ROD_EMOJI[rodLevel()] || '🎣', n: RODS[rodLevel()].name + ' ระดับ ' + rodLevel() + '/' + Shared.ROD_MAX + ' • ' + b.name.split(' ')[0] + ' ×' + (inv[selBait] || 0), sub: `ระดับ ${rodLevel()}/${Shared.ROD_MAX} • เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
   if (t === 'pick') { const pk = pickLevel(); return { e: pk ? Shared.PICK_EMOJI[pk] : '⚒️', n: pk ? Shared.PICKS[pk].name : 'อุปกรณ์ขุด (ยังไม่มี ซื้อที่ร้านช่างเหมือง)', sub: pk ? Shared.PICKS[pk].name : 'ยังไม่มี', cnt: pk ? null : 0 }; }
@@ -1384,7 +1386,7 @@ function renderBag() {
     const pieces = keysOwned.reduce((s, k) => s + inv[k], 0);
     const [tx, ty] = myTile();
     const cards = [
-      ['🪙 เหรียญ', inv.coin || 0], ['💰 ของที่ขายได้ (รวม)', '🪙 ' + worth], ['📦 ของในกระเป๋า', pieces + ' ชิ้น'], ['🎣 คันเบ็ด', RODS[rodLevel()].name], [CANS[canTier(inv)].emoji + ' บัวรดน้ำ', `${CANS[canTier(inv)].name} (${wtr}/${CANS[canTier(inv)].cap})`],
+      ['🪙 เหรียญ', inv.coin || 0], ['💰 ของที่ขายได้ (รวม)', '🪙 ' + worth], ['📦 ของในกระเป๋า', pieces + ' ชิ้น'], ['🎣 คันเบ็ด', RODS[rodLevel()].name], [CANS[canTier(inv)].emoji + ' บัวรดน้ำ', `${CANS[canTier(inv)].name} ระดับ ${canTier(inv)}/${Shared.GEAR_MAX} (${wtr}/${CANS[canTier(inv)].cap})`], [Shared.HOE_EMOJI[Shared.hoeTier(inv)] + ' จอบ', `${Shared.HOES[Shared.hoeTier(inv)].name} ระดับ ${Shared.hoeTier(inv)}/${Shared.GEAR_MAX}`], [Shared.PAIL_EMOJI[Shared.pailTier(inv)] + ' ตะกร้า/ถัง', `${Shared.PAILS[Shared.pailTier(inv)].name} ระดับ ${Shared.pailTier(inv)}/${Shared.GEAR_MAX}`], [Shared.PAN_EMOJI[Shared.panTier(inv)] + ' กระทะ', `${Shared.PANS[Shared.panTier(inv)].name} ระดับ ${Shared.panTier(inv)}/${Shared.GEAR_MAX}`],
       ['📍 ตำแหน่ง', `${tx}, ${ty}`], ['🕒 เวลาในเกม', $('clock').textContent.replace(/^\S+\s/, '')],
       ['👥 ออนไลน์', roster.size + ' คน'], ['🎙️ ไมค์', micOn ? 'เปิดอยู่' : 'ปิดอยู่'],
       ['🐔 ไก่ในฟาร์ม', animalCount('chicken') + ' ตัว'], ['🐄 วัวในฟาร์ม', animalCount('cow') + ' ตัว'], ['🐖 หมูในฟาร์ม', animalCount('pig') + ' ตัว'],
@@ -1416,9 +1418,9 @@ function renderBag() {
     h += ks.length ? `<div class="grid mini">` + ks.map(k => { const i = itemInfo(k); return `<div class="card mini" data-info="${k}" title="${i.name} ×${inv[k]}"><b>${i.emoji}</b><span class="nm">${i.name}</span><span class="cnt">${inv[k]}</span></div>`; }).join('') + '</div>' : '<p style="opacity:.7">หมวดนี้ยังไม่มีของ</p>';
     if (sub[0] === 'gear') { // อุปกรณ์ความทนทาน (ซ่อมได้) อยู่ในแท็บอุปกรณ์
       h += `<div class="sec">🎣 อุปกรณ์ (ความทนทาน)</div><div class="grid">` + Object.keys(DURABILITY).filter(t => (t !== 'axe' || axeLevel() > 0) && (t !== 'pick' || pickLevel() > 0)).map(t => {
-        const D = DURABILITY[t], tier = t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : 1, fx = dur[t] ? dur[t][2] || 0 : 0, mx = durMax(t, tier, fx), cur = dur[t] ? dur[t][0] : mx, pct = Math.round(cur / mx * 100);
-        const nm = t === 'rod' ? RODS[tier].name : t === 'axe' ? AXES[tier].name : t === 'pick' ? Shared.PICKS[tier].name : D.name;
-        return `<div class="card"><b>${{ hoe: '⛏️', water: '🫗', rod: Shared.ROD_EMOJI[rodLevel()] || '🎣', axe: Shared.AXE_EMOJI[axeLevel()] || '🪓' }[t]}</b>${nm}<br>${cur}/${mx}<br><small style="opacity:.7">ซ่อมแล้ว ${fx}/${REPAIR.maxFixes}${fx >= REPAIR.maxFixes ? ' (ซ่อมไม่ได้แล้ว)' : ''}</small><div class="hbar" style="height:6px"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div></div>`;
+        const D = DURABILITY[t], tier = t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : gearTierOf(t), fx = dur[t] ? dur[t][2] || 0 : 0, mx = durMax(t, tier, fx), cur = dur[t] ? dur[t][0] : mx, pct = Math.round(cur / mx * 100);
+        const nm = t === 'rod' ? RODS[tier].name : t === 'axe' ? AXES[tier].name : t === 'pick' ? Shared.PICKS[tier].name : GEAR_SETS[t] ? GEAR_SETS[t][0][tier].name : D.name;
+        return `<div class="card"><b>${{ hoe: Shared.HOE_EMOJI[tier], pail: Shared.PAIL_EMOJI[tier], pan: Shared.PAN_EMOJI[tier], water: '🫗', rod: Shared.ROD_EMOJI[rodLevel()] || '🎣', axe: Shared.AXE_EMOJI[axeLevel()] || '🪓', pick: Shared.PICK_EMOJI[pickLevel()] || '⚒️' }[t]}</b>${nm}${GEAR_SETS[t] ? ` <small>ระดับ ${tier}/${Shared.GEAR_MAX}</small>` : ''}<br>${cur}/${mx}<br><small style="opacity:.7">ซ่อมแล้ว ${fx}/${REPAIR.maxFixes}${fx >= REPAIR.maxFixes ? ' (ซ่อมไม่ได้แล้ว)' : ''}</small><div class="hbar" style="height:6px"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div></div>`;
       }).join('') + `</div><p style="font-size:12px;opacity:.65">ซ่อมได้ที่ร้านของสายนั้น ซ่อมแต่ละครั้งความทนทานสูงสุดลด ${Math.round(REPAIR.decay * 100)}% และค่าซ่อมแพงขึ้น ซ่อมได้สูงสุด ${REPAIR.maxFixes} ครั้งแล้วต้องซื้อใหม่</p>`;
     }
     if (!Object.keys(inv).some(k => k !== 'coin' && inv[k] > 0)) h += '<p style="opacity:.7">ยังไม่มีของ ลองปลูกผัก ตกปลา หรือเลี้ยงสัตว์ดูนะ</p>';
@@ -1426,10 +1428,12 @@ function renderBag() {
   } else if (bagTab === 'skills') {
     const nextCrop = () => Object.values(CROPS).filter(c => !c.legacy && c.lv > lvl('farm')).sort((a, b) => a.lv - b.lv)[0];
     const nextFish = () => FISH.filter(f => !f.sea && f.lv > lvl('fish')).sort((a, b) => a.lv - b.lv)[0];
+    const gearHint = (tool, nm) => { const G = GEAR_SETS[tool][0], cur = gearTierOf(tool), nx = Object.keys(G).map(Number).find(t => t > cur && G[t].lv); return nx ? ` • ${nm}ดีขึ้น: ${G[nx].name} (ระดับ ${nx}) ซื้อได้ที่ Lv${G[nx].lv} ... ระดับ ${Shared.GEAR_MAX} ที่ Lv${G[Shared.GEAR_MAX].lv}` : ` • ${nm}ระดับสูงสุดแล้ว`; };
     const hints = {
-      farm: () => { const c = nextCrop(); return (c ? `ถัดไป: ปลดล็อก ${c.emoji} ${c.name} ที่ Lv${c.lv}` : 'ปลดล็อกเมล็ดครบแล้ว') + ' • พืชโตเร็วขึ้น 4% ต่อเลเวล'; },
+      farm: () => { const c = nextCrop(); return (c ? `ถัดไป: ปลดล็อก ${c.emoji} ${c.name} ที่ Lv${c.lv}` : 'ปลดล็อกเมล็ดครบแล้ว') + ' • พืชโตเร็วขึ้น 4% ต่อเลเวล' + gearHint('hoe', 'จอบ'); },
       fish: () => { const f = nextFish(); return (f ? `ถัดไป: ตกได้ ${f.emoji} ${f.name} ที่ Lv${f.lv}` : 'ตกปลาได้ครบทุกชนิดแล้ว') + ` • คันเบ็ดดีขึ้นซื้อที่ร้านตกปลา (ระดับ 2 ที่ Lv${RODS[2].lv} ... ระดับ ${Shared.ROD_MAX} ที่ Lv${RODS[Shared.ROD_MAX].lv}) • คันต่ำไปปลาใหญ่จะสู้ยาก`; },
-      animal: () => `ซื้อวัวได้ที่ Lv${ANIMALS.cow.lv} • ซื้อหมูได้ที่ Lv${ANIMALS.pig.lv} • ซื้อผึ้งได้ที่ Lv${ANIMALS.bee.lv} (น้ำผึ้งจากรัง 🍯) • แต่ละชนิดมีเล้าของตัวเอง เล้าละ ${ANIMALS.cow.cap} ตัว • ผลผลิตออกเร็วขึ้น 5% ต่อเลเวล • สัตว์ป่วยรักษาด้วยยา 💊`,
+      animal: () => `ซื้อวัวได้ที่ Lv${ANIMALS.cow.lv} • ซื้อหมูได้ที่ Lv${ANIMALS.pig.lv} • ซื้อผึ้งได้ที่ Lv${ANIMALS.bee.lv} (น้ำผึ้งจากรัง 🍯) • แต่ละชนิดมีเล้าของตัวเอง เล้าละ ${ANIMALS.cow.cap} ตัว • ผลผลิตออกเร็วขึ้น 5% ต่อเลเวล • สัตว์ป่วยรักษาด้วยยา 💊` + gearHint('pail', 'ตะกร้า/ถัง'),
+      cook: () => 'ทำอาหารที่ครัวร้านอาหาร ยิ่งเลเวลสูงปลดสูตรแพงขึ้น' + gearHint('pan', 'กระทะ'),
       mine: () => { const n = Object.values(Shared.PICKS).find(x => x.lv > lvl('mine')); return (n ? `ถัดไป: ซื้อ ${n.name} ได้ที่ Lv${n.lv}` : 'ซื้ออุปกรณ์ขุดได้ครบทุกชนิดแล้ว') + ' • ยิ่งลงลึก แร่ยิ่งให้ XP เยอะ • อุปกรณ์ต่ำกว่าแร่ขุดได้แต่ช้า (🐌)'; },
       wood: () => { const n = Object.values(AXES).find(x => x.lv > lvl('wood')); return (n ? `ถัดไป: ซื้อ ${n.name} ได้ที่ Lv${n.lv}` : 'ซื้อขวานได้ครบทุกระดับแล้ว') + ' • ขวาน 10 ระดับ ต้นไม้ใหญ่ต้องใช้ขวานดีขึ้น • ขวานต่ำกว่าต้นฟันได้แต่ช้า • เลเวลสูงขึ้นได้ไม้เพิ่มและเจอไม้เนื้อแข็งบ่อยขึ้น'; },
     };
@@ -1477,11 +1481,11 @@ let farmTab = 'gear', cookFilter = null, cookOpen = null; // เมนูเช�
 // ทุกร้านที่รับซื้อมีแท็บ 💰 ขาย ไว้ท้ายสุด (แท็บซื้อของร้านที่ไม่มีแท็บเดิม)
 const SHOP_TABS = { // ทุกร้านที่มีซื้อขายใช้รูปแบบเดียวกัน: 🛒 ซื้อ → 🧰 อุปกรณ์ → (ทำ/ประดิษฐ์) → 💰 ขาย
   farm: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], fish: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']],
-  animal: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], food: [['buy', '🛒 ซื้อ'], ['cook', '👨‍🍳 ทำอาหาร'], ['sell', '💰 ขาย']],
+  animal: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], food: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['cook', '👨‍🍳 ทำอาหาร'], ['sell', '💰 ขาย']],
   wood: [['gear', '🧰 อุปกรณ์'], ['craft', '🔨 สร้าง'], ['sell', '💰 ขาย']], mine: [['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']],
   furn: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']] };
 // ของแต่ละชิ้นอยู่แท็บไหนของร้าน (ซื้อ = สินค้า/วัตถุดิบ/สัตว์ • อุปกรณ์ = เครื่องมือ บัวรดน้ำ อาหารสัตว์ ยา)
-const buyTabOf = (kind, k) => kind === 'farm' ? (k.startsWith('seed_') ? 'buy' : 'gear') : kind === 'fish' ? (k.startsWith('bait') ? 'buy' : 'gear') : kind === 'animal' ? (itemInfo(k).animal ? 'buy' : 'gear') : kind === 'wood' || kind === 'mine' ? 'gear' : 'buy';
+const buyTabOf = (kind, k) => kind === 'farm' ? (k.startsWith('seed_') ? 'buy' : 'gear') : kind === 'fish' ? (k.startsWith('bait') ? 'buy' : 'gear') : kind === 'animal' ? (itemInfo(k).animal ? 'buy' : 'gear') : kind === 'wood' || kind === 'mine' ? 'gear' : kind === 'food' && k.startsWith('pan_') ? 'gear' : 'buy';
 let furnSub = 'living';
 const FURN_SUBS = [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['divider', '🪟 ฉากกั้น']];
 const furnCatOf = k => (FURN[k.slice(5)] || {}).cat; // หมวดของที่ร้านเฟอร์นิเจอร์ (ดูจาก cat ใน FURN)
@@ -1544,6 +1548,16 @@ function updatePetBtn() {
   q.textContent = cur ? COMPANIONS[cur].emoji : '🐾';
   q.title = cur ? `${petNames[cur] || COMPANIONS[cur].name} ${Shared.petStatText(cur)}${need ? ' (หิว/ป่วย ต้องดูแล)' : ''} • กดเพื่อเปิดเมนูสัตว์เลี้ยง` : 'สัตว์เลี้ยง: กดเพื่อพาออกมา';
 }
+function sbValue(k) { // ราคาขายคืนที่ตรงกับเซิร์ฟเวอร์: ชิ้นที่ใช้อยู่ (ระดับสูงสุดของเครื่องมือนั้น) คิดตามความทนที่เหลือ ชิ้นอื่นได้เต็ม
+  const m = /^(rod|axe|pick|hoe|pail|pan)_(\d+)$/.exec(k);
+  if (m) { const t = m[1], n = +m[2], cur = t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : gearTierOf(t); if (n === cur) return sellbackValue(k, (dur[t] ? dur[t][0] : durMax(t, n, 0)) / DURABILITY[t].max[n]); }
+  return sellbackValue(k);
+}
+function gearNote(tool, t) { // บรรทัดผลของอุปกรณ์ติดตัว: ตัวเลขอ่านจาก shared ทั้งหมด (ระดับ N เต็มที่กับของเลเวล 2N-1..2N)
+  const G = Shared.GEAR_TUNE[tool], pc = Math.round(G.base * 100), rng = `Lv ${2 * t - 1}–${2 * t}`;
+  const fx = tool === 'hoe' ? `โอกาสได้พืชเพิ่ม ${pc}% (พืช ${rng})` : tool === 'pail' ? `โอกาสได้ผลผลิตสัตว์ ×2 เพิ่ม ${pc}% (สัตว์ ${rng})` : `ค่าเตาถูกลง ${pc}% ของราคาขาย (เมนู ${rng})`;
+  return `ระดับ ${t}/${Shared.GEAR_MAX} • ทน ${durMax(tool, t, 0)} • ${fx}`;
+}
 function renderShop() {
   if (shopKind === 'petmenu') { $('shopTitle').textContent = '🐾 สัตว์เลี้ยง'; $('shopInfo').textContent = '🪙 ' + (inv.coin || 0); $('shopBody').innerHTML = petPanelHtml(); bindPet($('shopBody')); updatePetBtn(); return; }
   if (shopKind === 'lift') { renderLift(); return; }
@@ -1561,7 +1575,7 @@ function renderShop() {
     $('shopBody').innerHTML = '<div class="sec">🚲 ยานพาหนะ (ขี่ได้ในเมือง เดินเร็วขึ้น • กด V ขี่/ลง)</div>' + vrows + '<div class="sec">⛵ ออกทะเล</div>' + brow;
     $('shopBody').querySelectorAll('[data-veh]').forEach(b => b.onclick = () => send({ t: 'veh', v: b.dataset.veh }));
     $('shopBody').querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: 1 }));
-    $('shopBody').querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask('ขายคืนร้าน (ได้ 70% ของราคาซื้อ)?', () => send({ t: 'sellback', item: b.dataset.sellback })));
+    $('shopBody').querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask('ขายคืนร้าน? (คิดตามสภาพ สูงสุด 70% ของราคา)', () => send({ t: 'sellback', item: b.dataset.sellback })));
     return;
   }
   const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'buy', tabs = SHOP_TABS[shopKind], sellTab = !!tabs && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'buy', craftTab = shopKind === 'wood' && farmTab === 'craft';
@@ -1586,15 +1600,16 @@ function renderShop() {
     }
     if (seedTab) { const c = CROPS[k.slice(5)], pr = seedProfit(k), ix = profitRank.indexOf(k); sub += ` • กำไร ${c.sell - c.seed}/ต้น (${pr.toFixed(1)}/นาที) ${ix < 3 ? '⭐ ดี' : ix >= profitRank.length - 3 ? '▼ ต่ำ' : ''}`; }
     const lockTxt = locked ? ` <small>🔒 Lv${i.lv}</small>` : '';
-    const tn = (/^(?:axe|rod)_(\d+)$/.exec(k) || [])[1], toolBetter = tn && +tn <= (k[0] === 'a' ? axeLevel() : rodLevel()); // ขวาน/คันระดับ ≤ ที่มีอยู่แล้ว = ซื้อไม่ได้
+    const tm = /^(axe|rod|hoe|pail|pan|can)_(\d+)$/.exec(k), tn = tm && tm[2], toolBetter = tn && +tn <= { axe: axeLevel, rod: rodLevel, hoe: () => Shared.hoeTier(inv), pail: () => Shared.pailTier(inv), pan: () => Shared.panTier(inv), can: () => canTier(inv) }[tm[1]](); // ขวาน/คัน/จอบ/ถัง/กระทะ/บัวระดับ ≤ ที่มีอยู่แล้ว = ซื้อไม่ได้
     if (toolBetter && !inv[k]) sub = 'มีที่ดีกว่าแล้ว ✅';
+    if (tm && GEAR_SETS[tm[1]]) sub += ' • ' + gearNote(tm[1], +tn); else if (tm && tm[1] === 'can') sub += ` • ระดับ ${tn}/${Shared.GEAR_MAX}`;
     const off = locked || toolBetter || (i.once && inv[k]) || (i.animal && animalCount(i.animal) >= ANIMALS[i.animal].cap);
     const ic = tn ? `<span style="font-size:28px;line-height:1;vertical-align:middle;margin-right:2px">${i.emoji}</span>` : i.emoji; // แถวขวาน/คัน: ไอคอนใหญ่ ~28px ให้แยกระดับออก
     h += `<div class="row${locked ? ' lock' : ''}"><span>${ic} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${i.buy} `
       + `<button class="btn small" data-buy="${k}" data-n="1" ${off || coin < i.buy ? 'disabled' : ''}>ซื้อ</button>`
       + (i.once || i.animal ? '' : ` <button class="btn small" data-buy="${k}" data-n="5" ${off || coin < i.buy * 5 ? 'disabled' : ''}>×5</button>`)
       + (i.food && inv[k] ? ` <button class="btn small" data-eat="${k}" style="background:#2ecc71;border-bottom-color:#1e8f4e" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน</button>` : '')
-      + (i.once && inv[k] ? ` <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sellbackValue(k)}</button>` : '') + `</span></div>`;
+      + (i.once && inv[k] ? ` <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sbValue(k)}</button>` : '') + `</span></div>`;
   }
   if (isFarm && farmTab === 'gear') { // แปลงเช่า
     const R = Shared.FARM_RENT, now = Date.now() + timeOffset, myKey = me ? me.name.toLowerCase() : '';
@@ -1605,7 +1620,7 @@ function renderShop() {
     }
   }
   if (shopKind === 'pet') h += petPanelHtml();
-  const tierOf = t => (t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : 1);
+  const tierOf = t => (t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : gearTierOf(t));
   const fixable = tabs && farmTab !== 'gear' ? [] : Object.keys(DURABILITY).filter(t => DURABILITY[t].shop === shopKind && tierOf(t) > 0);
   if (fixable.length) {
     h += '<div class="sec">🔧 ซ่อมอุปกรณ์ (ใช้แล้วสึกหรอ ถ้าพังต้องซ่อมก่อนใช้ต่อ)</div>';
@@ -1613,7 +1628,7 @@ function renderShop() {
       const tier = tierOf(t), fx = dur[t] ? dur[t][2] || 0 : 0, mx = durMax(t, tier, fx), cur = dur[t] ? dur[t][0] : mx, pct = Math.round(cur / mx * 100), price = toolPrice(t, tier);
       const can = canRepair(t, tier, cur, fx), cost = can ? repairCost(t, tier, cur, fx) : 0, worn = fx >= REPAIR.maxFixes, better = can && cost >= price * 0.6;
       const note = worn ? 'ซ่อมครบ ' + fx + ' ครั้งแล้ว ซ่อมไม่ได้อีก' : 'ซ่อมแล้ว ' + fx + '/' + REPAIR.maxFixes + ' ครั้ง' + (better ? ' • ซื้อใหม่คุ้มกว่า!' : '');
-      h += `<div class="row"><span>${DURABILITY[t].name} <small>${cur}/${mx}</small><div class="hbar" style="width:120px;height:7px"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div><small style="opacity:.7;display:block">${note}</small></span>`
+      h += `<div class="row"><span>${GEAR_SETS[t] ? GEAR_SETS[t][0][tier].name + ' <small>ระดับ ' + tier + '/' + Shared.GEAR_MAX + '</small>' : DURABILITY[t].name} <small>${cur}/${mx}</small><div class="hbar" style="width:120px;height:7px"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div><small style="opacity:.7;display:block">${note}</small></span>`
         + `<span>${worn ? '' : `<button class="btn small" data-repair="${t}" ${!can || (inv.coin || 0) < cost ? 'disabled' : ''}>${can ? '🔧 ซ่อม 🪙' + cost : 'ยังดีอยู่'}</button>`}`
         + (fx || cur <= 0 ? ` <button class="btn small${better || worn ? '' : ' muted'}" data-rebuy="${t}" ${(inv.coin || 0) < price ? 'disabled' : ''}>🛒 ซื้อใหม่ 🪙${price}</button>` : '') + `</span></div>`;
     }
@@ -1635,7 +1650,7 @@ function renderShop() {
     const have = c => Object.keys(inv).reduce((s, k) => s + (inv[k] > 0 && cookCat(c, k) ? inv[k] : 0), 0);
     const haveU = c => Object.keys(inv).filter(k => inv[k] > 0 && cookCat(c, k)).length; // จำนวนชนิดที่มี (สูตรที่ต้องคนละชนิด)
     const hv = n => n.c ? (n.u ? haveU(n.c) : have(n.c)) : (inv[n.k] || 0);
-    const fee = r => Math.round(r.sell * COOK_FEE), coin = inv.coin || 0, cl = lvl('cook');
+    const panOk = !dur.pan || dur.pan[0] > 0, fee = r => Math.round(r.sell * Shared.panFee(r, Shared.panTier(inv), panOk)), coin = inv.coin || 0, cl = lvl('cook');
     const st = COOK.map((r, i) => { const locked = cl < r.lv, ok = !locked && r.in.every(n => hv(n) >= n.n); return { r, i, locked, ok, can: ok && coin >= fee(r) }; });
     const catOf = (r, c) => r.in.some(n => n.c ? n.c === c : cookCat(c, n.k));
     const filt = cookFilter || (st.some(x => x.can) ? 'now' : 'all');
@@ -1681,7 +1696,7 @@ function renderShop() {
   body.querySelectorAll('[data-eat]').forEach(b => b.onclick = () => send({ t: 'eat', item: b.dataset.eat }));
   body.querySelectorAll('[data-repair]').forEach(b => b.onclick = () => send({ t: 'repair', tool: b.dataset.repair }));
   body.querySelectorAll('[data-rebuy]').forEach(b => b.onclick = () => send({ t: 'rebuy', tool: b.dataset.rebuy }));
-  body.querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask(`ขายคืนได้ 🪙${sellbackValue(b.dataset.sellback)} (70% ของราคาซื้อ หัก 30%) ยืนยัน?`, () => send({ t: 'sellback', item: b.dataset.sellback })));
+  body.querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask(`ขายคืนได้ 🪙${sbValue(b.dataset.sellback)} (ตามสภาพ สูงสุด 70% ของราคา) ยืนยัน?`, () => send({ t: 'sellback', item: b.dataset.sellback })));
 }
 // ร้านเสื้อผ้า: 3 แท็บ (เสื้อ / หมวก / กางเกง) ลองสวมดูตัวอย่างก่อนซื้อได้ ซื้อแล้วสวมให้เลย ขายคืนได้ 70% ของราคาซื้อ
 let clothTab = 'shirt', tryWear = null;

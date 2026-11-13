@@ -23,12 +23,13 @@ module.exports = {
       for (const k of own) { const take = Math.min(left, inv[k] - (use[k] || 0)); if (take > 0) { use[k] = (use[k] || 0) + take; left -= take; } if (!left) break; }
       if (left) return this.toast(p, 'วัตถุดิบไม่พอ');
     }
-    const fee = Math.round(r.sell * S.COOK_FEE); // ค่าเช่าเตา: หายจากระบบทั้งหมด (TOWN.feeShare) กันครัวเป็นช่องสร้างเงินล้วนๆ
+    const panOk = this.durCur(p, 'pan') > 0, pTier = S.panTier(inv), feeR = S.panFee(r, pTier, panOk), fee = Math.round(r.sell * feeR); // ค่าเช่าเตา: หายจากระบบทั้งหมด (TOWN.feeShare) กันครัวเป็นช่องสร้างเงินล้วนๆ
     if ((inv.coin || 0) < fee) return this.toast(p, `ค่าเช่าเตา 🪙 ${fee} เหรียญไม่พอ`);
     for (const [k, n] of Object.entries(use)) this.add(p, k, -n);
     this.add(p, 'coin', -fee, 'cookfee'); this.toPot(fee); this.add(p, r.id, 1);
     this.addXp(p, 'cook', r.xp); p.cookReady = now + r.time;
-    this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name} สำเร็จ! (+${r.xp} XP เชฟ • ค่าเตา -🪙${fee} • ขายได้ราว 🪙${r.sell})`); this.sfx(p, 'collect');
+    const pw = panOk ? S.panHit(r, pTier) : null; if (pw && pw.wear > 0 && pw.bonus > 0) this.durUse(p, 'pan', pw.wear); // กระทะสึกเมื่อทำสำเร็จ (ได้ลดค่าเตาจริงเท่านั้น)
+    this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name} สำเร็จ! (+${r.xp} XP เชฟ • ค่าเตา -🪙${fee}${feeR < S.COOK_FEE ? ` (กระทะช่วยลด ${Math.round((1 - feeR / S.COOK_FEE) * 100)}%)` : ''} • ขายได้ราว 🪙${r.sell})`); this.sfx(p, 'collect');
     this.event(p, 'cook');
   },
   craft(p, id) { // ประดิษฐ์ที่ร้านช่างไม้: ใช้ไม้ที่หามาได้ ได้ของ + XP ช่างไม้

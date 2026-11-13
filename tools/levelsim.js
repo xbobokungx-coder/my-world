@@ -20,31 +20,42 @@ const M = {
   buyAct: 0.25,    // จำนวนการกระทำต่อวัตถุดิบ 1 ชิ้นตอนซื้อจากตลาด (ซื้อทีละหลายชิ้น)
   EFF: 0.5,        // ผู้เล่นจริงทำได้กี่เท่าของเพดานนี้
   season: !process.argv.includes('--noseason'), // คิดข้อจำกัดฤดูของชาวนา (season-planting) • --noseason = ฐานเดิมไม่มีฤดู
+  gear: !process.argv.includes('--nogear'),     // WP-23: คิดโบนัส+ค่าสึกของจอบ/ตะกร้า-ถัง/กระทะ • --nogear = ฐานเดิมก่อน WP-23 (ไม่มีอุปกรณ์ บัวใช้เกณฑ์ Lv3/Lv6 เดิม)
 };
+// WP-23: อุปกรณ์ชาวนา/คนเลี้ยงสัตว์/เชฟ 10 ระดับ • ใช้ฟังก์ชันกลางเดียวกับเซิร์ฟเวอร์ (S.hoeHit / S.pailHit+pailChance / S.panHit+panFee) • ปลดทุก 2 เลเวล (ซื้อทันทีที่ปลด) • lag = ไม่อัป ใช้ต่ำกว่าระดับที่ปลดแล้วกี่ระดับ
+const gearAt = (list, lv) => { let t = 1; for (const [k, v] of Object.entries(list)) if (v.lv && lv >= v.lv) t = Math.max(t, +k); return t; };
+const hoeAt = lv => gearAt(S.HOES, lv), pailAt = lv => gearAt(S.PAILS, lv), panAt = lv => gearAt(S.PANS, lv);
+const NEWCAN = M.gear; // บัวตามตาราง CANS ใหม่ (Lv5 ได้บัว 3) ตายตัวตามธง --nogear ไม่ขยับตอนเปิด/ปิดอุปกรณ์ชั่วคราวเทียบ
+const canAt = lv => NEWCAN ? gearAt(S.CANS, lv) : (lv >= 6 ? 3 : lv >= 3 ? 2 : 1); // --nogear = เกณฑ์เดิม (บัว 3 ที่ Lv6)
+// ค่าสึกเฉลี่ยต่อ "ครั้งใช้" ที่ตัวคูณสึก 1 (ราคา÷ทน×WEAR_RATE.base×1.35 แบบเดียวกับขวาน/คัน/อีเต้อ) • ต้องคูณ wear จาก gearHit เอง
+const gearWear = (tool, tier) => S.TOOL_PRICE[tool][tier] / S.DURABILITY[tool].max[tier] * S.WEAR_RATE.base * 1.35;
+const invOf = (tool, t) => t > 1 ? { [tool + '_' + t]: 1 } : {};
+const withGear = (on, fn) => { const g = M.gear; M.gear = on; try { return fn(); } finally { M.gear = g; } };
 
 // ชาวนา: ถ้าเปิด M.season (ค่าเริ่ม) คิดข้อจำกัดฤดูของ season-planting (S.SEASONS: พืช lv ≤ freeLv ปลูกได้ทุกฤดู ราคา ×1 • พืช lv > freeLv ปลูกได้เฉพาะฤดูตัวเอง ราคาในฤดู ×inMul) แล้ว "เฉลี่ยทุกฤดูในวงจร" (ฤดูยาวเท่ากัน) • ปิดด้วย --noseason = ไม่มีฤดู (ฐานเดิมก่อน season-planting)
 const seasonList = () => (M.season && S.SEASONS && S.SEASONS.lockCrops !== undefined && S.canPlant && S.cropSeason) ? S.SEASONS.list : null;
-function farmIn(lv, t) { // t = เวลาในฤดูที่ต้องการ (undefined = ไม่คิดฤดู) • byXp = เลือกพืชตาม XP/ชม. แทนเหรียญ/ชม.
-  const cap = Math.min(S.FARM_CAP.max, S.FARM_CAP.base + S.FARM_CAP.perLv * (lv - 1)), m = 1 + 0.04 * (lv - 1), wet = S.CANS[lv >= 6 ? 3 : lv >= 3 ? 2 : 1].wet;
+function farmIn(lv, t, lag = 0) { // lag = ไม่อัปจอบ • t = เวลาในฤดูที่ต้องการ (undefined = ไม่คิดฤดู) • byXp = เลือกพืชตาม XP/ชม. แทนเหรียญ/ชม.
+  const cap = Math.min(S.FARM_CAP.max, S.FARM_CAP.base + S.FARM_CAP.perLv * (lv - 1)), m = 1 + 0.04 * (lv - 1), wet = S.CANS[canAt(lv)].wet, ht = M.gear ? Math.max(1, hoeAt(lv) - lag) : 1, hinv = invOf('hoe', ht);
   let best = null, bestX = null;
   for (const [k, c] of Object.entries(S.CROPS)) {
     if (c.lv > lv || c.legacy) continue;
     let pm = 1; // ตัวคูณราคาตามฤดู
     if (t !== undefined) { if (!S.canPlant(k, t)) continue; pm = S.cropSeason(k, t) === 1 ? S.SEASONS.inMul : 1; }
     const grow = c.time / m, waters = Math.ceil(grow / wet), acts = 3 + waters; // ขุด ปลูก เก็บ + รดน้ำทุกครั้งที่ดินแห้ง
-    if (S.cropCan && S.canTier({ can_2: lv >= 3, can_3: lv >= 6 }) < S.cropCan(c)) continue; // ยังไม่มีบัวที่พืชนี้ต้องใช้
+    if (S.cropCan && canAt(lv) < S.cropCan(c)) continue; // ยังไม่มีบัวที่พืชนี้ต้องใช้
     const ppm = Math.min(cap / (grow / 60000), M.apm / acts);                 // ต้นต่อนาที: ติดเพดานแปลงหรือแรงงาน
-    const coin = ppm * (c.sell * M.cropPrice * pm - c.seed) * 60, xp = ppm * (c.xp + 1 + 2 + waters) * 60;
-    const r = { pick: k, coin, xp, gross: ppm * c.sell * pm * 60, cost: ppm * c.seed * 60, pieces: ppm * 60, cat: 'crop' };
+    const gh = M.gear ? S.hoeHit(hinv, c) : { bonus: 0, wear: 0 }, wc = M.gear && gh.wear > 0 ? gearWear('hoe', ht) * gh.wear : 0; // จอบ: โอกาสพืช +1 ตอนเก็บ (ขายได้ตามราคาตลาด) และจอบสึกต่อการเก็บเกี่ยว (ไม่นับสึกตอนขุด: ช่องที่ขุดแล้วอยู่ต่อหลังเก็บ)
+    const coin = ppm * (c.sell * (1 + gh.bonus) * M.cropPrice * pm - c.seed - wc) * 60, xp = ppm * (c.xp + 1 + 2 + waters) * 60;
+    const r = { pick: k, coin, xp, gross: ppm * c.sell * (1 + gh.bonus) * pm * 60, cost: ppm * c.seed * 60, wear: ppm * wc * 60, pieces: ppm * (1 + gh.bonus) * 60, cat: 'crop' };
     if (!best || coin > best.coin) best = r;
     if (!bestX || xp > bestX.xp) bestX = r;
   }
   best.byXp = { pick: bestX.pick, coin: bestX.coin, xp: bestX.xp }; return best;
 }
-function farm(lv) {
-  const L = seasonList(); if (!L) return farmIn(lv);
-  const rows = L.map(se => Object.assign({ id: se.id }, farmIn(lv, S.SEASONS.epoch + L.indexOf(se) * S.SEASONS.days * 864e5 + 1))), n = rows.length, avg = k => rows.reduce((a, r) => a + r[k], 0) / n;
-  return { pick: rows.map(r => r.pick.slice(0, 3)).join('/'), coin: avg('coin'), xp: avg('xp'), gross: avg('gross'), cost: avg('cost'), pieces: avg('pieces'), cat: 'crop', seasons: rows };
+function farm(lv, lag = 0) {
+  const L = seasonList(); if (!L) return farmIn(lv, undefined, lag);
+  const rows = L.map(se => Object.assign({ id: se.id }, farmIn(lv, S.SEASONS.epoch + L.indexOf(se) * S.SEASONS.days * 864e5 + 1, lag))), n = rows.length, avg = k => rows.reduce((a, r) => a + r[k], 0) / n;
+  return { pick: rows.map(r => r.pick.slice(0, 3)).join('/'), coin: avg('coin'), xp: avg('xp'), gross: avg('gross'), cost: avg('cost'), wear: avg('wear'), pieces: avg('pieces'), cat: 'crop', seasons: rows };
 }
 function fishPool(lv, rod, tier, sea) { // sea = true: ปลาทะเล (ชุดแยก) • fishWeight รวมสระเลื่อน FISHPOOL (fishPoolMul) แล้ว
   return S.FISH.filter(f => !!f.sea === !!sea && f.lv <= lv).map(f => ({ f, w: S.fishWeight(f, lv, rod, tier) })).filter(x => x.w > 0);
@@ -109,20 +120,23 @@ function wood(lv, lag = 0) {
   const best = S.CRAFT.filter(r => r.lv <= lv).slice(-1)[0];
   return { pick: best ? best.id.replace('furn_', '').slice(0, 6) : 'ขาย', coin: tpm * (val - wearC) * 60, xp: tpm * (xp + craftXp) * wl * 60, gross: tpm * val * 60, cost: tpm * wearC * 60, pieces: tpm * pcs * 60, cat: 'wood', axe, trees: tpm * 60 };
 }
-function animal(lv) {
+function animal(lv, lag = 0) { // lag = ไม่อัปตะกร้า-ถัง
+  const pt = M.gear ? Math.max(1, pailAt(lv) - lag) : 1, pinv = invOf('pail', pt);
   const sp = Math.max(0.5, 1 - 0.05 * (S.perkLv(lv) - 1)); // เซิร์ฟเวอร์ใช้ perkLv (ตัน Lv10) ที่ server.js:551 (WP-21: เดิมใช้ lv เลยเร็วเกินจริงที่ Lv11+)
-  let cyc = 0, xpc = 0, coinc = 0, gr = 0, fc = 0;
+  let cyc = 0, xpc = 0, coinc = 0, gr = 0, fc = 0, wr = 0, pcs = 0;
   for (const A of Object.values(S.ANIMALS)) {
     if (A.lv > lv) continue;
     const per = A.cap / ((A.time[0] + A.time[1]) / 2 * sp / 60000); // รอบผลิตต่อนาทีของเล้าเต็ม
     const prod = S.itemInfo(A.product), feed = S.itemInfo(A.feedItem);
-    cyc += per; xpc += per * (S.animalXp ? S.animalXp(A.xp, lv) + S.animalXp(A.feedXp != null ? A.feedXp : S.ANIMAL_XP.feed, lv) : A.xp + 3); const yld = 1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS); coinc += per * ((prod.sell || 0) * yld * M.animalPrice - feed.buy); gr += per * (prod.sell || 0) * yld; fc += per * feed.buy;
+    cyc += per; xpc += per * (S.animalXp ? S.animalXp(A.xp, lv) + S.animalXp(A.feedXp != null ? A.feedXp : S.ANIMAL_XP.feed, lv) : A.xp + 3); const yld = 1 + (M.gear ? S.pailChance(pinv, A) : (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS)), ph = M.gear ? S.pailHit(pinv, A) : null, wc = ph && ph.wear > 0 ? gearWear('pail', pt) * ph.wear : 0; // ตะกร้า-ถัง: โอกาสผลผลิต ×2 บวกจากพื้น ANIMAL_BONUS • สึกต่อการเก็บ 1 ครั้ง
+    coinc += per * ((prod.sell || 0) * yld * M.animalPrice - feed.buy - wc); gr += per * (prod.sell || 0) * yld; fc += per * feed.buy; wr += per * wc; pcs += per * yld;
   }
   const f = Math.min(1, M.apm / 2 / cyc); // ให้อาหาร + เก็บ = 2 การกระทำต่อรอบ
-  return { pick: 'เล้าเต็ม', coin: coinc * f * 60, xp: xpc * f * 60, gross: gr * f * 60, cost: fc * f * 60, pieces: cyc * (1 + (S.ANIMAL_BONUS === undefined ? 0.5 : S.ANIMAL_BONUS)) * f * 60, cat: 'animal' };
+  return { pick: 'เล้าเต็ม', coin: coinc * f * 60, xp: xpc * f * 60, gross: gr * f * 60, cost: fc * f * 60, wear: wr * f * 60, pieces: pcs * f * 60, cat: 'animal' };
 }
-function cook(lv, buy = false, tol = 0.01) { // buy = true: เชฟซื้อวัตถุดิบจากตลาดผู้เล่น (WP-22) แทนหาเอง • เลือกสูตรที่ XP/ชม. ≥ (1−tol)×สูงสุด แล้วเอาที่เหรียญ/ชม.มากสุด (tol 1% = XP-pick กัน tie สลับไปมา, 10% = เชฟที่ไล่เหรียญแต่ยังไม่หลุดเส้น XP, 1 = ไล่เหรียญล้วน)
+function cook(lv, buy = false, tol = 0.01, lag = 0) { // buy = true: เชฟซื้อวัตถุดิบจากตลาดผู้เล่น (WP-22) แทนหาเอง • เลือกสูตรที่ XP/ชม. ≥ (1−tol)×สูงสุด แล้วเอาที่เหรียญ/ชม.มากสุด (tol 1% = XP-pick กัน tie สลับไปมา, 10% = เชฟที่ไล่เหรียญแต่ยังไม่หลุดเส้น XP, 1 = ไล่เหรียญล้วน)
   // นาทีที่ต้องใช้หาวัตถุดิบ 1 ชิ้น เมื่ออาชีพอื่นเลเวลเท่ากัน: ปลาถูกสุด/ผักถูกสุด/ไข่ = เวลาลงมือ (ไม่นับรอโต)
+  const pt = M.gear ? Math.max(1, panAt(lv) - lag) : 1; // กระทะที่ใช้ (ไม่อัป = ต่ำกว่าที่ปลด lag ระดับ)
   const rod = lv >= 6 ? 3 : lv >= 3 ? 2 : 1, fishMin = 1 / fishCpm(lv, rod), cropMin = 4 / M.apm, eggMin = 2 / M.apm / 1.5;
   const need = { fish: fishMin, crop: cropMin, egg: eggMin, milk: eggMin, meal_bread: 0 };
   let best = null; const cand = [];
@@ -140,9 +154,10 @@ function cook(lv, buy = false, tol = 0.01) { // buy = true: เชฟซื้�
       }
       min += x.n * (m || 0);
     }
-    const fee = r.sell * S.COOK_FEE, coin = 60 / min * (r.sell - fee - ing), xp = 60 / min * r.xp;
+    const ph = M.gear ? S.panHit(r, pt) : null, fee = r.sell * (M.gear ? S.panFee(r, pt, true) : S.COOK_FEE), wc = ph && ph.wear > 0 ? gearWear('pan', pt) * ph.wear : 0; // กระทะ: ลดค่าเตา และสึกต่อจาน
+    const coin = 60 / min * (r.sell - fee - ing - wc), xp = 60 / min * r.xp;
     if (buy && coin <= 0) continue; // ซื้อแล้วขาดทุน = ไม่ทำ
-    cand.push({ pick: r.id.replace('dish_', ''), coin, xp, gross: 60 / min * r.sell, cost: 60 / min * (fee + ing), pieces: 60 / min, cat: 'dish' });
+    cand.push({ pick: r.id.replace('dish_', ''), coin, xp, gross: 60 / min * r.sell, cost: 60 / min * (fee + ing + wc), wear: 60 / min * wc, pieces: 60 / min, cat: 'dish' });
   }
   const mx = Math.max(...cand.map(c => c.xp));
   for (const c of cand) if (c.xp >= mx * (1 - tol) - 1e-9 && (!best || c.coin > best.coin)) best = c;
@@ -212,6 +227,32 @@ if (require.main === module) {
   console.log('Lv   หาเอง 99%  90%  ล้วน  | ซื้อ 99%  90%  ล้วน');
   for (let lv = 1; lv <= S.MAX_LV; lv++) { const F = r.farm[lv - 1].coin, p = (b, t) => { const c = cook(lv, b, t); return c ? Math.round(c.coin / F * 100) : 0; }, f = v => (String(v) + (v < 85 || v > 120 ? '!' : ' ')).padStart(5);
     console.log(String(lv).padStart(2) + '        ' + f(p(false, 0.01)) + f(p(false, 0.1)) + f(p(false, 1)) + '   |      ' + f(p(true, 0.01)) + f(p(true, 0.1)) + f(p(true, 1))); }
+  // อุปกรณ์ชาวนา/คนเลี้ยงสัตว์/เชฟ (WP-23): ใช้ S.hoeHit / S.pailChance+pailHit / S.panFee+panHit เดียวกับเซิร์ฟเวอร์ • --nogear = ฐานเดิม
+  if (M.gear) {
+    const own = { farm: lv => farm(lv), animal: lv => animal(lv), cook: lv => cook(lv, false, 0.01) }, off = { farm: lv => withGear(false, () => farm(lv)), animal: lv => withGear(false, () => animal(lv)), cook: lv => withGear(false, () => cook(lv, false, 0.01)) };
+    const tierAtLv = { farm: hoeAt, animal: pailAt, cook: panAt }, GN = { farm: 'จอบ', animal: 'ตะกร้า-ถัง', cook: 'กระทะ' };
+    console.log(`\nอุปกรณ์ WP-23 รายเลเวล: ระดับ • ค่าสึก % ของรายได้ขั้นต้น (เป้า 7–9% Lv1–2 ยอม 4–9%) • กำไรสุทธิตรงระดับเทียบ --nogear (เป้า +3 ถึง +8%) • เชฟโหมดซื้อ (ตลาด ×${M.mktMul}) กำไร%`);
+    console.log('Lv |  จอบ ระดับ สึก%  สุทธิ | ตะกร้า ระดับ สึก%  สุทธิ | กระทะ ระดับ สึก%  สุทธิ  ซื้อตลาด');
+    for (let lv = 1; lv <= S.MAX_LV; lv++) {
+      const cells = ['farm', 'animal', 'cook'].map(k => { const a = own[k](lv), b = off[k](lv), wp = a.wear / a.gross * 100, g = (a.coin / b.coin - 1) * 100, ok = lv <= 2 ? (wp >= 4 && wp <= 9) : (wp >= 7 && wp <= 9);
+        return String(tierAtLv[k](lv)).padStart(4) + '   ' + wp.toFixed(1).padStart(5) + (ok ? ' ' : '!') + ((g >= 0 ? '+' : '') + g.toFixed(1) + '%').padStart(7) + (g < 3 || g > 8 ? '!' : ' '); });
+      const bm = cook(lv, true, 0.01), bo = withGear(false, () => cook(lv, true, 0.01));
+      console.log(String(lv).padStart(2) + ' | ' + cells.join(' | ') + '  ' + (bm && bo ? ((bm.coin / bo.coin - 1) * 100).toFixed(1) + '%' : '-'));
+    }
+    // คืนทุน: ราคา ÷ เหรียญสุทธิจริง/ชม. (เพดาน × EFF) ณ เลเวลที่ปลด (เป้า ≤ 1.2 ชม.) • จอบ+บัวซื้อคู่กันที่เลเวลเดียว • ความทนทาน • ค่าสึกต่อครั้งใช้ • "คืนทุนจริง" = ราคา ÷ (กำไรที่เพิ่มต่อชม. เทียบใช้ระดับก่อนหน้า) ชม.เล่นจริง
+    console.log('\nอุปกรณ์: ซื้อได้ใน (ชม. เล่นจริงของรายได้สุทธิ ณ เลเวลที่ปลด เป้า ≤ 1.2) • ทน • ค่าสึก/ครั้งที่ตรงระดับ • คืนทุนจริง = ราคา ÷ กำไรเพิ่มต่อชม. เทียบระดับก่อนหน้า');
+    console.log('ระดับ Lv | จอบ ราคา  ทน  สึก/ครั้ง | บัว ราคา | จอบ+บัว ซื้อได้ใน | ตะกร้า ราคา  ทน  สึก/ครั้ง ซื้อได้ใน | กระทะ ราคา  ทน  สึก/ครั้ง ซื้อได้ใน | คืนทุนจริง จอบ/ตะกร้า/กระทะ');
+    for (let t = 2; t <= S.GEAR_MAX; t++) { const lv = 2 * t - 1, F = r.farm[lv - 1].coin * M.EFF, A = r.animal[lv - 1].coin * M.EFF, C = r.cook[lv - 1].coin * M.EFF, hp = S.TOOL_PRICE.hoe[t], cp = S.CANS[t].price, pp = S.TOOL_PRICE.pail[t], np = S.TOOL_PRICE.pan[t];
+      const real = [['farm', farm, hp], ['animal', animal, pp], ['cook', (l, g) => cook(l, false, 0.01, g), np]].map(([k, fn, pr]) => { const d = (fn(lv, 0).coin - fn(lv, 1).coin) * M.EFF; return d > 0 ? (pr / d).toFixed(0) : '-'; });
+      console.log(String(t).padStart(5) + String(lv).padStart(4) + ' | ' + num(hp).padStart(5) + String(S.DURABILITY.hoe.max[t]).padStart(5) + gearWear('hoe', t).toFixed(1).padStart(8) + ' | ' + num(cp).padStart(5) + ' | ' + ((hp + cp) / F).toFixed(2).padStart(9) + ' | ' + num(pp).padStart(5) + String(S.DURABILITY.pail.max[t]).padStart(6) + gearWear('pail', t).toFixed(1).padStart(8) + (pp / A).toFixed(2).padStart(9) + ' | ' + num(np).padStart(5) + String(S.DURABILITY.pan.max[t]).padStart(5) + gearWear('pan', t).toFixed(1).padStart(8) + (np / C).toFixed(2).padStart(9) + ' | ' + real.join('/')); }
+    // ไม่อัป: ใช้ต่ำกว่าระดับที่ปลด 1/2/3 ระดับ และไม่ซื้อเลย (ระดับ 1 ตลอด) • เหรียญสุทธิ/ชม. % ของอัปครบ | XP/ชม. % • คอลัมน์ท้าย = ไม่มีอุปกรณ์เลย (--nogear) ต้องไม่สูงกว่า lag อื่น
+    console.log('\nไม่อัปอุปกรณ์ (ต่ำกว่าระดับที่ปลด 1/2/3 ระดับ • ไม่ซื้อเลย): เหรียญสุทธิ/ชม. % ของอัปครบ | XP/ชม. % • ท้าย = ไม่มีอุปกรณ์/พัง (ฐานเดิม) • ! = ลำดับไม่เป็น lag1≥lag2≥lag3≥ไม่มี');
+    for (const k of ['farm', 'animal', 'cook']) {
+      console.log(GN[k].padEnd(10) + [1, 2, 3, 9].map(l => (l === 9 ? 'ไม่ซื้อเลย' : 'ต่ำกว่า ' + l).padStart(15)).join('') + '      ไม่มีเลย');
+      const fn = (lv, l) => k === 'farm' ? farm(lv, l) : k === 'animal' ? animal(lv, l) : cook(lv, false, 0.01, l);
+      for (const lv of [5, 7, 9, 11, 13, 15, 17, 19]) { const b = fn(lv, 0), xs = [1, 2, 3, 9].map(l => fn(lv, l)), nog = off[k](lv); let mono = true, prev = Infinity; for (const x of xs.concat([nog])) { if (x.coin > prev + 1e-6) mono = false; prev = x.coin; }
+        console.log('  Lv' + String(lv).padStart(2) + '    ' + xs.map(x => (Math.round(x.coin / b.coin * 100) + '% | ' + Math.round(x.xp / b.xp * 100) + '%').padStart(15)).join('') + (Math.round(nog.coin / b.coin * 100) + '%').padStart(12) + (mono ? '' : '  !')); } }
+  }
   // นักขุดแร่: XP/ชม. ต่อชั้นเทียบเป้า 1,000×1.3^(f−1) (จริง) และเหรียญเทียบชาวนา และต้นทุนสึกหรอ
   console.log(`\nนักขุดแร่ รายชั้น: XP/ชม.จริง (เพดาน × ${M.EFF}) เทียบเป้า ±${MINE_GOAL.tol * 100}% • เหรียญ/ชม.สุทธิเทียบชาวนาเลเวลเดียวกัน (เป้า ≤ 125%) • ต้นทุนสึกหรอ % ของรายได้ (เป้า ≤ 10%)`);
   console.log('ชั้น Lv     XP/ชม.จริง   เป้า  ตรง    เหรียญ/ชม. %ชาวนา  สึกหรอ%  ก้อน/ชม.');
@@ -263,4 +304,4 @@ if (require.main === module) {
   console.log(`\nเหรียญ/ชม. (เพดานคนเดียว ตามทางที่เลือก)`);
   for (const k of Object.keys(SIMS)) console.log(S.SKILLS[k].name.padEnd(12) + r[k].map(x => num(x.coin).padStart(7)).join(''));
 }
-module.exports = { M, SIMS, cook, mine, FARM_GOAL, ANIMAL_GOAL, WOOD_GOAL, COOK_GOAL, GOALS, goalXpH, goalHours, wood, fish, axeAt, rodAt, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours, FISH_GOAL, fishGoalXpH, fishGoalHours, fishSea };
+module.exports = { M, SIMS, hoeAt, pailAt, panAt, canAt, gearWear, withGear, animal, farm, cook, mine, FARM_GOAL, ANIMAL_GOAL, WOOD_GOAL, COOK_GOAL, GOALS, goalXpH, goalHours, wood, fish, axeAt, rodAt, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours, FISH_GOAL, fishGoalXpH, fishGoalHours, fishSea };

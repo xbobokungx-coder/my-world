@@ -418,7 +418,9 @@ class World {
       if (this.petLuck(p, info.emoji + ' ' + info.name)) this.add(p, A.product, 1);
       let extra = 0;
       const al = this.lv(p, 'animal');
-      if (mine) { this.addXp(p, 'animal', S.animalXp(A.xp, al)); if (Math.random() < S.ANIMAL_BONUS) { extra = 1; this.add(p, A.product, 1); } } // เลี้ยงเอง = XP เต็ม + ลุ้นผลผลิตงาม ×2
+      if (mine) { this.addXp(p, 'animal', S.animalXp(A.xp, al)); const pOk = this.durCur(p, 'pail') > 0, ph = S.pailHit(p.rec.inv, A); // ถัง/ตะกร้าติดตัว: พังแล้วได้โอกาสพื้น ANIMAL_BONUS เดิม (สุ่มครั้งเดียวเหมือนเดิม)
+        if (Math.random() < (pOk ? S.pailChance(p.rec.inv, A) : S.ANIMAL_BONUS)) { extra = 1; this.add(p, A.product, 1); }
+        if (pOk && ph.wear > 0) this.durUse(p, 'pail', ph.wear); } // เลี้ยงเอง = XP เต็ม + ลุ้นผลผลิตงาม ×2
       else { this.addXp(p, 'animal', Math.max(1, Math.floor(S.animalXp(A.xp, al) / 2))); if (prod.feeder) { this.toast(p, `🦊 เก็บผลผลิตของ ${prod.fn || 'ผู้เลี้ยง'} ที่ไม่มาเก็บเกิน 1 วัน`); this.addLog(`🔓 ${p.name} เก็บ${info.emoji} ${info.name}ของ ${prod.fn || 'ผู้เลี้ยง'} (หมดเวลาจอง 1 วัน)`); } } // คนอื่นเก็บได้เมื่อเจ้าของไม่มาเก็บครบ 1 วัน = XP ครึ่ง เจ้าของเสียผลผลิต
       prod.feeder = ''; prod.fn = ''; prod.pm = 0;
       this.event(p, 'collect');
@@ -434,6 +436,8 @@ class World {
       this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp); this.tire(p, 'harvest', c.sell);
       if (this.petLuck(p, c.emoji + ' ' + c.name)) this.add(p, 'crop_' + tile.c, 1);
       this.toast(p, `เก็บ ${c.emoji} ${c.name}`);
+      if (this.durCur(p, 'hoe') > 0) { const hh = S.hoeHit(p.rec.inv, c); // จอบติดตัว: ลุ้นผลผลิต +1 (พังแล้วไม่บล็อกการเก็บ แค่ไม่ได้โบนัส)
+        if (hh.bonus > 0) { if (Math.random() < hh.bonus) { this.add(p, 'crop_' + tile.c, 1); this.toast(p, '✨ จอบดี ผลผลิตงาม +1'); } if (hh.wear > 0) this.durUse(p, 'hoe', hh.wear); } }
       if (tile.o && tile.o !== p.key) this.addLog(`🔓 ${p.name} เก็บ${c.emoji} ${c.name}ของ ${tile.on || 'ผู้เล่นอื่น'} (หมดเวลาจอง 1 วัน)`); // ข่าว: ใครเก็บผลผลิตของคนอื่นที่ปลดล็อกแล้ว
       else if (c.sell >= 100) this.addLog(`${c.emoji} ${p.name} เก็บเกี่ยว${c.name}สำเร็จ`);
       this.sfx(p, 'harvest'); this.event(p, 'harvest', tile.c); this.bookAdd(p, 'crop', tile.c);
