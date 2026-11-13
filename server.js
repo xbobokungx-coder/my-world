@@ -431,6 +431,7 @@ class World {
     // 2) เก็บเกี่ยว
     const tile = this.farm[k];
     if (tile && tile.c && S.cropStage(tile) === 3) {
+      { const rr = this.rentAt(tx, ty); if (rr && rr.key !== p.key && tile.o !== p.key) return this.toast(p, `🔒 แปลงนี้ ${rr.name} เช่าอยู่ เก็บผักในแปลงเช่าของคนอื่นไม่ได้`); } // แปลงเช่า: ระหว่างสัญญาคนอื่นเก็บไม่ได้เลย (ไม่ใช้กฎสุกค้าง 1 วัน)
       if (this.cropLocked(tile, p)) return this.toast(p, `🌱 ต้นนี้เป็นของ ${tile.on || 'ผู้เล่นอื่น'} — ถ้าเขาไม่มาเก็บภายใน ${Math.max(1, Math.ceil((S.DAY_MS - (tile.rm || 0)) / 60000))} นาที (1 วันในเกม) คนอื่นถึงจะมาเก็บได้`);
       const c = CROPS[tile.c];
       this.add(p, 'crop_' + tile.c, 1); this.addXp(p, 'farm', c.xp); this.tire(p, 'harvest', c.sell);
