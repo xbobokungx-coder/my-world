@@ -1221,9 +1221,9 @@ function toolInfo(t) { // ข้อมูลเครื่องมือใน
   if (t === 'hand') return { e: '✋', n: 'มือเปล่า (เก็บผลผลิต เปิดร้าน นั่ง)', sub: 'เก็บ/เปิดร้าน', cnt: null };
   if (t === 'hoe') return { e: '⛏️', n: 'จอบ', sub: 'ขุดดิน', cnt: null };
   if (t === 'water') { const c = CANS[canTier(inv)], cap = buffOn('bigcan') ? Math.round(c.cap * BUFFS.bigcan.capMul) : c.cap; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${cap} • แตะสระเพื่อตักน้ำ)`, sub: `น้ำ ${wtr}/${cap}`, cnt: wtr }; }
-  if (t === 'rod') { const b = itemInfo(selBait); return { e: '🎣', n: RODS[rodLevel()].name + ' ระดับ ' + rodLevel() + '/' + Shared.ROD_MAX + ' • ' + b.name.split(' ')[0] + ' ×' + (inv[selBait] || 0), sub: `ระดับ ${rodLevel()}/${Shared.ROD_MAX} • เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
+  if (t === 'rod') { const b = itemInfo(selBait); return { e: Shared.ROD_EMOJI[rodLevel()] || '🎣', n: RODS[rodLevel()].name + ' ระดับ ' + rodLevel() + '/' + Shared.ROD_MAX + ' • ' + b.name.split(' ')[0] + ' ×' + (inv[selBait] || 0), sub: `ระดับ ${rodLevel()}/${Shared.ROD_MAX} • เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
   if (t === 'pick') { const pk = pickLevel(); return { e: pk ? Shared.PICK_EMOJI[pk] : '⚒️', n: pk ? Shared.PICKS[pk].name : 'อุปกรณ์ขุด (ยังไม่มี ซื้อที่ร้านช่างเหมือง)', sub: pk ? Shared.PICKS[pk].name : 'ยังไม่มี', cnt: pk ? null : 0 }; }
-  const ax = axeLevel(); return { e: '🪓', n: ax ? AXES[ax].name + ' ระดับ ' + ax + '/' + Shared.AXE_MAX : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', sub: ax ? 'ระดับ ' + ax + '/' + Shared.AXE_MAX : 'ยังไม่มี', cnt: ax ? null : 0 };
+  const ax = axeLevel(); return { e: Shared.AXE_EMOJI[ax] || '🪓', n: ax ? AXES[ax].name + ' ระดับ ' + ax + '/' + Shared.AXE_MAX : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', sub: ax ? 'ระดับ ' + ax + '/' + Shared.AXE_MAX : 'ยังไม่มี', cnt: ax ? null : 0 };
 }
 function renderHud() {
   $('coins').textContent = '🪙 ' + (inv.coin || 0);
@@ -1418,7 +1418,7 @@ function renderBag() {
       h += `<div class="sec">🎣 อุปกรณ์ (ความทนทาน)</div><div class="grid">` + Object.keys(DURABILITY).filter(t => (t !== 'axe' || axeLevel() > 0) && (t !== 'pick' || pickLevel() > 0)).map(t => {
         const D = DURABILITY[t], tier = t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : 1, fx = dur[t] ? dur[t][2] || 0 : 0, mx = durMax(t, tier, fx), cur = dur[t] ? dur[t][0] : mx, pct = Math.round(cur / mx * 100);
         const nm = t === 'rod' ? RODS[tier].name : t === 'axe' ? AXES[tier].name : t === 'pick' ? Shared.PICKS[tier].name : D.name;
-        return `<div class="card"><b>${{ hoe: '⛏️', water: '🫗', rod: '🎣', axe: '🪓' }[t]}</b>${nm}<br>${cur}/${mx}<br><small style="opacity:.7">ซ่อมแล้ว ${fx}/${REPAIR.maxFixes}${fx >= REPAIR.maxFixes ? ' (ซ่อมไม่ได้แล้ว)' : ''}</small><div class="hbar" style="height:6px"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div></div>`;
+        return `<div class="card"><b>${{ hoe: '⛏️', water: '🫗', rod: Shared.ROD_EMOJI[rodLevel()] || '🎣', axe: Shared.AXE_EMOJI[axeLevel()] || '🪓' }[t]}</b>${nm}<br>${cur}/${mx}<br><small style="opacity:.7">ซ่อมแล้ว ${fx}/${REPAIR.maxFixes}${fx >= REPAIR.maxFixes ? ' (ซ่อมไม่ได้แล้ว)' : ''}</small><div class="hbar" style="height:6px"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div></div>`;
       }).join('') + `</div><p style="font-size:12px;opacity:.65">ซ่อมได้ที่ร้านของสายนั้น ซ่อมแต่ละครั้งความทนทานสูงสุดลด ${Math.round(REPAIR.decay * 100)}% และค่าซ่อมแพงขึ้น ซ่อมได้สูงสุด ${REPAIR.maxFixes} ครั้งแล้วต้องซื้อใหม่</p>`;
     }
     if (!Object.keys(inv).some(k => k !== 'coin' && inv[k] > 0)) h += '<p style="opacity:.7">ยังไม่มีของ ลองปลูกผัก ตกปลา หรือเลี้ยงสัตว์ดูนะ</p>';
@@ -1589,7 +1589,8 @@ function renderShop() {
     const tn = (/^(?:axe|rod)_(\d+)$/.exec(k) || [])[1], toolBetter = tn && +tn <= (k[0] === 'a' ? axeLevel() : rodLevel()); // ขวาน/คันระดับ ≤ ที่มีอยู่แล้ว = ซื้อไม่ได้
     if (toolBetter && !inv[k]) sub = 'มีที่ดีกว่าแล้ว ✅';
     const off = locked || toolBetter || (i.once && inv[k]) || (i.animal && animalCount(i.animal) >= ANIMALS[i.animal].cap);
-    h += `<div class="row${locked ? ' lock' : ''}"><span>${i.emoji} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${i.buy} `
+    const ic = tn ? `<span style="font-size:28px;line-height:1;vertical-align:middle;margin-right:2px">${i.emoji}</span>` : i.emoji; // แถวขวาน/คัน: ไอคอนใหญ่ ~28px ให้แยกระดับออก
+    h += `<div class="row${locked ? ' lock' : ''}"><span>${ic} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${i.buy} `
       + `<button class="btn small" data-buy="${k}" data-n="1" ${off || coin < i.buy ? 'disabled' : ''}>ซื้อ</button>`
       + (i.once || i.animal ? '' : ` <button class="btn small" data-buy="${k}" data-n="5" ${off || coin < i.buy * 5 ? 'disabled' : ''}>×5</button>`)
       + (i.food && inv[k] ? ` <button class="btn small" data-eat="${k}" style="background:#2ecc71;border-bottom-color:#1e8f4e" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน</button>` : '')
@@ -3375,7 +3376,8 @@ function heldHand(p) { // ตำแหน่งมือที่ถืออุ
   const fx = dir === 3 ? 1 : -1; return [p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)), p.y + 3, fx];
 }
 const rodAngle = p => { const F = PixelAction.frame(p, performance.now()); return F ? F.a : (p.dir || 0) >= 2 ? 0.8 : 0.15; }; // มุมคันเบ็ด: ตอนเหวี่ยงตามเฟรมท่าตกปลา (pixelaction.js)
-const isRodHeld = p => !!p.held && p.held.replace(/\uFE0F/g, '') === '🎣' && !p.sit;
+const ROD_E = new Set(Object.values(Shared.ROD_EMOJI)), AXE_E = new Set(Object.values(Shared.AXE_EMOJI)); // อีโมจิขวาน/คันทุกระดับ (ไอคอน+ท่าถือสีตามระดับ)
+const isRodHeld = p => !!p.held && ROD_E.has(p.held.replace(/\uFE0F/g, '')) && !p.sit;
 function rodTip(p) { // ปลายคันเบ็ด (ตรงกับที่ drawHeldTool วาด: จุดปลาย 12,-19 หมุนตามมุมคัน + มือที่เลื่อนตามเฟรมท่า)
   let [hx, hy, fx] = heldHand(p); const a = rodAngle(p), F = PixelAction.frame(p, performance.now());
   if (F) { const lx = (p.dir || 0) >= 2 ? F.lean * fx : 0; hx += F.hx * fx + lx; hy += F.hy + F.bob; }
@@ -3394,7 +3396,7 @@ function drawHeldTool(p, now, ctx = mainCtx) {
   const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
   const WOOD = '#9c6a35', WD = '#6b4423', STEEL = '#b9c2cc', STH = '#e8eef3';
   const a0 = dir >= 2 ? 0.95 : 0.3; // มุมถือจอบ/ขวาน/อีเต้อตอนไม่ได้ใช้: ด้านข้างถือเอียงไปข้างหน้ามากกว่า (ไม่พาดหน้า) ตอนใช้ตามเฟรม PixelAction
-  const isHoe = e === '⛏', isAxe = e === '🪓', isRod = e === '🎣', isCan = WATER_EMOJIS.has(e), isPick = !isHoe && PixelAction.kindOf(e) === 'mine', ang = F ? F.a : a0;
+  const isHoe = e === '⛏', isAxe = AXE_E.has(e), isRod = ROD_E.has(e), isCan = WATER_EMOJIS.has(e), isPick = !isHoe && PixelAction.kindOf(e) === 'mine', ang = F ? F.a : a0;
   if (isHoe || isAxe || isRod || isCan || isPick) {
     ctx.save(); ctx.translate(hx, hy); ctx.scale(fx, 1);
     if (isPick) { // อีเต้อ: ด้ามไม้ + หัวโค้งปลายแหลมสองข้าง สีตามระดับ (PixelUI.PICK_PAL) ขนาดเท่าขวาน
@@ -3403,7 +3405,7 @@ function drawHeldTool(p, now, ctx = mainCtx) {
       R(-8, -16, 17, 5, OUT); R(-10, -13, 3, 4, OUT); R(8, -13, 3, 4, OUT); R(-7, -15, 15, 3, pb); R(-7, -15, 15, 1, ph); R(-9, -12, 2, 2, ps); R(8, -12, 2, 2, ps); R(-2, -13, 4, 2, ps);
       if (/[💨🔌🧨💣]/u.test(e) && Math.floor(now / 280) % 2) { R(-5, -15, 1, 1, '#ffffff'); R(5, -14, 1, 1, '#ffffff'); } } // ทองคำ/มรกต/เพชร/มิทริลมีประกาย
     else if (isHoe) { ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(-6, -14, 13, 5, OUT); R(-5, -13, 11, 3, STEEL); R(-5, -13, 11, 1, STH); R(-5, -11, 2, 2, STEEL); R(4, -11, 2, 2, STEEL); }
-    else if (isAxe) { ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, STEEL); R(1, -13, 6, 1, STH); R(6, -13, 2, 6, STH); }
+    else if (isAxe) { const [ab, ah, as] = PixelUI.AXE_PAL[e] || [STEEL, STH, '#6c7782']; ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, ab); R(1, -13, 6, 1, ah); R(6, -13, 2, 6, ah); R(1, -8, 5, 1, as); if (e === '🪢' && Math.floor(now / 280) % 2) R(4, -12, 1, 1, '#ffffff'); } // หัวขวานสีตามระดับ (PixelUI.AXE_PAL)
     else if (isCan) { // บัวรดน้ำตามระดับที่ซื้อ: 1 สังกะสี (เทาเงิน) • 2 ทองแดง • 3 ทองคำ (ประกาย) ใหญ่ขึ้นตามความจุ
       const T = +Object.keys(CANS).find(k => CANS[k].emoji.replace(/\uFE0F/g, '') === e) || 1, bw = 7 + T, bh = 7 + T, x0 = -(bw >> 1), y0 = -bh - 1, sx = x0 + bw;
       const pal = { 1: { b: '#9fb4c8', l: '#dbe6f0', d: '#6d839a' }, 2: { b: '#c8763a', l: '#f2a868', d: '#8c4a20' }, 3: { b: '#f0c030', l: '#fff2a0', d: '#b08a10' } }[T];
@@ -3416,10 +3418,10 @@ function drawHeldTool(p, now, ctx = mainCtx) {
       if (sw > 0.4) { R(sx + 4, -4 + Math.round(sw * 6), 1, 3, '#8fd0ff'); R(sx + 3, -1 + Math.round(sw * 6), 1, 2, '#8fd0ff'); }
     }
     else { // เบ็ด: ปลายคันงอ + สายเอ็น แกว่งตอนเหวี่ยง
-      ctx.rotate(rodAngle(p)); // ด้านข้างชี้คันเบ็ดไปข้างหน้า ไม่พาดหน้า
+      const rp = PixelUI.ROD_PAL[e] || [WOOD, '#e8d6a8', WD, '#9aa0a6']; ctx.rotate(rodAngle(p)); // ด้านข้างชี้คันเบ็ดไปข้างหน้า ไม่พาดหน้า • สีคัน/รอกตามระดับ (PixelUI.ROD_PAL)
       ctx.lineCap = 'round'; ctx.strokeStyle = OUT; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, -9); ctx.lineTo(12, -19); ctx.stroke();
-      ctx.strokeStyle = WOOD; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, -9); ctx.lineTo(12, -19); ctx.stroke();
-      R(-2, -3, 4, 4, OUT); R(-1, -2, 2, 2, '#9aa0a6');
+      ctx.strokeStyle = rp[0]; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(3, -9); ctx.lineTo(12, -19); ctx.stroke();
+      R(-2, -3, 4, 4, OUT); R(-1, -2, 2, 2, rp[3]);
       if (!p.fs) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(12, -19); ctx.lineTo(12, -8); ctx.stroke(); R(11, -8, 2, 2, '#e04b4b'); } // ตอนตกปลาใช้สายเอ็นจริง (drawFishing) แทน
     }
     ctx.restore();

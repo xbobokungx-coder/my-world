@@ -41,6 +41,36 @@ const PixelUI = (() => {
     if (o.cross) for (const [sx, sy] of o.cross) { r(x, '#ffffff', sx, sy, 1, 1); r(x, o.cross.c || '#e4f4ff', sx - 1, sy, 1, 1); r(x, o.cross.c || '#e4f4ff', sx + 1, sy, 1, 1); r(x, o.cross.c || '#e4f4ff', sx, sy - 1, 1, 1); r(x, o.cross.c || '#e4f4ff', sx, sy + 1, 1, 1); }
     if (o.glow) for (const [gx, gy] of o.glow) r(x, o.glowC, gx, gy, 1, 1);
   }
+  // ขวาน 13×13 10 ระดับ: pal = [หัวหลัก, ไฮไลต์, เงา] o: h=[ขอบด้าม,ด้าม,ไฮไลต์ด้าม] big=หัวหนา edge=สีคมใบ band=แถบคอหัว lash=เชือกมัด rough=หัวหินหยาบ gem/stars/glow
+  const AXE_PAL = { '🪓': ['#8a8478', '#bdb6a6', '#5a564d'], '🔪': ['#d8793a', '#f6b07a', '#8c4a20'], '🪚': ['#8d99a6', '#c9d3dc', '#566170'], '🏏': ['#c4d0dc', '#ffffff', '#7a8898'], '🥍': ['#98a2b2', '#d8e0ea', '#566070'], '🏑': ['#6f7f9c', '#b8c8e8', '#3e4a66'], '🏒': ['#f2c14e', '#fff0a8', '#b98a1c'], '🪄': ['#2fcf78', '#b0ffd0', '#13803f'], '🪡': ['#8fe8ff', '#ffffff', '#3fa8c8'], '🪢': ['#8f8cff', '#e0dcff', '#4a46c0'] };
+  function axe(x, pal, o) {
+    const [b, hi, sh] = pal, [hd, hm, hh] = o.h;
+    for (let i = 0; i < 11; i++) r(x, i < 3 ? hd : hm, 1 + i, 12 - i, 2, 1);
+    for (let i = 3; i < 10; i++) r(x, hh, 1 + i, 12 - i, 1, 1);
+    r(x, b, 6, 1, 6, 5); r(x, hi, 6, 1, 2, 5); r(x, sh, 11, 2, 1, 3); r(x, sh, 6, 5, 6, 1);
+    if (o.rough) { x.clearRect(6, 1, 1, 1); x.clearRect(11, 1, 1, 1); r(x, sh, 8, 3, 1, 1); r(x, hi, 9, 2, 1, 1); }
+    if (o.big) { r(x, b, 7, 0, 5, 1); r(x, hi, 7, 0, 2, 1); r(x, b, 7, 6, 5, 1); r(x, sh, 7, 6, 5, 1); r(x, sh, 12, 1, 1, 5); r(x, hi, 12, 2, 1, 3); }
+    else if (o.edge) r(x, o.edge, 12, 2, 1, 3);
+    if (o.band) { r(x, o.band, 5, 4, 2, 1); r(x, o.band, 4, 5, 2, 1); }
+    if (o.lash) { r(x, o.lash, 5, 4, 3, 1); r(x, o.lash, 5, 5, 3, 1); r(x, o.lash, 6, 3, 1, 1); }
+    if (o.gem) { r(x, o.gem[0], 9, 3, 1, 1); r(x, o.gem[1], 8, 2, 1, 1); r(x, o.gem[1], 10, 4, 1, 1); }
+    if (o.rivet) { r(x, o.rivet, 9, 1, 1, 1); r(x, o.rivet, 9, 5, 1, 1); } // หมุดบนหัว
+    if (o.stars) for (const [sx, sy] of o.stars) r(x, '#ffffff', sx, sy, 1, 1);
+    if (o.glow) for (const [gx, gy] of o.glow) r(x, o.glowC, gx, gy, 1, 1);
+  }
+  // คันเบ็ด 13×13 10 ระดับ: pal = [คัน, ไฮไลต์, ด้ามจับ, รอก] o: seg=สีข้อ/ปลอกกั้นเส้น ring=ห่วงนำสาย gem/stars/glow
+  const ROD_PAL = { '🎣': ['#d8c66a', '#fff2a8', '#6b4423', '#9aa5ad'], '🥢': ['#7a4020', '#a8643a', '#3a2010', '#c99058'], '🦯': ['#2f7fd8', '#7ab8f4', '#1a3a6a', '#9aa5ad'], '🪈': ['#2e3440', '#6a7488', '#161a20', '#d9473c'], '🎺': ['#1a1a1e', '#5a6270', '#0c0c0e', '#c4d0dc'], '🎸': ['#6f7f9c', '#b8c8e8', '#3e4a66', '#5ec8f0'], '🪕': ['#f2c14e', '#fff0a8', '#8f2f24', '#ffe9a0'], '🎷': ['#2fcf78', '#b0ffd0', '#0e3a20', '#f2c14e'], '🥁': ['#c8f4ff', '#ffffff', '#6a8cb0', '#8fe8ff'], '🪘': ['#c8302c', '#ff8a70', '#4a1010', '#f2c14e'] };
+  function rod(x, pal, o) {
+    const [b, hi, gr, rl] = pal;
+    for (let i = 0; i < 12; i++) r(x, i < 4 ? gr : b, 1 + i, 12 - i, 1, 1);
+    for (let i = 4; i < 12; i += 2) r(x, hi, 1 + i, 12 - i, 1, 1);
+    if (o.seg) for (const i of [5, 8]) r(x, o.seg, 1 + i, 12 - i, 1, 1);
+    disc(x, 3, 9, 1, rl); if (o.reel2) r(x, o.reel2, 3, 9, 1, 1);
+    r(x, '#e4f4ff', 12, 1, 1, 7); r(x, rl, 11, 8, 1, 2); r(x, rl, 12, 10, 1, 1); r(x, '#d9473c', 12, 5, 1, 1);
+    if (o.gem) { r(x, o.gem[0], 5, 8, 1, 1); r(x, o.gem[1], 6, 7, 1, 1); }
+    if (o.stars) for (const [sx, sy] of o.stars) r(x, '#ffffff', sx, sy, 1, 1);
+    if (o.glow) for (const [gx, gy] of o.glow) r(x, o.glowC, gx, gy, 1, 1);
+  }
   const WH = ['#5e3a20', '#9c6636', '#bd8447'];
   const HAND = {
     '⛏'(x) { r(x, '#8d99a6', 1, 2, 11, 2); r(x, '#c9d3dc', 2, 2, 8, 1); r(x, '#6c7782', 0, 3, 2, 3); r(x, '#6c7782', 11, 3, 2, 3); r(x, '#6c7782', 2, 4, 9, 1); r(x, '#9c6636', 6, 4, 2, 9); r(x, '#bd8447', 6, 4, 1, 9); r(x, '#5e3a20', 6, 11, 2, 1); },
@@ -48,8 +78,27 @@ const PixelUI = (() => {
     '🫗'(x) { can(x, ['#5aa0d8', '#a8d4f2', '#3b78ae', '#2f5f8f'], 0); },   // บัวรดน้ำสังกะสี (สีฟ้า)
     '🚿'(x) { can(x, ['#e08a45', '#f6c18e', '#b0622a', '#6e3b17'], 1); },   // บัวรดน้ำทองแดง (มีแถบกลางตัว)
     '🚰'(x) { can(x, ['#f2c14e', '#ffe9a0', '#c99428', '#7a540e'], 2); },   // บัวรดน้ำทองคำ (แถบ + ประกาย)
-    '🎣'(x) { for (let i = 0; i < 12; i++) r(x, i < 4 ? '#5e3a20' : '#9c6636', 1 + i, 12 - i, 1, 1); disc(x, 3, 9, 1, '#9aa5ad'); r(x, '#e4f4ff', 12, 1, 1, 7); r(x, '#9aa5ad', 11, 8, 1, 2); r(x, '#9aa5ad', 12, 10, 1, 1); r(x, '#d9473c', 12, 5, 1, 1); },
-    '🪓'(x) { for (let i = 0; i < 11; i++) { r(x, i < 3 ? '#5e3a20' : '#9c6636', 1 + i, 12 - i, 2, 1); } r(x, '#9aa5ad', 6, 1, 6, 5); r(x, '#c9d3dc', 6, 1, 2, 5); r(x, '#6c7782', 11, 2, 1, 3); r(x, '#6c7782', 6, 5, 6, 1); },
+    // ---- ขวาน 10 ระดับ (คีย์ 🪓 🔪 🪚 🏏 🥍 🏑 🏒 🪄 🪡 🪢 = AXE_EMOJI) • คัน 10 ระดับ (🎣 🥢 🦯 🪈 🎺 🎸 🪕 🎷 🥁 🪘 = ROD_EMOJI) ----
+    '🪓'(x) { axe(x, AXE_PAL['🪓'], { h: ['#5e3a20', '#9c6636', '#bd8447'], rough: true, lash: '#e8d6a8' }); },                                   // 1 ขวานหิน (หัวหินหยาบ มัดเชือก)
+    '🔪'(x) { axe(x, AXE_PAL['🔪'], { h: ['#5e3a20', '#9c6636', '#bd8447'], edge: '#f6b07a', band: '#4a8f6a' }); },                              // 2 ขวานทองแดง (สนิมเขียวที่คอ)
+    '🪚'(x) { axe(x, AXE_PAL['🪚'], { h: ['#5e3a20', '#9c6636', '#bd8447'], edge: '#e6ecf2', band: '#3f4955' }); },                              // 3 ขวานเหล็ก
+    '🏏'(x) { axe(x, AXE_PAL['🏏'], { h: ['#2a1a10', '#4a3020', '#6e4a30'], big: true, band: '#c8463c' }); },                                    // 4 ขวานเหล็กกล้า (หัวหนา ด้ามเข้ม แถบแดง)
+    '🥍'(x) { axe(x, AXE_PAL['🥍'], { h: ['#3a3f48', '#7a8290', '#b8c0cc'], big: true, band: '#5a6270', rivet: '#ffffff', stars: [[8, 2], [9, 4], [7, 5]] }); },                  // 5 ขวานเงิน (ขัดเงา ด้ามเทา)
+    '🏑'(x) { axe(x, AXE_PAL['🏑'], { h: ['#161a20', '#2e3440', '#4a5264'], big: true, band: '#5ec8f0', stars: [[8, 2]] }); },                  // 6 ขวานไทเทเนียม (ด้ามพันดำ แถบฟ้า)
+    '🏒'(x) { axe(x, AXE_PAL['🏒'], { h: ['#4a1812', '#8f2f24', '#c8584a'], big: true, band: '#f2c14e', stars: [[8, 2], [11, 8]] }); },       // 7 ขวานทองคำ (ด้ามหนังแดง)
+    '🪄'(x) { axe(x, AXE_PAL['🪄'], { h: ['#0e3a20', '#1f6a3c', '#4ab07a'], big: true, band: '#f2c14e', gem: ['#e8fff2', '#7affb8'], stars: [[11, 8]] }); }, // 8 ขวานมรกต (มรกตฝัง)
+    '🪡'(x) { axe(x, AXE_PAL['🪡'], { h: ['#2a4a6a', '#6a8cb0', '#b8d4f0'], big: true, band: '#e4f4ff', gem: ['#ffffff', '#d4f8ff'], stars: [[11, 8], [3, 1]] }); }, // 9 ขวานเพชร
+    '🪢'(x) { axe(x, AXE_PAL['🪢'], { h: ['#2e2e70', '#5a5ad0', '#b8c4ff'], big: true, band: '#f2c14e', gem: ['#ffffff', '#ff9aec'], stars: [[11, 8], [3, 1]], glow: [[2, 0], [12, 10], [6, 0], [5, 6]], glowC: '#d6ccff' }); }, // 10 ขวานมิทริล (เรืองแสง)
+    '🎣'(x) { rod(x, ROD_PAL['🎣'], { seg: '#7a6a30' }); },                                                                                       // 1 คันไม้ไผ่ (มีข้อ)
+    '🥢'(x) { rod(x, ROD_PAL['🥢'], { seg: '#5e3a20' }); },                                                                                       // 2 คันหวาย
+    '🦯'(x) { rod(x, ROD_PAL['🦯'], { seg: '#e4f4ff' }); },                                                                                       // 3 คันไฟเบอร์ (ฟ้า ปลอกขาว)
+    '🪈'(x) { rod(x, ROD_PAL['🪈'], { seg: '#d9473c' }); },                                                                                       // 4 คันกราไฟต์ (ดำเทา ปลอกแดง)
+    '🎺'(x) { rod(x, ROD_PAL['🎺'], { seg: '#7a8898', reel2: '#5a6270' }); },                                                                      // 5 คันคาร์บอน (ดำสนิท รอกเงิน)
+    '🎸'(x) { rod(x, ROD_PAL['🎸'], { seg: '#5ec8f0', stars: [[7, 6]] }); },                                                                      // 6 คันไทเทเนียม (น้ำเงินเทา ปลอกฟ้า)
+    '🪕'(x) { rod(x, ROD_PAL['🪕'], { seg: '#c8463c', stars: [[7, 6], [11, 9]] }); },                                                             // 7 คันทองคำ
+    '🎷'(x) { rod(x, ROD_PAL['🎷'], { seg: '#f2c14e', gem: ['#e8fff2', '#7affb8'], stars: [[11, 9]] }); },                                         // 8 คันมรกต
+    '🥁'(x) { rod(x, ROD_PAL['🥁'], { seg: '#e4f4ff', gem: ['#ffffff', '#d4f8ff'], stars: [[11, 9], [3, 5]] }); },                                 // 9 คันเพชร
+    '🪘'(x) { rod(x, ROD_PAL['🪘'], { seg: '#f2c14e', gem: ['#ffe9a0', '#ffb040'], stars: [[11, 9], [3, 5]], glow: [[2, 12], [8, 3], [12, 0], [10, 6]], glowC: '#ffc27a' }); }, // 10 คันมังกร (แดงทอง เรืองไฟ)
     // ---- อุปกรณ์ขุด 10 ระดับ (คีย์ 1–6 ใช้อีโมจิเดิมเพื่อให้ท่าทางในมือยังทำงาน • 7–10 คีย์ใหม่ 💨🔌🧨💣) ----
     '🪝'(x) { pickaxe(x, PICK_PAL['🪝'], { h: ['#6b4423', '#a8743a', '#cf9a5c'], lo: 2, lash: '#e8d6a8' }); },                                  // 1 อีเต้อไม้ (หัวไม้เดี่ยว มัดเชือก)
     '🧲'(x) { pickaxe(x, PICK_PAL['🧲'], { h: WH, lo: 2, big: true, lash: '#c99058', rivet: '#3e3a33' }); },                                       // 2 อีเต้อหิน (หัวหินเดี่ยวหนา มัดหนัง)
@@ -344,6 +393,6 @@ const PixelUI = (() => {
   ];
   const crop = s => crops[Math.max(0, Math.min(3, s))];
 
-  return { icon: pix, url: dataUrl, world, dom, watch, animal, crop, A, PICK_PAL };
+  return { icon: pix, url: dataUrl, world, dom, watch, animal, crop, A, PICK_PAL, AXE_PAL, ROD_PAL };
 })();
 if (document.body) PixelUI.watch(); else addEventListener('DOMContentLoaded', () => PixelUI.watch());

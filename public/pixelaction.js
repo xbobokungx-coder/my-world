@@ -22,7 +22,8 @@ const PixelAction = (() => {
       back:  [[0.15, 0, 0, 0, 0], [2.4, 0, 0, 0, -1], [2.9, 0, 1, 0, -1], [2.9, 0, 1, 0, -1], [2.2, 0, 0, 0, 0]] },
   };
   const PICKS = new Set(['🪝', '🧲', '⚓', '🔱', '🏹', '🪃', '💨', '🔌', '🧨', '💣', '⚒', '⛏']); // อุปกรณ์ขุดทุกระดับ (10 ชนิด) (ไอคอนพิกเซลใน pixelui.js) + จอบ
-  const kindOf = held => { const e = (held || '').replace(/️/g, ''); return PICKS.has(e) ? 'mine' : e === '🪓' ? 'chop' : e === '🎣' ? 'fish' : ''; };
+  const AXES_E = new Set(['🪓', '🔪', '🪚', '🏏', '🥍', '🏑', '🏒', '🪄', '🪡', '🪢']), RODS_E = new Set(['🎣', '🥢', '🦯', '🪈', '🎺', '🎸', '🪕', '🎷', '🥁', '🪘']); // ขวาน/คัน 10 ระดับ (ตรงกับ Shared.AXE_EMOJI / ROD_EMOJI)
+  const kindOf = held => { const e = (held || '').replace(/️/g, ''); return PICKS.has(e) ? 'mine' : AXES_E.has(e) ? 'chop' : RODS_E.has(e) ? 'fish' : ''; };
   // เฟรมปัจจุบันของผู้เล่น: null = ไม่ได้ทำท่า (ใช้ท่าถือปกติ) • t = ms หลังเริ่มท่า
   function frame(p, now) {
     const base = kindOf(p.held), k = p.useK === 'reel' && base === 'fish' ? 'reel' : base, S = SHEETS[k]; if (!S || !p.useAt || p.sit) return null; // p.useK = ท่าที่เลือกตอนเริ่ม (ตกปลาอยู่แล้ว = ดึงเบ็ด)
