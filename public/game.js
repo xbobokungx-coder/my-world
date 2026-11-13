@@ -1221,9 +1221,9 @@ function toolInfo(t) { // ข้อมูลเครื่องมือใน
   if (t === 'hand') return { e: '✋', n: 'มือเปล่า (เก็บผลผลิต เปิดร้าน นั่ง)', sub: 'เก็บ/เปิดร้าน', cnt: null };
   if (t === 'hoe') return { e: '⛏️', n: 'จอบ', sub: 'ขุดดิน', cnt: null };
   if (t === 'water') { const c = CANS[canTier(inv)], cap = buffOn('bigcan') ? Math.round(c.cap * BUFFS.bigcan.capMul) : c.cap; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${cap} • แตะสระเพื่อตักน้ำ)`, sub: `น้ำ ${wtr}/${cap}`, cnt: wtr }; }
-  if (t === 'rod') { const b = itemInfo(selBait); return { e: '🎣', n: RODS[rodLevel()].name + ' (' + b.name.split(' ')[0] + ' ' + (inv[selBait] || 0) + ')', sub: `เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
+  if (t === 'rod') { const b = itemInfo(selBait); return { e: '🎣', n: RODS[rodLevel()].name + ' ระดับ ' + rodLevel() + '/' + Shared.ROD_MAX + ' • ' + b.name.split(' ')[0] + ' ×' + (inv[selBait] || 0), sub: `ระดับ ${rodLevel()}/${Shared.ROD_MAX} • เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
   if (t === 'pick') { const pk = pickLevel(); return { e: pk ? Shared.PICK_EMOJI[pk] : '⚒️', n: pk ? Shared.PICKS[pk].name : 'อุปกรณ์ขุด (ยังไม่มี ซื้อที่ร้านช่างเหมือง)', sub: pk ? Shared.PICKS[pk].name : 'ยังไม่มี', cnt: pk ? null : 0 }; }
-  const ax = axeLevel(); return { e: '🪓', n: ax ? AXES[ax].name : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', sub: ax ? AXES[ax].name : 'ยังไม่มี', cnt: ax ? null : 0 };
+  const ax = axeLevel(); return { e: '🪓', n: ax ? AXES[ax].name + ' ระดับ ' + ax + '/' + Shared.AXE_MAX : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', sub: ax ? 'ระดับ ' + ax + '/' + Shared.AXE_MAX : 'ยังไม่มี', cnt: ax ? null : 0 };
 }
 function renderHud() {
   $('coins').textContent = '🪙 ' + (inv.coin || 0);
@@ -1428,10 +1428,10 @@ function renderBag() {
     const nextFish = () => FISH.filter(f => !f.sea && f.lv > lvl('fish')).sort((a, b) => a.lv - b.lv)[0];
     const hints = {
       farm: () => { const c = nextCrop(); return (c ? `ถัดไป: ปลดล็อก ${c.emoji} ${c.name} ที่ Lv${c.lv}` : 'ปลดล็อกเมล็ดครบแล้ว') + ' • พืชโตเร็วขึ้น 4% ต่อเลเวล'; },
-      fish: () => { const f = nextFish(); return (f ? `ถัดไป: ตกได้ ${f.emoji} ${f.name} ที่ Lv${f.lv}` : 'ตกปลาได้ครบทุกชนิดแล้ว') + ' • คันเบ็ดดีขึ้นซื้อที่ร้านตกปลา (Lv3, Lv6)'; },
+      fish: () => { const f = nextFish(); return (f ? `ถัดไป: ตกได้ ${f.emoji} ${f.name} ที่ Lv${f.lv}` : 'ตกปลาได้ครบทุกชนิดแล้ว') + ` • คันเบ็ดดีขึ้นซื้อที่ร้านตกปลา (ระดับ 2 ที่ Lv${RODS[2].lv} ... ระดับ ${Shared.ROD_MAX} ที่ Lv${RODS[Shared.ROD_MAX].lv}) • คันต่ำไปปลาใหญ่จะสู้ยาก`; },
       animal: () => `ซื้อวัวได้ที่ Lv${ANIMALS.cow.lv} • ซื้อหมูได้ที่ Lv${ANIMALS.pig.lv} • ซื้อผึ้งได้ที่ Lv${ANIMALS.bee.lv} (น้ำผึ้งจากรัง 🍯) • แต่ละชนิดมีเล้าของตัวเอง เล้าละ ${ANIMALS.cow.cap} ตัว • ผลผลิตออกเร็วขึ้น 5% ต่อเลเวล • สัตว์ป่วยรักษาด้วยยา 💊`,
       mine: () => { const n = Object.values(Shared.PICKS).find(x => x.lv > lvl('mine')); return (n ? `ถัดไป: ซื้อ ${n.name} ได้ที่ Lv${n.lv}` : 'ซื้ออุปกรณ์ขุดได้ครบทุกชนิดแล้ว') + ' • ยิ่งลงลึก แร่ยิ่งให้ XP เยอะ • อุปกรณ์ต่ำกว่าแร่ขุดได้แต่ช้า (🐌)'; },
-      wood: () => `ขวานเหล็กซื้อได้ที่ Lv${AXES[2].lv} • ขวานเหล็กกล้า Lv${AXES[3].lv} • เลเวลสูงขึ้นได้ไม้เพิ่มและเจอไม้เนื้อแข็งบ่อยขึ้น • (งานช่างไม้อื่นๆ จะมาเร็วๆ นี้)`,
+      wood: () => { const n = Object.values(AXES).find(x => x.lv > lvl('wood')); return (n ? `ถัดไป: ซื้อ ${n.name} ได้ที่ Lv${n.lv}` : 'ซื้อขวานได้ครบทุกระดับแล้ว') + ' • ขวาน 10 ระดับ ต้นไม้ใหญ่ต้องใช้ขวานดีขึ้น • ขวานต่ำกว่าต้นฟันได้แต่ช้า • เลเวลสูงขึ้นได้ไม้เพิ่มและเจอไม้เนื้อแข็งบ่อยขึ้น'; },
     };
     el.innerHTML = Object.keys(SKILLS).map(k => {
       const L = lvl(k), xp = skills[k] || 0, base = xpFor(L, k), need = L >= MAX_LV ? 0 : xpFor(L + 1, k) - base;
@@ -1586,7 +1586,9 @@ function renderShop() {
     }
     if (seedTab) { const c = CROPS[k.slice(5)], pr = seedProfit(k), ix = profitRank.indexOf(k); sub += ` • กำไร ${c.sell - c.seed}/ต้น (${pr.toFixed(1)}/นาที) ${ix < 3 ? '⭐ ดี' : ix >= profitRank.length - 3 ? '▼ ต่ำ' : ''}`; }
     const lockTxt = locked ? ` <small>🔒 Lv${i.lv}</small>` : '';
-    const off = locked || (i.once && inv[k]) || (i.animal && animalCount(i.animal) >= ANIMALS[i.animal].cap);
+    const tn = (/^(?:axe|rod)_(\d+)$/.exec(k) || [])[1], toolBetter = tn && +tn <= (k[0] === 'a' ? axeLevel() : rodLevel()); // ขวาน/คันระดับ ≤ ที่มีอยู่แล้ว = ซื้อไม่ได้
+    if (toolBetter && !inv[k]) sub = 'มีที่ดีกว่าแล้ว ✅';
+    const off = locked || toolBetter || (i.once && inv[k]) || (i.animal && animalCount(i.animal) >= ANIMALS[i.animal].cap);
     h += `<div class="row${locked ? ' lock' : ''}"><span>${i.emoji} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${i.buy} `
       + `<button class="btn small" data-buy="${k}" data-n="1" ${off || coin < i.buy ? 'disabled' : ''}>ซื้อ</button>`
       + (i.once || i.animal ? '' : ` <button class="btn small" data-buy="${k}" data-n="5" ${off || coin < i.buy * 5 ? 'disabled' : ''}>×5</button>`)

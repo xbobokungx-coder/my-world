@@ -31,14 +31,14 @@ const assert = require('assert'), S = require('../public/shared.js');
 { // สระปลาเลื่อนตามเลเวล
   assert.deepStrictEqual(S.FISHPOOL, { keep: 2, decay: 0.75 });
   const by = id => S.FISH.find(f => f.id === id), K = S.FISHPOOL.keep, D = S.FISHPOOL.decay;
-  assert.strictEqual(S.fishNewestLv(false, 20, 7), 20); assert.strictEqual(S.fishNewestLv(true, 3, 1), 3);
+  assert.strictEqual(S.fishNewestLv(false, 20, 10), 20); assert.strictEqual(S.fishNewestLv(false, 20, 7), 14, "คัน 7 ตกได้ถึงปลา Lv14 (ปลา Lv15+ ต้องคัน 8+ ตาม rod = ⌈Lv÷2⌉)"); assert.strictEqual(S.fishNewestLv(true, 3, 1), 3);
   const carp = by('carp'), newest = 20;
-  assert.strictEqual(S.fishPoolMul(carp, 20, 7), Math.pow(D, newest - 1 - K), 'ปลาเก่าถูกลดตามส่วนที่เกิน');
-  assert.strictEqual(S.fishPoolMul(by('star'), 20, 7), 1); assert.strictEqual(S.fishPoolMul(by('boot'), 20, 7), 1, 'รองเท้าไม่ลด');
+  assert.strictEqual(S.fishPoolMul(carp, 20, 10), Math.pow(D, newest - 1 - K), 'ปลาเก่าถูกลดตามส่วนที่เกิน');
+  assert.strictEqual(S.fishPoolMul(by('star'), 20, 10), 1); assert.strictEqual(S.fishPoolMul(by('boot'), 20, 10), 1, 'รองเท้าไม่ลด');
   assert.strictEqual(S.fishPoolMul(by('bass'), 4, 3), 1, 'ห่างไม่เกิน keep ไม่ลด');
   // ทะเลไม่ปนกับน้ำจืด
-  assert.strictEqual(S.fishPoolMul(by('sardine'), 20, 7), Math.pow(D, S.fishNewestLv(true, 20, 7) - 1 - K));
-  assert.ok(S.fishWeight(by('star'), 20, 7, 1) > 0); assert.ok(S.fishWeight(carp, 20, 7, 1) < carp.w, 'คาร์ปที่เลเวลสูงตกยากลง');
+  assert.strictEqual(S.fishPoolMul(by('sardine'), 20, 10), Math.pow(D, S.fishNewestLv(true, 20, 10) - 1 - K));
+  assert.ok(S.fishWeight(by('star'), 20, 10, 1) > 0); assert.ok(S.fishWeight(carp, 20, 10, 1) < carp.w, 'คาร์ปที่เลเวลสูงตกยากลง');
   assert.ok(S.fishWeight(carp, 1, 1, 1) === carp.w || S.fishWeight(carp, 1, 1, 1) > 0);
 }
 
@@ -74,7 +74,7 @@ const { World } = require('../server.js'), clone = o => JSON.parse(JSON.stringif
   };
   fs.writeFileSync(path.join(process.env.DATA_DIR, 'fishmig.json'), JSON.stringify({ players: clone(players), farm: {}, layout: 2 }));
   const w = new World('fishmig'), sv = w.saved;
-  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 5, k + ' xpv 5');
+  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 6, k + ' xpv 6 (โซ่ 5 → 6 ต่อท้าย)');
   assert.strictEqual(S.levelOf(sv.c4.skills.fish, 'fish'), 10, 'c4 ชาวประมงเลเวลเดิม'); assert.strictEqual(sv.c4.skills.farm, lvXp(10), 'ชาวนาไม่แตะ'); assert.strictEqual(S.levelOf(sv.c4.skills.farm), 10);
   assert.strictEqual(sv.c4.skills.mine, 777); assert.strictEqual(sv.c4.skills.wood, 5, 'อาชีพอื่นไม่แตะ');
   assert.strictEqual(S.levelOf(sv.c3.skills.fish, 'fish'), 10, 'c3 (xpv 3 → 5)'); assert.strictEqual(sv.c3.skills.farm, lvXp(10));
@@ -112,15 +112,15 @@ const { World } = require('../server.js'), clone = o => JSON.parse(JSON.stringif
 }
 { // (จ) สระเลื่อน: เลเวลสูง ปลาใหม่ตกบ่อยกว่าปลาเก่า แต่ปลาเก่าไม่เป็นศูนย์
   const by = id => S.FISH.find(f => f.id === id), carp = by('carp'), nw = by('dragon');
-  for (const [fl, rod] of [[17, 7], [20, 7], [14, 5]]) { const wc = S.fishWeight(carp, fl, rod, 1), wn = S.fishWeight(by('beaver'), fl, rod, 1); assert.ok(wc > 0, 'ปลาเก่าไม่เป็นศูนย์ fl' + fl); assert.ok(wc < carp.w, 'ปลาเก่าถูกลด'); assert.ok(wn >= 0); }
+  for (const [fl, rod] of [[17, 9], [20, 10], [14, 5]]) { const wc = S.fishWeight(carp, fl, rod, 1), wn = S.fishWeight(by('beaver'), fl, rod, 1); assert.ok(wc > 0, 'ปลาเก่าไม่เป็นศูนย์ fl' + fl); assert.ok(wc < carp.w, 'ปลาเก่าถูกลด'); assert.ok(wn >= 0); }
   const share = (f, fl, rod) => { const tot = S.fishPool(false).filter(g => g.lv <= fl).reduce((a, g) => a + S.fishWeight(g, fl, rod, 1), 0); return S.fishWeight(f, fl, rod, 1) / tot; };
-  assert.ok(share(carp, 20, 7) < share(carp, 4, 3), 'สัดส่วนปลาตะเพียนลดลงเมื่อเลเวลสูง');
+  assert.ok(share(carp, 20, 10) < share(carp, 4, 3), 'สัดส่วนปลาตะเพียนลดลงเมื่อเลเวลสูง');
   const grp = (fl, rod, pred) => S.fishPool(false).filter(g => g.id !== 'boot' && g.lv <= fl && pred(g)).reduce((a, g) => a + share(g, fl, rod), 0);
-  assert.ok(grp(20, 7, g => g.lv >= 18) > grp(10, 4, g => g.lv >= 8), 'ปลา 3 ระดับบนสุดตกบ่อยขึ้นเมื่อเลเวลสูง');
-  for (const [g14, pts] of [[g => g.lv <= 9, [[10, 4], [12, 5], [15, 6], [18, 7], [20, 7]]], [g => g.lv <= 14, [[15, 6], [18, 7], [20, 7]]]]) { const sh = pts.map(([l, r]) => grp(l, r, g14)); for (let i = 1; i < sh.length; i++) assert.ok(sh[i] < sh[i - 1], 'สัดส่วนปลาเก่ากลุ่มเดียวกันลดลงตามเลเวล ' + sh.join(',')); } // เดิมเทียบ lv<=14 ที่ Lv20 กับ lv<=9 ที่ Lv15 (คนละกลุ่ม) ราคา/สระใหม่ทำให้ไม่ตรง จึงเทียบกลุ่มเดียวกัน
-  assert.strictEqual(S.fishWeight(by('star'), 20, 7, 1) / by('star').w >= 1, true, 'ปลาใหม่สุดไม่ถูกลดน้ำหนัก');
+  assert.ok(grp(20, 10, g => g.lv >= 18) > grp(10, 4, g => g.lv >= 8), 'ปลา 3 ระดับบนสุดตกบ่อยขึ้นเมื่อเลเวลสูง');
+  for (const [g14, pts] of [[g => g.lv <= 9, [[10, 4], [12, 6], [15, 8], [18, 9], [20, 10]]], [g => g.lv <= 14, [[15, 8], [18, 9], [20, 10]]]]) { const sh = pts.map(([l, r]) => grp(l, r, g14)); for (let i = 1; i < sh.length; i++) assert.ok(sh[i] < sh[i - 1], 'สัดส่วนปลาเก่ากลุ่มเดียวกันลดลงตามเลเวล ' + sh.join(',')); } // เดิมเทียบ lv<=14 ที่ Lv20 กับ lv<=9 ที่ Lv15 (คนละกลุ่ม) ราคา/สระใหม่ทำให้ไม่ตรง จึงเทียบกลุ่มเดียวกัน
+  assert.strictEqual(S.fishWeight(by('star'), 20, 10, 1) / by('star').w >= 1, true, 'ปลาใหม่สุดไม่ถูกลดน้ำหนัก');
   assert.strictEqual(S.fishPoolMul(carp, 1, 1), 1); assert.strictEqual(S.fishPoolMul(by('bass'), 3, 2), 1);
-  assert.ok(S.fishPoolMul(carp, 20, 7) < S.fishPoolMul(by('koi'), 20, 7), 'ยิ่งเก่า ยิ่งลดมาก'); assert.ok(S.fishPoolMul(carp, 20, 7) > 0);
+  assert.ok(S.fishPoolMul(carp, 20, 10) < S.fishPoolMul(by('koi'), 20, 10), 'ยิ่งเก่า ยิ่งลดมาก'); assert.ok(S.fishPoolMul(carp, 20, 10) > 0);
   void nw;
 }
 { // (ฉ) invariants ของตาราง
@@ -144,13 +144,14 @@ const { World } = require('../server.js'), clone = o => JSON.parse(JSON.stringif
 }
 { // (ซ) ย้ายความทนทานเบ็ด xpv 4 → 5 คงสัดส่วน
   const mk = (rod, dur, fix) => ({ xpv: 4, skills: { fish: 100 }, inv: rod ? { ['rod_' + rod]: 1 } : { coin: 5 }, dur: dur == null ? undefined : { rod: dur }, fix: fix ? { rod: fix } : undefined });
+  const oldD = (t, f) => Math.max(1, Math.floor(S.ROD_MIG6.oldMax[t] * (1 - S.REPAIR.decay * Math.min(S.REPAIR.maxFixes, f)))); // xpv 4→5 ให้ค่าตามตารางยุค xpv 5 (migrateToolsV6 แปลงต่อ)
   const mig = r => { S.migrateStdV5(r, S.STD_V5_SKILLS); return r; };
-  let r = mig(mk(7, 560)); assert.strictEqual(r.dur.rod, S.durMax('rod', 7, 0), 'เต็มคงเต็ม');
-  r = mig(mk(4, 140)); assert.strictEqual(r.dur.rod, S.durMax('rod', 4, 0) / 2, 'ครึ่งคงครึ่ง');
+  let r = mig(mk(7, 560)); assert.strictEqual(r.dur.rod, oldD(7, 0), 'เต็มคงเต็ม');
+  r = mig(mk(4, 140)); assert.strictEqual(r.dur.rod, oldD(4, 0) / 2, 'ครึ่งคงครึ่ง');
   r = mig(mk(5, 0)); assert.strictEqual(r.dur.rod, 0, 'พังคงพัง');
   r = mig(mk(3, 1)); assert.ok(r.dur.rod >= 1, 'เหลือนิดเดียวไม่กลายเป็นพัง');
-  r = mig(mk(0, 100)); assert.strictEqual(r.dur.rod, S.durMax('rod', 1, 0), 'เบ็ดเริ่มต้นเต็มคงเต็ม');
-  r = mig(mk(6, Math.floor(450 * 0.85), 1)); assert.strictEqual(r.dur.rod, S.durMax('rod', 6, 1), 'ซ่อมแล้วเต็มคงเต็ม');
+  r = mig(mk(0, 100)); assert.strictEqual(r.dur.rod, oldD(1, 0), 'เบ็ดเริ่มต้นเต็มคงเต็ม');
+  r = mig(mk(6, Math.floor(450 * 0.85), 1)); assert.strictEqual(r.dur.rod, oldD(6, 1), 'ซ่อมแล้วเต็มคงเต็ม');
   r = mig(mk(2, 140)); const once = r.dur.rod; S.migrateStdV5(r, S.STD_V5_SKILLS); assert.strictEqual(r.dur.rod, once, 'รันซ้ำไม่เปลี่ยน');
   assert.doesNotThrow(() => { mig({ xpv: 4 }); mig({ xpv: 4, dur: {} }); mig({ xpv: 4, dur: { rod: 50 } }); }, 'ไม่มี dur/inv ไม่พัง');
   r = mig({ xpv: 4, dur: { rod: 7 }, inv: { rod_2: 1 }, skills: { fish: 0 } }); assert.ok(r.dur.rod > 0);
@@ -191,7 +192,7 @@ const { World } = require('../server.js'), clone = o => JSON.parse(JSON.stringif
     for (const f of S.fishPool(isSea).filter(g => g.id !== 'boot' && g.lv === L)) assert.ok(S.fishWeight(f, L, rod, 1) > 0, `Lv${L} ปลาประจำเลเวล ${f.id} ตกไม่ได้ด้วยเบ็ด ${rod} ที่ซื้อได้`);
   }
   // เบ็ด/เหยื่อใหม่
-  assert.deepStrictEqual(S.TOOL_PRICE.rod, [0, 100, 250, 900, 2500, 6000, 11000, 13000]); assert.strictEqual(S.RODS[6].price, 11000); assert.strictEqual(S.RODS[7].price, 13000);
+  assert.deepStrictEqual(S.TOOL_PRICE.rod, [0, 60, 250, 600, 1200, 2100, 3300, 4900, 6800, 9000, 11500], "ราคาคัน 10 ระดับ (WP-11)"); assert.strictEqual(S.RODS[6].price, 3300); assert.strictEqual(S.RODS[7].price, 4900); assert.strictEqual(S.RODS[10].price, 11500);
   assert.strictEqual(S.BAITS[2].price, 8); assert.strictEqual(S.BAITS[3].price, 25); assert.strictEqual(S.BAIT_PRICE, 2);
 }
 { // (ฎ) ซิม: XP/ชม. ตามเส้น 1000×1.1412^(L−1) ±10% • ปลาหายาก/ชม.
@@ -201,7 +202,7 @@ const { World } = require('../server.js'), clone = o => JSON.parse(JSON.stringif
   for (const r of rows) assert.ok(r[rk] <= 20.5, `ปลาหายาก/ชม. Lv${r.lv} = ${r[rk]} เกิน ~20`);
 }
 { // (ฏ) ผลข้างเคียงราคา/XP: ขายคืนเบ็ด 70% • XP ปลาหายากไม่ข้ามหลายเลเวลต่อครั้ง • เกณฑ์ achievement/ออร์เดอร์
-  for (let r = 2; r <= 7; r++) { const v = S.sellbackValue('rod_' + r), price = S.TOOL_PRICE.rod[r]; assert.ok(v > 0 && v <= Math.round(price * 0.7) + 1 && v < price, `ขายคืนเบ็ด ${r}: ${v} จากราคา ${price}`); assert.ok(Math.abs(v - price * 0.7) <= 1, 'ขายคืน 70% ของราคาใหม่ เบ็ด ' + r); }
+  for (let r = 2; r <= S.ROD_MAX; r++) { const v = S.sellbackValue('rod_' + r), price = S.TOOL_PRICE.rod[r]; assert.ok(v > 0 && v <= Math.round(price * 0.7) + 1 && v < price, `ขายคืนเบ็ด ${r}: ${v} จากราคา ${price}`); assert.ok(Math.abs(v - price * 0.7) <= 1, 'ขายคืน 70% ของราคาใหม่ เบ็ด ' + r); }
   // XP ต่อการตกหนึ่งครั้ง (สูงสุด: ชักสะอาด) ต้องน้อยกว่าช่วงเลเวลที่เลเวลต่ำสุดที่ตกปลานั้นได้ → ไม่ข้ามเลเวลเกิน 1
   const maxMul = S.FIGHT.cleanXp * Math.max(...S.FIGHT.xpMul);
   for (const f of S.FISH) { const m = f.xp * maxMul, L = Math.min(S.MAX_LV, f.lv); if (L < S.MAX_LV) assert.ok(m < S.XP_TABLE_STD[L + 1] - S.XP_TABLE_STD[L], `${f.id} XP ${m} ข้ามเลเวล Lv${L}`); }

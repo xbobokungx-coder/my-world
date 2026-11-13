@@ -203,6 +203,14 @@ npm start
 - เครื่องมือ: `node tools/reports.js` ดูรายงาน (ดูรายละเอียด `<id>` / ปิดด้วย `close <id>`) • เทสต์ `tools/test-moderation.js`
 - ทดสอบโหลด: `tools/loadtest.js` (WP-08) บอทเดิน/แชต วัด p95 CPU RAM ห้ามชี้ไป VPS เกมจริงตอนมีคนเล่น ใช้ `DATA_DIR` ชั่วคราวเสมอ
 
+## 🪓🎣 ขวาน/คันเบ็ด 10 ระดับ (WP-10/11, พ.ย. 2026)
+- ตัวเลขและกติกา: `public/shared.js` ขวาน `AXE_NAMES`/`AXE_PRICE`/`AXES`/`AXE_TUNE`/`chopHit` • คัน `ROD_NAMES`/`RODS`/`ROD_TUNE`/`rodHit`/`fishTier` • ราคา ความทน ซ่อม `TOOL_PRICE`/`DURABILITY`/`REPAIR` • ต้นไม้ `TREE_KINDS` (ระดับต้น = ⌈lv÷2⌉ คำนวณทับในลูปหลังตาราง)
+- ใช้กติกาที่ `server.js` (ฟันต้นเรียก `S.chopHit`) และ `server/systems/fishing.js` `startFight` (สึกคันตอนปลากินเบ็ด) • กันซื้อระดับ ≤ ที่มีที่ `server/systems/market.js` (ราว line 51)
+- เพิ่มระดับเกิน 10: ต้องขยายตารางใน shared ทั้ง `AXE_NAMES`/`AXE_PRICE`/`ROD_NAMES`/`DURABILITY`/`TOOL_PRICE`/`ROD_WAIT`/`ROD_RARE`/`ROD_MAXCLASS` และ `AXE_MIG6`/`ROD_MIG6` ให้ตรงกัน (`AXE_MAX`/`ROD_MAX` = 10)
+- เซฟ xpv 6: `S.migrateToolsV6` (โซ่ย้ายใน loader `server.js`) ตารางแปลงอยู่ `AXE_MIG6.map`/`ROD_MIG6.map` เปลี่ยนได้ที่นี่อย่างเดียว • ของค้างและของที่ระบบเพิ่มเก็บใน `rec.tmig` ขายคืนไม่ได้ (`tmigLocked`) และถูกซ่อนจากกระเป๋า (`invPub`)
+- ถอยกลับ: `S.unmigrateToolsV6` + `tools/tools-unmigrate.js` (ดู `docs/OPS.md`)
+- เทสต์: `tools/test-axe-migrate.js`, `tools/test-rod-migrate.js`, `tools/test-fight.js`
+
 ## อัปเดตล่าสุด (ตุลาคม 2026)
 - 🕒 **นาฬิกาเกม**: 1 รอบกลางวัน-กลางคืน = 24 นาทีจริง (`CLOCK_MS` ใน `shared.js` แยกจาก `DAY_MS` ที่คุมเศรษฐกิจ) กลางวันนาน กลางคืนสั้นและสว่างขึ้น (มืดสุด 0.75)
 - 🎣 เกจตกปลาวิ่งช้าลง (`FISH_GAUGE.per` 850)

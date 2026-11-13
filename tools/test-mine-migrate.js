@@ -94,18 +94,18 @@ const clone = o => JSON.parse(JSON.stringify(o));
   };
   fs.writeFileSync(path.join(process.env.DATA_DIR, 'minemig.json'), JSON.stringify({ players, farm: {}, layout: 2 }));
   const w = new World('minemig'), sv = w.saved;
-  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 5, k + ' ต้องเป็น xpv 5 หลังโหลด (โซ่ 4 → 5 ต่อท้าย)');
+  for (const k of Object.keys(players)) assert.strictEqual(sv[k].xpv, 6, k + ' ต้องเป็น xpv 6 หลังโหลด (โซ่ 4 → 5 → 6 ต่อท้าย)');
   const o3 = sv.old3; assert.strictEqual(S.levelOf(o3.skills.mine, 'mine'), 8, 'old3 เลเวลเดิม Lv8'); assert.strictEqual(o3.skills.farm, 5000, 'xpv 3: อาชีพอื่นไม่ถูกแตะ');
   assert.ok(o3.inv.pick_4 === 1 && !o3.inv.pick_3 && !o3.inv.glove_2 && !o3.inv.hammer_1 && o3.inv.coin >= 100 + 1200 + 600, 'old3 (เหรียญ ≥ เดิม + คืนถุงมือ 1,200 + ค้อน 600 ความสำเร็จเหรียญอาจบวกเพิ่ม): pick_3→pick_4 + คืนเงินถุงมือ 1,200 + ค้อน 600');
   assert.ok(o3.dur.pick > 0 && o3.dur.pick <= S.durMax('pick', 4, 0));
   assert.strictEqual(S.levelOf(sv.old2.skills.mine, 'mine'), S.levelOf(S.xpFromV2(3000)), 'old2 (xpv 2) เลเวลเดิม'); assert.ok(sv.old2.inv.pick_1);
   assert.strictEqual(S.levelOf(sv.v1.skills.mine, 'mine'), S.levelOf(S.xpFromV2(S.xpFromV1(400))), 'ไม่มี xpv (v1) เลเวลเดิม');
-  assert.deepStrictEqual([sv.new4.skills, sv.new4.inv.pick_10, sv.new4.inv.glove_1, sv.new4.xpv], [{ mine: 777 }, 1, 1, 5], 'xpv 4 อยู่แล้ว: ไม่แปลง XP นักขุด ไม่ลบถุงมือ (ขยับเป็น xpv 5 เท่านั้น)');
+  assert.deepStrictEqual([sv.new4.skills, sv.new4.inv.pick_10, sv.new4.inv.glove_1, sv.new4.xpv], [{ mine: 777 }, 1, 1, 6], 'xpv 4 อยู่แล้ว: ไม่แปลง XP นักขุด ไม่ลบถุงมือ (ขยับเป็น xpv 6 เท่านั้น)');
   // เซฟแล้วโหลดใหม่ ไม่แปลงซ้ำ
   w.dirty = true; w.save(true); const snap = clone(sv);
   const w2 = new World('minemig'); assert.deepStrictEqual(clone(w2.saved), snap, 'โหลดรอบสอง = ไม่เปลี่ยน (ไม่คืนเงินซ้ำ)');
-  // ผู้เล่นใหม่เริ่มที่ xpv 4
-  const ws = { readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } }; const j = w2.join(ws, 'newbie', '#e74c3c'); assert.strictEqual(w2.saved.newbie.xpv, 5);
+  // ผู้เล่นใหม่เริ่มที่ xpv 6
+  const ws = { readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } }; const j = w2.join(ws, 'newbie', '#e74c3c'); assert.strictEqual(w2.saved.newbie.xpv, 6);
 }
 
 // ---- (ค) เวลา × XP/ชม. ตามเป้า (levelsim): ถึง Lv10 ≈ 4.0 ชม., Lv20 = 20 ชม. ----

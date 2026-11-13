@@ -93,7 +93,7 @@ for (let i = 0; i < 3; i++) {
   for (let i = 0; i < 3; i++) {
     const t = mid(i);
     for (const id of Object.keys(K)) { const o = SE.list.find(x => x.trees.includes(id)); assert.strictEqual(S.canSpawnTree(id, t), !o || o.id === ID[i], `canSpawnTree ${id} ${ID[i]}`); }
-    for (let a = 1; a <= 5; a++) assert.ok(Object.keys(K).some(id => K[id].axe === a && !own.has(id)), `ขวานขั้น ${a} ต้องมีต้นทุกฤดูให้ตัด`);
+    for (let a = 1; a <= S.AXE_MAX; a++) assert.ok(Object.keys(K).some(id => K[id].axe === a && !own.has(id)), `ขวานขั้น ${a} ต้องมีต้นทุกฤดูให้ตัด`);
     const tot = Object.keys(K).filter(id => S.canSpawnTree(id, t)).reduce((a, id) => a + S.treeQuota(id, S.TREE.cap, t), 0); assert.ok(tot >= S.TREE.cap, `ผลรวมโควตาในฤดู ${tot} < ${S.TREE.cap}`);
   }
   // spawn ส่ง t: ไม่คืนชนิดนอกฤดู
@@ -120,7 +120,7 @@ for (let i = 0; i < 3; i++) {
   const q = id => S.treeQuota(id, S.TREE.cap, mid(2)); for (const id of Object.keys(K)) assert.ok(tl.filter(t => t[2] === id).length <= q(id) + 1, `ชนิด ${id} เกินโควตา`);
   assert.ok(mapleBefore <= S.treeQuota('maple', S.TREE.cap) + 1);
   const ck = {}; for (const t of tl) ck[t[2]] = 1; assert.ok(Object.keys(ck).length >= 8, 'ชนิดต้นไม้หลากหลาย');
-  for (let a = 1; a <= 5; a++) assert.ok(tl.some(t => K[t[2]].axe === a), `ขวานขั้น ${a} มีต้นให้ตัดบนแมพจริง`);
+  for (let a = 1; a <= S.AXE_MAX; a++) assert.ok(tl.some(t => K[t[2]].axe === a), `ขวานขั้น ${a} มีต้นให้ตัดบนแมพจริง`);
 }
 Date.now = realNow;
 console.log('ผ่าน test-seasons');

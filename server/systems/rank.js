@@ -22,7 +22,7 @@ module.exports = {
         k, n: String(r.name || k), xpAll, sk,
         wk: r.wkx && r.wkx.k === wkNow ? Math.floor(num(r.wkx.xp)) : 0,
         // ความมั่งคั่งรวม: เหรียญในมือ + ธนาคาร + ของ/อุปกรณ์ในกระเป๋า + เฟอร์นิเจอร์ที่วางในบ้าน (ไม่ใช่แค่เงินสด)
-        coin: Math.floor(num(r.inv && r.inv.coin)) + Math.floor(num(r.bank && r.bank.bal)) + Math.floor(S.holdingsValue(r.inv)) + ((h = this.houses && this.houses[k]) && h.items ? S.houseScore(h.items).value : 0),
+        coin: Math.floor(num(r.inv && r.inv.coin)) + Math.floor(num(r.bank && r.bank.bal)) + Math.floor(S.holdingsValue(S.invPub(r))) + ((h = this.houses && this.houses[k]) && h.items ? S.houseScore(h.items).value : 0),
       });
     }
     const top = {}, ranks = {};

@@ -72,7 +72,8 @@ module.exports = {
     let r = Math.random() * pool.reduce((a, x) => a + x.w, 0), f = pool[0].f;
     for (const x of pool) { if ((r -= x.w) < 0) { f = x.f; break; } }
     const firstFish = !fi.sea && !(this.achOf(p.rec).cnt.fish > 0); if (firstFish) f = FISH.find(x => x.id === S.NEWBIE.firstFish) || f; // ปลาตัวแรกในชีวิตการันตีตัวสวย
-    const ft = S.fightNew(S.fishClass(f), rod, S.perkLv(fl), perfect, Math.random);
+    const rh = S.rodHit(rod, f), ft = S.fightNew(S.fishClass(f), rod, S.perkLv(fl), perfect, Math.random, rh.down); // คันต่ำกว่าระดับปลา = ปลาแรงขึ้น + คันสึกเร็วขึ้น
+    this.durUse(p, 'rod', rh.wear);
     Object.assign(fi, { st: 'fight', pick: f, perfect: false, firstFish, ft, hold: false, last: now, sync: now, at: now + S.FIGHT.timeoutMs + 5000 });
     send(p, { t: 'fight', cls: ft.cls, sched: ft.sched, dist: ft.dist, ten: ft.ten, str: ft.str, run: ft.run, spd: ft.spd, rise: ft.rise, perfect: !!perfect });
     this.toast(p, '🎣 ปลากินเบ็ดแล้ว! กดค้างเพื่อกรอสาย ปล่อยเมื่อสายตึงเกินไป'); this.sfx(p, 'bite');
@@ -107,6 +108,6 @@ module.exports = {
     const fl = this.lv(p, 'fish'), rod = rodOf(inv);
     const wait = rand(5500, 12000) * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(fl) - 1)) * S.ROD_WAIT[rod] * (this.happyOn(p) ? S.VILLAGE.fishMul : 1);
     p.fish = { st: 'wait', at: now + wait, fx: tx * TS + 16, fy: ty * TS + 16, fl, rod, bt, bk, sea: !!sea, zone: zone || '' };
-    this.sfx(p, 'cast'); this.durUse(p, 'rod');
+    this.sfx(p, 'cast'); // ความทนคันสึกตอนปลากินเบ็ด (startFight) ตามระดับปลา
   },
 };

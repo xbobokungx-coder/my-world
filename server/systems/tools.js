@@ -20,10 +20,10 @@ module.exports = {
     const D = S.DURABILITY[tool], sn = S.SHOPS[D.shop].name;
     this.toast(p, this.fixN(p, tool) >= S.REPAIR.maxFixes ? `💥 ${D.name}ซ่อมไม่ได้แล้ว! ต้องซื้อใหม่ที่${sn}` : `🔧 ${D.name}พังแล้ว! ซ่อมได้ที่${sn}`); return false;
   },
-  durUse(p, tool) {
+  durUse(p, tool, mul = 1) { // mul = ตัวคูณการสึก (ขวาน/คัน ตามระดับต้นไม้/ปลา) ค่าเริ่มต้น 1 = เดิม
     const W = S.WEAR_RATE, now = Date.now(), H = (p.heat || (p.heat = {}))[tool] || (p.heat[tool] = { h: 0, t: now, carry: 0, warn: false });
     H.h = Math.max(0, H.h - (now - H.t) / 1000 * W.cool) + 1; H.t = now; // ใช้ถี่ๆ ต่อเนื่อง = ร้อนขึ้น พักแล้วเย็นลง
-    H.carry += W.base * (1 + Math.min(W.maxBonus, H.h * W.perHeat));
+    H.carry += W.base * (1 + Math.min(W.maxBonus, H.h * W.perHeat)) * (Number.isFinite(mul) && mul > 0 ? Math.min(mul, 5) : 1);
     const take = Math.floor(H.carry); H.carry -= take;
     const before = this.durCur(p, tool), cur = Math.max(0, before - take), mx = this.durMx(p, tool), thr = Math.ceil(mx * 0.1);
     (p.rec.dur || (p.rec.dur = {}))[tool] = cur;

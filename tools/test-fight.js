@@ -39,10 +39,10 @@ const rate = (cls, rod, perk, perfect, react, policy, n = 300) => { let w = 0; f
   for (let c = 1; c < 4; c++) assert.strictEqual(rate(c, 3, 1, false, 0, 'holdall', 50), 0, 'กดค้างไม่ปล่อย สายขาด class ' + c);
   assert.ok(rate(1, 1, 1, false, 250, 'human') >= 0.97, 'ปลากลุ่ม 1 คันไม้ไผ่ มือคนชนะแทบทุกครั้ง');
   assert.ok(rate(2, 2, 1, false, 250, 'human') >= 0.9, 'ปลากลุ่ม 2 คันที่ปลายังออกได้ชนะส่วนใหญ่');
-  const g3a = rate(3, 3, 1, true, 250, 'human'), g3b = rate(3, 7, 10, true, 250, 'human'), g3c = rate(3, 3, 1, false, 250, 'human');
+  const g3a = rate(3, 3, 1, true, 250, 'human'), g3b = rate(3, 10, 10, true, 250, 'human'), g3c = rate(3, 3, 1, false, 250, 'human');
   assert.ok(g3a >= 0.5 && g3a <= 0.9, 'ปลายักษ์ คันคาร์บอน ตั้งเบ็ดเป๊ะ ชนะราว 50–90% ได้ ' + g3a);
   assert.ok(g3b > g3a, 'คันเพชร เลเวลสูง ชนะมากกว่า'); assert.ok(g3c < g3a, 'ตั้งเบ็ดไม่เป๊ะ ยากกว่ามาก');
-  assert.ok(rate(3, 5, 7, true, 400, 'human') >= 0.85, 'ตอบสนองช้า 400 ms แต่คันดีก็ยังชนะได้');
+  assert.ok(rate(3, 7, 7, true, 400, 'human') >= 0.85, 'ตอบสนองช้า 400 ms แต่คันดีก็ยังชนะได้');
 }
 // 3) เซิร์ฟเวอร์: ปลากินเบ็ด → ชักเย่อทันที → ชนะได้ปลา / ปล่อยทิ้งปลาหลุด / กดค้างสายขาด / ดึงเร็วไปคืนเหยื่อ / ส่งสถานะให้ผู้เล่น
 const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } });

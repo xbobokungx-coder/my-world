@@ -40,7 +40,7 @@ module.exports = {
   creditInv(key, item, n) { // เพิ่มของให้ผู้เล่น (อาจออฟไลน์): อัปเดตทั้งในเกมและไฟล์เซฟ
     const p = [...this.players.values()].find(q => q.key === key), rec = (p && p.rec) || this.saved[key]; if (!rec) return;
     rec.inv[item] = Math.max(0, (rec.inv[item] || 0) + n); if (!rec.inv[item]) delete rec.inv[item];
-    if (p) send(p, { t: 'inv', inv: rec.inv }); this.dirty = true;
+    if (p) send(p, { t: 'inv', inv: S.invPub(rec) }); this.dirty = true;
   },
   // ----- เควสประจำวัน + แต้มความดี + บัฟ + สถิติประจำวัน (Hall of Fame) -----
   today() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; },
@@ -97,7 +97,7 @@ module.exports = {
     if (S.perishable(key) && n) { if (n > 0) this.lotPut(p.rec, key, lots || [[Date.now(), n]]); else taken = this.lotTake(p.rec, key, -n); }
     inv[key] = Math.max(0, (inv[key] || 0) + n);
     if (!inv[key] && key !== 'coin') delete inv[key];
-    send(p, { t: 'inv', inv, fr: this.freshPub(p.rec, p.key), deep: p.rec.deep || 1 });
+    send(p, { t: 'inv', inv: S.invPub(p.rec), fr: this.freshPub(p.rec, p.key), deep: p.rec.deep || 1 });
     this.dirty = true;
     return taken;
   },

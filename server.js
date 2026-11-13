@@ -61,17 +61,19 @@ class World {
         this.farm = moved; this.dirty = true;
       }
       this.saved = Object.assign(Object.create(null), d.players); // ไม่มี prototype: ชื่อผู้เล่นอย่าง "__proto__" จะได้ไม่ไปชนของในระบบ
-      let mineRefund = 0, mineMoved = 0, stdMoved = 0; // สรุปการย้ายเซฟนักขุดแร่ (xpv 4) ลง log ครั้งเดียว เหรียญที่คืนไม่ผ่าน telemetry
+      let mineRefund = 0, mineMoved = 0, stdMoved = 0, toolMoved = 0; // สรุปการย้ายเซฟนักขุดแร่ (xpv 4) ลง log ครั้งเดียว เหรียญที่คืนไม่ผ่าน telemetry
       for (const rec of Object.values(this.saved)) { // ย้าย XP มาตาราง XP_TABLE (ครั้งเดียวต่อบัญชี) เลเวลเท่าเดิม
-        if (!rec || rec.xpv >= 5) continue;
-        if (rec.xpv === 4) { if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; this.dirty = true; continue; } // xpv 5 (6 พ.ย. 2026): ตารางหลอดมาตรฐานชาวประมง
-        if (rec.xpv === 3) { const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; this.dirty = true; continue; } // xpv 4 (6 พ.ย. 2026): นักขุดแร่ตารางหลอดใหม่ + อีเต้อ 10 ชนิด + คืนเหรียญถุงมือ/ค้อน
+        if (!rec || rec.xpv >= 6) continue;
+        if (rec.xpv === 5) { if (S.migrateToolsV6(rec)) toolMoved++; this.dirty = true; continue; } // xpv 6 (13 พ.ย. 2026): ขวาน/คันเบ็ด 10 ระดับ (เพิ่มอย่างเดียว ไม่คืน/ไม่หักเหรียญ)
+        if (rec.xpv === 4) { if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; this.dirty = true; continue; } // xpv 5 (6 พ.ย. 2026): ตารางหลอดมาตรฐานชาวประมง
+        if (rec.xpv === 3) { const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; this.dirty = true; continue; } // xpv 4 (6 พ.ย. 2026): นักขุดแร่ตารางหลอดใหม่ + อีเต้อ 10 ชนิด + คืนเหรียญถุงมือ/ค้อน
         if (rec.xpv !== 2 && rec.skills) for (const k of Object.keys(rec.skills)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = S.xpFromV1(rec.skills[k]);
         if (rec.skills) for (const k of Object.keys(rec.skills)) if (Number.isFinite(rec.skills[k])) rec.skills[k] = S.xpFromV2(rec.skills[k]); // xpv 3 (31 ต.ค. 2026): ยืดเลเวลต้น เลเวลเท่าเดิม
-        rec.xpv = 3; const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; this.dirty = true;
+        rec.xpv = 3; const r = S.migrateMineV4(rec); if (r) { mineMoved++; mineRefund += r.refund || 0; } if (S.migrateStdV5(rec, S.STD_V5_SKILLS)) stdMoved++; if (S.migrateToolsV6(rec)) toolMoved++; this.dirty = true;
       }
       if (mineMoved) console.log(`[migrate] นักขุดแร่ xpv 4: ย้าย ${mineMoved} บัญชี คืนเหรียญถุงมือ/ค้อนรวม ${mineRefund}`);
       if (stdMoved) console.log(`[migrate] ตารางหลอดมาตรฐาน xpv 5: ย้าย ${stdMoved} บัญชี`);
+      if (toolMoved) console.log(`[migrate] อุปกรณ์ xpv 6: ย้าย ${toolMoved} บัญชี`);
       for (const rec of Object.values(this.saved)) { // ย้อนพิกัดจากทดลอง TS=64 กลับ TS=32
         if (!rec || !rec.px64) continue;
         if (Number.isFinite(rec.x)) rec.x /= 2;
@@ -171,7 +173,7 @@ class World {
       try { q.ws.terminate(); } catch (e) { /* เหมือนกัน */ } // ตัดซ็อกเก็ตเก่าทันที ไม่รอ close handshake
     }
     let rec = this.saved[key];
-    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 5, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
+    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 6, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
     if (!rec.mig2) { rec.mig2 = true; rec.inv.bait = (rec.inv.bait || 0) + 10; } // แจกเหยื่อตกปลาชุดแรกให้ผู้เล่นเดิม (ระบบเหยื่อเพิ่งเพิ่ม)
     rec.name = name;
     if (!rec.firstSeen) rec.firstSeen = rec.lastSeen || Date.now(); // บัญชีเก่าก่อนมีตัวนับ: ใช้เวลาเข้าล่าสุดแทน (ใกล้เคียงเท่านั้น)
@@ -197,7 +199,7 @@ class World {
     const now = Date.now(), farm = {};
     for (const k in this.farm) farm[k] = this.pub(this.farm[k], now);
     send(p, {
-      t: 'w', deep: rec.deep || 1, first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: rec.inv, fr: this.freshPub(rec, key), skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
+      t: 'w', deep: rec.deep || 1, first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: S.invPub(rec), fr: this.freshPub(rec, key), skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
       players: [...this.players.values()].filter(q => !q.scene).map(q => this.pubFull(q)),
       roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
@@ -502,18 +504,21 @@ class World {
       if (!axe) return this.toast(p, 'ต้องมีขวานก่อน ซื้อได้ที่ร้านช่างไม้ 🪓');
       if (!S.isChoppable(this.map, tx, ty)) return this.toast(p, 'ใช้ขวานฟันต้นไม้ 🌳 (ต้นไม้ขอบแมพตัดไม่ได้)');
       const key = tx + ',' + ty, kid = this.treeKind.get(key) || 'broad', K = S.TREE_KINDS[kid], wl = this.lv(p, 'wood');
-      if (wl < K.lv || axe < K.axe) return this.toast(p, `🔒 ${K.emoji} ${K.name}ต้องเป็นช่างไม้ Lv${K.lv} และใช้${S.AXES[K.axe].name}ขึ้นไป`);
+      const mh = S.chopHit(inv, kid); // ดาเมจ/สึก/ไม้เพิ่มตามขวานเทียบระดับต้นไม้ (ต่ำกว่า 1 ระดับฟันได้ช้าลง ต่ำกว่านั้นฟันไม่ได้)
+      if (wl < K.lv) return this.toast(p, `🔒 ${K.emoji} ${K.name}ต้องเป็นช่างไม้ Lv${K.lv} ก่อน`);
+      if (mh.blocked) return this.toast(p, `🔒 ${K.emoji} ${K.name}ต้องใช้ขวานระดับ ${mh.need} ขึ้นไป (${S.AXES[mh.need].name})`);
       let h = this.treeHp.get(key);
       if (now - (p.hitAt || 0) < S.SWING_MS - 150) return; p.hitAt = now; // ฟันได้ไม่ถี่กว่าความยาวท่า
       if (!h || now - h.t > 20000) h = { hp: K.hp, t: now };
-      h.hp -= S.AXES[axe].power; h.t = now;
-      this.sfx(p, 'chop'); this.durUse(p, 'axe');
-      if (h.hp > 0) { this.treeHp.set(key, h); this.broadcast({ t: 'th', x: tx, y: ty, f: +(h.hp / K.hp).toFixed(2) }); if (K.hp > 4) this.toast(p, `🪓 ${K.emoji} ${K.name} อีก ${Math.ceil(h.hp / S.AXES[axe].power)} ครั้ง`); return; }
+      h.hp -= mh.dmg; h.t = now;
+      this.sfx(p, 'chop'); this.durUse(p, 'axe', mh.wear);
+      if (h.hp > 0) { this.treeHp.set(key, h); this.broadcast({ t: 'th', x: tx, y: ty, f: +(h.hp / K.hp).toFixed(2) }); if (K.hp > 4) this.toast(p, `🪓 ${K.emoji} ${K.name} อีก ${Math.ceil(h.hp / mh.dmg - 1e-9)} ครั้ง`); return; }
       this.treeHp.delete(key); this.treeKind.delete(key); this.map[ty][tx] = T.GRASS; this.dirty = true;
       p.fellAt = (p.fellAt || []).filter(t => now - t < S.TREE.activeMs).concat(now); // เวลาล้มต้นไม้ล่าสุดของคนนี้ (ในหน่วยความจำ ไม่ลงเซฟ) ใช้นับ 'ช่างไม้ที่ทำงานจริง'
       this.broadcast({ t: 'tree', x: tx, y: ty, on: false });
       const got = {}; for (const [it, n] of K.drop) got[it] = (got[it] || 0) + n;
       if (Math.random() < 0.04 * (S.perkLv(wl) - 1)) got[K.drop[0][0]]++; // ฝีมือ: ได้ชิ้นหลักเพิ่ม
+      if (mh.extra > 0 && Math.random() < mh.extra) got[K.drop[0][0]]++; // ขวานสูงกว่าต้นไม้: ได้ชิ้นหลักเพิ่มตาม AXE_TUNE.over.bonus
       for (const [it, ch] of K.bonus || []) if (Math.random() < ch + 0.01 * (S.perkLv(wl) - 1) + (this.happyOn(p) ? S.VILLAGE.hardBonus : 0)) got[it] = (got[it] || 0) + 1;
       let xp = 0, val = 0; for (const [it, n] of Object.entries(got)) { this.add(p, it, n); xp += S.WOOD_ITEMS[it].xp * n; val += S.WOOD_ITEMS[it].sell * n; this.bookAdd(p, 'wood', it); }
       this.addXp(p, 'wood', S.woodXp(xp, wl)); this.tire(p, 'chop', val);

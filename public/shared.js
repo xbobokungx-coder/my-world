@@ -365,16 +365,16 @@
     { id: 'octopus', name: 'ปลาหมึกยักษ์', emoji: '🐙', sell: 75, xp: 23, w: 3,  lv: 8 },
     { id: 'shark',   name: 'ฉลามน้อย',    emoji: '🦈', sell: 90, xp: 27,  w: 1.3, lv: 9 },
     { id: 'dolphin', name: 'โลมา',         emoji: '🐬', sell: 140, xp: 61, w: 0.5, lv: 10 },
-    { id: 'jelly', name: 'แมงกะพรุน', emoji: '🪼', sell: 210, xp: 138, w: 3, lv: 11, rod: 4 },
-    { id: 'beaver', name: 'บีเวอร์', emoji: '🦫', sell: 250, xp: 310, w: 2, lv: 12, rod: 4 },
-    { id: 'flamingo', name: 'ฟลามิงโก', emoji: '🦩', sell: 290, xp: 411, w: 1.6, lv: 13, rod: 5 },
-    { id: 'coral', name: 'ปะการังแดง', emoji: '🪸', sell: 330, xp: 545, w: 1.4, lv: 14, rod: 5 },
-    { id: 'swan', name: 'หงส์ดำ', emoji: '🦢', sell: 380, xp: 724, w: 1.1, lv: 15, rod: 5 },
-    { id: 'mermaid', name: 'นางเงือกน้อย', emoji: '🧜', sell: 450, xp: 826, w: 0.8, lv: 16, rod: 6 },
-    { id: 'dragon', name: 'มังกรน้ำ', emoji: '🐉', sell: 520, xp: 943, w: 0.6, lv: 17, rod: 6 },
-    { id: 'sdragon', name: 'มังกรทะเล', emoji: '🐲', sell: 600, xp: 1076, w: 0.45, lv: 18, rod: 6 },
-    { id: 'unicorn', name: 'ม้าน้ำวิเศษ', emoji: '🦄', sell: 700, xp: 1267, w: 0.3, lv: 19, rod: 7 },
-    { id: 'star', name: 'ดาวทะเลทอง', emoji: '🌟', sell: 800, xp: 1491, w: 0.2, lv: 20, rod: 7 },
+    { id: 'jelly', name: 'แมงกะพรุน', emoji: '🪼', sell: 210, xp: 138, w: 3, lv: 11, rod: 6 },
+    { id: 'beaver', name: 'บีเวอร์', emoji: '🦫', sell: 250, xp: 310, w: 2, lv: 12, rod: 6 },
+    { id: 'flamingo', name: 'ฟลามิงโก', emoji: '🦩', sell: 290, xp: 411, w: 1.6, lv: 13, rod: 7 },
+    { id: 'coral', name: 'ปะการังแดง', emoji: '🪸', sell: 330, xp: 545, w: 1.4, lv: 14, rod: 7 },
+    { id: 'swan', name: 'หงส์ดำ', emoji: '🦢', sell: 380, xp: 724, w: 1.1, lv: 15, rod: 8 },
+    { id: 'mermaid', name: 'นางเงือกน้อย', emoji: '🧜', sell: 450, xp: 826, w: 0.8, lv: 16, rod: 8 },
+    { id: 'dragon', name: 'มังกรน้ำ', emoji: '🐉', sell: 520, xp: 943, w: 0.6, lv: 17, rod: 9 },
+    { id: 'sdragon', name: 'มังกรทะเล', emoji: '🐲', sell: 600, xp: 1076, w: 0.45, lv: 18, rod: 9 },
+    { id: 'unicorn', name: 'ม้าน้ำวิเศษ', emoji: '🦄', sell: 700, xp: 1267, w: 0.3, lv: 19, rod: 10 },
+    { id: 'star', name: 'ดาวทะเลทอง', emoji: '🌟', sell: 800, xp: 1491, w: 0.2, lv: 20, rod: 10 },
     // ปลาทะเล (sea: true) 20 ชนิด เป็นชุดแยกจากปลาน้ำจืด มีบันไดเลเวล/เบ็ด/ความหายากของตัวเอง (ตกได้เฉพาะตอนออกเรือ) ราคาเทียบเท่าปลาสระระดับเดียวกัน ไม่ให้ทะเลรวยกว่าสระ
     { id: 'sardine', name: 'ปลาซาร์ดีน', emoji: '🐟', sell: 15, xp: 9, w: 30, lv: 1, sea: true },
     { id: 'anchovy', name: 'ปลากะตัก', emoji: '🐟', sell: 23, xp: 12, w: 26, lv: 2, sea: true },
@@ -386,16 +386,16 @@
     { id: 'barracuda', name: 'ปลาสากทะเล', emoji: '🐟', sell: 78, xp: 23, w: 4, lv: 8, sea: true },
     { id: 'puffer', name: 'ปลาปักเป้า', emoji: '🐡', sell: 95, xp: 27, w: 2.5, lv: 9, sea: true },
     { id: 'sword', name: 'ปลากระโทงแทง', emoji: '🐟', sell: 145, xp: 61, w: 1.8, lv: 10, sea: true },
-    { id: 'manta', name: 'ปลากระเบนราหู', emoji: '🐟', sell: 215, xp: 138, w: 1.6, lv: 11, rod: 4, sea: true },
-    { id: 'hammer', name: 'ฉลามหัวค้อน', emoji: '🦈', sell: 245, xp: 310, w: 1.4, lv: 12, rod: 4, sea: true },
-    { id: 'turtle', name: 'เต่าทะเล', emoji: '🐢', sell: 285, xp: 411, w: 1.2, lv: 13, rod: 5, sea: true },
-    { id: 'seal', name: 'แมวน้ำ', emoji: '🦭', sell: 325, xp: 545, w: 1, lv: 14, rod: 5, sea: true },
-    { id: 'orca', name: 'วาฬเพชฌฆาต', emoji: '🐳', sell: 380, xp: 724, w: 0.8, lv: 15, rod: 5, sea: true },
-    { id: 'whaleshark', name: 'ฉลามวาฬ', emoji: '🦈', sell: 450, xp: 826, w: 0.65, lv: 16, rod: 6, sea: true },
-    { id: 'bluewhale', name: 'วาฬสีน้ำเงิน', emoji: '🐋', sell: 560, xp: 943, w: 0.5, lv: 17, rod: 6, sea: true },
-    { id: 'kraken', name: 'คราเคนน้อย', emoji: '🦑', sell: 620, xp: 1076, w: 0.4, lv: 18, rod: 6, sea: true },
-    { id: 'angler', name: 'ปลาแองเกลอร์', emoji: '🐡', sell: 710, xp: 1267, w: 0.28, lv: 19, rod: 7, sea: true },
-    { id: 'pearl', name: 'หอยมุกทอง', emoji: '🐚', sell: 820, xp: 1491, w: 0.18, lv: 20, rod: 7, sea: true },
+    { id: 'manta', name: 'ปลากระเบนราหู', emoji: '🐟', sell: 215, xp: 138, w: 1.6, lv: 11, rod: 6, sea: true },
+    { id: 'hammer', name: 'ฉลามหัวค้อน', emoji: '🦈', sell: 245, xp: 310, w: 1.4, lv: 12, rod: 6, sea: true },
+    { id: 'turtle', name: 'เต่าทะเล', emoji: '🐢', sell: 285, xp: 411, w: 1.2, lv: 13, rod: 7, sea: true },
+    { id: 'seal', name: 'แมวน้ำ', emoji: '🦭', sell: 325, xp: 545, w: 1, lv: 14, rod: 7, sea: true },
+    { id: 'orca', name: 'วาฬเพชฌฆาต', emoji: '🐳', sell: 380, xp: 724, w: 0.8, lv: 15, rod: 8, sea: true },
+    { id: 'whaleshark', name: 'ฉลามวาฬ', emoji: '🦈', sell: 450, xp: 826, w: 0.65, lv: 16, rod: 8, sea: true },
+    { id: 'bluewhale', name: 'วาฬสีน้ำเงิน', emoji: '🐋', sell: 560, xp: 943, w: 0.5, lv: 17, rod: 9, sea: true },
+    { id: 'kraken', name: 'คราเคนน้อย', emoji: '🦑', sell: 620, xp: 1076, w: 0.4, lv: 18, rod: 9, sea: true },
+    { id: 'angler', name: 'ปลาแองเกลอร์', emoji: '🐡', sell: 710, xp: 1267, w: 0.28, lv: 19, rod: 10, sea: true },
+    { id: 'pearl', name: 'หอยมุกทอง', emoji: '🐚', sell: 820, xp: 1491, w: 0.18, lv: 20, rod: 10, sea: true },
   ];
   // สระ = ปลาที่ไม่ใช่ sea • ทะเล = ปลา sea เท่านั้น (ชุดแยกเด็ดขาด) • MARINE คือชื่อสัตว์ทะเลในสระที่ค้างไว้ก่อน (ย้ายออกในเฟส B)
   const MARINE = new Set(['shrimp', 'crab', 'lobster', 'squid', 'octopus', 'shark', 'dolphin', 'jelly', 'coral']);
@@ -416,8 +416,10 @@
   ].map(f => ({ ...f, legacy: true }));
   const FISH_ALL = FISH.concat(LEGACY_FISH);
   // ช่างไม้: ตัดต้นไม้ด้วยขวาน (ขวานแรงกว่าตัดเร็วกว่า) ได้ไม้ท่อน หายากได้ไม้เนื้อแข็งราคาแพง
-  const AXES = { 1: { name: 'ขวานหิน', price: 50, power: 1 }, 2: { name: 'ขวานเหล็ก', price: 220, lv: 3, power: 1.5 }, 3: { name: 'ขวานเหล็กกล้า', price: 700, lv: 6, power: 2 }, 4: { name: 'ขวานทองคำ', price: 2000, lv: 11, power: 2.5 }, 5: { name: 'ขวานเพชร', price: 5500, lv: 16, power: 3 } }; // power ปรับ 31 ต.ค. 2026 (เดิม 1–5) ให้ต้นไม้ธรรมดาไม่ล้มในครั้งเดียวเมื่อมีขวานดี
-  const axeTier = inv => { for (let t = 5; t >= 1; t--) if (inv && inv['axe_' + t]) return t; return 0; }; // ระดับขวานสูงสุดที่มี (0 = ไม่มี)
+  const AXE_NAMES = ['', 'ขวานหิน', 'ขวานทองแดง', 'ขวานเหล็ก', 'ขวานเหล็กกล้า', 'ขวานเงิน', 'ขวานไทเทเนียม', 'ขวานทองคำ', 'ขวานมรกต', 'ขวานเพชร', 'ขวานมิทริล'], AXE_PRICE = [0, 50, 200, 500, 950, 1600, 2500, 3700, 5200, 7000, 9000]; // ขวาน 10 ระดับ (13 พ.ย. 2026 WP-10) ราคา/ทน/ซ่อมอยู่ TOOL_PRICE/DURABILITY
+  const AXE_MAX = 10;
+  const AXES = {}; for (let t = 1; t <= AXE_MAX; t++) AXES[t] = { name: AXE_NAMES[t], price: AXE_PRICE[t], ...(t > 1 ? { lv: 2 * t - 1 } : {}), power: t }; // lv = เลเวลช่างไม้ที่ซื้อได้ 3,5,…,19 (ระดับ 1 ซื้อได้เลย) • power = เลขระดับ
+  const axeTier = inv => { for (let t = AXE_MAX; t >= 1; t--) if (inv && inv['axe_' + t]) return t; return 0; }; // ระดับขวานสูงสุดที่มี (0 = ไม่มี)
   const ACTION_TUNE = { wood: { swings: 5, perLv: 0.15 }, fish: 0.9, mine: 0.46 }; // ตัวคูณ "เวลาต่อการกระทำ" (31 ต.ค. 2026; ตัดไม้/ขุดแร่ปรับใหม่รอบสอง): ตัดไม้ = จำนวนครั้งที่ฟันต้นไม้ด้วยขวานขั้นต่ำที่ต้องใช้ (swings + perLv × (เลเวลที่ปลดล็อก−1)) แทนตัวคูณ HP, ตกปลารอปลากินเบ็ด ×1.15, ขุดแร่ HP ก้อนแร่ ×0.85 ให้สามอาชีพสมดุลกัน
   const TREE_HP = 4;                       // ต้องฟันกี่แต้มถึงล้ม (ขวานหิน = 4 ครั้ง, เหล็ก 2, เหล็กกล้า 2)
   const WOOD = { log: { sell: 18, xp: 9 }, hardwood: { sell: 66, xp: 14, chance: 0.22 }, xpPerLv: 0.075 }; // xpPerLv (0.15 → 0.1 เมื่อมีต้นไม้หลายชนิด 25 ต.ค. 2026): XP ช่างไม้ (โค่น+ประดิษฐ์) ×(1 + xpPerLv×(เลเวล−1)) เพราะต้นไม้ทั้งห้องงอกได้จำกัด ไม้จึงโตตามเลเวลด้วยตัวคูณแทนของแพงขึ้น
@@ -485,7 +487,17 @@
     shingchan: { name: 'ต้นชิงชัน',   emoji: '🟥', lv: 19, axe: 5, hp: 32, pct: 0.5, drop: [['shingwood', 1]],  bonus: [['rosewood', 0.2]], where: 'deep' },
     ancient: { name: 'ไม้พันปี',      emoji: '🎄', lv: 20, axe: 5, hp: 36, pct: 0.4,   drop: [['ancientwood', 1]], bonus: [['ebony', 0.3]], where: 'deep' },
   };
-  for (const k of Object.values(TREE_KINDS)) k.hp = Math.round((ACTION_TUNE.wood.swings + ACTION_TUNE.wood.perLv * (k.lv - 1)) * AXES[k.axe].power * (k.hpMul || 1)); // HP = ครั้งที่ฟันด้วยขวานขั้นต่ำที่ต้องใช้ × พลังขวานนั้น
+  // ต้นไม้มีระดับ ⌈เลเวล÷2⌉ (13 พ.ย. 2026 WP-10): ค่า axe/hp ที่เขียนในตารางด้านบนถูกทับด้วยสูตรนี้เสมอ • HP = hpPer × ระดับ
+  // ขวาน: slow = ใช้ขวานต่ำกว่าระดับต้นไม้ (maxDown ระดับเป็นอย่างมาก) ดาเมจ ×dmg^ระดับที่ขาด สึก +wear ต่อระดับ • over = ขวานสูงกว่า: สึกลด 1/(1+wear×ระดับ) ได้ชิ้นหลักเพิ่ม bonus ต่อระดับ (เพดาน cap)
+  const AXE_TUNE = { hpPer: 5, minHits: 3, maxDown: 1, slow: { dmg: 0.85, wear: 0.5 }, over: { bonus: 0.06, cap: 0.3, wear: 0.25 } };
+  for (const k of Object.values(TREE_KINDS)) { k.axe = Math.ceil(k.lv / 2); k.hp = AXE_TUNE.hpPer * k.axe; }
+  // ผลการฟัน 1 ครั้งกับต้นไม้ kindId (ผู้ฟันมีของในกระเป๋า inv) • null = ไม่มีขวาน • { blocked, need } = ขวานต่ำกว่าระดับต้นไม้เกิน maxDown • extra = โอกาสได้ชิ้นหลัก +1
+  const chopHit = (inv, kindId) => {
+    const K = TREE_KINDS[kindId], axe = axeTier(inv); if (!K || !axe) return null;
+    const d = axe - K.axe; if (d < -AXE_TUNE.maxDown) return { blocked: true, need: K.axe - AXE_TUNE.maxDown };
+    const raw = AXES[axe].power * (d < 0 ? Math.pow(AXE_TUNE.slow.dmg, -d) : 1), dmg = Math.min(raw, K.hp / AXE_TUNE.minHits);
+    return { dmg, hits: Math.ceil(K.hp / dmg - 1e-9), slow: d < 0, down: Math.max(0, -d), over: Math.max(0, d), wear: d < 0 ? 1 + AXE_TUNE.slow.wear * -d : 1 / (1 + AXE_TUNE.over.wear * d), extra: Math.min(AXE_TUNE.over.cap, AXE_TUNE.over.bonus * Math.max(0, d)) };
+  };
   // ขุดเหมือง (ถ้ำ 10 ชั้น): เดินเข้าปากถ้ำบนหน้าผาเหนือ ใช้อีเต้อขุดก้อนแร่ ลงบันไดไปชั้นลึกขึ้นเรื่อยๆ ยิ่งลึกยิ่งได้แร่แพง (แต่ละชั้นเป็นฉากร่วมของทั้งห้อง เห็นกันและแย่งแร่กัน)
   // อีเต้อ 10 ระดับ (12 พ.ย. 2026 ทุกระดับเป็นอีเต้อ ท่าขุดท่าเดียว ต่างกันที่วัสดุ/หน้าตา): ไม้→หิน→ทองแดง→เหล็ก→เหล็กกล้า→ไทเทเนียม→ทองคำ→มรกต→เพชร→มิทริล • power = แต้มต่อครั้ง lv = เลเวลนักขุดแร่ที่ซื้อได้ (ระดับแรกซื้อได้เลย)
   // ชุดอุปกรณ์ขุด 10 ชนิด (6 พ.ย. 2026) ชนิดละระดับ ตรงกับแร่ลำดับเดียวกัน (ORES[k].pick = 1..10) • คีย์ในเซฟ pick_1..10 • power = เลขระดับ • lv = เลเวลนักขุดที่ซื้อได้ (ตรงกับแร่ที่ปลด)
@@ -531,6 +543,9 @@
   };
   // ย้ายเซฟ xpv 4 → 5 (6 พ.ย. 2026): XP หลอดของอาชีพที่ใช้ XP_TABLE_STD → ตารางใหม่ (เลเวลและสัดส่วนความคืบหน้าเท่าเดิม) • อาชีพต่อไปใส่ชื่อใน STD_V5_SKILLS
   const STD_V5_SKILLS = ['fish'];
+  // ตารางแปลงเซฟ xpv 5 → 6 (WP-10/11 ทางเลือก B ไม่มีใครเสียสิทธิ์) • map = ระดับเดิม → ระดับใหม่ (เปลี่ยนตารางได้โดยไม่แก้ตรรกะ) • oldMax/oldPrice = ความทน/ราคาเดิม ใช้คงสัดส่วนความทน (ฟังก์ชัน migrateToolsV6 อยู่ขั้น S3)
+  const AXE_MIG6 = { map: { 1: 1, 2: 2, 3: 4, 4: 6, 5: 9 }, oldMax: [0, 90, 140, 220, 320, 450], oldPrice: [0, 50, 220, 700, 2000, 5500] };
+  const ROD_MIG6 = { map: { 1: 1, 2: 2, 3: 4, 4: 6, 5: 8, 6: 9, 7: 10 }, oldMax: [0, 200, 370, 850, 1360, 2860, 5030, 5580] };
   const ROD_MIG = { oldDur: [0, 100, 140, 200, 280, 360, 450, 560] }; // ความทนทานสูงสุดเดิมของคันเบ็ดแต่ละระดับ (ก่อน xpv 5) ใช้คงสัดส่วนความทนทานตอนย้ายเซฟ
   const xpStdV5 = (xp, skill) => { // pure: XP ตาราง XP_TABLE → xpTable(skill) (เลเวลสูงสุดแปลงส่วนเกินตามสัดส่วนหลอดต่อดาว)
     const N = xpTable(skill); xp = Math.max(0, +xp || 0); let L = 1; while (L < MAX_LV && xp >= XP_TABLE[L + 1]) L++;
@@ -543,10 +558,62 @@
     if ((skills || STD_V5_SKILLS).includes('fish') && rec.dur && typeof rec.dur === 'object' && Number.isFinite(rec.dur.rod)) { // ความทนทานเบ็ดคงสัดส่วนของค่าสูงสุดตามจำนวนครั้งที่ซ่อม
       const tier = Math.min(ROD_MIG.oldDur.length - 1, rodTier(rec.inv)), fx = Math.max(0, Math.floor(+(rec.fix && rec.fix.rod) || 0));
       const oldMax = Math.max(1, Math.floor(ROD_MIG.oldDur[tier] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fx))));
-      const ratio = Math.max(0, Math.min(1, rec.dur.rod / oldMax)), nm = durMax('rod', tier, fx);
+      const ratio = Math.max(0, Math.min(1, rec.dur.rod / oldMax)), nm = Math.max(1, Math.floor(ROD_MIG6.oldMax[tier] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fx)))); // ใช้ตารางความทนยุค xpv 5 (ก่อนขยาย 10 ระดับ) เพราะ migrateToolsV6 จะแปลงต่ออีกขั้น
       rec.dur.rod = ratio > 0 ? Math.max(1, Math.round(ratio * nm)) : 0;
     }
     rec.xpv = 5; return true;
+  };
+  // ย้ายเซฟ xpv 5 → 6 (13 พ.ย. 2026) ขวาน 5→10 ระดับ คัน 7→10 ระดับ: เพิ่มคีย์ระดับใหม่อย่างเดียว ไม่ลบ/ไม่แตะเหรียญ • คีย์เดิมที่ไม่อยู่ในชุดใหม่ = ของค้าง บันทึกใน rec.tmig (ขายคืนไม่ได้ ไม่แสดงในกระเป๋า)
+  // rec.tmig = { add: [คีย์ที่เพิ่ม], left: { คีย์: จำนวน }, old: { axe, rod }, dur: { axe, rod ก่อนย้าย }, nd: { axe, rod หลังย้าย } } • ผู้เรียกต้องแปลง xpv ถึง 5 ก่อน
+  const migrateToolsV6 = rec => { // แก้ rec ตรงๆ (idempotent: rec.xpv >= 6 ข้าม) คืน { axe: [เก่า,ใหม่], rod: [เก่า,ใหม่] } หรือ null ถ้าไม่ได้ทำ
+    if (!rec || typeof rec !== 'object' || (rec.xpv | 0) >= 6) return null;
+    const res = { axe: [0, 0], rod: [1, 1] }, tm = { add: [], left: {}, old: {}, dur: {}, nd: {} };
+    const inv = rec.inv && typeof rec.inv === 'object' && !Array.isArray(rec.inv) ? rec.inv : null;
+    for (const [tool, MIG, lo, hi] of [['axe', AXE_MIG6, 1, 5], ['rod', ROD_MIG6, 2, 7]]) {
+      const held = []; // ระดับเดิมที่ถืออยู่ (ก่อนเพิ่มคีย์)
+      if (inv) for (let t = lo; t <= hi; t++) if (Math.floor(+inv[tool + '_' + t]) > 0) held.push(t);
+      const old = held.length ? held[held.length - 1] : tool === 'rod' ? 1 : 0;
+      if (!old) continue;
+      const nu = MIG.map[old]; res[tool] = [old, nu]; tm.old[tool] = old;
+      if (inv) {
+        const N = new Set(held.map(t => MIG.map[t]));
+        for (const k of N) if (!(inv[tool + '_' + k] > 0)) { inv[tool + '_' + k] = 1; tm.add.push(tool + '_' + k); }
+        for (const t of held) if (!N.has(t)) tm.left[tool + '_' + t] = Math.floor(+inv[tool + '_' + t]);
+      }
+      if (rec.dur && typeof rec.dur === 'object' && Number.isFinite(rec.dur[tool])) { // ความทนคงสัดส่วนของค่าสูงสุดใหม่ ตามจำนวนครั้งที่ซ่อม (rec.fix ไม่แตะ)
+        const fx = Math.max(0, Math.floor(+(rec.fix && rec.fix[tool]) || 0)), oldMax = Math.max(1, Math.floor(MIG.oldMax[old] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fx))));
+        const ratio = Math.max(0, Math.min(1, rec.dur[tool] / oldMax)), nm = durMax(tool, nu, fx);
+        tm.dur[tool] = rec.dur[tool]; rec.dur[tool] = tm.nd[tool] = ratio > 0 ? Math.max(1, Math.round(ratio * nm)) : 0;
+      }
+    }
+    if (tm.add.length || Object.keys(tm.left).length || Object.keys(tm.dur).length) rec.tmig = tm;
+    rec.xpv = 6; return res;
+  };
+  const unmigrateToolsV6 = rec => { // ถอยกลับ xpv 6 → 5 (ใช้กับ tools/tools-unmigrate.js ก่อนสตาร์ตโค้ดเก่า) คืน true ถ้าได้ทำ • ลบคีย์ที่เพิ่ม คืนความทน
+    if (!rec || typeof rec !== 'object' || (rec.xpv | 0) !== 6) return false;
+    const tm = rec.tmig;
+    if (tm && typeof tm === 'object') {
+      const inv = rec.inv && typeof rec.inv === 'object' ? rec.inv : null;
+      for (const [tool, MIG] of [['axe', AXE_MIG6], ['rod', ROD_MIG6]]) {
+        const old = tm.old && tm.old[tool], hasD = tm.dur && Number.isFinite(tm.dur[tool]) && rec.dur && Number.isFinite(rec.dur[tool]);
+        const still = inv && old && tm.add && (tool === 'axe' ? axeTier(inv) : rodTier(inv)) === MIG.map[old]; // ยังใช้ระดับที่แปลงมาอยู่ไหม
+        if (hasD) {
+          if (rec.dur[tool] === (tm.nd && tm.nd[tool])) rec.dur[tool] = tm.dur[tool];
+          else if (still) { const fx = Math.max(0, Math.floor(+(rec.fix && rec.fix[tool]) || 0)), nm = durMax(tool, MIG.map[old], fx), om = Math.max(1, Math.floor(MIG.oldMax[old] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fx)))); rec.dur[tool] = Math.max(0, Math.min(om, Math.round(rec.dur[tool] / nm * om))); }
+          else rec.dur[tool] = Math.min(rec.dur[tool], MIG.oldMax[Math.min(MIG.oldMax.length - 1, Math.max(1, tool === 'axe' ? axeTier(inv) : rodTier(inv)))]);
+        }
+      }
+      if (inv && Array.isArray(tm.add)) for (const k of tm.add) if (typeof k === 'string' && /^(axe|rod)_\d+$/.test(k) && inv[k] > 0) { inv[k] -= 1; if (inv[k] <= 0) delete inv[k]; }
+      delete rec.tmig;
+    }
+    rec.xpv = 5; return true;
+  };
+  // คีย์ที่ขายคืนไม่ได้: ของค้างตอนย้ายเซฟ + ชิ้นที่ระบบเพิ่มให้ (ไม่งั้นได้เหรียญฟรีจากราคาซื้อใหม่)
+  const tmigLocked = (rec, key) => { const tm = rec && rec.tmig; if (!tm || typeof tm !== 'object') return 0; return (Math.floor(+(tm.left && tm.left[key])) || 0) + (Array.isArray(tm.add) && tm.add.includes(key) ? 1 : 0); };
+  const invPub = rec => { // inv ที่ส่งให้เว็บ: ซ่อนของค้าง (tmig.left) ไม่ส่ง rec.tmig
+    const tm = rec && rec.tmig; if (!tm || !tm.left) return rec.inv;
+    const o = Object.assign({}, rec.inv); for (const [k, n] of Object.entries(tm.left)) if (o[k] > 0) { o[k] -= Math.floor(+n) || 0; if (o[k] <= 0) delete o[k]; }
+    return o;
   };
   const SWING_MS = 570; // ความยาวท่าขุดแร่/ตัดไม้ (pixelaction.js 6 เฟรม × 95 ms) = ระยะห่างขั้นต่ำระหว่างการฟาด (levelsim คิด 0.7 วินาที/ครั้ง)
   const MINE = {
@@ -798,8 +865,8 @@
   // ความทนทานเครื่องมือ: ใช้งานทุกครั้งสึกหรอ 1 หน่วย ใช้ครบแล้วใช้ไม่ได้จนกว่าจะซ่อมที่ร้านเสียเหรียญ (ค่าซ่อมคิดตามส่วนที่สึกหรอ) = รายจ่ายที่เกิดขึ้นสม่ำเสมอ
   const DURABILITY = {
     hoe:   { max: [0, 120, 120, 120], fix: [0, 24, 24, 24],  shop: 'farm',   name: 'จอบ' },
-    rod:   { max: [0, 200, 370, 850, 1360, 2860, 5030, 5580], fix: [0, 25, 63, 225, 625, 1500, 2750, 3250], shop: 'fish',   name: 'เบ็ดตกปลา' },
-    axe:   { max: [0, 90, 140, 220, 320, 450],  fix: [0, 36, 96, 216, 480, 1320], shop: 'wood',   name: 'ขวาน' },
+    rod:   { max: [0, 160, 330, 560, 820, 1100, 1400, 1750, 2100, 2500, 2900], fix: [0, 15, 63, 150, 300, 525, 825, 1225, 1700, 2250, 2875], shop: 'fish',   name: 'เบ็ดตกปลา' },
+    axe:   { max: [0, 120, 310, 580, 790, 1010, 1370, 1690, 2050, 2350, 2610], fix: [0, 13, 50, 125, 238, 400, 625, 925, 1300, 1750, 2250], shop: 'wood',   name: 'ขวาน' },
     pick:  { max: [0, 140, 320, 460, 600, 800, 1000, 1300, 1650, 2100, 2600], fix: [0, 15, 65, 150, 275, 475, 750, 1125, 1625, 2250, 3125], shop: 'mine',  name: 'อีเต้อ' }, // ขุดแตก 1 ก้อน = สึก 1 ครั้ง (ไม่ใช่ทุกครั้งที่ฟาด) ตัวเลขเป็นจำนวนก้อน (6 พ.ย. 2026 ปรับให้ต้นทุนสึกหรอ ≈ 8% ของรายได้ทุกระดับ ตามซิม levelsim)
   };
   // อัตราสึกหรอ: เกจเท่าเดิม แต่ใช้ 1 ครั้งสึก base หน่วย (เดิม 1) และ "ความร้อน" สะสมเมื่อใช้ถี่ๆ ต่อเนื่อง: ทุกครั้งที่ใช้ +1, เย็นลง cool ต่อวินาที
@@ -808,8 +875,8 @@
   // ซ่อมได้จำกัด: ซ่อมแต่ละครั้งความทนทานสูงสุดลดลง decay ของค่าเดิม ค่าซ่อมแพงขึ้น growth ต่อครั้ง ซ่อมครบ maxFixes ครั้งแล้วซ่อมไม่ได้อีก ต้องซื้อใหม่ (ราคา TOOL_PRICE)
   // สมดุล: ค่าซ่อมเต็ม = pct × ราคาซื้อ × (1 + growth × ครั้งที่ซ่อมมาแล้ว) แต่ได้ความทนทานน้อยลงเรื่อยๆ → ซ่อมครั้งที่ ~4 ขึ้นไปต่อหน่วยการใช้งานแพงกว่าซื้อใหม่
   const REPAIR = { decay: 0.15, maxFixes: 3, growth: 0.5, pct: 0.25 };
-  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 100, 250, 900, 2500, 6000, 11000, 13000], axe: [0, 50, 220, 700, 2000, 5500], pick: [0, 60, 260, 600, 1100, 1900, 3000, 4500, 6500, 9000, 12500] };
-  const tierN = t => Math.max(1, Math.min(10, t || 1)); // คันเบ็ดมี 7 ระดับ ขวาน 5 อุปกรณ์ขุด 10
+  const TOOL_PRICE = { hoe: [0, 80, 80, 80], rod: [0, 60, 250, 600, 1200, 2100, 3300, 4900, 6800, 9000, 11500], axe: AXE_PRICE.slice(), pick: [0, 60, 260, 600, 1100, 1900, 3000, 4500, 6500, 9000, 12500] };
+  const tierN = t => Math.max(1, Math.min(10, t || 1)); // คันเบ็ด/ขวาน/อุปกรณ์ขุด 10 ระดับ
   const durMax = (tool, tier, fixes) => Math.max(1, Math.floor(DURABILITY[tool].max[tierN(tier)] * (1 - REPAIR.decay * Math.min(REPAIR.maxFixes, fixes || 0))));
   const toolPrice = (tool, tier) => TOOL_PRICE[tool][tierN(tier)];
   // ค่าซ่อมครั้งถัดไป (ซ่อมแล้วเต็มที่ความทนทานสูงสุดใหม่ที่ต่ำลง) เทียบกับความเสียหายของค่าสูงสุดปัจจุบัน
@@ -941,14 +1008,15 @@
     speed: [40, 30, 24, 20], drift: 4, sweet: [40, 75], sweetMul: 1.3, tiredMul: 1.6, // กรอ dist/วินาที ตามกลุ่มปลา 0–3 • ปล่อยแล้วปลาว่ายหนี dist/วินาที • ช่วงตึงพอดี กรอเร็วขึ้น
     surges: [[0, 0], [1, 1], [1, 2], [2, 3]], str: [0, 62, 96, 90], run: [0, 16, 24, 26], // จำนวนครั้งกระชาก [ต่ำสุด, สูงสุด] • แรงกระชาก (ตึง/วินาที) • ปลาว่ายหนี (dist/วินาที) ระหว่างกระชาก
     xpMul: [1, 1, 1.15, 1.35], // XP ตามกลุ่มปลา: ปลาใหญ่ต้องสู้นานกว่า ได้ XP คูณเพิ่ม (เหรียญไม่เปลี่ยน) ชดเชยเวลาชักเย่อให้ XP/ชม. ชาวประมงอยู่ในเป้า (ดู tools/levelsim.js)
+    rodScale: 2 / 3, // คันเบ็ด 10 ระดับ: ประสิทธิภาพ = 1+(ระดับ−1)×rodScale เท่ากับสเกลเดิม 7 ระดับ (คัน 10 = คันเดิม 7)
     cleanBelow: 88, cleanXp: 1.15, // ชักเย่อสะอาด (สายไม่เคยตึงถึง cleanBelow) ได้ XP เพิ่ม 15%
     warnMs: 600, surgeMs: [800, 1200], gapMs: [900, 1500], firstMs: 1100, // เตือนก่อนกระชาก • ความยาวกระชาก • ช่วงพักระหว่างกระชาก • กระชากครั้งแรกหลังเริ่ม
   };
-  function fightNew(cls, rod, perk, perfect, rnd) { // cls = fishClass 0–3 • คืนสถานะการต่อสู้ (sched = ตารางกระชากทั้งหมด ส่งให้เว็บทำนาย)
+  function fightNew(cls, rod, perk, perfect, rnd, down) { // cls = fishClass 0–3 • คืนสถานะการต่อสู้ (sched = ตารางกระชากทั้งหมด ส่งให้เว็บทำนาย)
     const F = FIGHT, c = Math.max(0, Math.min(3, cls | 0)), n = F.surges[c][0] + Math.floor(rnd() * (F.surges[c][1] - F.surges[c][0] + 1)), sched = [];
     let at = F.firstMs; for (let i = 0; i < n; i++) { const dur = F.surgeMs[0] + rnd() * (F.surgeMs[1] - F.surgeMs[0]); sched.push([Math.round(at), Math.round(dur)]); at += dur + F.gapMs[0] + rnd() * (F.gapMs[1] - F.gapMs[0]); }
-    const st = perfect ? F.perfect : F.start;
-    return { cls: c, dist: st.dist, ten: st.ten, t: 0, snapT: 0, peak: st.ten, sched, str: F.str[c] * Math.max(0.5, 1 - 0.04 * (rod - 1)), run: F.run[c], spd: F.speed[c] * (1 + 0.05 * (rod - 1) + 0.01 * (perk - 1)), rise: F.rise * Math.max(0.6, 1 - 0.03 * (rod - 1)), end: '' };
+    const st = perfect ? F.perfect : F.start, re = 1 + (Math.max(1, rod | 0) - 1) * F.rodScale, dn = Math.max(0, down | 0); // re = ระดับคันเทียบสเกลเดิม 7 ระดับ (คัน 10 = คันเดิมระดับ 7) • dn = คันต่ำกว่าระดับปลากี่ระดับ (ROD_TUNE.slowStr)
+    return { cls: c, dist: st.dist, ten: st.ten, t: 0, snapT: 0, peak: st.ten, sched, str: F.str[c] * Math.max(0.5, 1 - 0.04 * (re - 1)) * (1 + ROD_TUNE.slowStr * dn), run: F.run[c], spd: F.speed[c] * (1 + 0.05 * (re - 1) + 0.01 * (perk - 1)), rise: F.rise * Math.max(0.6, 1 - 0.03 * (re - 1)), end: '' };
   }
   function fightPhase(f) { // 'calm' | 'warn' | 'surge' | 'tired'
     for (const [at, dur] of f.sched) { if (f.t >= at && f.t < at + dur) return 'surge'; if (f.t >= at - FIGHT.warnMs && f.t < at) return 'warn'; }
@@ -974,13 +1042,19 @@
   const gaugeHit = (f, t) => gaugeDist(f, t) <= f.half;
   // "เป๊ะ" = ตำแหน่งตัวชี้ (ชดเชยหน่วง lag แบบเดียวกันทุกครั้ง ไม่ขยายโซนข้างเดียว) อยู่ในแกนกลางโซน
   const gaugeCore = (f, t) => Math.abs(gaugePos(f, t - FISH_GAUGE.lag / 2) - (f.c === undefined ? 0.5 : f.c)) <= f.half * FISH_GAUGE.perfect; // ชดเชยหน่วงครึ่งเดียว: คนเน็ตเร็ว/ช้าผิดพลาดไม่เกินครึ่งหนึ่งของแกนกลาง
-  const RODS = { 1: { name: 'คันเบ็ดไม้ไผ่' }, 2: { name: 'คันเบ็ดไฟเบอร์', price: 250, lv: 3 }, 3: { name: 'คันเบ็ดคาร์บอน', price: 900, lv: 6 }, 4: { name: 'คันเบ็ดไทเทเนียม', price: 2500, lv: 9 }, 5: { name: 'คันเบ็ดทองคำ', price: 6000, lv: 12 }, 6: { name: 'คันเบ็ดมรกต', price: 11000, lv: 15 }, 7: { name: 'คันเบ็ดเพชร', price: 13000, lv: 18 } };
-  const rodTier = inv => { for (let t = 7; t >= 2; t--) if (inv && inv['rod_' + t]) return t; return 1; }; // ระดับคันเบ็ดสูงสุดที่มี
-  const ROD_WAIT = [0, 1, 0.88, 0.76, 0.64, 0.59, 0.54, 0.49];   // ตัวคูณเวลารอปลากินเบ็ด (ระดับ 1–4 ลด 12%/ระดับ ระดับ 5–7 ลด 5%/ระดับ)
-  const ROD_RARE = [0, 0, 0.35, 0.7, 1.05, 1.25, 1.45, 1.65];    // โบนัสความถี่ปลาราคา ≥ 100 ตามคันเบ็ด (เดิม 0.35×(ระดับ−1))
+  const ROD_NAMES = ['', 'คันเบ็ดไม้ไผ่', 'คันเบ็ดหวาย', 'คันเบ็ดไฟเบอร์', 'คันเบ็ดกราไฟต์', 'คันเบ็ดคาร์บอน', 'คันเบ็ดไทเทเนียม', 'คันเบ็ดทองคำ', 'คันเบ็ดมรกต', 'คันเบ็ดเพชร', 'คันเบ็ดมังกร'];
+  const ROD_MAX = 10;
+  const RODS = {}; for (let t = 1; t <= ROD_MAX; t++) RODS[t] = t === 1 ? { name: ROD_NAMES[1] } : { name: ROD_NAMES[t], price: TOOL_PRICE.rod[t], lv: 2 * t - 1 }; // คัน 1 แจกฟรี (ไม่มีราคา) • lv = เลเวลชาวประมงที่ซื้อได้ 3,5,…,19 • ราคาอยู่ TOOL_PRICE.rod
+  const rodTier = inv => { for (let t = ROD_MAX; t >= 2; t--) if (inv && inv['rod_' + t]) return t; return 1; }; // ระดับคันเบ็ดสูงสุดที่มี
+  const fishTier = f => Math.ceil((f && f.lv || 1) / 2); // ระดับปลา = ⌈เลเวล÷2⌉ (ปลา Lv11+ ฟิลด์ rod = ค่านี้ ติดด่านแข็ง)
+  // คันต่ำกว่าระดับปลา (เฉพาะปลา Lv1–10 ที่ไม่ติดด่าน rod): win = โอกาสชนะ ×win^down • wear = ตัวคูณสึกคัน (ต่ำกว่า +slow.wear/ระดับ สูงกว่า 1/(1+over.wear×ระดับ)) • slowStr = แรงปลาเพิ่ม/ระดับที่ขาด (ให้ fightNew ใช้ ตั๋ว S2/E1 จูน)
+  const ROD_TUNE = { slow: { win: 0.85, wear: 0.5 }, over: { wear: 0.25 }, slowStr: 0.1 };
+  const rodHit = (rod, f) => { const d = (rod | 0) - fishTier(f), down = Math.max(0, -d), over = Math.max(0, d); return { down, over, win: Math.pow(ROD_TUNE.slow.win, down), wear: d < 0 ? 1 + ROD_TUNE.slow.wear * down : 1 / (1 + ROD_TUNE.over.wear * over) }; };
+  const ROD_WAIT = [0, 1, 0.88, 0.78, 0.69, 0.61, 0.54, 0.48, 0.43, 0.39, 0.35];   // ตัวคูณเวลารอปลากินเบ็ด (ตาราง WP-11 ลดลงเรื่อยๆ ต่อระดับ)
+  const ROD_RARE = [0, 0, 0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4, 1.55, 1.7];    // โบนัสความถี่ปลาราคา ≥ 100 ตามคันเบ็ด (เดิม 0.35×(ระดับ−1))
   // คันเบ็ดปลดความหายากเป็นขั้น (fishClass: 0 = ราคา < 20, 1 = < 60, 2 = < 120, 3 = 120+): ไม้ไผ่ตกได้ถึงกลุ่ม 1 • ไฟเบอร์ถึงกลุ่ม 2 • คาร์บอนขึ้นไปได้ทุกกลุ่ม
   // ปลาราคา ≥ 100 เจอบ่อยขึ้นตามเลเวล (+12%/เลเวล) และคันเบ็ด (+35%/ระดับ) • ปลากลุ่ม 3 ต้องกด "เป๊ะ" (FISH_GAUGE.edgeMul[3] = 0) • ตกปลา ≥ 100 ได้แล้วพักรอบ RARE_CD_MS
-  const ROD_MAXCLASS = [0, 1, 2, 3, 3, 3, 3, 3], RARE_CD_MS = 6 * 60 * 1000;
+  const ROD_MAXCLASS = [0, 1, 2, 2, 3, 3, 3, 3, 3, 3, 3], RARE_CD_MS = 6 * 60 * 1000;
   // พักรอบปลาหายากตามเลเวลชาวประมง: ตัวคูณเริ่ม 1 ที่ Lv from ไล่เชิงเส้นถึง endMul ที่ Lv to (endMul 1 = ไม่ลด เท่า RARE_CD_MS ทุกเลเวล)
   const RARE_CD = { from: 10, to: 20, endMul: 0.5 };
   function rareCdMs(fl, cfg) { const c = cfg || RARE_CD, f = Number(fl), a = Number(c.from), b = Number(c.to), e = Number(c.endMul); if (!Number.isFinite(f) || !Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(e)) return RARE_CD_MS; const t = b > a ? Math.min(1, Math.max(0, (f - a) / (b - a))) : (f >= b ? 1 : 0); return Math.max(0, Math.round(RARE_CD_MS * (1 + (Math.max(0, e) - 1) * t))); }
@@ -1395,11 +1469,11 @@
   // ร้านแต่ละสาย: buy = สินค้าที่ขาย, sell = คำนำหน้าไอเทมที่ร้านรับซื้อ
   const SHOPS = {
     farm:   { name: '🌱 ร้านเมล็ดพันธุ์', skill: 'farm',   buy: CROP_IDS().map(c => 'seed_' + c).concat(['can_2', 'can_3']), sell: ['crop_'] },
-    fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3', 'rod_2', 'rod_3', 'rod_4', 'rod_5', 'rod_6', 'rod_7'],                  sell: ['fish_'] },
+    fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3'].concat(Object.keys(RODS).filter(t => RODS[t].price).map(t => 'rod_' + t)),                sell: ['fish_'] },
     animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee', 'animal_alpaca', 'animal_horse', 'animal_boar'], sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
     mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'pick_7', 'pick_8', 'pick_9', 'pick_10', 'lamp'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
-    wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: ['axe_1', 'axe_2', 'axe_3', 'axe_4', 'axe_5'], sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
+    wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: Object.keys(AXES).map(t => 'axe_' + t), sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
     // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือ ⛵ (BOAT) ซื้อครั้งเดียว ไม่ได้ขี่บนบก มีเรือ = ออกทะเลฟรีทุกเที่ยว (ไม่มี = จ่าย SEA.fee)
     vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v).concat(['boat']), sell: [] },
     cloth:  { name: '👕 ร้านเสื้อผ้า',    skill: null,     buy: Object.keys(WEAR).flatMap(c => WEAR[c].filter(i => i.price > 0).map(i => wearKey(c, i.id))), sell: [] },
@@ -1428,7 +1502,7 @@
     if (fm) return FURN[fm[1]] ? { name: FURN[fm[1]].name, emoji: FURN[fm[1]].emoji, buy: FURN[fm[1]].price, sell: FURN[fm[1]].rare ? undefined : Math.floor(FURN[fm[1]].price * FURN_SELL), std: FURN[fm[1]].noshop ? FURN[fm[1]].price : undefined, cat: 'furn', furn: fm[1] } : null; // std = ราคามาตรฐานที่แผงฝากขาย (ของทำเองอย่างเดียว ใช้ราคาเต็ม ช่างไม้จึงขายได้กำไร)
     const cm = /^can_(\d)$/.exec(k);
     if (cm && CANS[cm[1]] && CANS[cm[1]].price) { const c = CANS[cm[1]]; return { name: `${c.name} (น้ำ ${c.cap} ครั้ง • ดินเปียก ${c.wet / 1000} วิ)`, emoji: c.emoji, buy: c.price, lv: c.lv, skill: 'farm', once: true, cat: 'gear', can: +cm[1] }; }
-    let am = /^axe_(\d)$/.exec(k);
+    let am = /^axe_(\d+)$/.exec(k);
     if (am && AXES[am[1]]) return { name: AXES[am[1]].name, emoji: '🪓', buy: AXES[am[1]].price, lv: AXES[am[1]].lv, skill: 'wood', once: true, cat: 'gear', axe: +am[1] };
     if (k === 'egg')  return { name: 'ไข่ไก่', emoji: '🥚', sell: 20, cat: 'animal' };
     if (k === 'duck_egg') return { name: 'ไข่เป็ด', emoji: '🥚', sell: 30, cat: 'animal' };
@@ -1446,7 +1520,7 @@
     if (k === 'bait') return { name: 'เหยื่อตกปลา (ไส้เดือน)', emoji: '🪱', buy: BAIT_PRICE, cat: 'tool', bait: 1 };
     const bm = /^bait_(\d)$/.exec(k);
     if (bm && BAITS[bm[1]]) { const b = BAITS[bm[1]]; return { name: `เหยื่อ${b.name} (ปลาแพงขึ้น)`, emoji: b.emoji, buy: b.price, lv: b.lv, skill: 'fish', cat: 'tool', bait: +bm[1] }; }
-    let m = /^rod_(\d)$/.exec(k);
+    let m = /^rod_(\d+)$/.exec(k);
     if (m && RODS[m[1]] && RODS[m[1]].price) return { name: RODS[m[1]].name, emoji: '🎣', buy: RODS[m[1]].price, lv: RODS[m[1]].lv, skill: 'fish', once: true, cat: 'gear' };
     if (k === 'petfood') return { name: 'อาหารสัตว์เลี้ยง (+' + PETCARE.food + ' อิ่ม)', emoji: '🦴', buy: 8, cat: 'feed' };
     if (k === 'boat') return { name: 'เรือ (ขับออกทะเลใหญ่ ฟรี)', emoji: '⛵', buy: BOAT.price, once: true, cat: 'gear' };
@@ -1704,12 +1778,12 @@
     reportWhy: [{ id: 'abuse', name: 'พูดจาไม่ดี' }, { id: 'cheat', name: 'โกง' }, { id: 'other', name: 'อื่นๆ' }],
     muteMs: { '10m': 10 * 60000, '1h': 3600000, '1d': 86400000 }, banMs: { '1d': 86400000, '7d': 7 * 86400000 } }; // banMs ไม่มี perm: ถาวร = ระบบแบนเดิม
 
-  const api = { THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, treeCutters, treeCapFor, treeGrowMs, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
+  const api = { THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, AXE_MAX, ROD_MAX, AXE_TUNE, ROD_TUNE, chopHit, rodHit, fishTier, AXE_MIG6, ROD_MIG6, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, ARC_SHOP, VEHICLES, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, treeCutters, treeCapFor, treeGrowMs, WATER_MS, CANS, canTier, STALL, LUCKY, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
-    FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, fishNewestLv, fishPoolMul, migrateStdV5, rareCdMs, xpStdV5,
+    FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, fishNewestLv, fishPoolMul, migrateStdV5, migrateToolsV6, unmigrateToolsV6, tmigLocked, invPub, rareCdMs, xpStdV5,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

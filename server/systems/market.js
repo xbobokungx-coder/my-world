@@ -48,6 +48,8 @@ module.exports = {
     if (!info || !info.buy) return;
     if (info.lv && this.lv(p, info.skill) < info.lv) return this.toast(p, `ต้องเป็น${S.SKILLS[info.skill].name}เลเวล ${info.lv} ก่อน`);
     if (info.once) { if (p.rec.inv[item]) return this.toast(p, 'คุณมีของชิ้นนี้อยู่แล้ว'); n = 1; }
+    { const tm = /^(rod|axe|pick)_(\d+)$/.exec(item); // อุปกรณ์ระดับ ≤ ที่ใช้อยู่ ซื้อไม่ได้ (กันซื้อของถูกกว่าเพื่อรีเซ็ตความทนของระดับสูงแล้วขายคืนกำไร) ซ่อม/ซื้อใหม่ใช้เมนูซ่อมแทน
+      if (tm) { n = 1; const inv = p.rec.inv, cur = tm[1] === 'rod' ? S.rodTier(inv) : tm[1] === 'axe' ? (S.axeTier(inv) || 0) : (S.pickTier(inv) || 0); if (+tm[2] <= cur) return this.toast(p, 'คุณมีของระดับนี้หรือดีกว่าอยู่แล้ว'); } }
     if (info.animal) {
       n = 1;
       if (this.ownerCount(p.key, info.animal) >= ANIMALS[info.animal].cap) return this.toast(p, `คุณเลี้ยง${ANIMALS[info.animal].name}ครบ ${ANIMALS[info.animal].cap} ตัวแล้ว`);
@@ -107,6 +109,7 @@ module.exports = {
   sellback(p, item) {
     const kind = this.nearShopKind(p);
     if (!kind || typeof item !== 'string' || !S.SHOPS[kind].buy.includes(item) || !(p.rec.inv[item] > 0)) return;
+    if (!(p.rec.inv[item] > S.tmigLocked(p.rec, item))) return this.toast(p, 'ชิ้นนี้ได้มาตอนอัปเกรดระบบ ขายคืนไม่ได้นะ เก็บไว้ใช้ได้เลย');
     const v = S.sellbackValue(item), info = S.itemInfo(item);
     if (!v) return;
     if (item === p.rec.giftItem) return this.toast(p, '🎁 ของขวัญต้อนรับขายคืนไม่ได้ เก็บไว้เป็นที่ระลึกนะ');

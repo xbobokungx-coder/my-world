@@ -48,18 +48,19 @@ function fishPool(lv, rod, tier, sea) { // sea = true: ปลาทะเล (�
 }
 // ชักเย่อกับปลา (5 พ.ย. 2026): เวลาต่อสู้เฉลี่ย/โอกาสชนะ ตามกลุ่มราคาปลา 0–3 (จากบอทมือคน tools/test-fight.js ตอบสนอง 250 ms คันที่ปลากลุ่มนั้นออกได้) ถ่วงด้วยน้ำหนักปลาที่ตกได้ ณ เลเวลนั้น
 const FIGHT_SEC = [1.0, 3.4, 5.6, 7.5], FIGHT_WIN = [1, 1, 0.97, 0.8];
-function mixOf(pool) { const W = pool.reduce((a, x) => a + x.w, 0) || 1; let sec = 0, win = 0; for (const x of pool) { const c = S.fishClass(x.f); sec += x.w * FIGHT_SEC[c]; win += x.w * FIGHT_WIN[c]; } return { sec: sec / W, win: win / W }; }
+// 13 พ.ย. 2026 (WP-11): คันต่ำกว่าระดับปลา → โอกาสชนะ ×0.85^ระดับที่ขาด (S.rodHit) และคันสึก ×(1+0.5×ขาด) / ÷(1+0.25×เกิน) • wear = ตัวคูณสึกเฉลี่ยถ่วงน้ำหนักปลา
+function mixOf(pool, rod) { const W = pool.reduce((a, x) => a + x.w, 0) || 1; let sec = 0, win = 0, wear = 0; for (const x of pool) { const c = S.fishClass(x.f), rh = S.rodHit(rod, x.f); sec += x.w * FIGHT_SEC[c]; win += x.w * FIGHT_WIN[c] * rh.win; wear += x.w * rh.wear; } return { sec: sec / W, win: win / W, wear: wear / W }; }
 // rs = สัดส่วนที่จับได้เป็นปลาหายากจริง (ติดพักรอบ จึงน้อยกว่าน้ำหนักสุ่ม) • ไม่ส่ง rs = ไม่คิดพักรอบ (ใช้ใน cook)
 function fightMix(lv, rod, sea, rs) {
   const pool = fishPool(lv, rod, 1, sea), rare = pool.filter(x => x.f.sell >= S.RARE_SELL), com = pool.filter(x => x.f.sell < S.RARE_SELL);
-  if (rs === undefined || !rare.length || !com.length) return mixOf(pool);
-  const a = mixOf(rare), c = mixOf(com); return { sec: rs * a.sec + (1 - rs) * c.sec, win: rs * a.win + (1 - rs) * c.win };
+  if (rs === undefined || !rare.length || !com.length) return mixOf(pool, rod);
+  const a = mixOf(rare, rod), c = mixOf(com, rod); return { sec: rs * a.sec + (1 - rs) * c.sec, win: rs * a.win + (1 - rs) * c.win, wear: rs * a.wear + (1 - rs) * c.wear };
 }
 function fishCpm(lv, rod, sea, rs) { const fm = fightMix(lv, rod, sea, rs); return 60 / (8.75 * S.ACTION_TUNE.fish * Math.max(0.4, 1 - 0.05 * (S.perkLv(lv) - 1)) * S.ROD_WAIT[rod] + M.fishOver + fm.sec) * M.fishHit * fm.win; }
 const rodAt = lv => { let r = 1; for (const [k, v] of Object.entries(S.RODS)) if (v.lv && lv >= v.lv) r = Math.max(r, +k); return r; }; // คันที่ซื้อได้ตามเลเวล (ซื้อทันทีที่ปลด)
 // ตกปลา (6 พ.ย. 2026): จำลองสระเลื่อน (FISHPOOL ผ่าน S.fishWeight) + พักรอบเฉพาะปลา ≥ RARE_SELL (เวลาชักเย่อคิดตามสัดส่วนปลาหายากจริงหลังพักรอบ) • ต้นทุน = เหยื่อ + เบ็ดสึกต่อ "การเหวี่ยง" (เหวี่ยงพลาดก็เสียเหยื่อและสึก จึงหารด้วยโอกาสโดน×ชนะ) • sea = ปลาทะเล (หักค่าเรือ SEA.fee ต่อ SEA.ms ถ้าไม่มีเรือ)
-function fish(lv, sea) {
-  const rod = rodAt(lv), wearCast = S.TOOL_PRICE.rod[rod] / S.DURABILITY.rod.max[rod] * S.WEAR_RATE.base * 1.35; // ซ่อม/ซื้อใหม่เฉลี่ยต่อการเหวี่ยง (ตัวคูณ 1.35 แบบเดียวกับนักขุด)
+function fish(lv, sea, lag = 0) { // lag = ผู้เล่นไม่อัปคัน ใช้ต่ำกว่าระดับที่ปลดแล้วกี่ระดับ (0 = ซื้อสูงสุดตามเลเวล เพดานบน)
+  const rod = Math.max(1, rodAt(lv) - lag), wearBase = S.TOOL_PRICE.rod[rod] / S.DURABILITY.rod.max[rod] * S.WEAR_RATE.base * 1.35; // ซ่อม/ซื้อใหม่เฉลี่ยต่อการเหวี่ยง (ตัวคูณ 1.35 แบบเดียวกับนักขุด) × ตัวคูณสึกตามระดับปลา (fm.wear) คิดในลูป
   const seaFee = sea ? S.SEA.fee * 3600000 / S.SEA.ms / 60 : 0; // ค่าเรือต่อนาที (ไม่ทำค่าเดินทางไปท่า)
   let best = null;
   for (const t of [1, 2, 3]) {
@@ -69,7 +70,7 @@ function fish(lv, sea) {
     const rare = pool.filter(x => x.f.sell >= S.RARE_SELL), com = pool.filter(x => x.f.sell < S.RARE_SELL), WR = rare.reduce((a, x) => a + x.w, 0), WC = com.reduce((a, x) => a + x.w, 0) || 1, cd = S.rareCdMs(lv) / 3600000;
     let rs = 0, cpm, N, rr; // วนหาสัดส่วนปลาหายากจริง (อัตรา ↔ เวลาต่อครั้ง)
     for (let i = 0; i < 6; i++) { cpm = fishCpm(lv, rod, sea, rs); N = cpm * 60; rr = WR > 0 ? 1 / (1 / (N * WR / W) + cd) : 0; rs = rr / N; }
-    const fm = fightMix(lv, rod, sea, rs), cast = cpm / (M.fishHit * fm.win), cr = Math.max(0, N - rr); // cast = เหวี่ยงต่อนาที
+    const fm = fightMix(lv, rod, sea, rs), cast = cpm / (M.fishHit * fm.win), cr = Math.max(0, N - rr), wearCast = wearBase * fm.wear; // cast = เหวี่ยงต่อนาที
     const avg = (arr, k, w0) => arr.reduce((a, x) => a + x.w * x.f[k], 0) / (w0 || 1);
     const sellH = rr * avg(rare, 'sell', WR) + cr * avg(com, 'sell', WC), xpH = rr * avg(rare, 'xp', WR) + cr * avg(com, 'xp', WC);
     const sell = sellH / N, xp = xpH / N, cost = cast * (b.price + wearCast) + seaFee, wear = cast * wearCast;
@@ -85,22 +86,25 @@ const fishGoalXpH = lv => FISH_GOAL.xpH * Math.pow(FISH_GOAL.growth, lv - 1) / M
 const fishGoalHours = lv => { let m = 0; for (let k = 1; k < lv; k++) m += FISH_GOAL.lv1Min * Math.pow(FISH_GOAL.growth, k - 1); return m / 60; };
 // สัดส่วนชนิดต้นไม้ที่งอกใหม่ ใช้คิดว่าต้นที่งอกมีกี่ส่วนที่เลเวล/ขวานนี้ฟันได้
 const KIND_SHARE = (() => { if (!S.TREE_KINDS) return { broad: 1 }; const d = {}; for (const [k, K] of Object.entries(S.TREE_KINDS)) d[k] = K.pct / 100; return d; })(); // ต้นไม้ที่งอกใหม่ถูกคุมสัดส่วนตามโควตา % ของแต่ละชนิด (S.TREE_KINDS[..].pct)
-function wood(lv) {
-  const axe = lv >= 16 ? 5 : lv >= 11 ? 4 : lv >= 6 ? 3 : lv >= 3 ? 2 : 1, wl = 1 + (S.WOOD.xpPerLv || 0) * (S.perkLv(lv) - 1);
+// ช่างไม้ (13 พ.ย. 2026 WP-10): ใช้ S.chopHit จริง (ต้นไม้ระดับ ⌈Lv÷2⌉ HP 5×ระดับ ขวาน 10 ระดับ) • ขวานสึก 1 ครั้งต่อ "การฟัน" ไม่ใช่ต่อต้น (server.js ฟันละครั้ง) × ตัวคูณสึกของ chopHit • สูตรสึกเดียวกับเหมือง/ตกปลา (ราคา÷ทน×WEAR_RATE.base×1.35) • lag = ไม่อัปขวาน ใช้ต่ำกว่าระดับที่ปลดแล้วกี่ระดับ
+const axeAt = lv => { let a = 1; for (const [k, v] of Object.entries(S.AXES)) if (v.lv && lv >= v.lv) a = Math.max(a, +k); return a; }; // ขวานที่ซื้อได้ตามเลเวล (ซื้อทันทีที่ปลด)
+function wood(lv, lag = 0) {
+  const axe = Math.max(1, axeAt(lv) - lag), inv = { ['axe_' + axe]: 1 }, wl = 1 + (S.WOOD.xpPerLv || 0) * (S.perkLv(lv) - 1), wearBase = S.TOOL_PRICE.axe[axe] / S.DURABILITY.axe.max[axe] * S.WEAR_RATE.base * 1.35;
   const kinds = S.TREE_KINDS || { broad: { lv: 1, axe: 1, hp: S.TREE_HP, drop: [['log', 2]], bonus: [['hardwood', S.WOOD.hardwood.chance]] } }, items = S.WOOD_ITEMS || { log: S.WOOD.log, hardwood: S.WOOD.hardwood };
-  let share = 0, val = 0, xp = 0, pcs = 0, secs = 0;
+  let share = 0, val = 0, xp = 0, pcs = 0, secs = 0, wearC = 0;
   for (const [id, K] of Object.entries(kinds)) {
-    const sh = KIND_SHARE[id] || 0; if (!sh || K.lv > lv || K.axe > axe) continue; // ต้นที่ยังฟันไม่ได้ปล่อยไว้ให้คนเลเวลสูง
+    const sh = KIND_SHARE[id] || 0; if (!sh || K.lv > lv) continue;
+    const mh = S.chopHit ? S.chopHit(inv, id) : { dmg: S.AXES[axe].power, hits: Math.ceil(K.hp / S.AXES[axe].power), wear: 1, extra: 0 }; if (!mh || mh.blocked) continue; // ต้นที่ยังฟันไม่ได้ปล่อยไว้ให้คนเลเวลสูง
     let v = 0, x = 0, n = 0;
-    K.drop.forEach(([it, q], i) => { const qq = q + (i === 0 ? 0.04 * (S.perkLv(lv) - 1) : 0); v += items[it].sell * qq; x += items[it].xp * qq; n += qq; });
+    K.drop.forEach(([it, q], i) => { const qq = q + (i === 0 ? 0.04 * (S.perkLv(lv) - 1) + mh.extra : 0); v += items[it].sell * qq; x += items[it].xp * qq; n += qq; }); // extra = โอกาสได้ชิ้นหลัก +1 (ขวานสูงกว่าต้น)
     for (const [it, ch] of K.bonus || []) { const c = Math.min(1, ch + 0.01 * (S.perkLv(lv) - 1)); v += items[it].sell * c; x += items[it].xp * c; n += c; }
-    share += sh; val += sh * v; xp += sh * x; pcs += sh * n; secs += sh * (Math.ceil(K.hp / S.AXES[axe].power) * 0.7 + M.treeWalk);
+    share += sh; val += sh * v; xp += sh * x; pcs += sh * n; secs += sh * (mh.hits * 0.7 + M.treeWalk); wearC += sh * mh.hits * wearBase * mh.wear;
   }
-  val /= share; xp /= share; pcs /= share; secs /= share;
+  val /= share; xp /= share; pcs /= share; secs /= share; wearC /= share;
   const tpm = Math.min(60 / secs, M.treeRegen * share); // ต้นต่อนาที: ติดความเร็วฟันหรือจำนวนต้นที่งอกแล้วฟันได้
   const craftXp = 0.27 * val; // แปรรูปเป็นเฟอร์นิเจอร์ ≈ 0.27 XP ต่อเหรียญของวัตถุดิบ (ลังไม้ = 34 XP จากไม้ท่อน 8 ท่อน)
   const best = S.CRAFT.filter(r => r.lv <= lv).slice(-1)[0];
-  return { pick: best ? best.id.replace('furn_', '').slice(0, 6) : 'ขาย', coin: tpm * val * 60, xp: tpm * (xp + craftXp) * wl * 60, gross: tpm * val * 60, cost: 0, pieces: tpm * pcs * 60, cat: 'wood' };
+  return { pick: best ? best.id.replace('furn_', '').slice(0, 6) : 'ขาย', coin: tpm * (val - wearC) * 60, xp: tpm * (xp + craftXp) * wl * 60, gross: tpm * val * 60, cost: tpm * wearC * 60, pieces: tpm * pcs * 60, cat: 'wood', axe, trees: tpm * 60 };
 }
 function animal(lv) {
   const sp = Math.max(0.5, 1 - 0.05 * (lv - 1));
@@ -201,6 +205,20 @@ if (require.main === module) {
     console.log(String(lv).padStart(2) + '  ' + String(m.rod).padStart(3) + '  ' + m.pick.slice(-1).padStart(3) + num(got).padStart(11) + ' ' + num(g).padStart(7) + ' ' + ((dev >= 0 ? '+' : '') + (dev * 100).toFixed(0) + '%').padStart(5) + (Math.abs(dev) > FISH_GOAL.tol ? '!' : ' ') + num(m.coin).padStart(12) + ' ' + (Math.round(cp * 100) + '%').padStart(7) + (cp < 0.75 || cp > 1.25 ? '!' : ' ') + (m.wear / m.gross * 100).toFixed(1).padStart(8) + '%' + (m.wear / m.gross > 0.10 ? '!' : ' ') + m.rare.toFixed(1).padStart(8) + (up ? '' : '  ไม่โต!') + '  | ' + (Math.round(sx.xp / m.xp * 100) + '%').padStart(5) + (Math.round(sx.coin / m.coin * 100) + '%').padStart(7)); }
   console.log('\nคันเบ็ด: ราคา ÷ เหรียญสุทธิจริง/ชม. (เพดาน × EFF) ณ เลเวลที่ปลด (เป้า ≤ ~1 ชม.) • ความทนทาน • สึกหรอ/เหวี่ยง');
   for (const [k, v] of Object.entries(S.RODS)) { if (!v.price) continue; const m = r.fish[v.lv - 1]; console.log(`คัน ${k} Lv${String(v.lv).padStart(2)} ราคา ${num(v.price).padStart(6)}  รายได้จริง/ชม. ${num(m.coin * M.EFF).padStart(6)}  ซื้อได้ใน ${(v.price / (m.coin * M.EFF)).toFixed(2)} ชม.  ทน ${S.DURABILITY.rod.max[k]}  ค่าสึก/เหวี่ยง ${(S.TOOL_PRICE.rod[k] / S.DURABILITY.rod.max[k] * S.WEAR_RATE.base * 1.35).toFixed(2)}`); }
+  // ช่างไม้ (WP-10): เหรียญสุทธิเทียบชาวนา (เป้า 85–110%) • ขวานสึก % ของรายได้ (เป้า 7–9%) • ต้นไม้/ชม. • ซื้อขวานคืนทุนภายในกี่ชม. (เป้า ≤ 1.2)
+  console.log(`\nช่างไม้ รายเลเวล: XP/ชม. • เหรียญสุทธิ/ชม. (เพดาน) เทียบชาวนา (เป้า 85–110%) • ขวานสึก % ของรายได้ (เป้า 7–9%) • ต้น/ชม. • ชิ้นหลักเพิ่ม`);
+  console.log('Lv ขวาน   XP/ชม.   เหรียญ/ชม. %ชาวนา  ขวานสึก%  ต้น/ชม.');
+  for (let lv = 1; lv <= S.MAX_LV; lv++) { const w = r.wood[lv - 1], cp = w.coin / r.farm[lv - 1].coin, wp = w.cost / w.gross;
+    console.log(String(lv).padStart(2) + ' ' + String(w.axe).padStart(4) + num(w.xp).padStart(9) + num(w.coin).padStart(12) + ' ' + (Math.round(cp * 100) + '%').padStart(7) + (cp < 0.85 || cp > 1.10 ? '!' : ' ') + (wp * 100).toFixed(1).padStart(8) + '%' + (wp < 0.07 || wp > 0.09 ? '!' : ' ') + num(w.trees).padStart(8)); }
+  console.log('\nขวาน: ราคา ÷ เหรียญสุทธิจริง/ชม. (เพดาน × EFF) ณ เลเวลที่ปลด (เป้า ≤ 1.2 ชม.) • ความทนทาน (ครั้งฟัน)');
+  for (const [k, v] of Object.entries(S.AXES)) { const lv = v.lv || 1, m = r.wood[lv - 1]; console.log(`ขวาน ${String(k).padStart(2)} Lv${String(lv).padStart(2)} ราคา ${num(v.price).padStart(6)}  รายได้จริง/ชม. ${num(m.coin * M.EFF).padStart(6)}  ซื้อได้ใน ${(v.price / (m.coin * M.EFF)).toFixed(2)} ชม.  ทน ${S.DURABILITY.axe.max[k]}  ค่าสึก/ฟัน ${(S.TOOL_PRICE.axe[k] / S.DURABILITY.axe.max[k] * S.WEAR_RATE.base * 1.35).toFixed(2)}`); }
+  // ไม่อัปขวาน/คัน: เหรียญสุทธิ/ชม. % ของตอนอัปครบ (เทียบตารางแผน PHASE1-BALANCE-PLAN หัวข้อ 5 และ 6 คลาด ≤ 5 จุด%) | XP/ชม. %
+  console.log('\nไม่อัปขวาน/คัน (ต่ำกว่าระดับที่ปลด 1/2/3 ระดับ): เหรียญสุทธิ/ชม. % ของอัปครบ | XP/ชม. % • [แผน] = ตัวเลขในแผนหัวข้อ 5/6');
+  const PLAN = { wood: { 7: [94, 80, 55], 11: [94, 86, 73], 15: [97, 91, 81], 19: [98, 94, 89] }, fish: { 7: [92, 84, 58], 11: [89, 85, 75], 15: [92, 89, 80], 19: [91, 86, 81] } };
+  for (const [name, fn, key] of [['ช่างไม้', wood, 'wood'], ['ชาวประมง', (lv, lag) => fish(lv, false, lag), 'fish']]) {
+    console.log(name.padEnd(10) + [1, 2, 3].map(l => ('ต่ำกว่า ' + l).padStart(20)).join(''));
+    for (const lv of [7, 11, 15, 19]) { const b = fn(lv, 0), pl = PLAN[key][lv];
+      console.log('  Lv' + String(lv).padStart(2) + '    ' + [1, 2, 3].map((l, i) => { const x = fn(lv, l), c = Math.round(x.coin / b.coin * 100), bad = Math.abs(c - pl[i]) > 5 ? '!' : ' '; return (c + '% | ' + Math.round(x.xp / b.xp * 100) + '% [' + pl[i] + ']' + bad).padStart(20); }).join('')); } }
   // ฤดูของชาวนา (season-planting): เหรียญ/ชม. และ XP/ชม. ต่อฤดู เทียบเฉลี่ย • ชม.ถึง Lv10/Lv20 ต่อฤดู (เริ่มและอยู่ในฤดูนั้นตลอด = ขอบล่าง/บน) • อาชีพอื่น ÷ ชาวนา (เป้า 75–125% ของเหรียญ/ชม.) ที่ฤดูเฉลี่ย/ฤดูที่ชาวนาแย่สุด
   if (r.farm[0].seasons) {
     const ids = r.farm[0].seasons.map(x => x.id), fr = id => Array.from({ length: S.MAX_LV }, (_, i) => r.farm[i].seasons.find(x => x.id === id));
@@ -219,4 +237,4 @@ if (require.main === module) {
   console.log(`\nเหรียญ/ชม. (เพดานคนเดียว ตามทางที่เลือก)`);
   for (const k of Object.keys(SIMS)) console.log(S.SKILLS[k].name.padEnd(12) + r[k].map(x => num(x.coin).padStart(7)).join(''));
 }
-module.exports = { M, SIMS, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours, FISH_GOAL, fishGoalXpH, fishGoalHours, fishSea };
+module.exports = { M, SIMS, wood, fish, axeAt, rodAt, simulate, hoursTo, MINE_GOAL, mineGoalXpH, mineGoalHours, FISH_GOAL, fishGoalXpH, fishGoalHours, fishSea };
