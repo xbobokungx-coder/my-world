@@ -3,7 +3,7 @@
 const assert = require('assert');
 process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-batcha-');
 let NOW = Date.now(); Date.now = () => NOW;
-const { World, adminHandle: A, devStatus, worlds } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS;
+const { World, adminHandle: A, devStatus, devReply, worlds } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS;
 const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } });
 const w = new World('batcha'); w.themeRain = () => 'off'; worlds.set('batcha', w);
 let seq = 0;
@@ -41,6 +41,11 @@ assert.strictEqual(S.SEASONS.days, 1);
   const d = devStatus(); assert.strictEqual(d.on, true); assert.ok(d.sec >= 0);
   worlds.delete('batcha'); const off = devStatus(); assert.strictEqual(off.on, false); worlds.set('batcha', w);
   assert.strictEqual(devStatus().t, 'dev');
+  // On Develop เฉพาะผู้ดูแล: ผู้เล่นทั่วไปไม่ได้ข้อมูล (ทั้งข้อความ w ตอนเข้าเกม และตอบ {t:'dev'})
+  assert.ok(devReply(adm) && devReply(adm).t === 'dev', 'ผู้ดูแลได้ dev'); assert.strictEqual(devReply(pl), null, 'ผู้เล่นทั่วไปไม่ได้ dev (ไม่ตอบ)');
+  { const wa = mkWs(), wp = mkWs(); w.join(wa, 'devadm', '#fff', true); w.join(wp, 'devplr', '#fff', false);
+    const wa0 = wa.msgs.find(m => m.t === 'w'), wp0 = wp.msgs.find(m => m.t === 'w');
+    assert.ok(wa0.dev && wa0.dev.t === 'dev' && wa0.dev.on === true, 'ผู้ดูแลมี dev ใน w'); assert.ok(!('dev' in wp0), 'ผู้เล่นทั่วไปไม่มีฟิลด์ dev ใน w'); }
 }
 
 // 4) ขับรถแล้วทำงาน = ลงจากรถ ไม่ทำการกระทำนั้น

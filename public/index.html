@@ -325,7 +325,7 @@
   @media (orientation:portrait) and (max-width:699px) { body.touch:has(:is(#fgauge,#ffight):not(.hidden)) #skillbar { bottom:calc(76px + var(--sab)); } } /* จอยืนมือถือ: เกจถูกยกไปอยู่เหนือจอยสติ๊กแล้ว ไม่ชนกัน */
   @media (orientation:portrait) and (max-width:420px) { body.touch #skillbar, body.touch:has(:is(#fgauge,#ffight):not(.hidden)) #skillbar { bottom:calc(90px + var(--sab)); transform:translateX(calc(-50% + 22px)); } } /* จอแคบ: ยกพ้น hotbar + ขยับขวาพ้นขอบจอยสติ๊ก (ยังต่ำกว่าเกจตกปลาที่ 222px) */
   @media (orientation:landscape) and (max-height:520px) { body.touch #ffight { width:min(300px,52vw); } } /* มือถือนอน: เกจกรอสายไม่ซ้อนมินิแมป */
-  body.touch input[type=range] { height:40px; touch-action:pan-x; } /* แถบเลื่อนเสียง: พื้นที่สัมผัส >= 40px */
+  body.touch input[type=range] { height:40px; min-height:44px; touch-action:pan-x; } /* แถบเลื่อนเสียง: พื้นที่สัมผัส >= 40px */
   /* มือถือแนวนอน: จอเตี้ย ให้ปุ่มอยู่ล่างสุดข้างๆ hotbar */
   @media (orientation:landscape) and (max-height:520px) {
     body.touch #joy { bottom:calc(10px + var(--sab)); width:116px; height:116px; }
@@ -361,6 +361,7 @@
   @media (max-width:700px) { #build .blbl { display:none; } #build .bhint { display:none; } #build .bitems { grid-template-columns:1fr 1fr 1fr; } #build .btools { flex-direction:row; flex-wrap:wrap; } #build .btools .btn { width:auto; flex:1 1 30%; text-align:center; } }
   /* โหมดตกแต่งบ้าน: ซ่อนปุ่มเดิน/เครื่องมือฟาร์มที่ไม่ได้ใช้ ให้ห้องเห็นเต็มที่ */
   #hornBtn { position:fixed; right:34px; bottom:190px; width:52px; height:52px; border-radius:50%; background:#f0b429; border:3px solid #fff; font-size:24px; z-index:5; touch-action:none; box-shadow:0 3px 0 rgba(0,0,0,.25); padding:0; line-height:1; }
+  #hornBtn *, #recallBtn * { pointer-events:none; }
   #hornBtn.hidden { display:none !important; }
   #recallBtn { position:fixed; right:34px; bottom:190px; min-width:52px; height:48px; padding:0 12px; border-radius:24px; background:#5aa9e6; color:#fff; border:3px solid #fff; font:bold 14px sans-serif; z-index:5; touch-action:none; box-shadow:0 3px 0 rgba(0,0,0,.25); }
   #recallBtn.hidden { display:none !important; }
@@ -438,7 +439,7 @@
   /* เมนูหลัก: ไอคอนที่ใช้บ่อยอยู่แถบบน ที่เหลือซ่อนในเมนู แบ่งหมวดพร้อมชื่อสั้นๆ */
   #hudTop #satChip, #hudTop #enChip, #hudTop #cdChip, #hudTop #evChip { cursor:pointer; font-size:13px; } #hudTop .panel.warn { background:#a8661f; } #hudTop .panel.over { background:#8f2a22; }
   #hudTop > :not(.hidden):not(#hudMenu):not(#vehMenu) { height:38px; box-sizing:border-box; margin:0; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; line-height:1; }
-  #hudTop > #evChip, #hudTop > #devChip { height:auto !important; min-height:38px; padding:4px 10px !important; line-height:1.25 !important; font-size:12px !important; max-width:100%; text-align:center; } /* ข้อความยาวห่อบรรทัด ชิปสูงตามเนื้อหา ไม่ล้นทับชิปอื่น */
+  #hudTop > #evChip { height:auto !important; min-height:38px; padding:4px 10px !important; line-height:1.25 !important; font-size:12px !important; max-width:100%; text-align:center; } /* ข้อความยาวห่อบรรทัด ชิปสูงตามเนื้อหา ไม่ล้นทับชิปอื่น */
   #hudTop > .btn.small { font-size:15px; padding:0 12px; }
   #hudTop > #bagBtn, #hudTop > #chatBtn, #hudTop > #micBtn, #hudTop > #lampBtn, #hudTop > #petQuick, #hudTop > #vehBtn { width:38px; padding:0; }
   #vehMenu { position:absolute; top:calc(100% + 6px); left:0; min-width:190px; box-sizing:border-box; padding:8px 10px 10px; background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); z-index:6; display:flex; flex-direction:column; gap:6px; }
@@ -451,6 +452,13 @@
   #hudMenu { position:absolute; top:calc(100% + 6px); left:0; width:min(92vw,340px); box-sizing:border-box; padding:8px 10px 10px; background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); z-index:6; max-height:calc(100vh - 90px); overflow:auto; }
   #hudMenu .mtitle { font-size:12px; font-weight:800; color:#5a4636; opacity:.8; margin:8px 2px 4px; }
   #hudMenu .mtitle:first-child { margin-top:2px; }
+  #sndPanel { display:flex; flex-direction:column; gap:4px; }
+  #sndPanel .btn { min-height:44px; flex-direction:row; font-size:14px; }
+  #sndPanel .btn::after { content:none; }
+  #sndPanel .srow { display:flex; align-items:center; gap:8px; min-height:44px; font-size:13px; font-weight:700; }
+  #sndPanel .srow span { flex:0 0 auto; min-width:78px; }
+  #sndPanel .srow input { flex:1; min-width:0; margin:0; height:44px; touch-action:pan-x; }
+  #sndPanel .srow b { flex:0 0 38px; text-align:right; font-size:12px; }
   #hudMenu .mgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
   #hudMenu .btn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:56px; padding:6px 2px; font-size:21px; line-height:1.1; }
   #hudMenu .btn::after { content:attr(data-lbl); font-size:11px; font-weight:700; }
@@ -532,6 +540,7 @@
   /* มือถือ: แถวบนเหลือแค่ เมนู เหรียญ พลังงาน (+ความหิวตอนต่ำ) ที่เหลือย้ายไปอยู่ในเมนู */
   body.touch #hudTop > #bagBtn, body.touch #hudTop > #chatBtn, body.touch #hudTop > #micBtn { display:none !important; }
   body.touch #hudTop > #online, body.touch #hudTop > #hungerChip:not(.low) { display:none !important; }
+  @media (orientation:landscape) and (max-height:520px) { body.touch #hudMenu { width:min(96vw,560px); } body.touch #sndPanel { flex-direction:row; align-items:center; gap:6px; } body.touch #sndPanel .btn { flex:0 0 auto; min-width:120px; padding:0 8px; } body.touch #sndPanel .srow { flex:1 1 0; min-width:0; gap:4px; font-size:11px; } body.touch #sndPanel .srow span { min-width:0; } body.touch #sndPanel .srow b { flex-basis:32px; } } /* แนวนอนจอเตี้ย: แผงเสียงแถวเดียว ปุ่ม+แถบสองอัน */
   body:not(.touch) #hudMenu .mtouch { display:none !important; }
   #hudMenu .spk { margin-left:0; color:inherit; }
   /* คอมจอใหญ่: ขยาย UI ตามสเกลจอ (--ui คำนวณใน game.js resize) ให้สัดส่วนกับโลกในเกมเท่ากับจอเล็ก */
@@ -573,7 +582,6 @@
   <div class="panel hidden" id="cdChip" role="status"></div>
   <div class="panel hidden" id="evChip" role="status"></div>
   <div class="panel hidden" id="happyChip" title="Happy Village: บัฟร่วมของทั้งเมือง">🎉</div>
-  <div class="panel hidden" id="devChip" role="status" title="แอดมินออนเกมอยู่"></div>
   <div class="panel" id="online">👥 1</div>
   <div class="panel hidden" id="satChip" role="status"></div>
   <button class="btn small" id="bagBtn" title="กระเป๋า (B)" aria-label="กระเป๋า">🎒</button>
@@ -607,7 +615,13 @@
       <button class="btn small mic mtouch" id="micMenu" data-lbl="ไมค์" title="ไมค์" aria-label="เปิด/ปิดไมค์">🎤</button>
       <button class="btn small mtouch" id="onlineMenu" data-lbl="ออนไลน์" title="ผู้เล่นออนไลน์" aria-label="ผู้เล่นออนไลน์">👥</button>
       <button class="btn small" id="invite" data-lbl="ชวนเพื่อน" title="คัดลอกลิงก์ชวนเพื่อน" aria-label="ชวนเพื่อน">🔗</button>
-      <button class="btn small spk" id="spkBtn" data-lbl="เสียง" title="ลำโพง: เปิดอยู่" aria-label="เปิดหรือปิดลำโพง">🔊</button>
+      <button class="btn small spk" id="spkBtn" data-lbl="เสียงเพื่อน" title="ลำโพง: เปิดอยู่" aria-label="เปิดหรือปิดลำโพง">🔊</button>
+    </div>
+    <div class="mtitle">🎚️ เสียงเกม</div>
+    <div id="sndPanel">
+      <button class="btn small" id="sndTog" type="button">🔊 เสียงเกม: เปิด</button>
+      <label class="srow"><span>🎮 เสียงเกม</span><input type="range" min="0" max="100" value="100" data-vol="sfx" aria-label="ระดับเสียงเกม"><b data-volv="sfx">100%</b></label>
+      <label class="srow"><span>🎵 ดนตรี</span><input type="range" min="0" max="100" value="70" data-vol="music" aria-label="ระดับดนตรี"><b data-volv="music">70%</b></label>
     </div>
     <div class="mtitle">🖥️ หน้าจอ</div>
     <div class="mgrid">

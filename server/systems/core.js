@@ -28,7 +28,7 @@ module.exports = {
   pubFull(q) { return { id: q.id, wet: q.rec && q.rec.wet > Date.now() ? 1 : 0, veh: q.veh || '', held: q.held || '', status: q.status || '', deaf: !!q.deaf, title: q.title, name: q.name, color: q.color, hat: q.hat, pc: q.pc, wear: q.wear, lamp: q.lamp, pet: q.pet, pm: q.pm, pax: q.pax, pay: q.pay, psick: !!(q.pet && this.petSt(q, q.pet).sick), pname: q.pet ? this.petName(q, q.pet) : '', ...(q.pet && this.petLv(q, q.pet) > 1 ? { plv: this.petLv(q, q.pet) } : {}), x: q.x, y: q.y, dir: q.dir, voice: !!q.voice }; },
   townPos(p) { const r = p.scene ? p.ret : { x: p.x, y: p.y }; return r && !S.blockedAt(this.map, r.x, r.y) ? r : { x: SPAWN.x, y: SPAWN.y }; }, // ตำแหน่งในเมืองที่จะบันทึก/กลับไป (ถ้าอยู่ในบ้านคือที่ที่ยืนก่อนเข้า)
   changeScene(p, scene, x, y) { // ย้ายผู้เล่นไปฉากใหม่: คนฉากเก่าเห็นเขาหายไป คนฉากใหม่เห็นเขาโผล่ ตัวเองได้รับฉากใหม่
-    const old = p.scene || null; scene = scene || null;
+    const old = p.scene || null; scene = scene || null; this.hornOff(p); // เปลี่ยนซีน: ปิดแตรที่ซีนเก่าก่อน ไม่รั่วข้ามซีน
     this.sceneBroadcast(old, { t: 'p-', id: p.id, quiet: 1 }, p);
     p.scene = scene; p.x = x; p.y = y; p.sit = null; p.dir = 0;
     if (p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); }
@@ -127,16 +127,30 @@ module.exports = {
   },
   setVeh(p, v) { // ขี่/ลงยานพาหนะ (ต้องมีของ อยู่ในเมือง)
     v = typeof v === 'string' && S.VEHICLES[v] && p.rec.inv['veh_' + v] > 0 && !p.scene ? v : '';
-    if ((p.veh || '') === v) return; p.veh = p.rec.veh = v; this.dirty = true;
+    if ((p.veh || '') === v) return; this.hornOff(p); p.veh = p.rec.veh = v; this.dirty = true;
     this.broadcast({ t: 'veh', id: p.id, v }); if (v) this.toast(p, `${S.VEHICLES[v].emoji} ขี่${S.VEHICLES[v].name}แล้ว (กด V เพื่อลง)`);
   },
-  horn(p) { // แตรยานพาหนะ: ขับรถ/จักรยานในเมือง หรืออยู่บนเรือในทะเล • เว้นช่วง S.HORN.cdMs • ส่งให้เฉพาะคนในซีนเดียวกัน ไม่เก็บเซฟ • v กำหนดจากสถานะฝั่งเซิร์ฟเวอร์ ไม่เชื่อเว็บ
+  horn(p, on) { // แตรกดค้าง: เว็บส่ง {t:'horn', on:true} ตอนกด และ on:false ตอนปล่อย (ไม่มี on = กดครั้งเดียว ดัง S.HORN.tapMs แล้วปิดเอง) • ขับรถ/จักรยานในเมือง หรืออยู่บนเรือในทะเลเท่านั้น • ส่ง {t:'horn',id,v,on} ให้คนในซีนเดียวกัน ไม่เก็บเซฟ • v กำหนดจากสถานะฝั่งเซิร์ฟ ไม่เชื่อเว็บ
+    if (on !== undefined && typeof on !== 'boolean') return;
+    const H = S.HORN, now = Date.now(); on = on === undefined ? 'tap' : on;
+    if (on === false) return this.hornOff(p); // ปล่อยแตร: ปิดเสมอ (ไม่ติดกันสแปม กันแตรค้าง) และไม่ส่งซ้ำถ้าไม่ได้ดังอยู่
     const cf = S.caveFloor(p.scene), onBoat = !!cf && S.isSeaScene(cf);
     const v = onBoat ? 'boat' : (p.veh && S.VEHICLES[p.veh] && !p.scene ? p.veh : '');
-    if (!v) return;
-    const now = Date.now(); if (now - (p.hornAt || 0) < S.HORN.cdMs) return;
-    p.hornAt = now; const o = { t: 'horn', id: p.id, v }; send(p, o); this.sceneBroadcast(p.scene, o, p);
+    if (!v) return this.hornOff(p);
+    const hs = p.hornSt || (p.hornSt = { at: 0, w0: 0, n: 0 });
+    if (now - hs.w0 >= 1000) { hs.w0 = now; hs.n = 0; } // เพดานต่อวินาที: เกินทิ้งเงียบๆ
+    if (++hs.n > H.perSec) return;
+    if (now - hs.at < H.minGapMs) return; hs.at = now;
+    const wasOn = !!p.hornOn;
+    if (!wasOn || p.hornV !== v) { p.hornOn = true; p.hornV = v; p.hornSince = now; p.hornUntil = now + (on === 'tap' ? H.tapMs : H.maxMs); } // กดค้างซ้ำตอนดังอยู่ไม่ต่อเวลา
+    else if (on === 'tap') p.hornUntil = Math.min(Math.max(p.hornUntil, now + H.tapMs), p.hornSince + H.maxMs); // กดครั้งเดียวรัวๆ ต่อได้ แต่ไม่เกิน maxMs นับจากเริ่ม
+    const o = { t: 'horn', id: p.id, v, on: true }; send(p, o); this.sceneBroadcast(p.scene, o, p);
   },
+  hornOff(p) { // ปิดแตร (ปล่อย/ลงรถ/เปลี่ยนซีน/ออกเกม/หมดเวลา) • ส่ง on:false ไปซีนที่แตรดังอยู่ ถ้าไม่ได้ดังอยู่ไม่ทำอะไร
+    if (!p.hornOn) return; const v = p.hornV; p.hornOn = false; p.hornV = ''; p.hornUntil = 0;
+    const o = { t: 'horn', id: p.id, v, on: false }; send(p, o); this.sceneBroadcast(p.scene, o, p);
+  },
+  hornTick(now) { for (const p of this.players.values()) if (p.hornOn && now >= p.hornUntil) this.hornOff(p); }, // แตรค้าง: เซิร์ฟเวอร์ปิดเองเมื่อเกินเวลา
   broadcastLook(p) { this.broadcast({ t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }, p); },
   // ร้านที่ผู้เล่นยืนอยู่ใกล้ประตู (หรือ null)
   nearShopKind(p) { // ร้านที่ใกล้ที่สุดในระยะ (เดิมคืนร้านแรกที่เจอ ร้านที่อยู่ติดกันจึงเปิดผิดร้าน เช่น ร้านยานพาหนะได้ร้านตกปลา)

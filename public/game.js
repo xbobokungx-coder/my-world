@@ -173,7 +173,7 @@ function handle(m) {
       ['hudTop', 'hotbar', 'chat', 'mini'].forEach(i => $(i).classList.remove('hidden'));
       layoutHud(); setMini(miniState);
       if (isTouch) { $('joy').classList.remove('hidden'); $('abtn').classList.remove('hidden'); }
-      setDev(m.dev); roomName = m.room || 'main'; isAdmin = !!m.admin; setSnowMode(m.snow); if (isAdmin && $('akey').value) ls.set('mw_akey', $('akey').value); $('adminBtn').classList.toggle('hidden', !isAdmin);
+      roomName = m.room || 'main'; isAdmin = !!m.admin; if (m.admin) setDev(m.dev); setSnowMode(m.snow); if (isAdmin && $('akey').value) ls.set('mw_akey', $('akey').value); $('adminBtn').classList.toggle('hidden', !isAdmin);
       history.replaceState(null, '', roomLink(roomName).slice(location.origin.length)); // คงชื่อห้องไว้ใน URL เผื่อรีเฟรช
       renderHud(); updateOnline();
       players.forEach((p, id) => { if (id < myId) callPeer(id); }); // ผู้เล่นใหม่เป็นฝ่ายโทรหาคนที่อยู่ก่อน
@@ -272,7 +272,7 @@ function handle(m) {
     case 'furn': applyFurnOp(m); break;
     case 'hstyle': houseSt = { fl: m.fl, wp: m.wp }; if (scene) syncHouseBg(); if (build.on) renderBuild(); break;
     case 'admin': onAdmin(m); break;
-    case 'dev': setDev(m); break;
+    case 'dev': if (isAdmin) setDev(m); break;
     case 'theme': setSnowMode(m.snow); if (m.rain !== undefined) setRainMode(m.rain); break;
     case 'kicked': noRetry = true; rcStop(false); { const d = $('dc').firstElementChild; if (d) d.textContent = m.text ? '🔁 ' + m.text : 'คุณถูกผู้ดูแลเตะออกจากห้อง 🦶 กดเชื่อมต่อใหม่เพื่อเข้ามาอีกครั้ง'; } break; // m.text = ล็อกอินซ้ำจากที่อื่น (เซิร์ฟเวอร์ส่งข้อความมา) • ไม่มี text = ผู้ดูแลเตะ
     case 'log': if (m.list) townLog = m.list.slice(); else if (m.e) { townLog.push(m.e); if (townLog.length > TOWN.logMax) townLog.shift(); } if (townShown()) renderTown(); break;
@@ -289,14 +289,14 @@ function handle(m) {
     case 'village': villageSt = m; villageEnd = m.left ? Date.now() + m.left : 0; updateHappyChip(); if (townShown()) renderTown(); break;
     case 'fame': fameSt = m.f; if (townShown()) renderTown(); break;
     case 'title': { const p = players.get(m.id); if (p) p.title = m.title; if (achShown()) renderAch(); break; }
-    case 'horn': { const p = players.get(m.id); if (p && p.id !== myId && me) { const d = Math.hypot(p.x - me.x, p.y - me.y) / TS; hornSound(m.v || 'bike', Math.max(0, 1 - d / 22)); } break; }
+    case 'horn': { if (m.id === myId) break; if (m.on === false) hornOtherStop(m.id); else if (m.on === true) hornOtherStart(m.id, m.v || 'bike'); break; } // แตรกดค้างของคนอื่น: on:true เริ่มเสียงต่อเนื่อง ดังตามระยะ • on:false หยุด • หยุดเองใน 6.5 วิ
     case 'veh': { const p = players.get(m.id); if (p) p.veh = m.v || ''; if (m.id === myId && !$('shop').classList.contains('hidden')) renderShop(); break; }
     case 'ch': chSt = { ch: m.ch, wet: m.wet, chain: m.chain }; if (questShown()) renderQuestPanel(); break;
     case 'chain': chSt.chain = m.n; break;
     case 'stars': starsSt = m.s || {}; if (bagShown()) renderBag(); break;
     case 'evt': evtSt = m.e; renderEvChip(); if (townShown() && townTab === 'log') renderTown(); break;
     case 'wet': { const p = players.get(m.id); if (p) p.wet = !!m.on; break; }
-    case 'stall': stallSt = m.l || []; bidSt = m.b || []; if (townShown() && townTab === 'stall' && !(document.activeElement && $('townBody').contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName))) renderTown(); break; // กำลังพิมพ์ช่องกรอกอยู่ ไม่วาดทับให้หลุดโฟกัส
+    case 'stall': { const okIt = x => { try { return !!(x && typeof x.item === 'string' && itemInfo(x.item)); } catch (e) { return false; } }; stallSt = (Array.isArray(m.l) ? m.l : []).filter(okIt); bidSt = (Array.isArray(m.b) ? m.b : []).filter(okIt); }  if (townShown() && townTab === 'stall' && !(document.activeElement && $('townBody').contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName))) renderTown(); break; // กำลังพิมพ์ช่องกรอกอยู่ ไม่วาดทับให้หลุดโฟกัส
     case 'orders': ordersSt = m.o; if (townShown() && townTab === 'orders') renderTown(); break;
     case 'orders_upd': if (townShown() && townTab === 'orders') send({ t: 'orders', a: 'list' }); break;
     case 'rents': rentsSt = m.r || {}; if (!$('shop').classList.contains('hidden')) renderShop(); break;
@@ -359,13 +359,13 @@ let bugView = 'open'; // หน้ารายงานบั๊ก: open = ย�
 const adminShown = () => !$('admin').classList.contains('hidden');
 let adminHungerOn = true, devOn = false, devBase = 0, devAt = 0, devAsk = 0; // On Develop: แอดมินออนเกมมานานเท่าไร (เซิร์ฟเวอร์ส่ง sec มา เว็บนับต่อเอง)
 function setDev(d) { if (!d) return; devOn = !!d.on; devBase = +d.sec || 0; devAt = Date.now(); devAsk = devAt; tickDev(); }
-function tickDev() {
-  const el = $('devChip'); if (!el) return;
-  el.classList.toggle('hidden', !devOn); if (!devOn) return;
+function devText() { // ข้อความ On Develop ในแท็บสถานะ (เฉพาะแอดมิน)
+  if (!isAdmin || !devOn) return '';
   const s = devBase + Math.floor((Date.now() - devAt) / 1000), h = Math.floor(s / 3600), mi = Math.floor(s % 3600 / 60);
-  el.textContent = '🛠️ On Develop ' + (h ? h + ' ชม. ' : '') + mi + ' นาที';
+  return '🛠️ On Develop (เวลาออนเกมของแอดมิน) ' + (h ? h + ' ชม. ' : '') + mi + ' นาที';
 }
-setInterval(() => { if (!joined) return; tickDev(); if (Date.now() - devAsk > 120000) { devAsk = Date.now(); send({ t: 'dev' }); } }, 1000);
+function tickDev() { const el = document.getElementById('devRow'); if (el) el.textContent = devText(); }
+setInterval(() => { if (!joined || !isAdmin) return; tickDev(); if (Date.now() - devAsk > 120000) { devAsk = Date.now(); send({ t: 'dev' }); } }, 1000);
 function openAdmin() { $('admin').classList.remove('hidden'); send({ t: 'admin', a: 'rooms' }); send({ t: 'admin', a: 'users' }); send({ t: 'admin', a: 'bugs' }); send({ t: 'admin', a: 'reports' }); renderAdmin(); }
 function setSnowMode(v) { snowMode = v === 'on' || v === 'off' ? v : 'auto'; if (typeof adminShown === 'function' && adminShown()) renderAdmin(); }
 function setRainMode(v) { rainMode = v === 'on' || v === 'off' ? v : 'auto'; if (typeof adminShown === 'function' && adminShown()) renderAdmin(); }
@@ -886,6 +886,20 @@ function renderRankTab(el) {
   el.querySelectorAll('[data-rtab]').forEach(b => b.onclick = () => { rankTab = b.dataset.rtab; renderTown(); });
   el.querySelectorAll('[data-rsub]').forEach(b => b.onclick = () => { rankSub = b.dataset.rsub; renderTown(); });
 }
+// ตลาดนัด: จัดกลุ่มไอเทมตามอาชีพ (ใช้ cat จาก itemInfo + ชื่อ key) ไอเทมที่ไม่เข้าพวกไปกลุ่ม "อื่นๆ"
+const FLEA_GRPS = [['all', '📦 ทั้งหมด'], ['farm', '🌾 ชาวนา'], ['animal', '🐄 คนเลี้ยงสัตว์'], ['fish', '🎣 ชาวประมง'], ['wood', '🪵 ช่างไม้'], ['ore', '⛏️ นักขุดแร่'], ['chef', '👨‍🍳 เชฟ'], ['other', '🎒 อื่นๆ']];
+function fleaGrpOf(k) {
+  const i = itemInfo(k), c = i && i.cat;
+  if (c === 'crop' || c === 'seed') return 'farm';
+  if (c === 'animal' || c === 'feed') return 'animal';
+  if (c === 'fish' || (i && i.bait)) return 'fish';
+  if (c === 'wood' || /^furn_/.test(k)) return 'wood';
+  if (c === 'ore') return 'ore';
+  if (c === 'food') return 'chef';
+  return 'other';
+}
+let fleaGrp = (() => { const g = ls.get('mw_flea_grp'); return FLEA_GRPS.some(x => x[0] === g) ? g : 'all'; })();
+const fleaGrpOk = k => fleaGrp === 'all' || fleaGrpOf(k) === fleaGrp;
 function renderTown() {
   $('townTitle').textContent = ({ log: '📰 ข่าวเมือง', bank: '💳 ตู้ ATM', lotto: '🎟️ Lucky Lotto', rank: '🏆 ป้ายอันดับ', stall: '🛒 ตลาดนัด' })[townTab] || '📰 ข่าวเมือง';
   document.querySelectorAll('[data-ttab]').forEach(t => t.classList.toggle('on', t.dataset.ttab === townTab));
@@ -902,37 +916,40 @@ function renderTown() {
     let h = `<div class="chips" style="margin:0 0 8px">${[['sell', '🛒 ขาย/เสนอขาย'], ['buy', '🤝 รับซื้อ/เสนอซื้อ']].map(([k, n]) => `<button class="chip${fleaTab === k ? ' sel' : ''}" style="${B44}" data-ftab="${k}">${n}</button>`).join('')}</div>`
       + `<p style="font-size:12px;opacity:.7;margin:0 0 6px">ซื้อขายกับผู้เล่นด้วยเหรียญ ตั้งราคาต่อชิ้นได้ ${Math.round(S0.min * 100)}–${Math.round(S0.max * 100)}% ของราคามาตรฐาน • คนขายโดนหักภาษี ${tax}% • ไม่มีคนซื้อใน ${S0.days} วันของคืน • ต้องตั้ง PIN ก่อน • ต้องยืนใกล้ป้ายตลาดนัดถึงจะซื้อขายได้</p>`;
     if (!pinSt) h += '<div class="banner" style="background:#ffe3d6">🔐 ตั้ง PIN ก่อนถึงจะซื้อขายที่ตลาดนัดได้ <button class="btn small" style="' + B44 + '" data-pinset="1">ตั้ง PIN</button></div>';
+    h += `<div class="chips" id="fleaGrps" style="margin:0 0 8px;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch">${FLEA_GRPS.map(([k, n]) => `<button class="chip${fleaGrp === k ? ' sel' : ''}" style="${B44};flex:0 0 auto" data-fgrp="${k}">${n}</button>`).join('')}</div>`; // กรองตามอาชีพ (ใช้กับรายการและช่องเลือกของ)
     const fleaFar = () => { if (!nearFlea()) { toast('🛒 เดินไปที่ป้ายตลาดนัดตรงลานกองไฟก่อนนะ'); return true; } return false; };
     const priceBox = (id, sel) => `<input id="${id}" type="number" min="1" inputmode="numeric" style="width:84px;min-height:36px" title="ราคาต่อชิ้น"> <small id="${id}H" style="opacity:.7"></small>`;
     if (fleaTab === 'sell') {
-      const others = stallSt.filter(x => x.mine !== myKey), mine = stallSt.filter(x => x.mine === myKey), tradable = Object.keys(inv).filter(k => Shared.isTradable(k) && inv[k] > 0);
+      const others = stallSt.filter(x => x.mine !== myKey && fleaGrpOk(x.item)), mine = stallSt.filter(x => x.mine === myKey && fleaGrpOk(x.item)), mineAll = stallSt.filter(x => x.mine === myKey).length, tradableAll = Object.keys(inv).filter(k => Shared.isTradable(k) && inv[k] > 0), tradable = tradableAll.filter(fleaGrpOk);
       h += '<div class="sec">🛒 ของที่คนอื่นวางขาย</div>' + (others.length ? others.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} ${frTxt(x.fr)}<br><small>ชิ้นละ 🪙${x.price} • โดย ${esc(x.name)}</small></span><span><button class="btn small" style="${B44}" data-sbuy="${x.id}" data-sn="1" ${coin < x.price || !pinSt ? 'disabled' : ''}>ซื้อ 1</button>${x.n > 1 ? ` <button class="btn small" style="${B44}" data-sbuy="${x.id}" data-sn="${x.n}" ${coin < x.price * x.n || !pinSt ? 'disabled' : ''}>ทั้งหมด 🪙${x.price * x.n}</button>` : ''}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีใครวางขาย</p>');
-      h += `<div class="sec">📦 ของที่ฉันวางขาย (${mine.length}/${S0.slots})</div>` + (mine.length ? mine.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} ${frTxt(x.fr)} • ชิ้นละ 🪙${x.price}</span><button class="btn small muted" style="${B44}" data-scancel="${x.id}">เก็บคืน</button></div>`; }).join('') : '<p style="opacity:.7">ยังไม่ได้วางอะไร</p>');
-      if (tradable.length && pinSt && mine.length < S0.slots) {
-        h += `<div class="sec">➕ ลงประกาศขาย</div><div class="row" style="flex-wrap:wrap;gap:6px"><select id="stItem" style="min-height:36px">${tradable.map(k => { const i = itemInfo(k); return `<option value="${k}">${i.emoji} ${i.name} (มี ${inv[k]})</option>`; }).join('')}</select>`
+      h += `<div class="sec">📦 ของที่ฉันวางขาย (${mineAll}/${S0.slots})</div>` + (mine.length ? mine.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} ${frTxt(x.fr)} • ชิ้นละ 🪙${x.price}</span><button class="btn small muted" style="${B44}" data-scancel="${x.id}">เก็บคืน</button></div>`; }).join('') : '<p style="opacity:.7">ยังไม่ได้วางอะไร</p>');
+      if (tradableAll.length && pinSt && mineAll < S0.slots) {
+        h += `<div class="sec">➕ ลงประกาศขาย</div><div class="row" style="flex-wrap:wrap;gap:6px"><select id="stItem" style="min-height:44px;max-width:100%">${tradable.length ? '' : '<option value="" disabled selected>(ไม่มีของในกลุ่มนี้)</option>'}${tradable.map(k => { const i = itemInfo(k); return `<option value="${k}">${i.emoji} ${i.name} (มี ${inv[k]})</option>`; }).join('')}</select>`
           + `<input id="stN" type="number" min="1" inputmode="numeric" value="1" style="width:64px;min-height:36px" title="จำนวน"> ${priceBox('stPrice')} <button class="btn small" style="${B44}" id="stPost">วางขาย</button></div><small id="stHint" style="opacity:.7"></small>`;
       }
     } else {
-      const myBids = bidSt.filter(x => x.mine === myKey), others = bidSt.filter(x => x.mine !== myKey);
+      const myBidsAll = bidSt.filter(x => x.mine === myKey), myBids = myBidsAll.filter(x => fleaGrpOk(x.item)), others = bidSt.filter(x => x.mine !== myKey && fleaGrpOk(x.item));
       h += '<div class="sec">🤝 คำเสนอซื้อ (ขายให้ได้เลย)</div>' + (others.length ? others.map(x => { const i = itemInfo(x.item), have = inv[x.item] || 0, q = Math.min(x.n, have);
         let worst = 0; if (Shared.perishable(x.item) && freshSt.l[x.item]) { const c = Shared.freshCount(freshSt.l[x.item], Date.now() + timeOffset, false); worst = c[2] ? 2 : c[1] ? 1 : 0; }
         const old = worst > x.fresh, off = !pinSt || q < 1 || old, net = p => p * x.price - Math.floor(p * x.price * S0.tax);
         return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} <small>(${frName[x.fresh]})</small><br><small>ชิ้นละ 🪙${x.price} • โดย ${esc(x.name)} • ฉันมี ${have}${old ? ' • ของเก่าเกินที่เขารับ' : ''}</small></span><span><button class="btn small" style="${B44}" data-sfill="${x.id}" data-sn="1" ${off ? 'disabled' : ''}>ขาย 1 ได้ 🪙${net(1)}</button>${q > 1 ? ` <button class="btn small" style="${B44}" data-sfill="${x.id}" data-sn="${q}" ${off ? 'disabled' : ''}>ขาย ${q} ได้ 🪙${net(q)}</button>` : ''}</span></div>`; }).join('') : '<p style="opacity:.7">ยังไม่มีใครเสนอซื้อ</p>');
-      h += `<div class="sec">📋 คำเสนอซื้อของฉัน (${myBids.length}/${S0.bidSlots})</div>` + (myBids.length ? myBids.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} • ชิ้นละ 🪙${x.price} <small>(${frName[x.fresh]} • กันเงินไว้ 🪙${x.n * x.price})</small></span><button class="btn small muted" style="${B44}" data-sbcancel="${x.id}">ยกเลิก คืนเงิน</button></div>`; }).join('') : '<p style="opacity:.7">ยังไม่ได้เสนอซื้อ</p>');
-      if (pinSt && myBids.length < S0.bidSlots) {
-        const all = Shared.SELLABLE.filter(k => Shared.isTradable(k));
-        h += `<div class="sec">➕ ตั้งเสนอซื้อ (กันเงินไว้ก่อน คืนเต็มเมื่อยกเลิก)</div><div class="row" style="flex-wrap:wrap;gap:6px"><select id="bdItem" style="min-height:36px">${all.map(k => { const i = itemInfo(k); return `<option value="${k}">${i.emoji} ${i.name}</option>`; }).join('')}</select>`
+      h += `<div class="sec">📋 คำเสนอซื้อของฉัน (${myBidsAll.length}/${S0.bidSlots})</div>` + (myBids.length ? myBids.map(x => { const i = itemInfo(x.item); return `<div class="row"><span>${i.emoji} ${i.name} ×${x.n} • ชิ้นละ 🪙${x.price} <small>(${frName[x.fresh]} • กันเงินไว้ 🪙${x.n * x.price})</small></span><button class="btn small muted" style="${B44}" data-sbcancel="${x.id}">ยกเลิก คืนเงิน</button></div>`; }).join('') : '<p style="opacity:.7">ยังไม่ได้เสนอซื้อ</p>');
+      if (pinSt && myBidsAll.length < S0.bidSlots) {
+        const all = Shared.SELLABLE.filter(k => Shared.isTradable(k) && fleaGrpOk(k));
+        h += `<div class="sec">➕ ตั้งเสนอซื้อ (กันเงินไว้ก่อน คืนเต็มเมื่อยกเลิก)</div><div class="row" style="flex-wrap:wrap;gap:6px"><select id="bdItem" style="min-height:44px;max-width:100%">${all.length ? '' : '<option value="" disabled selected>(ไม่มีของในกลุ่มนี้)</option>'}${all.map(k => { const i = itemInfo(k); return `<option value="${k}">${i.emoji} ${i.name}</option>`; }).join('')}</select>`
           + `<input id="bdN" type="number" min="1" inputmode="numeric" value="1" style="width:64px;min-height:36px" title="จำนวน"> ${priceBox('bdPrice')}</div>`
           + `<div class="row" style="flex-wrap:wrap;gap:6px"><select id="bdFresh" style="min-height:36px"><option value="0">🟢 ${frName[0]}</option><option value="1">🟡 ${frName[1]}</option><option value="2">🔴 ${frName[2]}</option></select> <button class="btn small" style="${B44}" id="bdPost">เสนอซื้อ</button></div><small id="bdHint" style="opacity:.7"></small>`;
       }
     }
     el.innerHTML = h;
+    { const g = el.querySelector('#fleaGrps .sel'); if (g) g.scrollIntoView({ block: 'nearest', inline: 'center' }); } // เลื่อนแถวกลุ่มไปที่ชิปที่เลือก
     el.querySelectorAll('[data-ftab]').forEach(b => b.onclick = () => { fleaTab = b.dataset.ftab; renderTown(); });
+    el.querySelectorAll('[data-fgrp]').forEach(b => b.onclick = () => { fleaGrp = b.dataset.fgrp; ls.set('mw_flea_grp', fleaGrp); renderTown(); });
     const range = b => `ราคามาตรฐาน 🪙${b} • ตั้งได้ ${Math.max(1, Math.ceil(b * S0.min))}–${Math.floor(b * S0.max)} ต่อชิ้น`;
-    const sel = $('stItem'); if (sel) { const hint = () => { const b = Shared.tradeValue(sel.value), n = Math.max(1, +$('stN').value || 1), p = +$('stPrice').value || 0; $('stPrice').value = $('stPrice').value || b; $('stHint').textContent = `${range(b)} • ขายครบได้รับสุทธิ ~🪙${n * (+$('stPrice').value) - Math.floor(n * (+$('stPrice').value) * S0.tax)} (หักภาษี ${tax}%)`; };
+    const sel = $('stItem'); if (sel && sel.value) { const hint = () => { const b = Shared.tradeValue(sel.value), n = Math.max(1, +$('stN').value || 1), p = +$('stPrice').value || 0; $('stPrice').value = $('stPrice').value || b; $('stHint').textContent = `${range(b)} • ขายครบได้รับสุทธิ ~🪙${n * (+$('stPrice').value) - Math.floor(n * (+$('stPrice').value) * S0.tax)} (หักภาษี ${tax}%)`; };
       sel.onchange = () => { $('stPrice').value = ''; hint(); }; $('stN').oninput = $('stPrice').oninput = hint; hint();
       $('stPost').onclick = () => { if (fleaFar()) return; send({ t: 'stall', a: 'post', item: sel.value, n: +$('stN').value, price: +$('stPrice').value }); }; }
-    const bs = $('bdItem'); if (bs) { const hint = () => { const b = Shared.tradeValue(bs.value), n = Math.max(1, +$('bdN').value || 1); $('bdPrice').value = $('bdPrice').value || b; $('bdHint').textContent = `${range(b)} • จะกันเงินไว้ 🪙${n * (+$('bdPrice').value || 0)} (มี 🪙${coin})`; };
+    const bs = $('bdItem'); if (bs && bs.value) { const hint = () => { const b = Shared.tradeValue(bs.value), n = Math.max(1, +$('bdN').value || 1); $('bdPrice').value = $('bdPrice').value || b; $('bdHint').textContent = `${range(b)} • จะกันเงินไว้ 🪙${n * (+$('bdPrice').value || 0)} (มี 🪙${coin})`; };
       bs.onchange = () => { $('bdPrice').value = ''; hint(); }; $('bdN').oninput = $('bdPrice').oninput = hint; hint();
       $('bdPost').onclick = () => { if (fleaFar()) return; send({ t: 'stall', a: 'bid', item: bs.value, n: +$('bdN').value, price: +$('bdPrice').value, fresh: +$('bdFresh').value }); }; }
     el.querySelectorAll('[data-sbuy]').forEach(b => b.onclick = () => { if (fleaFar()) return; ask(`ซื้อ ${b.dataset.sn} ชิ้น?`, () => send({ t: 'stall', a: 'buy', id: +b.dataset.sbuy, n: +b.dataset.sn })); });
@@ -1216,14 +1233,16 @@ $('askNo').onclick = () => { $('ask').classList.add('hidden'); askYes = null; };
 // ปุ่มย่อ/ขยายแถบเมนูด้านบน (ย่อแล้วเหลือแค่เหรียญ ความอิ่ม และปุ่มขยาย) จำค่าไว้ในเครื่อง
 // เมนูหลัก: ปุ่มที่ใช้ไม่บ่อยซ่อนในเมนู (ปุ่มเดิมทุกตัวยังอยู่ ตัวจัดการกดเดิมทำงานเหมือนเดิม)
 const menuShown = () => !$('hudMenu').classList.contains('hidden');
-function setMenu(on) { $('hudMenu').classList.toggle('hidden', !on); document.body.classList.toggle('menu-open', on); $('menuBtn').setAttribute('aria-expanded', on ? 'true' : 'false'); }
+function fitMenu() { const m = $('hudMenu'); if (m.classList.contains('hidden')) return; m.style.maxHeight = ''; const top = m.getBoundingClientRect().top, sc = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1); m.style.maxHeight = Math.max(120, Math.floor((innerHeight - top - 12) / (document.body.classList.contains('touch') ? 1 : sc))) + 'px'; } // กล่องเมนูสูงไม่เกินพื้นที่ใต้ตำแหน่งที่เริ่มจริง เลื่อนถึงแถวท้ายสุดได้
+addEventListener('resize', fitMenu);
+function setMenu(on) { $('hudMenu').classList.toggle('hidden', !on); document.body.classList.toggle('menu-open', on); $('menuBtn').setAttribute('aria-expanded', on ? 'true' : 'false'); if (on) fitMenu(); }
 $('menuBtn').onclick = () => setMenu(!menuShown());
 // ปุ่มในเมนูบนมือถือที่ย้ายมาจากแถบบน: กดแล้วทำงานเหมือนปุ่มต้นทาง (เมนูปิดให้อัตโนมัติจากตัวดักคลิกด้านบน)
 $('bagMenu').onclick = () => $('bagBtn').click();
 $('chatMenu').onclick = () => $('chatBtn').click();
 $('micMenu').onclick = () => $('micBtn').click();
 $('onlineMenu').onclick = () => $('online').click();
-$('hudMenu').addEventListener('click', e => { const b = e.target.closest('.btn'); if (b && !['zoomInBtn', 'zoomOutBtn', 'spkBtn'].includes(b.id)) setMenu(false); }); // เลือกแล้วปิดเมนู ยกเว้นปุ่มที่กดซ้ำได้
+$('hudMenu').addEventListener('click', e => { const b = e.target.closest('.btn'); if (b && !['zoomInBtn', 'zoomOutBtn', 'spkBtn', 'sndTog'].includes(b.id)) setMenu(false); }); // เลือกแล้วปิดเมนู ยกเว้นปุ่มที่กดซ้ำได้
 addEventListener('pointerdown', e => { if (menuShown() && !e.target.closest('#hudMenu') && !e.target.closest('#menuBtn')) setMenu(false); });
 { // แสดงจุดแดงเควสที่ปุ่มเมนูด้วย (เควสอยู่ในเมนู จะได้ไม่พลาดเควสใหม่)
   const qb = $('questBadge'), mb = $('menuBadge');
@@ -1410,12 +1429,20 @@ $('bookBtn').onclick = () => (bagShown() && bagTab === 'book' ? closeBag() : ope
 let volHold = false; // กำลังลากแถบเสียง ห้ามวาดแท็บใหม่ ไม่งั้นแถบหลุดมือ
 addEventListener('pointerup', () => { volHold = false; }); addEventListener('pointercancel', () => { volHold = false; });
 $('bagBody').addEventListener('pointerdown', e => { if (e.target.closest('[data-vol]')) volHold = true; });
-$('bagBody').addEventListener('input', e => {
+const onVolInput = e => {
   const r = e.target.closest('[data-vol]'); if (!r) return;
   const v = Math.max(0, Math.min(1, (+r.value || 0) / 100)), which = r.dataset.vol;
   if (which === 'sfx') { sfxVol = v; ls.set('mw_sfxvol', String(v)); if (smaster) smaster.gain.value = sfxGain(); } else { musicVol = v; ls.set('mw_musvol', String(v)); }
-  const lab = document.querySelector('[data-volv="' + which + '"]'); if (lab) lab.textContent = Math.round(v * 100) + '%';
-});
+  syncSndUi(r);
+};
+function syncSndUi(except) { // แถบเสียงในเมนู ☰ กับแท็บสถานะใช้ค่าเดียวกัน
+  document.querySelectorAll('[data-vol]').forEach(r => { const v = r.dataset.vol === 'sfx' ? sfxVol : musicVol; if (r !== except) r.value = Math.round(v * 100); });
+  document.querySelectorAll('[data-volv]').forEach(b => { b.textContent = Math.round((b.dataset.volv === 'sfx' ? sfxVol : musicVol) * 100) + '%'; });
+  const t = $('sndTog'); if (t) t.textContent = sfxOn ? '🔊 เสียงเกม: เปิด' : '🔇 เสียงเกม: ปิด';
+}
+$('bagBody').addEventListener('input', onVolInput); $('sndPanel').addEventListener('input', onVolInput);
+$('sndPanel').addEventListener('change', e => { if (e.target.closest('[data-vol=sfx]')) playSfx('coin'); });
+$('sndTog').onclick = () => { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); if (!sfxOn) hornStopAll(); syncSndUi(); playSfx('coin'); };
 $('bagBody').addEventListener('change', e => { if (e.target.closest('[data-vol=sfx]')) playSfx('coin'); });
 setInterval(() => { if (bagShown() && bagTab === 'status' && !volHold && !(document.activeElement && document.activeElement.type === 'range')) renderBag(); }, 1000);
 $('bagClose').onclick = closeBag;
@@ -1425,7 +1452,7 @@ $('bagBody').addEventListener('click', e => {
   if (e.target.closest('[data-pinset]')) { showPinBox(pinSt); return; }
   { const b = e.target.closest('[data-star]'); if (b) { send({ t: 'star', skill: b.dataset.star }); return; } }
   { const sc = e.target.closest('[data-stat]'), ss = e.target.closest('[data-skillsel]'); if (!e.target.closest('button')) { if (sc) { statSel = statSel === 'c' + sc.dataset.stat ? '' : 'c' + sc.dataset.stat; renderBag(); return; } if (ss) { statSel = statSel === 's' + ss.dataset.skillsel ? '' : 's' + ss.dataset.skillsel; renderBag(); return; } } } // เมนูสถานะ: กดอันไหนก็โชว์รายละเอียดในหน้าเดิม ไม่ปิดหน้าต่าง กดอันอื่นต่อได้
-  if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); renderBag(); playSfx('coin'); return; }
+  if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); if (!sfxOn) hornStopAll(); syncSndUi(); renderBag(); playSfx('coin'); return; }
   const sb = e.target.closest('[data-sub]'); if (sb) { bagSub = sb.dataset.sub; renderBag(); return; }
   const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); return; }
   const ib = e.target.closest('[data-info]'); if (ib) { const k = ib.dataset.info, i = itemInfo(k); if (i) toast(`${i.emoji} ${i.name} ×${inv[k] || 0}${freshBadge(k).replace(/<[^>]+>/g, '')}` + (i.sell ? ` • ราคาขาย 🪙${i.sell}` : '') + (i.food ? ` • กินได้ +${i.food} ความอิ่ม` : '')); }
@@ -1451,25 +1478,75 @@ function syncVehBtn() { // เรียกทุกเฟรม แต่แต�
   if (!own.length) setVehMenu(false);
   $('vehMenu').innerHTML = '<div class="mtitle">🚲 ยานพาหนะ</div>' + own.map(v => `<button class="btn small${v === cur ? ' on' : ''}" data-v="${v}">${V[v].emoji} ${V[v].name}${v === cur ? ' ✅' : ''}</button>`).join('') + (cur ? '<button class="btn small off" data-v="">🚶 ลงรถ</button>' : '');
 }
-// แตรยานพาหนะ: ปุ่มบนจอ + ปุ่ม N (ขับรถ/จักรยาน/เรือเท่านั้น) กดเองเล่นเสียงทันที คูลดาวน์ 1.2 วิ เซิร์ฟเวอร์ broadcast {t:'horn', id, v} ให้คนอื่นได้ยินตามระยะ
-let hornAt = 0, hornKey = '';
+// แตรยานพาหนะ: ปุ่มบนจอ + ปุ่ม N (ขับรถ/จักรยาน/เรือเท่านั้น) กดค้าง = ดังยาวตลอดที่กด ปล่อย = หยุด (ไม่มีคูลดาวน์)
+// เว็บ→เซิร์ฟเวอร์ {t:'horn', on:true|false} • เซิร์ฟเวอร์ broadcast {t:'horn', id, v, on} ให้คนในซีน (ข้ามของตัวเอง)
+let hornKey = '', hornVoice = null, hornSrc = new Set(), hornWant = false, hornSent = false, hornSentAt = 0, hornTimer = 0, hornMaxT = 0;
+const hornOthers = new Map(); // id → { h: เสียงต่อเนื่อง, v, tm: fail-safe timer }
 const hornKind = () => me && me.veh && inTown() ? me.veh : me && inOcean() ? 'boat' : '';
-function syncHornBtn() { const k = hornKind(), b = $('hornBtn'); if (k === hornKey) return; hornKey = k; b.classList.toggle('hidden', !k); b.textContent = k === 'car' ? '📢' : k === 'boat' ? '🚢' : '📣'; }
-function hornSound(v, k) { // แตรสังเคราะห์ ต่างโทนตามชนิด k = ความดัง 0..1 ตามระยะ
-  if (!sfxOn || !(k > 0.02)) return;
-  if (v === 'car') { tone(392, 0.32, { type: 'square', vol: 0.22, k, lp: 1800 }); tone(494, 0.32, { type: 'square', vol: 0.18, k, lp: 1800 }); }
-  else if (v === 'boat') { tone(130, 0.9, { type: 'sawtooth', vol: 0.3, k, lp: 700, attack: 0.08 }); tone(98, 0.9, { type: 'sawtooth', vol: 0.22, k, lp: 600, attack: 0.08 }); }
-  else if (v === 'scooter') { tone(700, 0.14, { type: 'square', vol: 0.16, k, lp: 2200 }); tone(700, 0.14, { type: 'square', vol: 0.16, k, delay: 0.18, lp: 2200 }); }
-  else { tone(1800, 0.1, { type: 'triangle', vol: 0.2, k }); tone(2200, 0.14, { type: 'triangle', vol: 0.2, k, delay: 0.12 }); } // จักรยาน: กริ๊ง
+function syncHornBtn() {
+  const k = hornKind(), b = $('hornBtn');
+  if (!k && hornSrc.size) hornRelease(true); // ลงจากพาหนะ/ปุ่มซ่อน = ปล่อยแตรเสมอ
+  hornOthers.forEach((o, id) => { const p = players.get(id); if (!p || !me) { hornOtherStop(id); return; } o.h.setK(Math.max(0, 1 - Math.hypot(p.x - me.x, p.y - me.y) / TS / 22)); });
+  if (k === hornKey) return; hornKey = k; b.classList.toggle('hidden', !k); b.textContent = k === 'car' ? '📢' : k === 'boat' ? '🚢' : '📣';
 }
+const HORN = { // คู่เสียงแตร: [ความถี่, ชนิดคลื่น], vol, lowpass
+  car: { f: [[400, 'square'], [500, 'square']], vol: 0.2, lp: 2000 },
+  boat: { f: [[130, 'sawtooth'], [98, 'sawtooth']], vol: 0.3, lp: 700, att: 0.06 },
+  scooter: { f: [[620, 'square'], [780, 'square']], vol: 0.13, lp: 2200 },
+  bike: { f: [[880, 'triangle'], [1320, 'triangle']], vol: 0.2, lp: 3000 },
+};
+function hornStart(v, k) { // เริ่มเสียงแตรต่อเนื่อง คืน handle { setK, stop } (ผ่าน smaster เคารพ sfxOn)
+  if (!sfxOn) return { setK() {}, stop() {} };
+  const c = sAudio(); if (!c) return { setK() {}, stop() {} };
+  const d = HORN[v] || HORN.bike, t0 = c.currentTime, g = c.createGain(), f = c.createBiquadFilter(); let kk = k, done = false;
+  f.type = 'lowpass'; f.frequency.value = d.lp; f.connect(g); g.connect(smaster);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(Math.max(0.0002, d.vol * kk), t0 + (d.att || 0.015));
+  const oscs = d.f.map(([fr, ty]) => { const o = c.createOscillator(); o.type = ty; o.frequency.value = fr; o.connect(f); o.start(t0); return o; });
+  return {
+    setK(x) { if (done || Math.abs(x - kk) < 0.01) return; kk = x; g.gain.setTargetAtTime(Math.max(0.0002, d.vol * kk), c.currentTime, 0.05); },
+    stop() { if (done) return; done = true; const t = c.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(Math.max(0.0002, g.gain.value), t); g.gain.linearRampToValueAtTime(0.0001, t + 0.07); oscs.forEach(o => { try { o.stop(t + 0.1); } catch (e) { /* หยุดไปแล้ว */ } }); setTimeout(() => { try { g.disconnect(); } catch (e) { /* ตัดแล้ว */ } }, 250); },
+  };
+}
+function hornOtherStart(id, v) {
+  hornOtherStop(id); const p = players.get(id); if (!p || !me) return;
+  const k = Math.max(0, 1 - Math.hypot(p.x - me.x, p.y - me.y) / TS / 22);
+  hornOthers.set(id, { v, h: hornStart(v, k), tm: setTimeout(() => hornOtherStop(id), 6500) });
+}
+function hornOtherStop(id) { const o = hornOthers.get(id); if (!o) return; clearTimeout(o.tm); o.h.stop(); hornOthers.delete(id); }
+function hornStopAll() { if (hornVoice) { hornVoice.stop(); hornVoice = null; } hornOthers.forEach((o, id) => hornOtherStop(id)); }
+function hornFlush() { // ส่งสถานะล่าสุดไปเซิร์ฟเวอร์ ห่างกันอย่างน้อย ~50 ms (ส่งเฉพาะตอนสถานะเปลี่ยน)
+  if (hornWant === hornSent) return;
+  const wait = 50 - (performance.now() - hornSentAt);
+  if (wait > 0) { if (!hornTimer) hornTimer = setTimeout(() => { hornTimer = 0; hornFlush(); }, wait); return; }
+  hornSent = hornWant; hornSentAt = performance.now(); send({ t: 'horn', on: hornWant });
+}
+function hornPress(src) {
+  if (!me || !hornKind()) return;
+  const was = hornSrc.size > 0; hornSrc.add(src); if (was) return; // หลายนิ้ว: นิ้วแรกเริ่มเสียง นิ้วสุดท้ายที่ปล่อยจึงหยุด
+  if (hornVoice) hornVoice.stop();
+  hornVoice = hornStart(hornKind(), 1); hornWant = true; hornFlush();
+  clearTimeout(hornMaxT); hornMaxT = setTimeout(() => { hornMaxT = 0; if (hornVoice) { hornVoice.stop(); hornVoice = null; } hornWant = false; hornFlush(); }, (Shared.HORN && Shared.HORN.maxMs) || 6000); // เกินเพดานเซิร์ฟเวอร์: หยุดเสียงเอง (ไม่ส่งซ้ำจนกว่าจะปล่อยแล้วกดใหม่)
+}
+function hornRelease(all, src) {
+  if (all) hornSrc.clear(); else hornSrc.delete(src);
+  if (hornSrc.size) return;
+  clearTimeout(hornMaxT); hornMaxT = 0;
+  if (hornVoice) { hornVoice.stop(); hornVoice = null; }
+  hornWant = false; hornFlush();
+}
+const hornBtnEl = $('hornBtn');
+hornBtnEl.addEventListener('pointerdown', e => { e.preventDefault(); hornPress('p' + e.pointerId); });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => hornBtnEl.addEventListener(ev, e => hornRelease(false, 'p' + e.pointerId)));
+hornBtnEl.addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('blur', () => hornRelease(true));
+document.addEventListener('visibilitychange', () => { if (document.hidden) hornRelease(true); });
+addEventListener('keyup', e => { if (e.code === 'KeyN') hornRelease(false, 'k'); });
 // ตั๋ววาปกลับกองไฟ: ปุ่มบนจอ (ในถ้ำชั้น minFloor+ และมีตั๋ว) + Action ที่ไม่ได้หันหาแร่ กดซ้ำภายใน 3 วิ = ยืนยัน (ตั๋วเสียเงิน)
 let recallKey = '', recallAskAt = 0;
 const recallOk = () => !!me && cave && !inSea() && caveFlr >= Shared.MINE.recall.minFloor && caveFlr <= Shared.MINE.floors && (inv.recall | 0) > 0;
 function syncRecallBtn() { const n = recallOk() ? inv.recall | 0 : 0, k = String(n); if (k === recallKey) return; recallKey = k; const b = $('recallBtn'); b.classList.toggle('hidden', !n); b.textContent = `🎫 ใช้ตั๋ววาป (เหลือ ${n})`; }
 function askRecall(now) { if (now - recallAskAt < 3000) { recallAskAt = 0; send({ t: 'recall' }); return; } recallAskAt = now; toast(`🎫 จะใช้ตั๋ววาปกลับกองไฟใช่ไหม (เหลือ ${inv.recall | 0} ใบ) กด Action ซ้ำอีกครั้งเพื่อยืนยัน`); }
 $('recallBtn').addEventListener('pointerdown', e => { e.preventDefault(); askRecall(performance.now()); });
-function honk() { const now = performance.now(); if (!me || !hornKind() || now - hornAt < 1200) return; hornAt = now; hornSound(hornKind(), 1); send({ t: 'horn' }); }
-$('hornBtn').addEventListener('pointerdown', e => { e.preventDefault(); honk(); });
 document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"][data-stat],[role="button"][data-skillsel]')) { e.preventDefault(); e.target.click(); } }); // การ์ดสถานะ/สกิลกดด้วยคีย์บอร์ดได้
 $('vehBtn').onclick =() => { setVehMenu($('vehMenu').classList.contains('hidden')); playSfx('click'); };
 $('vehMenu').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b || !me) return; send({ t: 'veh', v: b.dataset.v === me.veh ? '' : b.dataset.v }); setVehMenu(false); playSfx('click'); }); // กดรถที่ขี่อยู่ซ้ำ = ลงรถ
@@ -1505,6 +1582,7 @@ function renderBag() {
       + `<div class="stat">${cards.map((c, i) => `<div data-stat="${i}" tabindex="0" role="button" style="cursor:pointer${statSel === 'c' + i ? ';background:#fff1c9' : ''}">${c[0]}<b>${c[1]}</b></div>`).join('')}</div>`
       + (/^c\d+$/.test(statSel) && cards[+statSel.slice(1)] ? `<div class="skill" style="border:2px solid var(--edge);border-radius:10px;padding:8px;background:#fff8e0;margin-bottom:6px"><b>${cards[+statSel.slice(1)][0]}</b>: ${esc(String(cards[+statSel.slice(1)][1]))}<small style="display:block;opacity:.85">${esc(cardDetail(cards[+statSel.slice(1)]))}</small></div>` : '')
       + `<button class="btn small" data-pinset="1" style="margin:4px 6px 6px 0">🔐 ${pinSt ? 'เปลี่ยน PIN' : 'ตั้ง PIN'}</button>`
+      + (devText() ? `<div class="sec">🛠️ สำหรับแอดมิน</div><div class="row" id="devRow">${devText()}</div>` : '')
       + `<div class="sec">🔊 เสียง</div><div class="row"><button class="btn small" data-sfx="1">${sfxOn ? '🔊 เสียงเกม: เปิด' : '🔇 เสียงเกม: ปิด'}</button></div><label class="row" style="font-size:13px"><span>🎮 เสียงเกม</span><input type="range" min="0" max="100" value="${Math.round(sfxVol * 100)}" data-vol="sfx" style="flex:1;margin:0 8px"><b data-volv="sfx">${Math.round(sfxVol * 100)}%</b></label><label class="row" style="font-size:13px"><span>🎵 ดนตรี</span><input type="range" min="0" max="100" value="${Math.round(musicVol * 100)}" data-vol="music" style="flex:1;margin:0 8px"><b data-volv="music">${Math.round(musicVol * 100)}%</b></label><small style="opacity:.65">ดนตรียังไม่มีเพลง ตั้งค่าไว้ก่อนได้เลย</small><div class="sec">เลเวลอาชีพ</div>`
       + Object.keys(SKILLS).map(k => {
         const L = lvl(k), xp = skills[k] || 0, base = xpFor(L, k), need = L >= MAX_LV ? 0 : xpFor(L + 1, k) - base;
@@ -1773,7 +1851,8 @@ function renderShop() {
     const haveU = c => Object.keys(inv).filter(k => inv[k] > 0 && cookCat(c, k)).length; // จำนวนชนิดที่มี (สูตรที่ต้องคนละชนิด)
     const hv = n => n.c ? (n.u ? haveU(n.c) : have(n.c)) : (inv[n.k] || 0);
     const panOk = !dur.pan || dur.pan[0] > 0, fee = r => Math.round(r.sell * Shared.panFee(r, Shared.panTier(inv), panOk)), coin = inv.coin || 0, cl = lvl('cook');
-    const st = COOK.map((r, i) => { const locked = cl < r.lv, ok = !locked && r.in.every(n => hv(n) >= n.n); return { r, i, locked, ok, can: ok && coin >= fee(r) }; });
+    const st = COOK.map((r, i) => { const locked = cl < r.lv, cu = locked ? null : Shared.cookUse(inv, r), ok = !locked && cu.ok; return { r, i, locked, ok, cu, can: ok && coin >= fee(r) }; }); // ตัดสินด้วย Shared.cookUse (รวมวัตถุดิบทางเลือก) ตรงกับเซิร์ฟเวอร์
+    const hvE = n => { let g = hv(n); if (n.k) for (const a of (Shared.COOK_ALT[n.k] || [])) g += Math.floor((inv[a.k] || 0) / a.n); return g; }; // จำนวนที่มีรวมของทางเลือก
     const catOf = (r, c) => r.in.some(n => n.c ? n.c === c : cookCat(c, n.k));
     const filt = cookFilter || (st.some(x => x.can) ? 'now' : 'all');
     const FILTERS = [['now', '✅ ทำได้ตอนนี้'], ['all', 'ทั้งหมด'], ['fish', '🐟 ปลา'], ['crop', '🥕 ผัก'], ['egg', '🥚 ไข่'], ['lock', '🔒 ยังไม่ปลดล็อก']];
@@ -1787,8 +1866,8 @@ function renderShop() {
     for (const x of list) {
       const r = x.r, f = fee(r);
       if (x.locked) { h += `<div class="ck-card lock${nextLock && nextLock.r.id === r.id ? ' next' : ''}"><div class="ck-head"><span class="ck-ic">${r.emoji}</span><span class="ck-nm">${r.name}<small>🔒 ปลดที่เชฟ Lv ${r.lv}</small></span></div></div>`; continue; }
-      const chips = r.in.map(n => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, got = hv(n); return `<span class="ck-chip ${got >= n.n ? 'ok' : 'no'}">${emo}${n.k ? itemInfo(n.k).name.replace(/ \(.*$/, '') : ''}×${n.n}${n.u ? ' คนละชนิด' : ''}${got >= n.n ? '' : ` (มี ${got})`}</span>`; }).join('');
-      const mk = Math.min(...r.in.map(n => n.u ? (hv(n) >= n.n ? 1 : 0) : n.c ? Math.floor(hv(n) / r.in.filter(m => m.c === n.c && !m.u).reduce((t, m) => t + m.n, 0)) : Math.floor(hv(n) / n.n)), f > 0 ? Math.floor(coin / f) : 99), open = cookOpen === r.id;
+      const chips = r.in.map((n, ri) => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, got = hvE(n), rowOk = x.cu.rows[ri].ok; return `<span class="ck-chip ${rowOk ? 'ok' : 'no'}">${emo}${n.k ? itemInfo(n.k).name.replace(/ \(.*$/, '') : ''}×${n.n}${n.u ? ' คนละชนิด' : ''}${rowOk ? '' : ` (มี ${got})`}</span>`; }).join('') + x.cu.rows.filter(w => w.alt).map(w => { const pk = w.picks.filter(p => p.k !== w.need.k).map(p => itemInfo(p.k).name.replace(/ \(.*$/, '') + ' ×' + p.n).join(', '); return `<span class="ck-chip ok">🔄 ใช้${pk} แทน</span>`; }).join('');
+      const mk = Math.min(...r.in.map(n => n.u ? (hv(n) >= n.n ? 1 : 0) : n.c ? Math.floor(hv(n) / r.in.filter(m => m.c === n.c && !m.u).reduce((t, m) => t + m.n, 0)) : Math.floor(hvE(n) / n.n)), f > 0 ? Math.floor(coin / f) : 99), open = cookOpen === r.id;
       h += `<div class="ck-card${x.can ? '' : ' miss'}"><div class="ck-head" data-ckx="${r.id}"><span class="ck-ic">${r.emoji}</span><span class="ck-nm">${r.name}<small>ขายได้ราว 🪙${r.sell} ${open ? '▴' : '▾'}</small></span><button class="btn small${cookPins.includes(r.id) ? '' : ' muted'}" data-ckpin="${r.id}" title="${cookPins.includes(r.id) ? 'เลิกปักหมุด' : 'ปักหมุดสูตรนี้ไว้บนสุด'}" aria-label="ปักหมุด" style="padding:2px 6px">${cookPins.includes(r.id) ? '📌' : '📍'}</button><button class="btn small" data-cook="${r.id}" style="min-height:44px;min-width:44px" ${x.can && !cd ? '' : 'disabled'}>${cd ? '⏳ รอ' : `ทำ (×${Math.max(0, mk)})`}</button></div><div class="ck-chips">${chips}</div>`
         + (open ? `<div class="ck-more">+${r.xp} XP • เวลาทำ ${Math.round(r.time / 1000)} วิ • ค่าเตา 🪙${f}${coin < f ? ' <b style="color:#c0392b">(เหรียญไม่พอ)</b>' : ''} • กำไรสุทธิ 🪙${r.sell - f} • กินอิ่ม +${r.food}</div>` : '') + '</div>';
     }
@@ -1867,7 +1946,7 @@ addEventListener('keydown', e => {
   if (build.on && c === 'KeyZ') { undoBuild(); return; }
   if (build.on && (c === 'Delete' || c === 'Backspace') && build.pick != null) { e.preventDefault(); send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; return; }
   if (c === 'Escape') { closeReport(); closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); setVehMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
-  if (c === 'KeyN') { honk(); return; }
+  if (c === 'KeyN') { if (!e.repeat) hornPress('k'); return; }
   if (c === 'KeyV' && me && inTown()) { const own = Object.keys(Shared.VEHICLES).filter(v => inv['veh_' + v] > 0); if (me.veh) send({ t: 'veh', v: '' }); else if (own.length) send({ t: 'veh', v: own[own.length - 1] }); else toast('ยังไม่มียานพาหนะ ซื้อได้ที่ร้านยานพาหนะ 🚲'); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (toolLocked(TOOL_LIST[n])); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
   if (modalOpen() && ((c === 'KeyP' && !peopleShown()) || ((c === 'KeyB' || c === 'KeyI') && !bagShown()) || (c === 'KeyC' && !bagShown()) || c === 'KeyH')) return; // มีหน้าต่างอื่นเปิดอยู่ = ไม่เปิดซ้อน
@@ -2259,6 +2338,7 @@ $('micBtn').onclick = async () => {
 let sfxOn = ls.get('mw_sfx') !== '0', sctx = null, smaster = null;
 const volGet = (k, d) => { const v = parseFloat(ls.get(k)); return v >= 0 && v <= 1 ? v : d; };
 let sfxVol = volGet('mw_sfxvol', 1), musicVol = volGet('mw_musvol', 0.7); // เสียงเอฟเฟกต์ / เสียงดนตรี (เตรียมไว้ ยังไม่มีเพลง) 0..1 เก็บใน localStorage
+syncSndUi(); // ตั้งแถบเสียงในเมนู ☰ ตามค่าที่เก็บไว้
 const sfxGain = () => 0.55 * sfxVol; // ตัวคูณเสียงรวมของเอฟเฟกต์ทั้งหมด (ทุกเสียงผ่าน smaster)
 function sAudio() {
   if (!sctx) { try { sctx = new (window.AudioContext || window.webkitAudioContext)(); smaster = sctx.createGain(); smaster.gain.value = sfxGain(); smaster.connect(sctx.destination); } catch (e) { return null; } }

@@ -10,20 +10,8 @@ module.exports = {
     if (this.lv(p, 'cook') < r.lv) return this.toast(p, `สูตรนี้ปลดล็อกที่เชฟเลเวล ${r.lv} (ตอนนี้ ${this.lv(p, 'cook')}) — ทำเมนูง่ายขึ้นก่อนเพื่อเก็บเลเวล`);
     const now = Date.now();
     if (now < (p.cookReady || 0)) return send(p, { t: 'cookcd', ms: p.cookReady - now }), this.toast(p, `เตายังร้อนอยู่ รออีก ${Math.ceil((p.cookReady - now) / 1000)} วินาที`);
-    const inv = p.rec.inv, use = {};
-    for (const need of r.in) {
-      if (need.k) { if ((inv[need.k] || 0) < need.n) return this.toast(p, 'วัตถุดิบไม่พอ'); use[need.k] = (use[need.k] || 0) + need.n; continue; }
-      if (need.u) { // ต้องเป็นปลาคนละชนิดกัน ชนิดละ 1 ตัว เริ่มจากชนิดที่ถูกที่สุด
-        const kinds = Object.keys(inv).filter(k => inv[k] - (use[k] || 0) > 0 && S.cookCat(need.c, k)).sort((x, y) => S.itemInfo(x).sell - S.itemInfo(y).sell);
-        if (kinds.length < need.n) return this.toast(p, `วัตถุดิบไม่พอ ต้องใช้ปลาคนละชนิดอย่างน้อย ${need.n} ชนิด`);
-        for (const k of kinds.slice(0, need.n)) use[k] = (use[k] || 0) + 1;
-        continue;
-      }
-      const own = Object.keys(inv).filter(k => inv[k] > 0 && S.cookCat(need.c, k)).sort((x, y) => S.itemInfo(x).sell - S.itemInfo(y).sell);
-      let left = need.n;
-      for (const k of own) { const take = Math.min(left, inv[k] - (use[k] || 0)); if (take > 0) { use[k] = (use[k] || 0) + take; left -= take; } if (!left) break; }
-      if (left) return this.toast(p, 'วัตถุดิบไม่พอ');
-    }
+    const inv = p.rec.inv, cu = S.cookUse(inv, r), use = cu.use; // วัตถุดิบ: ใช้ของหลักก่อน ขาดค่อยใช้ของทางเลือก (S.COOK_ALT) ตัดสินที่ shared ให้เว็บแสดงตรงกัน
+    if (!cu.ok) { const u = cu.rows.find(x => !x.ok && x.need.u); return this.toast(p, u ? `วัตถุดิบไม่พอ ต้องใช้ปลาคนละชนิดอย่างน้อย ${u.need.n} ชนิด` : 'วัตถุดิบไม่พอ'); }
     const panOk = this.durCur(p, 'pan') > 0, pTier = S.panTier(inv), feeR = S.panFee(r, pTier, panOk), fee = Math.round(r.sell * feeR); // ค่าเช่าเตา: หายจากระบบทั้งหมด (TOWN.feeShare) กันครัวเป็นช่องสร้างเงินล้วนๆ
     if ((inv.coin || 0) < fee) return this.toast(p, `ค่าเช่าเตา 🪙 ${fee} เหรียญไม่พอ`);
     for (const [k, n] of Object.entries(use)) this.add(p, k, -n);

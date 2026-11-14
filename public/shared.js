@@ -320,7 +320,7 @@
     blueberry: { name: 'บลูเบอร์รี', emoji: '🫐', seed: 106, sell: 246, time: 636000, lv: 16, xp: 76 },
     olive: { name: 'มะกอก', emoji: '🫒', seed: 111, sell: 258, time: 668000, lv: 1, legacy: true, xp: 50 },
     beans: { name: 'เมล็ดโกโก้', emoji: '🫘', seed: 115, sell: 268, time: 695000, lv: 17, xp: 89 },
-    mushroom: { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', seed: 120, sell: 278, time: 718000, lv: 18, xp: 101 },
+    mushroom: { name: 'เห็ดทรัฟเฟิลปลูก', emoji: '🍄', seed: 120, sell: 278, time: 718000, lv: 18, xp: 101 },
     sunflower: { name: 'ทานตะวันทอง', emoji: '🌻', seed: 124, sell: 288, time: 720000, lv: 19, xp: 115 },
     tulip: { name: 'ทิวลิปทอง', emoji: '🌷', seed: 128, sell: 298, time: 720000, lv: 20, xp: 135 },
   };
@@ -1271,6 +1271,33 @@
     { id: 'dish_lobstermilk', name: 'กุ้งมังกรอบมะพร้าวนม', emoji: '🦞', sell: 740, food: 105, lv: 20, xp: 1353, time: 16000, in: [{ k: 'fish_lobster', n: 1 }, { k: 'crop_coconut', n: 1 }, { k: 'milk', n: 1 }] },
   ];
   const cookCat = (c, k) => c === 'fish' ? /^fish_/.test(k) && k !== 'fish_boot' : c === 'crop' ? /^crop_/.test(k) : c === 'egg' ? (k === 'egg' || k === 'duck_egg') : false;
+  // วัตถุดิบทางเลือก: ไอเทมในสูตร (k) ใช้ของอื่นแทนได้ตามอัตรา (ไม่ผูกกับสูตรใดสูตรหนึ่ง) • เห็ดทรัฟเฟิลปลูก ×1 = เห็ดทรัฟเฟิลป่า (ผลผลิตหมู) ×3 (ราคาขาย 278 ÷ 85 ≈ 3.3 เศรษฐกิจเชฟเท่าเดิม)
+  // กติกา: ใช้ของหลัก (k) ที่มีก่อน ขาดหน่วยไหนค่อยใช้ของทางเลือกแทนหน่วยนั้น (ผสมกันได้ เช่น ต้องการ 2 มีหลัก 1 + ป่า 3 = ได้)
+  const COOK_ALT = { crop_mushroom: [{ k: 'truffle', n: 3 }] };
+  // คำนวณของที่ใช้ทำสูตร r จากคลัง inv (ไม่แก้คลัง) • คืน { ok, use: { ไอเทม: จำนวนที่หัก }, rows: [{ need, ok, picks: [{k,n}], alt }], bad } • picks = ของที่จะใช้จริงของแถวนั้น, alt = true ถ้าใช้ของทางเลือก (ให้ UI โชว์ชิป/ข้อความ) • bad = 'u' (ปลาไม่ครบชนิด) | 'basic' (ของไม่พอ) | ''
+  // เซิร์ฟเวอร์ใช้ตัวนี้ตัดสินและหักของ เว็บเรียกตัวเดียวกันเพื่อแสดง "มีพอไหม/ใช้ตัวไหน" ให้ตรงกัน
+  const cookUse = (inv, r) => {
+    const use = {}, rows = []; let bad = '';
+    const left = k => (inv[k] || 0) - (use[k] || 0);
+    for (const need of r.in) {
+      const row = { need, ok: true, picks: [], alt: false };
+      if (need.k) {
+        const alts = COOK_ALT[need.k] || []; let n = need.n; const take = (k, c) => { if (c > 0) { use[k] = (use[k] || 0) + c; row.picks.push({ k, n: c }); } };
+        const own = Math.max(0, Math.min(n, left(need.k))); take(need.k, own); n -= own;
+        for (const a of alts) { if (!n) break; const c = Math.min(n, Math.floor(Math.max(0, left(a.k)) / a.n)); if (c > 0) { take(a.k, c * a.n); n -= c; row.alt = true; } }
+        if (n) { row.ok = false; bad = bad || 'basic'; }
+      } else if (need.u) { // ต้องเป็นปลาคนละชนิดกัน ชนิดละ 1 ตัว เริ่มจากชนิดที่ถูกที่สุด
+        const kinds = Object.keys(inv).filter(k => left(k) > 0 && cookCat(need.c, k)).sort((x, y) => itemInfo(x).sell - itemInfo(y).sell);
+        if (kinds.length < need.n) { row.ok = false; bad = bad || 'u'; } else for (const k of kinds.slice(0, need.n)) { use[k] = (use[k] || 0) + 1; row.picks.push({ k, n: 1 }); }
+      } else { // ตามหมวด (ผัก/ไข่ ฯลฯ) ใช้ชนิดที่ถูกที่สุดก่อน
+        const own = Object.keys(inv).filter(k => inv[k] > 0 && cookCat(need.c, k)).sort((x, y) => itemInfo(x).sell - itemInfo(y).sell); let n = need.n;
+        for (const k of own) { const t = Math.min(n, left(k)); if (t > 0) { use[k] = (use[k] || 0) + t; row.picks.push({ k, n: t }); n -= t; } if (!n) break; }
+        if (n) { row.ok = false; bad = bad || 'basic'; }
+      }
+      rows.push(row);
+    }
+    return { ok: !bad, use, rows, bad };
+  };
   // โครงการพัฒนาเมือง: ที่เก็บเงินขนาดใหญ่ ทุกคนลงขันที่ตู้เซฟกองกลาง ปลดล็อกตามลำดับ ครบเป้าแล้วขึ้นข่าวและประกาศชื่อผู้ร่วมสร้าง
   const PROJECTS = [
     { id: 'bridge',   name: 'สะพานไม้ข้ามสระ',     emoji: '🌉', goal: 5000 },
@@ -1572,7 +1599,7 @@
   const BETS = [0, 10, 50, 100, 500]; // ยอดเดิมพันที่เลือกได้ในตู้เกม
   const cabinetAt = (tx, ty) => { for (let i = 0; i < CABINETS.length; i++) if (CABINETS[i].x === tx && CABINETS[i].y === ty) return Object.assign({ idx: i }, CABINETS[i]); return null; };
   // ยานพาหนะ: ซื้อครั้งเดียว ขี่/ลงได้ที่ร้านยานพาหนะหรือกด V • speed = ตัวคูณความเร็วเดิน (เฉพาะในเมือง ในบ้านลงเดิน) • ขายคืนได้ 70%
-  const HORN = { cdMs: 1200 }; // แตรยานพาหนะ: เว้นระหว่างครั้งต่อผู้เล่น (เซิร์ฟเวอร์ตรวจ)
+  const HORN = { minGapMs: 60, perSec: 15, maxMs: 6000, tapMs: 350 }; // แตรกดค้าง: เว้นขั้นต่ำระหว่างข้อความแตรของคนเดียวกัน / เพดานข้อความต่อวินาที (เกินทิ้งเงียบ) / ดังต่อเนื่องสูงสุดต่อการกดครั้งเดียว / กดครั้งเดียวแบบไม่มี on ดังกี่ ms (เซิร์ฟเวอร์ตรวจ)
   const VEHICLES = { bike: { name: 'จักรยาน', emoji: '🚲', price: 300, speed: 1.2 }, scooter: { name: 'มอเตอร์ไซค์', emoji: '🛵', price: 1500, speed: 1.4 }, car: { name: 'รถยนต์', emoji: '🚗', price: 6000, speed: 1.6 } };
   const BOAT = { price: 3000, hull: { len: 96, wid: 44, r: 22, helm: { u: 0, v: 0 }, seats: [{ u: 34, v: 0 }, { u: -28, v: -12 }, { u: -28, v: 12 }], mast: { u: -6, v: 0, h: 38 } } }; // เรือ: ซื้อครั้งเดียวที่ร้านยานพาหนะ (itemInfo 'boat') ใช้ออกทะเลฟรี ขายคืนได้ 70% เหมือนของชิ้นเดียวอื่นๆ
   const WISH_EXTRA = Object.values(VEHICLES).map(v => ({ k: 'veh', p: v.price })).concat([{ k: 'boat', p: BOAT.price }]); // ที่ใช้เงินแบบซื้อครั้งเดียวที่เพิ่มในขั้น 2 (tools/econsim.js ใช้ทำรายการของที่อยากได้)
@@ -1626,7 +1653,7 @@
     if (k === 'slop') return { name: 'อาหารหมู', emoji: '🥣', buy: 30, cat: 'feed' };
     if (k === 'nectar') return { name: 'น้ำหวานดอกไม้ (อาหารผึ้ง)', emoji: '🌼', buy: 20, cat: 'feed' };
     if (k === 'honey') return { name: 'น้ำผึ้ง', emoji: '🍯', sell: 35, cat: 'animal' }; // WP-21: เดิม 80 (สูงกว่านมวัวที่ปลดทีหลัง ทำให้ผึ้ง Lv2 ได้เกินชาวนาหลายเท่า)
-    if (k === 'truffle') return { name: 'เห็ดทรัฟเฟิล', emoji: '🍄', sell: 85, cat: 'animal' }; // เดิม 110
+    if (k === 'truffle') return { name: 'เห็ดทรัฟเฟิลป่า', emoji: '🍄', sell: 85, cat: 'animal' }; // เดิม 110
     if (k === 'alpaca_wool') return { name: 'ขนอัลปากา', emoji: '🧵', sell: 150, cat: 'animal' }; // เดิม 95
     if (k === 'horse_milk') return { name: 'นมม้า', emoji: '🍼', sell: 175, cat: 'animal' }; // เดิม 110
     if (k === 'turkey_egg') return { name: 'ไข่ไก่งวง', emoji: '🪺', sell: 110, cat: 'animal' }; // ตั้งต้น 120
@@ -1901,7 +1928,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, COOK_ALT, cookUse, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
     FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, fishNewestLv, fishPoolMul, migrateStdV5, migrateStdV7, unmigrateStdV7, xpUnStdV7, STD_V7_SKILLS, migrateToolsV6, unmigrateToolsV6, migrateDurV8, unmigrateDurV8, DUR_MIG8, tmigLocked, invPub, rareCdMs, xpStdV5,
     SELLABLE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;

@@ -203,7 +203,7 @@ class World {
     const now = Date.now(), farm = {};
     for (const k in this.farm) farm[k] = this.pub(this.farm[k], now);
     send(p, {
-      t: 'w', dev: devStatus(), deep: rec.deep || 1, first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: S.invPub(rec), fr: this.freshPub(rec, key), skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
+      t: 'w', ...(admin ? { dev: devStatus() } : {}), deep: rec.deep || 1, first: rec.joins === 1, admin: !!admin, id: p.id, x: p.x, y: p.y, inv: S.invPub(rec), fr: this.freshPub(rec, key), skills: rec.skills, arc: this.arcPub(rec), hunger: Math.round(rec.hunger), dur: this.durPub(p), wtr: this.waterCur(p), cin: this.cinemaPub(), farm, time: now, room: this.room,
       trees: this.treeList(), npcs: this.npcs.map(n => this.npcPub(n)), pets: this.pets.map(q => this.petPub(q)),
       players: [...this.players.values()].filter(q => !q.scene).map(q => this.pubFull(q)),
       roster: [...this.players.values()].map(q => Object.assign({ voice: !!q.voice }, this.pubFull(q))), // ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้ทำรายชื่อและการโทร
@@ -229,7 +229,7 @@ class World {
   }
   leave(p) {
     if (this.players.get(p.id) !== p) return; // ออกไปแล้ว (เช่น ถูกเตะตอนล็อกอินซ้ำ แล้วซ็อกเก็ตเก่าปิดตามมา) ไม่ทำซ้ำ
-    this.arcLeave(p);
+    this.hornOff(p); this.arcLeave(p);
     this.tradeCancel(p, 'ผู้เล่นออกจากเกม');
     if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
     this.telFlush(p); this.wealthLog(p); this.onlineFlush(p, Date.now(), true);
@@ -368,7 +368,7 @@ class World {
       case 'arcbuy': this.arcBuy(p, m.id); break;
       case 'rent': this.rentHandle(p, String(m.id || '')); break;
       case 'veh': this.setVeh(p, m.v); break;
-      case 'horn': this.horn(p); break;
+      case 'horn': this.horn(p, m.on); break;
       case 'recall': this.recallUse(p); break;
       case 'star': this.starClaim(p, String(m.skill || '')); break;
       case 'ch': if (m.a === 'start') this.chStart(p); else if (m.a === 'redeem') this.chRedeem(p); else this.chPush(p); break;
@@ -587,7 +587,7 @@ class World {
 
 
   tick(dt, now) {
-    this.rainTick(now); this.onlineTick(now);
+    this.rainTick(now); this.onlineTick(now); this.hornTick(now);
     this.lottoTick(now);
     for (const p of this.players.values()) {
       const cf = S.caveFloor(p.scene); if (!S.isSeaScene(cf)) continue;
@@ -772,7 +772,7 @@ mix(World, require('./server/systems/core.js')); // บริการกลา�
 
 // ผู้ดูแล: ชื่อตัวละคร ADMIN_NAME (ค่าเริ่มต้น Sira) ต้องใส่รหัสถึงจะเข้าได้ — รหัสมาจากตัวแปร ADMIN_KEY หรือไฟล์ admin.key (ไม่มีก็สุ่มสร้างให้ ไม่เคยส่งไปกับหน้าเว็บ)
 const worlds = new Map();
-if (require.main !== module) { module.exports = { World, adminHandle, devStatus, worlds }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)
+if (require.main !== module) { module.exports = { World, adminHandle, devStatus, devReply, worlds }; return; } // ใช้ตอนเขียนเทสต์ (require แล้วไม่เปิดเซิร์ฟเวอร์)
 
 function getWorld(room) {
   let w = worlds.get(room);
@@ -965,6 +965,7 @@ function devStatus() {
   for (const w of worlds.values()) for (const q of w.players.values()) if (q.admin && q.joinedAt && (!since || q.joinedAt < since)) since = q.joinedAt;
   return since ? { t: 'dev', on: true, sec: Math.max(0, Math.floor((now - since) / 1000)) } : { t: 'dev', on: false, sec: 0 };
 }
+function devReply(p) { return p && p.admin ? devStatus() : null; } // On Develop เป็นของผู้ดูแลเท่านั้น: ผู้เล่นทั่วไปไม่ได้ข้อมูล (null = ไม่ตอบ ไม่เปิดเผยว่าผู้ดูแลออนอยู่)
 function adminHandle(p, world, m) {
   if (!p || !p.admin) return; // กันซ้ำที่ด่านนี้ด้วย: ผู้เล่นทั่วไปสั่งไม่ได้เด็ดขาด
   const reply = o => send(p, Object.assign({ t: 'admin', rooms: roomsPub(), current: world.room }, o));
@@ -1214,7 +1215,7 @@ wss.on('connection', (ws, req) => {
       if (rec.pin) { if (pinLocked(k)) return world.toast(player, 'ใส่ PIN ผิดบ่อยเกินไป รอ 1 นาที'); if (!pinOk(rec, String(m.old || ''))) { pinFails.get(k).push(Date.now()); return world.toast(player, 'PIN เดิมไม่ถูกต้อง'); } }
       rec.pin = pinMake(pin); world.dirty = true; ws.send(JSON.stringify({ t: 'pinask', has: true })); return world.toast(player, '🔐 ตั้ง PIN แล้ว ครั้งหน้าเข้าเกมใส่ PIN ด้วยนะ');
     }
-    if (m.t === 'dev') return send(player, devStatus()); // ผู้เล่นทุกคนถามได้: { t:'dev' } → { t:'dev', on, sec }
+    if (m.t === 'dev') { const d = devReply(player); if (d) send(player, d); return; } // เฉพาะผู้ดูแล: { t:'dev' } → { t:'dev', on, sec } ผู้เล่นทั่วไปเงียบ
     if (m.t === 'admin') { if (player.admin) { try { adminHandle(player, world, m); } catch (e) { console.error('admin error', e); } } return; }
     try { world.handle(player, m); } catch (e) { console.error('handle error', m.t, e); } // ข้อความแปลกๆ จากผู้เล่นคนเดียวต้องไม่ทำให้เซิร์ฟเวอร์ล้ม
   });

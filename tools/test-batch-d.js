@@ -39,23 +39,50 @@ const last = (ws, t) => ws.msgs.filter(m => m.t === t).pop();
   for (const P of Object.values(S.PENS)) for (const [x, y] of P.gate.concat(P.gateR)) assert.ok(!S.blockedAt(m, (x + 0.5) * TS, (y + 0.5) * TS));
 }
 
-// 2) แตรยานพาหนะ
+// 2) แตรยานพาหนะ (กดค้าง)
 {
-  wsA.msgs.length = wsB.msgs.length = 0;
-  w.handle(a, { t: 'horn' }); assert.ok(!last(wsB, 'horn'), 'ไม่ได้ขับ = ไม่ broadcast');
+  const H = S.HORN, on = ws => ws.msgs.filter(m => m.t === 'horn'), reset = () => { wsA.msgs.length = wsB.msgs.length = 0; };
+  assert.ok(H.minGapMs > 0 && H.perSec > 0 && H.maxMs > H.tapMs && H.tapMs > 0, 'HORN ค่าครบ');
+  reset(); w.handle(a, { t: 'horn', on: true }); assert.ok(!last(wsB, 'horn'), 'ไม่ได้ขับ = ไม่ broadcast');
   a.rec.inv.veh_car = 1; w.setVeh(a, 'car'); assert.strictEqual(a.veh, 'car');
-  w.handle(a, { t: 'horn' }); const h = last(wsB, 'horn'); assert.ok(h && h.id === a.id && h.v === 'car', 'แตรถึงคนอื่น'); assert.ok(last(wsA, 'horn'), 'เจ้าตัวก็ได้ยิน');
-  wsB.msgs.length = 0; w.handle(a, { t: 'horn' }); assert.ok(!last(wsB, 'horn'), 'คูลดาวน์');
-  NOW += S.HORN.cdMs + 1; w.handle(a, { t: 'horn' }); assert.ok(last(wsB, 'horn'), 'พ้นคูลดาวน์ดังได้อีก');
-  w.setVeh(a, ''); wsB.msgs.length = 0; NOW += 5000; w.handle(a, { t: 'horn', v: 'car' }); assert.ok(!last(wsB, 'horn'), 'ลงรถแล้วห้าม (ไม่เชื่อ v จากไคลเอนต์)');
-  wsA.msgs.length = 0; w.handle(b, { t: 'horn', v: 'car' }); assert.ok(!last(wsA, 'horn'), 'ไม่มีรถห้าม');
+  // กดค้าง: on:true ถึงคนอื่นและตัวเอง แล้วปล่อย on:false
+  NOW += 1000; reset(); w.handle(a, { t: 'horn', on: true }); let h = last(wsB, 'horn'); assert.ok(h && h.id === a.id && h.v === 'car' && h.on === true, 'แตรถึงคนอื่น'); assert.ok(last(wsA, 'horn').on === true, 'เจ้าตัวก็ได้ยิน');
+  NOW += 2000; w.tick(0.1, NOW); assert.strictEqual(a.hornOn, true, 'กดค้างยังดังอยู่ที่ 2 วิ (ไม่หลุดเพราะคูลดาวน์เก่า)');
+  w.handle(a, { t: 'horn', on: false }); h = last(wsB, 'horn'); assert.ok(h && h.on === false && h.v === 'car', 'ปล่อยแล้วปิด'); assert.ok(!a.hornOn);
+  reset(); w.handle(a, { t: 'horn', on: false }); assert.ok(!last(wsB, 'horn'), 'ปล่อยซ้ำตอนไม่ดัง = เงียบ');
+  // รัว: ห่างกัน >= minGapMs ไม่ถูกปฏิเสธ
+  NOW += 2000; reset(); for (let i = 0; i < 6; i++) { w.handle(a, { t: 'horn', on: true }); NOW += H.minGapMs; w.handle(a, { t: 'horn', on: false }); NOW += H.minGapMs; }
+  assert.strictEqual(on(wsB).filter(m => m.on).length, 6, 'กดรัว 6 ครั้งผ่านหมด'); assert.strictEqual(on(wsB).filter(m => !m.on).length, 6, 'ปล่อยครบ 6 ครั้ง'); assert.ok(!a.hornOn);
+  // ติดกันเร็วกว่า minGapMs: on:true ถูกทิ้ง แต่ on:false ปิดได้เสมอ (ไม่ค้าง)
+  NOW += 2000; reset(); w.handle(a, { t: 'horn', on: true }); w.handle(a, { t: 'horn', on: true }); assert.strictEqual(on(wsB).length, 1, 'ถี่กว่า minGapMs ทิ้ง'); w.handle(a, { t: 'horn', on: false }); assert.ok(!a.hornOn, 'ปล่อยเร็วก็ปิดได้');
+  // เพดานต่อวินาที: เกินทิ้งเงียบๆ ไม่ตัดเน็ต
+  NOW += 2000; reset(); let sent = 0; for (let i = 0; i < 100; i++) { w.handle(a, { t: 'horn', on: true }); NOW += H.minGapMs + 1 > 1000 / 100 ? 10 : 1; } // 100 ข้อความภายใน ~1 วิ
+  sent = on(wsB).filter(m => m.on).length; assert.ok(sent > 0 && sent <= H.perSec, 'สแปมเกินเพดานถูกทิ้ง (ผ่าน ' + sent + ')'); w.handle(a, { t: 'horn', on: false });
+  // ค่าไม่ถูกชนิด
+  NOW += 2000; reset(); for (const bad of ['true', 1, null, {}, []]) w.handle(a, { t: 'horn', on: bad }); assert.ok(!last(wsB, 'horn') && !a.hornOn, 'on ที่ไม่ใช่ boolean ทิ้ง');
+  // กดครั้งเดียว (ไม่มี on): ดังแล้วปิดเองหลัง tapMs
+  NOW += 2000; reset(); w.handle(a, { t: 'horn' }); assert.ok(last(wsB, 'horn').on === true && a.hornOn, 'กดครั้งเดียวดัง');
+  NOW += H.tapMs - 10; w.tick(0.1, NOW); assert.ok(a.hornOn, 'ยังไม่ครบ tapMs'); NOW += 20; w.tick(0.1, NOW); assert.ok(!a.hornOn && last(wsB, 'horn').on === false, 'ปิดเองหลัง tapMs');
+  // กดค้างเกิน maxMs: เซิร์ฟเวอร์ปิดเอง
+  NOW += 2000; reset(); w.handle(a, { t: 'horn', on: true }); NOW += H.maxMs - 10; w.tick(0.1, NOW); assert.ok(a.hornOn, 'ก่อน maxMs ยังดัง');
+  NOW += 20; w.tick(0.1, NOW); assert.ok(!a.hornOn && last(wsB, 'horn').on === false, 'เกิน maxMs ปิดเอง');
+  // ลงรถ = ปิดแตร (broadcast on:false) และห้ามดังต่อ (ไม่เชื่อ v จากไคลเอนต์)
+  NOW += 2000; reset(); w.handle(a, { t: 'horn', on: true }); wsB.msgs.length = 0; w.setVeh(a, ''); h = last(wsB, 'horn'); assert.ok(h && h.on === false && h.v === 'car', 'ลงรถปิดแตร');
+  NOW += 5000; reset(); w.handle(a, { t: 'horn', on: true, v: 'car' }); assert.ok(!last(wsB, 'horn'), 'ลงรถแล้วห้าม');
+  w.handle(b, { t: 'horn', on: true, v: 'car' }); assert.ok(!last(wsA, 'horn'), 'ไม่มีรถห้าม');
   { // แตรเรือ: อยู่ทะเลใหญ่ = v 'boat' (ไม่เชื่อ v จากเว็บ) ส่งเฉพาะคนในซีนเดียวกัน
-    const sc = '@cave' + S.OCEAN.floor; a.scene = sc; b.scene = sc; wsA.msgs.length = wsB.msgs.length = 0; NOW += 5000;
-    w.handle(a, { t: 'horn', v: 'car' }); const hb = last(wsB, 'horn'); assert.ok(hb && hb.v === 'boat' && hb.id === a.id, 'แตรเรือ v=boat'); assert.ok(last(wsA, 'horn'), 'เจ้าตัวได้ยิน');
-    b.scene = null; wsB.msgs.length = 0; NOW += 5000; w.handle(a, { t: 'horn' }); assert.ok(!last(wsB, 'horn'), 'คนอยู่เมืองไม่ได้ยินแตรเรือ');
-    a.scene = '@cave5'; wsB.msgs.length = 0; NOW += 5000; w.handle(a, { t: 'horn' }); assert.ok(!last(wsB, 'horn'), 'ในถ้ำไม่ใช่เรือ ห้าม'); a.scene = null;
+    const sc = '@cave' + S.OCEAN.floor; a.scene = sc; b.scene = sc; reset(); NOW += 5000;
+    w.handle(a, { t: 'horn', on: true, v: 'car' }); const hb = last(wsB, 'horn'); assert.ok(hb && hb.v === 'boat' && hb.id === a.id && hb.on === true, 'แตรเรือ v=boat'); assert.ok(last(wsA, 'horn'), 'เจ้าตัวได้ยิน');
+    // เปลี่ยนซีนระหว่างกดค้าง: ปิดที่ซีนเก่า ไม่รั่วไปซีนใหม่
+    reset(); w.changeScene(a, null, a.x, a.y); const off = last(wsB, 'horn'); assert.ok(off && off.on === false && off.v === 'boat', 'ออกจากซีนปิดแตรให้คนซีนเก่า'); assert.ok(!a.hornOn);
+    b.scene = null; reset(); NOW += 5000; a.scene = sc; w.handle(a, { t: 'horn', on: true }); assert.ok(!last(wsB, 'horn'), 'คนอยู่เมืองไม่ได้ยินแตรเรือ'); w.handle(a, { t: 'horn', on: false });
+    a.scene = '@cave5'; reset(); NOW += 5000; w.handle(a, { t: 'horn', on: true }); assert.ok(!last(wsB, 'horn'), 'ในถ้ำไม่ใช่เรือ ห้าม'); a.scene = null;
   }
-  assert.ok(!JSON.stringify(a.rec).includes('hornAt'), 'ไม่เก็บเซฟ');
+  { // หลุดการเชื่อมต่อ: ปิดแตรให้คนในซีนเดียวกัน
+    NOW += 5000; const wsC = mkWs(), c = w.join(wsC, 'carol', '#2ecc71').p; c.rec.inv.veh_car = 1; w.setVeh(c, 'car'); w.handle(c, { t: 'horn', on: true }); assert.ok(c.hornOn);
+    wsB.msgs.length = 0; w.leave(c); const lo = last(wsB, 'horn'); assert.ok(lo && lo.on === false && lo.id === c.id, 'ออกเกมปิดแตร');
+  }
+  assert.ok(!JSON.stringify(a.rec).includes('horn'), 'ไม่เก็บเซฟ');
 }
 
 // 3) ตั๋ววาปกลับกองไฟ

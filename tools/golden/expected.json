@@ -1680,11 +1680,6 @@
   "msgs": [
    {
     "t": "w",
-    "dev": {
-     "t": "dev",
-     "on": false,
-     "sec": 0
-    },
     "deep": 1,
     "first": true,
     "admin": false,
@@ -7992,11 +7987,6 @@
   "msgs": [
    {
     "t": "w",
-    "dev": {
-     "t": "dev",
-     "on": false,
-     "sec": 0
-    },
     "deep": 1,
     "first": true,
     "admin": false,
