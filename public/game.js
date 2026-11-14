@@ -2939,7 +2939,9 @@ let resMode = RES_LABEL[ls.get('mw_res')] ? ls.get('mw_res') : 'auto';
 let resAutoCap = RES_STEPS.includes(+ls.get('mw_res_auto')) ? +ls.get('mw_res_auto') : Infinity, curDpr = 1; // ค่าที่เก็บไว้ต้องอยู่ในขั้นที่รู้จักเท่านั้น (กันค่าเพี้ยนทำแคนวาสกว้าง 0)
 const resCap = () => resMode === 'auto' ? resAutoCap : RES_CAPS[resMode];
 let perfOn = ls.get('mw_perf') === '1' || /[?&]perf=1\b/.test(location.search);
-const perf = { last: 0, ft: [], js: [], grace: 0, n: 0, t0: 0, low: 0, lock: 0, txt: '' };
+const perf = { last: 0, ft: [], js: [], grace: 0, n: 0, t0: 0, low: 0, lock: 0, txt: '', m: 0, s: new Float64Array(7), acc: new Float64Array(7), mx: new Float64Array(7), shown: new Float64Array(7), shownMx: new Float64Array(7), fr: 0, cn: new Int32Array(4) };
+// ตัวจับเวลาส่วนต่างๆ ของ step(): 0 พื้น(base) 1 ตกแต่งพื้น(น้ำ/ฟาร์ม) 2 วัตถุ 3 กลางคืน 4 ฝน/หิมะ 5 แผนที่ย่อ • 6 = อื่นๆ (UI/DOM/เสียง = JS รวม − ผลรวมส่วนอื่น)
+function pm(i) { if (!perfOn) return; const t = performance.now(); if (i < 6) perf.s[i] += t - perf.m; perf.m = t; } // i = 6: แค่เลื่อนจุดเริ่มจับเวลา (ไม่นับ)
 let stepT0 = 0;
 function perfFrame(now) { // เรียกต้นทุก step: เก็บช่วงห่างระหว่างเฟรมของ rAF (อาการที่ผู้เล่นเห็น) + ตัดสินโหมดอัตโนมัติ
   const dt = perf.last ? now - perf.last : 0; perf.last = now;
@@ -2954,7 +2956,17 @@ function perfFrame(now) { // เรียกต้นทุก step: เก็�
       if (++perf.low >= 2) { perf.low = 0; const nx = RES_STEPS.find(v => v < curDpr - 0.01); if (nx) { resAutoCap = nx; ls.set('mw_res_auto', String(nx)); resize(); toast('ปรับความละเอียดลงให้เล่นลื่นขึ้น (ตั้งเองได้ที่เมนู ☰)'); } } } else perf.low = 0;
   }
 }
-function perfJs(ms) { if (perfOn) { perf.js.push(ms); if (perf.js.length > 120) perf.js.shift(); } }
+function perfJs(ms) {
+  if (!perfOn) return; perf.js.push(ms); if (perf.js.length > 120) perf.js.shift();
+  let sum = 0; for (let i = 0; i < 6; i++) { const v = perf.s[i]; perf.acc[i] += v; if (v > perf.mx[i]) perf.mx[i] = v; sum += v; perf.s[i] = 0; }
+  const o = Math.max(0, ms - sum); perf.acc[6] += o; if (o > perf.mx[6]) perf.mx[6] = o; perf.fr++;
+}
+function perfFlush() { // ทุก 500ms: สรุปเป็นเฉลี่ยต่อเฟรม + สูงสุดของช่วง แล้วเริ่มช่วงใหม่
+  if (perf.fr) for (let i = 0; i < 7; i++) { perf.shown[i] = perf.acc[i] / perf.fr; perf.shownMx[i] = perf.mx[i]; }
+  perf.acc.fill(0); perf.mx.fill(0); perf.fr = 0;
+}
+function perfParts() { const a = perf.shown; return `ground ${a[0].toFixed(1)} deco ${a[1].toFixed(1)} objs ${a[2].toFixed(1)} night ${a[3].toFixed(1)} rain ${a[4].toFixed(1)} mini ${a[5].toFixed(1)} other ${a[6].toFixed(1)}`; }
+function perfCounts() { const c = perf.cn; return `${c[0]}/${c[1]}/${c[2]}/${c[3]}`; }
 function perfSummary() {
   const f = perf.ft, avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0, srt = f.slice().sort((a, b) => a - b);
   const p95 = srt.length ? srt[Math.min(srt.length - 1, Math.floor(srt.length * 0.95))] : 0, mx = srt.length ? srt[srt.length - 1] : 0, a = avg(f), js = avg(perf.js), mp = canvas.width * canvas.height / 1e6;
@@ -2963,26 +2975,26 @@ function perfSummary() {
 }
 function perfOneLine() {
   const v = perfSummary();
-  return `fps ${v.fps.toFixed(0)} frame avg/p95/max ${v.a.toFixed(1)}/${v.p95.toFixed(1)}/${v.mx.toFixed(0)}ms js ${v.js.toFixed(1)}ms canvas ${v.w}x${v.h} (${v.mp.toFixed(2)}MP) res ${resMode}${resMode === 'auto' && isFinite(resAutoCap) ? '@' + resAutoCap : ''} dpr ${curDpr}/${window.devicePixelRatio || 1} view ${innerWidth}x${innerHeight}${v.heap !== null ? ' heap ' + v.heap + 'MB' : ''}`;
+  return `fps ${v.fps.toFixed(0)} frame avg/p95/max ${v.a.toFixed(1)}/${v.p95.toFixed(1)}/${v.mx.toFixed(0)}ms js ${v.js.toFixed(1)}ms canvas ${v.w}x${v.h} (${v.mp.toFixed(2)}MP) res ${resMode}${resMode === 'auto' && isFinite(resAutoCap) ? '@' + resAutoCap : ''} dpr ${curDpr}/${window.devicePixelRatio || 1} view ${innerWidth}x${innerHeight}${v.heap !== null ? ' heap ' + v.heap + 'MB' : ''} parts ${perfParts()} objs-max ${perf.shownMx[2].toFixed(1)} n(tree/ply/ani/all) ${perfCounts()}`;
 }
 function perfUi() {
   $('perfBtn').textContent = perfOn ? '📈 ตัววัดเฟรม: เปิด' : '📈 ตัววัดเฟรม: ปิด';
   $('perfCopy').classList.toggle('hidden', !perfOn); $('perfBox').classList.toggle('hidden', !perfOn);
-  $('resBtn').textContent = '🖼️ ความละเอียด: ' + RES_LABEL[resMode] + (resMode === 'auto' && isFinite(resAutoCap) ? ' (ลดเหลือ ' + resAutoCap + 'x)' : '');
+  $('resBtn').textContent = '🖼️ ความละเอียด: ' + RES_LABEL[resMode] + (resMode === 'auto' && isFinite(resAutoCap) ? ' (ลดเหลือ ' + resAutoCap + 'x)' : '') + ' • ตอนนี้ ' + curDpr + 'x'; // บอกค่าจริงที่ใช้อยู่ด้วย ผู้เล่นจะเห็นว่ากดแล้วติดไหม
 }
 setInterval(() => {
-  if (!perfOn) return;
+  if (!perfOn) return; perfFlush();
   const v = perfSummary(), box = $('perfBox'), hb = $('hudTop').getBoundingClientRect();
   const mb = $('mini').classList.contains('hidden') ? 0 : $('mini').getBoundingClientRect().bottom; box.style.top = Math.round(Math.max(hb.bottom, mb) + 4) + 'px'; // มุมขวาใต้แผนที่ย่อ ไม่ทับแถบเควสต์ฝั่งซ้าย
   const short = innerHeight < 520; // จอเตี้ย (มือถือนอน): ตัดเหลือ 3 บรรทัดไม่ให้ทับปุ่ม A
-  box.textContent = (`FPS ${v.fps.toFixed(0)}  ${v.a.toFixed(1)}ms\np95 ${v.p95.toFixed(1)}  max ${v.mx.toFixed(0)}ms\nJS ${v.js.toFixed(1)}ms (max ${v.jsMax.toFixed(1)})\n${v.w}x${v.h} ${v.mp.toFixed(2)}MP\nres ${RES_LABEL[resMode]} dpr ${curDpr}/${window.devicePixelRatio || 1}` + (v.heap !== null ? `\nheap ${v.heap}MB` : '')).split('\n').slice(0, short ? 3 : 7).join('\n');
+  box.textContent = (`FPS ${v.fps.toFixed(0)}  ${v.a.toFixed(1)}ms\np95 ${v.p95.toFixed(1)}  max ${v.mx.toFixed(0)}ms\nJS ${v.js.toFixed(1)}ms (max ${v.jsMax.toFixed(1)})\n${v.w}x${v.h} ${v.mp.toFixed(2)}MP\nres ${RES_LABEL[resMode]} dpr ${curDpr}/${window.devicePixelRatio || 1}` + (v.heap !== null ? `\nheap ${v.heap}MB` : '') + `\nground ${perf.shown[0].toFixed(1)} deco ${perf.shown[1].toFixed(1)} objs ${perf.shown[2].toFixed(1)}\nnight ${perf.shown[3].toFixed(1)} rain ${perf.shown[4].toFixed(1)} mini ${perf.shown[5].toFixed(1)}\nother ${perf.shown[6].toFixed(1)} objsMax ${perf.shownMx[2].toFixed(0)}\nn ${perfCounts()}`).split('\n').slice(0, short ? 3 : 12).join('\n');
 }, 500);
 $('resBtn').onclick = () => {
   const ks = Object.keys(RES_LABEL); resMode = ks[(ks.indexOf(resMode) + 1) % ks.length]; ls.set('mw_res', resMode);
   if (resMode === 'high') { resAutoCap = Infinity; ls.set('mw_res_auto', ''); } // เลือก "สูง" เอง = รีเซ็ตขั้นที่โหมดอัตโนมัติเคยลดไว้
   perf.low = 0; perfUi(); resize(); toast('ความละเอียด: ' + RES_LABEL[resMode]);
 };
-$('perfBtn').onclick = () => { perfOn = !perfOn; ls.set('mw_perf', perfOn ? '1' : '0'); perf.ft = []; perf.js = []; perfUi(); };
+$('perfBtn').onclick = () => { perfOn = !perfOn; ls.set('mw_perf', perfOn ? '1' : '0'); perf.ft = []; perf.js = []; perf.s.fill(0); perf.acc.fill(0); perf.mx.fill(0); perf.fr = 0; perfUi(); };
 $('perfCopy').onclick = () => {
   const t = perfOneLine();
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => toast('คัดลอกเลขวัดแล้ว'), () => prompt('คัดลอกข้อความนี้ส่งให้เราได้เลย', t));
@@ -2991,7 +3003,7 @@ $('perfCopy').onclick = () => {
 perfUi();
 function resize() {
   const dpr = curDpr = Math.min(window.devicePixelRatio || 1, resCap());
-  perf.grace = performance.now() + RES_GRACE_MS; perf.n = 0; perf.low = 0;
+  perf.grace = performance.now() + RES_GRACE_MS; perf.n = 0; perf.low = 0; perfUi();
   // ย่อแคนวาสแล้วให้เบราว์เซอร์ขยาย: ขยายเป็นจำนวนเต็ม (เช่น 2→1 บนจอ dpr 2) ใช้ pixelated คมสะอาด; ขยายเศษส่วน (1.5, 1.25) pixelated ทำพิกเซลกว้างไม่เท่ากันเป็นริ้ว ใช้ auto (นุ่มกว่า) ดูดีกว่า
   const sc = (window.devicePixelRatio || 1) / dpr; canvas.style.imageRendering = sc > 1.01 && Math.abs(sc - Math.round(sc)) < 0.01 ? 'pixelated' : '';
   canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
@@ -4767,11 +4779,12 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   }
   const hour = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24;
   const dark = daylight(hour);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); pm(6);
   if (winterFlag && dark < 0.75) { ctx.fillStyle = `rgba(${WINTER.dayRGB},${WINTER.dayA * (1 - dark / 0.75)})`; ctx.fillRect(0, 0, canvas.width, canvas.height); } // แสงกลางวันโทนเย็นฟ้าอ่อน จางลงตอนมืด
-  drawNight(inSea() ? dark : cave ? 0.6 : scene ? dark * 0.4 : dark, now); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
+  drawNight(inSea() ? dark : cave ? 0.6 : scene ? dark * 0.4 : dark, now); pm(3); // ในบ้านมืดน้อยกว่า มีแค่โคมไฟ/ตะเกียงที่สว่างกว่า
   if (inTown() && rainActive(now)) drawRain(now, dark); else rainLast = 0;
   if (inTown() && snowActive(now)) drawSnow(now); else snowLast = 0;
+  pm(4);
   if (inTown()) drawGuideArrow(now);
   if (inSea()) { // ป้ายทะเล: โซน + นับถอยหลังกลับเกาะ (ตะวันตก/ครบเวลา)
     const left = seaEnd ? Math.max(0, seaEnd - (Date.now() + timeOffset)) : 0, cd = Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0');
@@ -4786,7 +4799,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
   if ($('clock').textContent !== txt) $('clock').textContent = txt;
   const ck = $('clock'); if (!ck.onclick) { ck.style.cursor = 'pointer'; ck.onclick = e => { e.stopPropagation(); toast(seasonInfoText(true)); }; }
   if (se.on) { const tt = seasonInfoText(); if (ck.title !== tt) ck.title = tt; }
-  drawMini(now);
+  pm(6); drawMini(now); pm(5);
 }
 const blk = (x, y, fx, fy) => (scene ? Shared.houseBlockedAt(MAP, houseRects, x, y, fx, fy) : inOcean() ? blockedAt(MAP, x, y, Shared.BOAT.hull.r) : blockedAt(MAP, x, y)); // ชนผนัง/ของ (ในบ้านรวมเฟอร์นิเจอร์ตัน)
 // กันของหายทั้งเฟรม: ถ้าของชิ้นใดชิ้นหนึ่งวาดพัง (error) ชิ้นอื่นที่ต้องวาดต่อจากนั้นไม่หายตามไปด้วย + รายงานกลับเซิร์ฟเวอร์ครั้งเดียวต่อข้อความ
@@ -4800,7 +4813,7 @@ window.addEventListener('error', e => /^ResizeObserver/.test(e.message || '') ||
 const safeDraw = (o, tag) => { ctx.save(); try { o.f(); } catch (e) { reportClientErr(tag, e); } finally { ctx.restore(); } };
 function step(now) {
   requestAnimationFrame(step);
-  stepT0 = performance.now(); perfFrame(now);
+  stepT0 = perf.m = performance.now(); perfFrame(now);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (!joined || !me) return;
   syncVehBtn(); syncHornBtn(); syncRecallBtn();
@@ -4922,10 +4935,10 @@ function step(now) {
   ctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
   ctx.imageSmoothingEnabled = false;
   winterFlag = inTown() && snowScene(now); // ธีมหิมะระดับ 2 (โทนหนาว) ใช้เงื่อนไขเดียวกับหิมะตก เฉพาะในเมือง
-  if (scene) { drawHouseWorld(now); frameTail(now, wall); return; } // ในบ้านวาดแยกแบบไอโซเมตริก
-  if (cave) { drawCaveWorld(now); frameTail(now, wall); return; } // ในถ้ำวาดแยก: พื้น/ผนังถ้ำ ก้อนแร่ ผู้เล่น
-  ctx.drawImage(winterBase(winterFlag), 0, 0, W * TS, H * TS);
-  ctx.drawImage(baseHi, 0, 0);
+  if (scene) { pm(6); drawHouseWorld(now); pm(2); frameTail(now, wall); perfJs(performance.now() - stepT0); return; } // ในบ้านวาดแยกแบบไอโซเมตริก
+  if (cave) { pm(6); drawCaveWorld(now); pm(2); frameTail(now, wall); perfJs(performance.now() - stepT0); return; } // ในถ้ำวาดแยก: พื้น/ผนังถ้ำ ก้อนแร่ ผู้เล่น
+  pm(6); ctx.drawImage(winterBase(winterFlag), 0, 0, W * TS, H * TS);
+  ctx.drawImage(baseHi, 0, 0); pm(0);
 
   const x0 = Math.max(0, Math.floor(camX / TS)), x1 = Math.min(W - 1, Math.ceil((camX + vw) / TS));
   const y0 = Math.max(0, Math.floor(camY / TS)), y1 = Math.min(H - 1, Math.ceil((camY + vh) / TS));
@@ -4999,8 +5012,8 @@ function step(now) {
 
   if (inTown()) { const hourNow = ((wall % CLOCK_MS) / CLOCK_MS * 24 + 6) % 24; drawSunMotes(now, daylight(hourNow)); drawButterflies(now); }
   // วาดตามลำดับ y
-  const list = [];
-  for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) list.push({ y: y * TS + 30, f: () => drawTree(x, y) });
+  pm(1); const list = []; let nTree = 0;
+  for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) { nTree++; list.push({ y: y * TS + 30, f: () => drawTree(x, y) }); }
   for (const [k, f] of felled) { const ty = +k.split(',')[1]; list.push({ y: ty * TS + 30, f: () => drawFelled(k, f, now) }); } // ต้นไม้กำลังล้ม
   if (inTown()) for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
   // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
@@ -5013,6 +5026,7 @@ function step(now) {
   for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
   for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
   if (inTown()) for (const n of npcs.values()) if (n.x > camX - 40 && n.x < camX + vw + 40 && n.y > camY - 60 && n.y < camY + vh + 60) list.push({ y: n.y + 12, f: () => drawPlayer(n, now) });
+  if (perfOn) { perf.cn[0] = nTree; perf.cn[1] = players.size; perf.cn[2] = animals.size; perf.cn[3] = list.length; }
   list.sort((a, b) => a.y - b.y).forEach(o => safeDraw(o, 'list'));
 
   // โรงหนัง: ป้ายสถานะใต้จอ + 🍿 เหนือหัวคนที่กำลังดู (เลิกมีอาคารจอแล้ว)
@@ -5055,6 +5069,7 @@ function step(now) {
   if (inTown()) for (const n of npcs.values()) if (n.fs) drawFishing(n, performance.now()); // NPC ตกปลาประกอบฉาก
 
   if (inTown()) drawLighthouse(ctx, now);
+  pm(2);
   frameTail(now, wall);
   perfJs(performance.now() - stepT0);
 }
