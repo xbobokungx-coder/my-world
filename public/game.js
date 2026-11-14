@@ -3472,11 +3472,6 @@ function drawFire(now) {
   }
   ctx.globalAlpha = 1;
 }
-function drawChainTree(now) { // โตตามจำนวนชาเลนจ์ที่สำเร็จทั้งเมือง: <5 ต้นกล้า • <20 ต้นกลาง • ≥20 ต้นใหญ่ มีป้ายจำนวนใบ
-  const n = chSt.chain, k = n < 5 ? 1.2 : n < 20 ? 1.6 : 2.1, s = PixelArt.tree(3, 5, 'broad'), w = s.width * k, h = s.height * k, cx = (FIRE.x - 3) * TS + 16, by = (FIRE.y + 4) * TS + 32; // มุมล่างซ้ายของกองไฟ ไม่ขวางถนนสายกลาง
-  ctx.drawImage(s, cx - w / 2, by - h, w, h); PixelUI.world(ctx, '🪣', cx + w / 4, by - h * 0.55 + Math.sin(now / 500) * 2, 14);
-  ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(42,27,20,.8)'; ctx.fillRect(cx - 26, by + 2, 52, 13); ctx.fillStyle = '#ffe9a8'; ctx.fillText(`🌳 ${n} ใบ`, cx, by + 12);
-}
 function drawTree(x, y, kind, rot = 0, alpha = 1, ctx = mainCtx) { // สไปรต์ต้นไม้พิกเซล · โคนต้นกลางขอบล่างช่อง · ไม่เบลอตอนขยาย • rot = เอียงรอบโคน (ส่ายตอนโดนฟัน/ล้ม)
   const key = x + ',' + y, s0 = PixelArt.tree(x, y, kind || treeKinds.get(key)), s = winterFlag ? snowSprite(s0, WINTER.tree) : s0, hit = kind ? null : treeHit.get(key), now = performance.now();
   if (hit && now - hit.t > 20000) treeHit.delete(key);
@@ -4862,7 +4857,6 @@ function step(now) {
   const list = [];
   for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) list.push({ y: y * TS + 30, f: () => drawTree(x, y) });
   for (const [k, f] of felled) { const ty = +k.split(',')[1]; list.push({ y: ty * TS + 30, f: () => drawFelled(k, f, now) }); } // ต้นไม้กำลังล้ม
-  if (inTown() && chSt.chain > 0 && x0 <= FIRE.x - 2 && x1 >= FIRE.x - 4 && y0 <= FIRE.y + 5 && y1 >= FIRE.y + 3) list.push({ y: (FIRE.y + 4) * TS + 30, f: () => drawChainTree(now) }); // ต้นไม้แห่งการส่งต่อ (ชาเลนจ์ถังน้ำ)
   if (inTown()) for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
   // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
   if (inTown()) for (const s of SEATS) if (s.x >= x0 - 1 && s.x <= x1 + 1 && s.y >= y0 - 1 && s.y <= y1 + 1) list.push({ y: s.y * TS + 12, f: () => drawSeat(s) });

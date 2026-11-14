@@ -28,7 +28,7 @@ module.exports = {
     this.invites[code] = { by: p.key, name: p.name, ch: c.id, t: Date.now() }; c.code = code;
     for (const [k, v] of Object.entries(this.invites)) if (Date.now() - v.t > 7 * 864e5) delete this.invites[k]; // ลิงก์ใช้ได้ 7 วัน
     this.toast(p, `🎉 ชาเลนจ์ถังน้ำสำเร็จใน ${Math.ceil(c.ms / 60000)} นาที! แชร์การ์ดแล้วท้าเพื่อนต่อได้เลย`); this.sfxTo(p, 'levelup');
-    this.addLog(`🪣 ${p.name} ทำชาเลนจ์ถังน้ำ "${d.text}" สำเร็จ! (ต้นไม้แห่งการส่งต่อ ${this.chain} ใบ)`);
+    this.addLog(`🪣 ${p.name} ทำชาเลนจ์ถังน้ำ "${d.text}" สำเร็จ! (ทั้งเมืองทำสำเร็จแล้ว ${this.chain} ครั้ง)`);
     this.broadcast({ t: 'chain', n: this.chain }); this.chPush(p);
   },
   chExpire(p) { // หมดเวลา: คนที่ถูกเพื่อนท้ามาแล้วทำไม่ทัน = โดนราดน้ำ • รับเองแล้วไม่ทันแค่จบไป
