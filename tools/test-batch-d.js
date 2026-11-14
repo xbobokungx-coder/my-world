@@ -123,7 +123,7 @@ const last = (ws, t) => ws.msgs.filter(m => m.t === t).pop();
   mk(require('../server/consts.js').ADMIN_NAME, 999999);
   w._rank = null; w.sendRank(a); const r = last(wsA, 'rank');
   assert.ok(Array.isArray(r.on)); assert.deepStrictEqual(r.on.map(x => x.n), ['Hi', 'Lo'], 'เรียงมาก→น้อย ตัดแอดมิน/สัปดาห์เก่า/ศูนย์/ไม่ถึงนาที');
-  assert.deepStrictEqual(r.on[0], { n: 'Hi', h: 2.01 > 2.0 ? 2 : 2 }, 'ส่งแค่ชื่อกับชั่วโมง (ทศนิยม 1 ตำแหน่ง)'); assert.deepStrictEqual(r.on[1], { n: 'Lo', h: 0.5 });
+  assert.deepStrictEqual(r.on[0], { n: 'Hi', h: 2, m: 120 }, 'ส่งแค่ชื่อกับชั่วโมง (ทศนิยม 1 ตำแหน่ง) + นาทีสะสม'); assert.deepStrictEqual(r.on[1], { n: 'Lo', h: 0.5, m: 30 });
   assert.ok('on' in r.me);
   // นับเวลาจริงตอนเชื่อมต่อ
   a.rec.onl = undefined; a.onAt = 0; a.activeAt = NOW; w.onlineTick(NOW); assert.strictEqual(a.onAt, NOW);

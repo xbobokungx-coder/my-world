@@ -856,6 +856,7 @@ function bindLotto(el) {
 }
 function renderRankTab(el) {
   const R = rankSt, medal = ['🥇', '🥈', '🥉'], myName = me && me.name;
+  const fmtOnl = m => m >= 60 ? Math.floor(m / 60) + ' ชม.' + (m % 60 ? ' ' + (m % 60) + ' นาที' : '') : m + ' นาที'; // นาทีสะสม → "3 ชม. 12 นาที"
   const tabs = [['lv', '⭐ เลเวล'], ['wk', '📅 สัปดาห์นี้'], ['rich', '💰 เศรษฐี'], ['on', '⏱️ ออนไลน์สัปดาห์นี้']];
   let h = `<div class="chips" style="margin:0 0 8px">${tabs.map(([k, n]) => `<button class="chip${rankTab === k ? ' sel' : ''}" data-rtab="${k}">${n}</button>`).join('')}</div>`;
   if (!R) { el.innerHTML = h + '<p style="opacity:.7">กำลังโหลด...</p>'; }
@@ -878,8 +879,8 @@ function renderRankTab(el) {
     } else if (rankTab === 'rich') {
       h += '<div class="sec">💰 เศรษฐี (Top 10)</div>' + list(R.rich, x => `🪙 <b>${esc(x.coin)}</b>`, mine.rich) + '<p style="font-size:12px;opacity:.65;margin-top:10px">จัดอันดับจากความมั่งคั่งรวม: เหรียญ (รวมในธนาคาร) + ของและอุปกรณ์ในกระเป๋า + เฟอร์นิเจอร์ที่วางในบ้าน ปิดบังหลักหน้า เห็นแค่สามหลักท้าย เช่น xxx,xxx,123</p>';
     } else if (rankTab === 'on') {
-      h += '<div class="sec">⏱️ ออนไลน์สัปดาห์นี้ (Top 10)</div>' + list(R.on, x => `<b>${x.h}</b> ชม.`, mine.on)
-        + '<p style="font-size:12px;opacity:.65;margin-top:10px">นับเฉพาะตอนเชื่อมต่ออยู่ รีเซ็ตทุกวันจันทร์</p>';
+      h += '<div class="sec">⏱️ ออนไลน์สัปดาห์นี้ (Top 10)</div>' + list(R.on, x => `<b>${fmtOnl(x.m != null ? x.m : Math.round(x.h * 60))}</b>`, mine.on)
+        + '<p style="font-size:12px;opacity:.65;margin-top:10px">เวลาออนไลน์สะสมรวมทั้งสัปดาห์ (ไม่ใช่ครั้งเดียวที่นานที่สุด) นับเฉพาะตอนเล่นอยู่ ไม่นับตอนทิ้งหน้าจอ รีเซ็ตทุกวันจันทร์</p>';
     }
     el.innerHTML = h;
   }

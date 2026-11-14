@@ -56,7 +56,7 @@ module.exports = {
     const t = {
       lv: lvl,
       wk: make('wk', rows.filter(x => x.wk > 0), (a, b) => b.wk - a.wk, x => ({ n: x.n, xp: x.wk })),
-      on: make('on', rows.filter(x => x.on >= 60), (a, b) => b.on - a.on, x => ({ n: x.n, h: Math.floor(x.on / 360) / 10 })), // ออนไลน์สัปดาห์นี้ (ชั่วโมง ทศนิยม 1 ตำแหน่ง) ต้องครบ 1 นาทีถึงติด
+      on: make('on', rows.filter(x => x.on >= 60), (a, b) => b.on - a.on, x => ({ n: x.n, h: Math.floor(x.on / 360) / 10, m: Math.floor(x.on / 60) })), // ออนไลน์สัปดาห์นี้ (ชั่วโมง ทศนิยม 1 ตำแหน่ง) ต้องครบ 1 นาทีถึงติด
       rich: make('rich', rows.filter(x => x.coin > 0), (a, b) => b.coin - a.coin, x => ({ n: x.n, coin: maskCoin(x.coin) })), // ความมั่งคั่งรวม ส่งเป็นข้อความปิดบังหลักหน้า เหลือสามหลักท้าย (123,321,123 → xxx,xxx,123) ไม่ส่งตัวเลขจริง (ความเป็นส่วนตัว)
     };
     return { at: Date.now(), wkKey: wkNow, top: t, onWk, ranks: { lv: ranks.lv, wk: ranks.wk, rich: ranks.rich, on: ranks.on } };
