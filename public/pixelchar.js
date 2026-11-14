@@ -154,7 +154,7 @@ const PixelChar = (() => {
 // ยานพาหนะของตัวละคร (จักรยาน มอเตอร์ไซค์ รถเปิดประทุน): สไปรต์ 4 ทิศ × 4 เฟรมล้อหมุน ซ้ายคือภาพขวาพลิกกลับ
 // ชั้นวาด: หลัง (ตัวถัง/ล้อหลัง) → ตัวละครนั่งท่านั่ง → หน้า (ขาปั่น/แฮนด์/มือจับ/กระโปรงรถ) • ควัน/ฝุ่นวาดแบบเลื่อนตามเวลา (ไม่เก็บสถานะ)
 const PixelVehicle = (() => {
-  const { mk, r, ell, shade, ramp, hue } = PixelArt;
+  const { mk, r, ell, disc, shade, ramp, hue } = PixelArt;
   const INK = ['#2a1b14', '#5a4a3a'], TIRE = '#262a33', RIM = '#c9d3dc', RIM2 = '#8d99a6';
   const SC = 2; // 1 พิกเซลศิลป์ = 2 พิกเซลเกม
   function line(x, c, x0, y0, x1, y1) { // Bresenham 1 px
@@ -352,12 +352,96 @@ const PixelVehicle = (() => {
     }
     return { draw, ready, lift: 17 };
   })();
-  const lift = kind => (kind === 'bike' && BikeAI.ready() ? BikeAI.lift : kind === 'car' && CarAI.ready() ? CarAI.lift : ({ bike: 6, scooter: 5, car: 6 }[kind] || 0) * SC); // ความสูงที่ตัวละครยกขึ้นจากพื้น (พิกเซลเกม) ไว้เลื่อนป้ายชื่อ/ฟองแชทตาม
+  // มอเตอร์ไซค์สไปรต์เขียนเอง (14 พ.ย. 2026): เด็กหมวกแดงขี่สกูตเตอร์แดง ธีมเดียวกับจักรยาน/รถยนต์ (หมวกแดง-ครีม เสื้อครีม กางเกงน้ำเงิน ตัวรถแดง) แต่วาดด้วยโค้ด ไม่ใช้ PixelLab • 1 พิกเซลศิลป์ = 1 พิกเซลเกม • ทิศ 0 ใต้(หน้า) 1 เหนือ(หลัง) 3 ตะวันออก (2 = พลิกจาก 3) • p.oldMoto = ใช้แบบเก่า (ไว้เทียบ)
+  const MotoGen = (() => {
+    const R = ramp('#d94a3a', .3, .22), SKIN = '#f5cfa0', SKIN2 = '#dca878', SHIRT = '#efe0c4', SHIRT2 = '#c9b48e', SHORT = '#4a6a9a', SHORT2 = '#364f78', HAIR = '#5a3320', HAIR2 = '#3e2216', CREAM = '#f0dcc0', SHOE = '#3a2418', DARK = '#262a33', STEEL = '#aab4bd', STEEL2 = '#6a6f7a', GLASS = '#8fd0f0', LAMP = '#ffe27a', SEAT = '#4a3020';
+    const GR = 48; // แถวพื้นใต้ยาง (พิกเซลศิลป์)
+    const px = (x, c, X, Y) => r(x, c, X, Y, 1, 1);
+    function tire(x, cx, cy, fr) { // ยางมองข้าง รัศมี 6 + ซี่ 3 ก้านหมุนตามเฟรม
+      for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const d = Math.hypot(dx, dy); if (d <= 6.3) px(x, d > 4.4 ? DARK : d > 3.4 ? STEEL2 : '#c9d3dc', cx + dx, cy + dy); }
+      const a = fr * Math.PI / 6; for (let k = 0; k < 3; k++) line(x, '#f4f7f9', cx, cy, cx + Math.cos(a + k * Math.PI * 2 / 3) * 3.4, cy + Math.sin(a + k * Math.PI * 2 / 3) * 3.4);
+      r(x, R[2], cx, cy, 1, 1);
+    }
+    function head(x, cx, cy, face) { // หัวโตแบบชิบิ (รัศมี 9): face = 'e' ตะวันออก, 's' หน้าตรง, 'n' ท้ายทอย
+      const rad = 9; disc(x, cx, cy, rad, face === 's' ? SKIN : HAIR);
+      if (face === 'e') ell(x, cx + 4, cy + 3, 5, 6, SKIN); // หน้าอยู่ด้านขวา ผมอยู่ด้านหลัง
+      if (face === 'n') { r(x, HAIR2, cx - 7, cy + 1, 15, 5); r(x, SKIN, cx - 3, cy + 6, 7, 3); }
+      for (let dy = -rad; dy <= (face === 'n' ? 1 : -1); dy++) { const w = Math.floor(Math.sqrt(rad * rad - dy * dy) + .5); r(x, dy < -5 ? R[3] : R[2], cx - w, cy + dy, w * 2 + 1, 1); } // หมวกแดง
+      r(x, R[1], cx - 9, cy - 1, 19, 1);
+      if (face === 'e') { ell(x, cx + 3, cy - 5, 4, 3, CREAM); r(x, R[1], cx + 3, cy - 1, 11, 2); r(x, R[0], cx + 6, cy + 1, 8, 1); r(x, R[3], cx + 4, cy - 1, 5, 1); r(x, DARK, cx + 6, cy + 3, 2, 3); px(x, '#ffffff', cx + 6, cy + 3); r(x, '#f0a090', cx + 5, cy + 7, 2, 1); r(x, '#b8604a', cx + 8, cy + 8, 2, 1); r(x, SKIN2, cx - 3, cy + 3, 3, 4); }
+      if (face === 's') { ell(x, cx, cy - 6, 4, 3, CREAM); r(x, R[1], cx - 8, cy - 1, 17, 2); r(x, R[0], cx - 7, cy + 1, 15, 1); r(x, DARK, cx - 5, cy + 3, 2, 3); r(x, DARK, cx + 4, cy + 3, 2, 3); px(x, '#ffffff', cx - 5, cy + 3); px(x, '#ffffff', cx + 4, cy + 3); r(x, '#f0a090', cx - 7, cy + 6, 2, 1); r(x, '#f0a090', cx + 6, cy + 6, 2, 1); r(x, '#b8604a', cx - 1, cy + 7, 3, 1); r(x, SKIN2, cx - 10, cy + 3, 1, 4); r(x, SKIN2, cx + 10, cy + 3, 1, 4); }
+      if (face === 'n') { ell(x, cx, cy - 6, 4, 3, CREAM); px(x, R[0], cx, cy - 9); }
+    }
+    function side(fr, idle) { // หันขวา กว้าง 54 สูง 50 พื้นแถว 48 • สะโพกอยู่ราว (20,29)
+      const bob = idle ? 0 : (fr & 1 ? -1 : 0);
+      return mk(54, 50, (x) => {
+        tire(x, 13, 42, fr); tire(x, 41, 42, fr + 1);
+        r(x, STEEL2, 2, 38, 7, 3); r(x, STEEL, 2, 38, 7, 1); r(x, DARK, 2, 40, 1, 1); // ท่อไอเสีย
+        ell(x, 15, 33, 11, 5, R[1]); ell(x, 15, 32, 11, 4, R[2]); r(x, R[3], 8, 29, 11, 1); r(x, R[4], 10, 29, 4, 1); r(x, R[0], 7, 37, 17, 1); r(x, CREAM, 8, 33, 10, 1); r(x, '#ff6b5a', 4, 31, 2, 3); r(x, '#ffd0c8', 4, 31, 1, 1); // ตัวถังท้าย + ไฟท้าย
+        r(x, R[1], 22, 40, 14, 2); r(x, R[0], 22, 42, 14, 1); r(x, STEEL2, 24, 40, 8, 1); // พื้นวางเท้า
+        ell(x, 15, 29, 10, 2, SEAT); r(x, '#7a5236', 8, 27, 12, 1); // เบาะ
+        for (let y = 26; y <= 40; y++) { const x0 = 33 + Math.round((y - 26) / 5); r(x, R[2], x0, y, 5, 1); px(x, R[3], x0, y); px(x, R[1], x0 + 4, y); } // คอรถ/หน้ากาก
+        line(x, STEEL, 38, 34, 41, 42); line(x, STEEL2, 39, 34, 42, 42); // โช้คหน้า
+        ell(x, 41, 36, 6, 2, R[2]); r(x, R[3], 37, 34, 5, 1); r(x, R[0], 36, 38, 11, 1); // บังโคลนหน้า
+        r(x, LAMP, 38, 27, 4, 4); px(x, '#ffffff', 38, 27); r(x, '#e0a838', 41, 28, 1, 3); // ไฟหน้า
+        r(x, DARK, 35, 22, 2, 5); // ก้านแฮนด์
+        // ขา: โคนขาน้ำเงิน → แข้งเห็นผิว → รองเท้าบนพื้นวางเท้า
+        r(x, SHORT, 16, 28, 12, 4); r(x, SHORT2, 16, 31, 12, 1); r(x, SHORT2, 16, 28, 2, 4);
+        r(x, SKIN, 26, 32, 3, 6); r(x, SKIN2, 26, 32, 1, 6); r(x, SHOE, 25, 38, 7, 2); r(x, '#6a4a3a', 26, 38, 3, 1);
+        // ลำตัวสั้น (โน้มไปข้างหน้านิดๆ)
+        for (let y = 20 + bob; y <= 29; y++) { const x0 = 14 + (y - bob < 23 ? 2 : y - bob < 26 ? 1 : 0); r(x, SHIRT, x0, y, 9, 1); r(x, SHIRT2, x0, y, 2, 1); px(x, SHIRT2, x0 + 8, y); }
+        head(x, 22, 11 + bob, 'e');
+        line(x, SHIRT, 21, 22 + bob, 31, 24); line(x, SHIRT2, 21, 23 + bob, 31, 25); line(x, SHIRT, 21, 21 + bob, 31, 23); // แขนยื่นไปจับแฮนด์
+        r(x, SKIN, 31, 22, 3, 3); r(x, SKIN2, 31, 24, 3, 1); r(x, DARK, 32, 25, 6, 1); r(x, DARK, 34, 21, 5, 1); // มือ + แฮนด์
+        line(x, DARK, 37, 21, 38, 18); r(x, GLASS, 36, 15, 5, 3); px(x, '#ffffff', 36, 15); // กระจกมองข้าง
+      }, soft);
+    }
+    function front(fr, idle, rear) { // มองตรงหน้า/หลัง กว้าง 28 สูง 50 พื้นแถว 48 • กึ่งกลาง x=14
+      const bob = idle ? 0 : (fr & 1 ? -1 : 0), cx = 14;
+      return mk(28, 50, (x) => {
+        r(x, DARK, cx - 2, 38, 5, 11); r(x, STEEL2, cx, 39, 1, 9); r(x, '#f4f7f9', cx, 40 + (fr % 4) * 2, 1, 1); // ยาง + จุดหมุน
+        if (!rear) { ell(x, cx, 37, 5, 2, R[2]); r(x, R[3], cx - 3, 36, 4, 1); r(x, R[0], cx - 5, 38, 11, 1); } // บังโคลนหน้า
+        else { r(x, STEEL2, cx + 4, 43, 3, 5); r(x, STEEL, cx + 4, 43, 1, 5); r(x, DARK, cx + 5, 47, 2, 1); } // ท่อ
+        r(x, SEAT, cx - 6, 29, 13, 2); r(x, '#7a5236', cx - 5, 29, 11, 1); // เบาะ
+        r(x, SHORT, 3, 28, 6, 5); r(x, SHORT2, 3, 32, 6, 1); r(x, SHORT, 19, 28, 6, 5); r(x, SHORT2, 19, 32, 6, 1); // ขา
+        r(x, SKIN, 4, 33, 3, 5); r(x, SKIN, 21, 33, 3, 5); r(x, SKIN2, 4, 33, 1, 5); r(x, SKIN2, 23, 33, 1, 5);
+        r(x, SHOE, 2, 38, 6, 3); r(x, SHOE, 20, 38, 6, 3); r(x, '#6a4a3a', 3, 38, 3, 1); r(x, '#6a4a3a', 21, 38, 3, 1);
+        ell(x, cx, 33, 6, 5, R[1]); ell(x, cx, 32, 6, 4, R[2]); r(x, R[3], cx - 4, 29, 3, 1); r(x, R[0], cx - 5, 37, 11, 1); r(x, R[1], cx - 6, 34, 1, 3); r(x, R[1], cx + 6, 34, 1, 3); // ตัวถัง
+        if (!rear) { r(x, LAMP, cx - 2, 31, 5, 3); px(x, '#ffffff', cx - 2, 31); r(x, CREAM, cx - 4, 35, 9, 1); }
+        else { r(x, '#ff6b5a', cx - 4, 31, 3, 2); r(x, '#ff6b5a', cx + 2, 31, 3, 2); r(x, '#e8eef2', cx - 2, 34, 5, 3); r(x, STEEL2, cx - 2, 34, 5, 1); r(x, DARK, cx - 1, 36, 3, 1); }
+        for (let y = 20 + bob; y <= 29; y++) { r(x, SHIRT, cx - 5, y, 11, 1); r(x, SHIRT2, cx - 5, y, 2, 1); px(x, SHIRT2, cx + 5, y); } // ลำตัว
+        if (rear) r(x, SHIRT2, cx - 1, 22 + bob, 3, 6);
+        line(x, SHIRT, cx - 5, 22 + bob, 4, 27); line(x, SHIRT2, cx - 4, 22 + bob, 5, 27); line(x, SHIRT, cx + 5, 22 + bob, 23, 27); line(x, SHIRT2, cx + 4, 22 + bob, 22, 27); // แขน
+        r(x, DARK, 1, 28, 26, 2); r(x, SKIN, 2, 26, 3, 3); r(x, SKIN, 23, 26, 3, 3); // แฮนด์ + มือ
+        line(x, DARK, 3, 26, 3, 24); line(x, DARK, 24, 26, 24, 24); r(x, GLASS, 1, 21, 5, 3); r(x, GLASS, 22, 21, 5, 3); px(x, '#ffffff', 1, 21); px(x, '#ffffff', 22, 21); // กระจก
+        head(x, cx, 11 + bob, rear ? 'n' : 's');
+      }, soft);
+    }
+    const cache = new Map();
+    function build(d, fr, idle) { const key = d + '|' + fr + '|' + (idle ? 1 : 0); let c = cache.get(key); if (!c) { c = d >= 2 ? side(fr, idle) : front(fr, idle, d === 1); cache.set(key, c); } return c; }
+    function draw(ctx, p, now) {
+      const dir = p.dir || 0, moving = !!p.moving, fr = moving ? Math.floor((p.anim || 0) * 12) & 3 : 0, spr = build(dir === 2 ? 3 : dir, fr, !moving);
+      const gx = Math.round(p.x), gy = Math.round(p.y + 12), sgn = dir === 2 ? -1 : 1, side = dir >= 2, ax = side ? 28 : 15, top = gy - (GR + 1) + 1;
+      ctx.fillStyle = 'rgba(24,34,52,.3)'; ctx.beginPath(); ctx.ellipse(gx + (side ? sgn * 1 : 0), gy + 1, side ? 20 : 9, 4.5, 0, 0, 7); ctx.fill();
+      ctx.imageSmoothingEnabled = false;
+      if (dir === 2) { ctx.save(); ctx.translate(gx, 0); ctx.scale(-1, 1); ctx.drawImage(spr, -ax, top); ctx.restore(); } else ctx.drawImage(spr, gx - ax, top);
+      if (dir === 0 && !moving) return;
+      const n = moving ? 3 : 1, back = dir === 3 ? -1 : dir === 2 ? 1 : 0; // ควันท่อ: ลอยไปทางท้ายรถ (หันหน้าหากล้องไม่เห็นท่อ)
+      if (dir === 0) return;
+      for (let i = 0; i < n; i++) {
+        const t = ((now / (moving ? 420 : 900) + i / n + (p.id || 0) * .13) % 1), ex = side ? gx + back * (ax - 1) + back * t * 12 : gx + 5 + (dir === 1 ? t * 2 : 0), ey = gy - 9 - t * (side ? 6 : 4);
+        ctx.fillStyle = `rgba(214,214,222,${(1 - t) * (moving ? .5 : .28)})`; ctx.beginPath(); ctx.arc(Math.round(ex), Math.round(ey), 1.5 + t * 2.5, 0, 7); ctx.fill();
+      }
+    }
+    return { draw, lift: 19 };
+  })();
+  const lift = (kind, p) => (kind === 'scooter' && !(p && p.oldMoto) ? MotoGen.lift : kind === 'bike' && BikeAI.ready() ? BikeAI.lift : kind === 'car' && CarAI.ready() ? CarAI.lift : ({ bike: 6, scooter: 5, car: 6 }[kind] || 0) * SC); // ความสูงที่ตัวละครยกขึ้นจากพื้น (พิกเซลเกม) ไว้เลื่อนป้ายชื่อ/ฟองแชทตาม
   // วาดผู้ขี่ + ยานพาหนะ: p.veh = bike|scooter|car, p.moving/p.anim ใช้เป็นจังหวะล้อ
   function draw(ctx, p, now, PC) {
     const kind = p.veh, dir = p.dir || 0, moving = !!p.moving, anim = p.anim || 0;
     if (kind === 'bike' && BikeAI.draw(ctx, p, now)) return; // สไปรต์ AI ทั้งตัว (ถ้าโหลดภาพแล้ว)
     if (kind === 'car' && CarAI.draw(ctx, p, now)) return;
+    if (kind === 'scooter' && !p.oldMoto) return MotoGen.draw(ctx, p, now); // สกูตเตอร์สไปรต์เขียนเอง (p.oldMoto = แบบเก่า)
     const wr = Object.assign({}, Shared.WEAR_DEFAULT, p.wear), pc = (p.pc || Shared.PANTS_COLOR);
     const fr = moving ? Math.floor(anim * (kind === 'car' ? 14 : kind === 'scooter' ? 12 : 9)) & 3 : 0;
     const v = sprite(kind, dir, fr, pc, !moving, p.color || '#3498db'), sgn = dir === 2 ? -1 : 1;

@@ -3889,7 +3889,7 @@ function drawPlayer(p, now, cx) {
       PixelChar.draw(ctx, Object.assign({}, p, { sit: false, moving: false }), now); ctx.restore();
     } else { ctx.save(); ctx.translate(bx, by); PixelChar.draw(ctx, inOcean() ? Object.assign({}, p, { moving: false }) : p, now); ctx.restore(); } } // ตัวละครพิกเซล (ขับเรือในทะเลใหญ่: ยืนนิ่งไม่ก้าวขา) chibi (pixelchar.js)
   if (p.lvFx) drawLvFx(p, ctx, y);
-  if (riding) y -= PixelVehicle.lift(p.veh); // ผู้ขี่ตัวสูงขึ้น ป้ายชื่อ/ฟองแชท/ไอคอนเลื่อนตาม
+  if (riding) y -= PixelVehicle.lift(p.veh, p); // ผู้ขี่ตัวสูงขึ้น ป้ายชื่อ/ฟองแชท/ไอคอนเลื่อนตาม
   if (p.wet) { PixelUI.world(ctx, '🪣', x, y - 20, 16); ctx.fillStyle = 'rgba(120,190,255,.85)'; for (let i = 0; i < 4; i++) { const t = (now / 600 + i / 4) % 1; ctx.fillRect(x - 10 + i * 7, y - 14 + t * 24, 2, 4); } } // โดนราดน้ำจากชาเลนจ์
   if (p.lamp) drawHeldLamp(p, now);
   if (p.held && !p.sit && !riding) { ctx.save(); ctx.translate(bx, by); drawHeldTool(p, now, ctx); ctx.restore(); drawActionBurst(p, ctx); }
