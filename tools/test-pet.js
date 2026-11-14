@@ -62,18 +62,14 @@ w.petSt(p, 'bird').sick = false;
   assert.ok(Math.abs(S.petBonus('cat', 100, false, 5).luck - 0.09) < 1e-9, 'แมวระดับ 5 🍀9%');
   // ของขวัญรวมสูงสุดต่อวัน ≤ ~30 เหรียญ
   { const mx = Math.max(...L.gift.table.map(([k]) => S.itemInfo(k).buy || 0)) * Math.max(...L.gift.perDay); assert.ok(mx <= 30, 'ของขวัญสูงสุด/วัน ' + mx); }
-  // ทิ้งตัวละครไว้เฉยๆ = ไม่ได้ bond
+  // เดินออกไปเฉยๆ ไม่ได้ bond (ทั้ง AFK และมีกิจกรรม) • bond ได้จากให้อาหาร/ลูบหัวเท่านั้น • ไม่มีเพดานรายวัน
   const a = mk('IdleA'); w.setPet(a, 'dog', 'follow'); a.activeAt = Date.now() - L.activeMs - 5000; run(50, () => w.petTick15(a));
   assert.ok(!(w.petSt(a, 'dog').b > 0), 'AFK ไม่ได้ bond');
-  // มีกิจกรรม = ได้ • เซฟเก่าไม่มี b = ระดับ 1
-  a.activeAt = Date.now(); assert.strictEqual(w.petLv(a, 'dog'), 1); w.petTick15(a); assert.ok(w.petSt(a, 'dog').b > 0, 'active ได้ bond');
-  // เพดานต่อวัน: tick/feed/pat รวมไม่เกิน dayCap
-  const b = mk('CapB'); w.setPet(b, 'dog', 'follow'); b.activeAt = Date.now() + 1e9;
-  for (let i = 0; i < 2000; i++) { w.petSt(b, 'dog').h = 100; w.petTick15(b); b.activeAt = Date.now(); }
-  assert.strictEqual(w.petSt(b, 'dog').b, L.dayCap, 'ชนเพดานวัน'); w.petSt(b, 'dog').pat = 0; w.petCare(b, 'pat'); w.petSt(b, 'dog').h = 10; w.petCare(b, 'feed');
-  assert.strictEqual(w.petSt(b, 'dog').b, L.dayCap, 'ลูบ/ให้อาหารไม่เกินเพดาน');
-  assert.strictEqual(w.petLv(b, 'dog'), 2, 'ถึงระดับ 2'); // 360 ≥ 300
-  w.petSt(b, 'dog').bd = '1999-1-1'; w.petSt(b, 'dog').pat = 0; w.petCare(b, 'pat'); assert.ok(w.petSt(b, 'dog').b > L.dayCap, 'ขึ้นวันใหม่ได้เพิ่มอีก');
+  a.activeAt = Date.now(); assert.strictEqual(w.petLv(a, 'dog'), 1); run(50, () => { a.activeAt = Date.now(); w.petTick15(a); }); assert.ok(!(w.petSt(a, 'dog').b > 0), 'เดินเล่นไม่ได้ bond');
+  assert.ok(!('out' in L) && !('dayCap' in L), 'ไม่มี out/dayCap แล้ว');
+  const b = mk('CapB'); w.setPet(b, 'dog', 'follow'); let tot = 0;
+  for (let i = 0; i < 100; i++) { const sb = w.petSt(b, 'dog'); sb.h = 10; sb.pat = 0; b.rec.inv.petfood = 5; w.petCare(b, 'feed'); w.petCare(b, 'pat'); }
+  assert.strictEqual(w.petSt(b, 'dog').b, 100 * (L.feed + L.pat), 'ให้อาหาร+ลูบหัวสะสมได้ไม่มีเพดาน');
   // ลูบหัว: คูลดาวน์ / ป่วย / ไกล
   const c = mk('PatC'); w.setPet(c, 'dog', 'follow'); w.petCare(c, 'pat'); const b1 = w.petSt(c, 'dog').b; assert.strictEqual(b1, L.pat); w.petCare(c, 'pat'); assert.strictEqual(w.petSt(c, 'dog').b, b1, 'คูลดาวน์');
   w.petSt(c, 'dog').pat = Date.now() - L.patCdMs - 1; w.petCare(c, 'pat'); assert.strictEqual(w.petSt(c, 'dog').b, b1 + L.pat, 'พ้นคูลดาวน์ได้ใหม่');
@@ -94,7 +90,7 @@ w.petSt(p, 'bird').sick = false;
     assert.ok(m1 && m1.plv === 2 && m1.pet === 'dog', 'เลื่อนระดับ: คนอื่นได้ pet plv=2');
     wsO.msgs.length = 0; w.petBond(h, 'dog', 5, 'pat'); assert.ok(!wsO.msgs.some(m => m.t === 'pet' && m.id === h.id), 'ไม่เลื่อน = ไม่ push'); }
   // ของขวัญรายวัน: lv5 ไม่เกิน perDay
-  const g = mk('GiftG'); w.setPet(g, 'dog', 'follow'); w.petSt(g, 'dog').b = 4000; w.petSt(g, 'dog').bd = w.dayStr(0); w.petSt(g, 'dog').bn = L.dayCap;
+  const g = mk('GiftG'); w.setPet(g, 'dog', 'follow'); w.petSt(g, 'dog').b = 4000;
   const sg = L.gift.chance; L.gift.chance = 1; g.activeAt = Date.now(); const f0 = g.rec.inv.petfood + (g.rec.inv.bait || 0); run(30, () => { w.petSt(g, 'dog').h = 100; w.petTick15(g); }); L.gift.chance = sg;
   assert.strictEqual(g.rec.inv.petfood + (g.rec.inv.bait || 0) - f0, L.gift.perDay[4], 'ของขวัญ/วันตามระดับ');
   console.log('ผ่าน: bond สัตว์เลี้ยง');

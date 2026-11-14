@@ -1686,11 +1686,9 @@ let petNames = {}, petSt = {}; // สถานะสัตว์เลี้ย�
 const petLvOf = st => Shared.petLevel(st && st.b); // ระดับสัตว์ 1-5 จากความผูกพัน (คำนวณเหมือนเซิร์ฟเวอร์)
 function petBondHtml(st) { // ระดับ + แถบความผูกพันไปเป้าหมายถัดไป
   const N = Shared.PETLV.need, lv = petLvOf(st), b = Math.max(0, (st && st.b) || 0);
-  const dd = new Date(), td = `${dd.getFullYear()}-${dd.getMonth() + 1}-${dd.getDate()}`, bn = st && st.bd === td ? Math.floor(st.bn || 0) : 0, cap = Shared.PETLV.dayCap; // โควตาความผูกพันรายวัน (วันเดียวกับเซิร์ฟเวอร์)
-  const dayTxt = `<br><small style="opacity:.8">วันนี้ได้ ${bn}/${cap}${bn >= cap ? ' • เต็มแล้ว พรุ่งนี้สะสมต่อได้' : ''}</small>`;
   if (lv >= N.length) return `<br><small>💞 ระดับ ${lv} (สูงสุด)</small>`;
   const lo = N[lv - 1], span = N[lv] - lo, got = Math.min(span, Math.max(0, b - lo)), pc = Math.round(got / span * 100);
-  return `<br><small>💞 ระดับ ${lv} • ผูกพัน ${Math.floor(got)}/${span} (ถึงระดับ ${lv + 1})</small><div class="hbar" style="width:120px;height:7px"><i style="width:${pc}%;background:#e67eb0"></i></div>` + dayTxt;
+  return `<br><small>💞 ระดับ ${lv} • ผูกพัน ${Math.floor(got)}/${span} (ถึงระดับ ${lv + 1})</small><div class="hbar" style="width:120px;height:7px"><i style="width:${pc}%;background:#e67eb0"></i></div>`;
 }
 function petPatLeft(st) { return Math.max(0, ((st && st.pat) || 0) + Shared.PETLV.patCdMs - Date.now()); } // ms ที่ต้องรอก่อนลูบหัวได้อีก
 function petStatHtml(c, st, out) { // บรรทัดค่าสถานะ + สถานะผลตอนนี้ (พาออก/หิว/ป่วย)

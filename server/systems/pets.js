@@ -7,13 +7,10 @@ const { send } = require('../util.js');
 module.exports = {
   petSt(p, id) { const o = p.rec.pst || (p.rec.pst = {}), st = o[id] || (o[id] = { h: 100, sick: false }); for (const k of ['b', 'bn', 'gn']) if (k in st && !(Number.isFinite(st[k]) && st[k] >= 0)) st[k] = 0; return st; }, // สถานะสัตว์เลี้ยงแต่ละตัว: h = ความอิ่ม 0-100, sick = ป่วย (เฉพาะตัวที่พาออกมาถึงจะหิว/ป่วย)
   petLv(p, id) { const o = p.rec.pst && p.rec.pst[id]; return S.petLevel(o && o.b); }, // ระดับสัตว์ (คำนวณจาก bond ไม่เก็บ) เซฟเก่าไม่มี b = ระดับ 1
-  petBond(p, id, n, why) { // เพิ่ม bond ไม่เกิน dayCap ต่อตัวต่อวัน คืนจำนวนที่ได้จริง • why: 'tick'|'feed'|'pat'
+  petBond(p, id, n, why) { // เพิ่ม bond (ไม่มีเพดานรายวัน) • ได้เฉพาะตอนผู้เล่นดูแล: 'feed'|'pat' คืนจำนวนที่ได้จริง
     if (!(n > 0) || !Number.isFinite(n)) return 0;
-    const st = this.petSt(p, id), L = S.PETLV, today = this.dayStr(0);
-    if (st.bd !== today) { st.bd = today; st.bn = 0; st.gn = 0; }
-    const got = Math.min(n, L.dayCap - (st.bn || 0)); if (!(got > 0)) return 0;
-    const before = S.petLevel(st.b); st.bn = (st.bn || 0) + got; st.b = (st.b || 0) + got; this.dirty = true;
-    if (st.bn >= L.dayCap) this.toast(p, `💞 วันนี้ความผูกพันของ${S.COMPANIONS[id].emoji} ${this.petName(p, id) || S.COMPANIONS[id].name}เต็มโควตาแล้ว (${L.dayCap}) พรุ่งนี้สะสมต่อได้`); // แจ้งครั้งเดียวตอนชนเพดาน กันผู้เล่นคิดว่าค้าง
+    const st = this.petSt(p, id), got = n;
+    const before = S.petLevel(st.b); st.b = (st.b || 0) + got; this.dirty = true;
     const lv = S.petLevel(st.b);
     if (lv > before) {
       const C = S.COMPANIONS[id], nm = this.petName(p, id) || C.name;
@@ -21,7 +18,8 @@ module.exports = {
     }
     return got;
   },
-  petGift(p, id, st) { // ของขวัญรายวัน: ตามระดับ ไม่เกิน perDay ต่อวัน (เรียกหลัง petBond ที่รีเซ็ตวันแล้ว)
+  petGift(p, id, st) { // ของขวัญรายวัน: ตามระดับ ไม่เกิน perDay ต่อวัน 
+    const today = this.dayStr(0); if (st.bd !== today) { st.bd = today; st.gn = 0; } // รีเซ็ตโควตาของขวัญรายวัน
     const G = S.PETLV.gift, lv = S.petLevel(st.b), cap = G.perDay[lv - 1] || 0;
     if (!(cap > (st.gn || 0)) || Math.random() >= G.chance) return;
     let r = Math.random() * G.table.reduce((a, [, w]) => a + w, 0), item = G.table[0][0];
@@ -69,7 +67,7 @@ module.exports = {
       if (now - (st.pat || 0) < L.patCdMs) return this.toast(p, `${C.emoji} ${C.name}เพิ่งโดนลูบไป รอสักพักนะ`);
       if (p.pm === 'play' && Math.hypot(p.x - (p.pax || 0), p.y - (p.pay || 0)) > L.patRange) return this.toast(p, `${C.emoji} ${C.name}อยู่ไกลไป เดินเข้าไปใกล้ๆ ก่อน`);
       st.pat = now; const got = this.petBond(p, id, L.pat, 'pat');
-      this.toast(p, got > 0 ? `🤚 ลูบหัว${C.emoji} ${C.name} ดีใจใหญ่เลย (ความผูกพัน +${Math.round(got)})` : `🤚 ลูบหัว${C.emoji} ${C.name} วันนี้สนิทเต็มที่แล้ว`); this.sfx(p, 'eat');
+      this.toast(p, `🤚 ลูบหัว${C.emoji} ${C.name} ดีใจใหญ่เลย (ความผูกพัน +${Math.round(got)})`); this.sfx(p, 'eat');
     } else return;
     this.dirty = true; this.petPush(p);
   },
@@ -88,8 +86,7 @@ module.exports = {
       }
     } else {
       st.sickMs = 0;
-      if (Date.now() - (p.activeAt || 0) <= S.PETLV.activeMs) { // bond เฉพาะตอนเจ้าของมีกิจกรรม และสัตว์ไม่ป่วย (× อารมณ์)
-        const m = S.petMood(st.h, false); if (m > 0) this.petBond(p, id, S.PETLV.out * m, 'tick');
+      if (Date.now() - (p.activeAt || 0) <= S.PETLV.activeMs) { // เดินออกไปไม่ได้ bond (bond มาจากให้อาหาร/ลูบหัวเท่านั้น) • ของขวัญรายวันยังสุ่มตอนเจ้าของมีกิจกรรม
         this.petGift(p, id, st);
       }
     }
