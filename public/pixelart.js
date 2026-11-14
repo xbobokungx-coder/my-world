@@ -804,6 +804,53 @@ const PixelTrees = (() => {
   }
 
   // ประภาคาร (กลางสระ): เกาะทราย + ฐานหิน + หอลายแดงขาวเรียวขึ้น + ระเบียงราว + ห้องตะเกียงกระจก + โดมแดง • lampY = แถวกลางห้องตะเกียง (ใช้จัดแนวลำแสง) • cx = แกนกลาง
+  // หอคอย 100 ชั้น (มุมบนขวาของแมพ): หินม่วงอมน้ำเงินซ้อนเป็นชั้นเรียวขึ้น ยอดแหลม ผลึกเรืองแสง ประตูโค้งมีรูนม่วง ป้ายไม้ห้อยโซ่ "เร็วๆ นี้" (ตัวหนังสือวาดทับตอนรัน) • หน้าต่างเรืองแสงให้เกมกะพริบทับตาม wins • 64x112 พิกเซลศิลป์ ฐาน 3 ช่อง (48 px) อยู่แถวล่าง
+  let TWR = null;
+  function tower() {
+    if (TWR) return TWR;
+    const w = 64, h = 112, cx = 32, ST = ramp('#5d5a80', .26, .16), DK = ramp('#2c2a45', .3, .2), MS = ramp('#4f7a5a', .24, .16), GL = '#7be0d4', VI = '#c58bff', VI2 = '#8a52d8', NIGHT = '#0e0a1e';
+    const wins = [], sign = { x: 19, y: 84, w: 26, h: 12 }, rune = { x: cx, y: 106 };
+    const s = mk(w, h, (x) => {
+      ell(x, cx, 109, 30, 3, 'rgba(20,16,40,.4)'); // เงาพื้น
+      const tier = (y0, y1, hwT, hwB) => { for (let y = y0; y < y1; y++) { const t = (y - y0) / (y1 - y0), hw = Math.round(hwT + (hwB - hwT) * t), off = (Math.floor(y / 4) % 2) * 3;
+        r(x, ST[2], cx - hw, y, hw * 2 + 1, 1);
+        if (y % 4 === 3) r(x, ST[1], cx - hw, y, hw * 2 + 1, 1); else for (let xx = cx - hw + off; xx <= cx + hw; xx += 6) r(x, ST[1], xx, y, 1, 1);
+        if (hash(y, 3, 77) > .86) r(x, ST[3], cx - hw + 3 + Math.floor(hash(y, 5, 78) * hw), y, 2, 1); // หินสว่างสุ่ม
+        r(x, ST[3], cx - hw, y, 2, 1); r(x, ST[4], cx - hw, y, 1, 1); r(x, ST[1], cx + hw - 3, y, 2, 1); r(x, DK[1], cx + hw - 1, y, 2, 1); } };
+      const ledge = (y, hw) => { r(x, DK[1], cx - hw, y + 1, hw * 2 + 1, 2); r(x, ST[3], cx - hw, y, hw * 2 + 1, 1); r(x, ST[4], cx - hw, y, 6, 1); r(x, DK[0], cx - hw + 1, y + 3, hw * 2 - 1, 1); };
+      const win = (wx, wy) => { r(x, NIGHT, wx - 1, wy - 1, 5, 8); r(x, NIGHT, wx, wy - 2, 3, 1); r(x, GL, wx, wy, 3, 6); r(x, '#d6fff6', wx, wy, 1, 2); r(x, DK[3], wx - 2, wy + 7, 7, 1); wins.push([wx, wy, 3, 6]); };
+      // ชั้นล่าง (ฐานใหญ่) + ค้ำยันสองข้าง
+      tier(78, 109, 24, 26); r(x, ST[2], 3, 92, 4, 17); r(x, ST[3], 3, 92, 1, 17); r(x, ST[1], 6, 92, 1, 17); r(x, ST[2], cx + 26, 92, 4, 17); r(x, ST[1], cx + 29, 92, 1, 17); r(x, ST[3], cx + 26, 92, 1, 17);
+      r(x, DK[2], 1, 108, 62, 2); r(x, ST[3], 1, 108, 62, 1);
+      ledge(76, 27);
+      win(cx - 17, 82); win(cx + 15, 82);
+      // ประตูโค้ง + รูนม่วง + บันได
+      ell(x, cx, 102, 9, 7, ST[3]); r(x, ST[3], cx - 9, 102, 19, 7); ell(x, cx, 102, 7, 5, NIGHT); r(x, NIGHT, cx - 7, 102, 15, 7); r(x, VI2, cx - 6, 103, 1, 6); r(x, VI2, cx + 6, 103, 1, 6);
+      for (let a = 0; a < 16; a++) { const an = a / 16 * Math.PI * 2; r(x, a % 4 === 0 ? '#f0dcff' : VI, Math.round(cx + Math.cos(an) * 3.6), Math.round(rune.y - 1 + Math.sin(an) * 3.6), 1, 1); } r(x, VI, cx, rune.y - 1, 1, 1); r(x, '#f0dcff', cx, rune.y - 5, 1, 1);
+      r(x, ST[2], cx - 11, 109, 23, 1); r(x, ST[3], cx - 12, 108, 25, 1);
+      // ป้ายไม้ห้อยโซ่ (ตัวหนังสือวาดทับตอนรัน)
+      r(x, '#8a8fa0', sign.x + 3, 79, 1, 5); r(x, '#8a8fa0', sign.x + sign.w - 4, 79, 1, 5); px2(x, '#c9d3dc', sign.x + 3, 80); px2(x, '#c9d3dc', sign.x + sign.w - 4, 80);
+      r(x, '#1d1318', sign.x, sign.y, sign.w, sign.h); r(x, '#4a3228', sign.x + 1, sign.y + 1, sign.w - 2, sign.h - 2); r(x, '#6a4a3a', sign.x + 1, sign.y + 1, sign.w - 2, 1); r(x, '#150d22', sign.x + 3, sign.y + 3, sign.w - 6, sign.h - 6);
+      r(x, VI2, sign.x + 3, sign.y + sign.h - 4, sign.w - 6, 1); for (const [ax, ay] of [[0, 0], [sign.w - 2, 0], [0, sign.h - 2], [sign.w - 2, sign.h - 2]]) r(x, '#7a7f90', sign.x + ax, sign.y + ay, 2, 2);
+      // ชั้นสอง
+      tier(50, 76, 17, 19); ledge(48, 21); win(cx - 9, 58); win(cx + 7, 58); win(cx - 1, 66);
+      // ชั้นสาม
+      tier(26, 48, 12, 14); ledge(24, 16); win(cx - 5, 32); win(cx + 3, 32); win(cx - 1, 40);
+      // ชั้นสี่ + หลังคาแหลม
+      tier(12, 24, 8, 9); ledge(10, 11); win(cx - 1, 15);
+      for (let y = 0; y < 10; y++) { const hw = Math.round(y * 0.95 + .5); r(x, DK[2], cx - hw, y, hw * 2 + 1, 1); r(x, ST[2], cx - hw, y, 2, 1); r(x, ST[3], cx - hw, y, 1, 1); r(x, DK[0], cx + hw - 2, y, 2, 1); }
+      // ผลึกเรืองแสงบนยอด
+      r(x, VI, cx, -1, 1, 1); r(x, VI, cx - 1, 0, 3, 1); r(x, '#f0dcff', cx, 0, 1, 1); r(x, VI2, cx - 1, 1, 3, 1); r(x, VI, cx, 2, 1, 1);
+      // รอยร้าวม่วงเรืองแสงบนตัวหอ + ตะไคร่เกาะฐาน + เศษหินลอย
+      for (const [cx0, cy0, n] of [[cx + 5, 52, 18], [cx - 6, 28, 12]]) { let px0 = cx0; for (let i = 0; i < n; i++) { px0 += hash(i, cy0, 61) > .5 ? 1 : -1 > 0 ? 0 : (i % 3 === 0 ? -1 : 0); r(x, i % 5 === 0 ? '#f0dcff' : VI2, px0, cy0 + i, 1, 1); } }
+      for (let i = 0; i < 26; i++) { const mx = 2 + Math.floor(hash(i, 1, 55) * 60), my = 99 + Math.floor(hash(i, 2, 56) * 9); if (hash(i, 9, 57) > .35) r(x, i % 3 ? MS[2] : MS[3], mx, my, 1 + (i % 2), 1); }
+      for (const [fx, fy] of [[5, 20], [56, 30], [9, 44], [54, 56]]) { r(x, ST[3], fx, fy, 3, 2); r(x, ST[1], fx, fy + 2, 3, 1); r(x, VI, fx + 1, fy - 1, 1, 1); }
+      ell(x, cx, 108, 31, 2, 'rgba(176,164,226,.26)'); ell(x, cx - 12, 106, 12, 2, 'rgba(200,190,240,.22)'); // หมอกที่ฐาน
+    }, { soft: ['#1a1530', '#3a3560'] });
+    function px2(x, c, X, Y) { r(x, c, X, Y, 1, 1); }
+    TWR = { spr: s, w: s.width, h: s.height, cx: cx + 1, wins, sign, rune }; return TWR;
+  }
+
   let LH = null;
   function lighthouse() {
     if (LH) return LH;
@@ -898,5 +945,5 @@ const PixelTrees = (() => {
     rect(cx+11,128,3,4,'#414b45');rect(cx+12,129,1,2,'#ffe3a0');rect(cx+11,132,3,1,'#a77a3d');
     c.sign={x:cx+.5,y:121};c.lamp={x:cx+12.5,y:130};return c;
   }
-  return { mk, r, ell, disc, shade, ramp, hue, fish, lily, duckPond, lighthouse,  hash, rng, addOutline, caveHill, cv, U, OUT, ground, GK: 2, mapDecor, fences, tree: treeFor, building, closedBoards, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
+  return { mk, r, ell, disc, shade, ramp, hue, fish, lily, duckPond, lighthouse, tower,  hash, rng, addOutline, caveHill, cv, U, OUT, ground, GK: 2, mapDecor, fences, tree: treeFor, building, closedBoards, counter, bigHouse, soil: wet => SOIL[wet ? 1 : 0], ROOF_UP, OVER };
 })();
