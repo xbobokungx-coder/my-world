@@ -72,6 +72,54 @@ const PixelUI = (() => {
     if (o.glow) for (const [gx, gy] of o.glow) r(x, o.glowC, gx, gy, 1, 1);
   }
   const WH = ['#5e3a20', '#9c6636', '#bd8447'];
+
+  // จอบ 13×13 10 ระดับ (ทรงเดียวกับ ⛏): HOE_PAL = สีหัว [หลัก, ไฮไลต์, เงา] • HOE_H = สีด้าม [ขอบ, ด้าม, ไฮไลต์] (ใช้ทั้งไอคอนและจอบในมือ game.js)
+  const HOE_PAL = { '⛏': ['#8d99a6', '#c9d3dc', '#6c7782'], '🔬': ['#d8793a', '#f6b07a', '#8c4a20'], '🔭': ['#a8b4c4', '#e6ecf2', '#5c6878'], '🔮': ['#d4dde6', '#ffffff', '#8896a8'], '🔯': ['#98a2b2', '#d8e0ea', '#566070'], '🔰': ['#6f7f9c', '#b8c8e8', '#3e4a66'], '🔹': ['#f2c14e', '#fff0a8', '#b98a1c'], '🔺': ['#2fcf78', '#b0ffd0', '#13803f'], '🔻': ['#8fe8ff', '#ffffff', '#3fa8c8'], '🔽': ['#8f8cff', '#e0dcff', '#4a46c0'] };
+  const HOE_H = { '⛏': ['#5e3a20', '#9c6636', '#bd8447'], '🔬': ['#5e3a20', '#9c6636', '#bd8447'], '🔭': ['#2a1a10', '#4a3020', '#6e4a30'], '🔮': ['#3a3f48', '#7a8290', '#b8c0cc'], '🔯': ['#3a3f48', '#7a8290', '#b8c0cc'], '🔰': ['#161a20', '#2e3440', '#4a5264'], '🔹': ['#4a1812', '#8f2f24', '#c8584a'], '🔺': ['#0e3a20', '#1f6a3c', '#4ab07a'], '🔻': ['#2a4a6a', '#6a8cb0', '#b8d4f0'], '🔽': ['#2e2e70', '#5a5ad0', '#b8c4ff'] };
+  // o: big=หัวหนาอีกแถว band=แถบรัดด้าม gem=[กลาง,ไฮไลต์] stars/glow
+  function hoe(x, e, o) {
+    const [b, hi, sh] = HOE_PAL[e], [hd, hm, hh] = HOE_H[e];
+    r(x, hm, 6, 4, 2, 9); r(x, hh, 6, 4, 1, 9); r(x, hd, 6, 11, 2, 1);
+    if (o.big) { r(x, b, 1, 1, 11, 1); r(x, hi, 2, 1, 8, 1); }
+    r(x, b, 1, 2, 11, 2); r(x, hi, 2, 2, 8, 1); r(x, sh, 0, 3, 2, 3); r(x, sh, 11, 3, 2, 3); r(x, sh, 2, 4, 9, 1);
+    if (o.band) { r(x, o.band, 6, 6, 2, 1); r(x, o.band, 5, 4, 1, 1); r(x, o.band, 8, 4, 1, 1); }
+    if (o.gem) { r(x, o.gem[0], 6, 2, 2, 2); r(x, o.gem[1], 6, 2, 1, 1); }
+    if (o.stars) for (const [sx, sy] of o.stars) r(x, '#ffffff', sx, sy, 1, 1);
+    if (o.glow) for (const [gx, gy] of o.glow) r(x, o.glowC, gx, gy, 1, 1);
+  }
+  // ตะกร้า/ถัง 13×13 10 ระดับ: pal = [ตัว, ไฮไลต์, เงา, เส้น] o: weave=สาน staves=ซี่ไม้ band=แถบรัด gem stars glow
+  function pail(x, pal, o) {
+    const [b, hi, sh, dk] = pal;
+    r(x, o.bail || dk, 3, 0, 7, 1); r(x, o.bail || dk, 2, 1, 1, 3); r(x, o.bail || dk, 10, 1, 1, 3); if (o.weave) { r(x, hi, 4, 0, 1, 1); r(x, hi, 8, 0, 1, 1); }
+    for (let y = 4; y <= 12; y++) {
+      const x0 = y <= 8 ? 2 : 3, w = y <= 8 ? 9 : 7;
+      r(x, dk, x0, y, w, 1);
+      if (y === 12) continue;
+      for (let i = x0 + 1; i < x0 + w - 1; i++) {
+        let c = y === 5 ? hi : i === x0 + 1 ? hi : i === x0 + w - 2 ? sh : b;
+        if (y > 5 && c === b) { if (o.weave && (i + y) % 2) c = sh; else if (o.staves && (i - x0) % 2 === 0) c = sh; }
+        r(x, c, i, y, 1, 1);
+      }
+    }
+    if (o.band) for (const y of [7, 10]) { const x0 = y <= 8 ? 2 : 3, w = y <= 8 ? 9 : 7; r(x, o.band, x0, y, w, 1); r(x, hi, x0 + 1, y, 1, 1); }
+    if (o.gem) { r(x, o.gem[0], 5, 8, 3, 2); r(x, o.gem[1], 5, 8, 1, 1); r(x, o.gem[1], 7, 9, 1, 1); }
+    if (o.stars) for (const [sx, sy] of o.stars) r(x, '#ffffff', sx, sy, 1, 1);
+    if (o.glow) for (const [gx, gy] of o.glow) r(x, o.glowC, gx, gy, 1, 1);
+  }
+  // กระทะ 13×13 10 ระดับ (ระดับ 1 = หม้อดินเผา): pal = [ตัว, ไฮไลต์, เงา, เส้น] o: h=[ด้าม] inner=ก้นกระทะ rivet gem stars glow
+  function pan(x, pal, o) {
+    const [b, hi, sh, dk] = pal;
+    disc(x, 5, 6, 5, dk); disc(x, 5, 6, 4, b); disc(x, 5, 6, 3, o.inner || sh); r(x, hi, 2, 3, 2, 1); r(x, hi, 1, 4, 1, 2); r(x, hi, 3, 2, 2, 1);
+    r(x, dk, 10, 6, 3, 3); r(x, o.h || '#9c6636', 10, 7, 3, 1); r(x, o.hh || '#bd8447', 10, 7, 1, 1);
+    if (o.rivet) { r(x, o.rivet, 11, 7, 1, 1); r(x, o.rivet, 8, 4, 1, 1); }
+    if (o.gem) { r(x, o.gem[0], 4, 6, 2, 2); r(x, o.gem[1], 4, 6, 1, 1); }
+    if (o.stars) for (const [sx, sy] of o.stars) r(x, '#ffffff', sx, sy, 1, 1);
+    if (o.glow) for (const [gx, gy] of o.glow) r(x, o.glowC, gx, gy, 1, 1);
+  }
+  function pot(x) { // หม้อดินเผา (กระทะระดับ 1): ตัวป่อง 2 หู ปากหม้อ
+    ell(x, 6, 8, 5, 4, '#6e3b17'); ell(x, 6, 8, 4, 3, '#c0703a'); r(x, '#e0976a', 3, 6, 2, 3); r(x, '#8c4a20', 8, 9, 2, 2);
+    r(x, '#6e3b17', 2, 3, 9, 2); r(x, '#a85c2c', 3, 3, 7, 1); r(x, '#3a2418', 3, 4, 7, 1); r(x, '#6e3b17', 0, 6, 2, 2); r(x, '#6e3b17', 11, 6, 2, 2); r(x, '#c0703a', 0, 6, 1, 1);
+  }
   const HAND = {
     '⛏'(x) { r(x, '#8d99a6', 1, 2, 11, 2); r(x, '#c9d3dc', 2, 2, 8, 1); r(x, '#6c7782', 0, 3, 2, 3); r(x, '#6c7782', 11, 3, 2, 3); r(x, '#6c7782', 2, 4, 9, 1); r(x, '#9c6636', 6, 4, 2, 9); r(x, '#bd8447', 6, 4, 1, 9); r(x, '#5e3a20', 6, 11, 2, 1); },
     '💧'(x) { const ws = [1, 1, 3, 3, 5, 5, 7, 7, 7, 7, 5, 3]; ws.forEach((w, i) => r(x, '#3d86c2', 6 - (w >> 1), i, w, 1)); ws.forEach((w, i) => { if (w > 2) r(x, '#2a5f99', 6 + (w >> 1) - 1, i, 1, 1); }); r(x, '#bfe4f8', 4, 5, 1, 3); r(x, '#8cc8ec', 5, 4, 1, 1); r(x, '#2a5f99', 4, 11, 5, 1); },
@@ -124,6 +172,46 @@ const PixelUI = (() => {
     },
     '🪙'(x) { disc(x, 6, 6, 6, '#b8801f'); disc(x, 6, 6, 5, '#f2c14e'); disc(x, 5, 5, 3, '#ffe08a'); r(x, '#c99428', 5, 3, 2, 7); r(x, '#c99428', 4, 4, 4, 1); r(x, '#c99428', 4, 8, 4, 1); r(x, '#fff6c8', 3, 3, 1, 1); },
   };
+
+  const RAINBOW = ['#ff5a5a', '#ffa040', '#ffe060', '#60d870', '#50b8ff', '#9a70ff', '#ff80d0'];
+  Object.assign(HAND, {
+    '🔔'(x) { can(x, ['#3fb58a', '#a8f0cc', '#1f7a58', '#0e3a2a'], 2); },   // บัว 4 หยก
+    '🔕'(x) { can(x, ['#c8e4ff', '#ffffff', '#88aad4', '#3a5a8a'], 2); },   // บัว 5 คริสตัล
+    '🔖'(x) { can(x, ['#3a6ad8', '#8fb4ff', '#1f3f9a', '#0e1f5a'], 2); },   // บัว 6 ไพลิน
+    '🔘'(x) { can(x, ['#d8304a', '#ff909c', '#8f1530', '#4a0818'], 2); },   // บัว 7 ทับทิม
+    '🔙'(x) { can(x, ['#2fcf78', '#b0ffd0', '#13803f', '#0a3a20'], 2); },   // บัว 8 มรกต
+    '🔚'(x) { can(x, ['#8fe8ff', '#ffffff', '#3fa8c8', '#1a4a6a'], 2); },   // บัว 9 เพชร
+    '🔛'(x) { can(x, ['#ffffff', '#ffffff', '#c8b0e8', '#4a2a7a'], 2); RAINBOW.forEach((c, i) => r(x, c, 3, 5 + i, 7, 1)); r(x, '#ffffff', 4, 5, 1, 3); r(x, '#ffffff', 5, 6, 1, 1); }, // บัว 10 สายรุ้ง
+    '🔬'(x) { hoe(x, '🔬', { band: '#4a8f6a' }); },                                                  // จอบ 2 ทองแดง
+    '🔭'(x) { hoe(x, '🔭', { band: '#c8463c' }); },                                                  // 3 เหล็กกล้า
+    '🔮'(x) { hoe(x, '🔮', { big: true, band: '#3f4955' }); },                                       // 4 สแตนเลส
+    '🔯'(x) { hoe(x, '🔯', { big: true, band: '#5a6270', stars: [[3, 2], [8, 1]] }); },              // 5 เงิน
+    '🔰'(x) { hoe(x, '🔰', { big: true, band: '#5ec8f0', stars: [[3, 1]] }); },                      // 6 ไทเทเนียม
+    '🔹'(x) { hoe(x, '🔹', { big: true, band: '#f2c14e', stars: [[3, 2], [10, 1]] }); },             // 7 ทองคำ
+    '🔺'(x) { hoe(x, '🔺', { big: true, band: '#f2c14e', gem: ['#e8fff2', '#7affb8'], stars: [[11, 5]] }); }, // 8 มรกต
+    '🔻'(x) { hoe(x, '🔻', { big: true, band: '#e4f4ff', gem: ['#ffffff', '#d4f8ff'], stars: [[3, 1], [11, 5]] }); }, // 9 เพชร
+    '🔽'(x) { hoe(x, '🔽', { big: true, band: '#f2c14e', gem: ['#ffffff', '#ff9aec'], stars: [[3, 1], [11, 5]], glow: [[0, 1], [12, 1], [4, 8], [9, 9]], glowC: '#d6ccff' }); }, // 10 มิทริล
+    '🧺'(x) { pail(x, ['#d8c06a', '#f0e0a0', '#a88a3a', '#5a4420'], { weave: true }); },             // ถัง 1 ตะกร้าสานใบตาล
+    '🧳'(x) { pail(x, ['#b8803c', '#dca868', '#7a4d22', '#4a2c14'], { weave: true, band: '#5e3a20' }); }, // 2 ตะกร้าหวาย
+    '🧴'(x) { pail(x, ['#9c6636', '#c48a50', '#6b4423', '#3a2010'], { staves: true, band: '#7a8898', bail: '#7a8898' }); }, // 3 ถังไม้สัก
+    '🧷'(x) { pail(x, ['#a8b4c4', '#dce4ec', '#6c7a8c', '#3a4452'], { band: '#8896a8' }); },        // 4 ถังสังกะสี
+    '🧻'(x) { pail(x, ['#d8793a', '#f6b07a', '#a0562a', '#5a2a10'], { band: '#4a8f6a' }); },        // 5 ถังทองแดง
+    '🧼'(x) { pail(x, ['#c4ccd8', '#ffffff', '#7a8696', '#3e4656'], { band: '#98a2b2', stars: [[4, 6]] }); }, // 6 ถังเงิน
+    '🧽'(x) { pail(x, ['#f2c14e', '#fff0a8', '#c99428', '#7a540e'], { band: '#c99428', stars: [[4, 6], [8, 11]] }); }, // 7 ถังทองคำ
+    '🧯'(x) { pail(x, ['#2fcf78', '#b0ffd0', '#13803f', '#0a3a20'], { band: '#f2c14e', gem: ['#e8fff2', '#7affb8'] }); }, // 8 ถังมรกต
+    '🧪'(x) { pail(x, ['#8fe8ff', '#ffffff', '#3fa8c8', '#1a4a6a'], { band: '#e4f4ff', gem: ['#ffffff', '#d4f8ff'], stars: [[4, 6], [9, 11]] }); }, // 9 ถังเพชร
+    '🧫'(x) { pail(x, ['#8f8cff', '#e0dcff', '#4a46c0', '#1e1a5a'], { band: '#f2c14e', gem: ['#ffffff', '#ff9aec'], stars: [[4, 6]], glow: [[1, 0], [11, 0], [2, 12], [10, 12]], glowC: '#d6ccff' }); }, // 10 ถังมิทริล
+    '🥄'(x) { pot(x); },                                                                              // กระทะ 1 หม้อดินเผา
+    '🥫'(x) { pan(x, ['#4a4f58', '#8a909a', '#2a2d33', '#1a1a1e'], {}); },                           // 2 เหล็กดำ
+    '🥌'(x) { pan(x, ['#5f6670', '#a8b0ba', '#383d46', '#1a1a1e'], { rivet: '#c4ccd8' }); },         // 3 เหล็กหล่อ
+    '🥎'(x) { pan(x, ['#d4dde6', '#ffffff', '#8896a8', '#3f4955'], { inner: '#b4c0cc', h: '#8896a8', hh: '#d4dde6', rivet: '#3f4955' }); }, // 4 สแตนเลส
+    '🥏'(x) { pan(x, ['#d8793a', '#f6b07a', '#8c4a20', '#4a2410'], { inner: '#b0622a', h: '#7a3f1c', hh: '#c8763a', rivet: '#4a8f6a' }); }, // 5 ทองแดง
+    '🥅'(x) { pan(x, ['#6f7f9c', '#b8c8e8', '#3e4a66', '#161a20'], { h: '#2e3440', hh: '#4a5264', rivet: '#5ec8f0', stars: [[2, 5]] }); }, // 6 ไทเทเนียม
+    '🥋'(x) { pan(x, ['#f2c14e', '#fff0a8', '#b98a1c', '#7a540e'], { inner: '#d9a62e', h: '#8f2f24', hh: '#c8584a', rivet: '#fff0a8', stars: [[2, 5], [7, 3]] }); }, // 7 ทองคำ
+    '🥊'(x) { pan(x, ['#2fcf78', '#b0ffd0', '#13803f', '#0a3a20'], { h: '#1f6a3c', hh: '#4ab07a', gem: ['#e8fff2', '#7affb8'], rivet: '#f2c14e' }); }, // 8 มรกต
+    '🥃'(x) { pan(x, ['#8fe8ff', '#ffffff', '#3fa8c8', '#1a4a6a'], { inner: '#6ac8e8', h: '#6a8cb0', hh: '#b8d4f0', gem: ['#ffffff', '#d4f8ff'], stars: [[2, 5], [7, 3]] }); }, // 9 เพชร
+    '🥨'(x) { pan(x, ['#c8302c', '#ff8a70', '#7a1a18', '#2a0808'], { inner: '#5a1010', h: '#f2c14e', hh: '#fff0a8', gem: ['#f2c14e', '#fff0a8'], rivet: '#f2c14e', glow: [[1, 1], [9, 2], [6, 11]], glowC: '#ffd070' }); } // 10 มังกร (แดงขอบทอง)
+  });
   const norm = e => e.replace(/️/g, '');
   const cache = new Map();
   const FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif';
@@ -461,6 +549,6 @@ const PixelUI = (() => {
   ];
   const crop = s => crops[Math.max(0, Math.min(3, s))];
 
-  return { icon: pix, url: dataUrl, world, dom, watch, animal, crop, A, PICK_PAL, AXE_PAL, ROD_PAL };
+  return { icon: pix, url: dataUrl, world, dom, watch, animal, crop, A, PICK_PAL, AXE_PAL, ROD_PAL, HOE_PAL, HOE_H, HAND };
 })();
 if (document.body) PixelUI.watch(); else addEventListener('DOMContentLoaded', () => PixelUI.watch());

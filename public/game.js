@@ -1314,7 +1314,7 @@ const GEAR_SETS = { hoe: [Shared.HOES, Shared.HOE_EMOJI, 'farm'], pail: [Shared.
 const gearTierOf = t => t === 'hoe' ? Shared.hoeTier(inv) : t === 'pail' ? Shared.pailTier(inv) : t === 'pan' ? Shared.panTier(inv) : 1;
 function toolInfo(t) { // ข้อมูลเครื่องมือในช่อง 1: e = ไอคอน, n = ชื่อเต็ม, sub = บรรทัดย่อในเมนู, cnt = ตัวเลขมุมช่อง (null = ไม่แสดง)
   if (t === 'hand') return { e: '✋', n: 'มือเปล่า (เก็บผลผลิต เปิดร้าน นั่ง)', sub: 'เก็บ/เปิดร้าน', cnt: null };
-  if (t === 'hoe') { const ht = Shared.hoeTier(inv); return { e: '⛏️', n: `${Shared.HOES[ht].name} ระดับ ${ht}/${Shared.GEAR_MAX} (ขุดดิน)`, sub: `ระดับ ${ht}/${Shared.GEAR_MAX}`, cnt: null }; } // ไอคอนคง ⛏️ เพราะท่าทาง/ที่ถือผูกกับอีโมจิ (ภาพจอบใหม่รอขั้น 2)
+  if (t === 'hoe') { const ht = Shared.hoeTier(inv); return { e: Shared.HOE_EMOJI[ht] || '⛏', n: `${Shared.HOES[ht].name} ระดับ ${ht}/${Shared.GEAR_MAX} (ขุดดิน)`, sub: `ระดับ ${ht}/${Shared.GEAR_MAX}`, cnt: null }; }
   if (t === 'water') { const c = CANS[canTier(inv)], cap = buffOn('bigcan') ? Math.round(c.cap * BUFFS.bigcan.capMul) : c.cap; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${cap} • แตะสระเพื่อตักน้ำ)`, sub: `น้ำ ${wtr}/${cap}`, cnt: wtr }; }
   if (t === 'rod') { const b = itemInfo(selBait); return { e: Shared.ROD_EMOJI[rodLevel()] || '🎣', n: RODS[rodLevel()].name + ' ระดับ ' + rodLevel() + '/' + Shared.ROD_MAX + ' • ' + b.name.split(' ')[0] + ' ×' + (inv[selBait] || 0), sub: `ระดับ ${rodLevel()}/${Shared.ROD_MAX} • เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
   if (t === 'pick') { const pk = pickLevel(); return { e: pk ? Shared.PICK_EMOJI[pk] : '⚒️', n: pk ? Shared.PICKS[pk].name : 'อุปกรณ์ขุด (ยังไม่มี ซื้อที่ร้านช่างเหมือง)', sub: pk ? Shared.PICKS[pk].name : 'ยังไม่มี', cnt: pk ? null : 0 }; }
@@ -3673,6 +3673,7 @@ const SKIN = '#f5cfa0', GOLD = '#e8c04a';
 // วาดตัวละคร (รองรับเสื้อ/กางเกง/หมวกหลายแบบ) cx = canvas context อื่น (ใช้กับตัวอย่างในตู้เสื้อผ้า)
 // ตะเกียงที่ตัวละครถือไว้ตอนเปิดไฟ: ถือข้างตัว (หันซ้าย/ขึ้น = มือซ้าย นอกนั้นมือขวา) แสงกะพริบเบาๆ
 // ---------- อุปกรณ์ในมือ: วาดเป็นพิกเซลอาร์ตขนาดพอดีมือ (มือหน้า/หลัง = ขวา x+8, ด้านข้าง = กลางลำตัว) มีท่าแกว่งตอนใช้งาน ----------
+const CAN_HELD = { 1: { b: '#9fb4c8', l: '#dbe6f0', d: '#6d839a' }, 2: { b: '#c8763a', l: '#f2a868', d: '#8c4a20' }, 3: { b: '#f0c030', l: '#fff2a0', d: '#b08a10' }, 4: { b: '#3fb58a', l: '#a8f0cc', d: '#1f7a58' }, 5: { b: '#c8e4ff', l: '#ffffff', d: '#88aad4' }, 6: { b: '#3a6ad8', l: '#8fb4ff', d: '#1f3f9a' }, 7: { b: '#d8304a', l: '#ff909c', d: '#8f1530' }, 8: { b: '#2fcf78', l: '#b0ffd0', d: '#13803f' }, 9: { b: '#8fe8ff', l: '#ffffff', d: '#3fa8c8' }, 10: { b: '#ff80d0', l: '#ffffff', d: '#8a50c8' } }; // สีบัวในมือ ระดับ 1–10 (ตรงกับไอคอนใน pixelui.js)
 const WATER_EMOJIS = new Set(Object.values(CANS).map(c => c.emoji.replace(/️/g, '')));
 function heldHand(p) { // ตำแหน่งมือที่ถืออุปกรณ์ [x, y, ทิศออกด้านนอก/ข้างหน้า ±1]
   const dir = p.dir || 0, sn = p.moving && !p.sit ? Math.sin((p.anim || 0) * 14) : 0, f = sn > .35 ? 1 : sn < -.35 ? 2 : 0;
@@ -3681,7 +3682,8 @@ function heldHand(p) { // ตำแหน่งมือที่ถืออุ
   const fx = dir === 3 ? 1 : -1; return [p.x + fx * (1 + 2 * (f === 1 ? -1 : f === 2 ? 1 : 0)), p.y + 3, fx];
 }
 const rodAngle = p => { const F = PixelAction.frame(p, performance.now()); return F ? F.a : (p.dir || 0) >= 2 ? 0.8 : 0.15; }; // มุมคันเบ็ด: ตอนเหวี่ยงตามเฟรมท่าตกปลา (pixelaction.js)
-const ROD_E = new Set(Object.values(Shared.ROD_EMOJI)), AXE_E = new Set(Object.values(Shared.AXE_EMOJI)); // อีโมจิขวาน/คันทุกระดับ (ไอคอน+ท่าถือสีตามระดับ)
+const HOE_E = new Set(Object.values(Shared.HOE_EMOJI)), HOE_E_LO = new Set([1, 2, 3].map(t => Shared.HOE_EMOJI[t])), HOE_E_HI = new Set([7, 8, 9, 10].map(t => Shared.HOE_EMOJI[t])), // จอบระดับ 1–3 หัวบาง • 7+ ประกาย
+   ROD_E = new Set(Object.values(Shared.ROD_EMOJI)), AXE_E = new Set(Object.values(Shared.AXE_EMOJI)); // อีโมจิขวาน/คันทุกระดับ (ไอคอน+ท่าถือสีตามระดับ)
 const isRodHeld = p => !!p.held && ROD_E.has(p.held.replace(/\uFE0F/g, '')) && !p.sit;
 function rodTip(p) { // ปลายคันเบ็ด (ตรงกับที่ drawHeldTool วาด: จุดปลาย 12,-19 หมุนตามมุมคัน + มือที่เลื่อนตามเฟรมท่า)
   let [hx, hy, fx] = heldHand(p); const a = rodAngle(p), F = PixelAction.frame(p, performance.now());
@@ -3701,7 +3703,7 @@ function drawHeldTool(p, now, ctx = mainCtx) {
   const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
   const WOOD = '#9c6a35', WD = '#6b4423', STEEL = '#b9c2cc', STH = '#e8eef3';
   const a0 = dir >= 2 ? 0.95 : 0.3; // มุมถือจอบ/ขวาน/อีเต้อตอนไม่ได้ใช้: ด้านข้างถือเอียงไปข้างหน้ามากกว่า (ไม่พาดหน้า) ตอนใช้ตามเฟรม PixelAction
-  const isHoe = e === '⛏', isAxe = AXE_E.has(e), isRod = ROD_E.has(e), isCan = WATER_EMOJIS.has(e), isPick = !isHoe && PixelAction.kindOf(e) === 'mine', ang = F ? F.a : a0;
+  const isHoe = HOE_E.has(e), isAxe = AXE_E.has(e), isRod = ROD_E.has(e), isCan = WATER_EMOJIS.has(e), isPick = !isHoe && PixelAction.kindOf(e) === 'mine', ang = F ? F.a : a0;
   if (isHoe || isAxe || isRod || isCan || isPick) {
     ctx.save(); ctx.translate(hx, hy); ctx.scale(fx, 1);
     if (isPick) { // อีเต้อ: ด้ามไม้ + หัวโค้งปลายแหลมสองข้าง สีตามระดับ (PixelUI.PICK_PAL) ขนาดเท่าขวาน
@@ -3709,17 +3711,22 @@ function drawHeldTool(p, now, ctx = mainCtx) {
       ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD);
       R(-8, -16, 17, 5, OUT); R(-10, -13, 3, 4, OUT); R(8, -13, 3, 4, OUT); R(-7, -15, 15, 3, pb); R(-7, -15, 15, 1, ph); R(-9, -12, 2, 2, ps); R(8, -12, 2, 2, ps); R(-2, -13, 4, 2, ps);
       if (/[💨🔌🧨💣]/u.test(e) && Math.floor(now / 280) % 2) { R(-5, -15, 1, 1, '#ffffff'); R(5, -14, 1, 1, '#ffffff'); } } // ทองคำ/มรกต/เพชร/มิทริลมีประกาย
-    else if (isHoe) { ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(-6, -14, 13, 5, OUT); R(-5, -13, 11, 3, STEEL); R(-5, -13, 11, 1, STH); R(-5, -11, 2, 2, STEEL); R(4, -11, 2, 2, STEEL); }
+    else if (isHoe) { // จอบตามระดับ: สีหัว/ด้ามจาก PixelUI.HOE_PAL/HOE_H (ระดับ 1 = เหล็กดำ) ระดับ 7+ มีประกาย
+      const [hb, hh, hs] = PixelUI.HOE_PAL[e] || [STEEL, STH, '#6c7782'], [hd, hm, hl] = PixelUI.HOE_H[e] || [OUT, WOOD, WD], big = !HOE_E_LO.has(e);
+      ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, hm); R(0, -11, 1, 12, hl);
+      R(-6, big ? -15 : -14, 13, big ? 6 : 5, OUT); R(-5, big ? -14 : -13, 11, big ? 4 : 3, hb); R(-5, big ? -14 : -13, 11, 1, hh); R(-5, -11, 2, 2, hs); R(4, -11, 2, 2, hs);
+      if (HOE_E_HI.has(e) && Math.floor(now / 280) % 2) { R(-3, big ? -14 : -13, 1, 1, '#ffffff'); R(3, -12, 1, 1, '#ffffff'); } }
     else if (isAxe) { const [ab, ah, as] = PixelUI.AXE_PAL[e] || [STEEL, STH, '#6c7782']; ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD); R(0, -14, 8, 8, OUT); R(1, -13, 6, 6, ab); R(1, -13, 6, 1, ah); R(6, -13, 2, 6, ah); R(1, -8, 5, 1, as); if (e === '🪢' && Math.floor(now / 280) % 2) R(4, -12, 1, 1, '#ffffff'); } // หัวขวานสีตามระดับ (PixelUI.AXE_PAL)
     else if (isCan) { // บัวรดน้ำตามระดับที่ซื้อ: 1 สังกะสี (เทาเงิน) • 2 ทองแดง • 3 ทองคำ (ประกาย) ใหญ่ขึ้นตามความจุ
-      const T = +Object.keys(CANS).find(k => CANS[k].emoji.replace(/\uFE0F/g, '') === e) || 1, bw = 7 + T, bh = 7 + T, x0 = -(bw >> 1), y0 = -bh - 1, sx = x0 + bw;
-      const pal = { 1: { b: '#9fb4c8', l: '#dbe6f0', d: '#6d839a' }, 2: { b: '#c8763a', l: '#f2a868', d: '#8c4a20' }, 3: { b: '#f0c030', l: '#fff2a0', d: '#b08a10' } }[T];
+      const T = +Object.keys(CANS).find(k => CANS[k].emoji.replace(/\uFE0F/g, '') === e) || 1, bw = Math.min(14, 7 + T), bh = Math.min(14, 7 + T), x0 = -(bw >> 1), y0 = -bh - 1, sx = x0 + bw;
+      let pal; const RB = ['#ff5a5a', '#ffa040', '#ffe060', '#60d870', '#50b8ff', '#9a70ff', '#ff80d0']; pal = CAN_HELD[T] || CAN_HELD[Math.min(10, Math.max(1, T | 0))] || CAN_HELD[1]; // ไม่มีสีระดับนั้น = ใช้สำรอง ไม่โยน error
+      if (T === 10) pal = Object.assign({}, pal, { b: RB[Math.floor(now / 450) % 7] });
       ctx.translate(3, 2); ctx.rotate(0.05 + 0.85 * sw);
       R(x0 - 1, y0 - 1, bw + 2, bh + 2, OUT); R(x0, y0, bw, bh, pal.b); R(x0, y0, bw, 2, pal.l); R(x0, y0 + bh - 1, bw, 1, pal.d); R(x0, y0, 1, bh, pal.l);
       if (T >= 2) R(x0, y0 + 3, bw, 1, pal.d);                                                // แถบหมุดย้ำ
       R(sx, -7, 4, 3, OUT); R(sx, -6, 3, 1, pal.b); R(sx + 2, -9, 3, 4, OUT); R(sx + 3, -8, 1, 2, pal.l); // ปากเทน้ำ
       R(x0 - 4, -8, 4, 7, OUT); R(x0 - 3, -7, 1, 5, pal.d); R(x0 - 3, -7, 3, 1, pal.d);       // หูหิ้ว
-      if (T === 3 && Math.floor(now / 280) % 2) { R(x0 + 2, y0 + 1, 1, 1, '#ffffff'); R(x0 + bw - 3, y0 + 3, 1, 1, '#ffffff'); }
+      if (T >= 3 && Math.floor(now / 280) % 2) { R(x0 + 2, y0 + 1, 1, 1, '#ffffff'); R(x0 + bw - 3, y0 + 3, 1, 1, '#ffffff'); }
       if (sw > 0.4) { R(sx + 4, -4 + Math.round(sw * 6), 1, 3, '#8fd0ff'); R(sx + 3, -1 + Math.round(sw * 6), 1, 2, '#8fd0ff'); }
     }
     else { // เบ็ด: ปลายคันงอ + สายเอ็น แกว่งตอนเหวี่ยง
@@ -3767,7 +3774,7 @@ function drawActionBurst(p, ctx) {
   const k = PixelAction.kindOf(p.held); if (!k || k === 'fish' || !p.useAt || p.sit) return;
   const S = PixelAction.SHEETS[k], t = performance.now() - p.useAt - S.hit * S.ms; if (t < 0 || t > PixelAction.BURST[k].life) return;
   const [x, y] = p.actPt && p.actAt === p.useAt ? p.actPt : PixelAction.front(p), tx = Math.floor(x / TS), ty = Math.floor(y / TS);
-  const hoe = (p.held || '').replace(/\uFE0F/g, '') === '⛏', ore = cave && oreK.get(tx + ',' + ty);
+  const hoe = HOE_E.has((p.held || '').replace(/\uFE0F/g, '')), ore = cave && oreK.get(tx + ',' + ty);
   const cols = hoe ? ['#b07a44', '#6b4423'] : ore ? ORE_COL[ore] : null;
   PixelAction.burst(ctx, k, x, y, t, (p.useAt * 7) | 0, cols, (p.dir || 0) === 2 ? -1 : (p.dir || 0) === 3 ? 1 : 0);
 }

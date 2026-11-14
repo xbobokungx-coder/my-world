@@ -185,10 +185,10 @@ const R = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
   // ไอเทมจริงทุกชิ้นที่ร้านขาย/รับซื้อ: อีโมจิของอุปกรณ์ใหม่ต้องไม่ถูกใช้ซ้ำ (เทียบผ่าน itemInfo จริง)
   const keys = new Set(); for (const sh of Object.values(S.SHOPS)) for (const k of [...(sh.buy || []), ...(sh.sell || [])]) keys.add(k);
   for (const k of keys) { if (own.has(k)) continue; const i = S.itemInfo(k); if (i && i.emoji) assert.ok(!ownE.has(i.emoji), `${k} ใช้อีโมจิ ${i.emoji} ซ้ำกับอุปกรณ์ใหม่`); }
-  // ไม่ซ้ำกับสัญลักษณ์ในซอร์สของเกม (นอก shared.js): ฝั่งเว็บ/เซิร์ฟเวอร์ไม่ควรใช้อีโมจิเหล่านี้เป็นอย่างอื่น
+  // ไม่ซ้ำกับสัญลักษณ์ในซอร์สของเกม (นอก shared.js และ pixelui.js ที่เป็นทะเบียนไอคอนตามคีย์อีโมจิ): ฝั่งเว็บ/เซิร์ฟเวอร์ไม่ควรใช้อีโมจิเหล่านี้เป็นอย่างอื่น
   const src = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), sh = src('public/shared.js');
   for (const [k, e] of mine) assert.strictEqual(sh.split(e).length - 1, 1, `${k} ${e} ต้องปรากฏใน shared.js ครั้งเดียว (ที่นิยาม)`);
-  for (const f of ['server.js', ...fs.readdirSync(path.join(__dirname, '..', 'public')).filter(n => /\.js$/.test(n) && n !== 'shared.js').map(n => 'public/' + n)]) { const s = src(f); for (const [k, e] of mine) assert.ok(!s.includes(e), `${f} มีอีโมจิ ${e} ของ ${k} อยู่ (อาจซ้ำกับของอื่น)`); }
+  for (const f of ['server.js', ...fs.readdirSync(path.join(__dirname, '..', 'public')).filter(n => /\.js$/.test(n) && n !== 'shared.js' && n !== 'pixelui.js').map(n => 'public/' + n)]) { const s = src(f); for (const [k, e] of mine) assert.ok(!s.includes(e), `${f} มีอีโมจิ ${e} ของ ${k} อยู่ (อาจซ้ำกับของอื่น)`); }
 }
 
 console.log('PASS test-gear');
