@@ -11,7 +11,7 @@
   :root { --ink:#4a3a28; --paper:#fff8e7; --edge:#d9b97a; --accent:#e8a33d; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; overflow:hidden; background:#2d4a2b; color:var(--ink);
-    font-family:"Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif; user-select:none; touch-action:none; }
+    font-family:"Noto Sans Thai","Leelawadee UI","Thonburi","Sukhumvit Set",Tahoma,sans-serif; user-select:none; touch-action:none; }
   canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
   .panel { background:var(--paper); border:3px solid var(--edge); border-radius:14px; box-shadow:0 4px 0 rgba(0,0,0,.18); }
   button { font:inherit; color:inherit; cursor:pointer; }
@@ -458,6 +458,10 @@
   #sndPanel .srow { display:flex; align-items:center; gap:8px; min-height:44px; font-size:13px; font-weight:700; }
   #sndPanel .srow span { flex:0 0 auto; min-width:78px; }
   #sndPanel .srow input { flex:1; min-width:0; margin:0; height:44px; touch-action:pan-x; }
+  #perfPanel { display:flex; flex-direction:column; gap:4px; margin-top:4px; }
+  #perfPanel .btn { min-height:44px; flex-direction:row; font-size:14px; }
+  #perfPanel .btn::after { content:none; }
+  #perfBox { position:fixed; right:calc(6px + var(--sar,0px)); top:56px; z-index:6; pointer-events:none; padding:4px 7px; border-radius:6px; background:rgba(0,0,0,.62); color:#c8ffc8; font:12px/1.35 ui-monospace,Menlo,Consolas,monospace; white-space:pre; }
   #sndPanel .srow b { flex:0 0 38px; text-align:right; font-size:12px; }
   #hudMenu .mgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
   #hudMenu .btn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:56px; padding:6px 2px; font-size:21px; line-height:1.1; }
@@ -540,7 +544,7 @@
   /* มือถือ: แถวบนเหลือแค่ เมนู เหรียญ พลังงาน (+ความหิวตอนต่ำ) ที่เหลือย้ายไปอยู่ในเมนู */
   body.touch #hudTop > #bagBtn, body.touch #hudTop > #chatBtn, body.touch #hudTop > #micBtn { display:none !important; }
   body.touch #hudTop > #online, body.touch #hudTop > #hungerChip:not(.low) { display:none !important; }
-  @media (orientation:landscape) and (max-height:520px) { body.touch #hudMenu { width:min(96vw,560px); } body.touch #sndPanel { flex-direction:row; align-items:center; gap:6px; } body.touch #sndPanel .btn { flex:0 0 auto; min-width:120px; padding:0 8px; } body.touch #sndPanel .srow { flex:1 1 0; min-width:0; gap:4px; font-size:11px; } body.touch #sndPanel .srow span { min-width:0; } body.touch #sndPanel .srow b { flex-basis:32px; } } /* แนวนอนจอเตี้ย: แผงเสียงแถวเดียว ปุ่ม+แถบสองอัน */
+  @media (orientation:landscape) and (max-height:520px) { body.touch #hudMenu { width:min(96vw,560px); } body.touch #sndPanel { flex-direction:row; align-items:center; gap:6px; } body.touch #sndPanel .btn { flex:0 0 auto; min-width:120px; padding:0 8px; } body.touch #sndPanel .srow { flex:1 1 0; min-width:0; gap:4px; font-size:11px; } body.touch #sndPanel .srow span { min-width:0; } body.touch #sndPanel .srow b { flex-basis:32px; } body.touch #perfPanel { flex-direction:row; gap:6px; } body.touch #perfPanel .btn { flex:1 1 0; min-width:0; font-size:12px; } } /* แนวนอนจอเตี้ย: แผงเสียงแถวเดียว ปุ่ม+แถบสองอัน */
   body:not(.touch) #hudMenu .mtouch { display:none !important; }
   #hudMenu .spk { margin-left:0; color:inherit; }
   /* คอมจอใหญ่: ขยาย UI ตามสเกลจอ (--ui คำนวณใน game.js resize) ให้สัดส่วนกับโลกในเกมเท่ากับจอเล็ก */
@@ -629,6 +633,11 @@
       <button class="btn small" id="zoomInBtn" data-lbl="ซูมเข้า" title="ซูมเข้า (ขยายใหญ่ขึ้น)" aria-label="ซูมเข้า">🔍+</button>
       <button class="btn small" id="fsBtn" data-lbl="เต็มจอ" title="เต็มจอ" aria-label="เต็มจอ">⛶</button>
     </div>
+    <div id="perfPanel">
+      <button class="btn small" id="resBtn" type="button">🖼️ ความละเอียด: อัตโนมัติ</button>
+      <button class="btn small" id="perfBtn" type="button">📈 ตัววัดเฟรม: ปิด</button>
+      <button class="btn small hidden" id="perfCopy" type="button">📋 คัดลอกเลขวัด</button>
+    </div>
     <div class="mtitle">⚙️ อื่นๆ</div>
     <div class="mgrid">
       <button class="btn small" id="bugBtn" data-lbl="แจ้งบั๊ก" title="แจ้งบั๊ก" aria-label="แจ้งบั๊ก">🐞</button>
@@ -649,6 +658,7 @@
 <div id="build" class="panel hidden"></div>
 <div id="chat" class="hidden"><div id="chatHist" class="hidden"></div><div id="chatLog"></div><input id="chatIn" class="hidden" maxlength="80" enterkeyhint="send" placeholder="พิมพ์ข้อความ แล้วกด Enter"></div>
 <div id="toast" class="panel"></div>
+<div id="perfBox" class="hidden"></div>
 <div id="lvFlash"></div>
 <div id="lvBanner" aria-hidden="true"><div class="lvT">LEVEL UP!</div><div class="lvS"><span class="lvK"></span> <b class="lvN"></b></div><div class="lvX"></div></div>
 <div id="shop" class="hidden"><div class="panel">

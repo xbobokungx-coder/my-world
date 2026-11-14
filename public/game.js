@@ -1233,7 +1233,8 @@ $('askNo').onclick = () => { $('ask').classList.add('hidden'); askYes = null; };
 // ปุ่มย่อ/ขยายแถบเมนูด้านบน (ย่อแล้วเหลือแค่เหรียญ ความอิ่ม และปุ่มขยาย) จำค่าไว้ในเครื่อง
 // เมนูหลัก: ปุ่มที่ใช้ไม่บ่อยซ่อนในเมนู (ปุ่มเดิมทุกตัวยังอยู่ ตัวจัดการกดเดิมทำงานเหมือนเดิม)
 const menuShown = () => !$('hudMenu').classList.contains('hidden');
-function fitMenu() { const m = $('hudMenu'); if (m.classList.contains('hidden')) return; m.style.maxHeight = ''; const top = m.getBoundingClientRect().top, sc = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1); m.style.maxHeight = Math.max(120, Math.floor((innerHeight - top - 12) / (document.body.classList.contains('touch') ? 1 : sc))) + 'px'; } // กล่องเมนูสูงไม่เกินพื้นที่ใต้ตำแหน่งที่เริ่มจริง เลื่อนถึงแถวท้ายสุดได้
+function fitMenu() { const m = $('hudMenu'); if (m.classList.contains('hidden')) return; const keepScroll = m.scrollTop; m.style.maxHeight = ''; setTimeout(() => { m.scrollTop = keepScroll; }, 0); // เก็บตำแหน่งเลื่อนไว้ (ล้าง maxHeight ทำให้เมนูกระโดดตอนกดปุ่มความละเอียดรัวๆ)
+  const top = m.getBoundingClientRect().top, sc = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1); m.style.maxHeight = Math.max(120, Math.floor((innerHeight - top - 12) / (document.body.classList.contains('touch') ? 1 : sc))) + 'px'; } // กล่องเมนูสูงไม่เกินพื้นที่ใต้ตำแหน่งที่เริ่มจริง เลื่อนถึงแถวท้ายสุดได้
 addEventListener('resize', fitMenu);
 function setMenu(on) { $('hudMenu').classList.toggle('hidden', !on); document.body.classList.toggle('menu-open', on); $('menuBtn').setAttribute('aria-expanded', on ? 'true' : 'false'); if (on) fitMenu(); }
 $('menuBtn').onclick = () => setMenu(!menuShown());
@@ -1242,7 +1243,7 @@ $('bagMenu').onclick = () => $('bagBtn').click();
 $('chatMenu').onclick = () => $('chatBtn').click();
 $('micMenu').onclick = () => $('micBtn').click();
 $('onlineMenu').onclick = () => $('online').click();
-$('hudMenu').addEventListener('click', e => { const b = e.target.closest('.btn'); if (b && !['zoomInBtn', 'zoomOutBtn', 'spkBtn', 'sndTog'].includes(b.id)) setMenu(false); }); // เลือกแล้วปิดเมนู ยกเว้นปุ่มที่กดซ้ำได้
+$('hudMenu').addEventListener('click', e => { const b = e.target.closest('.btn'); if (b && !['zoomInBtn', 'zoomOutBtn', 'spkBtn', 'sndTog', 'resBtn', 'perfBtn', 'perfCopy'].includes(b.id)) setMenu(false); }); // เลือกแล้วปิดเมนู ยกเว้นปุ่มที่กดซ้ำได้
 addEventListener('pointerdown', e => { if (menuShown() && !e.target.closest('#hudMenu') && !e.target.closest('#menuBtn')) setMenu(false); });
 { // แสดงจุดแดงเควสที่ปุ่มเมนูด้วย (เควสอยู่ในเมนู จะได้ไม่พลาดเควสใหม่)
   const qb = $('questBadge'), mb = $('menuBadge');
@@ -2928,8 +2929,71 @@ setInterval(() => { if (cinemaShown() && !cinWatching && document.activeElement 
 let zoom = 1, baseZoom = 1, vw = 0, vh = 0, camX = 0, camY = 0;
 const ZOOM_MIN = 0.5, ZOOM_MAX = 2.6;
 let userZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, +ls.get('mw_zoom') || 1)); // ผู้เล่นปรับซูมเองได้ (คูณบนสเกล auto-fit) จำไว้ในเครื่อง
+// ---------- ความละเอียดแคนวาส + ตัววัดเฟรม ----------
+// โหมด mw_res: auto | high | mid | low  • auto เริ่มจากขั้นที่เคยลดไว้ (mw_res_auto) และลดลงอย่างเดียว ไม่เพิ่มกลับเอง (กันภาพสั่น)
+const RES_CAPS = { high: Infinity, mid: 1.5, low: 1 };
+const RES_STEPS = [2, 1.5, 1.25, 1]; // ขั้น dpr ของโหมดอัตโนมัติ
+const RES_LOW_FPS = 40, RES_WIN_MS = 3000, RES_GRACE_MS = 3000; // เกณฑ์ลดขั้น: เฉลี่ยต่ำกว่า 40 FPS ติดกัน 2 รอบ รอบละ 3 วิ ไม่นับ 3 วิแรกหลังเข้าเกม/resize
+const RES_LABEL = { auto: 'อัตโนมัติ', high: 'สูง', mid: 'กลาง', low: 'ต่ำ' };
+let resMode = RES_LABEL[ls.get('mw_res')] ? ls.get('mw_res') : 'auto';
+let resAutoCap = RES_STEPS.includes(+ls.get('mw_res_auto')) ? +ls.get('mw_res_auto') : Infinity, curDpr = 1; // ค่าที่เก็บไว้ต้องอยู่ในขั้นที่รู้จักเท่านั้น (กันค่าเพี้ยนทำแคนวาสกว้าง 0)
+const resCap = () => resMode === 'auto' ? resAutoCap : RES_CAPS[resMode];
+let perfOn = ls.get('mw_perf') === '1' || /[?&]perf=1\b/.test(location.search);
+const perf = { last: 0, ft: [], js: [], grace: 0, n: 0, t0: 0, low: 0, lock: 0, txt: '' };
+let stepT0 = 0;
+function perfFrame(now) { // เรียกต้นทุก step: เก็บช่วงห่างระหว่างเฟรมของ rAF (อาการที่ผู้เล่นเห็น) + ตัดสินโหมดอัตโนมัติ
+  const dt = perf.last ? now - perf.last : 0; perf.last = now;
+  if (!joined || !me || document.visibilityState !== 'visible' || dt > 1000) { perf.grace = now + RES_GRACE_MS; perf.n = 0; perf.low = 0; return; }
+  if (perfOn && dt > 0) { perf.ft.push(dt); if (perf.ft.length > 120) perf.ft.shift(); }
+  if (resMode !== 'auto' || curDpr <= 1 || now < perf.grace) { perf.n = 0; return; }
+  if (!perf.n) { perf.n = 0; perf.t0 = now; perf.lock = 0; }
+  perf.n++; if (dt >= 30 && dt <= 37) perf.lock++; // นับเฟรมที่ห่างราว 33ms พอดี = จอ/ระบบล็อก 30Hz (โหมดประหยัดพลังงาน iOS)
+  if (now - perf.t0 >= RES_WIN_MS) {
+    const fps = perf.n * 1000 / (now - perf.t0), locked30 = perf.lock >= perf.n * 0.85; perf.n = 0;
+    if (fps < RES_LOW_FPS && !locked30) { // ล็อก 30Hz เฟรมนิ่งที่ 33ms ไม่ใช่เพราะความละเอียด ไม่ลดให้
+      if (++perf.low >= 2) { perf.low = 0; const nx = RES_STEPS.find(v => v < curDpr - 0.01); if (nx) { resAutoCap = nx; ls.set('mw_res_auto', String(nx)); resize(); toast('ปรับความละเอียดลงให้เล่นลื่นขึ้น (ตั้งเองได้ที่เมนู ☰)'); } } } else perf.low = 0;
+  }
+}
+function perfJs(ms) { if (perfOn) { perf.js.push(ms); if (perf.js.length > 120) perf.js.shift(); } }
+function perfSummary() {
+  const f = perf.ft, avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0, srt = f.slice().sort((a, b) => a - b);
+  const p95 = srt.length ? srt[Math.min(srt.length - 1, Math.floor(srt.length * 0.95))] : 0, mx = srt.length ? srt[srt.length - 1] : 0, a = avg(f), js = avg(perf.js), mp = canvas.width * canvas.height / 1e6;
+  const heap = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null;
+  return { fps: a ? 1000 / a : 0, a, p95, mx, js, jsMax: perf.js.length ? Math.max(...perf.js) : 0, w: canvas.width, h: canvas.height, mp, heap };
+}
+function perfOneLine() {
+  const v = perfSummary();
+  return `fps ${v.fps.toFixed(0)} frame avg/p95/max ${v.a.toFixed(1)}/${v.p95.toFixed(1)}/${v.mx.toFixed(0)}ms js ${v.js.toFixed(1)}ms canvas ${v.w}x${v.h} (${v.mp.toFixed(2)}MP) res ${resMode}${resMode === 'auto' && isFinite(resAutoCap) ? '@' + resAutoCap : ''} dpr ${curDpr}/${window.devicePixelRatio || 1} view ${innerWidth}x${innerHeight}${v.heap !== null ? ' heap ' + v.heap + 'MB' : ''}`;
+}
+function perfUi() {
+  $('perfBtn').textContent = perfOn ? '📈 ตัววัดเฟรม: เปิด' : '📈 ตัววัดเฟรม: ปิด';
+  $('perfCopy').classList.toggle('hidden', !perfOn); $('perfBox').classList.toggle('hidden', !perfOn);
+  $('resBtn').textContent = '🖼️ ความละเอียด: ' + RES_LABEL[resMode] + (resMode === 'auto' && isFinite(resAutoCap) ? ' (ลดเหลือ ' + resAutoCap + 'x)' : '');
+}
+setInterval(() => {
+  if (!perfOn) return;
+  const v = perfSummary(), box = $('perfBox'), hb = $('hudTop').getBoundingClientRect();
+  const mb = $('mini').classList.contains('hidden') ? 0 : $('mini').getBoundingClientRect().bottom; box.style.top = Math.round(Math.max(hb.bottom, mb) + 4) + 'px'; // มุมขวาใต้แผนที่ย่อ ไม่ทับแถบเควสต์ฝั่งซ้าย
+  const short = innerHeight < 520; // จอเตี้ย (มือถือนอน): ตัดเหลือ 3 บรรทัดไม่ให้ทับปุ่ม A
+  box.textContent = (`FPS ${v.fps.toFixed(0)}  ${v.a.toFixed(1)}ms\np95 ${v.p95.toFixed(1)}  max ${v.mx.toFixed(0)}ms\nJS ${v.js.toFixed(1)}ms (max ${v.jsMax.toFixed(1)})\n${v.w}x${v.h} ${v.mp.toFixed(2)}MP\nres ${RES_LABEL[resMode]} dpr ${curDpr}/${window.devicePixelRatio || 1}` + (v.heap !== null ? `\nheap ${v.heap}MB` : '')).split('\n').slice(0, short ? 3 : 7).join('\n');
+}, 500);
+$('resBtn').onclick = () => {
+  const ks = Object.keys(RES_LABEL); resMode = ks[(ks.indexOf(resMode) + 1) % ks.length]; ls.set('mw_res', resMode);
+  if (resMode === 'high') { resAutoCap = Infinity; ls.set('mw_res_auto', ''); } // เลือก "สูง" เอง = รีเซ็ตขั้นที่โหมดอัตโนมัติเคยลดไว้
+  perf.low = 0; perfUi(); resize(); toast('ความละเอียด: ' + RES_LABEL[resMode]);
+};
+$('perfBtn').onclick = () => { perfOn = !perfOn; ls.set('mw_perf', perfOn ? '1' : '0'); perf.ft = []; perf.js = []; perfUi(); };
+$('perfCopy').onclick = () => {
+  const t = perfOneLine();
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(() => toast('คัดลอกเลขวัดแล้ว'), () => prompt('คัดลอกข้อความนี้ส่งให้เราได้เลย', t));
+  else prompt('คัดลอกข้อความนี้ส่งให้เราได้เลย', t);
+};
+perfUi();
 function resize() {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = curDpr = Math.min(window.devicePixelRatio || 1, resCap());
+  perf.grace = performance.now() + RES_GRACE_MS; perf.n = 0; perf.low = 0;
+  // ย่อแคนวาสแล้วให้เบราว์เซอร์ขยาย: ขยายเป็นจำนวนเต็ม (เช่น 2→1 บนจอ dpr 2) ใช้ pixelated คมสะอาด; ขยายเศษส่วน (1.5, 1.25) pixelated ทำพิกเซลกว้างไม่เท่ากันเป็นริ้ว ใช้ auto (นุ่มกว่า) ดูดีกว่า
+  const sc = (window.devicePixelRatio || 1) / dpr; canvas.style.imageRendering = sc > 1.01 && Math.abs(sc - Math.round(sc)) < 0.01 ? 'pixelated' : '';
   canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
   baseZoom = Math.max(isTouch ? 1.35 : 1.2, Math.min(innerWidth / 720, innerHeight / 450)) * dpr; // auto-fit ตามขนาดจอ/ความละเอียด
   document.documentElement.style.setProperty('--ui', isTouch ? 1 : Math.max(1, Math.min(1.8, Math.min(innerWidth / 1280, innerHeight / 720))).toFixed(2)); // UI คอมจอใหญ่ขยายตามสเกลจอ
@@ -4736,6 +4800,7 @@ window.addEventListener('error', e => /^ResizeObserver/.test(e.message || '') ||
 const safeDraw = (o, tag) => { ctx.save(); try { o.f(); } catch (e) { reportClientErr(tag, e); } finally { ctx.restore(); } };
 function step(now) {
   requestAnimationFrame(step);
+  stepT0 = performance.now(); perfFrame(now);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (!joined || !me) return;
   syncVehBtn(); syncHornBtn(); syncRecallBtn();
@@ -4991,6 +5056,7 @@ function step(now) {
 
   if (inTown()) drawLighthouse(ctx, now);
   frameTail(now, wall);
+  perfJs(performance.now() - stepT0);
 }
 requestAnimationFrame(step);
 })();
