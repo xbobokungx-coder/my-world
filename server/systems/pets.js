@@ -13,6 +13,7 @@ module.exports = {
     if (st.bd !== today) { st.bd = today; st.bn = 0; st.gn = 0; }
     const got = Math.min(n, L.dayCap - (st.bn || 0)); if (!(got > 0)) return 0;
     const before = S.petLevel(st.b); st.bn = (st.bn || 0) + got; st.b = (st.b || 0) + got; this.dirty = true;
+    if (st.bn >= L.dayCap) this.toast(p, `💞 วันนี้ความผูกพันของ${S.COMPANIONS[id].emoji} ${this.petName(p, id) || S.COMPANIONS[id].name}เต็มโควตาแล้ว (${L.dayCap}) พรุ่งนี้สะสมต่อได้`); // แจ้งครั้งเดียวตอนชนเพดาน กันผู้เล่นคิดว่าค้าง
     const lv = S.petLevel(st.b);
     if (lv > before) {
       const C = S.COMPANIONS[id], nm = this.petName(p, id) || C.name;
