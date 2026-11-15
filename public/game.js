@@ -5037,6 +5037,7 @@ function step(now) {
   pm(1); const list = []; let nTree = 0;
   for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1 + 2); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(W - 1, x1 + 1); x++) if (MAP[y][x] === T.TREE) { nTree++; list.push({ y: y * TS + 30, f: () => drawTree(x, y) }); }
   for (const [k, f] of felled) { const ty = +k.split(',')[1]; list.push({ y: ty * TS + 30, f: () => drawFelled(k, f, now) }); } // ต้นไม้กำลังล้ม
+  if (inTown()) list.push({ y: (Shared.TOWER.y1 + 1) * TS - 2, f: () => drawTower(ctx, now) }); // หอคอยเรียงตามแถวฐาน: ต้นไม้ด้านหน้า (ใต้ฐาน) ทับตัวหอ ต้นไม้ด้านหลัง/ขอบแมพอยู่หลังหอ
   if (inTown()) for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
   // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
   if (inTown()) for (const s of SEATS) if (s.x >= x0 - 1 && s.x <= x1 + 1 && s.y >= y0 - 1 && s.y <= y1 + 1) list.push({ y: s.y * TS + 12, f: () => drawSeat(s) });
@@ -5091,7 +5092,6 @@ function step(now) {
   if (inTown()) for (const n of npcs.values()) if (n.fs) drawFishing(n, performance.now()); // NPC ตกปลาประกอบฉาก
 
   if (inTown()) drawLighthouse(ctx, now);
-  if (inTown()) drawTower(ctx, now);
   pm(2);
   frameTail(now, wall);
   perfJs(performance.now() - stepT0);
