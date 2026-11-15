@@ -253,6 +253,15 @@ function handle(m) {
       if (k > 0.05) playSfx(m.k, k * (m.id === myId || m.self ? 1 : 0.7));
       break;
     }
+    case 'crs': creatures.clear(); crWarn.length = 0; if (cave) for (const c of m.list || []) crPut(c); crFirstToast(); break; // สัตว์ในชั้นนี้ทั้งหมด [id,k,x,y,dir,st,hp,hpMax]
+    case 'crn': if (cave && m.c) { crPut(m.c); crFirstToast(); } break;
+    case 'crd': creatures.delete(m.id); break;
+    case 'crm': if (cave) for (const [id, x, y, dir, st, hp] of m.u || []) { const c = creatures.get(id); if (c) { c.x = x; c.y = y; c.dir = dir; if (st !== c.st) { c.st = st; c.stAt = performance.now(); } c.hp = hp; } } break;
+    case 'crh': { const c = creatures.get(m.id); if (c) { c.hp = m.hp; c.hitAt = performance.now(); } break; }
+    case 'cra': if (cave) { crWarn.push({ x: m.x, y: m.y, r: m.r, t0: performance.now(), ms: m.ms || 600 }); if (crWarn.length > 16) crWarn.shift(); } break;
+    case 'hurt': crHurt(m); break;
+    case 'web': webUntil = performance.now() + (m.ms || 0); break;
+    case 'faint': crFaint(m); break;
     case 'tp': me.x = m.x; me.y = m.y; walk = null; break;
     case 'chat': { if (!m.npc && isBlockedName(m.name)) break; const p = players.get(m.id) || npcs.get(m.id); if (p) { p.chat = m.text; p.chatAt = performance.now() + (m.npc ? 3000 : 0); } if (!m.npc) addChat(m.name, m.text); break; } // NPC พูดเป็นฟองเหนือหัวอย่างเดียว (อยู่ 8 วินาที) ไม่เข้าแชท
     case 'shop': openShop(m.kind); break;
@@ -998,6 +1007,7 @@ const furnKeys = () => Object.keys(inv).filter(k => k.startsWith('furn_') && FUR
 // ---------- บ้านหลังใหญ่: แมพแยก (ฉาก) มุมมองไอโซเมตริก ตกแต่งอิสระ ----------
 // ตอนอยู่ในบ้าน MAP ถูกสลับเป็นแมพบ้านชั่วคราว (ผนัง/พื้น/ประตู) เก็บแถวของแมพเมืองไว้ใน townRows ของเมืองที่มาใหม่ระหว่างนั้น (ต้นไม้/โครงการ) แก้ที่ tmap()
 let houseSt = { fl: 'oak', wp: 'cream' }, houseBgKey = '', scene = null, houseInfo = null, townRows = null, townDirty = false, hboard = null, houseRects = [], houseBg = null, houseGrid = null;
+const creatures = new Map(), crWarn = [], crFx = [], crSeen = new Set(); let stunUntil = 0, webUntil = 0, crFlash = 0, crShakeT = 0, crMsgT = 0; // สัตว์ในถ้ำ (เซิร์ฟเวอร์ตัดสิน เว็บแค่วาด): creatures id → ตัวสัตว์ • crWarn วงเตือนบนพื้น • crFx ตัวเลขลอย • crSeen ชนิดที่เคยเตือนแล้วในเซสชัน • stunUntil/webUntil เวลาที่ถูกสตัน/ติดใย
 let cave = false, caveFlr = 0, townCache = null; const oreK = new Map(), oreS = new Map(); // caveFlr = ชั้นของถ้ำที่อยู่ • oreS = ขนาดก้อนแร่ (0 เล็ก 1 กลาง 2 ใหญ่)  // ถ้ำเหมือง: cave = อยู่ในถ้ำ (แมพบน แต่ MAP ถูกสลับเป็นผังถ้ำ) • oreK = ก้อนแร่ 'x,y' → ชนิด
 const inTown = () => !scene && !cave;
 const inSea = () => cave && Shared.isSeaScene(caveFlr); // ฉากทะเล: แพ (ชั้น 99) หรือทะเลใหญ่ (ชั้น 98) ใช้ระบบฉากเดียวกับถ้ำ
@@ -1037,7 +1047,7 @@ function applyFurnOp(m) { // ข้อความ furn จากเซิร์
 }
 function resetScene() { // กลับไปแมพเมืองฝั่งเว็บ (ตอนเซิร์ฟเวอร์ส่งฉากเมือง หรือเข้าเกมใหม่)
   if (inTown()) return;
-  if (cave) { setSceneRows(townRows); townRows = null; cave = false; caveFlr = 0; oreK.clear(); oreS.clear(); doorLatch = true; base = townCache.base; baseHi = townCache.baseHi; miniBase = townCache.mini; townCache = null; if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; } return; }
+  if (cave) { setSceneRows(townRows); townRows = null; cave = false; caveFlr = 0; oreK.clear(); oreS.clear(); crReset(); doorLatch = true; base = townCache.base; baseHi = townCache.baseHi; miniBase = townCache.mini; townCache = null; if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; } return; }
   doorLatch = true; undoStack.length = 0; setSceneRows(townRows); furn.clear(); houseRects = []; scene = null; houseInfo = null; townRows = null; build.on = false; build.pick = null;
   if (townDirty) { base = buildBase(); miniBase = makeMiniBase(); townDirty = false; }
 }
@@ -1046,7 +1056,7 @@ function applyScene(m) {
   if (m.cave) { // ถ้ำเหมือง: แมพบนลงมุมสูงเหมือนเมือง ใช้พื้น/ผนังวาดเอง (ไม่ใช่ไอโซเมตริกแบบบ้าน)
     if (!cave) { townRows = MAP.slice(); townCache = { base, baseHi, mini: miniBase }; }
     setSceneRows(Shared.makeCaveMap(m.cave)); cave = true; caveFlr = m.cave; scene = null; houseInfo = null; build.on = false; build.pick = null;
-    oreK.clear(); oreS.clear(); for (const [ox, oy, k, sz] of m.ores || []) { MAP[oy][ox] = T.ORE; oreK.set(ox + ',' + oy, k); oreS.set(ox + ',' + oy, sz | 0); }
+    crReset(); oreK.clear(); oreS.clear(); for (const [ox, oy, k, sz] of m.ores || []) { MAP[oy][ox] = T.ORE; oreK.set(ox + ',' + oy, k); oreS.set(ox + ',' + oy, sz | 0); }
     seaEnd = inSea() ? m.until || 0 : 0;
     if (inSea()) { if (inOcean()) buildOceanBase(); else buildSeaBase(); selTool = 'rod'; ls.set('mw_tool', 'rod'); slot = 0; renderHud(); }
     else { buildCaveBase();
@@ -2100,10 +2110,11 @@ function houseAct(now) { // ปุ่ม A/Space ในบ้าน: เก้�
 function act(tx, ty) {
   const now = performance.now();
   if (!me || chatFocus || modalOpen() || now - lastAct < actGap) return;
+  if (cave && stunUntil > now) return; // สตันอยู่ ฟาดไม่ได้
   if (scene && tx === undefined) { houseAct(now); return; } // ในบ้านใช้เครื่องมือฟาร์มไม่ได้ ปุ่ม A = นั่ง/นอนที่ใกล้สุด หรือออกจากบ้านถ้ายืนที่พรมหน้าประตู
   if (tx === undefined && inTown() && !ft && contextAct(now)) return;
   if (inSea() && toolId() !== 'rod') { toast('บนเรือใช้เบ็ด 🎣 ตกปลา (เลือกที่ช่องเครื่องมือ)'); return; }
-  if (tx === undefined && recallOk() && !oreK.has(Shared.facing(me.x, me.y, me.dir).join(','))) { lastAct = now; actGap = 300; askRecall(now); return; } // ไม่ได้หันหาแร่ = ถามยืนยันใช้ตั๋ววาป
+  if (tx === undefined && recallOk() && !oreK.has(Shared.facing(me.x, me.y, me.dir).join(',')) && !(cave && creatureAtTile(...Shared.facing(me.x, me.y, me.dir)))) { lastAct = now; actGap = 300; askRecall(now); return; } // ไม่ได้หันหาแร่ = ถามยืนยันใช้ตั๋ววาป
   if (cave && !inSea() && toolId() !== 'pick') { toast('ในถ้ำใช้อุปกรณ์ขุด ⚒️ ขุดแร่ (เลือกที่ช่องเครื่องมือ)'); return; }
   const o = { t: 'act', tool: scene ? '' : toolId() }; if (o.tool === 'rod') o.bait = selBait;
   if (tx !== undefined) {
@@ -2148,7 +2159,7 @@ const animalAt = (tx, ty) => { for (const a of animals.values()) if (Math.hypot(
 function interactive(tx, ty) { // ช่องนี้มีอะไรให้ทำด้วยเครื่องมือที่ถืออยู่ไหม
   const id = toolId(), t = MAP[ty][tx], f = farm[tx + ',' + ty];
   if (inSea()) return (t === T.WATER || (inOcean() && t === T.CAVE)) && id === 'rod'; // บนเรือตกปลาได้อย่างเดียว
-  if (cave) return t === T.ORE && id === 'pick'; // ในถ้ำมีแค่ก้อนแร่ให้ขุด
+  if (cave) return (t === T.ORE && id === 'pick') || (id === 'pick' && !!creatureAtTile(tx, ty)); // ในถ้ำมีก้อนแร่ให้ขุด + สัตว์ให้ฟาดไล่
   if (t === T.SHOP || (t === T.BUILD && shopAt(tx, ty)) || animalAt(tx, ty) || cinemaAt(tx, ty)) return true;
   if (seatAt(tx, ty)) return true;
   if (f && f.c && f.s === 3) return true;
@@ -3372,6 +3383,64 @@ function drawOreHp(tx, ty, k, sz, now) { // แถบ HP เหนือก้�
   mainCtx.fillStyle = f > 0.55 ? '#6cc04a' : f > 0.25 ? '#f1c40f' : '#e5453a'; mainCtx.fillRect(bx, by, Math.round(w * f), 4);
   mainCtx.fillStyle = 'rgba(255,255,255,.45)'; mainCtx.fillRect(bx, by, Math.round(w * f), 1);
 }
+// ---------- สัตว์ในถ้ำ: เก็บตามข้อความ crs/crn/crm/crd/crh แล้ววาด (ตัวเลขทั้งหมดจาก Shared.CREATURE*) ----------
+function crReset() { creatures.clear(); crWarn.length = 0; crFx.length = 0; stunUntil = 0; webUntil = 0; crFlash = 0; crShakeT = 0; }
+function crPut(a) { const [id, k, x, y, dir, st, hp, hpMax] = a; if (!Shared.CREATURES[k]) return; creatures.set(id, { id, k, x, y, dx: x, dy: y, dir, st, hp, hpMax, hitAt: 0, stAt: performance.now(), seed: id * 1.7 }); }
+function crFirstToast() { // เจอชนิดแรกของเซสชัน บอกวิธีรับมือครั้งเดียว
+  for (const c of creatures.values()) if (!crSeen.has(c.k)) { crSeen.add(c.k); const d = Shared.CREATURES[c.k]; toast(`${d.emoji} ${d.name}! ฟาดไล่ได้ด้วยอีเต้อ หรือเดินหนีก็ได้`); break; }
+}
+function creatureAtTile(tx, ty) { for (const c of creatures.values()) if (Math.hypot(c.dx - (tx + 0.5) * TS, c.dy - (ty + 0.5) * TS) < TS * 0.8) return c; return null; }
+function crUpdate(now) { // เลื่อนตำแหน่งวาดเข้าหาตำแหน่งจริงจากเซิร์ฟเวอร์ให้ลื่น
+  const k = Math.min(1, 16 / 60 * 0.8 + 0.1);
+  for (const c of creatures.values()) { const d = Math.hypot(c.x - c.dx, c.y - c.dy); if (d > TS * 3) { c.dx = c.x; c.dy = c.y; } else { c.dx += (c.x - c.dx) * k; c.dy += (c.y - c.dy) * k; } }
+  for (let i = crWarn.length - 1; i >= 0; i--) if (now - crWarn[i].t0 > crWarn[i].ms + 120) crWarn.splice(i, 1);
+}
+function drawCrWarns(now) { // วงเตือนแดงบนพื้น ค่อยๆ เข้มขึ้นตลอดเวลาง้าง
+  for (const w of crWarn) {
+    const u = Math.min(1, (now - w.t0) / w.ms), fade = now - w.t0 > w.ms ? Math.max(0, 1 - (now - w.t0 - w.ms) / 120) : 1;
+    ctx.fillStyle = `rgba(229,57,53,${(0.12 + 0.30 * u) * fade})`; ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, 7); ctx.fill();
+    ctx.strokeStyle = `rgba(255,120,100,${(0.35 + 0.5 * u) * fade})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, 7); ctx.stroke();
+  }
+}
+function drawCreature(c, now) {
+  const x = Math.round(c.dx), y = Math.round(c.dy), d = Shared.CREATURES[c.k], hit = now - c.hitAt < 220;
+  const sz = PixelCreature.size(c.k) || { w: 24, h: 24 };
+  ctx.save(); if (hit) ctx.translate(Math.sin(now / 14) * 2, 0);
+  const view = { k: c.k, x, y, dir: c.dir, st: c.st, hp: c.hp, hpMax: c.hpMax };
+  if (!PixelCreature.draw(ctx, view, now)) { // ฟอลแบ็กอีโมจิ
+    const bob = c.st === 2 ? Math.sin(now / 40) * 1.5 : c.st === 0 || c.st === 1 ? Math.abs(Math.sin(now / 160 + c.seed)) * 2 : 0;
+    ctx.font = '22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.emoji, x, y - 11 - bob);
+    if (c.st === 2) { ctx.fillStyle = 'rgba(255,60,50,.9)'; ctx.fillRect(x - 5, y - 18, 3, 3); ctx.fillRect(x + 2, y - 18, 3, 3); } // ตาแดงตอนง้าง
+  }
+  ctx.restore();
+  if (c.hpMax > 0 && c.hp < c.hpMax && c.hp > 0) { // แถบ HP เฉพาะตอนถูกฟาดไม่เต็ม
+    const w = 22, f = c.hp / c.hpMax, top = y - sz.h - 8;
+    ctx.fillStyle = '#1b1d24'; ctx.fillRect(x - w / 2 - 1, top - 1, w + 2, 6); ctx.fillStyle = '#5a3030'; ctx.fillRect(x - w / 2, top, w, 4);
+    ctx.fillStyle = f > 0.55 ? '#6cc04a' : f > 0.25 ? '#f1c40f' : '#e5453a'; ctx.fillRect(x - w / 2, top, Math.round(w * f), 4);
+  }
+}
+function crOverlay() { let el = $('crFlash'); if (!el) { el = document.createElement('div'); el.id = 'crFlash'; el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:60;background:rgba(220,30,30,.38);opacity:0;transition:opacity .35s'; document.body.appendChild(el); } return el; }
+function crHurt(m) { // โดนสัตว์: จอแดงวาบ + สั่น + ตัวเลขลอย + สตัน + ถูกผลัก (เซิร์ฟเวอร์ย้ายตำแหน่งให้แล้ว)
+  if (!cave || !me) return;
+  const now = performance.now(); stunUntil = now + (m.stun || 0); walk = null;
+  if (typeof m.x === 'number' && typeof m.y === 'number') { me.x = m.x; me.y = m.y; }
+  if (!lvReduced()) { const el = crOverlay(); el.style.transition = 'none'; el.style.opacity = '1'; void el.offsetWidth; el.style.transition = 'opacity .35s'; el.style.opacity = '0'; crShakeT = now; }
+  crFx.push({ t: now, txt: m.h > 0 ? `🍗 −${m.h}` : '💢' }); playSfx('crit');
+}
+function crFaint(m) { // สลบ: ข้อความกลางจอ (เซิร์ฟเวอร์วาร์ปไปบันไดให้ แล้วส่ง tp/scene ตามกลไกเดิม)
+  const now = performance.now(); stunUntil = Math.max(stunUntil, now + (m.ms || 0)); walk = null;
+  let el = $('crMsg'); if (!el) { el = document.createElement('div'); el.id = 'crMsg'; el.style.cssText = 'position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:61;pointer-events:none;background:rgba(20,16,30,.88);color:#fff;font:bold 18px sans-serif;padding:14px 20px;border-radius:12px;text-align:center;max-width:86vw;transition:opacity .4s;opacity:0'; document.body.appendChild(el); }
+  el.textContent = '😵 สลบไปครู่ แล้วตื่นที่บันได'; el.style.opacity = '1'; clearTimeout(crMsgT); crMsgT = setTimeout(() => { el.style.opacity = '0'; }, Math.max(2200, m.ms || 0));
+}
+function crShake(now) { const t = now - crShakeT; if (t > 260 || lvReduced()) return null; const a = 3 * (1 - t / 260); return [Math.sin(t / 15) * a, Math.cos(t / 11) * a]; }
+function drawCrFx(now) { // ใยใต้เท้า + ตัวเลขลอย "🍗 −N"
+  if (webUntil > now && me) { ctx.font = '18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = 0.85; ctx.fillText('🕸️', me.x, me.y + 4); ctx.globalAlpha = 1; }
+  for (let i = crFx.length - 1; i >= 0; i--) {
+    const f = crFx[i], t = now - f.t; if (t > 1100 || !me) { crFx.splice(i, 1); continue; }
+    ctx.globalAlpha = Math.min(1, 2 - t / 550); ctx.font = `bold 14px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3; ctx.strokeStyle = '#1b1d24'; ctx.strokeText(f.txt, me.x, me.y - 36 - t / 22); ctx.fillStyle = '#ff7a6a'; ctx.fillText(f.txt, me.x, me.y - 36 - t / 22); ctx.globalAlpha = 1;
+  }
+}
 function drawOreDmg(now) {
   for (let i = oreDmg.length - 1; i >= 0; i--) {
     const o = oreDmg[i], t = now - o.t; if (t > (o.c ? ORE_DMG_MS + 300 : ORE_DMG_MS)) { oreDmg.splice(i, 1); continue; }
@@ -3429,7 +3498,7 @@ function drawCaveWorld(now) {
     for (let ty = y0s; ty <= y1s; ty++) for (let tx = x0s; tx <= x1s; tx++) if (MAP[ty][tx] === T.WATER || (ocean && MAP[ty][tx] === T.CAVE)) { const h = PixelArt.hash(tx, ty, 11); if (h < 0.7) continue; const a = 0.1 + 0.18 * Math.sin(now / 600 + h * 40); ctx.fillStyle = `rgba(255,255,255,${Math.max(0, a)})`; ctx.fillRect(tx * TS + 4 + ((now / 90 + h * 50) % 18), ty * TS + 6 + ((h * 30) | 0), 10, 2); }
   }
   const vw = canvas.width / zoom, vh = canvas.height / zoom, x0 = Math.max(0, Math.floor(camX / TS) - 1), x1 = Math.min(W - 1, Math.ceil((camX + vw) / TS) + 1), y0 = Math.max(0, Math.floor(camY / TS) - 1), y1 = Math.min(H - 1, Math.ceil((camY + vh) / TS) + 1);
-  const list = [];
+  const list = []; crUpdate(now); drawCrWarns(now);
   for (const [k, id] of oreK) { const [tx, ty] = k.split(',').map(Number); if (tx >= x0 && tx <= x1 && ty >= y0 && ty <= y1) list.push({ y: (ty + 1) * TS - 2, f: () => { drawOre(tx, ty, id, now, oreS.get(k)); drawOreLock(tx, ty, id); drawOreHp(tx, ty, id, oreS.get(k), now); } }); }
   for (const [k, b] of oreBurst) { // ก้อนแร่แตก: สไปรต์ชีตแตกกระจาย (PixelAction.shatter ~0.65 วินาที)
     const t = now - b.t; if (t >= 650) { oreBurst.delete(k); continue; }
@@ -3447,8 +3516,10 @@ function drawCaveWorld(now) {
     for (const p of players.values()) if (p.cp) list.push({ y: p.cp.y + 8, f: () => drawCompanion(p.cp, now) });
     for (const p of players.values()) list.push({ y: p.y + 12, f: () => drawPlayer(p, now) });
   }
+  for (const c of creatures.values()) if (c.dx > camX - 60 && c.dx < camX + vw + 60 && c.dy > camY - 60 && c.dy < camY + vh + 80) list.push({ y: c.dy + 6, f: () => drawCreature(c, now) });
   list.sort((a, b) => a.y - b.y).forEach(o => safeDraw(o, 'list'));
   if (oreDmg.length) drawOreDmg(now);
+  drawCrFx(now);
   if (inSea()) for (const p of players.values()) if (p.fs) drawFishing(p, now); // เอ็นเบ็ด ทุ่น ระลอกน้ำ น้ำกระเซ็น (เดิมวาดเฉพาะรอบวาดของเมือง ฉากทะเลเลยไม่เห็นแอนิเมชันตกปลา)
 }
 // หน้าผา/บันได (ผังเมืองใหม่): วาดทับพื้นทางหลังสร้างพื้นโลก ใช้พาเลตดินหิน-น้ำตาลตาม STYLE_GUIDE
@@ -4936,6 +5007,7 @@ function step(now) {
   let iy = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0) + joy.y;
   if (scene) { const jx = ix + iy, jy = iy - ix; ix = jx; iy = jy; } // ในบ้านมุมไอโซเมตริก: ปุ่มเดินตามทิศบนจอ (ขวาจอ = +x −y, ลงจอ = +x +y)
   if (chatFocus || modalOpen()) { ix = iy = 0; walk = null; }
+  if (cave && stunUntil > performance.now()) { ix = iy = 0; walk = null; } // สตัน: ขยับไม่ได้ (เซิร์ฟเวอร์ตัดสินจริง)
   let mag = Math.hypot(ix, iy);
   if (mag > 0.1) walk = null;
   else if (walk) {
@@ -4949,7 +5021,7 @@ function step(now) {
   me.moving = mag > 0.1;
   if (me.moving) {
     if (mag > 1) { ix /= mag; iy /= mag; }
-    const sp = 110 * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1) * petSpeedMul() * (inOcean() ? Shared.OCEAN.speed : 1) * (me.veh && inTown() && Shared.VEHICLES[me.veh] ? Shared.VEHICLES[me.veh].speed : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
+    const sp = 110 * dt * (hunger <= 0 ? 0.5 : hunger <= 15 ? 0.8 : 1) * (buffOn('speed') ? 1.1 : 1) * petSpeedMul() * (cave && webUntil > performance.now() ? Shared.CREATURE.webSlow.mul : 1) * (inOcean() ? Shared.OCEAN.speed : 1) * (me.veh && inTown() && Shared.VEHICLES[me.veh] ? Shared.VEHICLES[me.veh].speed : 1), ox = me.x, oy = me.y; // หิวมากจะเดินช้าลง
     if (!blk(me.x + ix * sp, me.y, me.x, me.y)) me.x += ix * sp;
     if (!blk(me.x, me.y + iy * sp, me.x, me.y)) me.y += iy * sp;
     const dsx = scene ? ix - iy : ix, dsy = scene ? (ix + iy) / 2 : iy; // ทิศที่หันตามหน้าจอ
@@ -5042,7 +5114,7 @@ function step(now) {
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = scene ? '#17110d' : inSea() ? '#1c5f8f' : cave ? '#0b0a10' : '#2d4a2b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.setTransform(zoom, 0, 0, zoom, -camX * zoom, -camY * zoom);
+  { const sk = cave ? crShake(now) : null; ctx.setTransform(zoom, 0, 0, zoom, -camX * zoom + (sk ? sk[0] * zoom : 0), -camY * zoom + (sk ? sk[1] * zoom : 0)); }
   ctx.imageSmoothingEnabled = false;
   winterFlag = inTown() && snowScene(now); // ธีมหิมะระดับ 2 (โทนหนาว) ใช้เงื่อนไขเดียวกับหิมะตก เฉพาะในเมือง
   if (scene) { pm(6); drawHouseWorld(now); pm(2); frameTail(now, wall); perfJs(performance.now() - stepT0); return; } // ในบ้านวาดแยกแบบไอโซเมตริก

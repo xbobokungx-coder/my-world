@@ -104,6 +104,7 @@ module.exports = {
     if (now - p.lastAct < 150) return;
     p.lastAct = p.activeAt = now;
     if (m.tool !== 'pick') return;
+    if (now < (p.stunUntil || 0)) return; // สตัน/สลบ ฟาดไม่ได้
     p.workAt = now; if (now - (p.swAt || 0) > 1500) this.sceneBroadcast(p.scene, { t: 'use', id: p.id }, p);
     if (now - (p.hitAt || 0) < S.SWING_MS - 150) return; p.hitAt = now; // ฟาดได้ไม่ถี่กว่าความยาวท่า (เผื่อเน็ตแกว่ง 150 ms)
     this.pickAct(p, now, m.tx, m.ty);
@@ -111,7 +112,6 @@ module.exports = {
   pickAct(p, now, cx, cy) {
     const inv = p.rec.inv, pick = S.pickTier(inv), cf = S.caveFloor(p.scene), F = this.floorOf(cf);
     if (!pick) return this.toast(p, 'ต้องมีอีเต้อก่อน ซื้อได้ที่ร้านช่างเหมือง ⚒️ (หน้าถ้ำ)');
-    if (p.rec.hunger <= 0) return this.toast(p, '😵 หิวจนไม่มีแรง! ไปกินอาหารก่อนนะ (ร้านอาหาร หรือกินผลผลิตจากกระเป๋า)');
     if (!this.durOk(p, 'pick')) return;
     let [tx, ty] = S.facing(p.x, p.y, p.dir);
     if (Number.isInteger(cx) && Number.isInteger(cy)) { // คลิกเลือกก้อนแร่เอง ต้องอยู่ใกล้
@@ -121,6 +121,8 @@ module.exports = {
       const dx = cx - px, dy = cy - py;
       if (dx || dy) p.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
     }
+    if (this.creatureStrikeBy(p, now, tx, ty)) return; // ฟาดสัตว์ก่อนมองหาแร่
+    if (p.rec.hunger <= 0) return this.toast(p, '😵 หิวจนไม่มีแรง! ไปกินอาหารก่อนนะ (ร้านอาหาร หรือกินผลผลิตจากกระเป๋า)');
     const key = tx + ',' + ty, ore = F.ores.get(key);
     if (!ore) return this.toast(p, 'ใช้อีเต้อขุดก้อนแร่ในถ้ำ 🪨 (หันหน้าหาก้อนแร่ หรือแตะที่ก้อนแร่)');
     const kid = ore.k, O = S.ORES[kid], ml = this.lv(p, 'mine');

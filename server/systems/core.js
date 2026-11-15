@@ -20,7 +20,7 @@ module.exports = {
     return 'ไม่รู้จักจุดหมายนี้';
   },
   mapOf(p) { const f = S.caveFloor(p.scene); return f ? this.floorOf(f).map : p.scene ? this.houseMap() : this.map; },
-  blockedFor(p, x, y) { const f = S.caveFloor(p.scene); return f ? S.blockedAt(this.floorOf(f).map, x, y, S.isOcean(f) ? S.BOAT.hull.r : undefined) : p.scene ? S.houseBlockedAt(this.houseMap(), this.houseRects(p.scene), x, y, p.x, p.y) : S.blockedAt(this.map, x, y); }, // ในบ้านรวมกล่องเฟอร์นิเจอร์ (ถ้าอยู่ในกล่องอยู่แล้ว เช่นเพิ่งลุกจากเก้าอี้ เดินออกได้)
+  blockedFor(p, x, y) { if (p.stunUntil > Date.now() && Math.hypot(x - p.x, y - p.y) > 1) return true; /* สตัน/สลบ เดินไม่ได้ */ const f = S.caveFloor(p.scene); return f ? S.blockedAt(this.floorOf(f).map, x, y, S.isOcean(f) ? S.BOAT.hull.r : undefined) : p.scene ? S.houseBlockedAt(this.houseMap(), this.houseRects(p.scene), x, y, p.x, p.y) : S.blockedAt(this.map, x, y); }, // ในบ้านรวมกล่องเฟอร์นิเจอร์ (ถ้าอยู่ในกล่องอยู่แล้ว เช่นเพิ่งลุกจากเก้าอี้ เดินออกได้)
   adminSend(o) { for (const q of this.players.values()) if (q.admin) send(q, o); },
   nameOfKey(key) { return (this.saved[key] && this.saved[key].name) || key; },
   sceneMates(scene, except) { const sc = scene || null; return [...this.players.values()].filter(q => q !== except && (q.scene || null) === sc); },
@@ -34,6 +34,7 @@ module.exports = {
     if (p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); }
     this.sceneBroadcast(scene, Object.assign({ t: 'p+', quiet: 1 }, this.pubFull(p)), p);
     send(p, { t: 'scene', sc: scene, owner: scene && !S.caveFloor(scene) ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene && !S.caveFloor(scene) ? this.houseItemsPub(scene) : [], st: scene && !S.caveFloor(scene) ? this.houseStyle(scene) : null, cave: S.caveFloor(scene), until: S.isSeaScene(S.caveFloor(scene)) && Number.isFinite(p.seaUntil) ? p.seaUntil || 0 : 0, ores: S.caveFloor(scene) ? this.oresPub(S.caveFloor(scene)) : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
+    this.creatureOnScene(p); // ถ้าเข้าชั้นถ้ำ: สัตว์เกิด + ส่ง crs
     this.dirty = true;
   },
   addLog(text) { const e = [Date.now(), text]; this.log.push(e); if (this.log.length > S.TOWN.logMax) this.log.shift(); this.dirty = true; this.broadcast({ t: 'log', e }); },
