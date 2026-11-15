@@ -2178,7 +2178,7 @@ function onTileClick(tx, ty) {
     const [px, py] = myTile(); if (px === Shared.HOUSE_DOOR.x && py === Shared.HOUSE_DOOR.y) { openHomeChoice(); return; }
     tx = Shared.HOUSE_DOOR.x; ty = Shared.HOUSE_DOOR.y;
   }
-  if (inTown() && tx === Shared.MINE.lift.x && ty === Shared.MINE.lift.y) { stopWalk(); if (Shared.nearLift(me.x, me.y)) openLift(); else toast('เดินไปยืนใกล้ลิฟต์เหมือง 🛗 ที่ปากถ้ำก่อน'); return; } // แตะลิฟต์ = เปิดพาเนลตั๋ว (ไกลไป = บอกให้เดินไป)
+  if (inTown() && tx === Shared.MINE.lift.x && ty === Shared.MINE.lift.y) { stopWalk(); if (Shared.nearLift(me.x, me.y)) openLift(); else toast('เดินไปยืนหน้าลิฟต์เหมือง 🛗 (ช่องใต้ลิฟต์) ก่อน'); return; } // แตะลิฟต์ = เปิดพาเนลตั๋ว (ไกลไป = บอกให้เดินไป)
   if (inTown() && hubSignAt(tx, ty)) { stopWalk(); openHub(); return; } // กดป้าย Arcade Hub = เปิดแต้ม/อันดับ
   const [px, py] = myTile();
   if (interactive(tx, ty)) {

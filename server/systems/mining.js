@@ -81,7 +81,7 @@ module.exports = {
   mineTicket(p, f) { // ตั๋วลงเหมือง: จ่ายเหรียญลงตรงไปชั้น f (≤ ชั้นลึกสุดที่เดินลงถึงเอง) ต้องอยู่ในเมืองใกล้ลิฟต์เหมืองที่ปากถ้ำ • เงินจมล้วน (ลงเดินเองฟรีเหมือนเดิม)
     if (!Number.isInteger(f) || f < 2 || f > S.MINE.floors) return;
     if (p.scene) return this.toast(p, 'ซื้อตั๋วลงเหมืองได้ตอนอยู่ในเมือง');
-    if (!S.nearLift(p.x, p.y)) return this.toast(p, 'ต้องยืนใกล้ลิฟต์เหมือง 🛗 ที่ปากถ้ำถึงซื้อตั๋วได้');
+    if (!S.nearLift(p.x, p.y)) return this.toast(p, 'ต้องยืนหน้าลิฟต์เหมือง 🛗 (ช่องใต้ลิฟต์) ถึงซื้อตั๋วได้');
     if (f > (p.rec.deep || 1)) return this.toast(p, `ยังไม่เคยลงถึงชั้น ${f} ลงเดินเองให้ถึงชั้นนี้ก่อนครั้งแรก แล้วค่อยซื้อตั๋วได้`);
     const fee = S.MINE.fee[f]; if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `เหรียญไม่พอ ตั๋วลงชั้น ${f} ราคา 🪙${fee}`);
     this.add(p, 'coin', -fee, 'mineticket'); logEv(this.room, 'mineticket', { p: p.key, f, fee });
