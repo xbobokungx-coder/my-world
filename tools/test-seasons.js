@@ -91,7 +91,7 @@ assert.ok(S.canPlant('pumpkin', mid(0)) && S.plantWait('pumpkin', null, mid(0)) 
   w.rentAt = () => null; w.cropLocked = () => false; w.exhausted = () => false; w.tire = () => {};
   let spot = null; for (let y = 5; y < S.H - 5 && !spot; y++) for (let x = 5; x < S.W - 5 && !spot; x++) if (w.map[y][x] === T.GRASS && !w.farm[x + ',' + y]) spot = [x, y];
   const [x, y] = spot, k = x + ',' + y; p.x = (x + 0.5) * TS; p.y = (y + 1.5) * TS; p.dir = 1;
-  const harvest = os => { p.rec.inv.crop_pumpkin = 0; p.rec.inv.seed_pumpkin = 0; w.farm[k] = { c: 'pumpkin', g: CROPS.pumpkin.time, m: 1, o: p.key, on: p.name, rm: 0, ...(os ? { os: 1 } : {}) }; const xp0 = p.rec.skills.farm; w.act(p, 'hand', x, y, x, y); return { crop: p.rec.inv.crop_pumpkin || 0, seed: p.rec.inv.seed_pumpkin || 0, xp: p.rec.skills.farm - xp0, tile: w.farm[k] }; };
+  const harvest = os => { p.rec.inv.crop_pumpkin = 0; p.rec.inv.seed_pumpkin = 0; w.farm[k] = { c: 'pumpkin', g: CROPS.pumpkin.time, m: 1, o: p.key, on: p.name, rm: 0, ...(os ? { os: 1 } : {}) }; const xp0 = p.rec.skills.farm; w.act(p, 'hand', Date.now(), x, y); return { crop: p.rec.inv.crop_pumpkin || 0, seed: p.rec.inv.seed_pumpkin || 0, xp: p.rec.skills.farm - xp0, tile: w.farm[k] }; };
   p.rec.skills.farm = 0; const rn = Math.random; try {
     Math.random = () => 0.1; let r = harvest(true); assert.strictEqual(r.crop, 1, 'ติดผล = ผลผลิตปกติ'); assert.strictEqual(r.seed, 0); assert.ok(!('os' in r.tile) && !r.tile.c, 'ล้างธง os');
     Math.random = () => 0.9; r = harvest(true); assert.strictEqual(r.crop, 0, 'ไม่ติดผล = ไม่มีผลผลิต'); assert.ok(r.seed >= OS.seedMin && r.seed <= OS.seedMax, 'ได้เมล็ดคืน ' + r.seed); assert.ok(!r.tile.c && !('os' in r.tile));

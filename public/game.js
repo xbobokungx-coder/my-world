@@ -4317,15 +4317,15 @@ function drawMini(now) {
 
 // ---------- main loop ----------
 let last = performance.now();
-// หอคอย 100 ชั้น (มุมบนขวา): สไปรต์ PixelArt.tower() ตั้งฐานที่ขอบล่างแถว TOWER.y1 • หน้าต่าง/รูน/ผลึกกะพริบเรืองแสง หมอกลอย ป้าย "เร็วๆ นี้" (ยังปิด ใช้คู่กับดันเจี้ยน 100 ชั้นภายหลัง)
+// หอคอย 100 ชั้น (เหนือถ้ำเหมือง กลางสวนปลูก): สไปรต์ PixelArt.tower() ตั้งฐานที่ขอบล่างแถว TOWER.y1 • หน้าต่าง/รูน/ผลึกกะพริบเรืองแสง หมอกลอย ป้าย "เร็วๆ นี้" (ยังปิด ใช้คู่กับดันเจี้ยน 100 ชั้นภายหลัง)
 function drawTower(g, now) {
-  const T0 = Shared.TOWER, TW = PixelArt.tower(), sx = T0.x0 * TS + ((T0.x1 - T0.x0 + 1) * TS - TW.w * 2) / 2, sy = (T0.y1 + 1) * TS - (TW.h - 1) * 2;
+  const T0 = Shared.TOWER, TW = PixelArt.tower(), sx = T0.x0 * TS + ((T0.x1 - T0.x0 + 1) * TS - TW.w * 2) / 2, capTop = Math.min(...Shared.MINE.hill.peaks.map(q => q.y)) * 2, sy = Math.round((capTop - TW.h * 2) / 2); // กึ่งกลางแนวตั้ง = กลางระหว่างขอบแมพบน (0) กับยอดถ้ำ (capTop px) • แนวนอนตรงกลางฐาน = กลางสวนปลูก
   const P = (ax, ay) => [sx + (ax + 1) * 2, sy + (ay + 1) * 2];
   g.imageSmoothingEnabled = false; g.drawImage(TW.spr, sx, sy, TW.w * 2, TW.h * 2);
   TW.wins.forEach(([wx, wy, ww, wh], i) => { const [px, py] = P(wx, wy), a = 0.18 + 0.22 * (0.5 + 0.5 * Math.sin(now / 700 + i * 1.7)); g.fillStyle = `rgba(123,224,212,${a})`; g.fillRect(px - 3, py - 3, ww * 2 + 6, wh * 2 + 6); });
   { const [rx, ry] = P(TW.rune.x, TW.rune.y - 1), a = 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(now / 520)); g.fillStyle = `rgba(197,139,255,${a})`; g.beginPath(); g.arc(rx, ry, 13, 0, 7); g.fill(); }
   { const [cx2, cy2] = P(TW.cx - 1, 1), a = 0.3 + 0.3 * (0.5 + 0.5 * Math.sin(now / 380)); g.fillStyle = `rgba(197,139,255,${a})`; g.beginPath(); g.arc(cx2, cy2, 10, 0, 7); g.fill(); g.fillStyle = `rgba(240,220,255,${a})`; g.fillRect(cx2 - 2, cy2 - 3, 4, 7); }
-  for (let i = 0; i < 6; i++) { const t = ((now / 7000 + i / 6) % 1), mx = sx + 16 + ((i * 41) % 96) + Math.sin(now / 1500 + i) * 6, my = (T0.y1 + 1) * TS - 6 - t * 26; g.fillStyle = `rgba(190,180,235,${0.22 * Math.sin(t * Math.PI)})`; g.beginPath(); g.ellipse(mx, my, 10 + t * 8, 3, 0, 0, 7); g.fill(); } // หมอกลอยขึ้นช้าๆ
+  for (let i = 0; i < 6; i++) { const t = ((now / 7000 + i / 6) % 1), mx = sx + 16 + ((i * 41) % 96) + Math.sin(now / 1500 + i) * 6, my = sy + TW.h * 2 - 4 - t * 24; g.fillStyle = `rgba(190,180,235,${0.22 * Math.sin(t * Math.PI)})`; g.beginPath(); g.ellipse(mx, my, 10 + t * 8, 3, 0, 0, 7); g.fill(); } // หมอกลอยขึ้นช้าๆ
   { const [tx2, ty2] = P(TW.sign.x + TW.sign.w / 2, TW.sign.y + TW.sign.h / 2 - 0.5), a = 0.75 + 0.25 * Math.sin(now / 900); // ตัวหนังสือบนป้าย
     g.font = 'bold 12px "Sukhumvit Set","Thonburi","Noto Sans Thai",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 3; g.strokeStyle = 'rgba(21,13,34,.9)'; g.strokeText('เร็วๆ นี้', tx2, ty2);
     g.shadowColor = '#c58bff'; g.shadowBlur = 6; g.fillStyle = `rgba(240,225,255,${a})`; g.fillText('เร็วๆ นี้', tx2, ty2); g.shadowBlur = 0; }
