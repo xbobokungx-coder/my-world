@@ -1453,9 +1453,10 @@ document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => { bag
 $('bagBody').addEventListener('input', e => { if (e.target.id === 'bagQ') { bagQ = e.target.value; $('bagGridBox').innerHTML = bagGridHtml(); } }); // พิมพ์ค้นหา: วาดเฉพาะกริด ไม่ให้ช่องพิมพ์เสียโฟกัส
 $('bagBody').addEventListener('keydown', e => {
   if (e.target.id === 'bagQ') { e.stopPropagation(); if (e.key === 'Escape') { e.target.blur(); } return; }
-  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-bslot],[data-bgo]')) { e.preventDefault(); e.stopPropagation(); e.target.click(); } // ช่องกริดเลือกด้วยคีย์บอร์ดได้ (ไม่ให้ Enter เปิดแชต/Space ไปทำ Action)
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-bslot],[data-bgo],[data-doll]')) { e.preventDefault(); e.stopPropagation(); e.target.click(); } // ช่องกริดเลือกด้วยคีย์บอร์ดได้ (ไม่ให้ Enter เปิดแชต/Space ไปทำ Action)
 });
 $('bagBody').addEventListener('click', e => {
+  if (bagDollClick(e)) { e.preventDefault(); return; }
   if (e.target.closest('[data-pinset]')) { showPinBox(pinSt); return; }
   { const b = e.target.closest('[data-star]'); if (b) { send({ t: 'star', skill: b.dataset.star }); return; } }
   { const sc = e.target.closest('[data-stat]'), ss = e.target.closest('[data-skillsel]'); if (!e.target.closest('button')) { if (sc) { statSel = statSel === 'c' + sc.dataset.stat ? '' : 'c' + sc.dataset.stat; renderBag(); return; } if (ss) { statSel = statSel === 's' + ss.dataset.skillsel ? '' : 's' + ss.dataset.skillsel; renderBag(); return; } } } // เมนูสถานะ: กดอันไหนก็โชว์รายละเอียดในหน้าเดิม ไม่ปิดหน้าต่าง กดอันอื่นต่อได้
@@ -1596,15 +1597,40 @@ function bagDetailHtml() {
     + `<div class="brow">${i.food ? `<button class="btn small" data-eat="${esc(k)}" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน +${i.food}</button>` : ''}${i.cat === 'wear' ? '<button class="btn small" data-bgo="look">ไปตู้เสื้อผ้า</button>' : ''}<button class="btn small" data-info="${esc(k)}">ดูข้อมูล</button></div>`
     + (i.cat === 'furn' ? '<div style="font-size:12px;opacity:.7">วางในบ้านได้ด้วยปุ่ม 🏠</div>' : '');
 }
-function bagWearHtml() { // คอลัมน์สวมใส่ อ่านอย่างเดียว: เครื่องมือที่ถืออยู่ + เสื้อผ้าที่ใส่ กดแล้วไปดูต่อ
-  const tl = [['hoe', 'จอบ', Shared.hoeTier(inv), Shared.HOE_EMOJI], ['water', 'บัว', canTier(inv), null], ['rod', 'เบ็ด', rodLevel(), Shared.ROD_EMOJI], ['axe', 'ขวาน', axeLevel(), Shared.AXE_EMOJI], ['pick', 'อีเต้อ', pickLevel(), Shared.PICK_EMOJI], ['pail', 'ถัง', Shared.pailTier(inv), Shared.PAIL_EMOJI], ['pan', 'กระทะ', Shared.panTier(inv), Shared.PAN_EMOJI]];
-  const tools = tl.filter(([t, , tier]) => tier > 0).map(([t, nm, tier, em]) => {
-    const e = t === 'water' ? (CANS[tier] || {}).emoji : em && em[tier]; if (!e) return '';
-    const D = DURABILITY[t], fx = D && dur[t] ? dur[t][2] || 0 : 0, mx = D ? durMax(t, tier, fx) : 0, pct = D ? Math.max(0, Math.min(100, Math.round((dur[t] ? dur[t][0] : mx) / mx * 100))) : 0;
-    return `<div class="bw" data-bgo="gear" tabindex="0" role="button" title="${nm} ระดับ ${tier}"><b>${e}</b><span class="bn">${nm}<small>ระดับ ${tier}</small>${D ? `<div class="bbar"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div>` : ''}</span></div>`;
-  }).join('');
-  const clothes = Object.keys(WEAR_CATS).map(c => { const it = (WEAR[c] || []).find(x => x.id === ((me && me.wear) || {})[c]); return it && it.id !== 'none' ? `<div class="bw" data-bgo="look" tabindex="0" role="button" title="${esc(it.name)}"><b>${WEAR_CATS[c].emoji}</b><span class="bn">${esc(it.name)}</span></div>` : ''; }).join('');
-  return `<div class="bhd">สวมใส่</div>` + tools + clothes;
+let bagDoll = (() => { const s = ls.get('mw_bag_doll'); return s === '1' ? true : s === '0' ? false : innerHeight >= 700; })(), bagDollSel = ''; // แผงสวมใส่พับ/เปิด + ช่องที่เปิดตัวเลือกอยู่ (hat/shirt/pants/acc/tool)
+const DOLL_SLOTS = [['hat', 'หัว'], ['shirt', 'ตัว'], ['pants', 'ขา']]; // ซ้ายของร่าง • ขวา: มือขวา (เครื่องมือ) มือซ้าย (โล่) เสริม
+const wearHave = (cat, it) => it.price === 0 || !!inv[wearKey(cat, it.id)];
+function applyLook(wear) { // เปลี่ยนชุดจากแผงสวมใส่ ส่งข้อความ look เดียวกับตู้เสื้อผ้า
+  if (!me) return; if (!me.wear) me.wear = Object.assign({}, WEAR_DEFAULT); Object.assign(me.wear, wear);
+  send({ t: 'look', color: me.color, hat: me.hat, pc: me.pc, wear: me.wear }); renderBag();
+}
+function dollSlotHtml(key, icon, label, sub, cls) { return `<div class="bw dl${cls || ''}${bagDollSel === key ? ' sel' : ''}" data-doll="${key}" tabindex="0" role="button" aria-label="${esc(label)} ${esc(sub)}" title="${esc(label)}: ${esc(sub)}"><b>${icon}</b><span class="dn">${esc(label)}</span><span class="ds">${esc(sub)}</span></div>`; }
+function bagWearHtml() { // แผงสวมใส่ตามร่างตัวละคร: กดช่อง = เปิดตัวเลือกใต้ร่าง (ข้อมูลเดิม ไม่เพิ่มข้อความไปเซิร์ฟเวอร์)
+  const hd = `<button class="bhd" data-bdollhd="1" aria-expanded="${bagDoll}">🧍 สวมใส่ ${bagDoll ? '▴' : '▾'}</button>`;
+  if (!bagDoll) return hd;
+  const wr = (me && me.wear) || {}, cur = c => (WEAR[c] || []).find(x => x.id === wr[c]);
+  const wslot = c => { const it = cur(c), nm = (WEAR_CATS[c] || {}).name || c; return dollSlotHtml(c, WEAR_CATS[c].emoji, nm, it && it.id !== 'none' ? it.name : 'ไม่ได้ใส่'); };
+  const t = selTool, ti = toolLocked(t) ? null : toolInfo(t), tier = { hoe: Shared.hoeTier(inv), water: canTier(inv), rod: rodLevel(), axe: axeLevel(), pick: pickLevel() }[t] || 0;
+  const D = DURABILITY[t], fx = D && dur[t] ? dur[t][2] || 0 : 0, mx = D && tier ? durMax(t, tier, fx) : 0, pct = mx ? Math.max(0, Math.min(100, Math.round((dur[t] ? dur[t][0] : mx) / mx * 100))) : 0;
+  const hand = dollSlotHtml('tool', ti ? ti.e : '✋', 'มือขวา', ti ? TOOL_SHORT[t] + (tier ? ' Lv' + tier : '') : 'มือเปล่า') .replace('</div>', mx ? `<div class="bbar"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div></div>` : '</div>');
+  const shield = `<div class="bw dl lockd" data-doll="shield" tabindex="0" role="button" aria-label="โล่ ยังไม่เปิด" title="โล่ (เปิดตอนหอคอย)"><b>🔒</b><span class="dn">มือซ้าย</span><span class="ds">โล่ (เปิดตอนหอคอย)</span></div>`;
+  let strip = '';
+  if (bagDollSel === 'tool') strip = TOOL_LIST.map(k => { const inf = toolInfo(k), lk = toolLocked(k); return `<button class="witem${selTool === k ? ' on' : ''}${lk ? ' lockw' : ''}" data-dtool="${k}" ${lk ? 'disabled' : ''}><b>${inf.e}</b>${TOOL_SHORT[k]}<small>${lk ? '🔒 ยังไม่มี' : selTool === k ? '✅ ถืออยู่' : 'กดเพื่อถือ'}</small></button>`; }).join('');
+  else if (WEAR[bagDollSel]) strip = WEAR[bagDollSel].map(it => { const own = wearHave(bagDollSel, it), on = wr[bagDollSel] === it.id; return `<button class="witem${on ? ' on' : ''}${own ? '' : ' lockw'}" data-dwear="${esc(bagDollSel + ':' + it.id)}" ${own ? '' : 'disabled'}><b>${esc(it.name)}</b><small>${on ? '✅ สวมอยู่' : own ? 'กดเพื่อสวม' : '🔒 ' + it.price + ' 🪙'}</small></button>`; }).join('');
+  return hd + `<div class="doll"><div class="dcol">${DOLL_SLOTS.map(([c]) => wslot(c)).join('')}</div><canvas id="bagDoll" width="96" height="156" aria-label="ตัวละครของคุณ"></canvas><div class="dcol">${hand}${shield}${wslot('acc')}</div></div>`
+    + (strip ? `<div class="dstrip">${strip}</div>` : '') + `<div class="dlink"><button class="btn small" data-bgo="look">🎨 เลือกสีที่ตู้เสื้อผ้า</button></div>`;
+}
+function drawBagDoll() { // วาดร่างตัวละครลงแผงสวมใส่ (แบบเดียวกับพรีวิวตู้เสื้อผ้า) ข้อมูลผิดรูปไม่ทำให้พัง
+  const cv = $('bagDoll'); if (!cv || !me) return; const g = cv.getContext('2d'); g.clearRect(0, 0, 96, 156); g.save(); g.translate(48, 108); g.scale(2.8, 2.8);
+  try { drawPlayer({ x: 0, y: 0, dir: 0, moving: false, anim: 0, color: me.color, hat: me.hat, pc: me.pc, wear: Object.assign({}, WEAR_DEFAULT, me.wear || {}), name: '' }, 0, g); } catch (e) {}
+  g.restore();
+}
+function bagDollClick(e) { // คืน true ถ้าจัดการแล้ว
+  const hd = e.target.closest('[data-bdollhd]'); if (hd) { bagDoll = !bagDoll; ls.set('mw_bag_doll', bagDoll ? '1' : '0'); if (!bagDoll) bagDollSel = ''; renderBag(); return true; }
+  const dt = e.target.closest('[data-dtool]'); if (dt) { const t = dt.dataset.dtool; if (!TOOL_LIST.includes(t) || toolLocked(t)) return true; selTool = t; ls.set('mw_tool', t); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(t).e} ${TOOL_SHORT[t]}`); playSfx('click'); renderBag(); return true; }
+  const dw = e.target.closest('[data-dwear]'); if (dw) { const [cat, id] = dw.dataset.dwear.split(':'); const it = (WEAR[cat] || []).find(x => x.id === id); if (it && wearHave(cat, it)) { applyLook({ [cat]: id }); playSfx('click'); } return true; }
+  const ds = e.target.closest('[data-doll]'); if (ds) { const k = ds.dataset.doll; if (k === 'shield') { toast('🛡️ โล่ยังไม่เปิดนะ ไว้ใช้ตอนหอคอย'); return true; } bagDollSel = bagDollSel === k ? '' : k; renderBag(); { const sp = document.querySelector('.dstrip'); if (sp && sp.scrollIntoView) sp.scrollIntoView({ block: 'nearest' }); } const f = document.querySelector(`[data-doll="${k}"]`); if (f && e.detail === 0) f.focus(); return true; }
+  return false;
 }
 function bagGearHtml() { // ความทนทานอุปกรณ์ (ซ่อมได้ที่ร้านของสายนั้น) ย้ายมาจากแท็บย่อยอุปกรณ์เดิม ข้อมูลเหมือนเดิม
   return `<div class="grid">` + Object.keys(DURABILITY).filter(t => (t !== 'axe' || axeLevel() > 0) && (t !== 'pick' || pickLevel() > 0)).map(t => {
@@ -1660,6 +1686,7 @@ function renderBag() {
       + `<div class="chips" id="bagGrps">${FLEA_GRPS.map(([k, n]) => `<button class="chip${bagGrp === k ? ' sel' : ''}" data-bgrp="${k}">${n}</button>`).join('')}</div>`
       + `<div id="bagGridBox">${bagGridHtml()}</div></div></div>`
       + `<div class="sec">🎣 อุปกรณ์ (ความทนทาน)</div><div id="bagGear">${bagGearHtml()}</div>`;
+    drawBagDoll();
     if (keep) { const q = $('bagQ'); q.focus(); try { q.setSelectionRange(keep[0], keep[1]); } catch (e) {} }
   } else if (bagTab === 'skills') {
     const nextCrop = () => Object.values(CROPS).filter(c => !c.legacy && c.lv > lvl('farm')).sort((a, b) => a.lv - b.lv)[0];
