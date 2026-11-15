@@ -104,13 +104,13 @@
   #report .panel { width:min(94vw,400px); padding:16px; max-height:92dvh; overflow:auto; }
   #report h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
   #report.hidden { display:none; }
-  #shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
-  #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,440px); padding:16px; max-height:92vh; max-height:92dvh; overflow:auto; }
-  @media (orientation:landscape) and (max-height:520px) { #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel { width:min(94vw,560px); } }
+  #shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#settings { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
+  #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel,#settings .panel { width:min(94vw,440px); padding:16px; max-height:92vh; max-height:92dvh; overflow:auto; }
+  @media (orientation:landscape) and (max-height:520px) { #shop .panel,#bag .panel,#people .panel,#archub .panel,#status .panel,#bug .panel,#quest .panel,#ach .panel,#arcade .panel,#trade .panel,#cinema .panel,#town .panel,#admin .panel,#plots .panel,#settings .panel { width:min(94vw,560px); } }
   /* หัวหน้าต่าง (ชื่อ+ปุ่มปิด) ติดบนสุดตอนเลื่อน */
-  :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots) .panel > h2:first-child { position:sticky; top:-16px; z-index:3; background:inherit; margin:-16px -16px 8px; padding:16px 16px 0; }
+  :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#settings) .panel > h2:first-child { position:sticky; top:-16px; z-index:3; background:inherit; margin:-16px -16px 8px; padding:16px 16px 0; }
   @media (max-height:420px) { #arcade .panel { padding:10px 12px; } #arcade .panel > h2:first-child { top:-10px; margin:-10px -12px 4px; padding:10px 12px 4px; } #arcade .uc { width:38px; height:56px; font-size:17px; } #arcade .uc.big { width:52px; height:76px; font-size:24px; } #arcade .hand { gap:3px; margin:4px 0 2px; padding-top:6px; } #arcade .utable { margin:2px 0; gap:10px; } #arcade .opps { margin:2px 0; } #arcade .banner { margin:4px 0; padding:4px; font-size:16px; } #arcade .colorpick { margin:4px 0; } }
-  #shop h2,#bag h2,#people h2,#archub h2,#status h2,#bug h2,#quest h2,#ach h2,#arcade h2,#trade h2,#cinema h2,#town h2,#admin h2,#plots h2,#mapEdit h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  #shop h2,#bag h2,#people h2,#archub h2,#status h2,#bug h2,#quest h2,#ach h2,#arcade h2,#trade h2,#cinema h2,#town h2,#admin h2,#plots h2,#settings h2,#mapEdit h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
   /* ตัวแก้แมพเต็มจอ — ต้อง override กฎ canvas { position:fixed; inset:0 } ของเกม ไม่งั้นแคนวาสทับปุ่มและค้างมุมจอ */
   #mapEdit { position:fixed; inset:0; z-index:20; background:#1c140f; display:flex; padding:0; margin:0; }
   #mapEdit .panel { width:100%; height:100%; max-width:none; max-height:none; border-radius:0; border:none; box-shadow:none; padding:10px 12px 8px; display:flex; flex-direction:column; gap:6px; overflow:hidden; zoom:1 !important; background:var(--paper,#f3e0b6); }
@@ -357,7 +357,7 @@
   body.touch #abtn { right:calc(14px + var(--sar)); bottom:calc(88px + var(--sab)); }
   body.touch .chip { padding:9px 16px; }
   body.touch #shop .row,body.touch #bag .row,body.touch #people .row,body.touch #trade .row,body.touch #cinema .row,body.touch #town .row { padding:9px 0; }
-  body.touch #shop .btn.small,body.touch #bag .btn.small,body.touch #people .btn.small,body.touch #trade .btn.small,body.touch #cinema .btn.small,body.touch #town .btn.small, body.touch :is(#admin,#ach,#quest,#archub,#plots,#status,#bug) .btn.small { padding:8px 14px; font-size:15px; min-height:40px; }
+  body.touch #shop .btn.small,body.touch #bag .btn.small,body.touch #people .btn.small,body.touch #trade .btn.small,body.touch #cinema .btn.small,body.touch #town .btn.small, body.touch :is(#admin,#ach,#quest,#archub,#plots,#settings,#status,#bug) .btn.small { padding:8px 14px; font-size:15px; min-height:40px; }
   body.touch :is(#picker,#skillbar) { bottom:calc(76px + var(--sab)); }
   @media (orientation:landscape) and (max-height:520px) { body.touch :is(#picker,#skillbar) { bottom:calc(58px + var(--sab)); } }
   @media (orientation:portrait) and (max-width:699px) { body.touch :is(#picker,#ffight,#fgauge) { bottom:calc(222px + var(--sab)); } } /* ยกพ้นจอยสติ๊ก/ปุ่ม A */
@@ -422,7 +422,7 @@
   @media (orientation:landscape) and (max-height:520px) { body.touch #hornBtn { right:calc(100px + var(--sar)); bottom:calc(20px + var(--sab)); } }
   @media (min-width:700px) and (min-height:600px) { body.touch #hornBtn { right:calc(60px + var(--sar)); bottom:calc(156px + var(--sab)); } }
   @media (orientation:portrait) and (max-width:699px) { body.touch #hornBtn { width:44px; height:44px; font-size:20px; right:calc(106px + var(--sar)); bottom:calc(108px + var(--sab)); } } /* จอยืนมือถือ: แตรอยู่ซ้ายปุ่ม A ห่าง 8px (A กว้าง 84 ขวา 14) ไม่ทับเกจตกปลา/จอยสติ๊ก */
-  body.touch :is(#shopClose,#townClose,#bagClose), :is(#bagClose) { min-height:44px; min-width:44px; }
+  body.touch :is(#shopClose,#townClose,#bagClose,#settingsClose), :is(#bagClose,#settingsClose) { min-height:44px; min-width:48px; }
   body.touch :is(#town,#shop) :is(select,input) { min-height:44px !important; } /* ทับ inline min-height:36px ของฟอร์มตลาดนัด */
   body.touch .ck-filters .chip, body.touch .chip { min-height:44px; }
   body.touch .ck-head .btn { min-height:44px !important; min-width:44px !important; }
@@ -596,11 +596,32 @@
   body.touch #hudTop > #online, body.touch #hudTop > #hungerChip:not(.low) { display:none !important; }
   @media (orientation:landscape) and (max-height:520px) { body.touch #hudMenu { width:min(96vw,560px); } body.touch #sndPanel { flex-direction:row; align-items:center; gap:6px; } body.touch #sndPanel .btn { flex:0 0 auto; min-width:120px; padding:0 8px; } body.touch #sndPanel .srow { flex:1 1 0; min-width:0; gap:4px; font-size:11px; } body.touch #sndPanel .srow span { min-width:0; } body.touch #sndPanel .srow b { flex-basis:32px; } body.touch #perfPanel { flex-direction:row; gap:6px; } body.touch #perfPanel .btn { flex:1 1 0; min-width:0; font-size:12px; } } /* แนวนอนจอเตี้ย: แผงเสียงแถวเดียว ปุ่ม+แถบสองอัน */
   body:not(.touch) #hudMenu .mtouch { display:none !important; }
+  /* เมนู ☰ แบบปุ่มใหญ่ทางไปหน้าต่าง + หน้าต่างตั้งค่า */
+  #hudMenu .mgrid.big, #settings .mgrid.sg { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  #settings .mgrid.sg { grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); }
+  #hudMenu .mgrid.quick { grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:6px; }
+  #hudMenu .mgrid.big .btn, #hudMenu .mgrid.quick .btn, #settings .mgrid.sg .btn, body.touch #hudMenu .mgrid.big .btn, body.touch #hudMenu .mgrid.quick .btn, body.touch #settings .mgrid.sg .btn { flex-direction:row; justify-content:flex-start; gap:8px; min-height:48px; height:auto; padding:6px 10px; font-size:15px; font-weight:800; line-height:1.15; text-align:left; }
+  #hudMenu .mgrid.quick .btn { justify-content:center; padding:6px 4px; gap:5px; font-size:13px; min-height:44px; }
+  #hudMenu .mgrid .btn::after, #settings .mgrid .btn::after { content:none; }
+  #hudMenu .mi, #settings .mi { font-size:22px; line-height:1; flex:0 0 auto; }
+  #hudMenu .mgrid.quick .mi { font-size:19px; }
+  body.touch #hudMenu { width:min(94vw,340px); padding:8px; }
+  body.touch #hudMenu .mgrid.big { grid-template-columns:1fr 1fr; gap:6px; }
+  body.touch #hudMenu .mgrid.quick { grid-template-columns:repeat(3,1fr); }
+  #settings .mtitle { font-size:12px; font-weight:800; color:#5a4636; opacity:.8; margin:10px 2px 4px; }
+  #settings .mtitle:first-of-type { margin-top:2px; }
+  #advSet { margin-top:10px; border:2px dashed var(--edge); border-radius:10px; padding:4px 8px; }
+  #advSet summary { min-height:44px; display:flex; align-items:center; font-weight:800; font-size:13px; cursor:pointer; }
+  #charLinks { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  #bagTabs:empty { display:none; }
+  #bagTabs .tab { min-height:44px; font-family:inherit; cursor:pointer; }
+  #bagTabs { flex-wrap:wrap; }
+  #bagTabs .tab { flex:1 1 auto; }
   #hudMenu .spk { margin-left:0; color:inherit; }
   /* คอมจอใหญ่: ขยาย UI ตามสเกลจอ (--ui คำนวณใน game.js resize) ให้สัดส่วนกับโลกในเกมเท่ากับจอเล็ก */
   body:not(.touch) :is(#hudTop,#hotbar,#inv,#chat,#mini,#guide,#toast,#picker,#skillbar,#build,#fgauge,#ffight,#callBox) { zoom:var(--ui,1); }
   body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#ask,#homeChoice) > .panel { zoom:var(--ui,1); }
-  body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots) > .panel { max-height:calc(92dvh / var(--ui,1)); }
+  body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#settings) > .panel { max-height:calc(92dvh / var(--ui,1)); }
   body:not(.touch) #hudMenu { max-height:calc((100dvh - 90px) / var(--ui,1)); }
   body:not(.touch) #build { max-height:calc((100dvh - 24px) / var(--ui,1)); }
   body:not(.touch) :is(#townBody,#tradeBody) { max-height:calc(68vh / var(--ui,1)); }
@@ -646,52 +667,20 @@
   <button class="btn small veh hidden" id="vehBtn" title="ยานพาหนะ (V): เลือกรถขี่ / ลงรถ" aria-label="ยานพาหนะ" aria-haspopup="true" aria-expanded="false">🚲</button>
   <div id="vehMenu" class="hidden" role="menu" aria-label="เลือกยานพาหนะ"></div>
   <div id="hudMenu" class="hidden" role="menu" aria-label="เมนูหลัก">
-    <div class="mtitle">🧍 ตัวละคร</div>
-    <div class="mgrid">
-      <button class="btn small" id="statBtn" data-lbl="ข้อมูลฉัน" title="สถานะ (C)" aria-label="ข้อมูลของฉัน">📊</button>
-      <button class="btn small mtouch" id="bagMenu" data-lbl="กระเป๋า" title="กระเป๋า" aria-label="กระเป๋า">🎒</button>
-      <button class="btn small mtouch" id="chatMenu" data-lbl="แชท" title="แชท" aria-label="แชท">💬</button>
-      <button class="btn small" id="lookBtn" data-lbl="ตัวละคร" title="ตัวละคร" aria-label="ตัวละคร">👕</button>
-      <button class="btn small" id="bookBtn" data-lbl="สมุด" title="สมุด" aria-label="สมุดรวบรวม">📖</button>
-      <button class="btn small" id="achBtn" data-lbl="ฉายา" title="ฉายา &amp; ความสำเร็จ" aria-label="ฉายาและความสำเร็จ">🏅</button>
-      <button class="btn small" id="myStatusBtn" data-lbl="สถานะ" title="ตั้งสถานะ" aria-label="ตั้งสถานะ">💭</button>
-      <button class="btn small" id="houseBtn" data-lbl="บ้านฉัน" title="เข้าบ้านตัวเอง (H)" aria-label="เข้าบ้านตัวเอง">🏠</button>
-      <button class="btn small" id="friendsBtn" data-lbl="บ้านเพื่อน" title="บ้านเพื่อน (ลีดเดอร์บอร์ดบ้านตกแต่ง)" aria-label="บ้านเพื่อน">🏘️</button>
+    <div class="mgrid quick mtouch">
+      <button class="btn small mtouch" id="bagMenu" title="กระเป๋า" aria-label="กระเป๋า"><span class="mi">🎒</span><span>กระเป๋า</span></button>
+      <button class="btn small mtouch" id="chatMenu" title="แชท" aria-label="แชท"><span class="mi">💬</span><span>แชท</span></button>
+      <button class="btn small mic mtouch" id="micMenu" title="ไมค์" aria-label="เปิด/ปิดไมค์"><span class="mi">🎤</span><span>ไมค์</span></button>
     </div>
-    <div class="mtitle">🏘️ เมือง</div>
-    <div class="mgrid">
-      <button class="btn small" id="questBtn" data-lbl="เควส" title="เควส" aria-label="เควส" style="position:relative">📋<span id="questBadge" class="hidden" style="position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#e74c3c;color:#fff;font-size:11px;line-height:17px;font-weight:700;text-align:center;pointer-events:none"></span></button>
-      <button class="btn small" id="townBtn" data-lbl="ข่าวเมือง" title="ข่าวเมือง" aria-label="ข่าวเมือง">📰</button>
-      <button class="btn small hidden" id="petBtn" data-lbl="สัตว์เลี้ยง" title="สัตว์เลี้ยง" aria-label="สัตว์เลี้ยง">🐾</button>
-    </div>
-    <div class="mtitle">👥 เพื่อน</div>
-    <div class="mgrid">
-      <button class="btn small mic mtouch" id="micMenu" data-lbl="ไมค์" title="ไมค์" aria-label="เปิด/ปิดไมค์">🎤</button>
-      <button class="btn small mtouch" id="onlineMenu" data-lbl="ออนไลน์" title="ผู้เล่นออนไลน์" aria-label="ผู้เล่นออนไลน์">👥</button>
-      <button class="btn small" id="invite" data-lbl="ชวนเพื่อน" title="คัดลอกลิงก์ชวนเพื่อน" aria-label="ชวนเพื่อน">🔗</button>
-      <button class="btn small spk" id="spkBtn" data-lbl="เสียงเพื่อน" title="ลำโพง: เปิดอยู่" aria-label="เปิดหรือปิดลำโพง">🔊</button>
-    </div>
-    <div class="mtitle">🎚️ เสียงเกม</div>
-    <div id="sndPanel">
-      <button class="btn small" id="sndTog" type="button">🔊 เสียงเกม: เปิด</button>
-      <label class="srow"><span>🎮 เสียงเกม</span><input type="range" min="0" max="100" value="100" data-vol="sfx" aria-label="ระดับเสียงเกม"><b data-volv="sfx">100%</b></label>
-      <label class="srow"><span>🎵 ดนตรี</span><input type="range" min="0" max="100" value="70" data-vol="music" aria-label="ระดับดนตรี"><b data-volv="music">70%</b></label>
-    </div>
-    <div class="mtitle">🖥️ หน้าจอ</div>
-    <div class="mgrid">
-      <button class="btn small" id="zoomOutBtn" data-lbl="ซูมออก" title="ซูมออก (เห็นกว้างขึ้น)" aria-label="ซูมออก">🔍−</button>
-      <button class="btn small" id="zoomInBtn" data-lbl="ซูมเข้า" title="ซูมเข้า (ขยายใหญ่ขึ้น)" aria-label="ซูมเข้า">🔍+</button>
-      <button class="btn small" id="fsBtn" data-lbl="เต็มจอ" title="เต็มจอ" aria-label="เต็มจอ">⛶</button>
-    </div>
-    <div id="perfPanel">
-      <button class="btn small" id="resBtn" type="button">🖼️ ความละเอียด: อัตโนมัติ</button>
-      <button class="btn small" id="perfBtn" type="button">📈 ตัววัดเฟรม: ปิด</button>
-      <button class="btn small hidden" id="perfCopy" type="button">📋 คัดลอกเลขวัด</button>
-    </div>
-    <div class="mtitle">⚙️ อื่นๆ</div>
-    <div class="mgrid">
-      <button class="btn small" id="bugBtn" data-lbl="แจ้งบั๊ก" title="แจ้งบั๊ก" aria-label="แจ้งบั๊ก">🐞</button>
-      <button class="btn small hidden" id="adminBtn" data-lbl="ผู้ดูแล" title="ผู้ดูแล: จัดการห้อง" aria-label="ผู้ดูแล">🛠️</button>
+    <div class="mgrid big">
+      <button class="btn small" id="statBtn" title="ตัวละคร: สถานะ สกิล สมุด ตู้เสื้อผ้า (C)" aria-label="ตัวละคร"><span class="mi">🧍</span><span>ตัวละคร</span></button>
+      <button class="btn small" id="questBtn" title="เควส" aria-label="เควส" style="position:relative"><span class="mi">📋</span><span>เควส</span><span id="questBadge" class="hidden" style="position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#e74c3c;color:#fff;font-size:11px;line-height:17px;font-weight:700;text-align:center;pointer-events:none"></span></button>
+      <button class="btn small" id="townBtn" title="ข่าวเมือง" aria-label="ข่าวเมือง"><span class="mi">📰</span><span>ข่าวเมือง</span></button>
+      <button class="btn small" id="houseBtn" title="เข้าบ้านตัวเอง (H)" aria-label="เข้าบ้านตัวเอง"><span class="mi">🏠</span><span id="houseLbl">บ้านฉัน</span></button>
+      <button class="btn small" id="friendsBtn" title="บ้านเพื่อน (ลีดเดอร์บอร์ดบ้านตกแต่ง)" aria-label="บ้านเพื่อน"><span class="mi">🏘️</span><span>บ้านเพื่อน</span></button>
+      <button class="btn small hidden" id="petBtn" title="สัตว์เลี้ยง" aria-label="สัตว์เลี้ยง"><span class="mi">🐾</span><span>สัตว์เลี้ยง</span></button>
+      <button class="btn small" id="onlineMenu" title="เพื่อน: คนในแมพ ชวนเพื่อน" aria-label="เพื่อน"><span class="mi">👥</span><span id="onlineLbl">เพื่อน</span></button>
+      <button class="btn small" id="settingsBtn" title="ตั้งค่า" aria-label="ตั้งค่า"><span class="mi">⚙️</span><span>ตั้งค่า</span></button>
     </div>
   </div>
 </div>
@@ -716,8 +705,39 @@
   <div id="shopInfo" style="font-size:13px;opacity:.75;margin-bottom:4px"></div>
   <div id="shopBody"></div>
 </div></div>
+<div id="settings" class="hidden"><div class="panel">
+  <h2><span>⚙️ ตั้งค่า</span> <button class="btn small" id="settingsClose">ปิด</button></h2>
+  <div class="mtitle">🎚️ เสียงเกม</div>
+  <div id="sndPanel">
+    <button class="btn small" id="sndTog" type="button">🔊 เสียงเกม: เปิด</button>
+    <label class="srow"><span>🎮 เสียงเกม</span><input type="range" min="0" max="100" value="100" data-vol="sfx" aria-label="ระดับเสียงเกม"><b data-volv="sfx">100%</b></label>
+    <label class="srow"><span>🎵 ดนตรี</span><input type="range" min="0" max="100" value="70" data-vol="music" aria-label="ระดับดนตรี"><b data-volv="music">70%</b></label>
+  </div>
+  <div class="mtitle">🗣️ เสียงเพื่อน</div>
+  <div class="mgrid sg"><button class="btn small spk" id="spkBtn" title="ลำโพง: เปิดอยู่" aria-label="เปิดหรือปิดลำโพง"><span class="mi">🔊</span><span>ลำโพงเพื่อน</span></button></div>
+  <div class="mtitle">🖥️ หน้าจอ</div>
+  <div class="mgrid sg">
+    <button class="btn small" id="zoomOutBtn" title="ซูมออก (เห็นกว้างขึ้น)" aria-label="ซูมออก"><span class="mi">🔍−</span><span>ซูมออก</span></button>
+    <button class="btn small" id="zoomInBtn" title="ซูมเข้า (ขยายใหญ่ขึ้น)" aria-label="ซูมเข้า"><span class="mi">🔍+</span><span>ซูมเข้า</span></button>
+    <button class="btn small" id="fsBtn" title="เต็มจอ" aria-label="เต็มจอ"><span class="mi">⛶</span><span>เต็มจอ</span></button>
+  </div>
+  <details id="advSet"><summary>🔧 ขั้นสูง (ไว้ปรับเครื่องช้า)</summary>
+    <div id="perfPanel">
+      <button class="btn small" id="resBtn" type="button">🖼️ ความละเอียด: อัตโนมัติ</button>
+      <button class="btn small" id="perfBtn" type="button">📈 ตัววัดเฟรม: ปิด</button>
+      <button class="btn small hidden" id="perfCopy" type="button">📋 คัดลอกเลขวัด</button>
+    </div>
+  </details>
+  <div class="mtitle">💬 อื่นๆ</div>
+  <div class="mgrid sg">
+    <button class="btn small" id="bugBtn" title="แจ้งบั๊ก" aria-label="แจ้งบั๊ก"><span class="mi">🐞</span><span>แจ้งบั๊ก</span></button>
+    <button class="btn small hidden" id="adminBtn" title="ผู้ดูแล: จัดการห้อง" aria-label="ผู้ดูแล"><span class="mi">🛠️</span><span>ผู้ดูแล</span></button>
+  </div>
+</div></div>
 <div id="bag" class="hidden"><div class="panel">
-  <h2><span>🎒 ของของฉัน</span> <button class="btn small" id="bagClose">ปิด</button></h2>
+  <h2><span id="bagTitle">🎒 ของของฉัน</span> <button class="btn small" id="bagClose">ปิด</button></h2>
+  <div class="tabs" id="bagTabs"></div>
+  <div class="dlink" id="charLinks"><button class="btn small" id="achBtn" title="ฉายา &amp; ความสำเร็จ" aria-label="ฉายาและความสำเร็จ">🏅 ฉายา</button> <button class="btn small" id="myStatusBtn" title="ตั้งสถานะ" aria-label="ตั้งสถานะ">💭 ตั้งสถานะ</button></div>
   <div id="bagBody"></div>
 </div></div>
 <div id="arcade" class="hidden"><div class="panel">
@@ -726,6 +746,7 @@
 </div></div>
 <div id="people" class="hidden"><div class="panel">
   <h2><span>👥 คนในแมพ</span> <button class="btn small" id="peopleClose">ปิด</button></h2>
+  <div class="dlink"><button class="btn small" id="invite" title="คัดลอกลิงก์ชวนเพื่อน" aria-label="ชวนเพื่อน">🔗 ชวนเพื่อน</button></div>
   <div id="peopleBody"></div>
 </div></div>
 <div id="archub" class="hidden"><div class="panel">

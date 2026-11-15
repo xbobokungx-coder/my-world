@@ -1069,7 +1069,7 @@ function applyScene(m) {
   if (callWith && !peers.has(callWith)) callPeer(callWith);
 }
 function updateHouseUi() {
-  $('houseBtn').dataset.lbl = inMyHouse() ? 'ตกแต่ง' : 'บ้านฉัน';
+  $('houseLbl').textContent = inMyHouse() ? 'ตกแต่งบ้าน' : 'บ้านฉัน';
   $('houseBtn').title = inMyHouse() ? 'โหมดตกแต่งบ้าน (H)' : 'เข้าบ้านตัวเอง (H)';
   $('mini').style.display = scene || cave ? 'none' : ''; // ในบ้านไม่ใช้แผนที่ย่อ
 }
@@ -1244,7 +1244,7 @@ $('bagMenu').onclick = () => $('bagBtn').click();
 $('chatMenu').onclick = () => $('chatBtn').click();
 $('micMenu').onclick = () => $('micBtn').click();
 $('onlineMenu').onclick = () => $('online').click();
-$('hudMenu').addEventListener('click', e => { const b = e.target.closest('.btn'); if (b && !['zoomInBtn', 'zoomOutBtn', 'spkBtn', 'sndTog', 'resBtn', 'perfBtn', 'perfCopy'].includes(b.id)) setMenu(false); }); // เลือกแล้วปิดเมนู ยกเว้นปุ่มที่กดซ้ำได้
+$('hudMenu').addEventListener('click', e => { const b = e.target.closest('.btn'); if (b && !['micMenu'].includes(b.id)) setMenu(false); }); // เลือกแล้วปิดเมนู ยกเว้นไมค์ (กดซ้ำได้)
 addEventListener('pointerdown', e => { if (menuShown() && !e.target.closest('#hudMenu') && !e.target.closest('#menuBtn')) setMenu(false); });
 { // แสดงจุดแดงเควสที่ปุ่มเมนูด้วย (เควสอยู่ในเมนู จะได้ไม่พลาดเควสใหม่)
   const qb = $('questBadge'), mb = $('menuBadge');
@@ -1265,7 +1265,7 @@ function setHunger(v) {
   if (bagShown() && bagTab === 'eat') renderBag();
   if (bagShown()) renderBag();
 }
-function updateOnline() { $('online').textContent = '👥 ' + roster.size + (mute.all ? ' 🔇' : ''); $('onlineMenu').dataset.lbl = 'ออนไลน์ ' + roster.size; }
+function updateOnline() { $('online').textContent = '👥 ' + roster.size + (mute.all ? ' 🔇' : ''); $('onlineLbl').textContent = 'เพื่อน ' + roster.size; }
 const chatHist = []; // แชทผู้เล่นล่าสุด 10 ข้อความ (ไม่รวมข้อความระบบ) แสดงเป็นแผงโปร่งแสงตอนเปิดช่องแชท
 function renderChatHist() {
   const el = $('chatHist'), esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -1414,20 +1414,31 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
 } else $('fsBtn').remove();
 
 // ---------- กระเป๋า / อาชีพ / ตัวละคร ----------
-const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'report', 'ask', 'gift', 'pinBox'].some(id => !$(id).classList.contains('hidden'));
+const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'settings', 'report', 'ask', 'gift', 'pinBox'].some(id => !$(id).classList.contains('hidden'));
 // เปิดหน้าต่างใหม่ = ปิดหน้าต่างอื่นในกลุ่มนี้ + เมนูหลัก (ไม่แตะ ask/pinBox/gift/trade/arcade/cinema/admin/mapEdit ที่มีผลข้างเคียง)
 function closeOthers(keep) {
-  const cl = { bag: closeBag, shop: closeShop, people: closePeople, archub: closeHub, status: closeStatus, bug: closeBug, quest: closeQuest, ach: closeAch, town: closeTown, plots: closePlots, homeChoice: closeHomeChoice };
+  const cl = { bag: closeBag, shop: closeShop, people: closePeople, archub: closeHub, status: closeStatus, bug: closeBug, quest: closeQuest, ach: closeAch, town: closeTown, plots: closePlots, homeChoice: closeHomeChoice, settings: closeSettings };
   for (const id in cl) if (id !== keep && !$(id).classList.contains('hidden')) cl[id]();
   setMenu(false);
 }
-function openBag(tab) { closeOthers('bag'); if (tab) bagTab = tab; $('bag').classList.remove('hidden'); renderBag(); }
+// หน้าต่าง #bag ใช้ร่วมกัน 2 โหมด: กระเป๋า (ของ/กินอาหาร) กับ ตัวละคร (สถานะ/สกิล/สมุด/ตู้เสื้อผ้า) ดูจาก bagTab
+const BAG_TABS = [['items', '🎒 ของ'], ['eat', '🍴 กินอาหาร']], CHAR_TABS = [['status', '📊 สถานะ'], ['skills', '⭐ สกิล'], ['book', '📖 สมุด'], ['look', '👕 ตู้เสื้อผ้า']];
+const isBagTab = t => BAG_TABS.some(x => x[0] === t);
+function openBag(tab) { closeOthers('bag'); bagTab = tab && (isBagTab(tab) || CHAR_TABS.some(x => x[0] === tab)) ? tab : 'items'; $('bag').classList.remove('hidden'); renderBag(); }
+const openChar = tab => openBag(CHAR_TABS.some(x => x[0] === tab) ? tab : 'status');
 function closeBag() { $('bag').classList.add('hidden'); }
 const bagShown = () => !$('bag').classList.contains('hidden');
-$('bagBtn').onclick = () => (bagShown() && bagTab === 'items' ? closeBag() : openBag('items'));
-$('statBtn').onclick = () => (bagShown() && bagTab === 'status' ? closeBag() : openBag('status'));
-$('lookBtn').onclick = () => (bagShown() && bagTab === 'look' ? closeBag() : openBag('look'));
-$('bookBtn').onclick = () => (bagShown() && bagTab === 'book' ? closeBag() : openBag('book'));
+$('bagBtn').onclick = () => (bagShown() && isBagTab(bagTab) ? closeBag() : openBag(isBagTab(bagTab) ? bagTab : 'items')); // จำแท็บล่าสุดของกระเป๋า
+$('statBtn').onclick = () => (bagShown() && !isBagTab(bagTab) ? closeBag() : openChar(!isBagTab(bagTab) ? bagTab : 'status')); // จำแท็บล่าสุดของหน้าต่างตัวละคร
+$('bagTabs').addEventListener('click', e => { const t = e.target.closest('[data-btab]'); if (t) { bagTab = t.dataset.btab; renderBag(); } });
+// หน้าต่างตั้งค่า ⚙️ (เสียง หน้าจอ ขั้นสูง แจ้งบั๊ก ผู้ดูแล)
+const settingsShown = () => !$('settings').classList.contains('hidden');
+function openSettings() { closeOthers('settings'); $('settings').classList.remove('hidden'); syncSndUi(); }
+function closeSettings() { $('settings').classList.add('hidden'); }
+$('settingsBtn').onclick = () => (settingsShown() ? closeSettings() : openSettings());
+$('settingsClose').onclick = closeSettings;
+$('settings').addEventListener('pointerdown', e => { if (e.target === $('settings')) closeSettings(); });
+$('settings').addEventListener('click', e => { if (e.target.closest('#adminBtn')) closeSettings(); });
 let volHold = false; // กำลังลากแถบเสียง ห้ามวาดแท็บใหม่ ไม่งั้นแถบหลุดมือ
 addEventListener('pointerup', () => { volHold = false; }); addEventListener('pointercancel', () => { volHold = false; });
 $('bagBody').addEventListener('pointerdown', e => { if (e.target.closest('[data-vol]')) volHold = true; });
@@ -1449,7 +1460,6 @@ $('bagBody').addEventListener('change', e => { if (e.target.closest('[data-vol=s
 setInterval(() => { if (bagShown() && bagTab === 'status' && !volHold && !(document.activeElement && document.activeElement.type === 'range')) renderBag(); }, 1000);
 $('bagClose').onclick = closeBag;
 $('bag').addEventListener('pointerdown', e => { if (e.target === $('bag')) closeBag(); });
-document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => { bagTab = t.dataset.tab; renderBag(); });
 $('bagBody').addEventListener('input', e => { if (e.target.id === 'bagQ') { bagQ = e.target.value; $('bagGridBox').innerHTML = bagGridHtml(); } }); // พิมพ์ค้นหา: วาดเฉพาะกริด ไม่ให้ช่องพิมพ์เสียโฟกัส
 $('bagBody').addEventListener('keydown', e => {
   if (e.target.id === 'bagQ') { e.stopPropagation(); if (e.key === 'Escape') { e.target.blur(); } return; }
@@ -1640,7 +1650,10 @@ function bagGearHtml() { // ความทนทานอุปกรณ์ (�
   }).join('') + `</div><p style="font-size:12px;opacity:.65">ซ่อมได้ที่ร้านของสายนั้น ซ่อมแต่ละครั้งความทนทานสูงสุดลด ${Math.round(REPAIR.decay * 100)}% และค่าซ่อมแพงขึ้น ซ่อมได้สูงสุด ${REPAIR.maxFixes} ครั้งแล้วต้องซื้อใหม่</p>`;
 }
 function renderBag() {
-  document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('on', t.dataset.tab === bagTab));
+  const tabs = isBagTab(bagTab) ? BAG_TABS : CHAR_TABS; // หัวข้อ+แท็บ+ลิงก์ตามโหมด (กระเป๋า / ตัวละคร)
+  $('bagTitle').textContent = isBagTab(bagTab) ? '🎒 ของของฉัน' : '🧍 ตัวละคร';
+  $('bagTabs').innerHTML = tabs.map(([c, n]) => `<button class="tab${bagTab === c ? ' on' : ''}" data-btab="${c}">${n}</button>`).join('');
+  $('charLinks').classList.toggle('hidden', isBagTab(bagTab));
   const el = $('bagBody');
   if (bagTab === 'book') return renderBookTab(el);
   if (bagTab === 'status') {
@@ -2022,7 +2035,7 @@ addEventListener('keydown', e => {
   if (build.on && c === 'Escape' && (build.sel || build.pick != null || build.erase)) { build.sel = null; build.pick = null; build.erase = false; renderBuild(); return; } // Esc ในโหมดตกแต่ง: ยกเลิกสิ่งที่เลือกอยู่ก่อน
   if (build.on && c === 'KeyZ') { undoBuild(); return; }
   if (build.on && (c === 'Delete' || c === 'Backspace') && build.pick != null) { e.preventDefault(); send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; return; }
-  if (c === 'Escape') { closeReport(); closeShop(); closeBag(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); setVehMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'Escape') { closeReport(); closeShop(); closeBag(); closeSettings(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); setVehMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
   if (c === 'KeyN') { if (!e.repeat) hornPress('k'); return; }
   if (c === 'KeyV' && me && inTown()) { const own = Object.keys(Shared.VEHICLES).filter(v => inv['veh_' + v] > 0); if (me.veh) send({ t: 'veh', v: '' }); else if (own.length) send({ t: 'veh', v: own[own.length - 1] }); else toast('ยังไม่มียานพาหนะ ซื้อได้ที่ร้านยานพาหนะ 🚲'); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (toolLocked(TOOL_LIST[n])); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
@@ -2393,7 +2406,7 @@ function updateSpeaking(now) {
     p.speaking = p.voice && Math.sqrt(s / l.buf.length) > 4 && (!pe || pe.vol === undefined || pe.vol > 0.05);
   });
 }
-function setMicUi() { const m = $('micMenu'); m.classList.toggle('on', micOn); m.textContent = micOn ? '🎙️' : '🎤'; m.dataset.lbl = micOn ? 'ไมค์เปิด' : 'ไมค์'; const b = $('micBtn'); b.classList.toggle('on', micOn); b.textContent = micOn ? '🎙️' : '🎤'; b.title = micOn ? 'ไมค์: เปิดอยู่ (กดเพื่อปิด)' : 'ไมค์: ปิดอยู่ (กดเพื่อเปิด)'; } // ไมค์ = 🎙️ เปิด / 🎤 ปิด • ลำโพง = 🔊 เปิด / 🔇 ปิด (ไอคอน 🔇 ข้างชื่อผู้เล่นหมายถึงปิดลำโพง)
+function setMicUi() { const m = $('micMenu'); m.classList.toggle('on', micOn); m.innerHTML = micOn ? '<span class="mi">🎙️</span><span>ไมค์เปิด</span>' : '<span class="mi">🎤</span><span>ไมค์</span>'; const b = $('micBtn'); b.classList.toggle('on', micOn); b.textContent = micOn ? '🎙️' : '🎤'; b.title = micOn ? 'ไมค์: เปิดอยู่ (กดเพื่อปิด)' : 'ไมค์: ปิดอยู่ (กดเพื่อเปิด)'; } // ไมค์ = 🎙️ เปิด / 🎤 ปิด • ลำโพง = 🔊 เปิด / 🔇 ปิด (ไอคอน 🔇 ข้างชื่อผู้เล่นหมายถึงปิดลำโพง)
 $('micBtn').onclick = async () => {
   if (!micOn) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('เปิดไมค์ไม่ได้: ต้องเข้าผ่านลิงก์ https'); return; }
@@ -2710,7 +2723,7 @@ function closePeople() { $('people').classList.add('hidden'); }
 // ปิดเสียงทุกคนอยู่ (และไม่ได้เปิดเสียงใครเป็นข้อยกเว้น) = ไม่ได้ยินใครเลย → บอกเซิร์ฟเวอร์ให้ติดป้ายที่ตัวละคร เพื่อนจะได้รู้
 const isDeaf = () => mute.all && !Object.values(mute.names).includes(false);
 function syncDeaf() { if (!me) return; const d = isDeaf(); if (d !== !!me.deaf) { me.deaf = d; send({ t: 'deaf', on: d }); } }
-function setSpkUi() { const b = $('spkBtn'); if (!b) return; b.classList.toggle('off', !!mute.all); b.textContent = mute.all ? '🔇' : '🔊'; b.title = mute.all ? 'ลำโพง: ปิดอยู่ (กดเพื่อเปิดเสียงเพื่อน)' : 'ลำโพง: เปิดอยู่ (กดเพื่อปิดเสียงเพื่อนทั้งหมด)'; }
+function setSpkUi() { const b = $('spkBtn'); if (!b) return; b.classList.toggle('off', !!mute.all); b.innerHTML = '<span class="mi">' + (mute.all ? '🔇' : '🔊') + '</span><span>' + (mute.all ? 'ลำโพงเพื่อน: ปิด' : 'ลำโพงเพื่อน') + '</span>'; b.title = mute.all ? 'ลำโพง: ปิดอยู่ (กดเพื่อเปิดเสียงเพื่อน)' : 'ลำโพง: เปิดอยู่ (กดเพื่อปิดเสียงเพื่อนทั้งหมด)'; }
 function applyMute() { saveMute(); syncDeaf(); setSpkUi(); lastLevel = 0; updateSpeaking(performance.now() + 1000); updateOnline(); renderPeople(true); }
 function renderPeople(force) {
   if (!peopleShown() || !me) return;
