@@ -1450,11 +1450,20 @@ setInterval(() => { if (bagShown() && bagTab === 'status' && !volHold && !(docum
 $('bagClose').onclick = closeBag;
 $('bag').addEventListener('pointerdown', e => { if (e.target === $('bag')) closeBag(); });
 document.querySelectorAll('.tab[data-tab]').forEach(t => t.onclick = () => { bagTab = t.dataset.tab; renderBag(); });
+$('bagBody').addEventListener('input', e => { if (e.target.id === 'bagQ') { bagQ = e.target.value; $('bagGridBox').innerHTML = bagGridHtml(); } }); // พิมพ์ค้นหา: วาดเฉพาะกริด ไม่ให้ช่องพิมพ์เสียโฟกัส
+$('bagBody').addEventListener('keydown', e => {
+  if (e.target.id === 'bagQ') { e.stopPropagation(); if (e.key === 'Escape') { e.target.blur(); } return; }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-bslot],[data-bgo]')) { e.preventDefault(); e.stopPropagation(); e.target.click(); } // ช่องกริดเลือกด้วยคีย์บอร์ดได้ (ไม่ให้ Enter เปิดแชต/Space ไปทำ Action)
+});
 $('bagBody').addEventListener('click', e => {
   if (e.target.closest('[data-pinset]')) { showPinBox(pinSt); return; }
   { const b = e.target.closest('[data-star]'); if (b) { send({ t: 'star', skill: b.dataset.star }); return; } }
   { const sc = e.target.closest('[data-stat]'), ss = e.target.closest('[data-skillsel]'); if (!e.target.closest('button')) { if (sc) { statSel = statSel === 'c' + sc.dataset.stat ? '' : 'c' + sc.dataset.stat; renderBag(); return; } if (ss) { statSel = statSel === 's' + ss.dataset.skillsel ? '' : 's' + ss.dataset.skillsel; renderBag(); return; } } } // เมนูสถานะ: กดอันไหนก็โชว์รายละเอียดในหน้าเดิม ไม่ปิดหน้าต่าง กดอันอื่นต่อได้
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); if (!sfxOn) hornStopAll(); syncSndUi(); renderBag(); playSfx('coin'); return; }
+  { const bs = e.target.closest('[data-bslot]'); if (bs) { bagSel = bagSel === bs.dataset.bslot ? '' : bs.dataset.bslot; $('bagGridBox').innerHTML = bagGridHtml(); const f = document.querySelector(`[data-bslot="${CSS.escape(bagSel || bs.dataset.bslot)}"]`); if (f && e.detail === 0) f.focus(); if (bagSel) { const dt = $('bagDetail') || document.querySelector('.bdetail'); if (dt && dt.scrollIntoView) dt.scrollIntoView({ block: 'nearest' }); } return; } } // เลือกช่อง/ยกเลิกเลือก (แผงรายละเอียดอยู่ใต้กริด)
+  { const bg = e.target.closest('[data-bgrp]'); if (bg) { bagGrp = bg.dataset.bgrp; ls.set('mw_bag_grp', bagGrp); renderBag(); return; } }
+  if (e.target.closest('[data-bsort]')) { bagSort = BAG_SORTS[(BAG_SORTS.findIndex(x => x[0] === bagSort) + 1) % BAG_SORTS.length][0]; ls.set('mw_bag_sort', bagSort); renderBag(); return; }
+  { const go = e.target.closest('[data-bgo]'); if (go) { if (go.dataset.bgo === 'gear') { const g = $('bagGear'); if (g) g.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } else { bagTab = go.dataset.bgo; renderBag(); } return; } }
   const sb = e.target.closest('[data-sub]'); if (sb) { bagSub = sb.dataset.sub; renderBag(); return; }
   const eb = e.target.closest('[data-eat]'); if (eb) { send({ t: 'eat', item: eb.dataset.eat }); return; }
   const ib = e.target.closest('[data-info]'); if (ib) { const k = ib.dataset.info, i = itemInfo(k); if (i) toast(`${i.emoji} ${i.name} ×${inv[k] || 0}${freshBadge(k).replace(/<[^>]+>/g, '')}` + (i.sell ? ` • ราคาขาย 🪙${i.sell}` : '') + (i.food ? ` • กินได้ +${i.food} ความอิ่ม` : '')); }
@@ -1560,6 +1569,50 @@ const CATS = [['furn', '🛋️ เฟอร์นิเจอร์ (วาง�
 // แท็บย่อยในกระเป๋า: ชื่อ, ป้าย, หมวดของที่รวมอยู่ (เหยื่อตกปลาอยู่กับปลา)
 const BAG_SUBS = [['furn', '🛋️ เฟอร์นิเจอร์', ['furn']], ['crop', '🥬 ผัก-ผลไม้', ['crop']], ['fish', '🐟 ปลา', ['fish', 'tool']], ['wood', '🪵 ไม้', ['wood']], ['gear', '🧰 อุปกรณ์', ['gear']], ['other', '🗂️ อื่นๆ', ['seed', 'animal', 'feed']]]; // อาหารไม่อยู่ในกระเป๋า กินได้จากไอคอนความหิว
 let bagSub = 'furn', statSel = '';
+const BAG_SORTS = [['auto', 'ตามอาชีพ'], ['val', 'ราคา/ระดับ'], ['name', 'ชื่อ']];
+let bagQ = '', bagSel = '', bagSort = (() => { const s = ls.get('mw_bag_sort'); return BAG_SORTS.some(x => x[0] === s) ? s : 'auto'; })(), bagGrp = (() => { const g = ls.get('mw_bag_grp'); return FLEA_GRPS.some(x => x[0] === g) ? g : 'all'; })();
+const bagTierOf = k => { const m = /^(?:hoe|pail|pan|axe|pick|rod|can)_(\d+)$/.exec(k); return m ? +m[1] : 0; };
+function bagRank(k) { // ขอบช่อง 0 กลาง 1 เขียว 2 ฟ้า 3 ทอง (อุปกรณ์ตามระดับ 1-10, ปลาหายากตามน้ำหนักสุ่ม)
+  const t = bagTierOf(k); if (t) return t >= 10 ? 3 : t >= 7 ? 2 : t >= 4 ? 1 : 0;
+  const f = /^fish_(\w+)$/.exec(k) && FISH.find(x => x.id === k.slice(5)); return f ? (f.w <= 6 ? 3 : f.w <= 12 && f.sell >= 20 ? 2 : 0) : 0;
+}
+function bagKeys() { // ของที่แสดง: ผ่านค้นหา+ชิปอาชีพ แล้วเรียงตามโหมด (ข้อมูลผิดรูปที่ไม่มี itemInfo ถูกกรองทิ้ง)
+  const q = bagQ.trim().toLowerCase(), val = k => { const i = itemInfo(k); return bagTierOf(k) * 100000 + (i.sell || i.buy || 0); };
+  const ks = Object.keys(inv).filter(k => k !== 'coin' && inv[k] > 0 && itemInfo(k) && (bagGrp === 'all' || fleaGrpOf(k) === bagGrp) && (!q || String(itemInfo(k).name).toLowerCase().includes(q)));
+  const gi = k => FLEA_GRPS.findIndex(x => x[0] === fleaGrpOf(k)), nm = (a, b) => String(itemInfo(a).name).localeCompare(String(itemInfo(b).name), 'th');
+  return ks.sort((a, b) => bagSort === 'name' ? nm(a, b) : bagSort === 'val' ? val(b) - val(a) || nm(a, b) : gi(a) - gi(b) || val(b) - val(a) || nm(a, b));
+}
+function bagGridHtml() {
+  const ks = bagKeys();
+  const grid = ks.length ? `<div class="bgrid">` + ks.map(k => { const i = itemInfo(k); return `<div class="bslot g${bagRank(k)}${bagSel === k ? ' sel' : ''}" data-bslot="${esc(k)}" tabindex="0" role="button" aria-label="${esc(i.name)} ${inv[k]}" title="${esc(i.name)} ×${inv[k]}"><b>${i.emoji}</b><span class="cnt">${inv[k]}</span></div>`; }).join('') + '</div>'
+    : `<p style="opacity:.7">${Object.keys(inv).some(k => k !== 'coin' && inv[k] > 0) ? 'ไม่เจอของที่ค้นหา ลองเปลี่ยนคำหรือกลุ่มดูนะ' : 'ยังไม่มีของ ลองปลูกผัก ตกปลา หรือเลี้ยงสัตว์ดูนะ'}</p>`;
+  return grid + `<div class="bdetail" id="bagDetail">${bagDetailHtml()}</div>`;
+}
+function bagDetailHtml() {
+  const i = bagSel && itemInfo(bagSel); if (!i || !(inv[bagSel] > 0)) return '<span style="opacity:.7">แตะช่องเพื่อดูรายละเอียดของ</span>';
+  const k = bagSel, n = inv[k], q = i.sell ? sellQuote(i.sell, mult(k), n, freshMulsOf(k, n)).total : 0;
+  return `<div><b>${i.emoji} ${esc(i.name)}</b> ×${n}${freshBadge(k)}</div>`
+    + `<div style="font-size:13px">${i.sell ? `ราคาขายราว 🪙${q} ถ้าขายทั้งกอง (ขายที่ร้านนะ)` : 'ของชิ้นนี้ขายไม่ได้'}${i.food ? ` • กินได้ +${i.food} ความอิ่ม` : ''}</div>`
+    + `<div class="brow">${i.food ? `<button class="btn small" data-eat="${esc(k)}" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน +${i.food}</button>` : ''}${i.cat === 'wear' ? '<button class="btn small" data-bgo="look">ไปตู้เสื้อผ้า</button>' : ''}<button class="btn small" data-info="${esc(k)}">ดูข้อมูล</button></div>`
+    + (i.cat === 'furn' ? '<div style="font-size:12px;opacity:.7">วางในบ้านได้ด้วยปุ่ม 🏠</div>' : '');
+}
+function bagWearHtml() { // คอลัมน์สวมใส่ อ่านอย่างเดียว: เครื่องมือที่ถืออยู่ + เสื้อผ้าที่ใส่ กดแล้วไปดูต่อ
+  const tl = [['hoe', 'จอบ', Shared.hoeTier(inv), Shared.HOE_EMOJI], ['water', 'บัว', canTier(inv), null], ['rod', 'เบ็ด', rodLevel(), Shared.ROD_EMOJI], ['axe', 'ขวาน', axeLevel(), Shared.AXE_EMOJI], ['pick', 'อีเต้อ', pickLevel(), Shared.PICK_EMOJI], ['pail', 'ถัง', Shared.pailTier(inv), Shared.PAIL_EMOJI], ['pan', 'กระทะ', Shared.panTier(inv), Shared.PAN_EMOJI]];
+  const tools = tl.filter(([t, , tier]) => tier > 0).map(([t, nm, tier, em]) => {
+    const e = t === 'water' ? (CANS[tier] || {}).emoji : em && em[tier]; if (!e) return '';
+    const D = DURABILITY[t], fx = D && dur[t] ? dur[t][2] || 0 : 0, mx = D ? durMax(t, tier, fx) : 0, pct = D ? Math.max(0, Math.min(100, Math.round((dur[t] ? dur[t][0] : mx) / mx * 100))) : 0;
+    return `<div class="bw" data-bgo="gear" tabindex="0" role="button" title="${nm} ระดับ ${tier}"><b>${e}</b><span class="bn">${nm}<small>ระดับ ${tier}</small>${D ? `<div class="bbar"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div>` : ''}</span></div>`;
+  }).join('');
+  const clothes = Object.keys(WEAR_CATS).map(c => { const it = (WEAR[c] || []).find(x => x.id === ((me && me.wear) || {})[c]); return it && it.id !== 'none' ? `<div class="bw" data-bgo="look" tabindex="0" role="button" title="${esc(it.name)}"><b>${WEAR_CATS[c].emoji}</b><span class="bn">${esc(it.name)}</span></div>` : ''; }).join('');
+  return `<div class="bhd">สวมใส่</div>` + tools + clothes;
+}
+function bagGearHtml() { // ความทนทานอุปกรณ์ (ซ่อมได้ที่ร้านของสายนั้น) ย้ายมาจากแท็บย่อยอุปกรณ์เดิม ข้อมูลเหมือนเดิม
+  return `<div class="grid">` + Object.keys(DURABILITY).filter(t => (t !== 'axe' || axeLevel() > 0) && (t !== 'pick' || pickLevel() > 0)).map(t => {
+      const D = DURABILITY[t], tier = t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : gearTierOf(t), fx = dur[t] ? dur[t][2] || 0 : 0, mx = durMax(t, tier, fx), cur = dur[t] ? dur[t][0] : mx, pct = Math.round(cur / mx * 100);
+      const nm = t === 'rod' ? RODS[tier].name : t === 'axe' ? AXES[tier].name : t === 'pick' ? Shared.PICKS[tier].name : GEAR_SETS[t] ? GEAR_SETS[t][0][tier].name : D.name;
+      return `<div class="card"><b>${{ hoe: Shared.HOE_EMOJI[tier], pail: Shared.PAIL_EMOJI[tier], pan: Shared.PAN_EMOJI[tier], water: '🫗', rod: Shared.ROD_EMOJI[rodLevel()] || '🎣', axe: Shared.AXE_EMOJI[axeLevel()] || '🪓', pick: Shared.PICK_EMOJI[pickLevel()] || '⚒️' }[t]}</b>${nm}${GEAR_SETS[t] ? ` <small>ระดับ ${tier}/${Shared.GEAR_MAX}</small>` : ''}<br>${cur}/${mx}<br><small style="opacity:.7">ซ่อมแล้ว ${fx}/${REPAIR.maxFixes}${fx >= REPAIR.maxFixes ? ' (ซ่อมไม่ได้แล้ว)' : ''}</small><div class="hbar" style="height:6px"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div></div>`;
+  }).join('') + `</div><p style="font-size:12px;opacity:.65">ซ่อมได้ที่ร้านของสายนั้น ซ่อมแต่ละครั้งความทนทานสูงสุดลด ${Math.round(REPAIR.decay * 100)}% และค่าซ่อมแพงขึ้น ซ่อมได้สูงสุด ${REPAIR.maxFixes} ครั้งแล้วต้องซื้อใหม่</p>`;
+}
 function renderBag() {
   document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('on', t.dataset.tab === bagTab));
   const el = $('bagBody');
@@ -1598,21 +1651,16 @@ function renderBag() {
     if (!ks.length) h += `<div class="sec">🍽️ เมนูอาหาร</div><p style="opacity:.75">ไม่มีอาหารในตัวเลย ไปซื้ออาหารที่ร้านอาหาร หรือเก็บผลผลิตของตัวเองมากิน</p>`;
     else h += `<div class="sec">🍽️ อาหารในตัว (กดกินได้เลย)</div><div class="grid">` + ks.map(k => { const i = itemInfo(k); return `<div class="card"><b>${i.emoji}</b>${i.name}<br>×${inv[k]}<br><button class="btn small" data-eat="${k}" style="margin-top:4px;padding:3px 8px;font-size:12px" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน +${i.food}</button></div>`; }).join('') + '</div>';
     el.innerHTML = h;
-  } else if (bagTab === 'items') {
-    const sub = BAG_SUBS.find(x => x[0] === bagSub) || BAG_SUBS[0];
-    let h = `<div class="row"><span>🪙 เหรียญ</span><b>${inv.coin || 0}</b></div>`;
-    h += `<div class="tabs">` + BAG_SUBS.map(([id, t]) => `<button class="tab${id === sub[0] ? ' on' : ''}" data-sub="${id}">${t}</button>`).join('') + '</div>';
-    const ks = Object.keys(inv).filter(k => { const i = itemInfo(k); return i && sub[2].includes(i.cat) && inv[k] > 0; });
-    h += ks.length ? `<div class="grid mini">` + ks.map(k => { const i = itemInfo(k); return `<div class="card mini" data-info="${k}" title="${i.name} ×${inv[k]}"><b>${i.emoji}</b><span class="nm">${i.name}</span><span class="cnt">${inv[k]}</span></div>`; }).join('') + '</div>' : '<p style="opacity:.7">หมวดนี้ยังไม่มีของ</p>';
-    if (sub[0] === 'gear') { // อุปกรณ์ความทนทาน (ซ่อมได้) อยู่ในแท็บอุปกรณ์
-      h += `<div class="sec">🎣 อุปกรณ์ (ความทนทาน)</div><div class="grid">` + Object.keys(DURABILITY).filter(t => (t !== 'axe' || axeLevel() > 0) && (t !== 'pick' || pickLevel() > 0)).map(t => {
-        const D = DURABILITY[t], tier = t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : gearTierOf(t), fx = dur[t] ? dur[t][2] || 0 : 0, mx = durMax(t, tier, fx), cur = dur[t] ? dur[t][0] : mx, pct = Math.round(cur / mx * 100);
-        const nm = t === 'rod' ? RODS[tier].name : t === 'axe' ? AXES[tier].name : t === 'pick' ? Shared.PICKS[tier].name : GEAR_SETS[t] ? GEAR_SETS[t][0][tier].name : D.name;
-        return `<div class="card"><b>${{ hoe: Shared.HOE_EMOJI[tier], pail: Shared.PAIL_EMOJI[tier], pan: Shared.PAN_EMOJI[tier], water: '🫗', rod: Shared.ROD_EMOJI[rodLevel()] || '🎣', axe: Shared.AXE_EMOJI[axeLevel()] || '🪓', pick: Shared.PICK_EMOJI[pickLevel()] || '⚒️' }[t]}</b>${nm}${GEAR_SETS[t] ? ` <small>ระดับ ${tier}/${Shared.GEAR_MAX}</small>` : ''}<br>${cur}/${mx}<br><small style="opacity:.7">ซ่อมแล้ว ${fx}/${REPAIR.maxFixes}${fx >= REPAIR.maxFixes ? ' (ซ่อมไม่ได้แล้ว)' : ''}</small><div class="hbar" style="height:6px"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div></div>`;
-      }).join('') + `</div><p style="font-size:12px;opacity:.65">ซ่อมได้ที่ร้านของสายนั้น ซ่อมแต่ละครั้งความทนทานสูงสุดลด ${Math.round(REPAIR.decay * 100)}% และค่าซ่อมแพงขึ้น ซ่อมได้สูงสุด ${REPAIR.maxFixes} ครั้งแล้วต้องซื้อใหม่</p>`;
-    }
-    if (!Object.keys(inv).some(k => k !== 'coin' && inv[k] > 0)) h += '<p style="opacity:.7">ยังไม่มีของ ลองปลูกผัก ตกปลา หรือเลี้ยงสัตว์ดูนะ</p>';
-    el.innerHTML = h;
+  } else if (bagTab === 'items') { // กระเป๋าแบบช่องกริด: ค้นหา + ชิปอาชีพ + เรียงให้ + แผงรายละเอียด + คอลัมน์สวมใส่ (อ่านอย่างเดียว)
+    const keep = document.activeElement && document.activeElement.id === 'bagQ' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+    if (bagSel && !(inv[bagSel] > 0 && itemInfo(bagSel))) bagSel = '';
+    el.innerHTML = `<div class="row"><span>🪙 เหรียญ</span><b>${inv.coin || 0}</b></div>`
+      + `<div class="bagwrap"><div class="bwear">${bagWearHtml()}</div><div class="bmain">`
+      + `<div class="bsrch"><input id="bagQ" type="search" placeholder="ค้นหาของ..." value="${esc(bagQ)}" autocomplete="off"><button class="btn small" data-bsort="1" title="เปลี่ยนวิธีเรียง">เรียง: ${(BAG_SORTS.find(x => x[0] === bagSort) || BAG_SORTS[0])[1]}</button></div>`
+      + `<div class="chips" id="bagGrps">${FLEA_GRPS.map(([k, n]) => `<button class="chip${bagGrp === k ? ' sel' : ''}" data-bgrp="${k}">${n}</button>`).join('')}</div>`
+      + `<div id="bagGridBox">${bagGridHtml()}</div></div></div>`
+      + `<div class="sec">🎣 อุปกรณ์ (ความทนทาน)</div><div id="bagGear">${bagGearHtml()}</div>`;
+    if (keep) { const q = $('bagQ'); q.focus(); try { q.setSelectionRange(keep[0], keep[1]); } catch (e) {} }
   } else if (bagTab === 'skills') {
     const nextCrop = () => Object.values(CROPS).filter(c => !c.legacy && c.lv > lvl('farm')).sort((a, b) => a.lv - b.lv)[0];
     const nextFish = () => FISH.filter(f => !f.sea && f.lv > lvl('fish')).sort((a, b) => a.lv - b.lv)[0];
