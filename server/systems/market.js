@@ -54,6 +54,32 @@ module.exports = {
       n = 1;
       if (this.ownerCount(p.key, info.animal) >= ANIMALS[info.animal].cap) return this.toast(p, `คุณเลี้ยง${ANIMALS[info.animal].name}ครบ ${ANIMALS[info.animal].cap} ตัวแล้ว`);
     }
+    // WP-30 S2: อุปกรณ์ระดับ 8–10 ที่ใช้วัสดุแท่งหักราคา (gearBars)
+    if (S.gearBars(item)) {
+      const gc = S.gearCost(item, p.rec.inv); // { coin, use: {bar_*:n}, fill: {bar_*:n} }
+      // ตรวจ sanity: gc.use ต้องไม่ขอมากกว่าที่มี (gearCost คิดจาก min(inv,qty) แล้ว)
+      for (const [bk, bq] of Object.entries(gc.use)) {
+        if ((p.rec.inv[bk] || 0) < bq) return this.toast(p, `วัสดุ ${S.itemInfo(bk).name} ไม่พอ`);
+      }
+      if ((p.rec.inv.coin || 0) < gc.coin) return this.toast(p, 'เหรียญไม่พอ');
+      // หักวัสดุก่อน แล้วเหรียญ
+      for (const [bk, bq] of Object.entries(gc.use)) this.add(p, bk, -bq);
+      this.add(p, 'coin', -gc.coin, 'buy');
+      logEv(this.room, 'buy', { p: p.key, item, q: n, coin: gc.coin, cat: info.cat || 'other', bars: gc.use });
+      this.add(p, item, n);
+      if (info.can) this.waterSet(p, S.CANS[info.can].cap); // บัวใหม่ได้น้ำเต็ม
+      if (/^(rod|axe|pick|hoe|pail|pan)_/.test(item)) { const tl = item.split('_')[0]; if (p.rec.dur) delete p.rec.dur[tl]; if (p.rec.fix) delete p.rec.fix[tl]; send(p, { t: 'dur', d: this.durPub(p) }); }
+      // toast บอกวัสดุที่ใช้ / ที่เติมเหรียญแทน
+      const usedParts = Object.entries(gc.use).map(([bk, bq]) => { const bi = S.itemInfo(bk); return `${bi ? bi.emoji : ''}${bi ? bi.name : bk} ×${bq}`; });
+      const fillParts = Object.entries(gc.fill).map(([bk, bq]) => { const bi = S.itemInfo(bk); return `${bi ? bi.emoji : ''}×${bq}`; });
+      let toastMsg = `ซื้อ ${info.emoji} ${info.name}`;
+      if (usedParts.length) toastMsg += ` • ใช้ ${usedParts.join(' + ')}`;
+      if (fillParts.length) toastMsg += ` (ขาดวัสดุ ${fillParts.join(' ')} เติมเหรียญ)`;
+      toastMsg += ` • จ่าย 🪙${gc.coin}`;
+      this.toast(p, toastMsg);
+      this.sfxTo(p, 'coin');
+      return;
+    }
     const cost = info.buy * n;
     if ((p.rec.inv.coin || 0) < cost) return this.toast(p, 'เหรียญไม่พอ');
     this.add(p, 'coin', -cost, 'buy'); logEv(this.room, 'buy', { p: p.key, item, q: n, coin: cost, cat: info.cat || 'other' }); // ซื้ออะไร: แยกต้นทุนผลิต (เมล็ด อาหารสัตว์ เหยื่อ) กับของสะสม/ความสะดวก

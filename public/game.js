@@ -195,6 +195,7 @@ function handle(m) {
     case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; if (m.k) treeKinds.set(m.x + ',' + m.y, m.k); } else if (isChoppable(tm, m.x, m.y)) { const tk = m.x + ',' + m.y; if (inTown()) felled.set(tk, { t: performance.now(), k: treeKinds.get(tk), side: me && me.x > (m.x + 0.5) * TS ? -1 : 1 }); tm[m.y][m.x] = T.GRASS; treeKinds.delete(tk); treeHit.delete(tk); } } break; }
     case 'lotto': lottoSt = m.l; updateNoticeDot(); if (townShown()) renderTown(); break;
     case 'cookcd': cookReadyAt = Date.now() + (+m.ms || 0); if (!$('shop').classList.contains('hidden') && shopKind === 'food' && farmTab === 'cook') renderShop(); break;
+    case 'mkcd': makeReadyAt[m.st] = Date.now() + (+m.ms || 0); { const stMap = { forge: ['mine', 'forge'], bale: ['farm', 'bale'] }; const sm = stMap[m.st]; if (sm && !$('shop').classList.contains('hidden') && shopKind === sm[0] && farmTab === sm[1]) renderShop(); } break; // WP-30: คูลดาวน์สถานีหลอม/อัดฟาง
     case 'mapcell': applyMapCells(m.cells); break;
     case 'reload': { toast('🗺️ ผู้ดูแลเปลี่ยนผังเมือง กำลังรีเฟรช…'); const tryReload = n => fetch('/healthz', { cache: 'no-store' }).then(r => { if (r.ok) location.reload(); else throw 0; }).catch(() => { if (n < 40) setTimeout(() => tryReload(n + 1), 1000); }); setTimeout(() => tryReload(0), 3000); break; }
     case 'mapreset': {
@@ -587,6 +588,7 @@ function renderEvChip() {
 }
 setInterval(renderEvChip, 1000);
 setInterval(() => { const e = $('ckCd'); if (!e) return; const s = Math.ceil((cookReadyAt - Date.now()) / 1000); if (s > 0) e.textContent = `⏳ เตายังร้อน ทำจานต่อไปได้อีก ${s} วิ`; else if (!$('shop').classList.contains('hidden')) renderShop(); }, 1000); // นับถอยหลังเตา แตะแค่ข้อความ ปุ่มไม่หลุด จนครบเวลาค่อยวาดใหม่ครั้งเดียว
+setInterval(() => { for (const st of ['forge', 'bale']) { const e = $('mkCd_' + st); if (!e) continue; const s = Math.ceil(((makeReadyAt[st] || 0) - Date.now()) / 1000); if (s > 0) e.textContent = `⏳ รออีก ${s} วิ ก่อนทำรอบถัดไป`; else if (!$('shop').classList.contains('hidden')) renderShop(); } }, 1000); // WP-30: นับถอยหลังคูลดาวน์สถานีหลอม/อัดฟาง
 $('evChip').onclick = () => openTown('log');
 function eventCard() { // การ์ดอีเวนต์ในข่าวเมือง: เวลา + อันดับ 3 คนแรกของแต่ละกลุ่ม
   const e = evtSt, E = e && Shared.EVENTS.list.find(x => x.id === e.id); if (!E) return '';
@@ -1765,15 +1767,16 @@ $('shop').addEventListener('pointerdown', e => { if (e.target === $('shop')) clo
 const animalCount = type => { let n = 0; const my = me && me.name; animals.forEach(a => { if (a.type === type && (!a.on || a.on === my)) n++; }); return n; }; // นับเฉพาะสัตว์ของฉัน (cap ต่อคน)
 let cookPins = []; try { const a = JSON.parse(ls.get('mw_cookpins') || '[]'); if (Array.isArray(a)) cookPins = a.filter(x => typeof x === 'string').slice(0, 100); } catch (e) {} // สูตรที่ปักหมุด (localStorage)
 let cookReadyAt = 0; // เตาพักถึงเมื่อไร (ms ของเครื่อง) จาก cookcd
+let makeReadyAt = {}; // WP-30: { st: ms } คูลดาวน์สถานีหลอม/อัดฟาง จาก mkcd
 let farmTab = 'gear', cookFilter = null, cookOpen = null; // เมนูเชฟ: ตัวกรอง (null = อัตโนมัติ) / สูตรที่ขยายอยู่
 // ทุกร้านที่รับซื้อมีแท็บ 💰 ขาย ไว้ท้ายสุด (แท็บซื้อของร้านที่ไม่มีแท็บเดิม)
 const SHOP_TABS = { // ทุกร้านที่มีซื้อขายใช้รูปแบบเดียวกัน: 🛒 ซื้อ → 🧰 อุปกรณ์ → (ทำ/ประดิษฐ์) → 💰 ขาย
-  farm: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], fish: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']],
+  farm: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['bale', '🌾 อัดฟาง'], ['sell', '💰 ขาย']], fish: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], // WP-30: farm += อัดฟาง
   animal: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']], food: [['buy', '🛒 ซื้อ'], ['gear', '🧰 อุปกรณ์'], ['cook', '👨‍🍳 ทำอาหาร'], ['sell', '💰 ขาย']],
-  wood: [['gear', '🧰 อุปกรณ์'], ['craft', '🔨 สร้าง'], ['sell', '💰 ขาย']], mine: [['gear', '🧰 อุปกรณ์'], ['sell', '💰 ขาย']],
+  wood: [['gear', '🧰 อุปกรณ์'], ['craft', '🔨 สร้าง'], ['sell', '💰 ขาย']], mine: [['gear', '🧰 อุปกรณ์'], ['forge', '🔥 หลอม'], ['mat', '🧱 วัสดุ'], ['sell', '💰 ขาย']], // WP-30: mine += หลอม + วัสดุ
   furn: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']] };
 // ของแต่ละชิ้นอยู่แท็บไหนของร้าน (ซื้อ = สินค้า/วัตถุดิบ/สัตว์ • อุปกรณ์ = เครื่องมือ บัวรดน้ำ อาหารสัตว์ ยา)
-const buyTabOf = (kind, k) => kind === 'farm' ? (k.startsWith('seed_') ? 'buy' : 'gear') : kind === 'fish' ? (k.startsWith('bait') ? 'buy' : 'gear') : kind === 'animal' ? (itemInfo(k).animal ? 'buy' : 'gear') : kind === 'wood' || kind === 'mine' ? 'gear' : kind === 'food' && k.startsWith('pan_') ? 'gear' : 'buy';
+const buyTabOf = (kind, k) => kind === 'farm' ? (k.startsWith('seed_') ? 'buy' : 'gear') : kind === 'fish' ? (k.startsWith('bait') ? 'buy' : 'gear') : kind === 'animal' ? (itemInfo(k).animal ? 'buy' : 'gear') : kind === 'wood' ? 'gear' : kind === 'mine' ? (k.startsWith('bar_') ? 'mat' : 'gear') : kind === 'food' && k.startsWith('pan_') ? 'gear' : 'buy'; // WP-30: bar_* ไปแท็บ 🧱 วัสดุ
 let furnSub = 'living';
 const FURN_SUBS = [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['divider', '🪟 ฉากกั้น']];
 const furnCatOf = k => (FURN[k.slice(5)] || {}).cat; // หมวดของที่ร้านเฟอร์นิเจอร์ (ดูจาก cat ใน FURN)
@@ -1855,6 +1858,41 @@ function gearNote(tool, t) { // บรรทัดผลของอุปกร
   const fx = tool === 'hoe' ? `โอกาสได้พืชเพิ่ม ${pc}% (พืช ${rng})` : tool === 'pail' ? `โอกาสได้ผลผลิตสัตว์ ×2 เพิ่ม ${pc}% (สัตว์ ${rng})` : `ค่าเตาถูกลง ${pc}% ของราคาขาย (เมนู ${rng})`;
   return `ระดับ ${t}/${Shared.GEAR_MAX} • ทน ${durMax(tool, t, 0)} • ${fx}`;
 }
+// WP-30 C1: ตัววาดการ์ดเมนูหลอม/อัดฟาง (st = 'forge' | 'bale') — ใช้ร่วมกับ forgeTab และ baleTab
+function renderMake(st) {
+  const W = Shared.WORKSHOP, recipes = Object.entries(W.recipes).filter(([, r]) => r.st === st);
+  const cdLeft = () => Math.max(0, Math.ceil(((makeReadyAt[st] || 0) - Date.now()) / 1000));
+  const cd = cdLeft() > 0;
+  const skill = st === 'forge' ? 'mine' : 'farm', slv = lvl(skill);
+  let h = '';
+  if (cd) h += `<div class="banner" id="mkCd_${st}" style="background:#ffe3d6">⏳ รออีก ${cdLeft()} วิ ก่อนทำรอบถัดไป</div>`;
+  h += `<div class="sec">${st === 'forge' ? '🔥 เตาหลอม — นักขุด Lv ' + slv : '🌾 อัดฟาง — เกษตรกร Lv ' + slv}</div>`;
+  if (!recipes.length) return h + '<p style="opacity:.7;margin:6px 0">ยังไม่มีสูตร</p>';
+  for (const [id, r] of recipes) {
+    const locked = slv < r.lv;
+    const outKey = Object.keys(r.out)[0], outQty = r.out[outKey];
+    const outInfo = itemInfo(outKey) || { emoji: '?', name: outKey };
+    const chips = Object.entries(r.in).map(([ik, need]) => {
+      const ii = itemInfo(ik) || { emoji: '?', name: ik }, have = inv[ik] || 0;
+      return `<span class="ck-chip ${have >= need ? 'ok' : 'no'}">${ii.emoji} ${ii.name} ×${need}${have < need ? ` (มี ${have})` : ''}</span>`;
+    }).join('');
+    const feeStr = r.fee > 0 ? `ค่าเตา 🪙${r.fee} • ` : '';
+    const outLbl = outQty > 1 ? `ผลิต ×${outQty} ` : '';
+    const maxN = locked ? 0 : Math.min(W.maxN, ...Object.entries(r.in).map(([ik, need]) => need > 0 ? Math.floor((inv[ik] || 0) / need) : W.maxN), r.fee > 0 ? Math.floor((inv.coin || 0) / r.fee) : W.maxN);
+    const canMake = !locked && !cd && maxN >= 1;
+    h += `<div class="ck-card${canMake ? '' : ' miss'}">` +
+      `<div class="ck-head"><span class="ck-ic">${outInfo.emoji}</span>` +
+      `<span class="ck-nm">${outInfo.name}<small>${locked ? `🔒 ต้องเลเวล ${r.lv}` : `${outLbl}• ${feeStr}ต้อง Lv${r.lv}`}</small></span></div>` +
+      `<div class="ck-chips">${chips}</div>` +
+      (locked ? '' :
+        `<div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">` +
+        [1, 5, 10].map(n => `<button class="btn small" data-make="${id}" data-n="${n}" style="min-height:44px;min-width:44px" ${cd || maxN < n ? 'disabled' : ''}>×${n}</button>`).join('') +
+        `<small style="margin-left:4px;opacity:.7">ทำได้ ${maxN} ครั้ง</small></div>`) +
+      `</div>`;
+  }
+  h += `<p style="font-size:12px;opacity:.65;margin:8px 0 0">${st === 'forge' ? '💡 หลอมแร่ 3 ก้อนเป็นวัสดุ 1 ชิ้น • นำวัสดุไปขายที่แผงตลาด หรือใช้ซื้ออุปกรณ์ระดับ 8–10 แทนเหรียญบางส่วน' : '💡 อัดผักเป็นหญ้าแห้ง ขายให้คนเลี้ยงสัตว์ หรือฝากขายที่แผงตลาด • แครอท 1 → หญ้า 1 ชิ้น • ข้าวโพด 1 → หญ้า 2 ชิ้น'}</p>`;
+  return h;
+}
 function renderShop() {
   if (shopKind === 'petmenu') { $('shopTitle').textContent = '🐾 สัตว์เลี้ยง'; $('shopInfo').textContent = '🪙 ' + (inv.coin || 0); $('shopBody').innerHTML = petPanelHtml(); bindPet($('shopBody')); updatePetBtn(); return; }
   if (shopKind === 'lift') { renderLift(); return; }
@@ -1875,11 +1913,11 @@ function renderShop() {
     $('shopBody').querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask('ขายคืนร้าน? (คิดตามสภาพ สูงสุด 70% ของราคา)', () => send({ t: 'sellback', item: b.dataset.sellback })));
     return;
   }
-  const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'buy', tabs = SHOP_TABS[shopKind], sellTab = !!tabs && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'buy', craftTab = shopKind === 'wood' && farmTab === 'craft';
+  const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'buy', tabs = SHOP_TABS[shopKind], sellTab = !!tabs && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'buy', craftTab = shopKind === 'wood' && farmTab === 'craft', forgeTab = shopKind === 'mine' && farmTab === 'forge', baleTab = isFarm && farmTab === 'bale', makeTab = forgeTab || baleTab; // WP-30
   let h = tabs ? `<div class="tabs">${tabs.map(([c, n]) => `<button class="tab${farmTab === c ? ' on' : ''}" data-ftab="${c}">${n}</button>`).join('')}</div>` : '';
   if (shopKind === 'furn' && farmTab === 'buy') h += `<div class="tabs">${FURN_SUBS.map(([c, n]) => `<button class="tab${furnSub === c ? ' on' : ''}" data-fsub="${c}">${n}</button>`).join('')}</div>`;
-  h += sellTab || cookTab || craftTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากเลเวลต่ำ → สูง)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : tabs && farmTab === 'gear' ? 'อุปกรณ์' : 'ซื้อ') + '</div>';
-  let keys = sellTab || cookTab || craftTab ? [] : tabs ? sh.buy.filter(k => buyTabOf(shopKind, k) === farmTab && (shopKind !== 'furn' || furnCatOf(k) === furnSub)) : sh.buy;
+  h += sellTab || cookTab || craftTab || makeTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากเลเวลต่ำ → สูง)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : tabs && farmTab === 'gear' ? 'อุปกรณ์' : 'ซื้อ') + '</div>';
+  let keys = sellTab || cookTab || craftTab || makeTab ? [] : tabs ? sh.buy.filter(k => buyTabOf(shopKind, k) === farmTab && (shopKind !== 'furn' || furnCatOf(k) === furnSub)) : sh.buy;
   const profitRank = seedTab ? keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a)) : [];
   if (seedTab) keys = keys.slice().sort((a, b) => CROPS[a.slice(5)].lv - CROPS[b.slice(5)].lv || CROPS[a.slice(5)].sell - CROPS[b.slice(5)].sell);
   let freeHdr = false;
@@ -1901,11 +1939,25 @@ function renderShop() {
     const tm = /^(axe|rod|hoe|pail|pan|can)_(\d+)$/.exec(k), tn = tm && tm[2], toolBetter = tn && +tn <= { axe: axeLevel, rod: rodLevel, hoe: () => Shared.hoeTier(inv), pail: () => Shared.pailTier(inv), pan: () => Shared.panTier(inv), can: () => canTier(inv) }[tm[1]](); // ขวาน/คัน/จอบ/ถัง/กระทะ/บัวระดับ ≤ ที่มีอยู่แล้ว = ซื้อไม่ได้
     if (toolBetter && !inv[k]) sub = 'มีที่ดีกว่าแล้ว ✅';
     if (tm && GEAR_SETS[tm[1]]) sub += ' • ' + gearNote(tm[1], +tn); else if (tm && tm[1] === 'can') sub += ` • ระดับ ${tn}/${Shared.GEAR_MAX}`;
+    // WP-30 C1: วัสดุอุปกรณ์ระดับ 8–10 — ชิปมี/ต้องการ + ราคาเหรียญจริงหลังหักของ
+    const gbM = /^(pick|axe|rod|hoe|pail|pan|can)_(\d+)$/.exec(k);
+    let gcInfo = null;
+    if (gbM && +gbM[2] >= 8) {
+      gcInfo = Shared.gearCost(k, inv);
+      const need = Shared.gearBars(k) || [];
+      const matChips = need.map(([oreId, qty]) => {
+        const have = Math.min(inv['bar_' + oreId] || 0, qty);
+        return `<span class="ck-chip ${have >= qty ? 'ok' : 'no'}">${Shared.BAR_EMOJI[oreId]} มี ${have}/${qty}</span>`;
+      }).join('');
+      const fillCoins = Object.entries(gcInfo.fill || {}).reduce((s, [bk, n]) => s + n * (Shared.BARS[bk.slice(4)] || {}).shop, 0);
+      sub += (sub ? ' • ' : '') + `จ่ายจริง 🪙${gcInfo.coin}` + (matChips ? '<br>' + matChips : '') + (fillCoins > 0 ? ` <span class="ck-chip no">ขาดวัสดุ เติม 🪙${fillCoins}</span>` : '');
+    }
     const off = locked || toolBetter || (i.once && inv[k]) || (i.animal && animalCount(i.animal) >= ANIMALS[i.animal].cap);
+    const buyCoin = gcInfo ? gcInfo.coin : i.buy; // ราคาเหรียญจริงที่ต้องจ่าย (tier 8–10 ใช้ gcInfo.coin)
     const ic = tn ? `<span style="font-size:28px;line-height:1;vertical-align:middle;margin-right:2px">${i.emoji}</span>` : i.emoji; // แถวขวาน/คัน: ไอคอนใหญ่ ~28px ให้แยกระดับออก
-    h += `<div class="row${locked ? ' lock' : ''}"><span>${ic} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${i.buy} `
-      + `<button class="btn small" data-buy="${k}" data-n="1" ${off || coin < i.buy ? 'disabled' : ''}>ซื้อ</button>`
-      + (i.once || i.animal ? '' : ` <button class="btn small" data-buy="${k}" data-n="5" ${off || coin < i.buy * 5 ? 'disabled' : ''}>×5</button>`)
+    h += `<div class="row${locked ? ' lock' : ''}"><span>${ic} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${gcInfo ? gcInfo.coin : i.buy} `
+      + `<button class="btn small" data-buy="${k}" data-n="1" ${off || coin < buyCoin ? 'disabled' : ''}>ซื้อ</button>`
+      + (i.once || i.animal ? '' : ` <button class="btn small" data-buy="${k}" data-n="5" ${off || coin < buyCoin * 5 ? 'disabled' : ''}>×5</button>`)
       + (i.food && inv[k] ? ` <button class="btn small" data-eat="${k}" style="background:#2ecc71;border-bottom-color:#1e8f4e" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน</button>` : '')
       + (i.once && inv[k] ? ` <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sbValue(k)}</button>` : '') + `</span></div>`;
   }
@@ -1984,9 +2036,11 @@ function renderShop() {
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ตัดต้นไม้ด้วยขวานได้ไม้ท่อน 🪵 และไม้เนื้อแข็ง 🟫 • ไม้กระดานขายได้แพงกว่าไม้ท่อน • ลังไม้ ถังไม้ ป้ายชี้ทาง ตู้ไปรษณีย์ ตู้เครื่องมือ และกระท่อม ทำได้เฉพาะช่างไม้ (ตะเกียง 🏮 ย้ายไปขายที่ร้านเฟอร์นิเจอร์แล้ว)</p>';
   }
+  if (makeTab) h += renderMake(forgeTab ? 'forge' : 'bale'); // WP-30 C1: แท็บหลอม/อัดฟาง
   const body = $('shopBody'); body.innerHTML = h;
   body.querySelectorAll('[data-ftab]').forEach(b => b.onclick = () => { farmTab = b.dataset.ftab; renderShop(); });
   body.querySelectorAll('[data-fsub]').forEach(b => b.onclick = () => { furnSub = b.dataset.fsub; renderShop(); });
+  body.querySelectorAll('[data-make]').forEach(b => b.onclick = () => send({ t: 'make', id: b.dataset.make, n: +b.dataset.n })); // WP-30 C1: ส่งคำสั่งทำ
   body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft }));
   body.querySelectorAll('[data-rent]').forEach(b => b.onclick = () => send({ t: 'rent', id: b.dataset.rent }));
   body.querySelectorAll('[data-ckf]').forEach(b => b.onclick = () => { cookFilter = b.dataset.ckf; renderShop(); });

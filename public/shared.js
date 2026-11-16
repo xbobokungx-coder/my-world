@@ -749,6 +749,18 @@
   const SIZE_MIX = [[60, 35, 5], [58, 36, 6], [56, 37, 7], [53, 38, 9], [51, 40, 9], [49, 41, 10], [46, 42, 12], [44, 43, 13], [42, 44, 14], [40, 45, 15], [39, 45, 16], [38, 45, 17], [37, 45, 18], [36, 45, 19], [35, 45, 20], [34, 45, 21], [33, 45, 22], [32, 45, 23], [31, 45, 24], [30, 45, 25]].filter((_, i) => i % 2 === 0); // ถ้ำ 10 ชั้น: ใช้แถวของเลเวล 1,3,5,…,19 ของตารางเดิม
   const ORE_ORDER = Object.keys(ORES).filter(k => !ORES[k].legacy); // แร่ในถ้ำตามลำดับชั้น
   for (const o of Object.values(ORES)) o.hp = Math.round(MINE.hpBase * ACTION_TUNE.mine * o.pick * (o.hpm || 1));
+  // === WP-30 S1: วัสดุแปรรูป (bar_*) ===
+  const BAR_TUNE = { ore: 3, feePct: 0.15, shopMul: 1.5, ms: 2000, xp: 0 }; // ore = แร่ต่อ 1 แท่ง • feePct = ค่าเตา/std • shopMul = ร้านเทียบ std
+  const BAR_EMOJI = { stone: '💠', copper: '🏺', silver: '🩶', amethyst: '💜', emerald: '💚', opal: '🫧', sapphire: '💙', jade: '🫛', moonstone: '🌛', mythril: '⚡' }; // ไม่ซ้ำ PICK/AXE/HOE/PAIL/PAN/ROD/CANS/ORE emoji
+  const BAR_NAMES = { stone: 'อิฐหินขัด', copper: 'แท่งทองแดง', silver: 'แท่งเงิน', amethyst: 'อเมทิสต์เจียระไน', emerald: 'มรกตเจียระไน', opal: 'โอปอลเจียระไน', sapphire: 'ไพลินเจียระไน', jade: 'หยกขัดเงา', moonstone: 'มูนสโตนเจียระไน', mythril: 'แท่งมิทริล' };
+  const BARS = {}; // สร้างจาก ORE_ORDER: { fee, std, shop, shape }
+  for (const o of ORE_ORDER) {
+    const fee = Math.round(BAR_TUNE.feePct * BAR_TUNE.ore * ORES[o].sell);
+    const std = BAR_TUNE.ore * ORES[o].sell + fee;
+    const shop = Math.round(std * BAR_TUNE.shopMul);
+    const shape = o === 'stone' ? 'brick' : (o === 'copper' || o === 'silver' || o === 'mythril') ? 'bar' : 'gem';
+    BARS[o] = { fee, std, shop, shape };
+  }
   const oreXp = (xp, lv) => Math.round(xp); // เลิกตัวคูณเลเวล (6 พ.ย. 2026): XP โตตามชั้นที่ลงลึกผ่าน ORES[].xp (คงพารามิเตอร์ lv ไว้ให้ผู้เรียกเดิม)
   const oreHp = (kind, size) => Math.round(ORES[kind].hp * ORE_SIZES[size].hp);
   // ผลการฟาด 1 ครั้งกับก้อนแร่ (ผู้ขุดมีของในกระเป๋า inv) • null = ไม่มีอุปกรณ์ขุด (ต่ำกว่าแร่กี่ระดับก็ขุดได้ ช้าลงตาม down) • dmg = ดาเมจต่อครั้ง hits = ครั้งที่ต้องฟาดทั้งก้อน wear = ตัวคูณการสึกอีเต้อต่อก้อน extra = โอกาสได้ชิ้นเพิ่ม
@@ -1110,6 +1122,33 @@
     10: { name: 'บัวรดน้ำสายรุ้ง', emoji: '🔛', price: 3800, lv: 19, cap: 200, wet: 180000 },
   };
   const canTier = inv => { for (let t = GEAR_MAX; t >= 2; t--) if (inv && inv['can_' + t]) return t; return 1; };
+  // === WP-30 S1: วัสดุอุปกรณ์ระดับ 8–10 (GEAR_BARS) ===
+  // share = สัดส่วนราคาที่ใช้เป็นวัสดุสูงสุด (H1: Math.floor กันปัด), tier 8/9/10 ใช้หยก/มรกต/มูน/ไพลิน/มิทริล/โอปอล
+  const GEAR_BARS = { share: 0.25, 8: [['jade', 0.6], ['emerald', 0.4]], 9: [['moonstone', 0.6], ['sapphire', 0.4]], 10: [['mythril', 0.6], ['opal', 0.4]] };
+  function gearBars(item) { // คืน [[oreId, qty], ...] หรือ null ถ้าไม่ต้องใช้วัสดุ
+    const m = /^(pick|axe|rod|hoe|pail|pan|can)_(\d+)$/.exec(item); if (!m) return null;
+    const [, tool, ts] = m, tier = +ts;
+    if (tier < 8 || tier > 10) return null;
+    const mix = GEAR_BARS[tier]; if (!mix) return null;
+    const price = tool === 'can' ? (CANS[tier] && CANS[tier].price) : (TOOL_PRICE[tool] && TOOL_PRICE[tool][tier]);
+    if (!price) return null;
+    return mix.map(([oreId, frac]) => [oreId, Math.max(1, Math.floor(price * GEAR_BARS.share * frac / BARS[oreId].shop))]);
+  }
+  function gearCost(item, inv) { // คืน { coin, use: {bar_*:n}, fill: {bar_*:n} } — coin = เหรียญที่ต้องจ่ายหลังหักวัสดุในกระเป๋า
+    const m = /^(pick|axe|rod|hoe|pail|pan|can)_(\d+)$/.exec(item); if (!m) return { coin: 0, use: {}, fill: {} };
+    const [, tool, ts] = m, tier = +ts;
+    const price = tool === 'can' ? ((CANS[tier] && CANS[tier].price) || 0) : ((TOOL_PRICE[tool] && TOOL_PRICE[tool][tier]) || 0);
+    const need = gearBars(item);
+    if (!need || !need.length) return { coin: price, use: {}, fill: {} };
+    const use = {}, fill = {}; let discount = 0;
+    for (const [oreId, qty] of need) {
+      const barKey = 'bar_' + oreId, have = Math.min((inv && inv[barKey]) || 0, qty);
+      if (have > 0) use[barKey] = have;
+      if (qty - have > 0) fill[barKey] = qty - have;
+      discount += have * BARS[oreId].shop;
+    }
+    return { coin: Math.max(0, price - discount), use, fill };
+  }
   // มินิเกมเกจตอนปลากินเบ็ด: ตัวชี้วิ่ง 0→1→0 ไป-กลับ (per = เวลาวิ่งทางเดียว ms) กดตอนอยู่ในโซนกลาง |ตำแหน่ง-0.5| <= half ถึงจะได้ปลา
   const FISH_GAUGE = { per: 1000, perRod: 70, half: 0.10, halfRod: 0.018, window: 4200, lag: 60, // 5 พ.ย. 2026: โซนกว้างขึ้น (เดิม 0.07/0.015: คัน 1 โซนแค่ 140 ms โดนจริง ~50%) เพราะมีชักเย่อเป็นด่านที่สองแล้ว
     // สุ่มใหม่ทุกครั้งที่ปลากินเบ็ด: จุดกึ่งกลางโซน cMin–cMax, ความเร็วตัวชี้ ×perVar, ความกว้างโซน ×halfVar, จุดเริ่มของตัวชี้ (จับทางไม่ได้)
@@ -1609,6 +1648,23 @@
   ];
   const CRAFT_FEE = 0.2; // ค่าใช้โรงช่างไม้ = สัดส่วนของราคาเฟอร์นิเจอร์ที่ร้านเลิกขาย (FURN_CRAFT_ONLY) ครึ่งหนึ่งหายจากระบบ อีกครึ่งเข้ากองกลาง เหมือนค่าเตา
   const craftFee = id => { const m = /^furn_(\w+)$/.exec(id), f = m && FURN[m[1]]; return f && f.noshop ? Math.round(f.price * CRAFT_FEE) : 0; };
+  // === WP-30 S1: โต๊ะแปรรูป (WORKSHOP) ===
+  // maxN = ทำได้สูงสุดครั้งละกี่ชุด • st = สถานีและร้านที่ต้องอยู่ใกล้ • recipes = สูตรแปรรูปทั้งหมด
+  const WORKSHOP = { maxN: 10, st: { forge: { shop: 'mine' }, bale: { shop: 'farm' } }, recipes: {} };
+  for (const o of ORE_ORDER) { // สูตรหลอมแร่ 10 ชนิด
+    WORKSHOP.recipes['forge_' + o] = { st: 'forge', skill: 'mine', lv: ORES[o].lv, in: { [o]: 3 }, out: { ['bar_' + o]: 1 }, fee: BARS[o].fee, ms: 2000, xp: 0 };
+  }
+  WORKSHOP.recipes['bale_carrot'] = { st: 'bale', skill: 'farm', lv: 1, in: { crop_carrot: 1 }, out: { hay: 1 }, fee: 0, ms: 1000, xp: 0, fresh: true };  // สูตรอัดแครอทเป็นหญ้าแห้ง
+  WORKSHOP.recipes['bale_corn']   = { st: 'bale', skill: 'farm', lv: 3, in: { crop_corn: 1 },   out: { hay: 2 }, fee: 0, ms: 1000, xp: 0, fresh: true };  // สูตรอัดข้าวโพดเป็นหญ้าแห้ง
+  function makeCheck(r, inv, n) { // ตรวจก่อนทำ: null = ผ่าน, string = ข้อความข้อผิดพลาด (ไม่ตรวจร้าน/คูลดาวน์)
+    if (!Number.isInteger(n) || n < 1 || n > WORKSHOP.maxN) return `จำนวนต้องเป็น 1–${WORKSHOP.maxN}`;
+    for (const [k, need] of Object.entries(r.in)) {
+      const have = (inv && inv[k]) || 0;
+      if (have < need * n) return `วัตถุดิบ ${k} ไม่พอ (มี ${have} ต้องการ ${need * n})`;
+    }
+    if (r.fee > 0 && ((inv && inv.coin) || 0) < r.fee * n) return `เหรียญไม่พอสำหรับค่าเตา (ต้องการ ${r.fee * n})`;
+    return null;
+  }
   const seatAt = (tx, ty) => SEATS.find(s => s.x === tx && s.y === ty) || null;
   const cinemaAt = () => false; // เลิกมีโรงหนังกลางแปลงแล้ว (ผังเมืองใหม่) ระบบฉายหนังเดิมยังค้างในโค้ด ไม่มีทางเข้า
   const CINEMA_CENTER = { x: 17 * TS, y: 35 * TS };
@@ -1626,7 +1682,7 @@
     fish:   { name: '🎣 ร้านตกปลา',      skill: 'fish',   buy: ['bait', 'bait_2', 'bait_3'].concat(Object.keys(RODS).filter(t => RODS[t].price).map(t => 'rod_' + t)),                sell: ['fish_'] },
     animal: { name: '🐄 ร้านปศุสัตว์',    skill: 'animal', buy: ['feed', 'hay', 'slop', 'nectar', 'medicine', 'animal_chicken', 'animal_duck', 'animal_cow', 'animal_sheep', 'animal_pig', 'animal_bee', 'animal_alpaca', 'animal_horse', 'animal_boar', 'animal_turkey', 'animal_goat'].concat(Object.keys(PAILS).filter(t => PAILS[t].lv).map(t => 'pail_' + t)), sell: ['egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', 'turkey_egg', 'goat_milk'] },
     pet:    { name: '🐾 ร้านสัตว์เลี้ยง', skill: null,     buy: Object.keys(COMPANIONS).map(c => 'pet_' + c).concat(['petfood', 'medicine']), sell: [] }, // ซื้อแล้วพาติดตัวไปไหนก็ได้ ขายคืนได้ 70%
-    mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'pick_7', 'pick_8', 'pick_9', 'pick_10', 'lamp', 'recall'], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด
+    mine:   { name: '⚒️ ร้านช่างเหมือง', skill: 'mine',   buy: ['pick_1', 'pick_2', 'pick_3', 'pick_4', 'pick_5', 'pick_6', 'pick_7', 'pick_8', 'pick_9', 'pick_10', 'lamp', 'recall', ...ORE_ORDER.map(o => 'bar_' + o)], sell: Object.keys(ORES) }, // รับซื้อแร่ทุกชนิด; bar_* = วัสดุแปรรูปขายที่ร้านนี้
     wood:   { name: '🪓 ร้านช่างไม้',     skill: 'wood',   buy: Object.keys(AXES).map(t => 'axe_' + t), sell: [...Object.keys(WOOD_ITEMS), 'plank'] }, // รับซื้อของจากต้นไม้ทุกชนิด
     // ร้านยานพาหนะ (ขั้น 2 ใน ECONOMY-PLAN.md): ซื้อแล้วขี่ได้ในเมือง เดินเร็วขึ้นตาม VEHICLES.speed • เรือ ⛵ (BOAT) ซื้อครั้งเดียว ไม่ได้ขี่บนบก มีเรือ = ออกทะเลฟรีทุกเที่ยว (ไม่มี = จ่าย SEA.fee)
     vehicle: { name: '🚲 ร้านยานพาหนะ',  skill: null,     buy: Object.keys(VEHICLES).map(v => 'veh_' + v).concat(['boat']), sell: [] },
@@ -1647,6 +1703,7 @@
     if (wm) { const d = COOK.find(x => x.id === k); return d ? { name: d.name, emoji: d.emoji, sell: d.sell, cat: 'food' } : null; }
     if (WOOD_ITEMS[k]) { const w = WOOD_ITEMS[k]; return { name: w.name, emoji: w.emoji, sell: w.sell, cat: 'wood' }; }
     if (ORES[k]) { const o = ORES[k]; return { name: o.name, emoji: o.emoji, sell: o.sell, cat: 'ore' }; }
+    { const bm = /^bar_(.+)$/.exec(k); if (bm && BARS[bm[1]]) { const o = bm[1], B = BARS[o]; return { name: BAR_NAMES[o], emoji: BAR_EMOJI[o], buy: B.shop, std: B.std, cat: 'bar', ore: o }; } } // WP-30: วัสดุแปรรูป — ไม่มี sell (ขายระบบไม่ได้)
     const pm = /^pick_(\d+)$/.exec(k);
     if (pm && PICKS[pm[1]]) return { name: PICKS[pm[1]].name, emoji: PICK_EMOJI[pm[1]], buy: PICKS[pm[1]].price, lv: PICKS[pm[1]].lv, skill: 'mine', once: true, cat: 'gear', pick: +pm[1] };
     if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 58, cat: 'wood' };
@@ -1666,7 +1723,7 @@
     if (k === 'wool') return { name: 'ขนแกะ', emoji: '🧶', sell: 60, cat: 'animal' };
     if (k === 'milk') return { name: 'นมวัว', emoji: '🥛', sell: 55, cat: 'animal' };
     if (k === 'feed') return { name: 'อาหารไก่', emoji: '🌾', buy: 11, cat: 'feed' }; // WP-21: ราคาอาหารเดิม 5/12/15/10 (ไก่/หญ้า/หมู/ผึ้ง) → 11/24/30/20 เป็นตัวลดกำไรต่อรอบ (ราคาผลผลิตไข่/นมเดิมคงไว้ เชฟใช้)
-    if (k === 'hay')  return { name: 'หญ้าแห้ง (อาหารวัว)', emoji: '🌿', buy: 24, cat: 'feed' };
+    if (k === 'hay')  return { name: 'หญ้าแห้ง (อาหารวัว)', emoji: '🌿', buy: 24, std: 44, cat: 'feed' }; // std = มูลค่ามาตรฐานแผง (E0 H2) ร้านยังขาย 24
     if (k === 'slop') return { name: 'อาหารหมู', emoji: '🥣', buy: 30, cat: 'feed' };
     if (k === 'nectar') return { name: 'น้ำหวานดอกไม้ (อาหารผึ้ง)', emoji: '🌼', buy: 20, cat: 'feed' };
     if (k === 'honey') return { name: 'น้ำผึ้ง', emoji: '🍯', sell: 35, cat: 'animal' }; // WP-21: เดิม 80 (สูงกว่านมวัวที่ปลดทีหลัง ทำให้ผึ้ง Lv2 ได้เกินชาวนาหลายเท่า)
@@ -1950,6 +2007,7 @@
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, COOK_ALT, cookUse, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
     FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, fishNewestLv, fishPoolMul, migrateStdV5, migrateStdV7, unmigrateStdV7, xpUnStdV7, STD_V7_SKILLS, migrateToolsV6, unmigrateToolsV6, migrateDurV8, unmigrateDurV8, DUR_MIG8, tmigLocked, invPub, rareCdMs, xpStdV5,
-    SELLABLE };
+    SELLABLE,
+    BAR_TUNE, BARS, BAR_EMOJI, BAR_NAMES, GEAR_BARS, gearBars, gearCost, WORKSHOP, makeCheck }; // WP-30 S1
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;
 })(this);

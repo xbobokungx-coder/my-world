@@ -486,6 +486,8 @@
   #adminBody input[type=text] { flex:1; min-width:120px; padding:8px 10px; font:inherit; border:2px solid var(--edge); border-radius:8px; }
   #bag .tabs { flex-wrap:wrap; gap:4px; }
   #bag .tab { padding:6px 9px; font-size:13px; white-space:nowrap; flex:1 1 auto; }
+  #shop .tabs { overflow-x:auto; flex-wrap:nowrap; } /* WP-30: แท็บร้าน 4 อันที่มือถือไม่พับข้อความ */
+  #shop .tab { flex:0 0 auto; white-space:nowrap; }
   /* เมนูหลัก: ไอคอนที่ใช้บ่อยอยู่แถบบน ที่เหลือซ่อนในเมนู แบ่งหมวดพร้อมชื่อสั้นๆ */
   #hudTop #satChip, #hudTop #enChip, #hudTop #cdChip, #hudTop #evChip { cursor:pointer; font-size:13px; } #hudTop .panel.warn { background:#a8661f; } #hudTop .panel.over { background:#8f2a22; }
   #hudTop > :not(.hidden):not(#hudMenu):not(#vehMenu) { height:38px; box-sizing:border-box; margin:0; display:inline-flex; align-items:center; justify-content:center; padding:0 12px; line-height:1; }
@@ -628,7 +630,7 @@
   /* จอสัมผัส: ปุ่มเล็กต้องแตะง่าย (อย่างน้อย ~40px) */
   body.touch .mbtn { min-width:40px; min-height:36px; font-size:18px; }
   body.touch .sw { width:36px; height:36px; }
-  body.touch .tab { min-height:40px; }
+  body.touch .tab { min-height:44px; } /* WP-30: เป้าแตะแท็บ ≥ 44px */
   body.touch .opt { min-height:44px; }
 </style>
 </head>

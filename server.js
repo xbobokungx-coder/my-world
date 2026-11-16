@@ -350,6 +350,7 @@ class World {
       case 'house': this.houseHandle(p, m); break;
       case 'cook': this.cook(p, m.id); break;
       case 'craft': this.craft(p, m.id); break;
+      case 'make': this.make(p, m.id, m.n); break; // WP-30 S2: โต๊ะแปรรูป
       case 'quest': this.questHandle(p, m); break;
       case 'bank': this.bankHandle(p, m); break;
       case 'cin': this.cinemaHandle(p, m); break;
@@ -742,6 +743,7 @@ mix(World, require('./server/systems/telemetry.js')); // สถิติกา�
 mix(World, require('./server/systems/rank.js')); // ป้ายอันดับกลางเมือง (server/systems/rank.js)
 mix(World, require('./server/systems/bank.js')); // ธนาคาร ATM (ย้ายไป server/systems/bank.js)
 mix(World, require('./server/systems/crafting.js')); // เชฟและคราฟต์ (ย้ายไป server/systems/crafting.js)
+mix(World, require('./server/systems/workshop.js')); // โต๊ะแปรรูป WP-30 S2 (server/systems/workshop.js)
 mix(World, require('./server/systems/orders.js')); // ใบงาน NPC (ย้ายไป server/systems/orders.js)
 mix(World, require('./server/systems/stall.js')); // แผงฝากขาย (ย้ายไป server/systems/stall.js)
 mix(World, require('./server/systems/trade.js')); // เทรดระหว่างผู้เล่น (ย้ายไป server/systems/trade.js)
