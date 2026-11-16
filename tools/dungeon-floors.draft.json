@@ -1,0 +1,3536 @@
+{
+ "_note": "ร่าง DG_FLOORS จากซิมรอบ 3 (tools/dungeonsim.js floors3 --json) แทนรอบ 2 • ผนึก 97 มี Ks = ค่ายเล็กท้ายชั้น • tm = ตัวคูณระยะเดินต่ออาณาจักร (ใช้กับ tSolo แล้ว) • ตัวเลขทุกตัวเป็นสมมติฐานที่ยังไม่วัดจริง • seals.t = ชนิดผนึก n = จำนวนตัว/ขั้น/วินาที (A/L/E/S=ตัว D/G=วินาที F/I=ขั้น H=ชิ้น) C: waves x size • adds=ลูกสมุนที่ไม่ตกของ • hazard=เวลา ×1.2 • tSolo/t2/t4 วินาทีคาดการณ์ • chestUnits คูณ kingdoms[].chestCoins",
+ "params": {
+  "bossMul": [
+   14,
+   37
+  ],
+  "hpPartyPerExtra": 0.6,
+  "partyBonus": "ดู kingdoms[].partyLootMul (ตัวคูณของตกต่อคนรายอาณาจักร ×ขนาดปาร์ตี้)",
+  "countMul": [
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5,
+   1.5
+  ],
+  "lengthMul": [
+   2.2,
+   1.8,
+   1.8,
+   1.1,
+   1.1,
+   1.1,
+   1.6,
+   1.6,
+   1.9,
+   1.3
+  ],
+  "travelMul": [
+   1.75,
+   1.25,
+   1.25,
+   1.1,
+   1.1,
+   1.05,
+   1.2,
+   1.05,
+   1.5,
+   1.05
+  ],
+  "partyModel": {
+   "splitSeals": [
+    "C",
+    "F",
+    "I",
+    "H",
+    "A",
+    "B",
+    "EB",
+    "E",
+    "S"
+   ],
+   "minSquad": 2,
+   "parLoss": 0.1,
+   "regroupSec": 15,
+   "walkPar": 0.1,
+   "gScale": 0.5
+  },
+  "repairMul": [
+   1,
+   1,
+   0.7,
+   0.5,
+   0.38,
+   0.32,
+   0.25,
+   0.18,
+   0.14,
+   0.11
+  ]
+ },
+ "kingdoms": [
+  {
+   "r": 1,
+   "hoursSolo": 0.6,
+   "piecePrice": 5,
+   "piecePriceRefit105": 5,
+   "partyLootMul": {
+    "2": 1.1,
+    "3": 1.05,
+    "4": 1.05
+   },
+   "chestCoins": 15,
+   "questSetCoins": 510,
+   "xp": {
+    "norm": 5,
+    "elite": 15,
+    "mini": 40,
+    "boss": 100
+   }
+  },
+  {
+   "r": 2,
+   "hoursSolo": 0.66,
+   "piecePrice": 8,
+   "piecePriceRefit105": 9,
+   "partyLootMul": {
+    "2": 1,
+    "3": 1,
+    "4": 1
+   },
+   "chestCoins": 30,
+   "questSetCoins": 830,
+   "xp": {
+    "norm": 7,
+    "elite": 21,
+    "mini": 56,
+    "boss": 140
+   }
+  },
+  {
+   "r": 3,
+   "hoursSolo": 0.77,
+   "piecePrice": 14,
+   "piecePriceRefit105": 16,
+   "partyLootMul": {
+    "2": 1,
+    "3": 1,
+    "4": 1
+   },
+   "chestCoins": 55,
+   "questSetCoins": 1280,
+   "xp": {
+    "norm": 11,
+    "elite": 33,
+    "mini": 88,
+    "boss": 220
+   }
+  },
+  {
+   "r": 4,
+   "hoursSolo": 1.02,
+   "piecePrice": 17,
+   "piecePriceRefit105": 18,
+   "partyLootMul": {
+    "2": 0.95,
+    "3": 0.95,
+    "4": 0.9
+   },
+   "chestCoins": 75,
+   "questSetCoins": 1710,
+   "xp": {
+    "norm": 11,
+    "elite": 33,
+    "mini": 88,
+    "boss": 220
+   }
+  },
+  {
+   "r": 5,
+   "hoursSolo": 1.21,
+   "piecePrice": 20,
+   "piecePriceRefit105": 20,
+   "partyLootMul": {
+    "2": 1,
+    "3": 0.95,
+    "4": 0.9
+   },
+   "chestCoins": 115,
+   "questSetCoins": 2130,
+   "xp": {
+    "norm": 13,
+    "elite": 39,
+    "mini": 104,
+    "boss": 260
+   }
+  },
+  {
+   "r": 6,
+   "hoursSolo": 1.26,
+   "piecePrice": 28,
+   "piecePriceRefit105": 28,
+   "partyLootMul": {
+    "2": 1,
+    "3": 0.95,
+    "4": 0.95
+   },
+   "chestCoins": 155,
+   "questSetCoins": 2860,
+   "xp": {
+    "norm": 16,
+    "elite": 48,
+    "mini": 128,
+    "boss": 320
+   }
+  },
+  {
+   "r": 7,
+   "hoursSolo": 1.29,
+   "piecePrice": 35,
+   "piecePriceRefit105": 39,
+   "partyLootMul": {
+    "2": 0.95,
+    "3": 0.95,
+    "4": 0.9
+   },
+   "chestCoins": 190,
+   "questSetCoins": 3350,
+   "xp": {
+    "norm": 23,
+    "elite": 69,
+    "mini": 184,
+    "boss": 460
+   }
+  },
+  {
+   "r": 8,
+   "hoursSolo": 1.42,
+   "piecePrice": 43,
+   "piecePriceRefit105": 47,
+   "partyLootMul": {
+    "2": 1,
+    "3": 0.95,
+    "4": 0.9
+   },
+   "chestCoins": 220,
+   "questSetCoins": 3460,
+   "xp": {
+    "norm": 32,
+    "elite": 96,
+    "mini": 256,
+    "boss": 640
+   }
+  },
+  {
+   "r": 9,
+   "hoursSolo": 1.42,
+   "piecePrice": 46,
+   "piecePriceRefit105": 46,
+   "partyLootMul": {
+    "2": 1,
+    "3": 1,
+    "4": 0.95
+   },
+   "chestCoins": 235,
+   "questSetCoins": 3770,
+   "xp": {
+    "norm": 33,
+    "elite": 99,
+    "mini": 264,
+    "boss": 660
+   }
+  },
+  {
+   "r": 10,
+   "hoursSolo": 2.13,
+   "piecePrice": 59,
+   "piecePriceRefit105": 62,
+   "partyLootMul": {
+    "2": 0.9,
+    "3": 0.85,
+    "4": 0.8
+   },
+   "chestCoins": 290,
+   "questSetCoins": 4110,
+   "xp": {
+    "norm": 47,
+    "elite": 141,
+    "mini": 376,
+    "boss": 940
+   }
+  }
+ ],
+ "floors": [
+  {
+   "f": 1,
+   "r": 1,
+   "k": 1,
+   "kind": "ค่ายสอน",
+   "seals": [
+    {
+     "t": "Kt"
+    }
+   ],
+   "tSolo": 90,
+   "t2": 90,
+   "t4": 90,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 0.5,
+   "offerItems": 0,
+   "deathLossSec": 60
+  },
+  {
+   "f": 2,
+   "r": 1,
+   "k": 2,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "A",
+     "n": 24
+    }
+   ],
+   "tSolo": 330,
+   "t2": 301,
+   "t4": 277,
+   "kills": {
+    "norm": 24,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 24,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 180
+  },
+  {
+   "f": 3,
+   "r": 1,
+   "k": 3,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "EB",
+     "adds": 5
+    }
+   ],
+   "tSolo": 166,
+   "t2": 160,
+   "t4": 157,
+   "kills": {
+    "norm": 0,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 3,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 159
+  },
+  {
+   "f": 4,
+   "r": 1,
+   "k": 4,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "C",
+     "waves": 2,
+     "size": 14
+    }
+   ],
+   "tSolo": 297,
+   "t2": 276,
+   "t4": 272,
+   "kills": {
+    "norm": 28,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 28,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 285
+  },
+  {
+   "f": 5,
+   "r": 1,
+   "k": 5,
+   "kind": "มินิบอส+ค่าย",
+   "seals": [
+    {
+     "t": "M",
+     "adds": 9
+    }
+   ],
+   "tSolo": 212,
+   "t2": 197,
+   "t4": 193,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 1,
+    "boss": 0
+   },
+   "pieces": 8,
+   "chestUnits": 2,
+   "offerItems": 0,
+   "deathLossSec": 303
+  },
+  {
+   "f": 6,
+   "r": 1,
+   "k": 6,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 7
+    }
+   ],
+   "tSolo": 324,
+   "t2": 324,
+   "t4": 324,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 177
+  },
+  {
+   "f": 7,
+   "r": 1,
+   "k": 7,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "L",
+     "n": 15
+    }
+   ],
+   "tSolo": 266,
+   "t2": 242,
+   "t4": 225,
+   "kills": {
+    "norm": 15,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 15,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 208
+  },
+  {
+   "f": 8,
+   "r": 1,
+   "k": 8,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "E",
+     "n": 1,
+     "adds": 1
+    }
+   ],
+   "tSolo": 140,
+   "t2": 135,
+   "t4": 134,
+   "kills": {
+    "norm": 0,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 3,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 206
+  },
+  {
+   "f": 9,
+   "r": 1,
+   "k": 9,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "H",
+     "n": 3
+    }
+   ],
+   "tSolo": 127,
+   "t2": 127,
+   "t4": 127,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1.25,
+   "offerItems": 3,
+   "deathLossSec": 260
+  },
+  {
+   "f": 10,
+   "r": 1,
+   "k": 10,
+   "kind": "บอส",
+   "seals": [
+    {
+     "t": "X"
+    }
+   ],
+   "tSolo": 214,
+   "t2": 192,
+   "t4": 188,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 1
+   },
+   "pieces": 25,
+   "chestUnits": 4,
+   "offerItems": 0,
+   "deathLossSec": 364
+  },
+  {
+   "f": 11,
+   "r": 2,
+   "k": 1,
+   "kind": "ค่าย",
+   "seals": [
+    {
+     "t": "K"
+    }
+   ],
+   "tSolo": 150,
+   "t2": 150,
+   "t4": 150,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 0.5,
+   "offerItems": 0,
+   "deathLossSec": 352
+  },
+  {
+   "f": 12,
+   "r": 2,
+   "k": 2,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "I",
+     "n": 7
+    }
+   ],
+   "tSolo": 305,
+   "t2": 305,
+   "t4": 305,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 168
+  },
+  {
+   "f": 13,
+   "r": 2,
+   "k": 3,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "A",
+     "n": 24
+    }
+   ],
+   "tSolo": 333,
+   "t2": 303,
+   "t4": 278,
+   "kills": {
+    "norm": 24,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 24,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 234
+  },
+  {
+   "f": 14,
+   "r": 2,
+   "k": 4,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "EB",
+     "adds": 5
+    }
+   ],
+   "tSolo": 156,
+   "t2": 149,
+   "t4": 147,
+   "kills": {
+    "norm": 0,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 3,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 198
+  },
+  {
+   "f": 15,
+   "r": 2,
+   "k": 5,
+   "kind": "มินิบอส+ค่าย",
+   "seals": [
+    {
+     "t": "M",
+     "adds": 9
+    }
+   ],
+   "tSolo": 212,
+   "t2": 197,
+   "t4": 193,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 1,
+    "boss": 0
+   },
+   "pieces": 8,
+   "chestUnits": 2,
+   "offerItems": 0,
+   "deathLossSec": 278
+  },
+  {
+   "f": 16,
+   "r": 2,
+   "k": 6,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 5
+    }
+   ],
+   "tSolo": 255,
+   "t2": 255,
+   "t4": 255,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 143
+  },
+  {
+   "f": 17,
+   "r": 2,
+   "k": 7,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 15
+    }
+   ],
+   "tSolo": 471,
+   "t2": 431,
+   "t4": 422,
+   "kills": {
+    "norm": 45,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 45,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 303
+  },
+  {
+   "f": 18,
+   "r": 2,
+   "k": 8,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "D",
+     "n": 108
+    }
+   ],
+   "tSolo": 163,
+   "t2": 163,
+   "t4": 163,
+   "kills": {
+    "norm": 11,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 11,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 201
+  },
+  {
+   "f": 19,
+   "r": 2,
+   "k": 9,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "H",
+     "n": 6
+    }
+   ],
+   "tSolo": 132,
+   "t2": 132,
+   "t4": 132,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1.25,
+   "offerItems": 6,
+   "deathLossSec": 238
+  },
+  {
+   "f": 20,
+   "r": 2,
+   "k": 10,
+   "kind": "บอส",
+   "seals": [
+    {
+     "t": "X"
+    }
+   ],
+   "tSolo": 214,
+   "t2": 192,
+   "t4": 188,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 1
+   },
+   "pieces": 25,
+   "chestUnits": 4,
+   "offerItems": 0,
+   "deathLossSec": 331
+  },
+  {
+   "f": 21,
+   "r": 3,
+   "k": 1,
+   "kind": "ค่าย",
+   "seals": [
+    {
+     "t": "K"
+    }
+   ],
+   "tSolo": 150,
+   "t2": 150,
+   "t4": 150,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 0.5,
+   "offerItems": 0,
+   "deathLossSec": 376
+  },
+  {
+   "f": 22,
+   "r": 3,
+   "k": 2,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "A",
+     "n": 27
+    }
+   ],
+   "tSolo": 381,
+   "t2": 347,
+   "t4": 318,
+   "kills": {
+    "norm": 27,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 27,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 206
+  },
+  {
+   "f": 23,
+   "r": 3,
+   "k": 3,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "I",
+     "n": 9
+    }
+   ],
+   "tSolo": 378,
+   "t2": 378,
+   "t4": 378,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 261
+  },
+  {
+   "f": 24,
+   "r": 3,
+   "k": 4,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 17
+    }
+   ],
+   "tSolo": 478,
+   "t2": 440,
+   "t4": 432,
+   "kills": {
+    "norm": 51,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 51,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 369
+  },
+  {
+   "f": 25,
+   "r": 3,
+   "k": 5,
+   "kind": "มินิบอส+ค่าย",
+   "seals": [
+    {
+     "t": "M",
+     "adds": 9
+    }
+   ],
+   "tSolo": 272,
+   "t2": 257,
+   "t4": 253,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 1,
+    "boss": 0
+   },
+   "pieces": 8,
+   "chestUnits": 2,
+   "offerItems": 0,
+   "deathLossSec": 323
+  },
+  {
+   "f": 26,
+   "r": 3,
+   "k": 6,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "I",
+     "n": 7
+    }
+   ],
+   "tSolo": 318,
+   "t2": 318,
+   "t4": 318,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 174
+  },
+  {
+   "f": 27,
+   "r": 3,
+   "k": 7,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 7
+    }
+   ],
+   "tSolo": 324,
+   "t2": 324,
+   "t4": 324,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 234
+  },
+  {
+   "f": 28,
+   "r": 3,
+   "k": 8,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "E",
+     "n": 1,
+     "adds": 1
+    }
+   ],
+   "tSolo": 141,
+   "t2": 136,
+   "t4": 134,
+   "kills": {
+    "norm": 0,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 3,
+   "chestUnits": 1.25,
+   "offerItems": 0,
+   "deathLossSec": 200
+  },
+  {
+   "f": 29,
+   "r": 3,
+   "k": 9,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "H",
+     "n": 4
+    }
+   ],
+   "tSolo": 131,
+   "t2": 131,
+   "t4": 131,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1.25,
+   "offerItems": 4,
+   "deathLossSec": 252
+  },
+  {
+   "f": 30,
+   "r": 3,
+   "k": 10,
+   "kind": "บอส",
+   "seals": [
+    {
+     "t": "X"
+    }
+   ],
+   "tSolo": 214,
+   "t2": 192,
+   "t4": 188,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 1
+   },
+   "pieces": 25,
+   "chestUnits": 4,
+   "offerItems": 0,
+   "deathLossSec": 351
+  },
+  {
+   "f": 31,
+   "r": 4,
+   "k": 1,
+   "kind": "ค่าย",
+   "seals": [
+    {
+     "t": "K"
+    }
+   ],
+   "tSolo": 150,
+   "t2": 150,
+   "t4": 150,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 0.5,
+   "offerItems": 0,
+   "deathLossSec": 372
+  },
+  {
+   "f": 32,
+   "r": 4,
+   "k": 2,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "A",
+     "n": 21
+    },
+    {
+     "t": "F",
+     "n": 1
+    }
+   ],
+   "tSolo": 449,
+   "t2": 422,
+   "t4": 348,
+   "kills": {
+    "norm": 21,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 21,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 240
+  },
+  {
+   "f": 33,
+   "r": 4,
+   "k": 3,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "EB",
+     "adds": 5
+    },
+    {
+     "t": "I",
+     "n": 2
+    }
+   ],
+   "tSolo": 304,
+   "t2": 224,
+   "t4": 198,
+   "kills": {
+    "norm": 0,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 3,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 223
+  },
+  {
+   "f": 34,
+   "r": 4,
+   "k": 4,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 18
+    },
+    {
+     "t": "E",
+     "n": 1,
+     "adds": 1
+    }
+   ],
+   "tSolo": 603,
+   "t2": 559,
+   "t4": 548,
+   "kills": {
+    "norm": 54,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 57,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 429
+  },
+  {
+   "f": 35,
+   "r": 4,
+   "k": 5,
+   "kind": "มินิบอส+ค่าย",
+   "seals": [
+    {
+     "t": "M",
+     "adds": 9
+    }
+   ],
+   "tSolo": 212,
+   "t2": 197,
+   "t4": 193,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 1,
+    "boss": 0
+   },
+   "pieces": 8,
+   "chestUnits": 2,
+   "offerItems": 0,
+   "deathLossSec": 290
+  },
+  {
+   "f": 36,
+   "r": 4,
+   "k": 6,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 3
+    },
+    {
+     "t": "F",
+     "n": 3
+    }
+   ],
+   "tSolo": 392,
+   "t2": 245,
+   "t4": 245,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 211
+  },
+  {
+   "f": 37,
+   "r": 4,
+   "k": 7,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "D",
+     "n": 83
+    },
+    {
+     "t": "A",
+     "n": 24
+    }
+   ],
+   "tSolo": 505,
+   "t2": 468,
+   "t4": 439,
+   "kills": {
+    "norm": 32,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 32,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 324
+  },
+  {
+   "f": 38,
+   "r": 4,
+   "k": 8,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "E",
+     "n": 2,
+     "adds": 2
+    },
+    {
+     "t": "H",
+     "n": 5
+    }
+   ],
+   "tSolo": 299,
+   "t2": 267,
+   "t4": 229,
+   "kills": {
+    "norm": 0,
+    "elite": 2,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 6,
+   "chestUnits": 1.75,
+   "offerItems": 5,
+   "deathLossSec": 278
+  },
+  {
+   "f": 39,
+   "r": 4,
+   "k": 9,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "L",
+     "n": 18
+    },
+    {
+     "t": "G",
+     "n": 110,
+     "mobs": 10
+    }
+   ],
+   "tSolo": 536,
+   "t2": 504,
+   "t4": 480,
+   "kills": {
+    "norm": 28,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 28,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 453
+  },
+  {
+   "f": 40,
+   "r": 4,
+   "k": 10,
+   "kind": "บอส",
+   "seals": [
+    {
+     "t": "X"
+    }
+   ],
+   "tSolo": 214,
+   "t2": 192,
+   "t4": 188,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 1
+   },
+   "pieces": 25,
+   "chestUnits": 4,
+   "offerItems": 0,
+   "deathLossSec": 348
+  },
+  {
+   "f": 41,
+   "r": 5,
+   "k": 1,
+   "kind": "ค่าย",
+   "seals": [
+    {
+     "t": "K"
+    }
+   ],
+   "tSolo": 150,
+   "t2": 150,
+   "t4": 150,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 0.5,
+   "offerItems": 0,
+   "deathLossSec": 394
+  },
+  {
+   "f": 42,
+   "r": 5,
+   "k": 2,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "A",
+     "n": 27
+    },
+    {
+     "t": "I",
+     "n": 3
+    }
+   ],
+   "tSolo": 588,
+   "t2": 550,
+   "t4": 439,
+   "kills": {
+    "norm": 27,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 27,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 309
+  },
+  {
+   "f": 43,
+   "r": 5,
+   "k": 3,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "EB",
+     "adds": 5
+    },
+    {
+     "t": "I",
+     "n": 3
+    }
+   ],
+   "tSolo": 353,
+   "t2": 241,
+   "t4": 241,
+   "kills": {
+    "norm": 0,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 3,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 252
+  },
+  {
+   "f": 44,
+   "r": 5,
+   "k": 4,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 18
+    },
+    {
+     "t": "I",
+     "n": 2
+    }
+   ],
+   "tSolo": 648,
+   "t2": 607,
+   "t4": 586,
+   "kills": {
+    "norm": 54,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 54,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 460
+  },
+  {
+   "f": 45,
+   "r": 5,
+   "k": 5,
+   "kind": "มินิบอส+ค่าย",
+   "seals": [
+    {
+     "t": "M",
+     "adds": 9
+    }
+   ],
+   "tSolo": 212,
+   "t2": 197,
+   "t4": 193,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 1,
+    "boss": 0
+   },
+   "pieces": 8,
+   "chestUnits": 2,
+   "offerItems": 0,
+   "deathLossSec": 303
+  },
+  {
+   "f": 46,
+   "r": 5,
+   "k": 6,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 4
+    },
+    {
+     "t": "A",
+     "n": 27
+    }
+   ],
+   "tSolo": 661,
+   "t2": 607,
+   "t4": 475,
+   "kills": {
+    "norm": 27,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 27,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 346
+  },
+  {
+   "f": 47,
+   "r": 5,
+   "k": 7,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "D",
+     "n": 99
+    },
+    {
+     "t": "E",
+     "n": 1,
+     "adds": 1
+    }
+   ],
+   "tSolo": 282,
+   "t2": 277,
+   "t4": 275,
+   "kills": {
+    "norm": 10,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 13,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 217
+  },
+  {
+   "f": 48,
+   "r": 5,
+   "k": 8,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "H",
+     "n": 6
+    },
+    {
+     "t": "G",
+     "n": 121,
+     "mobs": 11
+    }
+   ],
+   "tSolo": 370,
+   "t2": 370,
+   "t4": 370,
+   "kills": {
+    "norm": 11,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 11,
+   "chestUnits": 1.75,
+   "offerItems": 6,
+   "deathLossSec": 321
+  },
+  {
+   "f": 49,
+   "r": 5,
+   "k": 9,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "L",
+     "n": 18
+    },
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 18
+    }
+   ],
+   "tSolo": 896,
+   "t2": 810,
+   "t4": 773,
+   "kills": {
+    "norm": 72,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 72,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 645
+  },
+  {
+   "f": 50,
+   "r": 5,
+   "k": 10,
+   "kind": "บอส",
+   "seals": [
+    {
+     "t": "X"
+    }
+   ],
+   "tSolo": 214,
+   "t2": 192,
+   "t4": 188,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 1
+   },
+   "pieces": 25,
+   "chestUnits": 4,
+   "offerItems": 0,
+   "deathLossSec": 365
+  },
+  {
+   "f": 51,
+   "r": 6,
+   "k": 1,
+   "kind": "เมืองใต้ดิน",
+   "seals": [
+    {
+     "t": "Kv"
+    }
+   ],
+   "tSolo": 300,
+   "t2": 300,
+   "t4": 300,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1,
+   "offerItems": 0,
+   "deathLossSec": 479
+  },
+  {
+   "f": 52,
+   "r": 6,
+   "k": 2,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "A",
+     "n": 27
+    },
+    {
+     "t": "I",
+     "n": 2
+    }
+   ],
+   "tSolo": 580,
+   "t2": 542,
+   "t4": 455,
+   "kills": {
+    "norm": 27,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 27,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 305
+  },
+  {
+   "f": 53,
+   "r": 6,
+   "k": 3,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 3
+    },
+    {
+     "t": "B",
+     "adds": 3
+    }
+   ],
+   "tSolo": 364,
+   "t2": 263,
+   "t4": 263,
+   "kills": {
+    "norm": 0,
+    "elite": 0.7,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 2,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 260
+  },
+  {
+   "f": 54,
+   "r": 6,
+   "k": 4,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 18
+    },
+    {
+     "t": "D",
+     "n": 66
+    }
+   ],
+   "tSolo": 605,
+   "t2": 565,
+   "t4": 556,
+   "kills": {
+    "norm": 61,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 61,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 443
+  },
+  {
+   "f": 55,
+   "r": 6,
+   "k": 5,
+   "kind": "มินิบอส+ค่าย",
+   "seals": [
+    {
+     "t": "M",
+     "adds": 9
+    }
+   ],
+   "tSolo": 212,
+   "t2": 197,
+   "t4": 193,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 1,
+    "boss": 0
+   },
+   "pieces": 8,
+   "chestUnits": 2,
+   "offerItems": 0,
+   "deathLossSec": 309
+  },
+  {
+   "f": 56,
+   "r": 6,
+   "k": 6,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "I",
+     "n": 2
+    },
+    {
+     "t": "E",
+     "n": 1,
+     "adds": 1
+    }
+   ],
+   "tSolo": 305,
+   "t2": 215,
+   "t4": 215,
+   "kills": {
+    "norm": 0,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 3,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 168
+  },
+  {
+   "f": 57,
+   "r": 6,
+   "k": 7,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "A",
+     "n": 30
+    },
+    {
+     "t": "F",
+     "n": 3
+    }
+   ],
+   "tSolo": 703,
+   "t2": 654,
+   "t4": 542,
+   "kills": {
+    "norm": 30,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 30,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 429
+  },
+  {
+   "f": 58,
+   "r": 6,
+   "k": 8,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "H",
+     "n": 5
+    },
+    {
+     "t": "G",
+     "n": 110,
+     "mobs": 10
+    }
+   ],
+   "tSolo": 360,
+   "t2": 360,
+   "t4": 360,
+   "kills": {
+    "norm": 10,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 10,
+   "chestUnits": 1.75,
+   "offerItems": 5,
+   "deathLossSec": 320
+  },
+  {
+   "f": 59,
+   "r": 6,
+   "k": 9,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "L",
+     "n": 18
+    },
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 18
+    }
+   ],
+   "tSolo": 908,
+   "t2": 822,
+   "t4": 784,
+   "kills": {
+    "norm": 72,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 72,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 657
+  },
+  {
+   "f": 60,
+   "r": 6,
+   "k": 10,
+   "kind": "บอส",
+   "seals": [
+    {
+     "t": "X"
+    }
+   ],
+   "tSolo": 214,
+   "t2": 192,
+   "t4": 188,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 1
+   },
+   "pieces": 25,
+   "chestUnits": 4,
+   "offerItems": 0,
+   "deathLossSec": 373
+  },
+  {
+   "f": 61,
+   "r": 7,
+   "k": 1,
+   "kind": "ค่าย",
+   "seals": [
+    {
+     "t": "K"
+    }
+   ],
+   "tSolo": 150,
+   "t2": 150,
+   "t4": 150,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 0.5,
+   "offerItems": 0,
+   "deathLossSec": 461
+  },
+  {
+   "f": 62,
+   "r": 7,
+   "k": 2,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "A",
+     "n": 27
+    },
+    {
+     "t": "I",
+     "n": 5
+    }
+   ],
+   "tSolo": 725,
+   "t2": 609,
+   "t4": 494,
+   "kills": {
+    "norm": 27,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 27,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 378
+  },
+  {
+   "f": 63,
+   "r": 7,
+   "k": 3,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 3
+    },
+    {
+     "t": "B",
+     "adds": 3
+    }
+   ],
+   "tSolo": 409,
+   "t2": 292,
+   "t4": 292,
+   "kills": {
+    "norm": 0,
+    "elite": 0.7,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 2,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 294
+  },
+  {
+   "f": 64,
+   "r": 7,
+   "k": 4,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 18
+    },
+    {
+     "t": "D",
+     "n": 120
+    }
+   ],
+   "tSolo": 679,
+   "t2": 639,
+   "t4": 630,
+   "kills": {
+    "norm": 66,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 66,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 503
+  },
+  {
+   "f": 65,
+   "r": 7,
+   "k": 5,
+   "kind": "มินิบอส+ค่าย",
+   "seals": [
+    {
+     "t": "M",
+     "adds": 9
+    }
+   ],
+   "tSolo": 212,
+   "t2": 197,
+   "t4": 193,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 1,
+    "boss": 0
+   },
+   "pieces": 8,
+   "chestUnits": 2,
+   "offerItems": 0,
+   "deathLossSec": 344
+  },
+  {
+   "f": 66,
+   "r": 7,
+   "k": 6,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 5
+    },
+    {
+     "t": "A",
+     "n": 30
+    }
+   ],
+   "tSolo": 807,
+   "t2": 723,
+   "t4": 572,
+   "kills": {
+    "norm": 30,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 30,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 419
+  },
+  {
+   "f": 67,
+   "r": 7,
+   "k": 7,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "E",
+     "n": 1,
+     "adds": 1
+    },
+    {
+     "t": "I",
+     "n": 6
+    }
+   ],
+   "tSolo": 472,
+   "t2": 376,
+   "t4": 376,
+   "kills": {
+    "norm": 0,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 3,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 325
+  },
+  {
+   "f": 68,
+   "r": 7,
+   "k": 8,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "H",
+     "n": 2
+    },
+    {
+     "t": "G",
+     "n": 150,
+     "mobs": 13
+    }
+   ],
+   "tSolo": 432,
+   "t2": 432,
+   "t4": 432,
+   "kills": {
+    "norm": 13,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 13,
+   "chestUnits": 1.75,
+   "offerItems": 2,
+   "deathLossSec": 379
+  },
+  {
+   "f": 69,
+   "r": 7,
+   "k": 9,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "L",
+     "n": 18
+    },
+    {
+     "t": "D",
+     "n": 120
+    }
+   ],
+   "tSolo": 541,
+   "t2": 507,
+   "t4": 479,
+   "kills": {
+    "norm": 30,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 30,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 508
+  },
+  {
+   "f": 70,
+   "r": 7,
+   "k": 10,
+   "kind": "บอส",
+   "seals": [
+    {
+     "t": "X"
+    }
+   ],
+   "tSolo": 214,
+   "t2": 192,
+   "t4": 188,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 1
+   },
+   "pieces": 25,
+   "chestUnits": 4,
+   "offerItems": 0,
+   "deathLossSec": 419
+  },
+  {
+   "f": 71,
+   "r": 8,
+   "k": 1,
+   "kind": "ค่าย",
+   "seals": [
+    {
+     "t": "K"
+    }
+   ],
+   "tSolo": 150,
+   "t2": 150,
+   "t4": 150,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 0.5,
+   "offerItems": 0,
+   "deathLossSec": 445
+  },
+  {
+   "f": 72,
+   "r": 8,
+   "k": 2,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 6
+    },
+    {
+     "t": "A",
+     "n": 27
+    }
+   ],
+   "tSolo": 765,
+   "t2": 614,
+   "t4": 497,
+   "kills": {
+    "norm": 27,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 27,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 397
+  },
+  {
+   "f": 73,
+   "r": 8,
+   "k": 3,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 6
+    },
+    {
+     "t": "B",
+     "adds": 3
+    }
+   ],
+   "tSolo": 484,
+   "t2": 378,
+   "t4": 378,
+   "kills": {
+    "norm": 0,
+    "elite": 0.7,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 2,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 328
+  },
+  {
+   "f": 74,
+   "r": 8,
+   "k": 4,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 18
+    },
+    {
+     "t": "F",
+     "n": 5
+    }
+   ],
+   "tSolo": 780,
+   "t2": 740,
+   "t4": 600,
+   "kills": {
+    "norm": 54,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 54,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 547
+  },
+  {
+   "f": 75,
+   "r": 8,
+   "k": 5,
+   "kind": "มินิบอส+ค่าย",
+   "seals": [
+    {
+     "t": "M",
+     "adds": 9
+    }
+   ],
+   "tSolo": 302,
+   "t2": 287,
+   "t4": 283,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 1,
+    "boss": 0
+   },
+   "pieces": 8,
+   "chestUnits": 2,
+   "offerItems": 0,
+   "deathLossSec": 379
+  },
+  {
+   "f": 76,
+   "r": 8,
+   "k": 6,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "I",
+     "n": 6
+    },
+    {
+     "t": "E",
+     "n": 1,
+     "adds": 1
+    }
+   ],
+   "tSolo": 462,
+   "t2": 369,
+   "t4": 369,
+   "kills": {
+    "norm": 0,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 3,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 246
+  },
+  {
+   "f": 77,
+   "r": 8,
+   "k": 7,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 10
+    },
+    {
+     "t": "D",
+     "n": 120
+    }
+   ],
+   "tSolo": 603,
+   "t2": 603,
+   "t4": 603,
+   "kills": {
+    "norm": 12,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 12,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 387
+  },
+  {
+   "f": 78,
+   "r": 8,
+   "k": 8,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "H",
+     "n": 6
+    },
+    {
+     "t": "A",
+     "n": 30
+    }
+   ],
+   "tSolo": 689,
+   "t2": 637,
+   "t4": 594,
+   "kills": {
+    "norm": 30,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 30,
+   "chestUnits": 1.75,
+   "offerItems": 6,
+   "deathLossSec": 501
+  },
+  {
+   "f": 79,
+   "r": 8,
+   "k": 9,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "L",
+     "n": 18
+    },
+    {
+     "t": "G",
+     "n": 150,
+     "mobs": 12
+    }
+   ],
+   "tSolo": 663,
+   "t2": 628,
+   "t4": 600,
+   "kills": {
+    "norm": 30,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 30,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 560
+  },
+  {
+   "f": 80,
+   "r": 8,
+   "k": 10,
+   "kind": "บอส",
+   "seals": [
+    {
+     "t": "X"
+    }
+   ],
+   "tSolo": 214,
+   "t2": 192,
+   "t4": 188,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 1
+   },
+   "pieces": 25,
+   "chestUnits": 4,
+   "offerItems": 0,
+   "deathLossSec": 406
+  },
+  {
+   "f": 81,
+   "r": 9,
+   "k": 1,
+   "kind": "ค่าย",
+   "seals": [
+    {
+     "t": "K"
+    }
+   ],
+   "tSolo": 150,
+   "t2": 150,
+   "t4": 150,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 0.5,
+   "offerItems": 0,
+   "deathLossSec": 594
+  },
+  {
+   "f": 82,
+   "r": 9,
+   "k": 2,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "S",
+     "n": 1
+    },
+    {
+     "t": "A",
+     "n": 27
+    }
+   ],
+   "tSolo": 650,
+   "t2": 607,
+   "t4": 566,
+   "kills": {
+    "norm": 27,
+    "elite": 0.5,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 28.5,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 340
+  },
+  {
+   "f": 83,
+   "r": 9,
+   "k": 3,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "D",
+     "n": 120
+    },
+    {
+     "t": "B",
+     "adds": 3
+    }
+   ],
+   "tSolo": 433,
+   "t2": 429,
+   "t4": 427,
+   "kills": {
+    "norm": 12,
+    "elite": 0.7,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 14,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 333
+  },
+  {
+   "f": 84,
+   "r": 9,
+   "k": 4,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 18
+    },
+    {
+     "t": "F",
+     "n": 6
+    }
+   ],
+   "tSolo": 891,
+   "t2": 806,
+   "t4": 638,
+   "kills": {
+    "norm": 54,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 54,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 662
+  },
+  {
+   "f": 85,
+   "r": 9,
+   "k": 5,
+   "kind": "มินิบอส+ค่าย",
+   "seals": [
+    {
+     "t": "M",
+     "adds": 9
+    }
+   ],
+   "tSolo": 212,
+   "t2": 197,
+   "t4": 193,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 1,
+    "boss": 0
+   },
+   "pieces": 8,
+   "chestUnits": 2,
+   "offerItems": 0,
+   "deathLossSec": 423
+  },
+  {
+   "f": 86,
+   "r": 9,
+   "k": 6,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "S",
+     "n": 2
+    },
+    {
+     "t": "A",
+     "n": 30
+    }
+   ],
+   "tSolo": 764,
+   "t2": 706,
+   "t4": 658,
+   "kills": {
+    "norm": 30,
+    "elite": 1,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 33,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 397
+  },
+  {
+   "f": 87,
+   "r": 9,
+   "k": 7,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "E",
+     "n": 2,
+     "adds": 2
+    },
+    {
+     "t": "D",
+     "n": 120
+    }
+   ],
+   "tSolo": 475,
+   "t2": 465,
+   "t4": 461,
+   "kills": {
+    "norm": 12,
+    "elite": 2,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 18,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 353
+  },
+  {
+   "f": 88,
+   "r": 9,
+   "k": 8,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "H",
+     "n": 5
+    },
+    {
+     "t": "G",
+     "n": 150,
+     "mobs": 13
+    }
+   ],
+   "tSolo": 535,
+   "t2": 535,
+   "t4": 535,
+   "kills": {
+    "norm": 13,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 13,
+   "chestUnits": 1.75,
+   "offerItems": 5,
+   "deathLossSec": 484
+  },
+  {
+   "f": 89,
+   "r": 9,
+   "k": 9,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "L",
+     "n": 18
+    },
+    {
+     "t": "F",
+     "n": 6
+    }
+   ],
+   "tSolo": 769,
+   "t2": 733,
+   "t4": 704,
+   "kills": {
+    "norm": 18,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 18,
+   "chestUnits": 1.75,
+   "offerItems": 0,
+   "deathLossSec": 702
+  },
+  {
+   "f": 90,
+   "r": 9,
+   "k": 10,
+   "kind": "บอส",
+   "seals": [
+    {
+     "t": "X"
+    }
+   ],
+   "tSolo": 214,
+   "t2": 192,
+   "t4": 188,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 1
+   },
+   "pieces": 25,
+   "chestUnits": 4,
+   "offerItems": 0,
+   "deathLossSec": 525
+  },
+  {
+   "f": 91,
+   "r": 10,
+   "k": 1,
+   "kind": "ค่ายใหญ่",
+   "seals": [
+    {
+     "t": "Kb"
+    }
+   ],
+   "tSolo": 240,
+   "t2": 240,
+   "t4": 240,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 0,
+   "chestUnits": 1,
+   "offerItems": 0,
+   "deathLossSec": 531
+  },
+  {
+   "f": 92,
+   "r": 10,
+   "k": 2,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "I",
+     "n": 7,
+     "hazard": true
+    },
+    {
+     "t": "A",
+     "n": 30,
+     "hazard": true
+    },
+    {
+     "t": "B",
+     "adds": 3
+    }
+   ],
+   "tSolo": 1178,
+   "t2": 824,
+   "t4": 778,
+   "kills": {
+    "norm": 30,
+    "elite": 0.7,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 32,
+   "chestUnits": 2.25,
+   "offerItems": 0,
+   "deathLossSec": 604
+  },
+  {
+   "f": 93,
+   "r": 10,
+   "k": 3,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "I",
+     "n": 4,
+     "hazard": true
+    },
+    {
+     "t": "F",
+     "n": 7
+    },
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 18,
+     "hazard": true
+    }
+   ],
+   "tSolo": 1199,
+   "t2": 881,
+   "t4": 724,
+   "kills": {
+    "norm": 54,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 54,
+   "chestUnits": 2.25,
+   "offerItems": 0,
+   "deathLossSec": 694
+  },
+  {
+   "f": 94,
+   "r": 10,
+   "k": 4,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "I",
+     "n": 5
+    },
+    {
+     "t": "F",
+     "n": 4
+    },
+    {
+     "t": "D",
+     "n": 117
+    }
+   ],
+   "tSolo": 725,
+   "t2": 517,
+   "t4": 517,
+   "kills": {
+    "norm": 12,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 12,
+   "chestUnits": 2.25,
+   "offerItems": 0,
+   "deathLossSec": 536
+  },
+  {
+   "f": 95,
+   "r": 10,
+   "k": 5,
+   "kind": "มินิบอส+ค่าย",
+   "seals": [
+    {
+     "t": "M",
+     "adds": 9
+    }
+   ],
+   "tSolo": 212,
+   "t2": 197,
+   "t4": 193,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 1,
+    "boss": 0
+   },
+   "pieces": 8,
+   "chestUnits": 2,
+   "offerItems": 0,
+   "deathLossSec": 359
+  },
+  {
+   "f": 96,
+   "r": 10,
+   "k": 6,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "I",
+     "n": 4
+    },
+    {
+     "t": "B",
+     "adds": 3
+    },
+    {
+     "t": "E",
+     "n": 1,
+     "adds": 1
+    }
+   ],
+   "tSolo": 609,
+   "t2": 457,
+   "t4": 419,
+   "kills": {
+    "norm": 0,
+    "elite": 1.7,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 5,
+   "chestUnits": 2.25,
+   "offerItems": 0,
+   "deathLossSec": 319
+  },
+  {
+   "f": 97,
+   "r": 10,
+   "k": 7,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "I",
+     "n": 5
+    },
+    {
+     "t": "C",
+     "waves": 3,
+     "size": 18
+    },
+    {
+     "t": "D",
+     "n": 117
+    },
+    {
+     "t": "Ks"
+    }
+   ],
+   "tSolo": 1075,
+   "t2": 1028,
+   "t4": 899,
+   "kills": {
+    "norm": 66,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 66,
+   "chestUnits": 2.75,
+   "offerItems": 0,
+   "deathLossSec": 632
+  },
+  {
+   "f": 98,
+   "r": 10,
+   "k": 8,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "F",
+     "n": 10
+    },
+    {
+     "t": "A",
+     "n": 33
+    },
+    {
+     "t": "H",
+     "n": 6
+    }
+   ],
+   "tSolo": 1206,
+   "t2": 874,
+   "t4": 688,
+   "kills": {
+    "norm": 33,
+    "elite": 0,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 33,
+   "chestUnits": 2.25,
+   "offerItems": 6,
+   "deathLossSec": 618
+  },
+  {
+   "f": 99,
+   "r": 10,
+   "k": 9,
+   "kind": "ปกติ",
+   "seals": [
+    {
+     "t": "S",
+     "n": 3
+    },
+    {
+     "t": "G",
+     "n": 150,
+     "mobs": 12
+    },
+    {
+     "t": "E",
+     "n": 2,
+     "adds": 2
+    }
+   ],
+   "tSolo": 720,
+   "t2": 631,
+   "t4": 625,
+   "kills": {
+    "norm": 12,
+    "elite": 3.5,
+    "mini": 0,
+    "boss": 0
+   },
+   "pieces": 22.5,
+   "chestUnits": 2.25,
+   "offerItems": 0,
+   "deathLossSec": 454
+  },
+  {
+   "f": 100,
+   "r": 10,
+   "k": 10,
+   "kind": "บอสสุดท้าย",
+   "seals": [
+    {
+     "t": "Z"
+    }
+   ],
+   "tSolo": 522,
+   "t2": 462,
+   "t4": 449,
+   "kills": {
+    "norm": 0,
+    "elite": 0,
+    "mini": 0,
+    "boss": 1
+   },
+   "pieces": 25,
+   "chestUnits": 6,
+   "offerItems": 0,
+   "deathLossSec": 434
+  }
+ ],
+ "fatigue": [
+  {
+   "r": 1,
+   "normalFloorMin": 3.9,
+   "peakKillsPer10min": 64.1,
+   "avgKillsPer10min": 38.2,
+   "maxConcurrent": 18,
+   "longestSealMin": 4.9,
+   "longestNoCampMin": 17.8
+  },
+  {
+   "r": 2,
+   "normalFloorMin": 4.3,
+   "peakKillsPer10min": 61.1,
+   "avgKillsPer10min": 45.5,
+   "maxConcurrent": 18,
+   "longestSealMin": 7.4,
+   "longestNoCampMin": 20.6
+  },
+  {
+   "r": 3,
+   "normalFloorMin": 5.1,
+   "peakKillsPer10min": 68.6,
+   "avgKillsPer10min": 42,
+   "maxConcurrent": 18,
+   "longestSealMin": 7.4,
+   "longestNoCampMin": 20.6
+  },
+  {
+   "r": 4,
+   "normalFloorMin": 7.4,
+   "peakKillsPer10min": 69.5,
+   "avgKillsPer10min": 34.3,
+   "maxConcurrent": 18,
+   "longestSealMin": 7.8,
+   "longestNoCampMin": 32.4
+  },
+  {
+   "r": 5,
+   "normalFloorMin": 9,
+   "peakKillsPer10min": 69.2,
+   "avgKillsPer10min": 40,
+   "maxConcurrent": 18,
+   "longestSealMin": 9.1,
+   "longestNoCampMin": 40.4
+  },
+  {
+   "r": 6,
+   "normalFloorMin": 9.1,
+   "peakKillsPer10min": 69,
+   "avgKillsPer10min": 38.1,
+   "maxConcurrent": 18,
+   "longestSealMin": 9.1,
+   "longestNoCampMin": 41.5
+  },
+  {
+   "r": 7,
+   "normalFloorMin": 9.7,
+   "peakKillsPer10min": 68.2,
+   "avgKillsPer10min": 32.9,
+   "maxConcurrent": 18,
+   "longestSealMin": 8.3,
+   "longestNoCampMin": 41.1
+  },
+  {
+   "r": 8,
+   "normalFloorMin": 10.6,
+   "peakKillsPer10min": 68.3,
+   "avgKillsPer10min": 32.6,
+   "maxConcurrent": 18,
+   "longestSealMin": 8.7,
+   "longestNoCampMin": 43.8
+  },
+  {
+   "r": 9,
+   "normalFloorMin": 10.8,
+   "peakKillsPer10min": 66.4,
+   "avgKillsPer10min": 30.4,
+   "maxConcurrent": 18,
+   "longestSealMin": 9.4,
+   "longestNoCampMin": 46
+  },
+  {
+   "r": 10,
+   "normalFloorMin": 16,
+   "peakKillsPer10min": 61.7,
+   "avgKillsPer10min": 28.7,
+   "maxConcurrent": 18,
+   "longestSealMin": 10.1,
+   "longestNoCampMin": 51.7
+  }
+ ],
+ "recommendedPieceTable": [
+  5,
+  8,
+  14,
+  17,
+  20,
+  28,
+  35,
+  43,
+  46,
+  59
+ ],
+ "priceCheck": [
+  {
+   "r": 1,
+   "ore": "stone",
+   "oreSell": 5,
+   "barStd": 17,
+   "accepted": 4,
+   "refit105": 5,
+   "soloPctFarmerAtAccepted": 0.883,
+   "soloPctFarmerAtRefit": 0.992,
+   "party4PctAtAccepted": 0.967,
+   "party4PctAtRefit": 1.092
+  },
+  {
+   "r": 2,
+   "ore": "copper",
+   "oreSell": 9,
+   "barStd": 31,
+   "accepted": 8,
+   "refit105": 9,
+   "soloPctFarmerAtAccepted": 1,
+   "soloPctFarmerAtRefit": 1.066,
+   "party4PctAtAccepted": 1.056,
+   "party4PctAtRefit": 1.127
+  },
+  {
+   "r": 3,
+   "ore": "silver",
+   "oreSell": 13,
+   "barStd": 45,
+   "accepted": 14,
+   "refit105": 16,
+   "soloPctFarmerAtAccepted": 0.986,
+   "soloPctFarmerAtRefit": 1.059,
+   "party4PctAtAccepted": 1.034,
+   "party4PctAtRefit": 1.111
+  },
+  {
+   "r": 4,
+   "ore": "amethyst",
+   "oreSell": 18,
+   "barStd": 62,
+   "accepted": 17,
+   "refit105": 18,
+   "soloPctFarmerAtAccepted": 1.017,
+   "soloPctFarmerAtRefit": 1.049,
+   "party4PctAtAccepted": 1.122,
+   "party4PctAtRefit": 1.158
+  },
+  {
+   "r": 5,
+   "ore": "emerald",
+   "oreSell": 24,
+   "barStd": 83,
+   "accepted": 20,
+   "refit105": 20,
+   "soloPctFarmerAtAccepted": 1.057,
+   "soloPctFarmerAtRefit": 1.057,
+   "party4PctAtAccepted": 1.145,
+   "party4PctAtRefit": 1.145
+  },
+  {
+   "r": 6,
+   "ore": "opal",
+   "oreSell": 29,
+   "barStd": 100,
+   "accepted": 28,
+   "refit105": 28,
+   "soloPctFarmerAtAccepted": 1.05,
+   "soloPctFarmerAtRefit": 1.05,
+   "party4PctAtAccepted": 1.167,
+   "party4PctAtRefit": 1.167
+  },
+  {
+   "r": 7,
+   "ore": "sapphire",
+   "oreSell": 33,
+   "barStd": 114,
+   "accepted": 35,
+   "refit105": 39,
+   "soloPctFarmerAtAccepted": 0.99,
+   "soloPctFarmerAtRefit": 1.05,
+   "party4PctAtAccepted": 1.099,
+   "party4PctAtRefit": 1.164
+  },
+  {
+   "r": 8,
+   "ore": "jade",
+   "oreSell": 37,
+   "barStd": 128,
+   "accepted": 43,
+   "refit105": 47,
+   "soloPctFarmerAtAccepted": 1.002,
+   "soloPctFarmerAtRefit": 1.051,
+   "party4PctAtAccepted": 1.096,
+   "party4PctAtRefit": 1.149
+  },
+  {
+   "r": 9,
+   "ore": "moonstone",
+   "oreSell": 39,
+   "barStd": 135,
+   "accepted": 38,
+   "refit105": 46,
+   "soloPctFarmerAtAccepted": 0.946,
+   "soloPctFarmerAtRefit": 1.046,
+   "party4PctAtAccepted": 1.012,
+   "party4PctAtRefit": 1.119
+  },
+  {
+   "r": 10,
+   "ore": "mythril",
+   "oreSell": 40,
+   "barStd": 138,
+   "accepted": 59,
+   "refit105": 62,
+   "soloPctFarmerAtAccepted": 1.019,
+   "soloPctFarmerAtRefit": 1.047,
+   "party4PctAtAccepted": 1.183,
+   "party4PctAtRefit": 1.213
+  }
+ ],
+ "cores": {
+  "assumption": "ราคาอาวุธ=เกราะ P_t = 1.5×toolPrice(pick,t) • แท่ง floor(0.25×P÷ร้าน) • สึก 12% ของรายได้ ÷ (2P) ชิ้น/ชม.",
+  "tiers": [
+   {
+    "tier": 2,
+    "price": 390,
+    "barsPerItem": 2,
+    "oreForSet": 12,
+    "mineHours": 0.18,
+    "runMinSolo": 17.8,
+    "runMin4p": 16.6,
+    "itemsPer10h": 4.26,
+    "rerunPct": {
+     "s4": 0.253,
+     "s2": 0.127,
+     "s1": 0.063
+    }
+   },
+   {
+    "tier": 3,
+    "price": 900,
+    "barsPerItem": 3,
+    "oreForSet": 18,
+    "mineHours": 0.28,
+    "runMinSolo": 20.6,
+    "runMin4p": 19.3,
+    "itemsPer10h": 2.84,
+    "rerunPct": {
+     "s4": 0.195,
+     "s2": 0.097,
+     "s1": 0.049
+    }
+   },
+   {
+    "tier": 4,
+    "price": 1650,
+    "barsPerItem": 4,
+    "oreForSet": 24,
+    "mineHours": 0.38,
+    "runMinSolo": 18.8,
+    "runMin4p": 18.2,
+    "itemsPer10h": 2.08,
+    "rerunPct": {
+     "s4": 0.13,
+     "s2": 0.065,
+     "s1": 0.032
+    }
+   },
+   {
+    "tier": 5,
+    "price": 2850,
+    "barsPerItem": 5,
+    "oreForSet": 30,
+    "mineHours": 0.49,
+    "runMinSolo": 32.4,
+    "runMin4p": 26.3,
+    "itemsPer10h": 1.49,
+    "rerunPct": {
+     "s4": 0.162,
+     "s2": 0.081,
+     "s1": 0.04
+    }
+   },
+   {
+    "tier": 6,
+    "price": 4500,
+    "barsPerItem": 7,
+    "oreForSet": 42,
+    "mineHours": 0.69,
+    "runMinSolo": 40.4,
+    "runMin4p": 34.7,
+    "itemsPer10h": 1.27,
+    "rerunPct": {
+     "s4": 0.171,
+     "s2": 0.086,
+     "s1": 0.043
+    }
+   },
+   {
+    "tier": 7,
+    "price": 6750,
+    "barsPerItem": 9,
+    "oreForSet": 54,
+    "mineHours": 0.9,
+    "runMinSolo": 41.5,
+    "runMin4p": 34.8,
+    "itemsPer10h": 0.99,
+    "rerunPct": {
+     "s4": 0.137,
+     "s2": 0.069,
+     "s1": 0.034
+    }
+   },
+   {
+    "tier": 8,
+    "price": 9750,
+    "barsPerItem": 12,
+    "oreForSet": 72,
+    "mineHours": 1.23,
+    "runMinSolo": 41.1,
+    "runMin4p": 34.1,
+    "itemsPer10h": 0.71,
+    "rerunPct": {
+     "s4": 0.097,
+     "s2": 0.049,
+     "s1": 0.024
+    }
+   },
+   {
+    "tier": 9,
+    "price": 13500,
+    "barsPerItem": 16,
+    "oreForSet": 96,
+    "mineHours": 1.66,
+    "runMinSolo": 43.8,
+    "runMin4p": 39.2,
+    "itemsPer10h": 0.56,
+    "rerunPct": {
+     "s4": 0.082,
+     "s2": 0.041,
+     "s1": 0.02
+    }
+   },
+   {
+    "tier": 10,
+    "price": 18750,
+    "barsPerItem": 22,
+    "oreForSet": 132,
+    "mineHours": 2.11,
+    "runMinSolo": 46,
+    "runMin4p": 42.4,
+    "itemsPer10h": 0.44,
+    "rerunPct": {
+     "s4": 0.067,
+     "s2": 0.034,
+     "s1": 0.017
+    }
+   }
+  ],
+  "catchUpHoursSolo": 5,
+  "catchUpHours4p": 4.4
+ },
+ "campRisk": {
+  "repairCoinPerDeath": 1203,
+  "repairPctOfHourlyIncome": 0.1,
+  "perFloorLossMin": [
+   {
+    "f": 92,
+    "noCamp95": 10.1,
+    "camp95": 10.1,
+    "camp95_97": 10.1
+   },
+   {
+    "f": 93,
+    "noCamp95": 11.6,
+    "camp95": 11.6,
+    "camp95_97": 11.6
+   },
+   {
+    "f": 94,
+    "noCamp95": 8.9,
+    "camp95": 8.9,
+    "camp95_97": 8.9
+   },
+   {
+    "f": 95,
+    "noCamp95": 6,
+    "camp95": 6,
+    "camp95_97": 6
+   },
+   {
+    "f": 96,
+    "noCamp95": 10.6,
+    "camp95": 5.3,
+    "camp95_97": 5.3
+   },
+   {
+    "f": 97,
+    "noCamp95": 15.8,
+    "camp95": 10.5,
+    "camp95_97": 10.5
+   },
+   {
+    "f": 98,
+    "noCamp95": 18.2,
+    "camp95": 12.9,
+    "camp95_97": 10.3
+   },
+   {
+    "f": 99,
+    "noCamp95": 15.5,
+    "camp95": 10.2,
+    "camp95_97": 7.6
+   }
+  ],
+  "chain": [
+   {
+    "p": 0.02,
+    "noCamps": {
+     "min": 127.4,
+     "deaths": 0.25
+    },
+    "camp95": {
+     "min": 126.7,
+     "deaths": 0.25
+    },
+    "camp95_97": {
+     "min": 126.5,
+     "deaths": 0.25
+    }
+   },
+   {
+    "p": 0.04,
+    "noCamps": {
+     "min": 131,
+     "deaths": 0.52
+    },
+    "camp95": {
+     "min": 129.4,
+     "deaths": 0.52
+    },
+    "camp95_97": {
+     "min": 129,
+     "deaths": 0.52
+    }
+   },
+   {
+    "p": 0.07,
+    "noCamps": {
+     "min": 136.7,
+     "deaths": 0.96
+    },
+    "camp95": {
+     "min": 133.9,
+     "deaths": 0.96
+    },
+    "camp95_97": {
+     "min": 133.1,
+     "deaths": 0.96
+    }
+   },
+   {
+    "p": 0.1,
+    "noCamps": {
+     "min": 142.9,
+     "deaths": 1.42
+    },
+    "camp95": {
+     "min": 138.7,
+     "deaths": 1.42
+    },
+    "camp95_97": {
+     "min": 137.5,
+     "deaths": 1.42
+    }
+   }
+  ]
+ },
+ "partySensitivity": {
+  "ค่าตั้งต้น": {
+   "p2": 0.894,
+   "p4": 0.837
+  },
+  "ไม่แยกทีมเลย (par ปิด)": {
+   "p2": 0.952,
+   "p4": 0.927
+  },
+  "แยกทีมแต่ walkPar 0 (ไม่ช่วยเดิน)": {
+   "p2": 0.901,
+   "p4": 0.86
+  },
+  "walkPar 0.20": {
+   "p2": 0.888,
+   "p4": 0.821
+  },
+  "parLoss 0.20 regroup 30 (ประสานงานแย่)": {
+   "p2": 0.917,
+   "p4": 0.868
+  },
+  "parLoss 0.05 regroup 10 (คล่อง)": {
+   "p2": 0.881,
+   "p4": 0.821
+  },
+  "hpParty 0.75 (ค่ารอบ 2)": {
+   "p2": 0.915,
+   "p4": 0.869
+  },
+  "ทีมสู้ได้ 1 คน (minSq 1)": {
+   "p2": 0.894,
+   "p4": 0.833
+  }
+ },
+ "partyTotals": {
+  "soloH": 11.79,
+  "p2H": 10.55,
+  "p4H": 9.87
+ }
+}
