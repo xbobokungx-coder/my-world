@@ -605,6 +605,17 @@ function freshBadge(k) { // 🟢12 🟡3 🔴1 (แสดงเมื่อม�
   const c = Shared.freshCount(freshSt.l[k], Date.now() + timeOffset, freshSt.fz); if (!c[1] && !c[2]) return '';
   return ' <small title="ความสด: สด 100% • ค้าง 70% • เก่า 40% (ขายของเก่าก่อน • ตู้เย็นในบ้านช่วยชะลอ)">' + c.map((n, i) => n ? Shared.FRESH.emoji[i] + n : '').join(' ') + '</small>';
 }
+// จัดแถวรายการในร้านให้เป็นระเบียบ (20 พ.ย. 2026): ซ้ายคือชื่อ/รายละเอียด ขวาเป็นคอลัมน์ ราคาอยู่บน ปุ่มอยู่แถวล่างชิดขวา ไม่พับเป็นบรรทัดเหลื่อมกัน (มือถือ/จอแคบ) • ทำที่ DOM หลังวาดร้านทุกครั้ง ใช้ได้ทุกร้านโดยไม่แก้แม่แบบทีละแห่ง • ย้ายโหนดเดิมไม่ clone ตัวจัดการปุ่มที่ผูกไว้จึงไม่หาย
+function tidyShopRows(root) {
+  root.querySelectorAll('.row').forEach(r => {
+    if (r.dataset.tidy || r.children.length !== 2 || r.lastElementChild.tagName !== 'SPAN') return;
+    r.dataset.tidy = '1';
+    const act = r.lastElementChild, pr = document.createElement('b'), bt = document.createElement('span'); pr.className = 'pr'; bt.className = 'bt';
+    for (const n of [...act.childNodes]) { if (n.nodeType === 3) { const t = n.textContent.trim(); if (t) pr.append(t + ' '); } else if (n.nodeName !== 'BR') bt.append(n); }
+    act.textContent = ''; act.className = 'act'; if (pr.textContent) act.append(pr); if (bt.childNodes.length) act.append(bt);
+  });
+}
+try { new MutationObserver(() => tidyShopRows($('shopBody'))).observe($('shopBody'), { childList: true }); } catch (e) { /* เบราว์เซอร์เก่าไม่มี MutationObserver ก็ใช้หน้าตาเดิม */ }
 const sellQty = {}; // จำนวนที่ผู้เล่นพิมพ์ไว้ต่อไอเทม (หน้าขายถูกวาดใหม่บ่อย ค่าที่พิมพ์ต้องไม่หาย)
 const sellQtyOf = k => Math.max(1, Math.min(inv[k] || 1, sellQty[k] || 1)); // ไม่เกินที่มี ไม่ต่ำกว่า 1
 function sellQtyTotal(k) { const i = itemInfo(k), n = sellQtyOf(k); return i ? sellQuote(i.sell, mult(k), n, freshMulsOf(k, n)).total : 0; }
@@ -1961,7 +1972,7 @@ function renderShop() {
     const off = locked || toolBetter || (i.once && inv[k]) || (i.animal && animalCount(i.animal) >= ANIMALS[i.animal].cap);
     const buyCoin = gcInfo ? gcInfo.coin : i.buy; // ราคาเหรียญจริงที่ต้องจ่าย (tier 8–10 ใช้ gcInfo.coin)
     const ic = tn ? `<span style="font-size:28px;line-height:1;vertical-align:middle;margin-right:2px">${i.emoji}</span>` : i.emoji; // แถวขวาน/คัน: ไอคอนใหญ่ ~28px ให้แยกระดับออก
-    const rowH = `<div class="row${locked ? ' lock' : ''}"><span>${ic} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${gcInfo ? gcInfo.coin : i.buy} `
+    const rowH = `<div class="row${locked ? ' lock' : ''}${gcInfo ? ' craft' : ''}"><span>${ic} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${gcInfo ? gcInfo.coin : i.buy} `
       + `<button class="btn small" data-buy="${k}" data-n="1" ${off || coin < buyCoin ? 'disabled' : ''}>${gcInfo ? '🔨 คราฟ' : 'ซื้อ'}</button>`
       + (i.once || i.animal ? '' : ` <button class="btn small" data-buy="${k}" data-n="5" ${off || coin < buyCoin * 5 ? 'disabled' : ''}>×5</button>`)
       + (i.food && inv[k] ? ` <button class="btn small" data-eat="${k}" style="background:#2ecc71;border-bottom-color:#1e8f4e" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน</button>` : '')

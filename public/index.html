@@ -130,6 +130,16 @@
   #bug .bugnote { font-size:11px; opacity:.6; margin:8px 0 0; text-align:center; }
   #arcade .panel { background:#f3eefc; border-color:#8a6fd1; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
+  /* แถวรายการในร้าน: ซ้าย = ชื่อ/รายละเอียด • ขวา = ราคาบน ปุ่มล่าง ชิดขวา (จัดโดย tidyShopRows ใน game.js) */
+  #shop .row { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:12px; align-items:center; }
+  #shop .row > .act { display:flex; flex-direction:column; align-items:flex-end; gap:5px; max-width:60vw; }
+  #shop .act .pr { font-size:15px; color:#7a4a12; white-space:nowrap; }
+  #shop .act .bt { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:6px; }
+  #shop .act .btn.small { min-width:54px; white-space:nowrap; }
+  #shop .row > span:first-child { min-width:0; overflow-wrap:anywhere; }
+  #shop .ck-chip { display:inline-block; white-space:nowrap; margin:2px 2px 2px 0; }
+  #shop .row.craft { grid-template-columns:1fr; row-gap:6px; } /* แถวอุปกรณ์คราฟข้อความยาว: ราคา+ปุ่มลงมาอยู่แถวล่างเต็มความกว้าง */
+  #shop .row.craft > .act { flex-direction:row; justify-content:space-between; align-items:center; max-width:none; }
   .sellq { width:56px; padding:5px 4px; border:2px solid #b89b6a; border-radius:8px; background:#fffaf0; font:inherit; font-size:14px; text-align:center; } /* ช่องใส่จำนวนที่จะขายในร้าน */
   @media (max-width:700px), (max-height:500px) { .atabs { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; } .atabs .chip { flex:0 0 auto; white-space:nowrap; min-height:40px; } } /* แท็บผู้ดูแลหลายอัน: เลื่อนแนวนอนแถวเดียว ไม่กินพื้นที่เนื้อหา */
   #people .prow { flex-wrap:wrap; }
