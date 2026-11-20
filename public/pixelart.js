@@ -479,7 +479,7 @@ const PixelTrees = (() => {
   }
   // V2 shop art: opaque integer pixel clusters, existing footprint and doors.
   function building(b) {
-    const known=['farm','fish','animal','pet','cloth','food','wood','vehicle','furn','mine','weapon'];
+    const known=['farm','fish','animal','pet','cloth','food','wood','vehicle','furn','mine','weapon','armor'];
     if(!known.includes(b.kind)||(b.x1-b.x0!==2)||(b.y1-b.y0!==1))return legacyBuilding(b);
     if(BCACHE.has(b))return BCACHE.get(b);
     const RF=[shade(b.roof,-.53),shade(b.roof,-.28),b.roof,shade(b.roof,.23),shade(b.roof,.43)];
@@ -566,6 +566,12 @@ const PixelTrees = (() => {
        R('#c9a04a',21,26,3,1);R('#c9a04a',30,26,3,1);R('#c9a04a',21,19,2,1);R('#c9a04a',31,19,2,1);
        R('#2a1b14',24,21,6,6);R(b.roof,25,22,4,4);R(shade(b.roof,.3),25,22,2,1);R('#e8c670',26,23,2,2);
        R('#9a7f4a',8,38,12,5);R('#c9ae6c',9,38,10,1);R('#6a6e74',10,33,1,6);R('#aab4b8',10,33,1,3);R('#6a6e74',14,34,1,5);R('#aab4b8',14,34,1,3);
+      }
+      if(k==='armor'){
+       // โล่ใหญ่บนผนังหน้า (เหนือประตู) + หมวกเหล็กบนแท่นข้างประตู + หุ่นเกราะข้างขวา
+       R('#2a1b14',23,19,8,9);R('#aeb9c4',24,20,6,7);R(b.roof,25,21,4,5);R(shade(b.roof,.3),25,21,2,1);R('#e8c670',26,22,2,3);R('#e8c670',24,26,6,1);
+       R('#9a7f4a',8,38,12,5);R('#c9ae6c',9,38,10,1);R('#6a6e74',11,33,6,5);R('#aab4b8',12,33,4,3);R('#2a1b14',13,36,2,2);
+       R(wood[1],38,41,6,2);R('#6a6e74',39,33,4,8);R('#aab4b8',39,33,4,3);R('#8a949c',38,36,6,4);R('#c5ced6',39,36,2,3);
       }
       if(k==='mine'){
        crate(36,36);[[38,35],[42,33],[45,35]].forEach(([x,y])=>{R('#667481',x,y,3,3);R('#bec3b5',x,y,2,1);});
