@@ -125,15 +125,17 @@ module.exports = {
           if (!S.FURN[f].wall && (!Number.isFinite(x) || !Number.isFinite(y))) return;
           const res = S.houseCheck(h.items, f, x, y, r, { wl: m.wl, u: S.snapQ(+m.u), mates });
           if (!res.ok) return this.toast(p, res.why);
-          this.add(p, 'furn_' + f, -1); this.event(p, 'hplace');
+          this.add(p, 'furn_' + f, -1);
           this.setItem(key, h.next++, { f, x: res.x !== undefined ? res.x : x, y: res.y !== undefined ? res.y : y, r, z: res.z, on: res.on, wl: res.wl, u: res.u });
+          this.event(p, 'hplace', f); // หลัง setItem: storeOnEvent เห็นตู้ใหม่แล้ว
           this.sfx(p, 'plant');
           return;
         }
         const id = m.i | 0, it = h.items[id];
         if (!it) return;
         if (m.a === 'remove') {
-          this.delItem(key, id); this.add(p, 'furn_' + it.f, 1); this.sfx(p, 'collect');
+          const blk = this.storeBlocksRemove(key, it.f); if (blk) return this.toast(p, blk); // ตู้ที่ยังมีของ ถอดจนความจุไม่พอไม่ได้
+          this.delItem(key, id); this.add(p, 'furn_' + it.f, 1); this.sfx(p, 'collect'); this.event(p, 'hremove', it.f);
           for (const [cid, c] of Object.entries(h.items)) if (c.on === id) this.setItem(key, cid, Object.assign({}, c, { z: 0, on: null })); // ของที่วางอยู่บนหลังตกลงพื้น
           return;
         }
@@ -167,5 +169,5 @@ module.exports = {
     p.sit = { i: id, k, lie }; p.x = spots[k].x * TS; p.y = spots[k].y * TS; p.dir = it.r ? 3 : 0; // หันตามแนวชิ้น
     send(p, { t: 'tp', x: p.x, y: p.y }); this.toast(p, lie ? '😴 นอนพักผ่อน... (เดินเพื่อลุก)' : '🪑 นั่งพักผ่อน... (เดินเพื่อลุก)');
   },
-  hasFridge(key) { const h = this.houses[key]; return !!(h && Object.values(h.items).some(it => it && it.f === 'fridge')); }, // ตู้เย็นวางในบ้าน = ของในกระเป๋าเสื่อมช้าลง
+  hasFridge(key) { const h = this.houses[key]; return !!(h && Object.values(h.items).some(it => it && it.f === 'fridge')); }, // ใช้เฉพาะตอนย้ายข้อมูลตู้เย็นเดิม (storage.js) ตู้เย็นไม่ชะลอของในกระเป๋าแล้ว
 };

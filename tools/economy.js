@@ -114,7 +114,7 @@ else {
   console.log(`ออนไลน์ ≥ 30 นาทีแต่ไม่ได้ทำงานเลย (คุย/แต่งบ้าน/เดินเล่น) ${idle} คน — ไม่นับเป็นความเหลื่อมล้ำ`);
 }
 let goods = 0; const holders = [];
-for (const p of players) { let v = 0; for (const [i, n] of Object.entries((p.rec && p.rec.inv) || {})) { if (i === 'coin') continue; const f = S.itemInfo(i); if (f && f.sell) v += f.sell * n; } goods += v; holders.push(v); }
+for (const p of players) { let v = 0; for (const [i, n] of Object.entries((p.rec && p.rec.inv) || {})) { if (i === 'coin') continue; const f = S.itemInfo(i); if (f && f.sell) v += f.sell * n; } for (const pl of Object.values((p.rec && p.rec.store) || {})) for (const [i, n] of Object.entries((pl && pl.inv) || {})) { const f = S.itemInfo(i); if (f && f.sell && n > 0) v += f.sell * n; } goods += v; holders.push(v); }
 holders.sort((a, b) => b - a);
 console.log(`มูลค่าของที่ตุน (ราคาฐาน) ${num(goods)} = ${(goods / Math.max(1, total)).toFixed(1)} เท่าของเหรียญ (เป้า ≤ 1.0) | 3 อันดับแรกถือ ${pct(holders.slice(0, 3).reduce((a, b) => a + b, 0), goods)}`);
 

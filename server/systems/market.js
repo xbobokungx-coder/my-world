@@ -104,7 +104,7 @@ module.exports = {
     if (!info || !info.sell || !have) return;
     const q = n === 'all' || !(n > 0) ? have : Math.max(1, Math.min(have, n | 0)); // n เป็นเศษ (0.5) ปัดเป็นอย่างน้อย 1 ไม่ให้ q = 0
     const g = this.market[item], mEff = this.effMult(p, item);
-    const muls = S.perishable(item) ? S.freshMuls(this.lotsOf(p.rec, item), q, Date.now(), this.hasFridge(p.key)) : null; // ของเก่าขายก่อน ราคาตามความสด
+    const muls = S.perishable(item) ? S.freshMuls(this.lotsOf(p.rec, item), q, Date.now(), false) : null; // ของเก่าขายก่อน ราคาตามความสด
     const quote = S.sellQuote(info.sell, mEff, q, muls); // ขายหลายชิ้นต่อเนื่อง ราคาต่อชิ้นค่อยๆ ลดลง
     const cat = S.sellCat(item), pay = quote.total; // จ่ายต่อชิ้นตามชนิด ลดชิ้นละ 1% ของราคาฐานจนพื้น 20%
     this.add(p, item, -q);

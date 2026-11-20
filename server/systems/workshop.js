@@ -62,7 +62,7 @@ module.exports = {
       const need = qty * nInt;
       const taken = this.add(p, k, -need); // คืน lots ที่ถูกเอา (เฉพาะของเน่าได้)
       if (r.fresh && S.perishable(k) && taken && taken.length) {
-        const muls = S.freshMuls(taken, need, now, this.hasFridge(p.key));
+        const muls = S.freshMuls(taken, need, now, false);
         for (const m of muls) allMuls.push(m);
       }
     }

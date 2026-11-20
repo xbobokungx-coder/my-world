@@ -17,6 +17,8 @@
 - `public/game.js:601–606` `freshSt` (`fz`) • `:609` `tidyShopRows` • `:917` `FLEA_GRPS fleaGrpOf` • `:1610` `BAG_SORTS` • `:1679` `renderBag` • `:2183` `houseAct` (Action ในบ้าน) • `:4891` `houseIsoClick` (แตะของในบ้าน)
 
 ---
+> **สถานะ 21 พ.ย. 2026:** S1 ลงโค้ดแล้ว (commit แยก ผ่าน code-reviewer) **ห้าม deploy จนกว่า S2 (หน้าต่างคลัง) + S7 (`tools/store-unstash.js` + แก้เอกสารตู้เย็นเดิมที่ GAME-DESIGN.md:443,506 / HOW-TO-PLAY / README) เสร็จ** เพราะ S1 ตัดผลตู้เย็นเดิมแล้วแต่ยังไม่มี UI เก็บของ และ toast ย้ายข้อมูลชวนให้กดตู้เย็น
+
 ## S1 — server-dev: คลังเย็นฝั่งเซิร์ฟเวอร์ + ตัดผลตู้เย็นเดิม + ย้ายข้อมูล + มูลค่าอันดับ
 ไฟล์: `public/shared.js`, `server/systems/storage.js` (ใหม่), `server/systems/core.js`, `server/systems/house.js`, `server/systems/market.js`, `server/systems/workshop.js`, `server/systems/rank.js`, `server.js`, `server/mixin.js`/รายการ mix (ถ้าต้องลงทะเบียน), `tools/economy.js`
 1. shared: `HOME.store = { cold: { furn: { fridge: 60 }, max: 4, mul: 0.25, accept: 'fresh' }, box: { furn: { crate: 80, cupboard: 60, dresser: 60, toolbox: 60, barrel: 40, nightstand: 20 }, max: 6, accept: 'dry' } }` + `storeAccepts(pool,k)` (cold = `perishable`; dry = มี itemInfo, ไม่ perishable, ไม่ `once`, ไม่ใช่ coin/pet/animalbuy) + `storeAge(tv, pool, now)` = `(pool.at − tv) + (now − pool.at) × pool.r` + `storeCap(items, pool)` (นับตู้ชนิดนั้นสูงสุด `max` ใบ) + `storeValue(store)` (มูลค่าแบบ `holdingsValue`) • export ทั้งหมด

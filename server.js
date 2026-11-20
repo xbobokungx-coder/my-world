@@ -38,7 +38,7 @@ const rodOf = inv => S.rodTier(inv);
 const { NPC_DEFS } = require('./server/consts.js'); // ย้ายไป server/consts.js
 
 const { CAVE, ADMIN_NAME } = require('./server/consts.js'); // ฉากถ้ำเหมือง (ย้ายไป server/consts.js)
-const HOUSE_MSG = new Set(['m', 'act', 'sw', 'reel', 'held', 'cerr', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'block', 'report', 'house', 'gift', 'greet', 'recall', 'horn']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
+const HOUSE_MSG = new Set(['m', 'act', 'sw', 'reel', 'held', 'cerr', 'status', 'deaf', 'voice', 'rtc', 'pcall', 'look', 'eat', 'pet', 'petname', 'petcare', 'lamp', 'chat', 'block', 'report', 'house', 'gift', 'greet', 'recall', 'horn', 'store']); // ข้อความที่ใช้ได้ตอนอยู่ในบ้าน (ที่เหลือเป็นเรื่องของเมือง)
 class World {
   constructor(room) {
     this.room = room;
@@ -98,7 +98,7 @@ class World {
     }
     this.mocks = S.sanitizeMocks(this._loadMocks); this.mapOv = S.sanitizeMapOv(this._loadMapOv); delete this._loadMocks; delete this._loadMapOv;
     for (const rec of Object.values(this.saved)) if (rec && rec.inv) this.achCheck(rec); // ผ่านความสำเร็จสายลงขันให้ผู้เล่นทุกคนที่มีเซฟ (รวมคนที่ออฟไลน์)
-    this.loadHouse(houseSaved); this.loadTown(townSaved); for (const P of S.PROJECTS) if (S.projectDone(P.id, this.projects[P.id].coin)) S.applyProject(this.map, P.id); this.initNpcs(); this.initPets();
+    this.loadHouse(houseSaved); this.storeMigrate(); this.loadTown(townSaved); for (const P of S.PROJECTS) if (S.projectDone(P.id, this.projects[P.id].coin)) S.applyProject(this.map, P.id); this.initNpcs(); this.initPets();
     if (this.mktDay === -1) this.mktDay = Math.floor(Date.now() / S.DAY_MS);
     this.market = {};
     for (const k of SELLABLE) { const o = mk[k] || {}; this.market[k] = { m: S.MARKET.min <= o.m && o.m <= S.MARKET.max ? o.m : 1, t: S.MARKET.min <= o.t && o.t <= S.MARKET.max ? o.t : 1 }; }
@@ -178,7 +178,7 @@ class World {
       try { q.ws.terminate(); } catch (e) { /* เหมือนกัน */ } // ตัดซ็อกเก็ตเก่าทันที ไม่รอ close handshake
     }
     let rec = this.saved[key];
-    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 8, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
+    if (!rec) rec = this.saved[key] = { firstSeen: Date.now(), inv: { coin: 50, seed_carrot: 5, feed: 5, bait: 10, meal_bread: 3 }, mig2: true, xpv: 8, frz: 1, gift: S.NEWBIE.gift[Math.floor(Math.random() * S.NEWBIE.gift.length)], x: S.START_SPAWN.x, y: S.START_SPAWN.y, color: HEX.test(color) ? color : '#3498db' };
     if (!rec.mig2) { rec.mig2 = true; rec.inv.bait = (rec.inv.bait || 0) + 10; } // แจกเหยื่อตกปลาชุดแรกให้ผู้เล่นเดิม (ระบบเหยื่อเพิ่งเพิ่ม)
     rec.name = name;
     if (!rec.firstSeen) rec.firstSeen = rec.lastSeen || Date.now(); // บัญชีเก่าก่อนมีตัวนับ: ใช้เวลาเข้าล่าสุดแทน (ใกล้เคียงเท่านั้น)
@@ -213,6 +213,7 @@ class World {
     });
     send(p, { t: 'pst', pst: rec.pst || {}, names: rec.pnames || {} });
     this.themeSend(p); // โหมดหิมะปัจจุบัน
+    this.storeJoinNote(p); // ย้ายตู้เย็นเดิมแล้ว แจ้งครั้งเดียว
     send(p, { t: 'arcs', a: this.arcsPub() }); send(p, { t: 'rents', r: this.rentsPub() }); this.chPush(p); send(p, { t: 'evt', e: this.evPub() }); send(p, { t: 'stars', s: rec.stars || {} });
     send(p, { t: 'mkt', m: this.mktFor(p) });
     this.catJoin(p); this.catPush(p); this.enJoin(p); this.enPush(p);
@@ -349,6 +350,7 @@ class World {
       case 'rebuy': this.rebuy(p, m.tool); break;
       case 'trade': this.tradeHandle(p, m); break;
       case 'house': this.houseHandle(p, m); break;
+      case 'store': this.storeHandle(p, m); break; // คลังในบ้าน (ตู้เย็น/ลัง) server/systems/storage.js
       case 'cook': this.cook(p, m.id); break;
       case 'craft': this.craft(p, m.id); break;
       case 'make': this.make(p, m.id, m.n); break; // WP-30 S2: โต๊ะแปรรูป
@@ -769,6 +771,7 @@ mix(World, require('./server/systems/arcade/core.js')); // แกนตู้เ
 mix(World, require('./server/systems/creatures.js')); // สัตว์ในถ้ำเหมือง (server/systems/creatures.js)
 mix(World, require('./server/systems/mining.js')); // ถ้ำเหมือง ก้อนแร่ ตั๋วลงเหมือง ขุดแร่ (ย้ายไป server/systems/mining.js)
 mix(World, require('./server/systems/fishing.js')); // ตกปลา ทะเลลึก ชักเย่อ (ย้ายไป server/systems/fishing.js)
+mix(World, require('./server/systems/storage.js')); // คลังเก็บของในบ้าน ตู้เย็น/ลัง (server/systems/storage.js)
 mix(World, require('./server/systems/house.js')); // บ้าน ตกแต่งเฟอร์นิเจอร์ ลีดเดอร์บอร์ดบ้าน (ย้ายไป server/systems/house.js)
 mix(World, require('./server/systems/market.js')); // ร้านค้า ตลาดราคาไดนามิก ความอิ่มตัวหมวด (ย้ายไป server/systems/market.js)
 mix(World, require('./server/systems/moderation.js')); // ดูแลชุมชน กรองคำ บล็อก รายงาน แชตย้อนหลัง (server/systems/moderation.js)

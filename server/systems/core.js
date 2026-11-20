@@ -30,7 +30,7 @@ module.exports = {
   changeScene(p, scene, x, y) { // ย้ายผู้เล่นไปฉากใหม่: คนฉากเก่าเห็นเขาหายไป คนฉากใหม่เห็นเขาโผล่ ตัวเองได้รับฉากใหม่
     const old = p.scene || null; scene = scene || null; this.hornOff(p); // เปลี่ยนซีน: ปิดแตรที่ซีนเก่าก่อน ไม่รั่วข้ามซีน
     this.sceneBroadcast(old, { t: 'p-', id: p.id, quiet: 1 }, p);
-    p.scene = scene; p.x = x; p.y = y; p.sit = null; p.dir = 0;
+    p.scene = scene; p.x = x; p.y = y; p.sit = null; p.dir = 0; p.storeAt = null;
     if (p.fish) { p.fish = null; send(p, { t: 'fg', off: 1 }); }
     this.sceneBroadcast(scene, Object.assign({ t: 'p+', quiet: 1 }, this.pubFull(p)), p);
     send(p, { t: 'scene', sc: scene, owner: scene && !S.caveFloor(scene) ? this.nameOfKey(scene) : '', mine: scene === p.key, x, y, items: scene && !S.caveFloor(scene) ? this.houseItemsPub(scene) : [], st: scene && !S.caveFloor(scene) ? this.houseStyle(scene) : null, cave: S.caveFloor(scene), until: S.isSeaScene(S.caveFloor(scene)) && Number.isFinite(p.seaUntil) ? p.seaUntil || 0 : 0, ores: S.caveFloor(scene) ? this.oresPub(S.caveFloor(scene)) : [], players: [...this.sceneMates(scene, p), p].map(q => this.pubFull(q)) });
@@ -75,6 +75,7 @@ module.exports = {
     }
     if (changed) { this.dirty = true; this.questPush(p); }
     this.achCheck(p.rec);
+    this.storeOnEvent(p, ev, arg); // วาง/ถอดตู้ → ซิงก์อัตราอายุของคลังเย็น
     if (doneNow) this.event(p, 'questdone');
   },
   // ----- เติบโต/ดึงให้กลับมาเล่น: คู่มือเริ่มต้น + สมุดสะสม + เข้าเกมติดต่อกัน + เป้าหมายรายสัปดาห์ของเมือง -----
@@ -114,7 +115,7 @@ module.exports = {
   },
   lotPut(rec, k, lots) { const L = this.lotsOf(rec, k); for (const [t, n] of lots) { if (!(n > 0)) continue; const last = L[L.length - 1]; if (last && Math.abs(last[0] - t) < 60000) last[1] += n; else L.push([t, n]); } L.sort((a, b) => a[0] - b[0]); rec.lots[k] = L; },
   lotTake(rec, k, n) { const L = this.lotsOf(rec, k), out = []; while (n > 0 && L.length) { const d = Math.min(L[0][1], n); out.push([L[0][0], d]); L[0][1] -= d; n -= d; if (!L[0][1]) L.shift(); } if (!L.length) delete rec.lots[k]; return out; },
-  freshPub(rec, key) { const o = {}; for (const k of Object.keys(rec.inv)) if (S.perishable(k) && rec.inv[k] > 0) o[k] = this.lotsOf(rec, k).map(([t, n]) => [t, n]); return { l: o, fz: this.hasFridge(key) }; },
+  freshPub(rec, key) { const o = {}; for (const k of Object.keys(rec.inv)) if (S.perishable(k) && rec.inv[k] > 0) o[k] = this.lotsOf(rec, k).map(([t, n]) => [t, n]); return { l: o, fz: false }; },
   lv(p, skill) { return S.levelOf(p.rec.skills[skill], skill); },
   addXp(p, skill, n) {
     const xb = this.petBonus(p).xp; if (xb > 0 && n > 0) { const f = n * (1 + xb); n = Math.floor(f) + (Math.random() < f - Math.floor(f) ? 1 : 0); } // 📚 สัตว์เลี้ยง: XP เพิ่ม (ปัดแบบสุ่มตามเศษ ไม่ให้ค่าน้อยๆ สูญ)
