@@ -13,7 +13,10 @@ const seq = a => { let i = 0; return () => a[i++ % a.length]; };
   assert.strictEqual(S.snakeTurn(r, 3), false, 'ย้อนกลับ 180° ไม่ได้'); assert.strictEqual(S.snakeTurn(r, 1), false, 'ทิศเดิมไม่ต้องเข้าคิว');
   assert.ok(S.snakeTurn(r, 0) && S.snakeTurn(r, 3) && !S.snakeTurn(r, 2), 'เลี้ยวสะสมได้สูงสุด 2 ทิศ'); assert.strictEqual(S.snakeTurn(r, 9), false); assert.strictEqual(S.snakeTurn(r, 0.5), false);
   const w = S.snakeNew(seq([0.3])); w.food = [0, 0]; for (let i = 0; i < K.w; i++) S.snakeStep(w, seq([0.3]));
-  assert.ok(w.over, 'ชนกำแพงจบเกม'); const b = w.body.map(c => c.slice()); S.snakeStep(w, seq([0.3])); assert.deepStrictEqual(w.body, b, 'จบแล้วไม่ขยับต่อ');
+  assert.ok(!w.over, 'ทะลุขอบได้ ไม่ใช่กำแพง'); assert.deepStrictEqual(w.body[0], [8, 8], 'วิ่งครบรอบกลับที่เดิม');
+  const e1 = S.snakeNew(seq([0.3])); e1.body = [[K.w - 1, 3], [K.w - 2, 3], [K.w - 3, 3]]; e1.food = [5, 5]; S.snakeStep(e1, seq([0.3])); assert.deepStrictEqual(e1.body[0], [0, 3], 'ออกขวาโผล่ซ้าย');
+  const e2 = S.snakeNew(seq([0.3])); e2.body = [[3, 0], [3, 1], [3, 2]]; e2.dir = 0; e2.food = [5, 5]; S.snakeStep(e2, seq([0.3])); assert.deepStrictEqual(e2.body[0], [3, K.h - 1], 'ออกบนโผล่ล่าง');
+  const e3 = { body: [[3, K.h - 1], [3, 0], [3, 1], [3, 2]], dir: 0, q: [], food: [9, 9], foods: 0, score: 0, over: false, win: false }; S.snakeStep(e3, Math.random); assert.ok(!e3.over && e3.body[0][1] === K.h - 2);
   // ชนตัวเอง: งูยาว 5 เลี้ยวขึ้น-ซ้าย-ลง
   const s2 = { body: [[5, 5], [4, 5], [3, 5], [2, 5], [1, 5]], dir: 1, q: [], food: [15, 15], foods: 0, score: 0, over: false, win: false };
   S.snakeTurn(s2, 2); S.snakeStep(s2, Math.random); S.snakeTurn(s2, 3); S.snakeStep(s2, Math.random); assert.ok(!s2.over); S.snakeTurn(s2, 0); S.snakeStep(s2, Math.random); assert.ok(s2.over, 'ชนตัวเองจบเกม');
@@ -40,9 +43,11 @@ function mk(name) {
 }
 const arc = (p, a, extra) => w.handle(p, Object.assign({ t: 'arc', a, id }, extra));
 const last = (p, f) => p.ws2.msgs.filter(f).pop();
-const play = (p, foods) => { // เล่นตรงๆ จนกินครบ foods ฟองแล้วชนกำแพง (ยัดไข่หน้าหัวทุกก้าว)
-  const run = w.snkRuns().get(p.id); assert.ok(run, 'มีเกมอยู่');
-  while (!run.r.over) { const [hx, hy] = run.r.body[0], [dx, dy] = S.SNAKE_DIRS ? S.SNAKE_DIRS[run.r.dir] : [1, 0]; if (run.r.foods < foods) run.r.food = [hx + dx, hy + dy]; run.next = Date.now(); w.snakeTick(Date.now() + 1); /* หนึ่งก้าวต่อรอบ */ if (run.r.foods >= foods && !run.r.over) run.r.food = null; }
+const play = (p, foods) => { // เล่นตรงๆ จนกินครบ foods ฟอง (ยัดไข่หน้าหัวทุกก้าว) แล้วจบเกมด้วยการชนตัวเอง
+  const run = w.snkRuns().get(p.id); assert.ok(run, 'มีเกมอยู่'); const r = run.r, step = () => { run.next = Date.now(); w.snakeTick(Date.now() + 1); }; // หนึ่งก้าวต่อรอบ
+  while (r.foods < foods && !r.over) { const [hx, hy] = r.body[0], [dx, dy] = S.SNAKE_DIRS[r.dir]; r.food = [(hx + dx + K.w) % K.w, (hy + dy + K.h) % K.h]; step(); }
+  if (!r.over) { r.body = [[5, 5], [6, 5], [6, 6], [5, 6], [4, 6]]; r.dir = 1; r.q.length = 0; r.food = null; step(); } // หัวเดินเข้าลำตัวตัวเอง
+  assert.ok(!w.snkRuns().has(p.id), 'เกมจบแล้ว');
 };
 
 {
@@ -53,7 +58,7 @@ const play = (p, foods) => { // เล่นตรงๆ จนกินคร�
   arc(a, 'start'); assert.strictEqual(a.ws2.msgs.filter(m => m.t === 'snk' && m.start).length, 1, 'เกมกำลังเล่นอยู่ เริ่มซ้อนไม่ได้');
   arc(a, 'dir', { d: 0 }); assert.deepStrictEqual(w.snkRuns().get(a.id).r.q, [0], 'รับทิศเลี้ยว');
   arc(a, 'dir', { d: 'x' }); arc(a, 'dir', { d: 99 }); assert.strictEqual(w.snkRuns().get(a.id).r.q.length, 1, 'ทิศแปลกถูกปัด');
-  // ชนกำแพงโดยไม่กินเลย: ไม่ได้แต้มตู้เกม แต่จบเกมได้
+  // จบเกมโดยไม่กินเลย: ไม่ได้แต้มตู้เกม แต่จบเกมได้
   const before = w.arcOf(a.rec).pts; w.snkRuns().get(a.id).r.q.length = 0; play(a, 0);
   const over0 = last(a, m => m.t === 'snk' && m.over); assert.ok(over0 && over0.sc === 0 && !over0.nb, 'จบเกมคะแนน 0'); assert.strictEqual(w.arcOf(a.rec).pts, before, 'กินไม่ถึง minFoods ไม่ได้แต้มตู้เกม');
   assert.ok(!w.snkRuns().has(a.id), 'เกมที่จบแล้วถูกเก็บออก');
@@ -67,8 +72,8 @@ const play = (p, foods) => { // เล่นตรงๆ จนกินคร�
   // คูลดาวน์ก่อนเริ่มรอบใหม่
   arc(a, 'start'); assert.ok(!w.snkRuns().has(a.id), 'ติดคูลดาวน์เริ่มรอบใหม่ทันทีไม่ได้');
   // อันดับ
-  const b = mk('Bob'); arc(b, 'start'); play(b, 7); /* ตรงไปทางขวาได้ไข่สูงสุด 7 ฟองก่อนชนกำแพง */ const tops = w.snakeTops();
-  assert.deepStrictEqual(tops.best.map(x => [x.name, x.best]), [['Bob', 70], ['Anna', 60]], 'เรียงตามคะแนนสูงสุด'); assert.deepStrictEqual(tops.wk.map(x => x.name), ['Bob', 'Anna']);
+  const b = mk('Bob'); arc(b, 'start'); play(b, 8); const tops = w.snakeTops();
+  assert.deepStrictEqual(tops.best.map(x => [x.name, x.best]), [['Bob', 80], ['Anna', 60]], 'เรียงตามคะแนนสูงสุด'); assert.deepStrictEqual(tops.wk.map(x => x.name), ['Bob', 'Anna']);
   w.handle(a, { t: 'lb' }); assert.strictEqual(last(a, m => m.t === 'lb').snk.best[0].name, 'Bob', 'ข้อความ lb มีอันดับงู');
   // สัปดาห์ใหม่ล้างเฉพาะ wk
   w.snkOf(a.rec).wkKey = -1; assert.strictEqual(w.snkOf(a.rec).wk, 0); assert.strictEqual(w.snkOf(a.rec).best, 60);

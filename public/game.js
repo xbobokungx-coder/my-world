@@ -2547,6 +2547,7 @@ const SFX = {
   lose: k => { [392, 330, 262].forEach((f, i) => tone(f, 0.25, { type: 'sawtooth', vol: 0.12, lp: 900, k, delay: i * 0.16 })); },
   draw: k => { tone(440, 0.2, { type: 'triangle', vol: 0.2, k }); tone(440, 0.2, { type: 'triangle', vol: 0.2, k, delay: 0.25 }); },
   click: k => tone(700, 0.05, { type: 'square', vol: 0.07, lp: 2000, k }),
+  snkeat: k => { tone(660, 0.07, { type: 'square', to: 990, vol: 0.13, lp: 3000, k }); tone(1320, 0.1, { type: 'square', vol: 0.1, lp: 3500, k, delay: 0.06 }); }, // กินไข่งู (ติ๊ดดิ๊ง)
   go: k => { tone(880, 0.25, { type: 'square', vol: 0.2, lp: 3000, k }); },
   eat: k => { for (let i = 0; i < 3; i++) { noise(0.07, { type: 'lowpass', f: 900, vol: 0.28, k, delay: i * 0.12 }); tone(180 + i * 25, 0.06, { type: 'triangle', vol: 0.12, k, delay: i * 0.12 }); } },
   die: k => { tone(330, 0.5, { type: 'sawtooth', to: 80, vol: 0.18, lp: 700, k }); tone(260, 0.6, { type: 'sine', to: 60, vol: 0.15, k, delay: 0.2 }); },
@@ -2801,7 +2802,9 @@ function snakeKey(e) { // true = จัดการแล้ว (ไม่ส่
 }
 function onSnk(m) {
   if (!snakeLive() || m.id !== arcTable.id) return;
-  if (m.over) { arcTable.me = { best: m.best, wk: m.wk }; if (m.top) arcTable.top = m.top; if (m.nb) playSfx('levelup'); }
+  const prev = snk && !snk.over ? snk.sc : null; // กินไข่แล้วคะแนนขึ้น = มีเสียง
+  if (m.over) { arcTable.me = { best: m.best, wk: m.wk }; if (m.top) arcTable.top = m.top; playSfx(m.nb ? 'levelup' : 'die'); }
+  else if (prev !== null && m.sc > prev) playSfx('snkeat');
   snk = m; renderSnake();
 }
 function snkList(arr, unit) {
@@ -2833,7 +2836,7 @@ function renderSnake() {
       + `<div id="snkMsg" class="banner" style="margin-bottom:8px"></div>`
       + `<div style="display:grid;grid-template-columns:repeat(3,56px);gap:6px;justify-content:center;margin:6px auto"><span></span><button class="btn" data-sd="0" aria-label="ขึ้น">▲</button><span></span><button class="btn" data-sd="3" aria-label="ซ้าย">◀</button><button class="btn" data-sd="2" aria-label="ลง">▼</button><button class="btn" data-sd="1" aria-label="ขวา">▶</button></div>`
       + `<button class="btn" id="snkGo" data-arc="start" style="width:100%;margin-top:8px">🐍 เริ่มเล่น</button>`
-      + `<div id="snkLb"></div><p style="font-size:12px;opacity:.7">กินไข่ 🥚 ให้ยาวที่สุด ชนกำแพงหรือตัวเองจบเกม เริ่มช้าแล้วเร็วขึ้นทุก ${K.speedEvery} ฟอง • เปลี่ยนทิศ: ลูกศร / WASD / ปัดบนกระดาน / ปุ่มด้านบน • เริ่มเล่น: Space • กินไข่ครบ ${K.minFoods} ฟองได้แต้มตู้เกม</p>`;
+      + `<div id="snkLb"></div><p style="font-size:12px;opacity:.7">กินไข่ 🥚 ให้ยาวที่สุด ทะลุขอบจอไปออกอีกฝั่งได้ แต่ชนตัวเองจบเกม เริ่มช้าแล้วเร็วขึ้นทุก ${K.speedEvery} ฟอง • เปลี่ยนทิศ: ลูกศร / WASD / ปัดบนกระดาน / ปุ่มด้านบน • เริ่มเล่น: Space • กินไข่ครบ ${K.minFoods} ฟองได้แต้มตู้เกม</p>`;
     const cv = $('snkCv'); let sx = 0, sy = 0; // ปัดนิ้ว/ลากเมาส์บนกระดานเพื่อเลี้ยว
     cv.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; try { cv.setPointerCapture(e.pointerId); } catch (er) { /* ไม่รองรับก็ข้าม */ } });
     cv.addEventListener('pointermove', e => { if (!e.buttons && e.pointerType !== 'touch') return; const dx = e.clientX - sx, dy = e.clientY - sy; if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return; snakeSend(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0)); sx = e.clientX; sy = e.clientY; });

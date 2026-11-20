@@ -1466,7 +1466,7 @@
   const POINTS = { dailyCap: 30 };
   const ARCPTS = { play: 2, win: 5, dailyCap: 60 }; // dailyCap: แต้มสูงสุดต่อวันต่อคน (กันจับคู่เล่นปั่นแต้ม)
   // เกมงู (ตู้เกมเล่นคนเดียว): เซิร์ฟเวอร์จำลองเกมเองทุกก้าว (server-authoritative) ฝั่งเว็บส่งแค่ทิศ • คะแนน = ไข่ที่กินได้ × food • จัดอันดับคะแนนสูงสุด (ตลอดกาล + สัปดาห์นี้)
-  // ง่ายไปยาก: เริ่มช้า (180 มิลลิวินาที/ก้าว) เร็วขึ้นทุก 5 ไข่ จนถึง 90 • กำแพงชน = จบ • แต้มตู้เกม: กินไข่ครบ minFoods ถึงได้ (กันตายเร็วปั่นแต้ม) แล้วนับรวมเพดานรายวัน ARCPTS.dailyCap
+  // ง่ายไปยาก: เริ่มช้า (180 มิลลิวินาที/ก้าว) เร็วขึ้นทุก 5 ไข่ จนถึง 90 • ทะลุขอบออกอีกฝั่งได้ (ไม่มีกำแพง) ชนตัวเอง = จบ • แต้มตู้เกม: กินไข่ครบ minFoods ถึงได้ (กันตายเร็วปั่นแต้ม) แล้วนับรวมเพดานรายวัน ARCPTS.dailyCap
   const SNAKE = { w: 16, h: 16, food: 10, baseMs: 180, minMs: 90, speedEvery: 5, speedStep: 10, lead: 700, minFoods: 3, ptsPer: 5, ptsMax: 8, cooldownMs: 1500, top: 10 };
   const SNAKE_DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // 0 ขึ้น 1 ขวา 2 ลง 3 ซ้าย
   const snakeFood = (body, rnd) => { const used = new Set(body.map(([x, y]) => y * SNAKE.w + x)), free = []; for (let i = 0; i < SNAKE.w * SNAKE.h; i++) if (!used.has(i)) free.push(i); if (!free.length) return null; const i = free[Math.floor(rnd() * free.length)]; return [i % SNAKE.w, Math.floor(i / SNAKE.w)]; };
@@ -1476,9 +1476,9 @@
   const snakeStep = (r, rnd) => {
     if (r.over) return r;
     if (r.q.length) r.dir = r.q.shift();
-    const [dx, dy] = SNAKE_DIRS[r.dir], nx = r.body[0][0] + dx, ny = r.body[0][1] + dy, eat = !!r.food && nx === r.food[0] && ny === r.food[1];
+    const [dx, dy] = SNAKE_DIRS[r.dir], nx = (r.body[0][0] + dx + SNAKE.w) % SNAKE.w, ny = (r.body[0][1] + dy + SNAKE.h) % SNAKE.h, eat = !!r.food && nx === r.food[0] && ny === r.food[1];
     const solid = eat ? r.body : r.body.slice(0, -1); // ไม่กินไข่ หางขยับหนีพอดี เลยเข้าช่องหางเดิมได้
-    if (nx < 0 || ny < 0 || nx >= SNAKE.w || ny >= SNAKE.h || solid.some(([x, y]) => x === nx && y === ny)) { r.over = true; return r; }
+    if (solid.some(([x, y]) => x === nx && y === ny)) { r.over = true; return r; }
     r.body.unshift([nx, ny]); if (!eat) r.body.pop();
     else { r.foods++; r.score += SNAKE.food; r.food = snakeFood(r.body, rnd); if (!r.food) { r.over = true; r.win = true; } }
     return r;
