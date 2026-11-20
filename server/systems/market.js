@@ -102,7 +102,7 @@ module.exports = {
     if (!kind || typeof item !== 'string' || !S.shopSells(kind, item)) return;
     const info = S.itemInfo(item), have = p.rec.inv[item] || 0;
     if (!info || !info.sell || !have) return;
-    const q = n === 'all' || !(n > 0) ? have : Math.min(have, n | 0);
+    const q = n === 'all' || !(n > 0) ? have : Math.max(1, Math.min(have, n | 0)); // n เป็นเศษ (0.5) ปัดเป็นอย่างน้อย 1 ไม่ให้ q = 0
     const g = this.market[item], mEff = this.effMult(p, item);
     const muls = S.perishable(item) ? S.freshMuls(this.lotsOf(p.rec, item), q, Date.now(), this.hasFridge(p.key)) : null; // ของเก่าขายก่อน ราคาตามความสด
     const quote = S.sellQuote(info.sell, mEff, q, muls); // ขายหลายชิ้นต่อเนื่อง ราคาต่อชิ้นค่อยๆ ลดลง

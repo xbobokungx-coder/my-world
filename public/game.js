@@ -605,6 +605,9 @@ function freshBadge(k) { // 🟢12 🟡3 🔴1 (แสดงเมื่อม�
   const c = Shared.freshCount(freshSt.l[k], Date.now() + timeOffset, freshSt.fz); if (!c[1] && !c[2]) return '';
   return ' <small title="ความสด: สด 100% • ค้าง 70% • เก่า 40% (ขายของเก่าก่อน • ตู้เย็นในบ้านช่วยชะลอ)">' + c.map((n, i) => n ? Shared.FRESH.emoji[i] + n : '').join(' ') + '</small>';
 }
+const sellQty = {}; // จำนวนที่ผู้เล่นพิมพ์ไว้ต่อไอเทม (หน้าขายถูกวาดใหม่บ่อย ค่าที่พิมพ์ต้องไม่หาย)
+const sellQtyOf = k => Math.max(1, Math.min(inv[k] || 1, sellQty[k] || 1)); // ไม่เกินที่มี ไม่ต่ำกว่า 1
+function sellQtyTotal(k) { const i = itemInfo(k), n = sellQtyOf(k); return i ? sellQuote(i.sell, mult(k), n, freshMulsOf(k, n)).total : 0; }
 function allTotal(i, m, n, k) { // ขายทั้งหมด: ยอดรวมทั้งชุด (ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20%) พร้อมเปอร์เซ็นต์เฉลี่ยเทียบราคาชิ้นแรก
   const t = sellQuote(i.sell, m, n, k ? freshMulsOf(k, n) : null).total, first = Math.max(1, Math.round(i.sell * Math.max(Shared.MARKET.min, m)));
   return `${t} <small>(เฉลี่ย ${Math.round(t / (first * n) * 100)}%)</small>`;
@@ -1992,7 +1995,8 @@ function renderShop() {
     const i = itemInfo(k), m = mult(k), unit = Math.max(1, Math.round(i.sell * m));
     const trend = (m > 1.03 ? `<span style="color:#1e8f4e">▲ ${Math.round((m - 1) * 100)}%</span>` : m < 0.97 ? `<span style="color:#c0392b">▼ ${Math.round((1 - m) * 100)}%</span>` : '') + (m < 0.5 ? ' <span style="color:#c0392b">⚠️ ตลาดอิ่มตัว รอราคากลับก่อนค่อยขาย</span>' : '');
     h += `<div class="row"><span>${i.emoji} ${i.name} ×${inv[k]}${freshBadge(k)}<br><small>ราคาตลาด 🪙${unit} (ปกติ ${i.sell}) ${trend}</small></span><span>`
-      + `<button class="btn small" data-sell="${k}" data-n="1">ขาย 1</button> `
+      + `<input class="sellq" type="number" inputmode="numeric" min="1" max="${inv[k]}" step="1" value="${sellQtyOf(k)}" data-sq="${k}" aria-label="จำนวนที่จะขาย ${esc(i.name)}"> `
+      + `<button class="btn small" data-sell="${k}" data-n="num" data-sbtn="${k}">ขาย 🪙${sellQtyTotal(k)}</button> `
       + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all" title="ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20% ของราคาฐาน">ทั้งหมด 🪙${allTotal(i, m, inv[k], k)}</button>` : '') + `</span></div>`;
   }
   if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายชนิดเดิมซ้ำๆ ราคาของคุณจะตกเร็วและฟื้นช้า (ตกเหลือต่ำสุด ~20–25% ของราคาปกติ) • ขายหมวดหนึ่งเยอะ หมวดนั้นตกเร็ว แต่หมวดอื่นฟื้นเร็วขึ้น • มีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
@@ -2050,7 +2054,13 @@ function renderShop() {
   body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook }));
   bindPet(body);
   body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: +b.dataset.n }));
-  body.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => send({ t: 'sell', item: b.dataset.sell, n: b.dataset.n === 'all' ? 'all' : 1 }));
+  body.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => send({ t: 'sell', item: b.dataset.sell, n: b.dataset.n === 'all' ? 'all' : sellQtyOf(b.dataset.sell) }));
+  body.querySelectorAll('[data-sq]').forEach(inp => { // ช่องใส่จำนวนที่จะขาย: จำค่าไว้ข้ามการวาดใหม่ อัปเดตยอดบนปุ่มทันที Enter = ขาย
+    inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); const b = body.querySelector(`[data-sbtn="${inp.dataset.sq}"]`); if (b) b.click(); } };
+    inp.onkeyup = e => e.stopPropagation();
+    inp.oninput = () => { const k = inp.dataset.sq, v = Math.floor(+inp.value); sellQty[k] = v > 0 ? v : 1; const b = body.querySelector(`[data-sbtn="${k}"]`); if (b) b.textContent = 'ขาย 🪙' + sellQtyTotal(k); };
+    inp.onfocus = () => inp.select();
+  });
   body.querySelectorAll('[data-eat]').forEach(b => b.onclick = () => send({ t: 'eat', item: b.dataset.eat }));
   body.querySelectorAll('[data-repair]').forEach(b => b.onclick = () => send({ t: 'repair', tool: b.dataset.repair }));
   body.querySelectorAll('[data-rebuy]').forEach(b => b.onclick = () => send({ t: 'rebuy', tool: b.dataset.rebuy }));
