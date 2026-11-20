@@ -56,7 +56,7 @@ w.petSt(p, 'bird').sick = false;
 {
   const L = S.PETLV, mk = n => { const q = w.join({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.parse(s)); } }, n, '#3498db', false).p; q.rec.inv.coin = 9999; q.rec.inv.pet_dog = 1; q.rec.inv.petfood = 50; return q; };
   // ระดับ + โบนัสคูณ: lv1 = ค่าเดิมทุกตัว • lv5 คาปิบาร่า 12/9/6
-  assert.strictEqual(S.petLevel(undefined), 1); assert.strictEqual(S.petLevel(299), 1); assert.strictEqual(S.petLevel(300), 2); assert.strictEqual(S.petLevel(4000), 5); assert.strictEqual(S.petLevel(NaN), 1);
+  assert.strictEqual(S.petLevel(undefined), 1); assert.strictEqual(S.petLevel(149), 1); assert.strictEqual(S.petLevel(150), 2); assert.strictEqual(S.petLevel(449), 2); assert.strictEqual(S.petLevel(2000), 5); assert.strictEqual(S.petLevel(NaN), 1);
   for (const id of Object.keys(S.COMPANIONS)) assert.deepStrictEqual(S.petBonus(id, 100, false, 1), S.petBonus(id, 100, false), id + ' lv1 = เดิม');
   const c5 = S.petBonus('capybara', 100, false, 5); assert.ok(Math.abs(c5.spd - 0.12) < 1e-9 && Math.abs(c5.xp - 0.09) < 1e-9 && Math.abs(c5.luck - 0.06) < 1e-9, 'ระดับ 5 คาปิบาร่า');
   assert.ok(Math.abs(S.petBonus('cat', 100, false, 5).luck - 0.09) < 1e-9, 'แมวระดับ 5 🍀9%');
