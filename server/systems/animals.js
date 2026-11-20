@@ -6,7 +6,7 @@ const { rand } = require('../util.js');
 
 module.exports = {
   zone(type) { const z = S.PENS[type] || S.PENS.chicken; return { x0: (z.x0 + 0.4) * TS, x1: (z.x1 + 0.6) * TS, y0: (z.y0 + 0.5) * TS, y1: (z.y1 + 0.5) * TS }; },
-  hiveBox(i) { const [hx, hy] = S.BEE.hives[i]; return { x0: (hx - 0.6) * TS, x1: (hx + 1.6) * TS, y0: (hy - 0.6) * TS, y1: (hy + 1.6) * TS }; }, // ผึ้งบินวนอยู่รอบรังของตัวเอง (ไม่ไกลเกิน 1 ช่อง)
+  hiveBox(i) { const [hx, hy] = S.BEE.hives[i], z = this.zone('bee'); return { x0: Math.max(z.x0, (hx - 0.6) * TS), x1: Math.min(z.x1, (hx + 1.6) * TS), y0: Math.max(z.y0, (hy - 0.6) * TS), y1: Math.min(z.y1, (hy + 1.6) * TS) }; }, // ผึ้งบินวนอยู่รอบรังของตัวเอง (ไม่ไกลเกิน 1 ช่อง และไม่ออกนอกเล้า)
   // ----- สัตว์ฟาร์มของใครของมัน: เก็บใน rec.herd • โผล่เล้าเฉพาะตอนเจ้าของออน • ออฟ = หายจากเล้า + แช่แข็ง -----
   herdOf(rec) { if (!Array.isArray(rec.herd)) rec.herd = []; return rec.herd; },
   packAnimal(a, now) {

@@ -85,7 +85,8 @@ assert(unreach <= MAX_UNREACH, `ช่องเดินไม่ถึง ${unr
 // 13 พ.ย. 2026: ย้ายเล้าไก่งวง/แพะขึ้นแถวบนสุด (ที่ราบเหนือ) + เปิดหน้าผา x45–62 เป็นทางเดิน → วัด hash ใหม่ (ตั้งใจ)
 // 14 พ.ย. 2026: เปิดประตูเล้าฝั่งขวา (PENS.gateR) ช่องรั้วขวาของเล้าที่ไม่ติดขอบแมพเป็นทาง → วัด hash ใหม่ (ตั้งใจ)
 // 14 พ.ย. 2026: เปิดแถบทางเดินแคบ x63 (PENS.edgeR) ให้เล้าหมู/ผึ้ง/หมูป่า/แพะ เข้าทางขวาได้ → ทับต้นไม้ขอบ 20 ช่อง (y4-8 y11-15 y16-20 y25-29) วัด hash ใหม่ (ตั้งใจ)
-const EAST_HASH = 'f2f85a4c27ff08ad6d8ed87fe70fd0b3';
+// 20 พ.ย. 2026: ย้ายรังผึ้ง 2 ลังไปแถวบนสุดของเล้าผึ้ง (BEE.hives) ให้พื้นเดินโล่ง → วัด hash ใหม่ (ตั้งใจ)
+const EAST_HASH = 'd93717aa8551f64e8fe351a92ac32526';
 const eastHash = require('crypto').createHash('md5').update(m.map(r => r.slice(45).join(',')).join('\n')).digest('hex');
 assert.strictEqual(eastHash, EAST_HASH, `ผัง x>=45 เปลี่ยนไป (hash ${eastHash})`);
 
