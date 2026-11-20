@@ -86,7 +86,8 @@ module.exports = {
       }
     } else {
       st.sickMs = 0;
-      if (Date.now() - (p.activeAt || 0) <= S.PETLV.activeMs) { // เดินออกไปไม่ได้ bond (bond มาจากให้อาหาร/ลูบหัวเท่านั้น) • ของขวัญรายวันยังสุ่มตอนเจ้าของมีกิจกรรม
+      if (Date.now() - (p.activeAt || 0) <= S.PETLV.activeMs) { // เจ้าของมีกิจกรรม: พาสัตว์เดินเล่น (ตามหรือปล่อยเดิน) ได้ bond ทุก 15 วินาที × อารมณ์ (อิ่ม ≥50 เต็ม • ≥25 ครึ่ง • ต่ำกว่านั้น 0) ทิ้งเครื่องเฉยๆ ไม่ได้ • ของขวัญรายวันสุ่มตอนนี้ด้วย
+        this.petBond(p, id, S.PETLV.walk * S.petMood(st.h, false), 'walk');
         this.petGift(p, id, st);
       }
     }
