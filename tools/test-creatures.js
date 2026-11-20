@@ -10,7 +10,7 @@ const goto = (f, x, y) => { const at = f === 1 ? S.CAVE.spawn : w.caveLanding(f)
 a.rec.hunger = 100; a.rec.inv = { coin: 500, pick_1: 1, stone: 3 };
 
 // 1) สูตรใน shared
-assert.strictEqual(S.creatureCap(1), 3); assert.strictEqual(S.creatureCap(10), 12);
+assert.strictEqual(S.creatureCap(1), 5); assert.strictEqual(S.creatureCap(10), 18); assert.ok([1,2,3,4,5,6,7,8,9,10].every(f => Number.isInteger(S.creatureCap(f))), 'จำนวนต่อชั้นเป็นจำนวนเต็ม');
 for (let f = 1; f <= 10; f++) assert.ok(S.creatureKinds(f).length > 0, 'ทุกชั้นมีชนิดสัตว์ ' + f);
 assert.deepStrictEqual(S.creatureKinds(1), ['rat']); assert.ok(!S.creatureKinds(1).includes('golem'));
 
