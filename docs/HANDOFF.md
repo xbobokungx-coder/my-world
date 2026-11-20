@@ -4,16 +4,15 @@
 อัปเดตด้วย `/handoff` ก่อนเลิกงานหรือก่อนย้ายเครื่องทุกครั้ง
 
 ## ตอนนี้
-- **16 พ.ย. 2026 (Mac)** • WP-30 สไลซ์โต๊ะหลอม/อัดฟาง **โค้ดครบ รอเจ้าของสั่ง commit/push/deploy** • `check-all.sh` ผ่าน (syntax 7 + เทสต์ 58)
-- เครื่อง: Mac • working tree มี diff ยังไม่ commit
-- **เสร็จแล้ว (ยังไม่อยู่บน remote/VPS):** S1 shared BARS/WORKSHOP/gearCost • S2 `workshop.js` + market buy • Q1/Q2 เทสต์ • C1 แท็บ 🔥หลอม / 🌾อัดฟาง • เอกสาร forge/bale • ล็อก 7 ข้อดันเจี้ยนในตั๋วแล้ว
+- **20 พ.ย. 2026 (Mac)** • WP-30 สไลซ์โต๊ะหลอม/อัดฟาง **commit `97fe324` อยู่บน GitHub และ VPS รันเวอร์ชันนี้แล้ว** (เช็ก: VPS HEAD = `97fe324`, `/healthz` ok, service active) • `check-all.sh` ผ่าน (เทสต์ 58 ไฟล์)
+- เครื่อง: Mac • working tree สะอาด (เหลือแค่ `.claude/agent-memory` ที่ห้าม commit)
+- **เสร็จแล้ว (อยู่บน remote/VPS):** S1 shared BARS/WORKSHOP/gearCost • S2 `workshop.js` + market buy • Q1/Q2 เทสต์ • C1 แท็บ 🔥หลอม / 🌾อัดฟาง • เอกสาร forge/bale • ล็อก 7 ข้อดันเจี้ยนในตั๋วแล้ว
 - **ค้างอยู่ / ขั้นต่อไป:**
-  1. เจ้าของสั่ง commit → push → deploy WP-30 forge slice
-  2. (ทางเลือก) S3/P1/P2 เฟอร์นิเจอร์+ไอคอนวัสดุพิกเซล
-  3. หลัง deploy WP-30: ดันเจี้ยน D2 ชั้น 1–10
-  4. ops เมื่อสั่ง: WP-04 MemoryHigh/Max • launchd สำรอง • เฝ้า `economy.js 7`
+  1. (ทางเลือก) S3/P1/P2 เฟอร์นิเจอร์+ไอคอนวัสดุพิกเซลของ WP-30
+  2. ดันเจี้ยน D2 ชั้น 1–10 (ปลดล็อกแล้ว เพราะ WP-30 ขึ้น VPS แล้ว)
+  3. ops เมื่อสั่ง: เคลียร์โปรเซส Claude ค้างบน VPS (RAM 961MB เหลือใช้ ~350MB, มีตัวรัน 4 วัน กิน ~187MB) • WP-04 MemoryHigh/Max • launchd สำรอง • เฝ้า `economy.js 7`
 - **ตัดสินใจแล้ว:** WP-30 ตามข้อเสนอ • ดันเจี้ยน 7 ข้อตามข้อเสนอ • เลิกพลังงานถาวร (ก) • เล้าย้ายแล้ว
-- **ระวัง:** ห้ามเริ่มโค้ดดันเจี้ยน D2 ก่อน WP-30 deploy • xpv คง 8 ไม่ bump • อย่า commit `.claude/agent-memory` / `data/` / `admin.key`
+- **ระวัง:** xpv คง 8 ไม่ bump • อย่า commit `.claude/agent-memory` / `data/` / `admin.key`
 
 ## ก่อนหน้า
 - 2026-11-14: `ce64869` iPad perf/โหมดความละเอียด • `a1006b9` ตลาดนัด/หวยรอรับ/สัตว์เลี้ยง 5 ระดับ/ฤดู 1 วัน/xpv 8 • `954ba43` เล้า 11 เข้าได้สองทาง • `db8034d` ย้ายไก่งวง/แพะขึ้นที่ราบเหนือ
