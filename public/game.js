@@ -1920,11 +1920,11 @@ function renderShop() {
   const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'buy', tabs = SHOP_TABS[shopKind], sellTab = !!tabs && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'buy', craftTab = shopKind === 'wood' && farmTab === 'craft', forgeTab = shopKind === 'mine' && farmTab === 'forge', baleTab = isFarm && farmTab === 'bale', makeTab = forgeTab || baleTab; // WP-30
   let h = tabs ? `<div class="tabs">${tabs.map(([c, n]) => `<button class="tab${farmTab === c ? ' on' : ''}" data-ftab="${c}">${n}</button>`).join('')}</div>` : '';
   if (shopKind === 'furn' && farmTab === 'buy') h += `<div class="tabs">${FURN_SUBS.map(([c, n]) => `<button class="tab${furnSub === c ? ' on' : ''}" data-fsub="${c}">${n}</button>`).join('')}</div>`;
-  h += sellTab || cookTab || craftTab || makeTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากเลเวลต่ำ → สูง)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : tabs && farmTab === 'gear' ? 'อุปกรณ์' : 'ซื้อ') + '</div>';
+  h += sellTab || cookTab || craftTab || makeTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากเลเวลต่ำ → สูง)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : tabs && farmTab === 'gear' ? '🛒 อุปกรณ์ ซื้อด้วยเหรียญได้เลย <small style="font-weight:normal;opacity:.7">(จ่ายเหรียญอย่างเดียว ไม่ต้องมีวัสดุ)</small>' : 'ซื้อ') + '</div>';
   let keys = sellTab || cookTab || craftTab || makeTab ? [] : tabs ? sh.buy.filter(k => buyTabOf(shopKind, k) === farmTab && (shopKind !== 'furn' || furnCatOf(k) === furnSub)) : sh.buy;
   const profitRank = seedTab ? keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a)) : [];
   if (seedTab) keys = keys.slice().sort((a, b) => CROPS[a.slice(5)].lv - CROPS[b.slice(5)].lv || CROPS[a.slice(5)].sell - CROPS[b.slice(5)].sell);
-  let freeHdr = false;
+  let freeHdr = false, craftH = ''; const splitCraft = !!(tabs && farmTab === 'gear'); // แท็บอุปกรณ์: อุปกรณ์ที่ใช้วัสดุคราฟ (ระดับ 8–10) แยกเป็นอีกหมวดใต้รายการซื้อธรรมดา ใช้กับทุกร้านที่มีอุปกรณ์แบบนี้ (ช่างเหมือง/ตกปลา/เมล็ดพันธุ์/ปศุสัตว์/อาหาร/ช่างไม้)
   for (const k of keys) {
     const i = itemInfo(k), locked = i.lv && lvl(i.skill) < i.lv, coin = inv.coin || 0;
     let sub = '';
@@ -1946,25 +1946,29 @@ function renderShop() {
     // WP-30 C1: วัสดุอุปกรณ์ระดับ 8–10 — ชิปมี/ต้องการ + ราคาเหรียญจริงหลังหักของ
     const gbM = /^(pick|axe|rod|hoe|pail|pan|can)_(\d+)$/.exec(k);
     let gcInfo = null;
-    if (gbM && +gbM[2] >= 8) {
+    if (gbM && +gbM[2] >= 8 && Shared.gearBars(k)) {
       gcInfo = Shared.gearCost(k, inv);
-      const need = Shared.gearBars(k) || [];
+      const need = Shared.gearBars(k) || [], full = i.buy, disc = Math.max(0, full - gcInfo.coin);
       const matChips = need.map(([oreId, qty]) => {
         const have = Math.min(inv['bar_' + oreId] || 0, qty);
-        return `<span class="ck-chip ${have >= qty ? 'ok' : 'no'}">${Shared.BAR_EMOJI[oreId]} มี ${have}/${qty}</span>`;
-      }).join('');
-      const fillCoins = Object.entries(gcInfo.fill || {}).reduce((s, [bk, n]) => s + n * (Shared.BARS[bk.slice(4)] || {}).shop, 0);
-      sub += (sub ? ' • ' : '') + `จ่ายจริง 🪙${gcInfo.coin}` + (matChips ? '<br>' + matChips : '') + (fillCoins > 0 ? ` <span class="ck-chip no">ขาดวัสดุ เติม 🪙${fillCoins}</span>` : '');
+        return `<span class="ck-chip ${have >= qty ? 'ok' : 'no'}">${Shared.BAR_EMOJI[oreId]} ${Shared.BAR_NAMES[oreId]} มี ${have}/${qty}</span>`;
+      }).join(' ');
+      const fillCoins = Object.entries(gcInfo.fill || {}).reduce((s2, [bk, n]) => s2 + n * (Shared.BARS[bk.slice(4)] || {}).shop, 0);
+      sub += (sub ? '<br>' : '') + `🔨 <b>วัสดุคราฟ</b> (วัสดุที่มีหักราคาให้): ${matChips}`
+        + `<br>${fillCoins <= 0 ? '✅ วัสดุครบแล้ว ซื้อแล้วหักวัสดุชุดนี้ไปเลย' : disc > 0 ? `บางส่วนมีแล้ว ส่วนที่ยังขาดคิดเป็นเหรียญอยู่ในราคาแล้ว (🪙${fillCoins})` : `ยังไม่มีวัสดุก็ซื้อได้ในราคาเต็ม (ค่าวัสดุ 🪙${fillCoins} รวมอยู่ในราคาแล้ว ไม่ใช่ค่าเพิ่ม)`}`
+        + `<br>ราคาเต็ม 🪙${full}${disc > 0 ? ` • หักวัสดุที่มี −🪙${disc}` : ''} • <b>จ่ายจริง 🪙${gcInfo.coin}</b>`;
     }
     const off = locked || toolBetter || (i.once && inv[k]) || (i.animal && animalCount(i.animal) >= ANIMALS[i.animal].cap);
     const buyCoin = gcInfo ? gcInfo.coin : i.buy; // ราคาเหรียญจริงที่ต้องจ่าย (tier 8–10 ใช้ gcInfo.coin)
     const ic = tn ? `<span style="font-size:28px;line-height:1;vertical-align:middle;margin-right:2px">${i.emoji}</span>` : i.emoji; // แถวขวาน/คัน: ไอคอนใหญ่ ~28px ให้แยกระดับออก
-    h += `<div class="row${locked ? ' lock' : ''}"><span>${ic} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${gcInfo ? gcInfo.coin : i.buy} `
-      + `<button class="btn small" data-buy="${k}" data-n="1" ${off || coin < buyCoin ? 'disabled' : ''}>ซื้อ</button>`
+    const rowH = `<div class="row${locked ? ' lock' : ''}"><span>${ic} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${gcInfo ? gcInfo.coin : i.buy} `
+      + `<button class="btn small" data-buy="${k}" data-n="1" ${off || coin < buyCoin ? 'disabled' : ''}>${gcInfo ? '🔨 คราฟ' : 'ซื้อ'}</button>`
       + (i.once || i.animal ? '' : ` <button class="btn small" data-buy="${k}" data-n="5" ${off || coin < buyCoin * 5 ? 'disabled' : ''}>×5</button>`)
       + (i.food && inv[k] ? ` <button class="btn small" data-eat="${k}" style="background:#2ecc71;border-bottom-color:#1e8f4e" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน</button>` : '')
       + (i.once && inv[k] ? ` <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sbValue(k)}</button>` : '') + `</span></div>`;
+    if (splitCraft && gcInfo) craftH += rowH; else h += rowH;
   }
+  if (craftH) h += '<div class="sec">🔨 อุปกรณ์คราฟ (ระดับ 8–10 ใช้วัสดุ)</div><p style="font-size:12px;opacity:.8;margin:2px 0 8px;line-height:1.5">ชุดนี้ <b>ซื้อได้ทันทีในราคาเต็ม</b> หรือเตรียม <b>วัสดุคราฟ</b> (แท่งโลหะ/อัญมณีเจียระไน) มาแลกลดราคา: วัสดุแต่ละชิ้นที่มี ร้านหักราคาให้ รวมสูงสุดราว 25% • วัสดุทำเอง: ⛏️ ขุดแร่ในถ้ำเหมือง → 🔥 หลอมที่ร้านช่างเหมือง (แท็บ "🔥 หลอม" แร่ 3 ชิ้น = วัสดุ 1 ชิ้น) • ต้องมีเลเวลอาชีพถึงที่ระบุ (🔒) • ส่วนที่ขาด จ่ายเป็นเหรียญแทนในราคาอยู่แล้ว</p>' + craftH;
   if (isFarm && farmTab === 'gear') { // แปลงเช่า
     const R = Shared.FARM_RENT, now = Date.now() + timeOffset, myKey = me ? me.name.toLowerCase() : '';
     h += `<div class="sec">🏡 แปลงเช่า (แปลงละ 12 ช่อง • 🪙${R.price} / 1 วันจริง)</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">3 แถวบนของแปลงผัก แบ่ง 4 แปลง ขุด/ปลูกได้เฉพาะคนเช่า ต้นในแปลงตัวเองไม่นับเพดานปลูก เช่าได้คนละแปลง รอบละ 1 วันจริง (24 ชม.) ต่ออายุไม่ได้ หมดรอบแล้วค่อยเช่าใหม่</p>`;
