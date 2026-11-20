@@ -36,14 +36,14 @@ module.exports = {
     const arr = [];
     for (const [k, r] of Object.entries(this.saved)) { const a = this.arcOf(r); if (a.total > 0) arr.push({ name: r.name || k, total: a.total, wk: a.wk }); }
     const top = key => arr.slice().sort((x, y) => y[key] - x[key]).slice(0, 10);
-    send(p, { t: 'lb', total: top('total'), wk: top('wk').filter(x => x.wk > 0), me: this.arcPub(p.rec) });
+    send(p, { t: 'lb', total: top('total'), wk: top('wk').filter(x => x.wk > 0), snk: this.snakeTops(), me: this.arcPub(p.rec) });
   },
   arcsPub() {
     return Object.values(this.tables).map(t => (t.game === 'uno' || PARTY.has(t.game))
       ? [t.id, t.idx, t.state, t.bet, t.players[0] ? t.players[0].name : '', t.players.length + '/' + t.max, t.bot ? 1 : 0, t.game]
       : [t.id, t.idx, t.state, t.bet, t.host ? t.host.name : '', t.guest ? t.guest.name : '', t.bot ? 1 : 0, t.game]);
   },
-  pubFor(t, id) { return t.game === 'uno' ? this.unoPub(t, id) : PARTY.has(t.game) ? this.partyPub(t, id) : this.tablePub(t, id); },
+  pubFor(t, id) { return t.game === 'snake' ? this.snakePub(t, id) : t.game === 'uno' ? this.unoPub(t, id) : PARTY.has(t.game) ? this.partyPub(t, id) : this.tablePub(t, id); },
   pushTable(t, openFor) {
     const ids = (t.game === 'uno' || PARTY.has(t.game))
       ? new Set([...t.players.filter(q => !q.bot).map(q => q.id), ...t.watchers])
@@ -89,6 +89,7 @@ module.exports = {
   arcHandle(p, m) {
     const t = typeof m.id === 'string' && Object.hasOwn(this.tables, m.id) ? this.tables[m.id] : null;
     if (!t) return;
+    if (t.game === 'snake') return this.snakeHandle(p, m, t);
     if (t.game === 'uno') return this.unoHandle(p, m, t);
     if (PARTY.has(t.game)) return this.partyHandle(p, m, t);
     const coin = p.rec.inv.coin || 0, now = Date.now();
@@ -134,6 +135,7 @@ module.exports = {
   },
   arcLeaveTable(p, t) { // ออกจากโต๊ะนี้: ยกเลิกห้องที่รอ (คืนเหรียญ) หรือแพ้ถ้ากำลังเล่นอยู่
     t.watchers.delete(p.id);
+    if (t.game === 'snake') { this.snakeEnd(p, t); return; }
     if (t.game === 'uno') { this.unoLeave(p, t); return; }
     if (PARTY.has(t.game)) { this.partyLeave(p, t); return; }
     if (t.state === 'waiting' && t.host.id === p.id) this.cancelWait(t, `${p.name} ออกจากเกม ยกเลิกห้อง`);
@@ -141,6 +143,7 @@ module.exports = {
   },
   arcLeave(p) { for (const t of Object.values(this.tables)) this.arcLeaveTable(p, t); }, // ผู้เล่นหลุด/ออกจากเกม
   arcSeated(p, t) { // นั่งอยู่ที่โต๊ะนี้ (ผู้เล่นจริง ไม่ใช่แค่ดู)
+    if (t.game === 'snake') return this.snkRuns().has(p.id);
     if (t.game === 'uno' || PARTY.has(t.game)) return t.players.some(q => q.id === p.id);
     return !!((t.host && t.host.id === p.id) || (t.guest && t.guest.id === p.id) || t.xId === p.id || t.oId === p.id);
   },

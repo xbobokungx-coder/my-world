@@ -268,6 +268,7 @@ function handle(m) {
     case 'shop': openShop(m.kind); break;
     case 'arcs': arcStatus = {}; for (const a of m.a) arcStatus[a[1]] = a; break;
     case 'arc': onArc(m); break;
+    case 'snk': onSnk(m); break;
     case 'dur': dur = m.d; refreshOpen(); break;
     case 'wtr': wtr = m.n; renderHud(); break;
     case 'fight': { ft = { cls: m.cls, sched: m.sched, dist: m.dist, ten: m.ten, peak: m.ten, t: 0, snapT: 0, str: m.str, run: m.run, spd: m.spd, rise: m.rise, end: '', last: performance.now(), perfect: !!m.perfect }; ftHold = false; $('ffight').classList.remove('hidden'); fightUI(); if (abHeld || spHeld) setReel(true); break; } // ชักเย่อเริ่ม: เว็บทำนายด้วยสูตรเดียวกับเซิร์ฟเวอร์ ตามค่าที่ได้รับ
@@ -2093,6 +2094,7 @@ addEventListener('keydown', e => {
     else if (e.key === 'Escape') closeChat();
     return;
   }
+  if (snakeLive() && snakeKey(e)) return; // เปิดตู้งูอยู่: ลูกศร/WASD/Space ใช้เล่นงู ไม่ให้ตัวละครเดินหนีตู้
   // ใช้ e.code (ตำแหน่งปุ่มจริงบนคีย์บอร์ด) ไม่ใช่ e.key เพื่อให้ WASD และปุ่มลัดทำงานได้แม้เปลี่ยนเป็นแป้นพิมพ์ภาษาไทย
   const c = e.code;
   if (c === 'Enter' || c === 'NumpadEnter') { e.preventDefault(); openChat(); return; }
@@ -2562,7 +2564,12 @@ function openArcade() { $('arcade').classList.remove('hidden'); renderArcade(); 
 function closeArcade() { if (!arcOpenNow()) return; if (arcTable) send({ t: 'arc', a: 'close', id: arcTable.id }); $('arcade').classList.add('hidden'); arcTable = null; }
 function onArc(m) {
   if (m.close) { if (arcTable && arcTable.id === m.close) { arcTable = null; closeArcade(); } return; } // เดินห่างตู้เกินระยะ: เซิร์ฟเวอร์พาออกจากโต๊ะแล้ว
-  const t = m.table, was = arcLast[t.id]; arcLast[t.id] = t.state;
+  const t = m.table;
+  if (t.game === 'snake') { // ตู้งู: ไม่มีโต๊ะ/เดิมพัน เล่นคนเดียว (เกมอยู่ในข้อความ snk)
+    if (m.open) { arcTable = t; snk = t.run || null; clearKeys(); openArcade(); } else if (arcTable && arcTable.id === t.id) { arcTable = t; if (arcOpenNow()) renderArcade(); }
+    return;
+  }
+  const was = arcLast[t.id]; arcLast[t.id] = t.state;
   if (t.game === 'react' && t.g) { const ph = arcLast[t.id + ':ph']; arcLast[t.id + ':ph'] = t.g.phase; if (t.g.phase === 'go' && ph !== 'go' && arcOpenNow()) playSfx('go'); }
   const uno = t.game === 'uno', party = PARTY_GAMES.has(t.game);
   const amPlayer = (uno || party) ? t.players.some(p => p.id === myId && !p.out) : (t.xId === myId || t.oId === myId);
@@ -2691,6 +2698,7 @@ function boardHTML(t, enabled) {
 function renderArcade() {
   const t = arcTable; if (!t) return;
   $('arcTitle').textContent = '🎮 ตู้เกม ' + (GAME_TITLES[t.game] || '');
+  if (t.game === 'snake') return renderSnake();
   if (t.game === 'uno') return renderUno();
   if (PARTY_GAMES.has(t.game)) return renderParty();
   const coin = inv.coin || 0;
@@ -2778,6 +2786,66 @@ $('arcBody').addEventListener('pointerdown', e => {
 });
 $('arcClose').onclick = closeArcade;
 $('arcade').addEventListener('pointerdown', e => { if (e.target === $('arcade')) closeArcade(); });
+
+// ---------- เกมงู (ตู้เกมเล่นคนเดียว • เซิร์ฟเวอร์จำลองเกม ฝั่งนี้ส่งทิศและวาดตามที่เซิร์ฟเวอร์ส่งมา) ----------
+let snk = null, snkLbSig = ''; // snk = สถานะล่าสุดจากเซิร์ฟเวอร์ {b: พิกัดตัวงูแบน, f: ไข่, sc, d, over, ...}
+const snakeLive = () => arcOpenNow() && !!arcTable && arcTable.game === 'snake';
+const snakeRunning = () => !!(snk && !snk.over);
+const snakeDirOf = { ArrowUp: 0, KeyW: 0, ArrowRight: 1, KeyD: 1, ArrowDown: 2, KeyS: 2, ArrowLeft: 3, KeyA: 3 };
+function snakeSend(d) { if (snakeRunning()) send({ t: 'arc', a: 'dir', id: arcTable.id, d }); }
+function snakeKey(e) { // true = จัดการแล้ว (ไม่ส่งต่อให้ตัวละคร)
+  const c = e.code;
+  if (c in snakeDirOf) { e.preventDefault(); if (e.repeat) return true; snakeSend(snakeDirOf[c]); return true; }
+  if (c === 'Space') { e.preventDefault(); if (!e.repeat && !snakeRunning()) send({ t: 'arc', a: 'start', id: arcTable.id }); return true; }
+  return false;
+}
+function onSnk(m) {
+  if (!snakeLive() || m.id !== arcTable.id) return;
+  if (m.over) { arcTable.me = { best: m.best, wk: m.wk }; if (m.top) arcTable.top = m.top; if (m.nb) playSfx('levelup'); }
+  snk = m; renderSnake();
+}
+function snkList(arr, unit) {
+  const medal = ['🥇', '🥈', '🥉'];
+  return (arr && arr.length) ? arr.map((x, i) => `<div class="qrow"><span>${medal[i] || ('#' + (i + 1))} <b>${esc(x.name)}</b>${me && x.name === me.name ? ' <small>(คุณ)</small>' : ''}</span><span><b>${x[unit]}</b> คะแนน</span></div>`).join('') : '<p style="opacity:.6;font-size:12px;margin:4px 0">ยังไม่มีใครเล่น ลองเป็นคนแรกสิ 🐍</p>';
+}
+function drawSnake() {
+  const cv = $('snkCv'); if (!cv) return;
+  const K = Shared.SNAKE, z = 20, c = cv.getContext('2d');
+  for (let y = 0; y < K.h; y++) for (let x = 0; x < K.w; x++) { c.fillStyle = (x + y) % 2 ? '#1f2f1f' : '#243624'; c.fillRect(x * z, y * z, z, z); }
+  if (!snk) return;
+  if (snk.f) { const fx = snk.f[0] * z + z / 2, fy = snk.f[1] * z + z / 2; c.fillStyle = '#fff3cf'; c.beginPath(); c.ellipse(fx, fy + 1, 6, 7.5, 0, 0, 7); c.fill(); c.fillStyle = '#f2d98a'; c.beginPath(); c.ellipse(fx - 2, fy - 1, 2, 3, 0, 0, 7); c.fill(); }
+  const b = snk.b || [];
+  for (let i = b.length - 2; i >= 0; i -= 2) {
+    const head = i === 0; c.fillStyle = snk.over ? (head ? '#b0b0b0' : '#7a8a7a') : (head ? '#8af08a' : (i % 4 ? '#3fae4a' : '#46bd52'));
+    c.beginPath(); c.roundRect ? c.roundRect(b[i] * z + 1, b[i + 1] * z + 1, z - 2, z - 2, head ? 6 : 4) : c.rect(b[i] * z + 1, b[i + 1] * z + 1, z - 2, z - 2); c.fill();
+    if (head) { // ตา 2 ข้างตามทิศที่หัน
+      const d = snk.d | 0, cx = b[i] * z + z / 2, cy = b[i + 1] * z + z / 2, fx = [0, 1, 0, -1][d], fy = [-1, 0, 1, 0][d], px = -fy, py = fx;
+      c.fillStyle = '#10200f'; for (const s of [-1, 1]) { c.beginPath(); c.arc(cx + fx * 4 + px * 4 * s, cy + fy * 4 + py * 4 * s, 2, 0, 7); c.fill(); }
+    }
+  }
+}
+function renderSnake() {
+  const t = arcTable, K = Shared.SNAKE; if (!t) return;
+  const run = snakeRunning(), me2 = t.me || { best: 0, wk: 0 };
+  if (!$('snkCv')) { // วาดโครงครั้งเดียว หลังจากนั้นอัปเดตเฉพาะตัวเลข+กระดาน (ไม่ล้าง DOM ทุกก้าว ปุ่มจะได้ไม่หลุดตอนนิ้วกดอยู่)
+    $('arcBody').innerHTML = `<div class="center" style="font-size:13px">🐍 <b id="snkSc">0</b> คะแนน • สถิติของคุณ <b id="snkBest">0</b> • สัปดาห์นี้ <b id="snkWk">0</b></div>`
+      + `<div class="center" style="margin:8px 0"><canvas id="snkCv" width="${K.w * 20}" height="${K.h * 20}" style="position:static;inset:auto;width:min(88vw,320px);height:auto;aspect-ratio:1;border-radius:10px;touch-action:none;display:block;margin:0 auto;image-rendering:pixelated"></canvas></div>`
+      + `<div id="snkMsg" class="banner" style="margin-bottom:8px"></div>`
+      + `<div style="display:grid;grid-template-columns:repeat(3,56px);gap:6px;justify-content:center;margin:6px auto"><span></span><button class="btn" data-sd="0" aria-label="ขึ้น">▲</button><span></span><button class="btn" data-sd="3" aria-label="ซ้าย">◀</button><button class="btn" data-sd="2" aria-label="ลง">▼</button><button class="btn" data-sd="1" aria-label="ขวา">▶</button></div>`
+      + `<button class="btn" id="snkGo" data-arc="start" style="width:100%;margin-top:8px">🐍 เริ่มเล่น</button>`
+      + `<div id="snkLb"></div><p style="font-size:12px;opacity:.7">กินไข่ 🥚 ให้ยาวที่สุด ชนกำแพงหรือตัวเองจบเกม เริ่มช้าแล้วเร็วขึ้นทุก ${K.speedEvery} ฟอง • เปลี่ยนทิศ: ลูกศร / WASD / ปัดบนกระดาน / ปุ่มด้านบน • เริ่มเล่น: Space • กินไข่ครบ ${K.minFoods} ฟองได้แต้มตู้เกม</p>`;
+    const cv = $('snkCv'); let sx = 0, sy = 0; // ปัดนิ้ว/ลากเมาส์บนกระดานเพื่อเลี้ยว
+    cv.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; try { cv.setPointerCapture(e.pointerId); } catch (er) { /* ไม่รองรับก็ข้าม */ } });
+    cv.addEventListener('pointermove', e => { if (!e.buttons && e.pointerType !== 'touch') return; const dx = e.clientX - sx, dy = e.clientY - sy; if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return; snakeSend(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0)); sx = e.clientX; sy = e.clientY; });
+    snkLbSig = '';
+  }
+  $('snkSc').textContent = snk ? snk.sc : 0; $('snkBest').textContent = me2.best; $('snkWk').textContent = me2.wk;
+  const go = $('snkGo'); go.style.display = run ? 'none' : ''; go.textContent = snk && snk.over ? '🔁 เล่นอีกครั้ง' : '🐍 เริ่มเล่น';
+  $('snkMsg').textContent = run ? '🥚 กินไข่ให้ยาวที่สุด!' : snk && snk.over ? (snk.win ? '🏆 เต็มกระดานแล้ว สุดยอด!' : `💥 จบเกม ได้ ${snk.sc} คะแนน${snk.nb ? ' • สถิติใหม่ 🎉' : ''}`) : 'กด เริ่มเล่น หรือ Space แล้วบังคับงูให้กินไข่';
+  const sig = JSON.stringify(t.top || null) + me2.best; if (sig !== snkLbSig && !run) { snkLbSig = sig; $('snkLb').innerHTML = '<div class="sec">🏆 คะแนนสูงสุด (Top 10)</div>' + snkList(t.top && t.top.best, 'best') + '<div class="sec">📅 สัปดาห์นี้ (Top 10)</div>' + snkList(t.top && t.top.wk, 'wk'); }
+  drawSnake();
+}
+$('arcBody').addEventListener('pointerdown', e => { const b = e.target.closest('[data-sd]'); if (!b || !snakeLive()) return; e.preventDefault(); snakeSend(+b.dataset.sd); });
 
 // ---------- เมนูคนในแมพ (Dashboard รายชื่อ + ปิดเสียงรายคน/ทั้งหมด) ----------
 const peopleShown = () => !$('people').classList.contains('hidden');
@@ -2916,7 +2984,8 @@ function renderHub() {
     const list = (arr, unit) => (arr && arr.length) ? arr.map((x, i) => `<div class="qrow"><span>${medal[i] || ('#' + (i + 1))} <b>${esc(x.name)}</b>${x.name === (me && me.name) ? ' <small>(คุณ)</small>' : ''}</span><span><b>${x[unit]}</b> แต้ม</span></div>`).join('') : '<p style="opacity:.7">ยังไม่มีใครเล่น</p>';
     h += '<div class="sec">🏆 สะสมตลอดกาล (Top 10)</div>' + list(lbSt.total, 'total');
     h += '<div class="sec">📅 สัปดาห์นี้ (Top 10)</div>' + list(lbSt.wk, 'wk');
-    h += '<p style="font-size:12px;opacity:.65;margin-top:10px">ได้แต้มจากการเล่นตู้เกมกับคนจริง (เล่นจบ +2 • ชนะ +5) ไม่ได้จากบอท/คาสิโน • อันดับสัปดาห์รีเซ็ตทุก 7 วัน</p>';
+    h += '<div class="sec">🐍 เกมงู คะแนนสูงสุด (Top 10)</div>' + snkList(lbSt.snk && lbSt.snk.best, 'best') + '<div class="sec">🐍 เกมงู สัปดาห์นี้ (Top 10)</div>' + snkList(lbSt.snk && lbSt.snk.wk, 'wk');
+    h += '<p style="font-size:12px;opacity:.65;margin-top:10px">ได้แต้มจากการเล่นตู้เกมกับคนจริง (เล่นจบ +2 • ชนะ +5) ไม่ได้จากบอท/คาสิโน • เกมงู: กินไข่ครบ 3 ฟองได้ 1–8 แต้มต่อรอบ • อันดับสัปดาห์รีเซ็ตทุก 7 วัน</p>';
   }
   el.innerHTML = h;
   el.querySelectorAll('[data-htab]').forEach(b => b.onclick = () => { hubTab = b.dataset.htab; renderHub(); });

@@ -113,7 +113,7 @@ class World {
     this.tables = {};
     S.CABINETS.forEach((c, i) => {
       if (!c.game) return;
-      this.tables['cab' + i] = c.game === 'uno' ? this.newUnoTable('cab' + i, c, i) : PARTY.has(c.game) ? this.newPartyTable('cab' + i, c, i) : this.newTable('cab' + i, c, i);
+      this.tables['cab' + i] = c.game === 'snake' ? this.newSnakeTable('cab' + i, c, i) : c.game === 'uno' ? this.newUnoTable('cab' + i, c, i) : PARTY.has(c.game) ? this.newPartyTable('cab' + i, c, i) : this.newTable('cab' + i, c, i);
     });
     this.treeHp = new Map(); this.treeTimer = 0; this.sickTimer = 0;
     this.treeKind = new Map(); // ชนิดต้นไม้ต่อช่อง 'x,y' (S.TREE_KINDS) ต้นที่ยังไม่มีชนิด (เซฟเก่า/แมพใหม่) สุ่มตามที่เกิดแบบคงที่จากตำแหน่ง
@@ -763,6 +763,7 @@ mix(World, require('./server/systems/map.js')); // ชั้นแก้แม�
 mix(World, require('./server/systems/arcade/uno.js')); // UNO ในตู้เกม (ย้ายไป server/systems/arcade/uno.js)
 mix(World, require('./server/systems/arcade/party.js')); // เกมหลายคนในตู้ ป๊อกเด้ง/กดเร็ว/เป่ายิ้งฉุบ (ย้ายไป server/systems/arcade/party.js)
 mix(World, require('./server/systems/arcade/duel.js')); // เกม 2 ฝ่าย XO/Connect 4 (ย้ายไป server/systems/arcade/duel.js)
+mix(World, require('./server/systems/arcade/snake.js')); // เกมงูในตู้ (เล่นคนเดียว จัดอันดับคะแนน)
 mix(World, require('./server/systems/arcade/core.js')); // แกนตู้เกม โต๊ะ เดิมพัน แต้มตู้ (ย้ายไป server/systems/arcade/core.js)
 mix(World, require('./server/systems/creatures.js')); // สัตว์ในถ้ำเหมือง (server/systems/creatures.js)
 mix(World, require('./server/systems/mining.js')); // ถ้ำเหมือง ก้อนแร่ ตั๋วลงเหมือง ขุดแร่ (ย้ายไป server/systems/mining.js)
