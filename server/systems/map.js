@@ -36,5 +36,14 @@ module.exports = {
     this.broadcast({ t: 'mapcell', cells: out });
     return out;
   },
+  treeListFree() { return this.treeList().filter(([x, y]) => !S.groveHas(x, y)); }, // ต้นไม้นอกป่ารอบหอ (ป่ารอบหอไม่นับเพดาน ไม่โดนถอนตามโควตา)
+  groveTick(now) { // ป่ารอบหอคอย: ช่องที่ถูกตัดงอกคืน 1 ต้นต่อ S.GROVE.regrowMs (ไม่งอกทับตัวผู้เล่น/สัตว์)
+    if (now - (this.groveAt || 0) < S.GROVE.regrowMs || !this.players.size) return;
+    this.groveAt = now;
+    const TS = S.TS, gap = S.GROVE.clear * TS, miss = S.groveCells(this.map).filter(([x, y]) => this.map[y][x] === T.GRASS && ![...this.players.values()].some(q => (q.scene || null) === null && Math.hypot(q.x - (x + 0.5) * TS, q.y - (y + 0.5) * TS) < gap));
+    if (!miss.length) return;
+    const [x, y] = miss[Math.floor(Math.random() * miss.length)], k = S.pickTreeKind(this.map, x, y, Math.random);
+    this.treeKind.set(x + ',' + y, k); this.map[y][x] = T.TREE; this.dirty = true; this.broadcast({ t: 'tree', x, y, on: true, k });
+  },
   treeList() { const out = []; for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) if (S.isChoppable(this.map, x, y)) out.push([x, y, (this.treeKind && this.treeKind.get(x + ',' + y)) || 'broad']); return out; },
 };

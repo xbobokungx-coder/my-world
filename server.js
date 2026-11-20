@@ -117,9 +117,10 @@ class World {
     });
     this.treeHp = new Map(); this.treeTimer = 0; this.sickTimer = 0;
     this.treeKind = new Map(); // ชนิดต้นไม้ต่อช่อง 'x,y' (S.TREE_KINDS) ต้นที่ยังไม่มีชนิด (เซฟเก่า/แมพใหม่) สุ่มตามที่เกิดแบบคงที่จากตำแหน่ง
+    for (const [x, y] of S.groveCells(this.map)) this.map[y][x] = T.TREE; // ป่ารอบหอคอย 100 ชั้น: เต็มทุกช่องเสมอตอนเริ่ม (เซฟเก่าที่ตัดไว้ก็กลับมา)
     for (const [x, y] of this.treeList()) { const k = treeKinds[x + ',' + y]; this.treeKind.set(x + ',' + y, k || S.pickTreeKind(this.map, x, y, S.rng(x * 7919 + y * 104729))); }
     if (this.treeMixV !== 2) { // ย้ายครั้งเดียว (30 ต.ค. 2026): แจกชนิดต้นไม้ใหม่ทั้งแมพตามโควตา % จากง่ายไปยาก (S.TREE_KINDS[..].pct)
-      const plan = S.planTreeMix(this.map, this.treeList().map(([x, y]) => [x, y]), S.rng(20261030));
+      const plan = S.planTreeMix(this.map, this.treeListFree().map(([x, y]) => [x, y]), S.rng(20261030));
       for (const [x, y] of plan.drop) { this.map[y][x] = T.GRASS; this.treeKind.delete(x + ',' + y); }
       for (const [x, y] of plan.add) this.map[y][x] = T.TREE;
       for (const [k, v] of plan.kinds) this.treeKind.set(k, v);
@@ -129,7 +130,7 @@ class World {
     this.trades = new Map(); this.nextTrade = 1;
     this.cinema = { movie: null, yt: '', name: '', startedAt: 0, pos: 0, ref: 0, playing: false, emptyAt: 0, viewers: new Set(), paid: new Set() };
     this.treeCap = S.TREE.cap; // เพดานคงที่ (เดิมบวกเพิ่มทุกครั้งที่ restart ทำให้ต้นไม้แน่นขึ้นเรื่อยๆ)
-    { const t = this.treeList(); if (t.length > this.treeCap) { for (let i = t.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [t[i], t[j]] = [t[j], t[i]]; } for (const [x, y] of t.slice(this.treeCap)) this.map[y][x] = T.GRASS; this.dirty = true; } } // ถ้าเกินเพดาน สุ่มตัดแต่งให้เหลือพอดี
+    { const t = this.treeListFree(); if (t.length > this.treeCap) { for (let i = t.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [t[i], t[j]] = [t[j], t[i]]; } for (const [x, y] of t.slice(this.treeCap)) this.map[y][x] = T.GRASS; this.dirty = true; } } // ถ้าเกินเพดาน สุ่มตัดแต่งให้เหลือพอดี
   }
 
 
@@ -589,7 +590,7 @@ class World {
 
   tick(dt, now) {
     this.rainTick(now); this.onlineTick(now); this.hornTick(now);
-    this.lottoTick(now);
+    this.lottoTick(now); this.groveTick(now);
     for (const p of this.players.values()) {
       const cf = S.caveFloor(p.scene); if (!S.isSeaScene(cf)) continue;
       if (p.seaUntil === Infinity) continue; // เรือของตัวเอง ไม่จำกัดเวลา
@@ -654,7 +655,7 @@ class World {
       const cutters = [...this.players.values()].filter(q => q.fellAt && q.fellAt.filter(t => now - t < S.TREE.activeMs).length >= S.TREE.minFells).length, treeCap = this.treeCap + S.treeCapFor(cutters) - S.TREE.cap; // WP-31: ช่างไม้ที่ฟันเมื่อเร็วๆ นี้ ยิ่งมากยิ่งงอกเร็ว/เพดานสูง (คนเดียว = เดิม)
       if (this.treeTimer >= S.treeGrowMs(cutters) / 1000) { // ต้นไม้งอกใหม่ (เพดานตาม S.TREE.cap)
         this.treeTimer = 0;
-        const tl = this.treeList(), counts = {}; for (const t of tl) counts[t[2]] = (counts[t[2]] || 0) + 1; let n = tl.length;
+        const tl = this.treeListFree(), counts = {}; for (const t of tl) counts[t[2]] = (counts[t[2]] || 0) + 1; let n = tl.length;
         // ถ้าน้อยกว่าครึ่งเพดาน งอกทีละหลายต้น (ไล่ทันหลังถูกตัดเกลี้ยง/นาฬิกาพัง) ไม่เกิน 8 ต้น/รอบ
         const want = n >= treeCap ? 0 : Math.min(n * 2 < treeCap ? 8 : 1, treeCap - n);
         for (let spawned = 0; spawned < want; spawned++) {
@@ -670,7 +671,7 @@ class World {
           this.map[y][x] = T.TREE; this.dirty = true; this.broadcast({ t: 'tree', x, y, on: true, k }); n++;
         }
         { // ถอนต้นที่เกินโควตาทีละต้นต่อรอบ (ไม่ถอนต้นที่มีคนอยู่ใกล้หรือกำลังฟัน) เพื่อเปิดที่ให้ชนิดที่ขาด • ปกติไม่มีต้นเกินโควตา (งอกกันไว้แล้ว) ใช้เคลียร์แมพเก่าที่ต้นแพงสะสมไว้
-          const pl = [...this.players.values()], cut = S.pickTreeTrim(this.treeList(), treeCap, Math.random, (x, y) => !(this.treeHp && this.treeHp.has(x + ',' + y)) && !pl.some(q => Math.hypot(q.x - (x + 0.5) * TS, q.y - (y + 0.5) * TS) < 4 * TS), Date.now());
+          const pl = [...this.players.values()], cut = S.pickTreeTrim(this.treeListFree(), treeCap, Math.random, (x, y) => !(this.treeHp && this.treeHp.has(x + ',' + y)) && !pl.some(q => Math.hypot(q.x - (x + 0.5) * TS, q.y - (y + 0.5) * TS) < 4 * TS), Date.now());
           if (cut) { const [x, y] = cut; this.map[y][x] = T.GRASS; this.treeKind.delete(x + ',' + y); this.dirty = true; this.broadcast({ t: 'tree', x, y, on: false }); }
         }
       }

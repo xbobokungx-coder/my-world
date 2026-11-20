@@ -34,20 +34,20 @@ const rng = S.rng(5112026);
 {
   const w = new World('treetest'), ws = { readyState: 1, send() {} }, pl = w.join(ws, 'alice', '#e74c3c').p; pl.x = pl.y = 5; // ผู้เล่นหนึ่งคนไว้ให้ tick ทำงาน (ยืนมุมแมพ ห่างต้นไม้)
   const T = S.T; w.treeCap = CAP;
-  for (const [x, y] of w.treeList()) { w.map[y][x] = T.GRASS; w.treeKind.delete(x + ',' + y); }
+  for (const [x, y] of w.treeListFree()) { w.map[y][x] = T.GRASS; w.treeKind.delete(x + ',' + y); }
   const hi = Object.keys(K).filter(id => K[id].lv >= 11), spots = [];
   for (let y = 2; y < S.H - 2; y++) for (let x = 2; x < S.W - 2; x++) if (S.treeSpotOk(w.map, x, y)) spots.push([x, y]);
   for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [spots[i], spots[j]] = [spots[j], spots[i]]; }
   for (const [x, y] of spots.slice(0, CAP)) { w.map[y][x] = T.TREE; w.treeKind.set(x + ',' + y, hi[Math.floor(rng() * hi.length)]); } // ติดสภาพแมพที่เต็มด้วยต้นแพงล้วน (ที่เซฟจริงเป็นอยู่)
-  const lowCount = () => w.treeList().filter(t => K[t[2]].lv <= 4).length, now = Date.now();
+  const lowCount = () => w.treeListFree().filter(t => K[t[2]].lv <= 4).length, now = Date.now();
   assert.strictEqual(lowCount(), 0);
   S.TREE.growMs = 1000; const t0 = Date.now();
   for (let step = 0; step < 300; step++) { // 1 step = 1 tick (growMs ตั้งเป็น 1 วินาที = งอกทุก tick) ผู้เล่นตัดต้น Lv≤4 ให้ 1 ต้นทุก 3 tick
     pl.x = pl.y = 5;
     w.tick(1, now + step * 1000);
-    if (step % 3 === 0) { const t = w.treeList().find(t => K[t[2]].lv <= 4); if (t) { w.map[t[1]][t[0]] = T.GRASS; w.treeKind.delete(t[0] + ',' + t[1]); } }
+    if (step % 3 === 0) { const t = w.treeListFree().find(t => K[t[2]].lv <= 4); if (t) { w.map[t[1]][t[0]] = T.GRASS; w.treeKind.delete(t[0] + ',' + t[1]); } }
   }
-  const tl = w.treeList(), c = {}; for (const t of tl) c[t[2]] = (c[t[2]] || 0) + 1;
+  const tl = w.treeListFree(), c = {}; for (const t of tl) c[t[2]] = (c[t[2]] || 0) + 1;
   const hiN = tl.filter(t => K[t[2]].lv >= 11).length;
   assert.ok(lowCount() >= 10, 'ต้น Lv1–4 ต้องกลับมาในแมพ (ได้ ' + lowCount() + ')');
   assert.ok(hiN <= Object.keys(K).filter(id => K[id].lv >= 11).reduce((a, id) => a + S.treeQuota(id, CAP, Date.now()), 0) + 2, 'ต้น Lv11+ ถูกถอนลงมาตามโควตา (เหลือ ' + hiN + ')');
@@ -68,7 +68,7 @@ const rng = S.rng(5112026);
     for (let step = 0; step < total; step++) {
       const now = t0 + step * 1000;
       for (const q of ps) { q.x = q.y = 5; }
-      if (step % 10 === 0) for (const q of ps) { (q.fellAt = q.fellAt || []).push(now); q.fellAt = q.fellAt.filter(t => now - t < S.TREE.activeMs); const tl = w.treeList(); if (tl.length <= S.treeCapFor(m) * 0.55) continue; const t = tl.find(t => Math.hypot(t[0] - 5, t[1] - 5) > 6); if (t) { w.map[t[1]][t[0]] = T.GRASS; w.treeKind.delete(t[0] + ',' + t[1]); if (step >= warm) felled++; } }
+      if (step % 10 === 0) for (const q of ps) { (q.fellAt = q.fellAt || []).push(now); q.fellAt = q.fellAt.filter(t => now - t < S.TREE.activeMs); const tl = w.treeListFree(); if (tl.length <= S.treeCapFor(m) * 0.55) continue; const t = tl.find(t => Math.hypot(t[0] - 5, t[1] - 5) > 6); if (t) { w.map[t[1]][t[0]] = T.GRASS; w.treeKind.delete(t[0] + ',' + t[1]); if (step >= warm) felled++; } }
       w.tick(1, now);
     }
     rate[m] = felled / m; console.log(`ช่างไม้ ${m} คน: ${Math.round(felled)} ต้น/ชม. = ${Math.round(rate[m])} ต้น/ชม./คน`);
@@ -82,17 +82,17 @@ const rng = S.rng(5112026);
   for (let i = 0; i < 6; i++) { const q = w.join({ readyState: 1, send() {} }, 'ch' + i, '#e74c3c').p; q.x = q.y = 5; ps.push(q); }
   w.treeCap = CAP; w.treeTimer = 0; let spawns = 0; const t0 = 2e12, orig = w.broadcast.bind(w);
   w.broadcast = m => { if (m && m.t === 'tree' && m.on) spawns++; return orig(m); };
-  for (const [x, y] of w.treeList()) { w.map[y][x] = T.GRASS; w.treeKind.delete(x + ',' + y); }
+  for (const [x, y] of w.treeListFree()) { w.map[y][x] = T.GRASS; w.treeKind.delete(x + ',' + y); }
   for (let step = 0; step < 3600; step++) { const now = t0 + step * 1000; ps.forEach(q => { q.x = q.y = 5; }); for (const q of ps.slice(1)) if (step % 299 === 0) { q.fellAt = [now]; } w.tick(1, now); }
-  assert.ok(w.treeList().length <= CAP, 'ฟันทิ้งไม่เพิ่มเพดาน ' + w.treeList().length); assert.ok(spawns <= 3600 / 20 + 2, 'ฟันทิ้งไม่เพิ่มอัตรางอก ' + spawns);
+  assert.ok(w.treeListFree().length <= CAP, 'ฟันทิ้งไม่เพิ่มเพดาน ' + w.treeListFree().length); assert.ok(spawns <= 3600 / 20 + 2, 'ฟันทิ้งไม่เพิ่มอัตรางอก ' + spawns);
   // เพดานลด: ใส่ต้นเกินเพดานฐานชนิดสามัญ แล้วไม่มีช่างไม้ → ถอนทีละต้นต่อรอบ เว้นต้นใกล้ผู้เล่น/ที่กำลังถูกฟัน
   const spots = []; for (let y = 2; y < S.H - 2; y++) for (let x = 2; x < S.W - 2; x++) if (S.treeSpotOk(w.map, x, y)) spots.push([x, y]);
   for (const [x, y] of spots.slice(0, CAP + 60)) { w.map[y][x] = T.TREE; w.treeKind.set(x + ',' + y, 'broad'); }
-  const guard = w.treeList().find(t => Math.hypot(t[0] - 5, t[1] - 5) > 8); w.treeHp.set(guard[0] + ',' + guard[1], { hp: 1, t: t0 + 4e6 });
-  const near = w.treeList().find(t => t !== guard && Math.hypot(t[0] - 5, t[1] - 5) <= 8 && Math.hypot(t[0] - 5, t[1] - 5) >= 6);
-  const before = w.treeList().length; let prev = before;
-  for (let step = 0; step < 40; step++) { w.tick(1, t0 + 4e6 + step * 1000); const n = w.treeList().length; assert.ok(prev - n <= 1 + 8, 'ถอนไม่เกินทีละต้นต่อรอบ'); prev = n; }
-  assert.ok(w.treeList().length < before, 'ช่างไม้เลิก ต้นเกินต้องถูกถอน'); assert.ok(S.isChoppable(w.map, guard[0], guard[1]), 'ไม่ถอนต้นที่กำลังถูกฟัน');
+  const guard = w.treeListFree().find(t => Math.hypot(t[0] - 5, t[1] - 5) > 8); w.treeHp.set(guard[0] + ',' + guard[1], { hp: 1, t: t0 + 4e6 });
+  const near = w.treeListFree().find(t => t !== guard && Math.hypot(t[0] - 5, t[1] - 5) <= 8 && Math.hypot(t[0] - 5, t[1] - 5) >= 6);
+  const before = w.treeListFree().length; let prev = before;
+  for (let step = 0; step < 40; step++) { w.tick(1, t0 + 4e6 + step * 1000); const n = w.treeListFree().length; assert.ok(prev - n <= 1 + 8, 'ถอนไม่เกินทีละต้นต่อรอบ'); prev = n; }
+  assert.ok(w.treeListFree().length < before, 'ช่างไม้เลิก ต้นเกินต้องถูกถอน'); assert.ok(S.isChoppable(w.map, guard[0], guard[1]), 'ไม่ถอนต้นที่กำลังถูกฟัน');
 }
 console.log('ผ่าน test-trees');
 process.exit(0);

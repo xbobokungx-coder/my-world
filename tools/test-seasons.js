@@ -136,10 +136,10 @@ for (let i = 0; i < 3; i++) {
   const w = new World('treesim'), ws = { readyState: 1, send() {} }, pl = w.join(ws, 'alice', '#fff').p; w.treeCap = S.TREE.cap; S.TREE.growMs = 1000;
   const sim = (i, steps) => { for (let s = 0; s < steps; s++) { pl.x = pl.y = 5; const t = mid(i) + s * 1000; at(t); w.tick(1, t); } };
   sim(0, 400);
-  const n0 = w.treeList().length; assert.ok(n0 >= S.TREE.cap - 2, `ฤดูร้อนแมพเต็ม ${n0}/${S.TREE.cap}`);
-  const mapleBefore = w.treeList().filter(t => t[2] === 'maple').length;
+  const n0 = w.treeListFree().length; assert.ok(n0 >= S.TREE.cap - 2, `ฤดูร้อนแมพเต็ม ${n0}/${S.TREE.cap}`);
+  const mapleBefore = w.treeListFree().filter(t => t[2] === 'maple').length;
   sim(2, 400);
-  const tl = w.treeList(); assert.ok(tl.length >= S.TREE.cap - 2, `ฤดูหนาวแมพเต็ม ${tl.length}`);
+  const tl = w.treeListFree(); assert.ok(tl.length >= S.TREE.cap - 2, `ฤดูหนาวแมพเต็ม ${tl.length}`);
   assert.ok(tl.every(t => K[t[2]]), 'ทุกต้นมีชนิดถูกต้อง');
   const q = id => S.treeQuota(id, S.TREE.cap, mid(2)); for (const id of Object.keys(K)) assert.ok(tl.filter(t => t[2] === id).length <= q(id) + 1, `ชนิด ${id} เกินโควตา`);
   assert.ok(mapleBefore <= S.treeQuota('maple', S.TREE.cap) + 1);
