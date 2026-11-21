@@ -10,4 +10,5 @@ for f in $files; do [ -f "$f" ] || continue; n=$((n+1)); node --check "$f" 2>&1 
 [ "$fail" = 0 ] || exit 1
 [ "${1:-}" = "--quick" ] && { echo "OK: syntax $n ไฟล์"; exit 0; }
 tools/run-tests.sh "$PWD" >/tmp/mw-tests.out 2>&1 || { cat /tmp/mw-tests.out; exit 1; }
+grep "^FLAKY" /tmp/mw-tests.out
 echo "OK: syntax $n ไฟล์ • $(tail -1 /tmp/mw-tests.out | sed 's/^OK: //')"  # เทสต์รันขนาน ~1 นาที (tools/run-tests.sh)
