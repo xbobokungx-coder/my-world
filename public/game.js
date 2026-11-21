@@ -321,7 +321,8 @@ function handle(m) {
       if (m.win && !m.win.ok) { toast(m.win.why); break; }
       ask(`⛵ เช่าเรือออกทะเลใหญ่? ค่าเช่า 🪙${m.fee} • ขับเรือเองได้ราว ${Math.max(1, Math.round(m.win.ms / 60000))} นาทีจนร้านเช่าปิด 19:00 (เปิด 06:00–19:00 เวลาเกม) • ต้องเป็นชาวประมงเลเวล ${m.min} ขึ้นไป • (ซื้อเรือของตัวเองที่ร้านยานพาหนะ ออกได้ทุกเวลาไม่จำกัดเวลา)`, () => send({ t: 'sea' })); break;
     } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : m.w === 'rank' ? 'rank' : m.w === 'flea' ? 'stall' : 'log'); break;
-    case 'scene': applyScene(m); break;
+    case 'scene': applyScene(m); closeStore(); break;
+    case 'store': onStore(m); break;
     case 'hboard': hboard = m; if (plotsShown()) renderPlots(); break;
     case 'blocks': onBlocks(m); break;
     case 'muted': myMuteUntil = +m.until || 0; if (myMuteUntil > Date.now() && micOn) $('micBtn').click(); setMuteNote(); if (peopleShown()) renderPeople(true); break;
@@ -603,7 +604,7 @@ const freshMulsOf = (k, q) => Shared.perishable(k) ? Shared.freshMuls(freshSt.l[
 function freshBadge(k) { // 🟢12 🟡3 🔴1 (แสดงเมื่อมีของค้าง/เก่า) • ก่อนวันเริ่มระบบไม่แสดง
   if (!Shared.perishable(k) || !freshSt.l[k] || Date.now() + timeOffset < Shared.FRESH.startAt) return '';
   const c = Shared.freshCount(freshSt.l[k], Date.now() + timeOffset, freshSt.fz); if (!c[1] && !c[2]) return '';
-  return ' <small title="ความสด: สด 100% • ค้าง 70% • เก่า 40% (ขายของเก่าก่อน • ตู้เย็นในบ้านช่วยชะลอ)">' + c.map((n, i) => n ? Shared.FRESH.emoji[i] + n : '').join(' ') + '</small>';
+  return ' <small title="ความสด: สด 100% • ค้าง 70% • เก่า 40% (ขายของเก่าก่อน • เก็บในตู้เย็นช่วยชะลอ)">' + c.map((n, i) => n ? Shared.FRESH.emoji[i] + n : '').join(' ') + '</small>';
 }
 // จัดแถวรายการในร้านให้เป็นระเบียบ (20 พ.ย. 2026): ซ้ายคือชื่อ/รายละเอียด ขวาเป็นคอลัมน์ ราคาอยู่บน ปุ่มอยู่แถวล่างชิดขวา ไม่พับเป็นบรรทัดเหลื่อมกัน (มือถือ/จอแคบ) • ทำที่ DOM หลังวาดร้านทุกครั้ง ใช้ได้ทุกร้านโดยไม่แก้แม่แบบทีละแห่ง • ย้ายโหนดเดิมไม่ clone ตัวจัดการปุ่มที่ผูกไว้จึงไม่หาย
 function tidyShopRows(root) {
@@ -616,6 +617,75 @@ function tidyShopRows(root) {
   });
 }
 try { new MutationObserver(() => tidyShopRows($('shopBody'))).observe($('shopBody'), { childList: true }); } catch (e) { /* เบราว์เซอร์เก่าไม่มี MutationObserver ก็ใช้หน้าตาเดิม */ }
+// ---------- ที่เก็บของในบ้าน (Shared.HOME.store): ตู้เย็น = cold • ลัง/ตู้ = box • เซิร์ฟเวอร์ตัดสินทั้งหมด เว็บแค่แสดงและส่งคำสั่ง store ----------
+let storeSt = null, storeTab = 'in';
+const storeShown = () => !$('store').classList.contains('hidden');
+const storePoolOf = f => Object.keys(Shared.HOME.store).find(n => Shared.HOME.store[n].furn[f] > 0) || null;
+function closeStore() { storeSt = null; $('store').classList.add('hidden'); }
+function onStore(m) {
+  if (!m || !Shared.HOME.store[m.pool] || !inMyHouse()) return;
+  const wasShown = storeShown() && storeSt && storeSt.pool === m.pool;
+  storeSt = m; if (!wasShown) { closeOthers('store'); storeTab = 'in'; $('store').classList.remove('hidden'); }
+  renderStore();
+}
+const storeBadge = c => c.map((n, i) => n ? Shared.FRESH.emoji[i] + n : '').filter(Boolean).join(' ');
+function renderStore() {
+  const st = storeSt; if (!st) return;
+  const d = Shared.HOME.store[st.pool], cold = st.pool === 'cold', now = Date.now() + timeOffset, root = $('store');
+  const af = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.sf : null;
+  $('storeTitle').textContent = d.emoji + ' ' + d.name;
+  const pct = st.cap > 0 ? Math.min(100, Math.round(st.used / st.cap * 100)) : 100;
+  $('storeGauge').firstElementChild.style.width = pct + '%'; $('storeGauge').classList.toggle('full', st.used >= st.cap);
+  $('storeUse').textContent = `ใช้ ${st.used}/${st.cap}` + (st.used >= st.cap ? ' (เต็มแล้ว)' : '');
+  $('storeNote').textContent = cold ? 'ของสดที่เก็บในตู้เย็นจะแก่ช้าลงมาก' : 'เก็บวัตถุดิบและของใช้ที่ไม่เสียได้ ไม่กินที่ในกระเป๋า';
+  root.classList.toggle('tab-bag', storeTab === 'bag');
+  $('storeTabIn').classList.toggle('on', storeTab === 'in'); $('storeTabBag').classList.toggle('on', storeTab === 'bag');
+  $('storeTabIn').textContent = `ใน${d.name} (${st.used})`;
+  const mk = (text, sf, fn) => { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = text; b.dataset.sf = sf; b.onclick = fn; return b; };
+  const row = (k, n, badge, btns) => {
+    const i = itemInfo(k) || {}, r = document.createElement('div'); r.className = 'row';
+    const l = document.createElement('span'); l.textContent = `${i.emoji || '📦'} ${i.name || k} ×${n}`;
+    if (badge) { const sm = document.createElement('small'); sm.textContent = ' ' + badge; l.append(sm); }
+    const a = document.createElement('span'); a.className = 'act'; for (const b of btns) a.append(b); r.append(l, a); return r;
+  };
+  const send1 = (a, k, n) => () => { playSfx('click'); send({ t: 'store', a, pool: st.pool, k, n }); };
+  const inBox = $('storeIn'), bagBox = $('storeBag'); inBox.textContent = ''; bagBox.textContent = '';
+  const inKeys = Object.keys(st.inv || {}).filter(k => st.inv[k] > 0).sort();
+  if (!inKeys.length) { const e = document.createElement('div'); e.className = 'storeEmpty'; e.textContent = 'ยังว่างอยู่ ลองเก็บของจากกระเป๋าดูนะ'; inBox.append(e); }
+  for (const k of inKeys) {
+    let badge = ''; if (cold && st.l && st.l[k]) { const c = [0, 0, 0]; for (const [tv, n] of st.l[k]) c[Shared.freshTier(now - Shared.storeAge(tv, { r: st.r, at: st.at }, now), now, false)] += n; badge = storeBadge(c); }
+    inBox.append(row(k, st.inv[k], badge, [mk('1', 'take:' + k, send1('take', k, 1)), mk('ทั้งหมด', 'takeA:' + k, send1('take', k, st.inv[k]))]));
+  }
+  const bagKeys = Object.keys(inv).filter(k => inv[k] > 0 && Shared.storeAccepts(st.pool, k)).sort();
+  if (!bagKeys.length) { const e = document.createElement('div'); e.className = 'storeEmpty'; e.textContent = cold ? 'ไม่มีของสดในกระเป๋า' : 'ไม่มีของที่เก็บได้ในกระเป๋า'; bagBox.append(e); }
+  for (const k of bagKeys) {
+    const badge = cold && freshSt.l[k] && now >= Shared.FRESH.startAt ? storeBadge(Shared.freshCount(freshSt.l[k], now, false)) : '';
+    bagBox.append(row(k, inv[k], badge, [mk('1', 'put:' + k, send1('put', k, 1)), mk('ทั้งหมด', 'putA:' + k, send1('put', k, inv[k]))]));
+  }
+  const allBtn = (id, text, a, off) => { const b = $(id); b.textContent = text; b.disabled = off; b.dataset.sf = a; b.onclick = () => { playSfx('click'); send({ t: 'store', a, pool: st.pool }); }; };
+  allBtn('storePutAll', cold ? 'เก็บของสดทั้งหมด' : 'เก็บวัตถุดิบทั้งหมด', 'putall', !bagKeys.length || st.used >= st.cap);
+  allBtn('storeTakeAll', 'หยิบทั้งหมด', 'takeall', !inKeys.length);
+  let f = af ? root.querySelector(`[data-sf="${CSS.escape(af)}"]`) : null; if (f && (f.disabled || !f.offsetParent)) f = null;
+  if (!f) f = af ? [...root.querySelectorAll('button[data-sf]:not([disabled])')].find(b => b.offsetParent) : $('storeClose'); if (f && !isTouch) f.focus(); // เปิดตู้ครั้งแรกโฟกัสปุ่มปิด (Space ซ้ำไม่ไปกด "หยิบทั้งหมด" โดยไม่ตั้งใจ) • ลูกศรเลื่อนโฟกัสไปปุ่มอื่นได้
+}
+function storeKey(e) { // ใน modal ตู้: Esc = ปิด • Space/Enter = กดปุ่มที่โฟกัส (ไม่มีโฟกัส = ปิด) • ลูกศรเลื่อนโฟกัส
+  const c = e.code, bs = [...$('store').querySelectorAll('button[data-sf]:not([disabled]), #storeClose')].filter(b => b.offsetParent);
+  if (c === 'Escape') { e.preventDefault(); closeStore(); return true; }
+  if (c === 'Space' || c === 'Enter' || c === 'NumpadEnter') {
+    e.preventDefault(); const a = document.activeElement; if (e.repeat) return true;
+    if (a && $('store').contains(a) && a.tagName === 'BUTTON') a.click(); else closeStore(); return true;
+  }
+  if (c.startsWith('Arrow')) { e.preventDefault(); if (!bs.length) return true; const i = bs.indexOf(document.activeElement), dn = c === 'ArrowDown' || c === 'ArrowRight'; bs[(i < 0 ? 0 : (i + (dn ? 1 : bs.length - 1)) % bs.length)].focus(); return true; }
+  return c.startsWith('Key') || c.startsWith('Digit');
+}
+$('storeClose').onclick = closeStore;
+$('storeTabIn').onclick = () => { storeTab = 'in'; renderStore(); };
+$('storeTabBag').onclick = () => { storeTab = 'bag'; renderStore(); };
+setInterval(() => { // ออกจากบ้าน/เดินห่างตู้ = ปิดเอง
+  if (!storeShown() || !storeSt) return;
+  const it = furn.get(storeSt.i);
+  if (!inMyHouse() || !it || !me || Math.hypot(it.x * TS - me.x, it.y * TS - me.y) > (Shared.HOME.near + 0.5) * TS) closeStore();
+}, 400);
 const sellQty = {}; // จำนวนที่ผู้เล่นพิมพ์ไว้ต่อไอเทม (หน้าขายถูกวาดใหม่บ่อย ค่าที่พิมพ์ต้องไม่หาย)
 const sellQtyOf = k => Math.max(1, Math.min(inv[k] || 1, sellQty[k] || 1)); // ไม่เกินที่มี ไม่ต่ำกว่า 1
 function sellQtyTotal(k) { const i = itemInfo(k), n = sellQtyOf(k); return i ? sellQuote(i.sell, mult(k), n, freshMulsOf(k, n)).total : 0; }
@@ -1423,7 +1493,7 @@ function showPicker() {
   el.classList.remove('hidden');
 }
 document.addEventListener('pointerdown', e => { if (!$('picker').contains(e.target) && !$('hotbar').contains(e.target)) hidePicker(); });
-function refreshOpen() { if (!$('bag').classList.contains('hidden')) renderBag(); if (shopKind) renderShop(); if (arcOpenNow()) renderArcade(); if (tradeSt && tradeShown()) renderTrade(); if (build.on) renderBuild(); if (plotsShown()) renderPlots(); }
+function refreshOpen() { if (!$('bag').classList.contains('hidden')) renderBag(); if (shopKind) renderShop(); if (arcOpenNow()) renderArcade(); if (tradeSt && tradeShown()) renderTrade(); if (build.on) renderBuild(); if (plotsShown()) renderPlots(); if (storeShown()) renderStore(); }
 
 $('invite').onclick = async () => {
   const url = roomLink(roomName);
@@ -1441,10 +1511,10 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
 } else $('fsBtn').remove();
 
 // ---------- กระเป๋า / อาชีพ / ตัวละคร ----------
-const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'settings', 'report', 'ask', 'gift', 'pinBox'].some(id => !$(id).classList.contains('hidden'));
+const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'settings', 'report', 'ask', 'gift', 'pinBox', 'store'].some(id => !$(id).classList.contains('hidden'));
 // เปิดหน้าต่างใหม่ = ปิดหน้าต่างอื่นในกลุ่มนี้ + เมนูหลัก (ไม่แตะ ask/pinBox/gift/trade/arcade/cinema/admin/mapEdit ที่มีผลข้างเคียง)
 function closeOthers(keep) {
-  const cl = { bag: closeBag, shop: closeShop, people: closePeople, archub: closeHub, status: closeStatus, bug: closeBug, quest: closeQuest, ach: closeAch, town: closeTown, plots: closePlots, homeChoice: closeHomeChoice, settings: closeSettings };
+  const cl = { bag: closeBag, shop: closeShop, people: closePeople, archub: closeHub, status: closeStatus, bug: closeBug, quest: closeQuest, ach: closeAch, town: closeTown, plots: closePlots, store: closeStore, homeChoice: closeHomeChoice, settings: closeSettings };
   for (const id in cl) if (id !== keep && !$(id).classList.contains('hidden')) cl[id]();
   setMenu(false);
 }
@@ -2122,11 +2192,12 @@ addEventListener('keydown', e => {
   if (snakeLive() && snakeKey(e)) return; // เปิดตู้งูอยู่: ลูกศร/WASD/Space ใช้เล่นงู ไม่ให้ตัวละครเดินหนีตู้
   // ใช้ e.code (ตำแหน่งปุ่มจริงบนคีย์บอร์ด) ไม่ใช่ e.key เพื่อให้ WASD และปุ่มลัดทำงานได้แม้เปลี่ยนเป็นแป้นพิมพ์ภาษาไทย
   const c = e.code;
+  if (storeShown() && storeKey(e)) return;
   if (c === 'Enter' || c === 'NumpadEnter') { e.preventDefault(); openChat(); return; }
   if (build.on && c === 'Escape' && (build.sel || build.pick != null || build.erase)) { build.sel = null; build.pick = null; build.erase = false; renderBuild(); return; } // Esc ในโหมดตกแต่ง: ยกเลิกสิ่งที่เลือกอยู่ก่อน
   if (build.on && c === 'KeyZ') { undoBuild(); return; }
   if (build.on && (c === 'Delete' || c === 'Backspace') && build.pick != null) { e.preventDefault(); send({ t: 'house', a: 'remove', i: build.pick }); build.pick = null; return; }
-  if (c === 'Escape') { closeReport(); closeShop(); closeBag(); closeSettings(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); setVehMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
+  if (c === 'Escape') { closeReport(); closeShop(); closeBag(); closeSettings(); closePeople(); closeQuest(); closeAch(); closeStatus(); closeBug(); closeHub(); setMenu(false); setVehMenu(false); closeArcade(); closeCinema(); closeTown(); closeAdmin(); closePlots(); closeStore(); closeHomeChoice(); $('ask').classList.add('hidden'); if (tradeSt) send({ t: 'trade', a: 'cancel' }); hidePicker(); return; }
   if (c === 'KeyN') { if (!e.repeat) hornPress('k'); return; }
   if (c === 'KeyV' && me && inTown()) { const own = Object.keys(Shared.VEHICLES).filter(v => inv['veh_' + v] > 0); if (me.veh) send({ t: 'veh', v: '' }); else if (own.length) send({ t: 'veh', v: own[own.length - 1] }); else toast('ยังไม่มียานพาหนะ ซื้อได้ที่ร้านยานพาหนะ 🚲'); return; }
   if (c === 'KeyQ') { const i = TOOL_LIST.indexOf(selTool); let n = i; do { n = (n + 1) % TOOL_LIST.length; } while (toolLocked(TOOL_LIST[n])); selTool = TOOL_LIST[n]; ls.set('mw_tool', selTool); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(selTool).e} ${TOOL_SHORT[selTool]}`); playSfx('click'); return; } // Q = สลับเครื่องมือในช่อง 1
@@ -2183,8 +2254,8 @@ function contextAct(now) {
 function houseAct(now) { // ปุ่ม A/Space ในบ้าน: เก้าอี้/โซฟา/เตียงที่ใกล้สุด (ไม่เกิน 2.5 ช่อง) = นั่ง/นอน • ยืนที่พรมหน้าประตู = เดินออก (เดิมต้องแตะอย่างเดียว)
   if (build.on) return;
   let best = -1, bd = 2.5 * TS;
-  for (const [i, it] of furn) { if (!FURN[it.f] || !(FURN[it.f].seat || FURN[it.f].bed)) continue; const d = Math.hypot(it.x * TS - me.x, it.y * TS - me.y); if (d <= bd) { bd = d; best = i; } }
-  if (best >= 0) { stopWalk(); lastAct = now; actGap = 300; send({ t: 'act', tool: '', i: best }); return; }
+  for (const [i, it] of furn) { if (!FURN[it.f] || !(FURN[it.f].seat || FURN[it.f].bed || (inMyHouse() && storePoolOf(it.f)))) continue; const d = Math.hypot(it.x * TS - me.x, it.y * TS - me.y); if (d <= bd) { bd = d; best = i; } }
+  if (best >= 0) { stopWalk(); lastAct = now; actGap = 300; const bf = furn.get(best); if (bf && storePoolOf(bf.f)) send({ t: 'store', a: 'open', i: best }); else send({ t: 'act', tool: '', i: best }); return; }
   const door = Shared.HOUSE;
   if (me.x >= door.door[0] * TS && me.x <= (door.door[1] + 1) * TS && me.y >= (door.y1 - 1.2) * TS && me.y <= door.y1 * TS + 8) { lastAct = now; actGap = 300; walkHouse(Shared.HOUSE_SPAWN.x, (door.y1 + 0.5) * TS); }
 }
@@ -4894,6 +4965,12 @@ function houseIsoClick(sx, sy) {
   if (inMyHouse() && build.on) return buildClick(sx, sy, hit);
   if (hit != null) {
     const it = furn.get(hit);
+    if (it && storePoolOf(it.f)) { // แตะตู้เก็บของ (ตู้เย็น/ลัง): เฉพาะบ้านตัวเอง ใกล้ = เปิดเลย ไกล = เดินไปก่อน
+      if (!inMyHouse()) { toast('ตู้ของเจ้าของบ้านนะ'); return; }
+      if (Math.hypot(it.x * TS - me.x, it.y * TS - me.y) <= 3.5 * TS) { stopWalk(); send({ t: 'store', a: 'open', i: hit }); }
+      else walkHouse(it.x * TS, it.y * TS + FURN[it.f].d * TS / 2 + 14, { store: hit });
+      return;
+    }
     if (it && (FURN[it.f].seat || FURN[it.f].bed)) { // แตะเก้าอี้/โซฟา/เตียง: ถ้าอยู่ใกล้ก็นั่ง/นอนเลย ไม่งั้นเดินไปก่อน
       if (Math.hypot(it.x * TS - me.x, it.y * TS - me.y) <= 3.5 * TS) { stopWalk(); send({ t: 'act', tool: '', i: hit }); }
       else walkHouse(it.x * TS, it.y * TS + FURN[it.f].d * TS / 2 + 14, { sit: hit });
@@ -5163,7 +5240,7 @@ function step(now) {
   if (mag > 0.1) walk = null;
   else if (walk) {
     const wp = walk.pts[0];
-    if (!wp) { const a = walk.act; walk = null; if (a && a.sit !== undefined) send({ t: 'act', tool: '', i: a.sit }); else if (a) act(a.tx, a.ty); }
+    if (!wp) { const a = walk.act; walk = null; if (a && a.sit !== undefined) send({ t: 'act', tool: '', i: a.sit }); else if (a && a.store !== undefined) send({ t: 'store', a: 'open', i: a.store }); else if (a) act(a.tx, a.ty); }
     else {
       const dx = (walk.px ? wp[0] : wp[0] * TS + 16) - me.x, dy = (walk.px ? wp[1] : wp[1] * TS + 16) - me.y, d = Math.hypot(dx, dy);
       if (d < 3) walk.pts.shift(); else { ix = dx / d; iy = dy / d; mag = 1; }

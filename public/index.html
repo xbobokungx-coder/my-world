@@ -140,6 +140,24 @@
   #shop .ck-chip { display:inline-block; white-space:nowrap; margin:2px 2px 2px 0; }
   #shop .row.craft { grid-template-columns:1fr; row-gap:6px; } /* แถวอุปกรณ์คราฟข้อความยาว: ราคา+ปุ่มลงมาอยู่แถวล่างเต็มความกว้าง */
   #shop .row.craft > .act { flex-direction:row; justify-content:space-between; align-items:center; max-width:none; }
+  /* หน้าต่างตู้เย็น/คลังของ (#store): PC สองคอลัมน์ ในตู้ | ในกระเป๋า • มือถือเป็นแท็บ • แถว .row จัดแบบเดียวกับร้าน */
+  #store { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:10; }
+  #store.hidden { display:none; }
+  #store .panel { width:min(94vw,680px); padding:16px; max-height:92vh; max-height:92dvh; overflow:auto; }
+  #store h2 { margin:0 0 8px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  #storeGauge { height:12px; border:2px solid var(--edge); border-radius:8px; background:#fffdf5; overflow:hidden; } #storeGauge i { display:block; height:100%; background:#6cc17a; } #storeGauge.full i { background:#d9822b; }
+  #storeUse { font-size:14px; font-weight:700; margin:4px 0 2px; } #storeNote { font-size:12px; opacity:.7; margin-bottom:8px; }
+  #storeTabs { display:none; gap:6px; margin-bottom:8px; } #storeTabs .chip { flex:1; min-height:44px; }
+  #storeCols { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+  #store .shead { display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px; }
+  #store .row { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:10px; align-items:center; }
+  #store .row > span:first-child { min-width:0; overflow-wrap:anywhere; font-size:14px; }
+  #store .row > .act { display:flex; gap:6px; }
+  #store .btn.small { min-width:44px; min-height:40px; white-space:nowrap; } #store .btn:disabled { opacity:.45; }
+  #store button:focus-visible { outline:3px solid #2a6fd6; outline-offset:2px; }
+  #store .storeEmpty { font-size:13px; opacity:.6; padding:10px 0; }
+  body.touch #store .btn.small, #store .shead .btn { min-height:44px; } body.touch #store .row { padding:9px 0; }
+  @media (max-width:700px) { #storeCols { grid-template-columns:1fr; } #storeTabs { display:flex; } #storeColBag { display:none; } #store.tab-bag #storeColBag { display:block; } #store.tab-bag #storeColIn { display:none; } }
   .sellq { width:56px; padding:5px 4px; border:2px solid #b89b6a; border-radius:8px; background:#fffaf0; font:inherit; font-size:14px; text-align:center; } /* ช่องใส่จำนวนที่จะขายในร้าน */
   @media (max-width:700px), (max-height:500px) { .atabs { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; } .atabs .chip { flex:0 0 auto; white-space:nowrap; min-height:40px; } } /* แท็บผู้ดูแลหลายอัน: เลื่อนแนวนอนแถวเดียว ไม่กินพื้นที่เนื้อหา */
   #people .prow { flex-wrap:wrap; }
@@ -717,6 +735,17 @@
   <h2><span id="shopTitle">🏪 ร้านค้า</span> <button class="btn small" id="shopClose">ปิด</button></h2>
   <div id="shopInfo" style="font-size:13px;opacity:.75;margin-bottom:4px"></div>
   <div id="shopBody"></div>
+</div></div>
+<div id="store" class="hidden"><div class="panel">
+  <h2><span id="storeTitle">❄️ ตู้เย็น</span> <button class="btn small" id="storeClose">ปิด</button></h2>
+  <div id="storeGauge"><i></i></div>
+  <div id="storeUse"></div>
+  <div id="storeNote"></div>
+  <div id="storeTabs"><button class="chip on" id="storeTabIn">ในตู้</button><button class="chip" id="storeTabBag">ในกระเป๋า</button></div>
+  <div id="storeCols">
+    <div class="scol" id="storeColIn"><div class="shead"><b>ในตู้</b> <button class="btn small" id="storeTakeAll">หยิบทั้งหมด</button></div><div id="storeIn"></div></div>
+    <div class="scol" id="storeColBag"><div class="shead"><b>ในกระเป๋า</b> <button class="btn small" id="storePutAll">เก็บทั้งหมด</button></div><div id="storeBag"></div></div>
+  </div>
 </div></div>
 <div id="settings" class="hidden"><div class="panel">
   <h2><span>⚙️ ตั้งค่า</span> <button class="btn small" id="settingsClose">ปิด</button></h2>
