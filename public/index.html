@@ -608,7 +608,9 @@
   #chatIn, #login input[type=text], #login input[type=password] { border-radius:0; border:3px solid var(--edge); background:var(--paper-l); }
   #preview, #clothPreview { border-radius:0; border:3px solid var(--edge); image-rendering:pixelated; }
   .skill { border-bottom:2px dotted var(--wood-l); }
-  #toast { background:var(--paper); }
+  /* แจ้งเตือน: ป้ายเล็กโปร่งแสงที่ขอบบนจอ ไม่เกะกะ (อยู่ 3 วินาที) */
+  #toast { background:rgba(35,22,14,.86); color:#fff6dc; border:0; border-radius:12px; box-shadow:none; padding:4px 12px; font-size:12.5px; font-weight:600; line-height:1.35; max-width:min(78vw,380px); -webkit-line-clamp:2; top:calc(3px + var(--sat,0px)); }
+  body.touch #toast { top:calc(3px + var(--sat)); max-width:74vw; font-size:12px; -webkit-line-clamp:2; }
   .banner, .chip, .vs span { border-radius:0; }
 
   /* ===== มือถือ/จอสัมผัสเท่านั้น (คอมไม่เปลี่ยน): แผงเลือกของเป็นตารางเล็ก, เมนูกระชับ, ไม่ถูกจอยสติ๊กทับ =====
