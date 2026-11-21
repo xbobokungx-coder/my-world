@@ -331,7 +331,12 @@
   #miniBar { display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700; padding:0 2px 3px; gap:8px; }
   .mbtn { border:0; background:transparent; font-size:14px; padding:2px 4px; }
   #mini.off canvas, #mini.off #miniSize { display:none; }
-  #mini.off #miniTitle { display:inline; }
+  /* ซ่อนแผนที่แล้ว: เหลือชิปเล็กๆ (ไอคอน ฤดู/เวลา ปุ่มเปิด) ไม่มีคำว่าแผนที่ ไม่มีกรอบหนา */
+  #mini.off { padding:2px 6px; border-width:2px; border-radius:10px; box-shadow:none; background:rgba(255,243,214,.88); }
+  #mini.off #miniBar { font-size:11px; gap:6px; padding:0; }
+  #mini.off #miniTitle { display:none; }
+  #mini.off #clock { line-height:1; }
+  body.touch #mini.off .mbtn, #mini.off .mbtn { min-width:0; min-height:0; width:28px; height:24px; font-size:13px; padding:0; }
   #callBox { position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:9; display:flex; gap:8px; align-items:center; background:#fff3d6; border:2px solid #3d2a1a; border-radius:12px; padding:8px 12px; font-size:14px; font-weight:700; color:#3d2a1a; }
   #callBox.hidden { display:none; }
   .stat { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0; }
