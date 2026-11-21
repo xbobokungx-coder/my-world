@@ -4407,7 +4407,7 @@ function drawPet(q, now, ctx = mainCtx) { // แมว (นั่งเมื่
   const ph = Math.sin(q.anim * (cat ? 9 : 11)), wag = Math.floor(now / (cat ? 700 : 220)) % 2;
   PixelUI.animal(ctx, type, q, { f: q.dx || 1, step: idle ? wag : (ph > 0 ? 1 : 0), blink: blinkOf(q, now), idle });
 }
-const PET_TOP = { dog: 14, cat: 12, bird: 20, monkey: 18, capy: 14 }; // ความสูงจากพื้นถึงหัว ใช้วางชื่อ/อีโมจิ
+const PET_TOP = { dog: 14, cat: 12, bird: 20, monkey: 18, capy: 18 }; // ความสูงจากพื้นถึงหัว ใช้วางชื่อ/อีโมจิ
 function drawCompanionBody(q, now, ctx = mainCtx) { // ตัวสัตว์อย่างเดียว (ไม่มีชื่อ/อีโมจิ) คืนระยะที่ตัวลอยจากพื้น (ติดลบ = ลอยขึ้น) ไว้วางของประดับ
   let dy = 0;
   if (q.kind === 'bird') {
@@ -4423,7 +4423,7 @@ function drawCompanionBody(q, now, ctx = mainCtx) { // ตัวสัตว์�
     if (!fly) { R('#f2a33a', -1, 4, 1, 2); R('#f2a33a', 1, 4, 1, 2); }
   } else if (q.kind === 'monkey' || q.kind === 'capy') {
     const f = q.dx || 1, walk = q.moving, ph = Math.sin(q.anim * 12), bob = walk ? Math.abs(ph) * 1.5 : 0, y0 = q.y - bob, O = PixelArt.OUT; dy = -bob;
-    ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(q.x, q.y + 6, q.kind === 'capy' ? 8 : 5, 2, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(38,40,16,.3)'; ctx.beginPath(); ctx.ellipse(q.x, q.y + 6, q.kind === 'capy' ? 12 : 5, 2.5, 0, 0, 7); ctx.fill();
     const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(q.x + x * f - (f < 0 ? w : 0)), Math.round(y0 + y), w, h); };
     const blink = blinkOf(q, now);
     if (q.kind === 'monkey') {
@@ -4437,12 +4437,26 @@ function drawCompanionBody(q, now, ctx = mainCtx) { // ตัวสัตว์�
       R(O, -4, 3, 3, 4); R('#6b4423', -3 + s1, 3, 2, 3); R(O, 1, 3, 3, 4); R('#6b4423', 2 - s1, 3, 2, 3);      // ขา
       R('#7a4d28', 3, -3, 3, 2);                                                                              // แขน
     } else {
-      R(O, -11, -6, 22, 12); R('#9a6b3d', -10, -5, 20, 10); R('#b98652', -9, -5, 12, 3); R('#7d5430', -10, 2, 20, 3); // ลำตัวอ้วนกลม
-      R(O, 8, -8, 8, 10); R('#9a6b3d', 9, -7, 6, 8); R('#b98652', 9, -7, 4, 2); R('#6e4a2a', 14, -3, 2, 4);      // หัว/จมูกบื้อ
-      R(O, 9, -10, 3, 3); R('#7d5430', 10, -9, 1, 1);                                                          // หู
-      R(blink ? '#9a6b3d' : '#1b1d33', 12, -6, 1, blink ? 0 : 2); R('#2a1b14', 15, -3, 1, 1);                  // ตา รูจมูก
-      const s1 = walk ? Math.round(ph * 2) : 0;
-      R(O, -8, 5, 4, 4); R('#7d5430', -7 + s1, 5, 2, 3); R(O, 4, 5, 4, 4); R('#7d5430', 5 - s1, 5, 2, 3);      // ขาสั้นๆ
+      const B = ['#5f3f22', '#7d5430', '#a06f40', '#c08a52', '#dcaa6e'], NOSE = '#4a3020', PINK = '#d98a6a';
+      const row = (c, y, x0, x1) => R(c, x0, y, x1 - x0 + 1, 1);
+      // ลำตัวถังกลมอ้วน: ขอบ → สีหลัก → แสงบนหลัง → เงาใต้ท้อง (ปลายหัวท้ายโค้งมน)
+      for (let y = -8; y <= 6; y++) { const e = y === -8 || y === 6 ? 3 : y === -7 || y === 5 ? 1 : 0; row(O, y, -13 + e, 12 - e); }
+      for (let y = -7; y <= 5; y++) { const e = y === -7 || y === 5 ? 3 : y === -6 || y === 4 ? 1 : 0; row(y >= 3 ? B[1] : B[2], y, -12 + e, 11 - e); }
+      row(B[3], -7, -9, 6); row(B[4], -6, -7, 3); row(B[3], -6, -10, 7); row(B[3], -5, -10, -3); // แสงสันหลัง
+      row('#c9a070', 3, -6, 6); row('#d8b484', 4, -4, 3);                                          // ท้องสีอ่อน
+      for (const [fx, fy] of [[-7, -3], [-3, -4], [2, -3], [-5, 0], [0, 1], [5, -1]]) R(B[1], fx, fy, 2, 1); // ขีดขนบางๆ
+      // หัว: โหนกหน้าผาก → จมูกบื้อสี่เหลี่ยม + จมูกดำ ตากลมมีประกาย แก้มแดง
+      for (let y = -10; y <= 3; y++) { const e = y === -10 ? 3 : y === -9 ? 1 : y >= 2 ? 1 : 0; row(O, y, 8 + e, 20 - e); }
+      for (let y = -9; y <= 2; y++) { const e = y === -9 ? 3 : y === -8 ? 1 : y === 2 ? 2 : 0; row(B[2], y, 9 + e, 19 - e); }
+      row(B[3], -9, 12, 16); row(B[4], -8, 12, 14); row(B[3], -7, 10, 12);                          // แสงหน้าผาก
+      R(B[1], 15, -3, 5, 5); R(NOSE, 17, -4, 3, 2); R('#6a4a2a', 15, -2, 4, 4); R(B[0], 19, -1, 1, 1); R('#2a1b14', 18, -3, 2, 1); // จมูกบื้อ + รูจมูก
+      R(B[1], 15, 1, 4, 1);                                                                         // ปากเม้ม
+      if (blink) R(B[1], 12, -6, 3, 1); else { R('#1b1d33', 12, -6, 3, 3); R('#ffffff', 12, -6, 1, 1); } // ตา
+      R(PINK, 11, -3, 2, 1);                                                                        // แก้มแดง
+      R(O, 8, -13, 5, 4); R(B[2], 9, -12, 3, 3); R(PINK, 10, -11, 1, 1); R(B[1], 8, -10, 1, 1);        // หูกลมเล็ก
+      // ขาสั้นป้อม 4 ขา (ไกล = เข้มกว่า) เดินสลับกัน
+      const s1 = walk ? Math.round(ph * 2) : 0, leg = (x, d, far) => { R(O, x - 1, 5, 6, 4); R(far ? B[0] : B[1], x + d, 6, 4, 2); R(far ? '#3a2616' : B[0], x + d, 7, 4, 1); };
+      leg(-10, -s1, true); leg(4, -s1, true); leg(-7, s1, false); leg(7, s1, false);
     }
   } else {
     drawPet(q, now, ctx);
@@ -4452,7 +4466,7 @@ function drawCompanionBody(q, now, ctx = mainCtx) { // ตัวสัตว์�
 // ---- สัตว์เลี้ยงตามระดับ 1–5: วาดลงแคนวาสแยก 1× แล้วขยายแบบไม่เบลอ ยึดที่เท้า + ของประดับ (L2 ปลอกคอ L3 ผ้าพันคอ L4 กระดิ่ง L5 มงกุฎดอกไม้+ประกาย สะสมขึ้นไป) ----
 const PETLV_W = 96, PETLV_H = 80, PETLV_FX = 48, PETLV_FY = 64;
 let petLvCv = null;
-const PET_NECK = { dog: [5, -5, 9, -11], cat: [4, -6, 6, -14], catIdle: [-2, -6, -2, -14], bird: [4, -2, 6, -7], monkey: [3, -5, 6, -14], capy: [8, -2, 12, -10] }; // [คอ x, คอ y, ยอดหัว x, ยอดหัว y] เทียบเท้า ทิศหน้า = +x
+const PET_NECK = { dog: [5, -5, 9, -11], cat: [4, -6, 6, -14], catIdle: [-2, -6, -2, -14], bird: [4, -2, 6, -7], monkey: [3, -5, 6, -14], capy: [9, -3, 14, -13] }; // [คอ x, คอ y, ยอดหัว x, ยอดหัว y] เทียบเท้า ทิศหน้า = +x
 function petLvScale(q) { const P = Shared.PETLV, lv = Math.max(1, Math.min(P.scale.length, q.lv | 0 || 1)), s = P.scale[lv - 1]; return q.boat ? Math.min(s, P.seaMax) : s; }
 function drawPetGear(g, q, now, lv, dy) { // ของประดับลงแคนวาสแยก (1×) ที่ตำแหน่งหัว/คอของสัตว์แต่ละชนิด
   const key = q.kind === 'cat' && !q.moving ? 'catIdle' : q.kind, A = PET_NECK[key] || PET_NECK.dog, f = q.dx || 1, fx = Math.round(q.x), fy = Math.round(q.y), oy = Math.round(dy);
