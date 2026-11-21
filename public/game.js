@@ -1481,6 +1481,7 @@ function showPicker() {
     el.innerHTML = '';
     for (const t of TOOL_LIST) {
       const inf = toolInfo(t), locked = toolLocked(t), b = document.createElement('button');
+      if (locked) continue; // ยังไม่มีในตัว → ไม่โชว์ (ดูรกน้อยลง)
       b.className = 'opt' + (selTool === t ? ' sel' : ''); b.disabled = locked; b.innerHTML = `<b>${inf.e}</b>${TOOL_SHORT[t]}<br>${locked ? '🔒 ยังไม่มี' : inf.sub}`;
       b.onclick = e => { e.stopPropagation(); selTool = t; ls.set('mw_tool', t); hidePicker(); renderHud(); showSkillBar(); toast(`${inf.e} ${TOOL_SHORT[t]}`); playSfx('click'); };
       el.appendChild(b);
@@ -1488,6 +1489,7 @@ function showPicker() {
     const hd = document.createElement('div'); hd.textContent = '🎣 เหยื่อตกปลา'; hd.style.cssText = 'width:100%;flex-basis:100%;font-weight:700;font-size:12px;margin-top:4px'; el.appendChild(hd);
     for (const k of BAIT_KEYS) {
       const info = itemInfo(k), have = inv[k] || 0, locked = info.lv && lvl(info.skill) < info.lv && !have, b = document.createElement('button');
+      if (!have) continue; // เหยื่อที่ไม่มีในตัวไม่โชว์
       b.className = 'opt' + (selBait === k ? ' sel' : ''); b.disabled = !!locked; b.innerHTML = `<b>${info.emoji}</b>${info.name.split(' ')[0]}<br>${locked ? '🔒 Lv' + info.lv : '×' + have}`;
       b.onclick = e => { e.stopPropagation(); selBait = k; ls.set('mw_bait', k); selTool = 'rod'; ls.set('mw_tool', 'rod'); hidePicker(); renderHud(); };
       el.appendChild(b);
@@ -1496,6 +1498,7 @@ function showPicker() {
   }
   let keysList = s === 'seed' ? Shared.CROP_IDS().map(c => 'seed_' + c).concat(Object.keys(CROPS).filter(c => CROPS[c].legacy && (inv['seed_' + c] || 0) > 0).map(c => 'seed_' + c)) : s === 'rod' ? BAIT_KEYS : FEEDS;
   const isLocked = k => { const i = itemInfo(k); return !!(i.lv && lvl(i.skill) < i.lv && !(inv[k] || 0)); };
+  keysList = keysList.filter(k => (inv[k] || 0) > 0); // โชว์เฉพาะของที่มีในตัว (ไม่มี/ยังล็อกไม่โชว์)
   if (isTouch) keysList = keysList.filter(k => !isLocked(k)).concat(keysList.filter(isLocked)); // มือถือ: ของที่ใช้ได้ขึ้นก่อน ของที่ยังล็อกไปท้ายแผง (ลำดับเดิมในแต่ละกลุ่ม)
   el.innerHTML = '';
   keysList.forEach(k => {
@@ -1510,6 +1513,7 @@ function showPicker() {
     b.onclick = e => { e.stopPropagation(); if (s === 'seed') selSeed = k.slice(5); else if (s === 'rod') { selBait = k; ls.set('mw_bait', k); } else selFeed = k; hidePicker(); renderHud(); };
     el.appendChild(b);
   });
+  if (!keysList.length) { const none = document.createElement('div'); none.textContent = 'ยังไม่มีของในช่องนี้ ซื้อที่ร้านก่อนนะ'; none.style.cssText = 'font-size:12px;padding:6px 8px;width:100%;flex-basis:100%'; el.appendChild(none); }
   el.classList.remove('hidden');
 }
 document.addEventListener('pointerdown', e => { if (!$('picker').contains(e.target) && !$('hotbar').contains(e.target)) hidePicker(); });
