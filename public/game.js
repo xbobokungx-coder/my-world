@@ -1375,7 +1375,7 @@ addEventListener('pointerdown', e => { if (menuShown() && !e.target.closest('#hu
 }
 // ---------- HUD ----------
 let toastT;
-function toast(t) { const el = $('toast'); el.textContent = t; const mnEl = $('mini'), hb = Math.max($('hudTop').getBoundingClientRect().bottom, typeof miniState !== 'undefined' && miniState === 'big' && mnEl ? mnEl.getBoundingClientRect().bottom : 0), z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1; el.style.top = Math.round((hb + 6) / (isTouch ? 1 : z)) + 'px'; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), Math.min(4500, Math.max(2400, 1200 + String(t).length * 70))); } // ข้อความยาวอยู่นานขึ้นตามความยาว (อ่านทัน) • top เลื่อนลงใต้แถบ HUD
+function toast(t) { const el = $('toast'); el.textContent = t; el.style.top = ''; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 3000); } // แจ้งเตือนอยู่ขอบบนของจอ 3 วินาที (อ่านทัน)
 function setHunger(v) {
   hunger = Math.max(0, Math.min(100, Math.round(v)));
   const el = $('hungerChip'); if (!el) return;
