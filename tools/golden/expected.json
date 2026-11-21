@@ -5,8 +5,6 @@
    "scores": {},
    "done": true
   },
-  "chain": 0,
-  "invites": {},
   "layout": 2,
   "rents": {},
   "farm": {
@@ -2460,7 +2458,6 @@
     "players": [
      {
       "id": 1,
-      "wet": 0,
       "veh": "",
       "held": "",
       "status": "",
@@ -2493,7 +2490,6 @@
      {
       "voice": false,
       "id": 1,
-      "wet": 0,
       "veh": "",
       "held": "",
       "status": "",
@@ -2610,12 +2606,6 @@
    {
     "t": "rents",
     "r": {}
-   },
-   {
-    "t": "ch",
-    "ch": null,
-    "wet": 0,
-    "chain": 0
    },
    {
     "t": "evt",
@@ -3027,7 +3017,6 @@
     "t": "on",
     "voice": false,
     "id": 2,
-    "wet": 0,
     "veh": "",
     "held": "",
     "status": "",
@@ -8926,7 +8915,6 @@
     "players": [
      {
       "id": 1,
-      "wet": 0,
       "veh": "",
       "held": "",
       "status": "",
@@ -8956,7 +8944,6 @@
      },
      {
       "id": 2,
-      "wet": 0,
       "veh": "",
       "held": "",
       "status": "",
@@ -8989,7 +8976,6 @@
      {
       "voice": false,
       "id": 1,
-      "wet": 0,
       "veh": "",
       "held": "",
       "status": "",
@@ -9019,7 +9005,6 @@
      {
       "voice": false,
       "id": 2,
-      "wet": 0,
       "veh": "",
       "held": "",
       "status": "",
@@ -9136,12 +9121,6 @@
    {
     "t": "rents",
     "r": {}
-   },
-   {
-    "t": "ch",
-    "ch": null,
-    "wet": 0,
-    "chain": 0
    },
    {
     "t": "evt",
@@ -12079,7 +12058,7 @@
    },
    "scene": {
     "n": 1,
-    "sha1": "0c292f81bf65b74e6fd081382156ea8203232ddc"
+    "sha1": "a5b12923927553909f07c12aaf4ce42fa76ac1e6"
    }
   }
  }
