@@ -5227,6 +5227,9 @@ function winterBase(on) { // พื้นที่จะวาดตอนนี
   winterStep();
   return wCv && wSrc === base ? wCv : base;
 }
+// ป้ายมุมซ้ายบน (ชั้นถ้ำ/ทะเล) วางใต้แถบปุ่มและป้ายคู่มือที่โชว์อยู่ ไม่ทับกัน • คำนวณใหม่ทุก 400ms กันบังคับ layout ทุกเฟรม
+let tagY = 96, tagT = 0;
+function tagTop() { const n = performance.now(); if (n - tagT > 400) { tagT = n; const hb = $('hudTop').getBoundingClientRect().bottom, gd = $('guide'), gb = gd.classList.contains('hidden') ? 0 : gd.getBoundingClientRect().bottom; tagY = Math.round(Math.max(hb, gb) + 8); } return tagY; }
 function frameTail(now, wall) { // กลางวัน/กลางคืน + นาฬิกา + แผนที่ย่อ (ใช้ทั้งในเมืองและในบ้าน)
   if (ft && !ft.end) { const n = performance.now(); Shared.fightStep(ft, Math.min(250, n - ft.last), ftHold); ft.last = n; fightUI(); if (ft.end) fightUI(); } // ทำนายล่วงหน้า (ผลจริงตัดสินที่เซิร์ฟเวอร์ ส่งสถานะมาปรับทุก 150 ms)
   if (fg) { // ตัวชี้เกจตกปลา (เส้นทางเดียวกับที่เซิร์ฟเวอร์คำนวณ) อยู่ที่นี่เพื่อให้ขยับทุกฉาก ทั้งเมือง บ้าน ถ้ำ และทะเล (เดิมอยู่ในรอบวาดเมืองอย่างเดียว ในทะเลตัวชี้เลยค้างอยู่ซ้ายสุด)
@@ -5246,9 +5249,9 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
     const left = seaEnd ? Math.max(0, seaEnd - (Date.now() + timeOffset)) : 0, cd = Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0');
     const zn = inOcean() && me ? (Shared.OCEAN_ZONE[Shared.oceanZone(Math.floor(me.x / TS), Math.floor(me.y / TS))] || {}).name : '';
     const t = inOcean() ? `⛵ ทะเลใหญ่${zn ? ' • ' + zn : ''} ${seaEnd ? ' • เรือเช่าหมดเวลาในอีก ' + cd : ' • ไม่จำกัดเวลา'} • เบ็ด 🎣 • แล่นซ้ายสุดเพื่อกลับท่า` : `🛶 ทะเลลึก (แพ) • เหลือ ${cd} • เบ็ด 🎣 ตกปลาทะเล • เดินไปท้ายแพเพื่อกลับเกาะ`;
-    ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(10, 62, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#fff'; ctx.fillText(t, 18, 80);
+    ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; const y0 = tagTop(); ctx.fillRect(10, y0, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#fff'; ctx.fillText(t, 18, y0 + 18);
   }
-  else if (cave) { const t = '⛏️ ถ้ำเหมือง ชั้น ' + caveFlr + '/' + Shared.MINE.floors; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(10, 96, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, 18, 115); }
+  else if (cave) { const t = '⛏️ ถ้ำเหมือง ชั้น ' + caveFlr + '/' + Shared.MINE.floors; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; const y0 = tagTop(); ctx.fillRect(10, y0, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, 18, y0 + 19); }
   const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);
   const icon = dark > 0.45 ? '🌙' : hour < 8 || hour >= 17 ? '🌅' : '☀️';
   const se = Shared.seasonAt(Date.now() + timeOffset), rn = rainActive(now), sem = rn ? '🌧️' : se.s.id === 'rain' && rainMode !== 'off' ? '☁️' : se.s.emoji, txt = `${se.on || rn ? sem + ' ' : ''}${icon} ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')}`; // ฤดูกาล + เวลาในเกม
