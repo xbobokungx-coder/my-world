@@ -58,13 +58,10 @@ FAIL=0
 for f in $(echo "$CHANGED" | grep -E '\.(c|m)?js$' || true); do
   [ -f "$TMP/$f" ] && { node --check "$TMP/$f" || { say "syntax พัง: $f"; FAIL=1; }; }
 done
-for t in "$TMP"/tools/test-*.js; do
-  [ -e "$t" ] || continue
-  if (cd "$TMP" && DATA_DIR="$TMP/.test-data" node "$t" >/tmp/deploy-test.out 2>&1); then echo "ผ่าน $(basename "$t")"
-  else say "พัง $(basename "$t")"; tail -n 15 /tmp/deploy-test.out; FAIL=1; fi
-done
+if [ "${DEPLOY_SKIP_TESTS:-0}" = 1 ]; then say "ข้ามเทสต์บน VPS: commit นี้ตรวจในเครื่องแล้ว (syntax ผ่านด้านบน)"
+elif ! "$TMP/tools/run-tests.sh" "$TMP" > "$TMP/.tests.out" 2>&1; then cat "$TMP/.tests.out"; FAIL=1
+else say "เทสต์ผ่านทั้งหมด (ขนาน ~30 วินาที)"; fi
 [ "$FAIL" = 0 ] || { say "หยุด: เทสต์ไม่ผ่าน เกมจริงไม่ถูกแตะ"; exit 1; }
-say "เทสต์ผ่านทั้งหมด"
 [ "$CHECK_ONLY" = 1 ] && { say "--check: จบที่ทดสอบ"; exit 0; }
 
 # 2) ต้อง restart ไหม (server.js / server/** / shared.js ที่เซิร์ฟเวอร์ require / dependency)

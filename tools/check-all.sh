@@ -9,10 +9,5 @@ files=$( { git diff --name-only HEAD; git ls-files --others --exclude-standard; 
 for f in $files; do [ -f "$f" ] || continue; n=$((n+1)); node --check "$f" 2>&1 | head -5 || true; [ "${PIPESTATUS[0]}" = 0 ] || { echo "SYNTAX FAIL: $f"; fail=1; }; done
 [ "$fail" = 0 ] || exit 1
 [ "${1:-}" = "--quick" ] && { echo "OK: syntax $n ไฟล์"; exit 0; }
-t=0; tmp=$(mktemp)
-for f in tools/test-*.js; do
-  t=$((t+1))
-  if ! node "$f" >"$tmp" 2>&1; then echo "TEST FAIL: $f"; tail -15 "$tmp"; fail=1; fi
-done
-rm -f "$tmp"
-[ "$fail" = 0 ] && echo "OK: syntax $n ไฟล์ • เทสต์ $t ไฟล์ผ่านหมด" || exit 1
+tools/run-tests.sh "$PWD" >/tmp/mw-tests.out 2>&1 || { cat /tmp/mw-tests.out; exit 1; }
+echo "OK: syntax $n ไฟล์ • $(tail -1 /tmp/mw-tests.out | sed 's/^OK: //')"  # เทสต์รันขนาน ~30 วินาที (tools/run-tests.sh)

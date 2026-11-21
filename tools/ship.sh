@@ -23,6 +23,8 @@ $TRAILER"
   echo "commit+push: $(git log -1 --format='%h %s')"
 fi
 if [ "$DEPLOY" = 1 ] || [ "$ONLY" = 1 ]; then
-  ssh my-world 'cd /root/my-world && ./tools/deploy.sh -y' 2>&1 | grep -vE '^ผ่าน test-' | tail -12
-  ssh my-world 'cd /root/my-world && echo "HEAD $(git rev-parse --short HEAD) healthz $(curl -s localhost:3000/healthz | head -c 20)"; free -m | sed -n 2p; ps aux | grep -E "[c]laude/remote.*server" | awk "{print \"claude-proc PID\",\$2,\"RSS\",\$6\"KB\"}"'
+  # ตรวจ commit นี้ในเครื่องแล้ว (check-all ด้านบน) ก็ข้ามเทสต์ซ้ำบน VPS ได้ • --deploy-only ยังเทสต์บน VPS ตามเดิม
+  SKIP=0; [ "$ONLY" = 0 ] && SKIP=1
+  # คำสั่งเดียว: deploy + สรุปสถานะ (ลด SSH ครั้งที่สอง)
+  ssh my-world "set -o pipefail; cd /root/my-world && DEPLOY_SKIP_TESTS=$SKIP ./tools/deploy.sh -y 2>&1 | grep -vE '^ผ่าน test-' | tail -12; echo \"HEAD \$(git rev-parse --short HEAD) healthz \$(curl -s localhost:3000/healthz | head -c 20)\"; free -m | sed -n 2p; ps aux | grep -E '[c]laude/remote.*server' | awk '{print \"claude-proc PID\",\$2,\"RSS\",\$6\"KB\"}'"
 fi
