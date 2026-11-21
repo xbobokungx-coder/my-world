@@ -30,7 +30,7 @@ module.exports = {
     send(p, { t: 'dur', d: this.durPub(p) }); this.dirty = true;
     if (cur <= 0) this.toast(p, this.fixN(p, tool) >= S.REPAIR.maxFixes ? `💥 ${S.DURABILITY[tool].name}พังจนซ่อมไม่ได้แล้ว! ต้องซื้อใหม่ที่ร้าน` : `🔧 ${S.DURABILITY[tool].name}พังแล้ว! ต้องซ่อมที่ร้านก่อนใช้ต่อ`);
     else if (before > thr && cur <= thr) this.toast(p, `⚠️ ${S.DURABILITY[tool].name}ใกล้พังแล้ว (เหลือ ${cur})`);
-    if (H.h >= W.warnHeat && !H.warn) { H.warn = true; this.toast(p, `🔥 ใช้${S.DURABILITY[tool].name}ถี่และนานมาก จะสึกหรอไวกว่าปกติ (ยิ่งใช้ต่อเนื่องยิ่งไว สูงสุด 2 เท่า) พักสักครู่จะเย็นลง`); }
+    if (H.h >= W.warnHeat && !H.warn) { H.warn = true; this.toast(p, `🔥 ใช้${S.DURABILITY[tool].name}ถี่และนานมาก จะสึกหรอไวกว่าปกติ พักสักครู่จะเย็นลง`); }
     else if (H.h < W.warnHeat * 0.4) H.warn = false;
   },
   toolShopCheck(p, tool) {

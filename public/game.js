@@ -2270,7 +2270,7 @@ function contextAct(now) {
   const [fx, fy] = Shared.facing(me.x, me.y, me.dir), [px, py] = myTile(), dk = Shared.SEA.dock;
   if (Shared.nearLift(me.x, me.y)) { stopWalk(); lastAct = now; actGap = 300; openLift(); return true; }
   if (hubSignAt(fx, fy)) { stopWalk(); lastAct = now; actGap = 300; openHub(); return true; }
-  if (Shared.towerAt(fx, fy)) { stopWalk(); lastAct = now; actGap = 800; toast('🏯 หอคอยปริศนา ประตูปิดสนิท มีแสงม่วงวูบวาบกับเสียงกระซิบลอดออกมา... เร็วๆ นี้ รอติดตามนะ'); return true; } // ปุ่ม Action หันหน้าหาตัวหอ
+  if (Shared.towerAt(fx, fy)) { stopWalk(); lastAct = now; actGap = 800; toast('🏯 หอคอยปริศนา ประตูปิดสนิท มีแสงม่วงวูบวาบลอดออกมา... เร็วๆ นี้ รอติดตามนะ'); return true; } // ปุ่ม Action หันหน้าหาตัวหอ
   if (!holdAct && !Shared.shopAt(fx, fy)) { // ยืนแถวหน้าประตูร้าน (ช่องใต้ประตู ±1 ช่อง) แล้วกด A/Space ทิศไหนก็เปิดร้านนั้น (กฎ Action: เดิมต้องหันหน้าชนอาคารถึงเปิด มือถือหันตรงๆ ยาก) • ร้านปิดจะได้ข้อความจากเซิร์ฟเวอร์เอง
     const sb = BUILDINGS.find(q => q.counter[0] && py === q.counter[0][1] + 1 && Math.abs(px - q.counter[0][0]) <= 1);
     if (sb) { stopWalk(); lastAct = now; actGap = 300; send({ t: 'act', tool: toolId(), tx: sb.counter[0][0], ty: sb.counter[0][1] }); return true; }

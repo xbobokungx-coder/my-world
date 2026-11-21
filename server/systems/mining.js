@@ -57,7 +57,7 @@ module.exports = {
     this.arcLeave(p); this.tradeCancel(p, 'ผู้เล่นเข้าถ้ำ'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
     p.ret = { x: (Math.floor(p.x / TS) + 0.5) * TS, y: (S.MINE.y + 1.5) * TS }; // ออกมายืนหน้าปากถ้ำ (ไม่ทับช่องปากถ้ำ ไม่งั้นเข้าซ้ำ)
     this.changeScene(p, CAVE + 1, S.CAVE.spawn.x, S.CAVE.spawn.y);
-    this.toast(p, '⛏️ เข้าถ้ำเหมือง ชั้น 1! ใช้อีเต้อ ⚒️ (ร้านช่างเหมือง) ขุดก้อนแร่ • บันไดลงอยู่ห้องไกลสุด ยิ่งลึกยิ่งได้แร่ดี • พกตะเกียง 🔦 จะเห็นไกลขึ้น • ทางออกกลางผนังล่าง');
+    this.toast(p, '⛏️ ถ้ำเหมือง ชั้น 1! ใช้อีเต้อขุดก้อนแร่ • บันไดลงอยู่ห้องไกลสุด • ทางออกกลางผนังล่าง');
   },
   leaveCave(p) {
     if (!S.caveFloor(p.scene)) return;

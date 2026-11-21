@@ -34,7 +34,7 @@ module.exports = {
       st.final = true; this.add(p, 'coin', S.STARTER_FINAL.coin, 'starter'); for (const it of S.STARTER_FINAL.items) this.add(p, it, 1);
       this.addLog(`🎓 ${p.name} ผ่านคู่มือเริ่มต้นครบแล้ว!`);
       for (const g of p.rec.greetedBy || []) { const rg = this.saved[g]; if (!rg) continue; this.achAdd(rg, 'mentor'); const q = [...this.players.values()].find(x => x.key === g); if (q) { this.addPts(q, 5); this.toast(q, `🤗 ${p.name} ที่คุณทักต้อนรับ ผ่านคู่มือเริ่มต้นแล้ว! (+แต้มความดี)`); } }
-      this.toast(p, `🎓 ผ่านคู่มือเริ่มต้นครบ! รับ 🪙${S.STARTER_FINAL.coin} + 🪑 เก้าอี้ + 🪴 ต้นไม้ + 🔦 ตะเกียง (เปิดโหมดตกแต่งบ้านด้วยปุ่ม 🏠)`); this.sfxTo(p, 'levelup');
+      this.toast(p, `🎓 ผ่านคู่มือเริ่มต้นครบ! รับ 🪙${S.STARTER_FINAL.coin} + 🪑 เก้าอี้ + 🪴 ต้นไม้ + 🔦 ตะเกียง `); this.sfxTo(p, 'levelup');
     }
     this.dirty = true; this.questPush(p);
   },

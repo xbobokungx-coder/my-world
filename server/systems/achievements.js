@@ -20,7 +20,7 @@ module.exports = {
     let any = false;
     const waived = []; // ความสำเร็จสายลงขัน (stat 'give'): ตู้เซฟกองกลางถูกยกเลิกแล้ว (3 พ.ย. 2026) ทำให้ไม่มีทางสะสมยอดได้ → ผ่านให้ทุกคนทันที ไม่มีเหรียญ ไม่ประกาศข่าวเมือง
     for (const d of S.ACH) if (d.stat === 'give' && !a.got[d.id]) { a.got[d.id] = Date.now(); any = true; if (d.title) waived.push(d.title); }
-    if (waived.length && p) this.toast(p, `🏛️ ยกเลิกตู้เซฟกองกลางแล้ว ความสำเร็จสายลงขันผ่านให้ทุกคน • ได้ฉายา ${waived.map(t => `"${t}"`).join(' ')} (เลือกใช้ได้ที่ 🏅)`);
+    if (waived.length && p) this.toast(p, `🏛️ ยกเลิกตู้เซฟกลางแล้ว สายลงขันผ่านให้ทุกคน ได้ฉายา ${waived.map(t => `"${t}"`).join(' ')} (เลือกใช้ได้ที่ 🏅)`);
     for (const d of S.ACH) {
       if (a.got[d.id] || val(d.stat) < d.goal) continue;
       a.got[d.id] = Date.now(); any = true;

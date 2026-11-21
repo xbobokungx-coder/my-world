@@ -22,7 +22,7 @@ module.exports = {
     const boat = p.rec.inv.boat > 0, win = boat ? null : S.oceanWindow(Date.now()); // มีเรือเอง: ออกได้ทุกเวลา ไม่จำกัดเวลา • ไม่มีเรือ: เช่าเรือ (ร้านเปิด 06:00 ปิด 19:00 เวลาเกม)
     if (win && !win.ok) return this.toast(p, win.why);
     const fee = this.seaFee(p); // ไม่มีเรือ: ค่าเช่าเรือ (เรือเช่าขับเองในทะเลใหญ่ได้เหมือนเรือของตัวเอง)
-    if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `⛵ ค่าเช่าเรือ 🪙 ${fee} เหรียญไม่พอ (ซื้อเรือของตัวเองที่ร้านยานพาหนะ 🪙${S.BOAT.price} ออกทะเลได้ฟรีไม่จำกัดเวลา)`);
+    if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `⛵ ค่าเช่าเรือ 🪙 ${fee} ไม่พอ (ซื้อเรือเองที่ร้านยานพาหนะ 🪙${S.BOAT.price} ออกทะเลได้ไม่จำกัดเวลา)`);
     if (p.veh) this.setVeh(p, '');
     this.arcLeave(p); this.tradeCancel(p, 'ผู้เล่นออกทะเล'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast();
     if (fee) { this.add(p, 'coin', -fee, 'sea'); this.toPot(fee); } // ค่าเช่าเรือเข้ากองกลางหวย (คนมีเรือไม่เสีย)

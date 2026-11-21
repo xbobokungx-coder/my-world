@@ -28,7 +28,7 @@ module.exports = {
     const e = this.enOf(p), cost = Math.round(S.energyCost(kind, value) * this.wkMult(p, kind, S.energyCost(kind, value)) * 10) / 10; e.v = Math.max(-S.ENERGY.max, e.v - cost); e.at = Date.now();
     if (e.v <= 0 && !e.ex) {
       e.ex = true; const sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000);
-      this.toast(p, `😮‍💨 เหนื่อยแล้ว! ต้องพักราว ${sec >= 60 ? Math.ceil(sec / 60) + ' นาที' : sec + ' วินาที'} (นั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า) ระหว่างนี้ทำอาหาร เควส หรือลงขันเมืองได้`); logEv(this.room, 'tired', { p: p.key });
+      this.toast(p, `😮‍💨 เหนื่อยแล้ว! ต้องพักราว ${sec >= 60 ? Math.ceil(sec / 60) + ' นาที' : sec + ' วินาที'} (นั่งม้านั่งฟื้นไว 3 เท่า) ทำอาหารหรือเควสได้ระหว่างพัก`); logEv(this.room, 'tired', { p: p.key });
     }
     this.dirty = true; this.enPush(p, cost); this.telAdd(p, kind, cost);
   },

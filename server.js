@@ -220,7 +220,7 @@ class World {
     send(p, { t: 'chatlog', list: [] }); /* คนเข้าใหม่เริ่มแชทว่าง ไม่เห็นแชทเก่า (chatLog ยังเก็บไว้ให้ระบบรายงานใช้) */ this.modJoin(p); this.lottoJoin(p); this.starterOf(p); this.streakOnJoin(p); this.achCheck(p.rec); this.achPush(p); this.questPush(p); this.bankPush(p); this.villageRoll(); this.village.peak = Math.max(this.village.peak, this.players.size); send(p, this.villagePub(p)); send(p, { t: 'log', list: this.log });
     if (rec.gift) send(p, { t: 'gift', item: rec.gift });
     this.awaySummary(p, rec.leftAt || rec.lastSeen);
-    if (Date.now() < S.FRESH.startAt && rec.freshNote !== 1) { rec.freshNote = 1; setTimeout(() => { if (p.ws.readyState === 1) this.toast(p, `📢 ตั้งแต่ ${new Date(S.FRESH.startAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ผัก ปลา ไข่ นม อาหาร จะค่อยๆ เสื่อมราคาถ้าเก็บไว้นาน (สด 1 วัน = 100% • 1–3 วัน 70% • เกิน 40%) ของที่มีตอนนี้นับเป็นของสดวันนั้น • มีตู้เย็นในบ้านช่วยชะลอ`); }, 5000); }
+    if (Date.now() < S.FRESH.startAt && rec.freshNote !== 1) { rec.freshNote = 1; setTimeout(() => { if (p.ws.readyState === 1) this.toast(p, `📢 ตั้งแต่ ${new Date(S.FRESH.startAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ผัก ปลา ไข่ นม อาหารจะเสื่อมราคาถ้าเก็บนาน • ตู้เย็นในบ้านช่วยชะลอ`); }, 5000); }
     if (rec.joins === 1) this.broadcast({ t: 'newbie', id: p.id, name }, p); // ให้คนที่ออนไลน์ทักคนใหม่ (GROWTH-PLAN N1)
     this.starterStep(p, '');
     this.addLog(`👋 ${name} เข้ามาในเมือง`);
@@ -408,7 +408,7 @@ class World {
     const k = tx + ',' + ty;
     const tt = this.map[ty] && this.map[ty][tx];
     const tcx = (tx + 0.5) * TS, tcy = (ty + 0.5) * TS;
-    if (this.exhausted(p) && this.heavyAction(tool, k) && tt !== T.SHOP) { const e = this.enOf(p), sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000); return this.toast(p, `😮‍💨 เหนื่อยอยู่ พักอีกประมาณ ${sec} วินาทีถึงทำงานหนักได้ (นั่งที่ม้านั่งฟื้นไวขึ้น 3 เท่า)`); }
+    if (this.exhausted(p) && this.heavyAction(tool, k) && tt !== T.SHOP) { const e = this.enOf(p), sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000); return this.toast(p, `😮‍💨 เหนื่อยอยู่ พักอีกราว ${sec} วินาทีถึงทำงานหนักได้ (นั่งม้านั่งฟื้นไว 3 เท่า)`); }
     if (p.rec.hunger <= 0 && tt !== T.SHOP) return this.toast(p, '😵 หิวจนไม่มีแรง! ไปกินอาหารก่อนนะ (ร้านอาหาร หรือกินผลผลิตจากกระเป๋า)');
     // 0) นั่งที่ม้านั่ง/กองฟาง/เก้าอี้ในลานกลางหมู่บ้าน
     const seat = S.seatAt(tx, ty);
@@ -447,7 +447,7 @@ class World {
     const tile = this.farm[k];
     if (tile && tile.c && S.cropStage(tile) === 3) {
       { const rr = this.rentAt(tx, ty); if (rr && rr.key !== p.key && tile.o !== p.key) return this.toast(p, `🔒 แปลงนี้ ${rr.name} เช่าอยู่ เก็บผักในแปลงเช่าของคนอื่นไม่ได้`); } // แปลงเช่า: ระหว่างสัญญาคนอื่นเก็บไม่ได้เลย (ไม่ใช้กฎสุกค้าง 1 วัน)
-      if (this.cropLocked(tile, p)) return this.toast(p, `🌱 ต้นนี้เป็นของ ${tile.on || 'ผู้เล่นอื่น'} — ถ้าเขาไม่มาเก็บภายใน ${Math.max(1, Math.ceil((S.DAY_MS - (tile.rm || 0)) / 60000))} นาที (1 วันในเกม) คนอื่นถึงจะมาเก็บได้`);
+      if (this.cropLocked(tile, p)) return this.toast(p, `🌱 ต้นนี้เป็นของ ${tile.on || 'ผู้เล่นอื่น'} — ถ้าเขาไม่มาเก็บใน ${Math.max(1, Math.ceil((S.DAY_MS - (tile.rm || 0)) / 60000))} นาที คนอื่นถึงเก็บได้`);
       const c = CROPS[tile.c], OS = S.OFFSEASON, miss = !!tile.os && Math.random() >= OS.chance; // ปลูกนอกฤดู: ลุ้นติดผลตอนเก็บ (เซิร์ฟเวอร์สุ่ม)
       if (miss) { // ไม่ติดผล: ได้เมล็ดชนิดเดิมแทน (ไม่มีผลผลิต/ไม่ลุ้นโบนัส) XP ลดตาม OFFSEASON.xpFail
         const n = OS.seedMin + Math.floor(Math.random() * (OS.seedMax - OS.seedMin + 1));
@@ -522,9 +522,9 @@ class World {
       if (S.canTier(inv) < need) return this.toast(p, `${C0.emoji} ${C0.name}ต้องใช้${S.CANS[need].name}ดูแล ซื้อได้ที่ร้านเมล็ดพันธุ์ (🪙 ${S.CANS[need].price})`);
       const cap = Math.min(S.FARM_CAP.max, S.FARM_CAP.base + S.FARM_CAP.perLv * (this.lv(p, 'farm') - 1));
       let mine = 0; for (const q in this.farm) if (this.farm[q].c && this.farm[q].o === p.key) { const [qx, qy] = q.split(',').map(Number), r2 = this.rentAt(qx, qy); if (!(r2 && r2.key === p.key)) mine++; } // ต้นในแปลงเช่าของตัวเองไม่นับ
-      if (!(rr && rr.key === p.key) && mine >= cap) return this.toast(p, `🌱 ปลูกค้างอยู่ครบ ${cap} ต้นแล้ว เก็บเกี่ยวก่อน หรือแบ่งที่ให้คนอื่นปลูกบ้างนะ (เลเวลชาวนาสูงขึ้นปลูกได้มากขึ้น)`);
+      if (!(rr && rr.key === p.key) && mine >= cap) return this.toast(p, `🌱 ปลูกค้างอยู่ครบ ${cap} ต้นแล้ว เก็บเกี่ยวก่อน หรือแบ่งที่ให้คนอื่นปลูกบ้างนะ`);
       this.add(p, tool, -1);
-      tile.c = tool.slice(5); tile.o = p.key; tile.on = p.name; tile.rm = 0; tile.g = 0; if (S.inSeason(tile.c, Date.now())) delete tile.os; else { tile.os = 1; this.toast(p, `🍂 ${C0.emoji} ${C0.name}นอกฤดู ปลูกได้แต่ต้นอาจไม่ติดผล (ได้เมล็ดคืนแทน) ปลูกในฤดูที่เหมาะจะได้ผลเต็ม`); } tile.m = 1 + 0.04 * (S.perkLv(this.lv(p, 'farm')) - 1);
+      tile.c = tool.slice(5); tile.o = p.key; tile.on = p.name; tile.rm = 0; tile.g = 0; if (S.inSeason(tile.c, Date.now())) delete tile.os; else { tile.os = 1; this.toast(p, `🍂 ${C0.emoji} ${C0.name}นอกฤดู ปลูกได้แต่อาจไม่ติดผล (ได้เมล็ดคืน) ปลูกในฤดูจะได้ผลเต็ม`); } tile.m = 1 + 0.04 * (S.perkLv(this.lv(p, 'farm')) - 1);
       if ((p.rec.quick || 0) < S.NEWBIE.quickSeeds && !this.starterOf(p).final) { p.rec.quick = (p.rec.quick || 0) + 1; tile.m = S.NEWBIE.quickMul; this.toast(p, `🌱 เมล็ดมือใหม่ โตไวพิเศษ! (${p.rec.quick}/${S.NEWBIE.quickSeeds}) รดน้ำแล้วรอแป๊บเดียว`); }
       this.tileUpdate(k, tile); this.addXp(p, 'farm', 2); this.tire(p, 'plant'); this.sfx(p, 'plant'); this.event(p, 'plant');
     } else if (tool === 'rod') {
@@ -596,7 +596,7 @@ class World {
       const cf = S.caveFloor(p.scene); if (!S.isSeaScene(cf)) continue;
       if (p.seaUntil === Infinity) continue; // เรือของตัวเอง ไม่จำกัดเวลา
       if (now >= (p.seaUntil || 0)) this.seaLeave(p, S.isOcean(cf) ? '🌇 ร้านเช่าเรือปิดแล้ว (19:00) กัปตันพากลับเกาะ' : '⛵ ครบเวลาออกทะเล กัปตันพากลับเกาะแล้ว');
-      else if (S.isOcean(cf)) { const left = p.seaUntil - now; if (left <= 60000 && !(p.seaW & 1)) { p.seaW |= 1; this.toast(p, '🌇 เรือเช่าใกล้หมดเวลา (ร้านปิด 19:00) อีก 1 นาทีกัปตันจะพากลับ แล่นกลับท่า (ซ้ายสุดของแมพ) ได้ก่อน'); } else if (left <= 15000 && !(p.seaW & 2)) { p.seaW |= 2; this.toast(p, '⛵ เรือกำลังจะกลับท่าแล้ว!'); } }
+      else if (S.isOcean(cf)) { const left = p.seaUntil - now; if (left <= 60000 && !(p.seaW & 1)) { p.seaW |= 1; this.toast(p, '🌇 เรือเช่าใกล้หมดเวลา! อีก 1 นาทีกัปตันจะพากลับ (หรือแล่นกลับท่าซ้ายสุดของแมพก่อน)'); } else if (left <= 15000 && !(p.seaW & 2)) { p.seaW |= 2; this.toast(p, '⛵ เรือกำลังจะกลับท่าแล้ว!'); } }
     }
     this.arcTick(now);
     this.cinemaTick(now);
