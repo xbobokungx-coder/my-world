@@ -687,6 +687,27 @@
   body.touch .sw { width:36px; height:36px; }
   body.touch .tab { min-height:44px; } /* WP-30: เป้าแตะแท็บ ≥ 44px */
   body.touch .opt { min-height:44px; }
+  /* ===== HUD มินิมอล (มือถือ): ชิปเล็ก โปร่งแสง ไม่มีกรอบหนา/เงา — เหลือเฉพาะที่ต้องดู ===== */
+  body.touch #hudTop { gap:5px; }
+  body.touch #hudTop > :not(.hidden):not(#hudMenu):not(#vehMenu) { height:28px; padding:0 9px; font-size:13px; border-radius:9px; }
+  body.touch #hudTop .panel { background:rgba(35,22,14,.62); border:1px solid rgba(255,243,214,.22); box-shadow:none; text-shadow:none; padding:0 9px; font-size:13px; font-weight:700; border-radius:9px; }
+  body.touch #hudTop #coins { background:rgba(35,22,14,.62); box-shadow:none; }
+  body.touch #hudTop .panel.warn { background:rgba(168,102,31,.85); } body.touch #hudTop .panel.over { background:rgba(143,42,34,.85); }
+  body.touch #hudTop > #menuBtn { height:28px; padding:0 9px; font-size:13px; border-radius:9px; border:1px solid rgba(255,243,214,.3); background:rgba(168,98,40,.85); box-shadow:none; text-shadow:none; }
+  body.touch #hudTop > #evChip { min-height:28px; padding:2px 8px !important; font-size:11px !important; line-height:1.2 !important; max-width:min(66vw,260px); }
+  body.touch #hudTop > #lampBtn, body.touch #hudTop > #petQuick, body.touch #hudTop > #vehBtn { min-width:0; min-height:0; width:30px; height:30px; padding:0; font-size:14px; border-radius:50%; border:1px solid rgba(255,243,214,.25); background:rgba(35,22,14,.55); box-shadow:none; text-shadow:none; }
+  body.touch #hudTop > #lampBtn.on { background:rgba(60,180,75,.8); } body.touch #hudTop > #petQuick.on { background:rgba(224,147,58,.85); }
+  body.touch #guide { font-size:11px; padding:2px 9px; border:1px solid rgba(232,198,106,.7); border-radius:9px; box-shadow:none; background:rgba(255,243,207,.88); top:calc(44px + var(--sat)); }
+  body.touch #mini { background:rgba(35,22,14,.62); border:1px solid rgba(255,243,214,.22); box-shadow:none; border-radius:10px; color:#fff3cf; }
+  body.touch #mini.off { background:rgba(35,22,14,.62); }
+  body.touch #hotbar { background:rgba(35,22,14,.5); border:0; box-shadow:none; border-radius:12px; padding:3px; gap:3px; bottom:calc(6px + var(--sab)); }
+  body.touch .slot { width:42px; height:46px; border:2px solid rgba(42,27,20,.8); border-radius:8px; box-shadow:none; font-size:22px; }
+  body.touch .slot .pxe { width:26px; height:26px; }
+  body.touch .slot.sel { transform:translateY(-3px); outline-width:2px; box-shadow:none; }
+  body.touch .slot .n { font-size:11px; text-shadow:1px 0 0 var(--edge),-1px 0 0 var(--edge),0 1px 0 var(--edge),0 -1px 0 var(--edge); }
+  body.touch #joy { width:112px; height:112px; bottom:calc(64px + var(--sab)); background:rgba(255,255,255,.16); border:2px solid rgba(255,255,255,.35); }
+  body.touch #knob { width:46px; height:46px; left:calc(50% - 23px); top:calc(50% - 23px); background:rgba(255,255,255,.55); }
+  body.touch #abtn { width:68px; height:68px; font-size:26px; bottom:calc(72px + var(--sab)); border:3px solid rgba(255,255,255,.75); background:rgba(180,110,40,.82); box-shadow:none; }
 </style>
 </head>
 <body>

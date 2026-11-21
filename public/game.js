@@ -4668,7 +4668,7 @@ function layoutHud() { // แผนที่อยู่มุมบนขวา
 }
 function sizeMini() {
   const dpr = window.devicePixelRatio || 1, cv = $('miniMap');
-  const w = miniState === 'big' ? Math.max(120, Math.min(innerWidth * (isTouch ? 0.44 : 0.4), isTouch ? 260 : 380, (innerHeight * 0.5) * W / H)) : Math.min(innerWidth * (isTouch ? 0.3 : 0.4), isTouch ? 130 : 190), h = w * H / W;
+  const w = miniState === 'big' ? Math.max(120, Math.min(innerWidth * (isTouch ? 0.44 : 0.4), isTouch ? 260 : 380, (innerHeight * (isTouch && innerWidth > innerHeight ? 0.36 : 0.5)) * W / H)) : Math.min(innerWidth * (isTouch ? 0.3 : 0.4), isTouch ? 130 : 190), h = w * H / W;
   cv.style.width = w + 'px'; cv.style.height = h + 'px';
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
 }
