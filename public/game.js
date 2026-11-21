@@ -754,6 +754,53 @@ function allTotal(i, m, n, k) { // ขายทั้งหมด: ยอดร�
   const t = sellQuote(i.sell, m, n, k ? freshMulsOf(k, n) : null).total, first = Math.max(1, Math.round(i.sell * Math.max(Shared.MARKET.min, m)));
   return `${t} <small>(เฉลี่ย ${Math.round(t / (first * n) * 100)}%)</small>`;
 }
+let sellSel = null, sellKeysNow = []; // ของที่เลือกอยู่ในหน้าขาย (แบบรายการ) + รายการที่ขายได้ตอนนี้
+const sellAllNum = k => { const i = itemInfo(k); return i ? sellQuote(i.sell, mult(k), inv[k] || 0, freshMulsOf(k, inv[k] || 0)).total : 0; };
+function sellWrapHtml() { // รายการขายแบบ Vending: แถวละ 1 ชนิด (ไอคอน ชื่อ ×จำนวน ราคา) + แถบ "ที่เลือก" ด้านล่าง
+  const keys = sellKeysNow.filter(k => (inv[k] || 0) > 0);
+  if (sellSel && !keys.includes(sellSel)) sellSel = null;
+  let h = '<div class="slist" role="listbox" tabindex="0" aria-label="รายการที่ขายได้">';
+  for (const k of keys) {
+    const i = itemInfo(k), unit = Math.max(1, Math.round(i.sell * mult(k)));
+    h += `<div class="srow${sellSel === k ? ' sel' : ''}" role="option" data-ssel="${k}"><span class="ico">${i.emoji}</span><span class="nm">${i.name}${freshBadge(k)}</span><span class="cnt">×${inv[k]}</span><span class="pr">🪙 ${unit}</span></div>`;
+  }
+  h += '</div>';
+  if (!sellSel) return h + '<div class="sbar none">แตะของที่ต้องการขายในรายการ</div>';
+  const k = sellSel, i = itemInfo(k), m = mult(k), unit = Math.max(1, Math.round(i.sell * m)), n = inv[k], q = sellQtyOf(k);
+  const trend = (m > 1.03 ? `<span style="color:#1e8f4e">▲ ${Math.round((m - 1) * 100)}%</span>` : m < 0.97 ? `<span style="color:#c0392b">▼ ${Math.round((1 - m) * 100)}%</span>` : '') + (m < 0.5 ? ' <span style="color:#c0392b">⚠️ ตลาดอิ่มตัว รอราคากลับก่อนค่อยขาย</span>' : '');
+  return h + `<div class="sbar"><div class="sbhd"><span class="ico">${i.emoji}</span><div><div class="t">${i.name} <small>(มี ${n})</small></div><div class="s">ราคาตลาด 🪙${unit} (ปกติ ${i.sell}) ${trend}</div></div></div>`
+    + `<div class="sbstep"><button class="sbm" data-sstep="-1" aria-label="ลดจำนวน">−</button><input class="sellq" type="number" inputmode="numeric" min="1" max="${n}" step="1" value="${q}" data-sq="${k}" aria-label="จำนวนที่จะขาย ${esc(i.name)}"><button class="sbm" data-sstep="1" aria-label="เพิ่มจำนวน">+</button><span class="tot">รับ 🪙 <b data-stot>${sellQtyTotal(k)}</b></span></div>`
+    + `<div class="sbacts"><button class="btn small" data-sgo="num" data-sbtn="${k}">ขาย ${q} ชิ้น</button><button class="btn small alt" data-sgo="all" ${n < 2 ? 'disabled' : ''} title="ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20% ของราคาฐาน">ขายทั้งหมด (${n}) 🪙${sellAllNum(k)}</button></div></div>`;
+}
+function sellConfirm(k, all) { // ขั้นยืนยัน (ใช้กล่องยืนยันเดิมของเกม)
+  const i = itemInfo(k); if (!i || !(inv[k] > 0)) return;
+  const n = all ? inv[k] : sellQtyOf(k), t = all ? sellAllNum(k) : sellQtyTotal(k);
+  ask(`ขาย ${i.emoji} ${i.name} ×${n} รับ 🪙${t} ยืนยัน?`, () => send({ t: 'sell', item: k, n: all ? 'all' : n }));
+}
+function renderSellWrap(focusList) { // วาดเฉพาะรายการ+แถบล่างใหม่ (ไม่ต้องวาดร้านทั้งหน้า ตำแหน่งเลื่อนไม่หาย)
+  const w = $('shopBody').querySelector('.swrap'); if (!w) return;
+  const ls0 = w.querySelector('.slist'), top = ls0 ? ls0.scrollTop : 0;
+  w.innerHTML = sellWrapHtml(); bindSellWrap(w);
+  const l2 = w.querySelector('.slist'); if (l2) { l2.scrollTop = top; if (focusList) l2.focus({ preventScroll: true }); }
+}
+function bindSellWrap(w) {
+  const pick = k => { sellSel = k; sellQty[k] = 1; renderSellWrap(true); const r = $('shopBody').querySelector('.srow.sel'); if (r) r.scrollIntoView({ block: 'nearest' }); };
+  w.querySelectorAll('[data-ssel]').forEach(r => r.onclick = () => pick(r.dataset.ssel));
+  const list = w.querySelector('.slist');
+  if (list) list.onkeydown = e => { // PC: ↑↓ เลือกแถว • Enter ขาย (ตามจำนวนที่ตั้ง)
+    const ks = sellKeysNow.filter(k => (inv[k] || 0) > 0); if (!ks.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); const i = ks.indexOf(sellSel), j = e.key === 'ArrowDown' ? Math.min(ks.length - 1, i + 1) : Math.max(0, i < 0 ? 0 : i - 1); pick(ks[i < 0 ? 0 : j]); }
+    else if (e.key === 'Enter' && sellSel) { e.preventDefault(); e.stopPropagation(); sellConfirm(sellSel, false); }
+  };
+  w.querySelectorAll('[data-sstep]').forEach(b => b.onclick = () => { const k = sellSel; sellQty[k] = Math.max(1, Math.min(inv[k] || 1, sellQtyOf(k) + (+b.dataset.sstep))); renderSellWrap(false); });
+  w.querySelectorAll('[data-sgo]').forEach(b => b.onclick = () => sellConfirm(sellSel, b.dataset.sgo === 'all'));
+  w.querySelectorAll('[data-sq]').forEach(inp => { // พิมพ์จำนวนเอง: จำค่า อัปเดตยอด/ปุ่มทันที • Enter = ขาย
+    inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); sellConfirm(inp.dataset.sq, false); } };
+    inp.onkeyup = e => e.stopPropagation();
+    inp.oninput = () => { const k = inp.dataset.sq, v = Math.floor(+inp.value); sellQty[k] = v > 0 ? v : 1; const t = w.querySelector('[data-stot]'), b = w.querySelector('[data-sbtn]'); if (t) t.textContent = sellQtyTotal(k); if (b) b.textContent = `ขาย ${sellQtyOf(k)} ชิ้น`; };
+    inp.onfocus = () => inp.select();
+  });
+}
 function renderBankTab(el) {
   const coin = inv.coin || 0, room = Math.max(0, bankSt.cap - bankSt.bal);
   let h = `<div class="row"><span>💳 ยอดเงินฝาก</span><b>🪙 ${bankSt.bal} / ${bankSt.cap}</b></div><div class="bar"><i style="width:${Math.round(bankSt.bal / bankSt.cap * 100)}%"></i></div>`
@@ -2119,14 +2166,8 @@ function renderShop() {
   const sellKeys = showSell ? Object.keys(inv).filter(k => shopSells(shopKind, k) && itemInfo(k) && itemInfo(k).sell && !(cookTab && FISH_DISH_SELL_TAB.has(k))) : [];
   if (showSell) h += '<div class="sec">ขาย (เลือกได้ว่าจะขายอะไร)</div>';
   if (showSell && !sellKeys.length) h += '<p style="opacity:.7;margin:6px 0">ตอนนี้ในกระเป๋ายังไม่มีของที่ร้านนี้รับซื้อ 🎒 ไปเก็บเกี่ยว/ตกปลาก่อน แล้วกลับมาขายได้เลย</p>';
-  for (const k of sellKeys) {
-    const i = itemInfo(k), m = mult(k), unit = Math.max(1, Math.round(i.sell * m));
-    const trend = (m > 1.03 ? `<span style="color:#1e8f4e">▲ ${Math.round((m - 1) * 100)}%</span>` : m < 0.97 ? `<span style="color:#c0392b">▼ ${Math.round((1 - m) * 100)}%</span>` : '') + (m < 0.5 ? ' <span style="color:#c0392b">⚠️ ตลาดอิ่มตัว รอราคากลับก่อนค่อยขาย</span>' : '');
-    h += `<div class="row sellrow"><div class="sinfo"><b>${i.emoji} ${i.name} ×${inv[k]}</b>${freshBadge(k)}<small>ราคาตลาด 🪙${unit} (ปกติ ${i.sell}) ${trend}</small></div><div class="sact">`
-      + `<input class="sellq" type="number" inputmode="numeric" min="1" max="${inv[k]}" step="1" value="${sellQtyOf(k)}" data-sq="${k}" aria-label="จำนวนที่จะขาย ${esc(i.name)}">`
-      + `<button class="btn small" data-sell="${k}" data-n="num" data-sbtn="${k}">ขาย 🪙${sellQtyTotal(k)}</button>`
-      + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all" title="ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20% ของราคาฐาน">ทั้งหมด 🪙${allTotal(i, m, inv[k], k)}</button>` : '') + `</div></div>`;
-  }
+  sellKeysNow = sellKeys; if (sellSel && !sellKeys.includes(sellSel)) sellSel = null;
+  if (sellKeys.length) h += `<div class="swrap">${sellWrapHtml()}</div>`;
   if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายชนิดเดิมซ้ำๆ ราคาของคุณจะตกเร็วและฟื้นช้า (ตกเหลือต่ำสุด ~20–25% ของราคาปกติ) • ขายหมวดหนึ่งเยอะ หมวดนั้นตกเร็ว แต่หมวดอื่นฟื้นเร็วขึ้น • มีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
   if (cookTab) {
     const cdLeft = () => Math.max(0, Math.ceil((cookReadyAt - Date.now()) / 1000)), cd = cdLeft() > 0;
@@ -2182,13 +2223,7 @@ function renderShop() {
   body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook }));
   bindPet(body);
   body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: +b.dataset.n }));
-  body.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => send({ t: 'sell', item: b.dataset.sell, n: b.dataset.n === 'all' ? 'all' : sellQtyOf(b.dataset.sell) }));
-  body.querySelectorAll('[data-sq]').forEach(inp => { // ช่องใส่จำนวนที่จะขาย: จำค่าไว้ข้ามการวาดใหม่ อัปเดตยอดบนปุ่มทันที Enter = ขาย
-    inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); const b = body.querySelector(`[data-sbtn="${inp.dataset.sq}"]`); if (b) b.click(); } };
-    inp.onkeyup = e => e.stopPropagation();
-    inp.oninput = () => { const k = inp.dataset.sq, v = Math.floor(+inp.value); sellQty[k] = v > 0 ? v : 1; const b = body.querySelector(`[data-sbtn="${k}"]`); if (b) b.textContent = 'ขาย 🪙' + sellQtyTotal(k); };
-    inp.onfocus = () => inp.select();
-  });
+  { const sw = body.querySelector('.swrap'); if (sw) bindSellWrap(sw); }
   body.querySelectorAll('[data-eat]').forEach(b => b.onclick = () => send({ t: 'eat', item: b.dataset.eat }));
   body.querySelectorAll('[data-repair]').forEach(b => b.onclick = () => send({ t: 'repair', tool: b.dataset.repair }));
   body.querySelectorAll('[data-rebuy]').forEach(b => b.onclick = () => send({ t: 'rebuy', tool: b.dataset.rebuy }));

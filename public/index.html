@@ -147,16 +147,31 @@
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
   /* แถวรายการในร้าน: ซ้าย = ชื่อ/รายละเอียด • ขวา = ราคาบน ปุ่มล่าง ชิดขวา (จัดโดย tidyShopRows ใน game.js) */
   #shop .row { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:12px; align-items:center; }
-  /* แถวขายของ: ชื่อ/ราคาซ้าย • ช่องจำนวนและปุ่มขวา ความกว้างคงที่ทุกแถว (ตรงกันทั้งรายการ) */
-  #shop .sellrow { display:grid; grid-template-columns:minmax(0,1fr); row-gap:4px; align-items:center; padding:6px 0; }
-  #shop .sellrow .sinfo { min-width:0; line-height:1.3; }
-  #shop .sellrow .sinfo b { display:block; font-size:16px; }
-  #shop .sellrow .sinfo small { display:block; font-size:11px; opacity:.85; }
-  #shop .sellrow .sact { display:grid; grid-template-columns:56px minmax(0,1fr) minmax(0,1fr); gap:5px; align-items:center; justify-items:stretch; }
-  #shop .sellrow .sact .sellq { width:56px; min-height:30px; font-size:13px; padding:2px 4px; }
-  #shop .sellrow .sact .btn { min-height:30px; white-space:normal; line-height:1.1; padding:2px 6px; font-size:11.5px; }
-  #shop .sellrow .sact > input + .btn:last-child { grid-column:2 / span 2; }
-  #shop .sellrow .sinfo b { font-size:13px; }
+  /* หน้าขายแบบรายการ (Vending): แถวละ 1 ชนิด • แตะเลือก • แถบ "ที่เลือก" ด้านล่าง ตั้งจำนวน/ขายทีละชิ้นหรือทั้งหมด แล้วยืนยัน */
+  #shop .slist { border:2px solid var(--edge); background:var(--paper-l); max-height:min(34vh,270px); overflow-y:auto; overscroll-behavior:contain; outline:none; }
+  #shop .slist:focus-visible { box-shadow:0 0 0 2px var(--accent); }
+  #shop .srow { display:grid; grid-template-columns:30px minmax(0,1fr) auto auto; align-items:center; column-gap:8px; padding:5px 10px; min-height:40px; border-bottom:1px dashed var(--paper-d); cursor:pointer; }
+  #shop .srow:last-child { border-bottom:0; }
+  #shop .srow:hover { background:#ffeaba; }
+  #shop .srow.sel { background:#ffd98a; box-shadow:inset 3px 0 0 #b9791f; }
+  #shop .srow .ico { font-size:20px; text-align:center; line-height:1; }
+  #shop .srow .nm { font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #shop .srow .cnt { font-size:12px; opacity:.75; }
+  #shop .srow .pr { font-size:13.5px; font-weight:800; min-width:58px; text-align:right; white-space:nowrap; color:var(--ink); }
+  #shop .sbar { margin-top:8px; border:2px solid var(--edge); background:#fffdf5; padding:7px 9px; }
+  #shop .sbar.none { display:flex; align-items:center; justify-content:center; min-height:70px; font-size:12.5px; opacity:.65; }
+  #shop .sbhd { display:flex; align-items:center; gap:9px; }
+  #shop .sbhd .ico { font-size:28px; line-height:1; }
+  #shop .sbhd .t { font-weight:800; font-size:14px; line-height:1.2; }
+  #shop .sbhd .s { font-size:11px; opacity:.85; line-height:1.3; }
+  #shop .sbstep { display:flex; align-items:center; gap:5px; margin:7px 0 6px; }
+  #shop .sbstep .sbm { width:32px; height:32px; border:2px solid var(--edge); background:var(--paper-l); font-weight:800; font-size:17px; line-height:1; padding:0; }
+  #shop .sbstep .sellq { width:56px; min-height:32px; text-align:center; font-size:14px; font-weight:700; padding:2px 4px; border:2px solid var(--edge); background:#fff; }
+  #shop .sbstep .tot { margin-left:auto; font-size:13.5px; font-weight:800; }
+  #shop .sbacts { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  #shop .sbacts .btn { min-height:36px; white-space:normal; line-height:1.15; font-size:12.5px; padding:3px 8px; }
+  #shop .sbacts .btn.alt { background:#8a6fd1; border-bottom-color:#5d47a1; }
+  #shop .sbacts .btn:disabled { opacity:.45; }
   #shop .row > .act { display:flex; flex-direction:column; align-items:flex-end; gap:5px; max-width:60vw; }
   #shop .act .pr { font-size:15px; color:#7a4a12; white-space:nowrap; }
   #shop .act .bt { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:6px; }
