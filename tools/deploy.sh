@@ -60,7 +60,7 @@ for f in $(echo "$CHANGED" | grep -E '\.(c|m)?js$' || true); do
 done
 if [ "${DEPLOY_SKIP_TESTS:-0}" = 1 ]; then say "ข้ามเทสต์บน VPS: commit นี้ตรวจในเครื่องแล้ว (syntax ผ่านด้านบน)"
 elif ! "$TMP/tools/run-tests.sh" "$TMP" > "$TMP/.tests.out" 2>&1; then cat "$TMP/.tests.out"; FAIL=1
-else say "เทสต์ผ่านทั้งหมด (ขนาน ~30 วินาที)"; fi
+else say "เทสต์ผ่านทั้งหมด (ขนาน)"; fi
 [ "$FAIL" = 0 ] || { say "หยุด: เทสต์ไม่ผ่าน เกมจริงไม่ถูกแตะ"; exit 1; }
 [ "$CHECK_ONLY" = 1 ] && { say "--check: จบที่ทดสอบ"; exit 0; }
 

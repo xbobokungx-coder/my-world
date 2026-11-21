@@ -136,7 +136,7 @@ const say = (p, text) => { p.lastChat = 0; w.handle(p, { t: 'chat', text }); };
 
   // ---- 6) ผ่าน WebSocket จริง: non-admin เรียก admin ไม่ได้ • admin mute/ban/ปิดรายงาน ----
   {
-    const PORT = 3900 + Math.floor(Math.random() * 90), DD = require('./testlib').tmpDataDir('mw-mod2-');
+    const PORT = +process.env.MW_TEST_PORT || 3900 + Math.floor(Math.random() * 90), DD = require('./testlib').tmpDataDir('mw-mod2-');
     const srv = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), DATA_DIR: DD, ADMIN_KEY: 'test-admin-key' }), stdio: ['ignore', 'ignore', 'inherit'] });
     const WebSocket = require('ws'); let n = 0;
     const open = (name, extra) => new Promise((res, rej) => { const msgs = [], ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`, { headers: { 'x-forwarded-for': '9.9.9.' + (++n) } }); ws.on('open', () => ws.send(JSON.stringify(Object.assign({ t: 'join', name, color: '#3498db', pin: '4321' }, extra)))); ws.on('message', d => { try { msgs.push(JSON.parse(d)); } catch (e) {} }); ws.on('error', rej); setTimeout(() => res({ ws, msgs, send: o => ws.send(JSON.stringify(o)) }), 800); });

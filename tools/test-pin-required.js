@@ -1,7 +1,7 @@
 // ทดสอบ PIN บังคับ (WP-02): ชื่อใหม่ต้องตั้ง PIN • ชื่อเดิมที่ยังไม่มี PIN ต้องตั้งตอนเข้า • PIN ผิดโดนล็อก • PIN ถูกเข้าได้ : node tools/test-pin-required.js
 const assert = require('assert'), { spawn } = require('child_process'), path = require('path'), fs = require('fs');
 const WebSocket = require('ws');
-const PORT = 3800 + Math.floor(Math.random() * 90), DATA = require('./testlib').tmpDataDir('mw-pinreq-');
+const PORT = +process.env.MW_TEST_PORT || 3800 + Math.floor(Math.random() * 90), DATA = require('./testlib').tmpDataDir('mw-pinreq-');
 // บัญชีเก่า (ก่อนบังคับ PIN) ที่ไม่มี PIN: เขียนเซฟไว้ก่อนเปิดเซิร์ฟเวอร์
 fs.writeFileSync(path.join(DATA, 'main.json'), JSON.stringify({ players: { oldtimer: { name: 'OldTimer', inv: { coin: 123 }, skills: {}, joins: 5, x: 22 * 32, y: 22 * 32 } } }));
 const srv = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), DATA_DIR: DATA, ADMIN_KEY: 'test-admin-key' }), stdio: ['ignore', 'ignore', 'inherit'] });

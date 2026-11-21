@@ -4,12 +4,13 @@
 ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"; JOBS="${JOBS:-4}"
 cd "$ROOT" || exit 1
 OUT=$(mktemp -d); PAR=(); SER=()
+# ขนาน: แยกโฟลเดอร์ข้อมูลแล้ว • เทสต์ที่เปิด server ของตัวเองรับพอร์ตไม่ซ้ำจาก MW_TEST_PORT (กันชนกัน)
 for f in tools/test-*.js; do if grep -q "DATA_DIR" "$f"; then PAR+=("$f"); else SER+=("$f"); fi; done
-run() { local n; n=$(echo "$1" | tr '/' '_'); if node "$1" >"$OUT/$n.log" 2>&1; then echo ok >"$OUT/$n.res"; else echo "FAIL $1" >"$OUT/$n.res"; fi; }
-for f in "${PAR[@]}"; do run "$f" & while [ "$(jobs -p | wc -l)" -ge "$JOBS" ]; do sleep 0.2; done; done
+run() { local n; n=$(echo "$1" | tr '/' '_'); if MW_TEST_PORT=$((4200 + $2)) node "$1" >"$OUT/$n.log" 2>&1; then echo ok >"$OUT/$n.res"; else echo "FAIL $1" >"$OUT/$n.res"; fi; }
+i=0; for f in "${PAR[@]}"; do i=$((i+1)); run "$f" $i & while [ "$(jobs -p | wc -l)" -ge "$JOBS" ]; do sleep 0.2; done; done
 wait
 export DATA_DIR="$OUT/.serial-data"; mkdir -p "$DATA_DIR"
-for f in "${SER[@]}"; do run "$f"; done
+for f in "${SER[@]}"; do i=$((i+1)); run "$f" $i; done
 fail=0; total=0
 for r in "$OUT"/*.res; do total=$((total+1)); if [ "$(cat "$r")" != ok ]; then fail=1; name=$(sed 's/^FAIL //' "$r"); echo "TEST FAIL: $name"; tail -15 "${r%.res}.log"; fi; done
 rm -rf "$OUT"

@@ -1,7 +1,7 @@
 // ทดสอบล็อกอินซ้ำ: เตะ session เก่าออกแล้วเข้าใหม่ได้ทันที (ซ็อกเก็ตจริง): node tools/test-relogin.js
 const assert = require('assert'), { spawn } = require('child_process'), path = require('path');
 const WebSocket = require('ws');
-const PORT = 3900 + Math.floor(Math.random() * 90), DATA = require('./testlib').tmpDataDir('mw-relogin-');
+const PORT = +process.env.MW_TEST_PORT || 3900 + Math.floor(Math.random() * 90), DATA = require('./testlib').tmpDataDir('mw-relogin-');
 const srv = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), DATA_DIR: DATA, ADMIN_KEY: 'test-admin-key' }), stdio: 'ignore' });
 const done = code => { try { srv.kill(); } catch (e) {} setTimeout(() => process.exit(code), 100); };
 process.on('uncaughtException', e => { console.error(e); done(1); });
