@@ -4407,7 +4407,8 @@ function drawPet(q, now, ctx = mainCtx) { // แมว (นั่งเมื่
   const ph = Math.sin(q.anim * (cat ? 9 : 11)), wag = Math.floor(now / (cat ? 700 : 220)) % 2;
   PixelUI.animal(ctx, type, q, { f: q.dx || 1, step: idle ? wag : (ph > 0 ? 1 : 0), blink: blinkOf(q, now), idle });
 }
-const PET_TOP = { dog: 14, cat: 12, bird: 20, monkey: 18, capy: 18 }; // ความสูงจากพื้นถึงหัว ใช้วางชื่อ/อีโมจิ
+const PET_TOP = { dog: 14, cat: 12, bird: 20, monkey: 18, capy: 24 }; // ความสูงจากพื้นถึงหัว ใช้วางชื่อ/อีโมจิ
+const capyImg = new Image(); capyImg.src = 'pack/capybara.png'; // คาปิบาร่า PixelLab (public/pack/capybara.png)
 function drawCompanionBody(q, now, ctx = mainCtx) { // ตัวสัตว์อย่างเดียว (ไม่มีชื่อ/อีโมจิ) คืนระยะที่ตัวลอยจากพื้น (ติดลบ = ลอยขึ้น) ไว้วางของประดับ
   let dy = 0;
   if (q.kind === 'bird') {
@@ -4436,6 +4437,10 @@ function drawCompanionBody(q, now, ctx = mainCtx) { // ตัวสัตว์�
       const s1 = walk ? Math.round(ph * 2) : 0;
       R(O, -4, 3, 3, 4); R('#6b4423', -3 + s1, 3, 2, 3); R(O, 1, 3, 3, 4); R('#6b4423', 2 - s1, 3, 2, 3);      // ขา
       R('#7a4d28', 3, -3, 3, 2);                                                                              // แขน
+    } else if (capyImg.complete && capyImg.naturalWidth) { // สไปรต์ PixelLab (21 พ.ย. 2026): 32×32 หันขวา เท้าอยู่แถว 29 • ถ้ายังโหลดไม่เสร็จใช้ภาพโค้ดสำรองด้านล่าง
+      const sq = walk ? 1 + Math.abs(ph) * 0.04 : 1; // เดินแล้วตัวยืด/หดนิดๆ ให้ดูมีชีวิต
+      ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(Math.round(q.x), Math.round(y0 + 8)); ctx.scale(f < 0 ? -1 : 1, 1 / sq);
+      ctx.drawImage(capyImg, -16, -30, 32, 32 * 1); ctx.restore();
     } else {
       const B = ['#5f3f22', '#7d5430', '#a06f40', '#c08a52', '#dcaa6e'], NOSE = '#4a3020', PINK = '#d98a6a';
       const row = (c, y, x0, x1) => R(c, x0, y, x1 - x0 + 1, 1);
@@ -4466,7 +4471,7 @@ function drawCompanionBody(q, now, ctx = mainCtx) { // ตัวสัตว์�
 // ---- สัตว์เลี้ยงตามระดับ 1–5: วาดลงแคนวาสแยก 1× แล้วขยายแบบไม่เบลอ ยึดที่เท้า + ของประดับ (L2 ปลอกคอ L3 ผ้าพันคอ L4 กระดิ่ง L5 มงกุฎดอกไม้+ประกาย สะสมขึ้นไป) ----
 const PETLV_W = 96, PETLV_H = 80, PETLV_FX = 48, PETLV_FY = 64;
 let petLvCv = null;
-const PET_NECK = { dog: [5, -5, 9, -11], cat: [4, -6, 6, -14], catIdle: [-2, -6, -2, -14], bird: [4, -2, 6, -7], monkey: [3, -5, 6, -14], capy: [9, -3, 14, -13] }; // [คอ x, คอ y, ยอดหัว x, ยอดหัว y] เทียบเท้า ทิศหน้า = +x
+const PET_NECK = { dog: [5, -5, 9, -11], cat: [4, -6, 6, -14], catIdle: [-2, -6, -2, -14], bird: [4, -2, 6, -7], monkey: [3, -5, 6, -14], capy: [2, -8, 8, -15] }; // [คอ x, คอ y, ยอดหัว x, ยอดหัว y] เทียบเท้า ทิศหน้า = +x
 function petLvScale(q) { const P = Shared.PETLV, lv = Math.max(1, Math.min(P.scale.length, q.lv | 0 || 1)), s = P.scale[lv - 1]; return q.boat ? Math.min(s, P.seaMax) : s; }
 function drawPetGear(g, q, now, lv, dy) { // ของประดับลงแคนวาสแยก (1×) ที่ตำแหน่งหัว/คอของสัตว์แต่ละชนิด
   const key = q.kind === 'cat' && !q.moving ? 'catIdle' : q.kind, A = PET_NECK[key] || PET_NECK.dog, f = q.dx || 1, fx = Math.round(q.x), fy = Math.round(q.y), oy = Math.round(dy);
