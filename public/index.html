@@ -394,7 +394,7 @@
   body.touch .btn { min-height:40px; }
   body.touch #mini { right:calc(8px + var(--sar)); top:calc(8px + var(--sat)); }
   body.touch #chat { width:min(calc(100vw - 150px), 320px); }
-  body.touch #hudTop { top:calc(8px + var(--sat)); left:calc(8px + var(--sal)); right:calc(8px + var(--sar)); gap:6px; }
+  body.touch #hudTop { top:calc(8px + var(--sat)); left:calc(8px + var(--sal)); right:calc(min(40vw,150px) + 16px + var(--sar)); gap:6px; }
   body.touch #hudTop .panel { font-size:14px; padding:4px 10px; }
   body.touch #hudTop .btn { padding:6px 12px; font-size:16px; }
   body.touch #inv { display:none; top:calc(60px + var(--sat)); right:calc(8px + var(--sar)); font-size:15px; max-width:200px; }

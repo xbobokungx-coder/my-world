@@ -4653,7 +4653,7 @@ function makeMiniBase() {
 }
 function layoutHud() { // แผนที่อยู่มุมบนขวาสุด แถบปุ่มด้านบนเว้นที่ให้ ไม่ทับกัน • คู่มือ/แชทอยู่ใต้แถบปุ่ม
   const mw = $('mini').classList.contains('hidden') ? 0 : $('mini').offsetWidth;
-  $('hudTop').style.right = `calc(${mw ? mw + 24 : 8}px + var(--sar, 0px))`;
+  if (!isTouch) $('hudTop').style.right = `calc(${mw ? mw + 24 : 8}px + var(--sar, 0px))`; // มือถือ: เว้นที่แผนที่ด้วย CSS ที่กว้างคงที่ (ไม่ขึ้นกับนาฬิกาที่เปลี่ยนความกว้าง)
   const top = Math.round($('hudTop').getBoundingClientRect().bottom + 6);
   $('guide').style.top = top + 'px';
   if (isTouch) {
@@ -4682,7 +4682,7 @@ $('miniSize').onclick = () => setMini(miniState === 'big' ? 'small' : 'big');
 $('miniMap').onclick = () => setMini(miniState === 'big' ? 'small' : 'big');
 $('miniHide').onclick = () => setMini(miniState === 'off' ? 'small' : 'off');
 addEventListener('resize', () => { sizeMini(); layoutHud(); });
-if (window.ResizeObserver) new ResizeObserver(layoutHud).observe($('hudTop'));
+if (window.ResizeObserver) { const ro = new ResizeObserver(layoutHud); ro.observe($('hudTop')); ro.observe($('mini')); } // แผนที่ย่อเปลี่ยนความกว้างตามนาฬิกา/สถานะ → จัดแถบบนใหม่ให้เว้นที่ไว้ ไม่ทับกัน
 let lastMini = 0;
 const bldDoor = k => { const b = BUILDINGS.find(q => q.kind === k); return b && b.counter[0] ? [b.counter[0][0], b.counter[0][1] + 1] : null; }; // หน้าประตูร้านชนิด k (ตามผังจริง)
 const treeNear = { at: 0, p: null };
