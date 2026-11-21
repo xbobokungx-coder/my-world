@@ -2007,7 +2007,11 @@ const SHOP_TABS = { // ทุกร้านที่มีซื้อขาย
   wood: [['gear', '🧰 อุปกรณ์'], ['craft', '🔨 สร้าง'], ['sell', '💰 ขาย']], mine: [['gear', '🧰 อุปกรณ์'], ['forge', '🔥 หลอม'], ['mat', '🧱 วัสดุ'], ['sell', '💰 ขาย']], // WP-30: mine += หลอม + วัสดุ
   furn: [['buy', '🛒 ซื้อ'], ['sell', '💰 ขาย']] };
 // ของแต่ละชิ้นอยู่แท็บไหนของร้าน (ซื้อ = สินค้า/วัตถุดิบ/สัตว์ • อุปกรณ์ = เครื่องมือ บัวรดน้ำ อาหารสัตว์ ยา)
-const buyTabOf = (kind, k) => kind === 'farm' ? (k.startsWith('seed_') ? 'buy' : 'gear') : kind === 'fish' ? (k.startsWith('bait') ? 'buy' : 'gear') : kind === 'animal' ? (itemInfo(k).animal ? 'buy' : 'gear') : kind === 'wood' ? 'gear' : kind === 'mine' ? (k.startsWith('bar_') ? 'mat' : 'gear') : kind === 'food' && k.startsWith('pan_') ? 'gear' : 'buy'; // WP-30: bar_* ไปแท็บ 🧱 วัสดุ
+let buyTabOf = (kind, k) => kind === 'farm' ? (k.startsWith('seed_') ? 'buy' : 'gear') : kind === 'fish' ? (k.startsWith('bait') ? 'buy' : 'gear') : kind === 'animal' ? (itemInfo(k).animal ? 'buy' : 'gear') : kind === 'wood' ? 'gear' : kind === 'mine' ? (k.startsWith('bar_') ? 'mat' : 'gear') : kind === 'food' && k.startsWith('pan_') ? 'gear' : 'buy'; // WP-30: bar_* ไปแท็บ 🧱 วัสดุ
+// อุปกรณ์คราฟ (ระดับ 8–10 ใช้วัสดุ) แยกเป็นแท็บ "🔨 คราฟ" ของแต่ละร้านที่มี • ไม่ปนกับอุปกรณ์/สินค้าทั่วไป
+const isGearCraft = k => { const m = /^(pick|axe|rod|hoe|pail|pan|can)_(\d+)$/.exec(k); return !!m && +m[2] >= 8 && !!Shared.gearBars(k); };
+const buyTabOfBase = buyTabOf; buyTabOf = (kind, k) => isGearCraft(k) ? 'gcraft' : buyTabOfBase(kind, k);
+for (const kd of Object.keys(SHOP_TABS)) { const sh0 = Shared.SHOPS[kd], tb = SHOP_TABS[kd]; if (sh0 && sh0.buy.some(isGearCraft)) { const gi = tb.findIndex(t => t[0] === 'gear'); tb.splice(gi >= 0 ? gi + 1 : 1, 0, ['gcraft', '💎 คราฟ']); } }
 let furnSub = 'living';
 const FURN_SUBS = [['living', '🛋️ นั่งเล่น'], ['bedroom', '🛏️ ห้องนอน'], ['kitchen', '🍳 ห้องครัว'], ['study', '📚 โชว์/ทำงาน'], ['decor', '🖼️ ตกแต่ง'], ['divider', '🪟 ฉากกั้น']];
 const furnCatOf = k => (FURN[k.slice(5)] || {}).cat; // หมวดของที่ร้านเฟอร์นิเจอร์ (ดูจาก cat ใน FURN)
@@ -2159,11 +2163,11 @@ function renderShop() {
   let h = tabs ? `<div class="tabs">${tabs.map(([c, n]) => `<button class="tab${farmTab === c ? ' on' : ''}" data-ftab="${c}">${n}</button>`).join('')}</div>` : '';
   if (shopKind === 'furn' && farmTab === 'buy') h += `<div class="tabs">${FURN_SUBS.map(([c, n]) => `<button class="tab${furnSub === c ? ' on' : ''}" data-fsub="${c}">${n}</button>`).join('')}</div>`;
   const rentPos = h.length; // แปลงเช่า (แท็บอุปกรณ์ของร้านเมล็ดพันธุ์) แทรกไว้บนสุดให้เห็นชัด ไม่ต้องเลื่อนหา
-  h += sellTab || cookTab || craftTab || makeTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากเลเวลต่ำ → สูง)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : tabs && farmTab === 'gear' ? '🛒 อุปกรณ์ ซื้อด้วยเหรียญได้เลย <small style="font-weight:normal;opacity:.7">(จ่ายเหรียญอย่างเดียว ไม่ต้องมีวัสดุ)</small>' : 'ซื้อ') + '</div>';
+  h += sellTab || cookTab || craftTab || makeTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากเลเวลต่ำ → สูง)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : tabs && farmTab === 'gcraft' ? '🔨 อุปกรณ์คราฟ (ระดับ 8–10) <small style="font-weight:normal;opacity:.7">ซื้อเต็มราคา หรือใช้วัสดุแลกลดราคา</small>' : tabs && farmTab === 'gear' ? '🛒 อุปกรณ์ ซื้อด้วยเหรียญได้เลย <small style="font-weight:normal;opacity:.7">(จ่ายเหรียญอย่างเดียว ไม่ต้องมีวัสดุ)</small>' : 'ซื้อ') + '</div>';
   let keys = sellTab || cookTab || craftTab || makeTab ? [] : tabs ? sh.buy.filter(k => buyTabOf(shopKind, k) === farmTab && (shopKind !== 'furn' || furnCatOf(k) === furnSub)) : sh.buy;
   const profitRank = seedTab ? keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a)) : [];
   if (seedTab) keys = keys.slice().sort((a, b) => CROPS[a.slice(5)].lv - CROPS[b.slice(5)].lv || CROPS[a.slice(5)].sell - CROPS[b.slice(5)].sell);
-  let freeHdr = false; const buyList = [], craftList = []; const splitCraft = !!(tabs && farmTab === 'gear'); // แท็บอุปกรณ์: อุปกรณ์ที่ใช้วัสดุคราฟ (ระดับ 8–10) แยกเป็นอีกหมวดใต้รายการซื้อธรรมดา ใช้กับทุกร้านที่มีอุปกรณ์แบบนี้ (ช่างเหมือง/ตกปลา/เมล็ดพันธุ์/ปศุสัตว์/อาหาร/ช่างไม้)
+  let freeHdr = false; const buyList = [], craftList = []; const splitCraft = false; // แท็บอุปกรณ์: อุปกรณ์ที่ใช้วัสดุคราฟ (ระดับ 8–10) แยกเป็นอีกหมวดใต้รายการซื้อธรรมดา ใช้กับทุกร้านที่มีอุปกรณ์แบบนี้ (ช่างเหมือง/ตกปลา/เมล็ดพันธุ์/ปศุสัตว์/อาหาร/ช่างไม้)
   for (const k of keys) {
     const i = itemInfo(k), locked = i.lv && lvl(i.skill) < i.lv, coin = inv.coin || 0;
     let sub = '';
