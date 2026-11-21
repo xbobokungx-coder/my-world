@@ -71,11 +71,6 @@ const toolLocked = t => (t === 'axe' && !axeLevel()) || (t === 'pick' && !pickLe
 
 // ---------- login ----------
 let color = ls.get('mw_color') || PALETTE[Math.floor(Math.random() * 8)];
-PALETTE.forEach(c => {
-  const d = document.createElement('div'); d.className = 'sw' + (c === color ? ' sel' : ''); d.style.background = c;
-  d.onclick = () => { color = c; ls.set('mw_color', c); document.querySelectorAll('#swatches .sw').forEach(s => s.classList.toggle('sel', s === d)); };
-  $('swatches').appendChild(d);
-});
 $('name').value = ls.get('mw_name') || '';
 const joinGame = () => {
   const name = $('name').value.trim();
