@@ -864,7 +864,7 @@ $('questClose').onclick = closeQuest;
 $('quest').addEventListener('pointerdown', e => { if (e.target === $('quest')) closeQuest(); });
 function renderQuestPanel() {
   const st = questSt.starter, showStart = !!(st && (!st.final || (st.c2 && !st.c2.final)));
-  const tabs = (showStart ? [['start', '🌱 เริ่มต้น']] : []).concat(questSt.wk1 ? [['wk1', '🗓️ สัปดาห์แรก']] : []).concat([['daily', '📋 เควสวันนี้'], ['ch', '🪣 ชาเลนจ์'], ['pts', '💛 แต้ม/บัฟ']]);
+  const tabs = (showStart ? [['start', '🌱 เริ่มต้น']] : []).concat(questSt.wk1 ? [['wk1', '🗓️ สัปดาห์แรก']] : []).concat([['daily', '📋 เควสวันนี้'], ['pts', '💛 แต้ม/บัฟ']]);
   if (!tabs.some(t => t[0] === questTab)) questTab = 'daily';
   $('questTabs').innerHTML = tabs.map(([c, n]) => `<button class="tab${questTab === c ? ' on' : ''}" data-qtab="${c}">${n}</button>`).join('');
   $('questTabs').querySelectorAll('[data-qtab]').forEach(b => b.onclick = () => { questTab = b.dataset.qtab; renderQuestPanel(); });
