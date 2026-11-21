@@ -2826,6 +2826,18 @@ function uSeatOrder(players) { // ที่นั่ง: ตัวเราอ�
   const i = players.findIndex(p => p.id === myId); if (i < 0) return players.slice();
   return players.slice(i).concat(players.slice(0, i));
 }
+function uArrows(n, dir) { // ลูกศรบนวงโต๊ะระหว่างที่นั่ง ชี้ตามทิศที่เกมเดินอยู่ (ไล่แสงทีละลูกให้เห็นทิศ)
+  if (n < 2) return '';
+  let h = '';
+  for (let k = 0; k < n; k++) {
+    const a = Math.PI / 2 + (k + 0.5) * 2 * Math.PI / n;
+    const x = 50 + 41 * Math.cos(a), y = 50 + 35 * Math.sin(a);
+    const vx = dir * -41 * Math.sin(a) * 5.6, vy = dir * 35 * Math.cos(a) * 3.3; // ทิศวงรอบ (px โดยประมาณ)
+    const deg = Math.atan2(vy, vx) * 180 / Math.PI;
+    h += `<span class="uArr" style="left:${x}%;top:${y}%;transform:translate(-50%,-50%) rotate(${deg}deg);animation-delay:${(k * 0.18).toFixed(2)}s">➤</span>`;
+  }
+  return h;
+}
 function uTableHtml(t, S0, waiting) { // โต๊ะวงกลม: ที่นั่งรอบโต๊ะ กองจั่ว กองทิ้ง ทิศทาง
   const seats = uSeatOrder(S0.players), n = Math.max(1, seats.length); uPos = {};
   const pos = seats.map((q, k) => { const a = (Math.PI / 2) + k * 2 * Math.PI / n; return [50 + 41 * Math.cos(a), 50 + 35 * Math.sin(a)]; });
@@ -2842,7 +2854,8 @@ function uTableHtml(t, S0, waiting) { // โต๊ะวงกลม: ที่�
   if (waiting) return `<div class="uT">${seatHtml}<div class="uWait">รอผู้เล่น</div></div>`;
   const myTurn = t.state === 'playing' && t.cur === myId && t.drawn < 0;
   return `<div class="uT" id="uTable"><div class="uFelt"></div>`
-    + `<div class="uDir${S0.dir === -1 ? ' rev' : ''}">${S0.dir === -1 ? '↺' : '↻'}</div>`
+    + `<div class="uDir">${S0.dir === -1 ? '↺ ทวนเข็ม' : '↻ ตามเข็ม'}</div>`
+    + uArrows(seats.length, S0.dir)
     + `<button class="uDeck" style="left:${U_DECK[0]}%;top:${U_DECK[1]}%" data-arc="draw" ${myTurn ? '' : 'disabled'} aria-label="จั่วไพ่">🎴</button>`
     + `<div class="uDisc" style="left:${U_DISC[0]}%;top:${U_DISC[1]}%"><span class="uc c${S0.top[0]} big">${cardLabel(S0.top)}</span></div>`
     + `<div class="uColor" style="background:${UCOL[S0.color] || '#999'}" title="สีที่ต้องลง"></div>`
