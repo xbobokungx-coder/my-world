@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ตัวอย่างหน้าซื้อของ (ร่าง)</title>
+<style>
+  :root { --ink:#4a3322; --paper:#f3e0b6; --paper-l:#fff4d6; --paper-d:#d9bd86; --edge:#2a1b14; --accent:#e8a33d; --accent-d:#b9791f; --good:#1e8f4e; --bad:#c0392b; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; min-height:100vh; background:#2d4a2b; color:var(--ink); font-family:"Noto Sans Thai","Leelawadee UI","Thonburi",Tahoma,sans-serif; display:flex; flex-direction:column; align-items:center; padding:12px; gap:10px; }
+  .toolbar { display:flex; gap:8px; align-items:center; color:#fff3cf; font-size:13px; flex-wrap:wrap; justify-content:center; }
+  .toolbar button { border:2px solid var(--edge); background:var(--paper-l); padding:4px 12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .toolbar button.on { background:var(--accent); color:#fff; }
+  .frame { width:440px; max-width:100%; }
+  .frame.phone { width:375px; }
+  .panel { background:var(--paper); border:3px solid var(--edge); box-shadow:inset 0 3px 0 var(--paper-l), inset 0 -4px 0 var(--paper-d), 4px 4px 0 rgba(42,27,20,.4); padding:14px; }
+  h2 { margin:0 0 6px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  .close { background:var(--accent); border:2px solid var(--edge); border-bottom-width:4px; padding:2px 12px; font-weight:700; color:#fff; font-size:14px; }
+  .info { font-size:12px; opacity:.8; margin-bottom:8px; }
+  .tabs { display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+  .tab { border:2px solid var(--edge); background:var(--paper-l); padding:4px 10px; font-weight:700; font-size:13px; cursor:pointer; }
+  .tab.on { background:var(--accent); color:#fff; }
+  .list { border:2px solid var(--edge); background:var(--paper-l); max-height:290px; overflow-y:auto; }
+  .row { display:grid; grid-template-columns:28px minmax(0,1fr) auto auto; align-items:center; column-gap:8px; padding:5px 10px; min-height:42px; border-bottom:1px dashed var(--paper-d); cursor:pointer; }
+  .row:last-child { border-bottom:0; }
+  .row:hover { background:#ffeaba; }
+  .row.sel { background:#ffd98a; box-shadow:inset 3px 0 0 var(--accent-d); }
+  .row.off { opacity:.55; }
+  .ico { font-size:20px; text-align:center; line-height:1; }
+  .nm { font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .nm small { font-weight:600; opacity:.85; margin-left:4px; }
+  .have { font-size:11.5px; opacity:.75; white-space:nowrap; }
+  .pr { font-size:13.5px; font-weight:800; min-width:56px; text-align:right; white-space:nowrap; }
+  .sec { font-size:12px; font-weight:800; padding:4px 10px; background:var(--paper-d); }
+  .sbar { margin-top:8px; border:2px solid var(--edge); background:#fffdf5; padding:8px 10px; min-height:96px; }
+  .sbar.none { display:flex; align-items:center; justify-content:center; font-size:12.5px; opacity:.65; }
+  .hd { display:flex; align-items:center; gap:9px; }
+  .hd .ico { font-size:28px; }
+  .hd .t { font-weight:800; font-size:14px; line-height:1.2; }
+  .hd .s { font-size:11.5px; opacity:.85; line-height:1.35; }
+  .chips { display:flex; flex-wrap:wrap; gap:4px; margin:5px 0 0; }
+  .chip { font-size:11px; font-weight:700; padding:1px 7px; border:2px solid var(--edge); background:#fff; }
+  .chip.ok { background:#d7f3de; } .chip.no { background:#ffd9d3; }
+  .step { display:flex; align-items:center; gap:5px; margin:7px 0 6px; flex-wrap:wrap; }
+  .step .m { width:32px; height:32px; border:2px solid var(--edge); background:var(--paper-l); font-weight:800; font-size:16px; line-height:1; padding:0; cursor:pointer; }
+  .step input { width:54px; height:32px; border:2px solid var(--edge); text-align:center; font:inherit; font-weight:700; background:#fff; }
+  .step .q { border:2px solid var(--edge); background:var(--paper-l); font-size:11.5px; font-weight:700; padding:3px 7px; min-height:32px; cursor:pointer; font-family:inherit; }
+  .step .tot { margin-left:auto; font-size:13.5px; font-weight:800; text-align:right; line-height:1.2; }
+  .step .tot small { display:block; font-weight:600; opacity:.75; font-size:11px; }
+  .bad { color:var(--bad); }
+  .btn { background:var(--accent); border:2px solid var(--edge); border-bottom-width:4px; color:#fff; font-weight:700; min-height:38px; font-size:13px; padding:2px 8px; cursor:pointer; font-family:inherit; width:100%; }
+  .btn.lock { background:#9aa0a6; border-bottom-color:#6f757b; }
+  .btn:active { transform:translateY(2px); border-bottom-width:2px; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .confirm { display:none; border:2px solid var(--accent-d); background:#fff0c9; padding:8px 10px; margin-top:8px; font-size:13px; }
+  .confirm.show { display:block; }
+  .confirm .acts { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
+  .confirm .btn.muted { background:#9aa0a6; border-bottom-color:#6f757b; }
+  .note { font-size:11.5px; color:#fff3cf; max-width:440px; line-height:1.55; opacity:.92; }
+  .toast { position:fixed; left:50%; top:10px; transform:translateX(-50%); background:rgba(35,22,14,.88); color:#fff3cf; padding:6px 14px; border-radius:12px; font-size:13px; font-weight:700; opacity:0; transition:opacity .25s; pointer-events:none; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <span>ร้าน:</span><button data-shop="fish" class="on">🎣 ตกปลา (เหยื่อ)</button><button data-shop="seed">🌱 เมล็ดพันธุ์</button><button data-shop="gear">🧰 อุปกรณ์ (คราฟ)</button>
+  <span>ดูเป็น:</span><button id="vPc" class="on">💻 PC</button><button id="vPhone">📱 มือถือ</button><button id="reset">↺ เริ่มใหม่</button>
+</div>
+<div class="frame" id="frame">
+  <div class="panel">
+    <h2><span id="title">🎣 ร้านตกปลา</span><button class="close">ปิด</button></h2>
+    <div class="info">ชาวประมง เลเวล <b id="lv">3</b> • 🪙 <b id="coin">320</b></div>
+    <div class="tabs"><span class="tab on">🛒 ซื้อ</span><span class="tab">🧰 อุปกรณ์</span><span class="tab">💰 ขาย</span></div>
+    <div class="list" id="list"></div>
+    <div class="sbar none" id="bar">แตะของที่ต้องการซื้อ เพื่อดูรายละเอียด</div>
+    <div class="confirm" id="confirm"></div>
+  </div>
+</div>
+<div class="note" id="note"></div>
+<div class="toast" id="toast"></div>
+<script>
+// ข้อมูลตัวอย่าง (ของจริงมาจาก SHOPS/itemInfo + inv ของผู้เล่น)
+const SHOPS = {
+  fish: { title:'🎣 ร้านตกปลา', skill:'ชาวประมง', lv:3, items:[
+    { k:'bait', ico:'🪱', name:'เหยื่อตกปลา', price:2, have:10, info:'เหยื่อพื้นฐาน ใส่คันเบ็ดแล้วตกปลาได้ปกติ', note:'มักซื้อชุดใหญ่ไว้ใช้ต่อเนื่อง' },
+    { k:'shrimp', ico:'🦐', name:'เหยื่อกุ้งฝอยสด', price:6, have:13, lv:4, info:'ปลาติดง่ายขึ้น ได้ปลากลุ่มกลางบ่อย', note:'ใช้ตกปลาในทะเลสาบได้ดี' },
+    { k:'gold', ico:'✨', name:'เหยื่อปลอมทองคำ', price:25, have:10, lv:6, info:'โอกาสปลาหายากสูงขึ้น', note:'เปิดให้ซื้อเมื่อเลเวล 6' },
+    { k:'net', ico:'🕸️', name:'แห (ครั้งเดียว)', price:120, have:0, once:true, info:'ซื้อครั้งเดียวใช้ได้ตลอด วางแหเก็บปลาเองได้', note:'' },
+  ]},
+  seed: { title:'🌱 ร้านเมล็ดพันธุ์', skill:'ชาวนา', lv:5, items:[
+    { sec:'✅ ปลูกได้ทุกฤดู (Lv ≤ 3)' },
+    { k:'carrot', ico:'🥕', name:'เมล็ดแครอท', price:5, have:5, info:'เก็บเกี่ยวใน 3 นาที กำไร 9/ต้น (3.0/นาที) ⭐ ดี', note:'' },
+    { k:'cabbage', ico:'🥬', name:'เมล็ดกะหล่ำปลี', price:8, have:0, info:'เก็บเกี่ยวใน 4 นาที กำไร 14/ต้น (3.5/นาที) ⭐ ดี', note:'' },
+    { sec:'🌦️ ปลูกตามฤดู' },
+    { k:'corn', ico:'🌽', name:'เมล็ดข้าวโพด', price:14, have:2, info:'🌞 ฤดูร้อน • ตอนนี้ปลูกได้ ราคาดี 🌟', note:'' },
+    { k:'tomato', ico:'🍅', name:'เมล็ดมะเขือเทศ', price:12, have:0, info:'🍂 นอกฤดู — ซื้อเก็บไว้ได้ ปลูกได้อีก 1 ชม. 20 นาที', note:'', warn:true },
+    { k:'grape', ico:'🍇', name:'เมล็ดองุ่น', price:60, have:3, lv:9, info:'ปลดล็อกที่ชาวนา Lv 9', note:'' },
+  ]},
+  gear: { title:'🧰 อุปกรณ์ (ตัวอย่างขวาน)', skill:'ช่างไม้', lv:5, items:[
+    { k:'axe3', ico:'🪓', name:'ขวานระดับ 3', price:90, have:0, once:true, info:'ตัดไม้ได้เร็วขึ้น • ระดับ 3/10', note:'' },
+    { k:'axe4', ico:'🪓', name:'ขวานระดับ 4', price:140, have:0, once:true, owned:true, info:'มีที่ดีกว่าแล้ว ✅', note:'' },
+    { sec:'🔨 อุปกรณ์คราฟ (ระดับ 8–10 ใช้วัสดุ)' },
+    { k:'axe8', ico:'🪓', name:'ขวานระดับ 8', price:1800, have:0, once:true, lv:5, craft:{ full:1800, pay:1260, mats:[['🔩 เหล็ก',2,2],['💎 ทับทิม',0,1]] }, info:'ราคาเต็ม 🪙1,800 • หักวัสดุที่มี −🪙540 • จ่ายจริง 🪙1,260', note:'' },
+  ]},
+};
+let shop = 'fish', coin = 320, sel = null, qty = 1;
+const $ = id => document.getElementById(id);
+const S = () => SHOPS[shop];
+const lvOk = it => !it.lv || S().lv >= it.lv;
+const stateOff = it => it.owned || (it.once && it.have > 0) || !lvOk(it);
+const unit = it => it.craft ? it.craft.pay : it.price;
+function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('show'), 2200); }
+function renderList() {
+  $('list').innerHTML = S().items.map(it => {
+    if (it.sec) return `<div class="sec">${it.sec}</div>`;
+    const off = stateOff(it);
+    return `<div class="row${sel === it.k ? ' sel' : ''}${off ? ' off' : ''}" data-k="${it.k}"><span class="ico">${it.ico}</span><span class="nm">${it.name}${it.lv && !lvOk(it) ? `<small>🔒 Lv${it.lv}</small>` : ''}</span><span class="have">${it.owned ? 'มีแล้ว ✅' : it.once ? (it.have ? 'มีแล้ว ✅' : '') : 'มี ' + it.have}</span><span class="pr">🪙 ${unit(it)}</span></div>`;
+  }).join('');
+}
+function renderBar() {
+  const it = S().items.find(x => x.k === sel), bar = $('bar'); $('confirm').classList.remove('show');
+  if (!it) { bar.className = 'sbar none'; bar.textContent = 'แตะของที่ต้องการซื้อ เพื่อดูรายละเอียด'; return; }
+  const once = it.once, lock = !lvOk(it), off = stateOff(it); if (once) qty = 1; qty = Math.max(1, qty);
+  const total = unit(it) * qty, after = coin - total, enough = after >= 0;
+  const mats = it.craft ? `<div class="chips">${it.craft.mats.map(m => `<span class="chip ${m[1] >= m[2] ? 'ok' : 'no'}">${m[0]} มี ${m[1]}/${m[2]}</span>`).join('')}</div>` : '';
+  let ctrl = '';
+  if (!off) ctrl = `<div class="step">${once ? '' : `<button class="m" id="m">−</button><input id="q" type="number" min="1" value="${qty}" inputmode="numeric"><button class="m" id="p">+</button><button class="q" data-q="5">×5</button><button class="q" data-q="10">×10</button>`}<span class="tot">รวม 🪙 ${total}<small class="${enough ? '' : 'bad'}">${enough ? 'เหลือ 🪙 ' + after : 'เหรียญไม่พอ (ขาด ' + (-after) + ')'}</small></span></div>`;
+  const label = lock ? `🔒 ปลดล็อกที่ Lv ${it.lv}` : it.owned ? 'มีที่ดีกว่าแล้ว' : (once && it.have) ? 'มีแล้ว' : it.craft ? `🔨 คราฟ 🪙${total}` : `ซื้อ ${qty} ชิ้น 🪙${total}`;
+  bar.className = 'sbar';
+  bar.innerHTML = `<div class="hd"><span class="ico">${it.ico}</span><div><div class="t">${it.name}${it.have && !once ? ` <small>(มี ${it.have})</small>` : ''}</div><div class="s">${it.info}${it.warn ? '' : ''}</div></div></div>${mats}${ctrl}<button class="btn${off ? ' lock' : ''}" id="buy" ${off || !enough ? 'disabled' : ''}>${label}</button>`;
+  if (off) return;
+  const upd = () => { qty = Math.max(1, Math.floor(+$('q').value) || 1); renderBar(); };
+  if (!once) {
+    $('m').onclick = () => { qty = Math.max(1, qty - 1); renderBar(); };
+    $('p').onclick = () => { qty += 1; renderBar(); };
+    $('q').onchange = upd;
+    document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { qty = +b.dataset.q; renderBar(); });
+  }
+  $('buy').onclick = () => {
+    if (total < 200) return doBuy(it, qty, total);
+    const c = $('confirm'); c.innerHTML = `ซื้อ <b>${it.ico} ${it.name}${once ? '' : ' ×' + qty}</b> จ่าย <b>🪙 ${total}</b> ยืนยัน?<div class="acts"><button class="btn" id="yes">✅ ซื้อ</button><button class="btn muted" id="no">ยกเลิก</button></div>`;
+    c.classList.add('show'); $('no').onclick = () => c.classList.remove('show'); $('yes').onclick = () => doBuy(it, qty, total);
+  };
+}
+function doBuy(it, n, total) { coin -= total; if (it.once) it.have = 1; else it.have += n; $('coin').textContent = coin; toast(`ซื้อ ${it.name}${it.once ? '' : ' ×' + n} จ่าย 🪙${total}`); qty = 1; renderList(); renderBar(); }
+function setShop(k) { shop = k; sel = null; qty = 1; $('title').textContent = S().title; $('lv').textContent = S().lv; document.querySelectorAll('[data-shop]').forEach(b => b.classList.toggle('on', b.dataset.shop === k)); $('note').innerHTML = k === 'fish' ? 'ซื้อของธรรมดา: แตะแถว → ตั้งจำนวน (−/+ หรือ ×5 ×10) → "ซื้อ" ทันที • ยอดเกิน 🪙200 ถึงมีขั้นยืนยัน • แถวล็อกเลเวลหม่นลงและบอกเงื่อนไขเมื่อแตะ' : k === 'seed' ? 'เมล็ดพันธุ์: รายละเอียดฤดู/กำไรที่เคยยาวในแถว ย้ายไปอยู่แถบล่างตอนเลือก แถวเหลือแค่ชื่อ จำนวนที่มี และราคา' : 'อุปกรณ์/คราฟ: ชิปวัสดุ (มี/ต้องการ) และราคาหลังหักวัสดุอยู่ในแถบล่าง ซื้อชิ้นเดียว ไม่มีช่องจำนวน • ยอดเกิน 🪙200 ถึงมีขั้นยืนยัน'; renderList(); renderBar(); }
+$('list').addEventListener('click', e => { const r = e.target.closest('.row'); if (!r) return; sel = r.dataset.k; qty = 1; renderList(); renderBar(); });
+document.querySelectorAll('[data-shop]').forEach(b => b.onclick = () => setShop(b.dataset.shop));
+$('vPc').onclick = () => { $('frame').classList.remove('phone'); $('vPc').classList.add('on'); $('vPhone').classList.remove('on'); };
+$('vPhone').onclick = () => { $('frame').classList.add('phone'); $('vPhone').classList.add('on'); $('vPc').classList.remove('on'); };
+$('reset').onclick = () => location.reload();
+setShop('fish');
+</script>
+</body>
+</html>
