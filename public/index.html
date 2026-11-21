@@ -688,10 +688,10 @@
   body.touch .tab { min-height:44px; } /* WP-30: เป้าแตะแท็บ ≥ 44px */
   body.touch .opt { min-height:44px; }
   /* UNO โต๊ะวงกลม: ที่นั่งรอบโต๊ะ • กองจั่ว/กองทิ้งกลาง • ลุ้นตอนจั่ว • ภาพการ์ดบิน */
-  .uT { position:relative; width:100%; max-width:560px; height:330px; margin:8px auto 4px; }
+  .uT { position:relative; width:100%; max-width:476px; height:280px; margin:8px auto 4px; }
   .uFelt { position:absolute; left:13%; right:13%; top:19%; bottom:19%; border-radius:50%; background:radial-gradient(ellipse at 50% 40%,#48b06f,#226f45 70%); border:7px solid #7a4b2a; box-shadow:inset 0 0 0 3px rgba(255,255,255,.14),0 6px 0 rgba(0,0,0,.25); }
-  .uArr { position:absolute; font-size:22px; line-height:1; color:#ffd24a; text-shadow:0 2px 0 rgba(0,0,0,.45); pointer-events:none; animation:uFlow 1.8s ease-in-out infinite; z-index:2; }
-  @keyframes uFlow { 0%,100% { opacity:.4; } 50% { opacity:1; } }
+  .uArr { position:absolute; font-size:22px; line-height:1; color:#3fe06a; text-shadow:0 0 6px rgba(63,224,106,.9),0 2px 0 rgba(0,0,0,.45); pointer-events:none; animation:uFlow 0.9s ease-in-out infinite; z-index:2; }
+  @keyframes uFlow { 0%,100% { opacity:.15; } 50% { opacity:1; } }
   .uDir { position:absolute; left:50%; top:27%; white-space:nowrap; font-size:13px !important; font-weight:800; color:#ffe9a8 !important; text-shadow:0 2px 0 rgba(0,0,0,.4); animation:none !important; } transform:translate(-50%,-50%); font-size:30px; color:rgba(255,255,255,.35); pointer-events:none; animation:uSpin 6s linear infinite; }
   .uDir.rev { animation-direction:reverse; }
   .uDeck { position:absolute; transform:translate(-50%,-50%); width:54px; height:78px; border-radius:9px; border:3px solid #fff; font-size:24px; background:repeating-linear-gradient(45deg,#5b3fa0 0 6px,#7a5cc9 6px 12px); box-shadow:0 3px 0 rgba(0,0,0,.3); cursor:pointer; padding:0; }
@@ -700,10 +700,10 @@
   .uDeck.shake { animation:uShake .45s; }
   .uDisc { position:absolute; transform:translate(-50%,-50%); }
   .uColor { position:absolute; left:50%; top:66%; width:22px; height:22px; border-radius:50%; border:3px solid #fff; transform:translate(-50%,-50%); box-shadow:0 0 0 2px rgba(0,0,0,.3); }
-  .uSeat { position:absolute; transform:translate(-50%,-50%); width:92px; text-align:center; transition:left .4s ease,top .4s ease; }
-  .uAv { width:46px; height:46px; border-radius:50%; margin:0 auto; border:3px solid #fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:20px; color:#fff; box-shadow:0 3px 0 rgba(0,0,0,.28); text-shadow:0 2px 0 rgba(0,0,0,.3); }
-  .uNm { font-size:12px; font-weight:700; color:#fff3cf; background:rgba(35,22,14,.78); border-radius:8px; padding:1px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:3px auto 0; max-width:100%; display:block; }
-  .uCnt { display:inline-block; font-size:11px; font-weight:700; color:#fff; background:rgba(0,0,0,.38); border-radius:8px; padding:1px 7px; margin-top:2px; }
+  .uSeat { position:absolute; transform:translate(-50%,-50%); width:78px; text-align:center; transition:left .4s ease,top .4s ease; }
+  .uAv { width:39px; height:39px; border-radius:50%; margin:0 auto; border:3px solid #fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:17px; color:#fff; box-shadow:0 3px 0 rgba(0,0,0,.28); text-shadow:0 2px 0 rgba(0,0,0,.3); }
+  .uNm { font-size:10.2px; font-weight:700; color:#fff3cf; background:rgba(35,22,14,.78); border-radius:8px; padding:1px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:3px auto 0; max-width:100%; display:block; }
+  .uCnt { display:inline-block; font-size:9.4px; font-weight:700; color:#fff; background:rgba(0,0,0,.38); border-radius:8px; padding:1px 7px; margin-top:2px; }
   .uSeat.cur .uAv { box-shadow:0 0 0 4px #ffd24a,0 0 18px #ffd24a; animation:uPulse 1s ease-in-out infinite; }
   .uSeat.out { opacity:.4; }
   .uSeat.me .uNm::before { content:'⭐'; }
@@ -719,7 +719,7 @@
   @keyframes uPulse { 50% { transform:scale(1.06); } }
   @keyframes uGlow { 50% { box-shadow:0 0 0 4px #ffd24a,0 3px 0 rgba(0,0,0,.3); } }
   @keyframes uShake { 20% { transform:translate(-52%,-50%) rotate(-3deg); } 40% { transform:translate(-48%,-50%) rotate(3deg); } 60% { transform:translate(-53%,-50%) rotate(-2deg); } 80% { transform:translate(-47%,-50%) rotate(2deg); } }
-  @media (max-width:420px) { .uT { height:300px; } .uSeat { width:70px; } .uAv { width:36px; height:36px; font-size:16px; } .uNm { font-size:11px; } }
+  @media (max-width:420px) { .uT { height:255px; } .uSeat { width:64px; } .uAv { width:32px; height:32px; font-size:14px; } .uNm { font-size:9.2px; } }
   /* การ์ดสัตว์เลี้ยง (เมนู 🐾): หัว • ค่า • ผล • แถบอิ่ม/ผูกพัน • ปุ่มเรียงแถวเดียว */
   .pet-card { border:2px solid var(--edge); background:var(--paper-l); padding:10px 12px; margin:8px 0; box-shadow:inset 0 2px 0 rgba(255,255,255,.5); }
   .pet-hd { display:flex; gap:10px; align-items:center; }

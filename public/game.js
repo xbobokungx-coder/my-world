@@ -2854,7 +2854,6 @@ function uTableHtml(t, S0, waiting) { // โต๊ะวงกลม: ที่�
   if (waiting) return `<div class="uT">${seatHtml}<div class="uWait">รอผู้เล่น</div></div>`;
   const myTurn = t.state === 'playing' && t.cur === myId && t.drawn < 0;
   return `<div class="uT" id="uTable"><div class="uFelt"></div>`
-    + `<div class="uDir">${S0.dir === -1 ? '↺ ทวนเข็ม' : '↻ ตามเข็ม'}</div>`
     + uArrows(seats.length, S0.dir)
     + `<button class="uDeck" style="left:${U_DECK[0]}%;top:${U_DECK[1]}%" data-arc="draw" ${myTurn ? '' : 'disabled'} aria-label="จั่วไพ่">🎴</button>`
     + `<div class="uDisc" style="left:${U_DISC[0]}%;top:${U_DISC[1]}%"><span class="uc c${S0.top[0]} big">${cardLabel(S0.top)}</span></div>`
@@ -2884,7 +2883,7 @@ function renderUno() {
   } else {
     const playing = t.state === 'playing', myTurn = playing && t.cur === myId, drawn = t.drawn;
     h += uTableHtml(t, S0, false);
-    h += `<div class="uLog">${esc(S0.log || '')}</div>`;
+    h += `<div class="uLog">${esc(S0.log || '')} • ${S0.dir === -1 ? '↺ ทวนเข็ม' : '↻ ตามเข็ม'}</div>`;
     if (t.bet && !t.bot) h += `<div class="center" style="font-size:12px;opacity:.75">เดิมพัน 🪙 ${t.bet} ต่อคน • รางวัลรวม 🪙 ${t.bet * t.players.length}</div>`;
     if (unoWild >= 0 && myTurn) {
       h += `<div class="center" style="font-weight:700;margin-top:8px">เลือกสีที่ต้องการ</div><div class="colorpick">${'RYGB'.split('').map(c => `<button data-color="${c}" style="background:${UCOL[c]}" aria-label="${c}"></button>`).join('')}</div><div class="center"><button class="btn small" data-unocancel="1" style="background:#9aa0a6;border-bottom-color:#6f757b">ยกเลิก</button></div>`;
