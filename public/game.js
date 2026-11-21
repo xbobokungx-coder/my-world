@@ -323,6 +323,7 @@ function handle(m) {
     } openTown(m.w === 'atm' ? 'bank' : m.w === 'lotto' ? 'lotto' : m.w === 'rank' ? 'rank' : m.w === 'flea' ? 'stall' : 'log'); break;
     case 'scene': applyScene(m); closeStore(); break;
     case 'store': onStore(m); break;
+    case 'hcomfort': onHComfort(m); break;
     case 'hboard': hboard = m; if (plotsShown()) renderPlots(); break;
     case 'blocks': onBlocks(m); break;
     case 'muted': myMuteUntil = +m.until || 0; if (myMuteUntil > Date.now() && micOn) $('micBtn').click(); setMuteNote(); if (peopleShown()) renderPeople(true); break;
@@ -618,14 +619,14 @@ function tidyShopRows(root) {
 }
 try { new MutationObserver(() => tidyShopRows($('shopBody'))).observe($('shopBody'), { childList: true }); } catch (e) { /* เบราว์เซอร์เก่าไม่มี MutationObserver ก็ใช้หน้าตาเดิม */ }
 // ---------- ที่เก็บของในบ้าน (Shared.HOME.store): ตู้เย็น = cold • ลัง/ตู้ = box • เซิร์ฟเวอร์ตัดสินทั้งหมด เว็บแค่แสดงและส่งคำสั่ง store ----------
-let storeSt = null, storeTab = 'in';
+let storeSt = null, storeTab = 'in', storeKind = 'all';
 const storeShown = () => !$('store').classList.contains('hidden');
 const storePoolOf = f => Object.keys(Shared.HOME.store).find(n => Shared.HOME.store[n].furn[f] > 0) || null;
 function closeStore() { storeSt = null; $('store').classList.add('hidden'); }
 function onStore(m) {
   if (!m || !Shared.HOME.store[m.pool] || !inMyHouse()) return;
   const wasShown = storeShown() && storeSt && storeSt.pool === m.pool;
-  storeSt = m; if (!wasShown) { closeOthers('store'); storeTab = 'in'; $('store').classList.remove('hidden'); }
+  storeSt = m; if (!wasShown) { closeOthers('store'); storeTab = 'in'; storeKind = 'all'; $('store').classList.remove('hidden'); }
   renderStore();
 }
 const storeBadge = c => c.map((n, i) => n ? Shared.FRESH.emoji[i] + n : '').filter(Boolean).join(' ');
@@ -650,21 +651,30 @@ function renderStore() {
   };
   const send1 = (a, k, n) => () => { playSfx('click'); send({ t: 'store', a, pool: st.pool, k, n }); };
   const inBox = $('storeIn'), bagBox = $('storeBag'); inBox.textContent = ''; bagBox.textContent = '';
-  const inKeys = Object.keys(st.inv || {}).filter(k => st.inv[k] > 0).sort();
-  if (!inKeys.length) { const e = document.createElement('div'); e.className = 'storeEmpty'; e.textContent = 'ยังว่างอยู่ ลองเก็บของจากกระเป๋าดูนะ'; inBox.append(e); }
+  const kOk = k => storeKind === 'all' || Shared.kindOf(k) === storeKind, kIdx = k => Shared.KINDS.findIndex(x => x.id === Shared.kindOf(k));
+  const oldest = l => l && l.length ? Math.min(...l.map(x => x[0])) : Infinity, nmC = (a, b) => String(((itemInfo(a) || {}).name) || a).localeCompare(String(((itemInfo(b) || {}).name) || b), 'th');
+  const sortK = (lots) => (a, b) => kIdx(a) - kIdx(b) || oldest(lots[a]) - oldest(lots[b]) || nmC(a, b); // ชนิด → เก่าก่อน → ชื่อ
+  const kinds = $('storeKinds'); kinds.textContent = '';
+  for (const [id, text] of KIND_CHIPS) { const b = document.createElement('button'); b.className = 'chip' + (storeKind === id ? ' sel' : ''); b.textContent = text; b.dataset.sf = 'kind:' + id; b.onclick = () => { storeKind = id; renderStore(); }; kinds.append(b); }
+  const inKeys = Object.keys(st.inv || {}).filter(k => st.inv[k] > 0 && kOk(k)).sort(sortK(st.l || {})), inAll = Object.keys(st.inv || {}).filter(k => st.inv[k] > 0);
+  if (!inKeys.length) { const e = document.createElement('div'); e.className = 'storeEmpty'; e.textContent = inAll.length ? 'ไม่มีของชนิดนี้ในตู้' : 'ยังว่างอยู่ ลองเก็บของจากกระเป๋าดูนะ'; inBox.append(e); }
   for (const k of inKeys) {
     let badge = ''; if (cold && st.l && st.l[k]) { const c = [0, 0, 0]; for (const [tv, n] of st.l[k]) c[Shared.freshTier(now - Shared.storeAge(tv, { r: st.r, at: st.at }, now), now, false)] += n; badge = storeBadge(c); }
     inBox.append(row(k, st.inv[k], badge, [mk('1', 'take:' + k, send1('take', k, 1)), mk('ทั้งหมด', 'takeA:' + k, send1('take', k, st.inv[k]))]));
   }
-  const bagKeys = Object.keys(inv).filter(k => inv[k] > 0 && Shared.storeAccepts(st.pool, k)).sort();
-  if (!bagKeys.length) { const e = document.createElement('div'); e.className = 'storeEmpty'; e.textContent = cold ? 'ไม่มีของสดในกระเป๋า' : 'ไม่มีของที่เก็บได้ในกระเป๋า'; bagBox.append(e); }
+  const bagAll = Object.keys(inv).filter(k => inv[k] > 0 && Shared.storeAccepts(st.pool, k)), bagKeys = bagAll.filter(kOk).sort(sortK(freshSt.l));
+  const putOk = k => cold || Shared.kindOf(k) === 'material'; // คลังของ: ปุ่มเก็บทั้งหมดเก็บเฉพาะวัตถุดิบ (ไม่เก็บเมล็ด เหยื่อ ตั๋ว ของที่ใช้บ่อย ของที่ต้องวาง) เซิร์ฟเวอร์ putall ไม่กรองให้
+  if (!bagKeys.length) { const e = document.createElement('div'); e.className = 'storeEmpty'; e.textContent = bagAll.length ? 'ไม่มีของชนิดนี้ในกระเป๋า' : cold ? 'ไม่มีของสดในกระเป๋า' : 'ไม่มีของที่เก็บได้ในกระเป๋า'; bagBox.append(e); }
   for (const k of bagKeys) {
     const badge = cold && freshSt.l[k] && now >= Shared.FRESH.startAt ? storeBadge(Shared.freshCount(freshSt.l[k], now, false)) : '';
     bagBox.append(row(k, inv[k], badge, [mk('1', 'put:' + k, send1('put', k, 1)), mk('ทั้งหมด', 'putA:' + k, send1('put', k, inv[k]))]));
   }
-  const allBtn = (id, text, a, off) => { const b = $(id); b.textContent = text; b.disabled = off; b.dataset.sf = a; b.onclick = () => { playSfx('click'); send({ t: 'store', a, pool: st.pool }); }; };
-  allBtn('storePutAll', cold ? 'เก็บของสดทั้งหมด' : 'เก็บวัตถุดิบทั้งหมด', 'putall', !bagKeys.length || st.used >= st.cap);
-  allBtn('storeTakeAll', 'หยิบทั้งหมด', 'takeall', !inKeys.length);
+  const allBtn = (id, text, a, off, fn) => { const b = $(id); b.textContent = text; b.disabled = off; b.dataset.sf = a; b.onclick = fn || (() => { playSfx('click'); send({ t: 'store', a, pool: st.pool }); }); };
+  const putList = bagAll.filter(putOk);
+  allBtn('storePutAll', cold ? 'เก็บของสดทั้งหมด' : 'เก็บวัตถุดิบทั้งหมด', 'putall', !putList.length || st.used >= st.cap, cold ? null : () => { // box: ส่ง put ทีละชนิดที่ผ่านกรอง ไม่เกินที่ว่าง
+    playSfx('click'); let room = st.cap - st.used; for (const k of putList) { if (room <= 0) break; const n = Math.min(inv[k], room); if (n > 0) { send({ t: 'store', a: 'put', pool: st.pool, k, n }); room -= n; } }
+  });
+  allBtn('storeTakeAll', 'หยิบทั้งหมด', 'takeall', !inAll.length);
   let f = af ? root.querySelector(`[data-sf="${CSS.escape(af)}"]`) : null; if (f && (f.disabled || !f.offsetParent)) f = null;
   if (!f) f = af ? [...root.querySelectorAll('button[data-sf]:not([disabled])')].find(b => b.offsetParent) : $('storeClose'); if (f && !isTouch) f.focus(); // เปิดตู้ครั้งแรกโฟกัสปุ่มปิด (Space ซ้ำไม่ไปกด "หยิบทั้งหมด" โดยไม่ตั้งใจ) • ลูกศรเลื่อนโฟกัสไปปุ่มอื่นได้
 }
@@ -686,6 +696,65 @@ setInterval(() => { // ออกจากบ้าน/เดินห่าง�
   const it = furn.get(storeSt.i);
   if (!inMyHouse() || !it || !me || Math.hypot(it.x * TS - me.x, it.y * TS - me.y) > (Shared.HOME.near + 0.5) * TS) closeStore();
 }, 400);
+// ---------- ความสบายของบ้าน (hcomfort จากเซิร์ฟเวอร์) + บัฟ 😴 หลับสบาย • เว็บแค่แสดง ตัวเลขทั้งหมดอยู่ Shared.HOME ----------
+let homeCm = null, restEnd = 0, lieAt = 0;
+const homeCardShown = () => !$('homeCard').classList.contains('hidden');
+function furnComfortPts(fid) { // ตรงกับ houseComfort ใน shared: ชนิดแรกของแต่ละหมวดนับแต้ม ตัดเพดานต่อหมวด (หมวดที่เพดาน 0 ไม่ได้แต้ม)
+  const d = Shared.FURN[fid], C = Shared.HOME.comfort; if (!d || !(C.cap[d.cat] > 0)) return 0;
+  return (d.rare || d.cat === 'rare') ? C.pts.rare : d.price >= C.pts.luxPrice ? C.pts.lux : C.pts.def;
+}
+function furnBadges(fid) { // ป้ายผลของเฟอร์นิเจอร์ในร้าน/ช่างไม้ (คำนวณจาก Shared.HOME ไม่ต้องรอเซิร์ฟเวอร์)
+  const H = Shared.HOME, out = [];
+  if (H.store.cold.furn[fid] > 0) out.push('❄️ คลังเย็น +' + H.store.cold.furn[fid]);
+  if (H.store.box.furn[fid] > 0) out.push('📦 คลังของ +' + H.store.box.furn[fid]);
+  const c = furnComfortPts(fid); if (c > 0) out.push('✨ สบาย +' + c);
+  return out.map(t => `<span class="fbadge" title="ผลเมื่อวางในบ้าน (แต่ละชนิดนับครั้งเดียว)">${t}</span>`).join('');
+}
+const furnBadgeOf = k => { const m = /^furn_(\w+)$/.exec(k); return m ? furnBadges(m[1]) : ''; };
+function renderHomeChip() {
+  const el = $('homeChip'), on = !!(scene && homeCm);
+  el.classList.toggle('hidden', !on); if (!on) { $('homeCard').classList.add('hidden'); return; }
+  el.textContent = `${Shared.HOME.comfort.emoji} สบาย ${homeCm.v} · ${Shared.HOME.comfort.names[homeCm.tier] || ''}`;
+  if (homeCardShown()) renderHomeCard();
+}
+function renderHomeCard() {
+  const card = $('homeCard'), m = homeCm, C = Shared.HOME.comfort; if (!m || !scene) { card.classList.add('hidden'); return; }
+  const sitT = m.sets.some(x => x.id === 'living' && x.done) ? Shared.HOME.sets.living.sitTier || 0 : 0, sit = Shared.sitMulOf({ tier: m.tier, sitTier: sitT }, false), nx = C.tiers[m.tier + 1];
+  card.textContent = '';
+  const add = (tag, text, cls) => { const e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; card.append(e); return e; };
+  add('b', `${C.emoji} สบาย ${m.v} · ${C.names[m.tier] || ''}`, 'hc');
+  add('div', sit > 1 ? `ตอนนี้ นั่งพักแล้วอิ่มไวขึ้น ×${sit}` : 'ตอนนี้ นั่งพักฟื้นตามปกติ (ตกแต่งเพิ่มจะไวขึ้น)');
+  add('div', nx != null ? `อีก ${nx - m.v} แต้มถึง "${C.names[m.tier + 1]}" (นั่งอิ่มไว ×${C.sitMul[m.tier + 1]})` : 'ขั้นสูงสุดแล้ว บ้านในฝัน!');
+  if (m.mine) add('div', m.rmin > 0 ? `😴 นอนเตียงสักพัก จะได้หลับสบาย ~${m.rmin} นาที (หิวช้าลง)` : '😴 ตกแต่งให้ถึงขั้น "อยู่สบาย" แล้วนอนเตียงจะได้บัฟหลับสบาย');
+  else add('div', '😴 บัฟหลับสบายได้เฉพาะตอนนอนบ้านตัวเองนะ');
+  if (restEnd > Date.now()) add('div', '😴 บัฟหลับสบายเหลือ ' + fmtLeft(restEnd - Date.now()));
+  add('div', 'ชุดห้อง', 'hcs').style.fontWeight = '800';
+  for (const x of m.sets || []) add('div', String(x.txt || ''), 'hcs' + (x.done ? ' done' : ''));
+  add('small', 'แตะที่นี่เพื่อปิด • ของแต่ละชนิดนับแต้มครั้งเดียว ต้นไม้ 50 ต้นก็ได้แต้มเท่าต้นเดียว');
+}
+function toggleHomeCard(on) {
+  const card = $('homeCard'); if (on === undefined) on = !homeCardShown();
+  if (!on || !homeCm || !scene) { card.classList.add('hidden'); return; }
+  const r = $('hudTop').getBoundingClientRect(); card.style.top = Math.round(r.bottom + 6) + 'px'; card.classList.remove('hidden'); renderHomeCard();
+}
+function onHComfort(m) {
+  if (!scene || !m || typeof m.v !== 'number' || !Array.isArray(m.sets)) return;
+  homeCm = { v: m.v, tier: m.tier | 0, sets: m.sets, rmin: m.rmin | 0, mine: !!m.mine };
+  restEnd = +m.rest > 0 ? Date.now() + +m.rest : 0;
+  renderHomeChip(); renderRestChip();
+}
+function renderRestChip() { // 😴 นับถอยหลังแบบบัฟอื่น • ขณะนอนเตียงบ้านตัวเองแสดงว่ากำลังจะได้บัฟ
+  const el = $('restChip'), now = Date.now(), lying = !!(me && me.lie && inMyHouse());
+  if (lying && !lieAt) lieAt = now; else if (!lying) lieAt = 0;
+  let txt = '';
+  if (lying && homeCm && homeCm.rmin > 0) { const left = Math.max(0, Math.ceil((lieAt + Shared.HOME.rest.lieMs - now) / 1000)); txt = left > 0 ? `😴 นอนอยู่… อีก ${left} วิ ได้หลับสบาย ${homeCm.rmin} นาที` : `😴 หลับสบาย! ${restEnd > now ? 'เหลือ ' + fmtLeft(restEnd - now) : ''}`; }
+  else if (restEnd > now) txt = `😴 หลับสบาย เหลือ ${fmtLeft(restEnd - now)}`;
+  el.classList.toggle('hidden', !txt); if (txt) { el.textContent = txt; el.title = 'บัฟหลับสบาย: ความหิวลดช้าลง'; }
+}
+$('homeChip').onclick = () => toggleHomeCard();
+$('homeChip').onkeydown = e => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); toggleHomeCard(); } };
+$('homeCard').onclick = () => toggleHomeCard(false);
+setInterval(renderRestChip, 1000);
 const sellQty = {}; // จำนวนที่ผู้เล่นพิมพ์ไว้ต่อไอเทม (หน้าขายถูกวาดใหม่บ่อย ค่าที่พิมพ์ต้องไม่หาย)
 const sellQtyOf = k => Math.max(1, Math.min(inv[k] || 1, sellQty[k] || 1)); // ไม่เกินที่มี ไม่ต่ำกว่า 1
 function sellQtyTotal(k) { const i = itemInfo(k), n = sellQtyOf(k); return i ? sellQuote(i.sell, mult(k), n, freshMulsOf(k, n)).total : 0; }
@@ -985,16 +1054,7 @@ function renderRankTab(el) {
 }
 // ตลาดนัด: จัดกลุ่มไอเทมตามอาชีพ (ใช้ cat จาก itemInfo + ชื่อ key) ไอเทมที่ไม่เข้าพวกไปกลุ่ม "อื่นๆ"
 const FLEA_GRPS = [['all', '📦 ทั้งหมด'], ['farm', '🌾 ชาวนา'], ['animal', '🐄 คนเลี้ยงสัตว์'], ['fish', '🎣 ชาวประมง'], ['wood', '🪵 ช่างไม้'], ['ore', '⛏️ นักขุดแร่'], ['chef', '👨‍🍳 เชฟ'], ['other', '🎒 อื่นๆ']];
-function fleaGrpOf(k) {
-  const i = itemInfo(k), c = i && i.cat;
-  if (c === 'crop' || c === 'seed') return 'farm';
-  if (c === 'animal' || c === 'feed') return 'animal';
-  if (c === 'fish' || (i && i.bait)) return 'fish';
-  if (c === 'wood' || /^furn_/.test(k)) return 'wood';
-  if (c === 'ore') return 'ore';
-  if (c === 'food') return 'chef';
-  return 'other';
-}
+const fleaGrpOf = k => Shared.jobOf(k); // กฎจัดกลุ่มตามอาชีพอยู่ที่ Shared.jobOf (ย้ายตัวเนื้อมาแล้ว ผลเท่าเดิม)
 let fleaGrp = (() => { const g = ls.get('mw_flea_grp'); return FLEA_GRPS.some(x => x[0] === g) ? g : 'all'; })();
 const fleaGrpOk = k => fleaGrp === 'all' || fleaGrpOf(k) === fleaGrp;
 function renderTown() {
@@ -1158,7 +1218,7 @@ function applyScene(m) {
   } else resetScene();
   const old = me; players.clear();
   for (const q of m.players) { if (q.id === myId) { old.x = old.tx = m.x; old.y = old.ty = m.y; old.sit = false; old.fs = 0; old.cp = null; players.set(myId, old); } else players.set(q.id, mkPlayer(q)); }
-  me = players.get(myId); updateOnline(); updateHouseUi(); renderBuild(); closePlots();
+  me = players.get(myId); homeCm = null; renderHomeChip(); renderRestChip(); updateOnline(); updateHouseUi(); renderBuild(); closePlots();
   if (inMyHouse()) toggleBuild(true); // เข้าบ้านตัวเองแล้วเปิดเมนูตกแต่งให้เลย
   // เปลี่ยนฉาก: ตัดเสียงกับคนฉากเก่าแล้วโทรหาทุกคนในฉากใหม่ (ผู้เล่นเดิมจะรับสายเองผ่าน onRtc)
   [...peers.keys()].forEach(id => { if (id !== callWith) closePeer(id); }); // สายโทรส่วนตัวยังต่ออยู่ข้ามฉาก
@@ -1269,7 +1329,7 @@ function renderPlots() {
     + `<div class="center" style="margin:0 0 8px"><button class="btn small" data-homego="1">🏠 เข้าบ้านตัวเอง</button></div>`;
   if (!hboard) h += '<p class="center" style="opacity:.6">กำลังโหลด…</p>';
   else if (!hboard.list.length) h += '<p class="center" style="opacity:.6">ยังไม่มีใครตกแต่งบ้าน — เป็นคนแรกเลย! 🛋️</p>';
-  else h += hboard.list.map((r, i) => `<div class="row"><span>${['🥇', '🥈', '🥉'][i] || '<small>' + (i + 1) + '.</small>'} <a href="#" data-visit="${esc(r.n)}" style="color:inherit;font-weight:800;text-decoration:underline">${esc(r.n)}</a>${r.me ? ' <small>(ฉัน)</small>' : ''}${r.on ? ' <small title="ออนไลน์">🟢</small>' : ''}</span><span>🪙 ${r.v.toLocaleString()} • 🛋️ ${r.c} ชิ้น</span></div>`).join('');
+  else h += hboard.list.map((r, i) => `<div class="row"><span>${['🥇', '🥈', '🥉'][i] || '<small>' + (i + 1) + '.</small>'} <a href="#" data-visit="${esc(r.n)}" style="color:inherit;font-weight:800;text-decoration:underline">${esc(r.n)}</a>${r.me ? ' <small>(ฉัน)</small>' : ''}${r.on ? ' <small title="ออนไลน์">🟢</small>' : ''}</span><span>🪙 ${r.v.toLocaleString()} • 🛋️ ${r.c} ชิ้น${r.cm != null ? ` • ✨ ${r.cm | 0}${Shared.HOME.comfort.names[r.ct | 0] ? ' <small>' + Shared.HOME.comfort.names[r.ct | 0] + '</small>' : ''}` : ''}</span></div>`).join('');
   el.innerHTML = h;
   el.querySelector('[data-homego]').onclick = () => { closePlots(); enterHouse(); };
   el.querySelectorAll('[data-visit]').forEach(a => a.onclick = e => { e.preventDefault(); closePlots(); enterHouse(a.dataset.visit); });
@@ -1570,6 +1630,7 @@ $('bagBody').addEventListener('click', e => {
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); if (!sfxOn) hornStopAll(); syncSndUi(); renderBag(); playSfx('coin'); return; }
   { const bs = e.target.closest('[data-bslot]'); if (bs) { bagSel = bagSel === bs.dataset.bslot ? '' : bs.dataset.bslot; $('bagGridBox').innerHTML = bagGridHtml(); const f = document.querySelector(`[data-bslot="${CSS.escape(bagSel || bs.dataset.bslot)}"]`); if (f && e.detail === 0) f.focus(); if (bagSel) { const dt = $('bagDetail') || document.querySelector('.bdetail'); if (dt && dt.scrollIntoView) dt.scrollIntoView({ block: 'nearest' }); } return; } } // เลือกช่อง/ยกเลิกเลือก (แผงรายละเอียดอยู่ใต้กริด)
   { const bg = e.target.closest('[data-bgrp]'); if (bg) { bagGrp = bg.dataset.bgrp; ls.set('mw_bag_grp', bagGrp); renderBag(); return; } }
+  if (e.target.closest('[data-bmode]')) { bagMode = bagMode === 'job' ? 'kind' : 'job'; bagGrp = 'all'; ls.set('mw_bag_mode', bagMode); ls.set('mw_bag_grp', 'all'); renderBag(); return; }
   if (e.target.closest('[data-bsort]')) { bagSort = BAG_SORTS[(BAG_SORTS.findIndex(x => x[0] === bagSort) + 1) % BAG_SORTS.length][0]; ls.set('mw_bag_sort', bagSort); renderBag(); return; }
   { const go = e.target.closest('[data-bgo]'); if (go) { if (go.dataset.bgo === 'gear') { const g = $('bagGear'); if (g) g.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } else { bagTab = go.dataset.bgo; renderBag(); } return; } }
   const sb = e.target.closest('[data-sub]'); if (sb) { bagSub = sb.dataset.sub; renderBag(); return; }
@@ -1677,8 +1738,11 @@ const CATS = [['furn', '🛋️ เฟอร์นิเจอร์ (วาง�
 // แท็บย่อยในกระเป๋า: ชื่อ, ป้าย, หมวดของที่รวมอยู่ (เหยื่อตกปลาอยู่กับปลา)
 const BAG_SUBS = [['furn', '🛋️ เฟอร์นิเจอร์', ['furn']], ['crop', '🥬 ผัก-ผลไม้', ['crop']], ['fish', '🐟 ปลา', ['fish', 'tool']], ['wood', '🪵 ไม้', ['wood']], ['gear', '🧰 อุปกรณ์', ['gear']], ['other', '🗂️ อื่นๆ', ['seed', 'animal', 'feed']]]; // อาหารไม่อยู่ในกระเป๋า กินได้จากไอคอนความหิว
 let bagSub = 'furn', statSel = '';
-const BAG_SORTS = [['auto', 'ตามอาชีพ'], ['val', 'ราคา/ระดับ'], ['name', 'ชื่อ']];
-let bagQ = '', bagSel = '', bagSort = (() => { const s = ls.get('mw_bag_sort'); return BAG_SORTS.some(x => x[0] === s) ? s : 'auto'; })(), bagGrp = (() => { const g = ls.get('mw_bag_grp'); return FLEA_GRPS.some(x => x[0] === g) ? g : 'all'; })();
+const BAG_SORTS = [['auto', 'ตามหมวด'], ['val', 'ราคา/ระดับ'], ['name', 'ชื่อ']];
+let bagQ = '', bagSel = '', bagSort = (() => { const s = ls.get('mw_bag_sort'); return BAG_SORTS.some(x => x[0] === s) ? s : 'auto'; })(), bagMode = ls.get('mw_bag_mode') === 'job' ? 'job' : 'kind', bagGrp = 'all'; // จัดตาม: ชนิด (Shared.KINDS ค่าเริ่ม) | อาชีพ (FLEA_GRPS)
+const KIND_CHIPS = [['all', '📦 ทั้งหมด'], ...Shared.KINDS.map(k => [k.id, k.emoji + ' ' + k.name])];
+const bagChips = () => bagMode === 'job' ? FLEA_GRPS : KIND_CHIPS, bagGrpOf = k => bagMode === 'job' ? fleaGrpOf(k) : Shared.kindOf(k);
+bagGrp = (() => { const g = ls.get('mw_bag_grp'); return bagChips().some(x => x[0] === g) ? g : 'all'; })();
 const bagTierOf = k => { const m = /^(?:hoe|pail|pan|axe|pick|rod|can)_(\d+)$/.exec(k); return m ? +m[1] : 0; };
 function bagRank(k) { // ขอบช่อง 0 กลาง 1 เขียว 2 ฟ้า 3 ทอง (อุปกรณ์ตามระดับ 1-10, ปลาหายากตามน้ำหนักสุ่ม)
   const t = bagTierOf(k); if (t) return t >= 10 ? 3 : t >= 7 ? 2 : t >= 4 ? 1 : 0;
@@ -1686,8 +1750,8 @@ function bagRank(k) { // ขอบช่อง 0 กลาง 1 เขียว 
 }
 function bagKeys() { // ของที่แสดง: ผ่านค้นหา+ชิปอาชีพ แล้วเรียงตามโหมด (ข้อมูลผิดรูปที่ไม่มี itemInfo ถูกกรองทิ้ง)
   const q = bagQ.trim().toLowerCase(), val = k => { const i = itemInfo(k); return bagTierOf(k) * 100000 + (i.sell || i.buy || 0); };
-  const ks = Object.keys(inv).filter(k => k !== 'coin' && inv[k] > 0 && itemInfo(k) && (bagGrp === 'all' || fleaGrpOf(k) === bagGrp) && (!q || String(itemInfo(k).name).toLowerCase().includes(q)));
-  const gi = k => FLEA_GRPS.findIndex(x => x[0] === fleaGrpOf(k)), nm = (a, b) => String(itemInfo(a).name).localeCompare(String(itemInfo(b).name), 'th');
+  const ks = Object.keys(inv).filter(k => k !== 'coin' && inv[k] > 0 && itemInfo(k) && (bagGrp === 'all' || bagGrpOf(k) === bagGrp) && (!q || String(itemInfo(k).name).toLowerCase().includes(q)));
+  const gi = k => bagChips().findIndex(x => x[0] === bagGrpOf(k)), nm = (a, b) => String(itemInfo(a).name).localeCompare(String(itemInfo(b).name), 'th');
   return ks.sort((a, b) => bagSort === 'name' ? nm(a, b) : bagSort === 'val' ? val(b) - val(a) || nm(a, b) : gi(a) - gi(b) || val(b) - val(a) || nm(a, b));
 }
 function bagGridHtml() {
@@ -1792,8 +1856,8 @@ function renderBag() {
     if (bagSel && !(inv[bagSel] > 0 && itemInfo(bagSel))) bagSel = '';
     el.innerHTML = `<div class="row"><span>🪙 เหรียญ</span><b>${inv.coin || 0}</b></div>`
       + `<div class="bagwrap"><div class="bwear">${bagWearHtml()}</div><div class="bmain">`
-      + `<div class="bsrch"><input id="bagQ" type="search" placeholder="ค้นหาของ..." value="${esc(bagQ)}" autocomplete="off"><button class="btn small" data-bsort="1" title="เปลี่ยนวิธีเรียง">เรียง: ${(BAG_SORTS.find(x => x[0] === bagSort) || BAG_SORTS[0])[1]}</button></div>`
-      + `<div class="chips" id="bagGrps">${FLEA_GRPS.map(([k, n]) => `<button class="chip${bagGrp === k ? ' sel' : ''}" data-bgrp="${k}">${n}</button>`).join('')}</div>`
+      + `<div class="bsrch"><input id="bagQ" type="search" placeholder="ค้นหาของ..." value="${esc(bagQ)}" autocomplete="off"><button class="btn small" data-bsort="1" title="เปลี่ยนวิธีเรียง">เรียง: ${(BAG_SORTS.find(x => x[0] === bagSort) || BAG_SORTS[0])[1]}</button><button class="btn small" data-bmode="1" title="สลับการจัดกลุ่ม: ตามชนิดของ หรือตามอาชีพ">จัดตาม: ${bagMode === 'job' ? 'อาชีพ' : 'ชนิด'}</button></div>`
+      + `<div class="chips" id="bagGrps">${bagChips().map(([k, n]) => `<button class="chip${bagGrp === k ? ' sel' : ''}" data-bgrp="${k}">${n}</button>`).join('')}</div>`
       + `<div id="bagGridBox">${bagGridHtml()}</div></div></div>`
       + `<div class="sec">🎣 อุปกรณ์ (ความทนทาน)</div><div id="bagGear">${bagGearHtml()}</div>`;
     drawBagDoll();
@@ -2012,6 +2076,7 @@ function renderShop() {
     if (i.animal) sub = `มี ${animalCount(i.animal)}/${ANIMALS[i.animal].cap} ตัว`;
     else if (i.once) sub = inv[k] ? 'มีแล้ว ✅' : '';
     else sub = `มี ${inv[k] || 0}${i.food ? ` • อิ่ม +${i.food}` : ''}`;
+    if (shopKind === 'furn') sub += furnBadgeOf(k) ? '<br>' + furnBadgeOf(k) : '';
     if (seedTab) {
       const cid = k.slice(5), tg = cropSeasonTag(cid), lk = plantLock(cid);
       if (!tg && !freeHdr) { freeHdr = true; const fl = (Shared.SEASONS && Shared.SEASONS.freeLv) || 0; if (fl) h += `<div class="sec">✅ Lv≤${fl} ปลูกได้ทุกฤดู</div>`; }
@@ -2122,7 +2187,7 @@ function renderShop() {
     for (const r of CRAFT) {
       const i = itemInfo(r.id), locked = lvl('wood') < r.lv, ok = Object.entries(r.in).every(([k, n]) => (inv[k] || 0) >= n);
       const need = Object.entries(r.in).map(([k, n]) => { const x = itemInfo(k), have = inv[k] || 0; return x.emoji + n + (have >= n ? '' : ' <small style="color:#c0392b">(มี ' + have + ')</small>'); }).join(' + ');
-      h += `<div class="row${locked ? ' lock' : ''}"><span>${i.emoji} ${i.name}${locked ? ` <small>🔒 Lv${r.lv}</small>` : ''}<br><small>ใช้ ${need} • +${woodXp(r.xp, lvl('wood'))} XP${craftFee(r.id) ? ` • ค่าโรงช่าง 🪙${craftFee(r.id)}` : ''}${i.furn ? ' • วางในบ้านได้' : ''}</small></span><span><button class="btn small" data-craft="${r.id}" ${locked || !ok ? 'disabled' : ''}>🔨 ทำ</button></span></div>`;
+      h += `<div class="row${locked ? ' lock' : ''}"><span>${i.emoji} ${i.name}${locked ? ` <small>🔒 Lv${r.lv}</small>` : ''}<br><small>ใช้ ${need} • +${woodXp(r.xp, lvl('wood'))} XP${craftFee(r.id) ? ` • ค่าโรงช่าง 🪙${craftFee(r.id)}` : ''}${i.furn ? ' • วางในบ้านได้' : ''}${furnBadgeOf(r.id) ? '<br>' + furnBadgeOf(r.id) : ''}</small></span><span><button class="btn small" data-craft="${r.id}" ${locked || !ok ? 'disabled' : ''}>🔨 ทำ</button></span></div>`;
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ตัดต้นไม้ด้วยขวานได้ไม้ท่อน 🪵 และไม้เนื้อแข็ง 🟫 • ไม้กระดานขายได้แพงกว่าไม้ท่อน • ลังไม้ ถังไม้ ป้ายชี้ทาง ตู้ไปรษณีย์ ตู้เครื่องมือ และกระท่อม ทำได้เฉพาะช่างไม้ (ตะเกียง 🏮 ย้ายไปขายที่ร้านเฟอร์นิเจอร์แล้ว)</p>';
   }

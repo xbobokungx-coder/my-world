@@ -1784,14 +1784,31 @@
   // ----- ที่เก็บของในบ้าน (HOME.store): คลังรวมต่อชนิดตู้ ไม่ผูกกับตู้แต่ละใบ • cold = ตู้เย็น (เฉพาะของเสียได้ อายุเดิน ×mul) • box = ลัง/ตู้ (ของไม่เสียที่ไม่ใช่ once) • ตัวเลขทั้งหมดแก้ที่นี่ที่เดียว
   const HOME = {
     store: {
-      cold: { furn: { fridge: 60 }, max: 4, mul: 0.25, accept: 'fresh', name: 'ตู้เย็น', emoji: '❄️' },
+      // 21 พ.ย. 2026 (tools/homesim.js, docs/reports/home-storage-sim.md): เดิม mul 0.25 × 60 × สูงสุด 4 ใบ (240 ชิ้น) ซิมแล้วกำไรสุทธิ/ชม.จากการตุนรอตลาดฟื้นเพิ่มชาวนา +50% (ถึง +61%) เฉลี่ยทุกอาชีพ +21% และดัน G2 (240÷60 นาที/วัน) เป็น 2.54 เกินกรอบ 2.5 • ตอนนี้ 0.4 × สูงสุด 2 ใบ (120 ชิ้น): ชาวนา +29% เฉลี่ยทุกอาชีพ +12% ≈ ตู้เย็นเดิม (ชะลอทั้งกระเป๋า ×0.5 ไม่จำกัดจำนวน +11%) G2 2.45–2.51 • ผลหลักมาจาก "ความจุ" มากกว่า mul (ตลาดฟื้นเฉพาะตอนออนไลน์ ตุนได้เกิน 1 รอบวันก็พอ) จึงจำกัดที่จำนวนใบ ไม่ใช่ปรับ mul อย่างเดียว
+      cold: { furn: { fridge: 60 }, max: 2, mul: 0.4, accept: 'fresh', name: 'ตู้เย็น', emoji: '❄️' },
       box: { furn: { crate: 80, cupboard: 60, dresser: 60, toolbox: 60, barrel: 40, nightstand: 20 }, max: 6, accept: 'dry', name: 'คลังของ', emoji: '📦' },
     },
     near: 4,            // เปิดคลังได้เมื่อยืนห่างตู้ไม่เกินกี่ช่อง
     openMs: 150,        // เว้นระยะระหว่างคำสั่งเปิดคลัง
+    // ความสบายของบ้าน (ไม่ให้เหรียญ/XP/ราคา): คิดจากเฟอร์นิเจอร์ "ชนิดไม่ซ้ำ" ที่วาง ชิ้นละ pts แล้วตัดเพดานต่อหมวด FURN.cat (วางต้นไม้ 300 ต้นก็ได้ 1) • ขั้นตามเกณฑ์ tiers • sitMul = คูณอัตราอิ่มตอนนั่ง/นอนในบ้าน (ขั้น 0 = ×1 เท่าเดิม)
+    comfort: {
+      pts: { def: 1, lux: 2, luxPrice: 900, rare: 3 },
+      cap: { living: 6, bedroom: 6, kitchen: 6, decor: 6, study: 4, craft: 4, rare: 4, divider: 2 },
+      tiers: [0, 6, 14, 24], names: ['โล่ง', 'อยู่สบาย', 'อบอุ่น', 'บ้านในฝัน'], emoji: '🏠', sitMul: [1, 1.5, 2, 2.5],
+    },
+    // บัฟ 😴 หลับสบาย: นอนเตียงบ้านตัวเองต่อเนื่อง lieMs → ความหิวลดช้าลง (คูณ mul) นาน mins[ขั้น] นาที (ต่อเวลาได้ ไม่สะสม ไม่ซ้อนกับ BUFFS.hunger)
+    rest: { lieMs: 60000, mul: 0.75, mins: [0, 15, 25, 35], name: 'หลับสบาย', emoji: '😴' },
+    // ชุดห้อง: slots = ต้องมีเฟอร์นิเจอร์อย่างน้อย 1 ชนิดจากแต่ละช่อง (any) • ครบ = ได้ผล: eatMul กินในบ้านอิ่มเพิ่ม • restMul บัฟหลับสบายนานขึ้น • sitTier นั่ง(ไม่ใช่นอน)นับเป็นขั้นสูงขึ้น • comfort บวกคะแนนความสบาย
+    sets: {
+      kitchen: { name: 'ครัว', emoji: '🍳', desc: 'กินในบ้านอิ่มเพิ่ม 20%', eatMul: 1.2, slots: [{ any: ['fridge'] }, { any: ['stove'] }, { any: ['counter', 'sink'] }] },
+      bedroom: { name: 'ห้องนอน', emoji: '🛏️', desc: 'บัฟหลับสบายนานขึ้น 1.5 เท่า', restMul: 1.5, slots: [{ any: ['bed', 'bedsingle', 'bedking'], label: 'เตียง' }, { any: ['nightstand', 'dresser', 'wardrobe'] }, { any: ['lantern', 'floorlamp'], label: 'โคมไฟ' }] },
+      living: { name: 'นั่งเล่น', emoji: '🛋️', desc: 'นั่งพักฟื้นไวขึ้นอีกขั้น', sitTier: 1, slots: [{ any: ['chair', 'sofa', 'armchair', 'stool'], label: 'ที่นั่ง' }, { any: ['coffeetable', 'table'] }, { any: ['tv', 'fireplace', 'piano'] }] },
+      study: { name: 'มุมอ่านหนังสือ', emoji: '📚', desc: 'ความสบาย +2', comfort: 2, slots: [{ any: ['desk'] }, { any: ['officechair'] }, { any: ['shelf', 'computer', 'globe'] }] },
+    },
     migrate: { ageMul: 0.5 }, // ย้ายตู้เย็นเดิม: อายุของในกระเป๋าคูณเท่านี้ครั้งเดียว (ความสดที่เห็นไม่กระโดด)
     msg: {
       far: 'ไกลเกินไป เดินเข้าไปใกล้ตู้ก่อนนะ', mine: 'เปิดคลังได้เฉพาะในบ้านของตัวเองนะ', full: 'ตู้เต็มแล้ว หยิบออกหรือวางตู้เพิ่มก่อนนะ',
+      rested: (min) => `😴 หลับสบาย! ความหิวลดช้าลงไป ${min} นาที`,
       no: 'ของชิ้นนี้เก็บในตู้นี้ไม่ได้นะ', blocked: n => `ตู้ยังมีของ ${n} ชิ้น หยิบออกก่อนหรือวางตู้เพิ่มนะ`,
       migrated: '🧊 ตู้เย็นเก็บของได้จริงแล้ว! กด Space/A ที่ตู้เย็นในบ้านเพื่อเก็บของสด ในตู้จะสดนานกว่าเดิมมาก (ส่วนของในกระเป๋าเสื่อมปกติ เราปรับอายุให้ครั้งเดียวแล้วนะ)',
     },
@@ -1812,6 +1829,60 @@
   // อายุจริงของกองในคลังเย็น (มิลลิวินาที) = (at−tv) + (now−at)×r ไม่คิดย้อนหลังเมื่ออัตราเปลี่ยน (ไม่ติดลบ)
   const storeAge = (tv, pool, now) => Math.max(0, (pool.at - tv) + (now - pool.at) * pool.r);
   const storeValue = store => { let v = 0; if (store && typeof store === 'object') for (const n of Object.keys(HOME.store)) if (store[n] && typeof store[n].inv === 'object') v += holdingsValue(store[n].inv); return v; };
+  // ความสบายของบ้านจากเฟอร์นิเจอร์ที่วาง (items = houses[key].items) → { v, tier, sets:[{id,have,need,done,miss[],txt}], eatMul, restMul, sitTier }
+  const houseComfort = items => {
+    const C = HOME.comfort, seen = new Set(), by = {}, has = new Set();
+    for (const it of Object.values(items || {})) {
+      if (!it || !FURN[it.f]) continue; has.add(it.f); if (seen.has(it.f)) continue; seen.add(it.f);
+      const d = FURN[it.f], pts = (d.rare || d.cat === 'rare') ? C.pts.rare : d.price >= C.pts.luxPrice ? C.pts.lux : C.pts.def;
+      by[d.cat] = (by[d.cat] || 0) + pts;
+    }
+    let v = 0; for (const c of Object.keys(by)) v += Math.min(by[c], C.cap[c] || 0);
+    const sets = []; let eatMul = 1, restMul = 1, sitTier = 0;
+    for (const id of Object.keys(HOME.sets)) {
+      const D = HOME.sets[id], miss = []; let have = 0;
+      for (const sl of D.slots) { if (sl.any.some(f => has.has(f))) have++; else miss.push(sl.label || sl.any.map(f => FURN[f].name).join('/')); }
+      const done = miss.length === 0, o = { id, have, need: D.slots.length, done, miss };
+      o.txt = `${D.emoji} ${D.name} ${have}/${o.need}` + (done ? ` ครบแล้ว (${D.desc})` : ` ขาด${miss.join(', ')}`);
+      sets.push(o);
+      if (done) { if (D.eatMul) eatMul = Math.max(eatMul, D.eatMul); if (D.restMul) restMul = Math.max(restMul, D.restMul); if (D.sitTier) sitTier = Math.max(sitTier, D.sitTier); if (D.comfort) v += D.comfort; }
+    }
+    let tier = 0; for (let i = 0; i < C.tiers.length; i++) if (v >= C.tiers[i]) tier = i;
+    return { v, tier, sets, eatMul, restMul, sitTier };
+  };
+  // คูณอัตราอิ่มตอนนั่ง/นอนในบ้านตามขั้นความสบาย (นั่งได้ขั้นเพิ่มจากชุดนั่งเล่น นอนไม่ได้)
+  const sitMulOf = (cm, lie) => HOME.comfort.sitMul[Math.min(HOME.comfort.sitMul.length - 1, (cm ? cm.tier : 0) + (cm && !lie ? cm.sitTier : 0))] || 1;
+  // นาทีของบัฟหลับสบายที่จะได้ตอนนอนในบ้านนี้ (ขั้นความสบาย × restMul ของชุดห้องนอน)
+  const restMinutes = cm => Math.round((HOME.rest.mins[cm ? cm.tier : 0] || 0) * (cm ? cm.restMul : 1));
+  // หมวดของ (ชุดเดียวใช้ทั้งกระเป๋า/ที่เก็บ/ร้าน): คำนวณจาก cat + perishable ไม่แก้ cat เดิม
+  const KINDS = [
+    { id: 'fresh', emoji: '🥬', name: 'ของสด' }, { id: 'food', emoji: '🍱', name: 'อาหาร' }, { id: 'material', emoji: '🪵', name: 'วัตถุดิบ' },
+    { id: 'farm', emoji: '🌱', name: 'ของใช้ฟาร์ม' }, { id: 'supply', emoji: '🎣', name: 'ของใช้สิ้นเปลือง' }, { id: 'tool', emoji: '🧰', name: 'เครื่องมือ' },
+    { id: 'wear', emoji: '👕', name: 'เสื้อผ้า' }, { id: 'furn', emoji: '🛋️', name: 'เฟอร์นิเจอร์' }, { id: 'other', emoji: '🎒', name: 'อื่นๆ' },
+  ];
+  const kindOf = k => {
+    const i = typeof k === 'string' ? itemInfo(k) : null, c = i && i.name && i.cat; if (!c) return 'other'; // i.name กัน key แปลก (เช่น __proto__)
+    if (c === 'food') return 'food';
+    if (perishable(k)) return 'fresh';
+    if (c === 'wood' || c === 'ore' || c === 'bar' || c === 'animal') return 'material';
+    if (c === 'seed' || c === 'feed') return 'farm';
+    if (c === 'tool') return 'supply';
+    if (c === 'gear') return 'tool';
+    if (c === 'wear') return 'wear';
+    if (c === 'furn') return 'furn';
+    return 'other'; // pet animalbuy crop ที่ไม่เสีย ฯลฯ
+  };
+  // กลุ่มตามอาชีพ (ย้ายตัวเนื้อจาก fleaGrpOf ใน game.js ผลเท่าเดิมทุก key): farm animal fish wood ore chef other
+  const jobOf = k => {
+    const i = itemInfo(k), c = i && i.cat;
+    if (c === 'crop' || c === 'seed') return 'farm';
+    if (c === 'animal' || c === 'feed') return 'animal';
+    if (c === 'fish' || (i && i.bait)) return 'fish';
+    if (c === 'wood' || /^furn_/.test(k)) return 'wood';
+    if (c === 'ore') return 'ore';
+    if (c === 'food') return 'chef';
+    return 'other';
+  };
   const isTradable = k => { if (typeof k !== 'string' || k === 'coin') return false; const i = itemInfo(k); return !!(i && !i.once && !i.animal && tradeValue(k) > 0); };
   const shopSells = (kind, key) => !!SHOPS[kind] && SHOPS[kind].sell.some(p => key === p || (p.endsWith('_') && key.startsWith(p)));
   const shopAt = (tx, ty) => { for (const b of BUILDINGS) if (b.counter.length && tx >= b.x0 && tx <= b.x1 && ty >= b.y0 && ty <= b.y1) return b.kind; return null; }; // กดที่ไหนก็ได้บนตัวอาคารร้าน (ประตูคือจุดที่ใช้วัดระยะ)
@@ -2062,7 +2133,7 @@
     reportWhy: [{ id: 'abuse', name: 'พูดจาไม่ดี' }, { id: 'cheat', name: 'โกง' }, { id: 'other', name: 'อื่นๆ' }],
     muteMs: { '10m': 10 * 60000, '1h': 3600000, '1d': 86400000 }, banMs: { '1d': 86400000, '7d': 7 * 86400000 } }; // banMs ไม่มี perm: ถาวร = ระบบแบนเดิม
 
-  const api = { CREATURES, CREATURE, creatureCap, creatureKinds, creaturePick, creatureHp, creatureSpeed, creatureHunger, TOWER, towerAt, GROVE, groveCells, groveHas, THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, PETLV, petLevel, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, inSeason, OFFSEASON, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, AXE_MAX, ROD_MAX, AXE_TUNE, ROD_TUNE, chopHit, rodHit, fishTier, AXE_MIG6, ROD_MIG6, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, FLEA, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, SNAKE, SNAKE_DIRS, snakeFood, snakeNew, snakeStep, snakeTurn, snakeMs, ARC_SHOP, VEHICLES, HORN, thaiWeek, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, HOME, storeAccepts, storeCap, storeAge, storeValue, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, ADMIN_COIN_STEP, ANIMAL_LOCK, animalLockMs, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, treeCutters, treeCapFor, treeGrowMs, WATER_MS, CANS, canTier, GEAR_MAX, GEAR_TUNE, gearHit, HOES, PAILS, PANS, HOE_EMOJI, PAIL_EMOJI, PAN_EMOJI, hoeTier, SELLBACK_MIN_FRAC, pailTier, panTier, cropTier, animalTier, cookTier, hoeHit, hoeBonus, pailHit, pailChance, panHit, panFee, STALL, LUCKY, FLEA, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, AXE_EMOJI, ROD_EMOJI, BUILDINGS, SHOPS, DIRS,
+  const api = { CREATURES, CREATURE, creatureCap, creatureKinds, creaturePick, creatureHp, creatureSpeed, creatureHunger, TOWER, towerAt, GROVE, groveCells, groveHas, THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, PETLV, petLevel, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, inSeason, OFFSEASON, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, AXE_MAX, ROD_MAX, AXE_TUNE, ROD_TUNE, chopHit, rodHit, fishTier, AXE_MIG6, ROD_MIG6, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, CHALLENGE, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, FLEA, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, SNAKE, SNAKE_DIRS, snakeFood, snakeNew, snakeStep, snakeTurn, snakeMs, ARC_SHOP, VEHICLES, HORN, thaiWeek, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, HOME, storeAccepts, storeCap, storeAge, storeValue, houseComfort, sitMulOf, restMinutes, KINDS, kindOf, jobOf, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, ADMIN_COIN_STEP, ANIMAL_LOCK, animalLockMs, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, treeCutters, treeCapFor, treeGrowMs, WATER_MS, CANS, canTier, GEAR_MAX, GEAR_TUNE, gearHit, HOES, PAILS, PANS, HOE_EMOJI, PAIL_EMOJI, PAN_EMOJI, hoeTier, SELLBACK_MIN_FRAC, pailTier, panTier, cropTier, animalTier, cookTier, hoeHit, hoeBonus, pailHit, pailChance, panHit, panFee, STALL, LUCKY, FLEA, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, AXE_EMOJI, ROD_EMOJI, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

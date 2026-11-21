@@ -155,6 +155,10 @@
   #store .row > .act { display:flex; gap:6px; }
   #store .btn.small { min-width:44px; min-height:40px; white-space:nowrap; } #store .btn:disabled { opacity:.45; }
   #store button:focus-visible { outline:3px solid #2a6fd6; outline-offset:2px; }
+  #storeKinds { margin:2px 0 8px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; } #storeKinds .chip { flex:0 0 auto; min-height:40px; white-space:nowrap; padding:4px 10px; font-size:14px; }
+  #hudTop #homeChip { cursor:pointer; font-size:13px; } #hudTop #restChip { font-size:13px; }
+  #homeCard { position:fixed; left:8px; z-index:9; width:min(92vw,340px); max-height:max(120px,min(55vh,calc(100vh - 380px))); /* จอเตี้ย (360x640): ก้นการ์ดต้องไม่ทับจอยสติ๊ก/ปุ่ม A ล่างจอ */ overflow:auto; box-sizing:border-box; padding:10px 12px; font-size:14px; line-height:1.5; cursor:pointer; } #homeCard.hidden { display:none; } #homeCard b.hc { font-size:15px; } #homeCard .hcs { margin-top:4px; } #homeCard .hcs.done { color:#2b7a3d; } #homeCard small { opacity:.75; }
+  .fbadge { display:inline-block; margin:2px 4px 0 0; padding:0 7px; border-radius:999px; background:#eef6ff; border:1px solid #9ec5ee; font-size:12px; font-weight:700; white-space:nowrap; }
   #store .storeEmpty { font-size:13px; opacity:.6; padding:10px 0; }
   body.touch #store .btn.small, #store .shead .btn { min-height:44px; } body.touch #store .row { padding:9px 0; }
   @media (max-width:700px) { #storeCols { grid-template-columns:1fr; } #storeTabs { display:flex; } #storeColBag { display:none; } #store.tab-bag #storeColBag { display:block; } #store.tab-bag #storeColIn { display:none; } }
@@ -690,6 +694,8 @@
   <div class="panel hidden" id="happyChip" title="Happy Village: บัฟร่วมของทั้งเมือง">🎉</div>
   <div class="panel" id="online">👥 1</div>
   <div class="panel hidden" id="satChip" role="status"></div>
+  <div class="panel hidden" id="homeChip" role="button" tabindex="0" title="ความสบายของบ้านหลังนี้ (แตะดูรายละเอียด)"></div>
+  <div class="panel hidden" id="restChip" role="status"></div>
   <button class="btn small" id="bagBtn" title="กระเป๋า (B)" aria-label="กระเป๋า">🎒</button>
   <button class="btn small" id="chatBtn" title="แชท (Enter)" aria-label="แชท">💬</button>
   <button class="btn small mic" id="micBtn" title="ไมค์: ปิดอยู่ (กดเพื่อเปิด)" aria-label="เปิด/ปิดไมค์">🎤</button>
@@ -741,12 +747,14 @@
   <div id="storeGauge"><i></i></div>
   <div id="storeUse"></div>
   <div id="storeNote"></div>
+  <div class="chips" id="storeKinds"></div>
   <div id="storeTabs"><button class="chip on" id="storeTabIn">ในตู้</button><button class="chip" id="storeTabBag">ในกระเป๋า</button></div>
   <div id="storeCols">
     <div class="scol" id="storeColIn"><div class="shead"><b>ในตู้</b> <button class="btn small" id="storeTakeAll">หยิบทั้งหมด</button></div><div id="storeIn"></div></div>
     <div class="scol" id="storeColBag"><div class="shead"><b>ในกระเป๋า</b> <button class="btn small" id="storePutAll">เก็บทั้งหมด</button></div><div id="storeBag"></div></div>
   </div>
 </div></div>
+<div id="homeCard" class="panel hidden" role="dialog" aria-label="ความสบายของบ้าน"></div>
 <div id="settings" class="hidden"><div class="panel">
   <h2><span>⚙️ ตั้งค่า</span> <button class="btn small" id="settingsClose">ปิด</button></h2>
   <div class="mtitle">🎚️ เสียงเกม</div>

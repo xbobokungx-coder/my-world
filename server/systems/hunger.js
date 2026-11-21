@@ -14,13 +14,15 @@ module.exports = {
     }
     this.dirty = true;
   },
+  eatMulAt(p) { return p.scene && !S.caveFloor(p.scene) && this.houses[p.scene] ? this.houseComfortOf(p.scene).eatMul : 1; }, // กินในบ้านที่มีชุดครัวครบ = อิ่มเพิ่ม (นอกบ้าน ×1)
+  drainMul(p) { return S.HOME.rest.mul < 1 && this.restLeft(p) > 0 && !this.buffOn(p, 'hunger') ? S.HOME.rest.mul : 1; }, // หลับสบายลดความหิวช้าลง ไม่ซ้อนกับ BUFFS.hunger (บัฟนั้นแรงกว่า ใช้ตัวนั้น)
   eat(p, item) {
     const info = typeof item === 'string' && S.itemInfo(item);
     if (!info || !info.food || !p.rec.inv[item]) return;
     if (p.rec.hunger >= 99) return this.toast(p, 'อิ่มแล้ว กินไม่ลง 😋');
-    const gain = Math.min(info.food, 100 - Math.round(p.rec.hunger));
+    const food = info.food * this.eatMulAt(p), gain = Math.min(Math.round(food), 100 - Math.round(p.rec.hunger)); // food = อิ่มที่ได้ (ชุดครัวในบ้านคูณเพิ่ม ไม่เกิน 100)
     this.add(p, item, -1);
-    this.setHunger(p, p.rec.hunger + info.food, true);
+    this.setHunger(p, p.rec.hunger + food, true);
     if (S.ENERGY.on) { const e = this.enOf(p); e.v = Math.min(S.ENERGY.max, e.v + info.food * S.ENERGY.eatMul); if (e.ex && e.v >= S.ENERGY.resume) e.ex = false; this.enPush(p); }
     this.toast(p, `กิน ${info.emoji} ${info.name} (อิ่มขึ้น +${gain})`);
     this.sfx(p, 'eat'); if (item.startsWith('meal_')) this.bookAdd(p, 'meal', item.slice(5));

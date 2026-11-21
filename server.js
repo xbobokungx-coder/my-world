@@ -612,9 +612,9 @@ class World {
     // ความหิว: นับเฉพาะตอนมีผู้เล่นออนไลน์ (กันสัตว์/คนหิวตายตอนทุกคนไม่อยู่)
     if (this.players.size) {
       this.hunTick = (this.hunTick || 0) + dt * 1000;
-      if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) this.petTick15(p); for (const p of this.players.values()) { if (p.sit || (p.admin && p.noHunger)) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul)); } } // นั่งพักอยู่ = ความหิวไม่ลด
+      if (this.hunTick >= S.PLAYER_HUNGER.tickMs / HFAST) { this.hunTick = 0; for (const p of this.players.values()) this.petTick15(p); for (const p of this.players.values()) { if (p.sit || (p.admin && p.noHunger)) continue; if (this.buffOn(p, 'hunger') && (p.hunHalf = !p.hunHalf)) continue; const H = S.PLAYER_HUNGER, busy = p.fish || (Date.now() - (p.workAt || 0) < H.workMs); this.setHunger(p, p.rec.hunger - (busy ? H.workMul : H.idleMul) * this.drainMul(p)); } } // นั่งพักอยู่ = ความหิวไม่ลด
       this.sitTick = (this.sitTick || 0) + dt * 1000;
-      if (this.sitTick >= S.PLAYER_HUNGER.sitMs) { this.sitTick = 0; for (const p of this.players.values()) if (p.sit && p.rec.hunger < 100) this.setHunger(p, p.rec.hunger + S.PLAYER_HUNGER.sitGain, true); } // นั่งพักค่อยๆ อิ่มขึ้นทีละนิด
+      if (this.sitTick >= S.PLAYER_HUNGER.sitMs) { this.sitTick = 0; for (const p of this.players.values()) if (p.sit) { this.sitRecover(p); this.restCheck(p); } } // นั่งพักค่อยๆ อิ่มขึ้นทีละนิด
       this.energyTick(dt); this.chAcc = (this.chAcc || 0) + dt; if (this.chAcc >= 2) { this.chAcc = 0; this.chTick(); this.evTick(); }
       const byKey = new Map(); for (const q of this.players.values()) byKey.set(q.key, q); // เจ้าของสัตว์ที่ออนไลน์
       const away = a => { const o = byKey.get(a.owner); return !!(o && o.scene); }; // เจ้าของอยู่ในบ้าน/ถ้ำ/ทะเล = ไม่อยู่เล้า หยุดนับหิว/ป่วย (เดิมนับต่อ ขุดแร่นานๆ สัตว์ตายโดยไม่รู้ตัว • 5 พ.ย. 2026)

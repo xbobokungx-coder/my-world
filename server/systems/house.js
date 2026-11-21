@@ -1,7 +1,7 @@
 'use strict';
 // บ้านหลังใหญ่ ตกแต่งเฟอร์นิเจอร์ ลีดเดอร์บอร์ดบ้าน: ย้ายมาจาก class World ใน server.js ต่อกลับด้วย mix() (ดู server/mixin.js)
 const S = require('../../public/shared.js');
-const { TS } = S;
+const { TS, HOME } = S;
 const { send } = require('../util.js');
 const { ADMIN_NAME } = require('../consts.js');
 
@@ -9,7 +9,7 @@ module.exports = {
   // ----- บ้านหลังใหญ่: ทุกคนมีบ้านของตัวเองหลังเดียว เป็นแมพแยก (ฉาก p.scene = key เจ้าของ, null = เมือง) เข้าจากเมนู เจ้าของเท่านั้นที่วาง/ย้าย/หมุน/เก็บเฟอร์นิเจอร์ได้ คนอื่นเข้าเยี่ยมจากลีดเดอร์บอร์ด (ของที่เก็บคืนเข้ากระเป๋าเจ้าของ)
   // ตกแต่งอิสระ: houses[key] = { items: { <id>: { f, x, y, r, z, on, wl, u } }, next } พิกัดเป็นหน่วยช่อง ดูกติกาที่ houseCheck ใน shared.js
   loadHouse(d) {
-    this.houses = Object.create(null); this.hrects = new Map(); this.hmap = S.makeHouseMap();
+    this.houses = Object.create(null); this.hrects = new Map(); this.hcomf = new Map(); this.hmap = S.makeHouseMap();
     this.initCave();
     const refund = (key, f) => { const inv = this.saved[key].inv || (this.saved[key].inv = {}); inv['furn_' + f] = (inv['furn_' + f] || 0) + 1; this.dirty = true; }; // ของที่โหลดแล้ววางไม่ได้ (ข้อมูลเก่า/ผิดพลาด) คืนเข้ากระเป๋าเจ้าของ ไม่ให้หาย
     const build = (key, list) => { // list = [{f,x,y,r,z,on,wl,u}] → ใส่เข้าบ้านพร้อมตรวจกติกา
@@ -64,7 +64,7 @@ module.exports = {
     for (const [key, h] of Object.entries(this.houses)) {
       if (key === ADMIN_NAME.toLowerCase()) continue; // บ้านผู้ดูแลไม่ลงอันดับ ไม่ปนกับผู้เล่น
       const sc = S.houseScore(h.items);
-      if (sc.count > 0) rows.push({ n: this.nameOfKey(key), v: sc.value, c: sc.count, on: [...this.players.values()].some(q => q.key === key) ? 1 : 0, me: key === p.key ? 1 : 0 });
+      if (sc.count > 0) rows.push({ n: this.nameOfKey(key), v: sc.value, c: sc.count, cm: this.houseComfortOf(key).v, ct: this.houseComfortOf(key).tier, on: [...this.players.values()].some(q => q.key === key) ? 1 : 0, me: key === p.key ? 1 : 0 });
     }
     rows.sort((a, b) => b.v - a.v || b.c - a.c || (a.n < b.n ? -1 : 1));
     return rows.slice(0, 100);
@@ -78,7 +78,7 @@ module.exports = {
     if (!p.scene) { this.arcLeave(p); this.tradeCancel(p, 'ผู้เล่นเข้าบ้าน'); if (this.cinema.viewers.delete(p.id)) this.cinemaBroadcast(); p.ret = { x: p.x, y: p.y }; }
     const first = mine && !this.houses[key];
     if (first) this.houses[key] = { items: {}, next: 1 };
-    this.changeScene(p, key, S.HOUSE_SPAWN.x, S.HOUSE_SPAWN.y);
+    this.changeScene(p, key, S.HOUSE_SPAWN.x, S.HOUSE_SPAWN.y); this.comfortPush(p);
     this.toast(p, first ? '🏠 ยินดีต้อนรับสู่บ้านของคุณ! ซื้อเฟอร์นิเจอร์ที่ร้านเฟอร์นิเจอร์มาตกแต่ง แล้วกดปุ่ม 🏠 เพื่อเข้าโหมดตกแต่ง' : mine ? '🏠 กลับบ้านแล้ว' : `🏘️ มาเยี่ยมบ้านของ ${this.nameOfKey(key)}`);
   },
   leaveHouse(p) {
@@ -87,11 +87,11 @@ module.exports = {
     this.changeScene(p, null, r.x, r.y);
   },
   setItem(key, id, it) { // วาง/แก้ชิ้นที่ id แล้วบอกคนในบ้านหลังนี้
-    this.houses[key].items[id] = it; this.hrects.delete(key);
+    this.houses[key].items[id] = it; this.hrects.delete(key); this.hcomf.delete(key);
     this.sceneBroadcast(key, { t: 'furn', op: 'set', o: Object.assign({ i: +id }, it) }); this.dirty = true;
   },
   delItem(key, id) {
-    const h = this.houses[key]; delete h.items[id]; this.hrects.delete(key);
+    const h = this.houses[key]; delete h.items[id]; this.hrects.delete(key); this.hcomf.delete(key);
     for (const q of this.sceneMates(key)) if (q.sit && q.sit.i === +id) q.sit = null; // ที่นั่งหาย = ลุกขึ้น
     this.sceneBroadcast(key, { t: 'furn', op: 'del', i: +id }); this.dirty = true;
   },
@@ -128,6 +128,7 @@ module.exports = {
           this.add(p, 'furn_' + f, -1);
           this.setItem(key, h.next++, { f, x: res.x !== undefined ? res.x : x, y: res.y !== undefined ? res.y : y, r, z: res.z, on: res.on, wl: res.wl, u: res.u });
           this.event(p, 'hplace', f); // หลัง setItem: storeOnEvent เห็นตู้ใหม่แล้ว
+          this.comfortBroadcast(key);
           this.sfx(p, 'plant');
           return;
         }
@@ -137,6 +138,7 @@ module.exports = {
           const blk = this.storeBlocksRemove(key, it.f); if (blk) return this.toast(p, blk); // ตู้ที่ยังมีของ ถอดจนความจุไม่พอไม่ได้
           this.delItem(key, id); this.add(p, 'furn_' + it.f, 1); this.sfx(p, 'collect'); this.event(p, 'hremove', it.f);
           for (const [cid, c] of Object.entries(h.items)) if (c.on === id) this.setItem(key, cid, Object.assign({}, c, { z: 0, on: null })); // ของที่วางอยู่บนหลังตกลงพื้น
+          this.comfortBroadcast(key);
           return;
         }
         const d = S.FURN[it.f];
@@ -166,8 +168,29 @@ module.exports = {
     const k = spots.findIndex((_, j) => !taken.has(j)); // ช่องว่างแรกของชิ้นนี้ (เตียงคู่/โซฟา 2 คน)
     if (k < 0) return this.toast(p, S.FURN[it.f].bed ? 'เตียงเต็มแล้ว' : 'ที่นั่งเต็มแล้ว');
     const lie = !!S.FURN[it.f].bed; // lie = นอนท่าราบ (พักเหมือนนั่ง: ความหิว/พลังงานเหมือนกัน)
-    p.sit = { i: id, k, lie }; p.x = spots[k].x * TS; p.y = spots[k].y * TS; p.dir = it.r ? 3 : 0; // หันตามแนวชิ้น
+    p.sit = { i: id, k, lie, at: now }; p.sitAcc = 0; p.x = spots[k].x * TS; p.y = spots[k].y * TS; p.dir = it.r ? 3 : 0; // หันตามแนวชิ้น
     send(p, { t: 'tp', x: p.x, y: p.y }); this.toast(p, lie ? '😴 นอนพักผ่อน... (เดินเพื่อลุก)' : '🪑 นั่งพักผ่อน... (เดินเพื่อลุก)');
+  },
+  // ----- ความสบายของบ้าน / บัฟหลับสบาย / ชุดห้อง (ตัวเลขอยู่ที่ S.HOME ผลอยู่ฝั่งความหิว/การพักเท่านั้น ไม่แตะเหรียญ XP ราคา) -----
+  houseComfortOf(key) { let c = this.hcomf.get(key); if (!c) { c = S.houseComfort(this.houses[key] ? this.houses[key].items : {}); this.hcomf.set(key, c); } return c; }, // แคชต่อบ้าน ล้างตอน setItem/delItem
+  restLeft(p) { const t = p.rec && p.rec.rest; return Number.isFinite(t) && t > Date.now() ? t - Date.now() : 0; }, // ms ที่เหลือของบัฟหลับสบาย
+  comfortMsg(p, key) { const c = this.houseComfortOf(key); return { t: 'hcomfort', v: c.v, tier: c.tier, sets: c.sets.map(s => ({ id: s.id, have: s.have, need: s.need, done: s.done, miss: s.miss, txt: s.txt })), rest: this.restLeft(p), rmin: key === p.key ? S.restMinutes(c) : 0, mine: key === p.key }; }, // rest = ms ที่เหลือ • rmin = นาทีที่จะได้ตอนนอนครั้งหน้า (เฉพาะบ้านตัวเอง)
+  comfortPush(p) { if (p.scene && !S.caveFloor(p.scene) && this.houses[p.scene]) send(p, this.comfortMsg(p, p.scene)); },
+  comfortBroadcast(key) { for (const q of this.sceneMates(key)) this.comfortPush(q); },
+  sitRecover(p) { // ทุก sitMs: คนที่นั่ง/นอนอิ่มขึ้น sitGain × sitMul[ขั้น] สะสมเศษใน p.sitAcc • นอกบ้าน (ม้านั่งในเมือง) = เท่าเดิมเป๊ะ
+    if (!p.sit || !(p.rec.hunger < 100)) return;
+    const G = S.PLAYER_HUNGER.sitGain, inHome = p.scene && !S.caveFloor(p.scene) && this.houses[p.scene];
+    if (!inHome) return this.setHunger(p, p.rec.hunger + G, true);
+    p.sitAcc = (Number.isFinite(p.sitAcc) ? p.sitAcc : 0) + G * S.sitMulOf(this.houseComfortOf(p.scene), p.sit.lie);
+    const whole = Math.floor(p.sitAcc); if (whole >= 1) { p.sitAcc -= whole; this.setHunger(p, p.rec.hunger + whole, true); }
+  },
+  restCheck(p, now = Date.now()) { // นอนเตียงบ้านตัวเองครบ lieMs → บัฟหลับสบาย (นับครั้งเดียวต่อรอบนอน ต่อเวลาได้ ไม่สะสม)
+    const s = p.sit; if (!s || !s.lie || s.rested || p.scene !== p.key || !this.houses[p.key]) return;
+    if (!Number.isFinite(s.at) || now - s.at < HOME.rest.lieMs) return;
+    s.rested = true;
+    const min = S.restMinutes(this.houseComfortOf(p.key)); if (!(min > 0)) return;
+    p.rec.rest = Math.max(Number.isFinite(p.rec.rest) ? p.rec.rest : 0, now + min * 60000); this.dirty = true;
+    this.toast(p, HOME.msg.rested(min)); this.comfortPush(p);
   },
   hasFridge(key) { const h = this.houses[key]; return !!(h && Object.values(h.items).some(it => it && it.f === 'fridge')); }, // ใช้เฉพาะตอนย้ายข้อมูลตู้เย็นเดิม (storage.js) ตู้เย็นไม่ชะลอของในกระเป๋าแล้ว
 };
