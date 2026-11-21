@@ -2122,10 +2122,10 @@ function renderShop() {
   for (const k of sellKeys) {
     const i = itemInfo(k), m = mult(k), unit = Math.max(1, Math.round(i.sell * m));
     const trend = (m > 1.03 ? `<span style="color:#1e8f4e">▲ ${Math.round((m - 1) * 100)}%</span>` : m < 0.97 ? `<span style="color:#c0392b">▼ ${Math.round((1 - m) * 100)}%</span>` : '') + (m < 0.5 ? ' <span style="color:#c0392b">⚠️ ตลาดอิ่มตัว รอราคากลับก่อนค่อยขาย</span>' : '');
-    h += `<div class="row"><span>${i.emoji} ${i.name} ×${inv[k]}${freshBadge(k)}<br><small>ราคาตลาด 🪙${unit} (ปกติ ${i.sell}) ${trend}</small></span><span>`
-      + `<input class="sellq" type="number" inputmode="numeric" min="1" max="${inv[k]}" step="1" value="${sellQtyOf(k)}" data-sq="${k}" aria-label="จำนวนที่จะขาย ${esc(i.name)}"> `
-      + `<button class="btn small" data-sell="${k}" data-n="num" data-sbtn="${k}">ขาย 🪙${sellQtyTotal(k)}</button> `
-      + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all" title="ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20% ของราคาฐาน">ทั้งหมด 🪙${allTotal(i, m, inv[k], k)}</button>` : '') + `</span></div>`;
+    h += `<div class="row sellrow"><div class="sinfo"><b>${i.emoji} ${i.name} ×${inv[k]}</b>${freshBadge(k)}<small>ราคาตลาด 🪙${unit} (ปกติ ${i.sell}) ${trend}</small></div><div class="sact">`
+      + `<input class="sellq" type="number" inputmode="numeric" min="1" max="${inv[k]}" step="1" value="${sellQtyOf(k)}" data-sq="${k}" aria-label="จำนวนที่จะขาย ${esc(i.name)}">`
+      + `<button class="btn small" data-sell="${k}" data-n="num" data-sbtn="${k}">ขาย 🪙${sellQtyTotal(k)}</button>`
+      + (inv[k] > 1 ? `<button class="btn small" data-sell="${k}" data-n="all" title="ราคาต่อชิ้นลดลงเรื่อยๆ ถึงพื้น 20% ของราคาฐาน">ทั้งหมด 🪙${allTotal(i, m, inv[k], k)}</button>` : '') + `</div></div>`;
   }
   if (showSell) h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ราคาขึ้นลงตามตลาด: ขายชนิดเดิมซ้ำๆ ราคาของคุณจะตกเร็วและฟื้นช้า (ตกเหลือต่ำสุด ~20–25% ของราคาปกติ) • ขายหมวดหนึ่งเยอะ หมวดนั้นตกเร็ว แต่หมวดอื่นฟื้นเร็วขึ้น • มีข่าวราคาพุ่ง/ตกทุกวันในเกม</p>';
   if (cookTab) {

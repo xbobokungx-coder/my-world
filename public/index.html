@@ -147,6 +147,16 @@
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
   /* แถวรายการในร้าน: ซ้าย = ชื่อ/รายละเอียด • ขวา = ราคาบน ปุ่มล่าง ชิดขวา (จัดโดย tidyShopRows ใน game.js) */
   #shop .row { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:12px; align-items:center; }
+  /* แถวขายของ: ชื่อ/ราคาซ้าย • ช่องจำนวนและปุ่มขวา ความกว้างคงที่ทุกแถว (ตรงกันทั้งรายการ) */
+  #shop .sellrow { display:grid; grid-template-columns:minmax(0,1fr); row-gap:6px; align-items:center; }
+  #shop .sellrow .sinfo { min-width:0; line-height:1.3; }
+  #shop .sellrow .sinfo b { display:block; font-size:16px; }
+  #shop .sellrow .sinfo small { display:block; font-size:12px; opacity:.85; }
+  #shop .sellrow .sact { display:grid; grid-template-columns:76px minmax(0,1fr) minmax(0,1fr); gap:6px; align-items:center; justify-items:stretch; }
+  #shop .sellrow .sact .sellq { width:76px; min-height:40px; }
+  #shop .sellrow .sact .btn { min-height:40px; white-space:normal; line-height:1.15; padding:4px 6px; font-size:13px; }
+  #shop .sellrow .sact > input + .btn:last-child { grid-column:2 / span 2; }
+  #shop .sellrow .sinfo b { font-size:15px; }
   #shop .row > .act { display:flex; flex-direction:column; align-items:flex-end; gap:5px; max-width:60vw; }
   #shop .act .pr { font-size:15px; color:#7a4a12; white-space:nowrap; }
   #shop .act .bt { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:6px; }
