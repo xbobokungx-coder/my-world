@@ -817,6 +817,61 @@ function bindSellWrap(w) {
     else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); sellConfirm(); }
   };
 }
+let buySel = null, buyQty = 1, buyNow = {}; // หน้าซื้อแบบรายการ: ชิ้นที่เลือก • จำนวน • รายการที่ซื้อได้ตอนนี้ (k → ข้อมูลแถว)
+const BUY_CONFIRM_AT = 200; // ยอดรวมตั้งแต่เท่านี้ขึ้นไปมีขั้นยืนยันก่อนซื้อ (ถูกกว่านั้นซื้อทันที)
+function buyWrapHtml(list) { // รายการซื้อ (แถวเรียบ: ไอคอน ชื่อ มี ราคา) + แถบ "ที่เลือก" ล่าง (รายละเอียด จำนวน รวม ซื้อ)
+  let h = '<div class="bylist" role="listbox" tabindex="0" aria-label="รายการที่ซื้อได้">';
+  for (const e of list) {
+    if (e.sec) { h += `<div class="bysec">${e.sec}</div>`; continue; }
+    const i = e.i, k = e.k, ic = /^(axe|rod|hoe|pail|pan|can|pick)_\d+$/.test(k) ? i.emoji : i.emoji;
+    const have = i.animal ? `${animalCount(i.animal)}/${ANIMALS[i.animal].cap}` : i.once ? (inv[k] ? 'มีแล้ว ✅' : '') : e.toolBetter ? 'มีที่ดีกว่า ✅' : `มี ${inv[k] || 0}`;
+    h += `<div class="byrow${e.off ? ' off' : ''}${buySel === k ? ' sel' : ''}" role="option" data-bsel="${k}"><span class="ico">${ic}</span><span class="nm">${i.name}${e.locked ? ` <small>🔒 Lv${i.lv}</small>` : ''}</span><span class="have">${have}</span><span class="pr">🪙 ${e.buyCoin}</span></div>`;
+  }
+  h += '</div>';
+  const e = buySel && buyNow[buySel];
+  if (!e) return h + '<div class="bybar none">แตะของที่ต้องการซื้อ เพื่อดูรายละเอียด</div>';
+  const i = e.i, k = e.k, single = i.once || i.animal || /^(axe|rod|pick|hoe|can|pail|pan)_\d+$/.test(k), q = single ? 1 : Math.max(1, buyQty), total = e.buyCoin * q, coin = inv.coin || 0, after = coin - total, enough = after >= 0;
+  const label = e.locked ? `🔒 ปลดล็อกที่ Lv ${i.lv}` : e.toolBetter ? 'มีที่ดีกว่าแล้ว' : e.ownedOnce ? 'มีแล้ว ✅' : e.off ? 'เต็มแล้ว' : e.gc ? `🔨 คราฟ 🪙${total}` : `ซื้อ ${q > 1 ? q + ' ชิ้น ' : ''}🪙${total}`;
+  const craftNote = e.gc ? '<div class="byn">ซื้อได้ทันทีในราคาเต็ม หรือเตรียมวัสดุคราฟมาแลกลดราคา (หักได้สูงสุดราว 25%) • วัสดุทำเอง: ขุดแร่ในถ้ำ → หลอมที่ร้านช่างเหมือง (แร่ 3 ชิ้น = วัสดุ 1 ชิ้น) • ส่วนที่ขาดจ่ายเป็นเหรียญในราคาอยู่แล้ว</div>' : '';
+  const ctrl = e.off ? '' : `<div class="bystep">${single ? '' : `<button class="bym" data-bstep="-1" aria-label="ลดจำนวน">−</button><input class="buyq" type="number" inputmode="numeric" min="1" step="1" value="${q}" aria-label="จำนวนที่จะซื้อ ${esc(i.name)}"><button class="bym" data-bstep="1" aria-label="เพิ่มจำนวน">+</button><button class="byq" data-bq="5">×5</button><button class="byq" data-bq="10">×10</button>`}<span class="tot">รวม 🪙 ${total}<small class="${enough ? '' : 'bad'}">${enough ? 'เหลือ 🪙 ' + after : 'เหรียญไม่พอ (ขาด ' + (-after) + ')'}</small></span></div>`;
+  const extra = (i.food && inv[k] ? `<button class="btn small byx eat" data-eat="${k}" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน (มี ${inv[k]})</button>` : '') + (e.ownedOnce ? `<button class="btn small byx muted" data-sellback="${k}">↩️ ขายคืน 🪙${sbValue(k)}</button>` : '');
+  return h + `<div class="bybar"><div class="byhd"><span class="ico">${i.emoji}</span><div><div class="t">${i.name}</div><div class="s">${e.sub || '&nbsp;'}</div></div></div>${craftNote}${ctrl}`
+    + `<button class="btn bygo${e.off ? ' lock' : ''}" data-bgo="1" ${e.off || !enough ? 'disabled' : ''}>${label}</button>${extra ? `<div class="byxr">${extra}</div>` : ''}</div>`;
+}
+function buyGo() { // ซื้อ: ยอดถูกซื้อทันที • ยอดตั้งแต่ BUY_CONFIRM_AT ขึ้นไปยืนยันก่อน
+  const e = buySel && buyNow[buySel]; if (!e || e.off) return;
+  const i = e.i, single = i.once || i.animal || /^(axe|rod|pick|hoe|can|pail|pan)_\d+$/.test(e.k), q = single ? 1 : Math.max(1, buyQty), total = e.buyCoin * q;
+  if ((inv.coin || 0) < total) return;
+  const go = () => send({ t: 'buy', item: e.k, n: q });
+  if (total >= BUY_CONFIRM_AT) ask(`ซื้อ ${i.emoji} ${i.name}${single ? '' : ' ×' + q} จ่าย 🪙${total} ยืนยัน?`, go); else go();
+}
+function renderBuyWrap(focusList) { // วาดเฉพาะรายการ+แถบล่างใหม่ (ไม่วาดร้านทั้งหน้า ตำแหน่งเลื่อนไม่หาย)
+  const w = $('shopBody').querySelector('.bywrap'); if (!w) return;
+  const l0 = w.querySelector('.bylist'), top = l0 ? l0.scrollTop : 0, list = [...w.querySelectorAll('.bysec,.byrow')].map(r => r.classList.contains('bysec') ? { sec: r.innerHTML } : buyNow[r.dataset.bsel]);
+  w.innerHTML = buyWrapHtml(list); bindBuyWrap(w);
+  const l2 = w.querySelector('.bylist'); if (l2) { l2.scrollTop = top; if (focusList) l2.focus({ preventScroll: true }); }
+}
+function bindBuyWrap(w) {
+  const pick = k => { buySel = k; buyQty = 1; renderBuyWrap(true); const r = w.querySelector('.byrow.sel') || $('shopBody').querySelector('.byrow.sel'); if (r) r.scrollIntoView({ block: 'nearest' }); };
+  w.querySelectorAll('[data-bsel]').forEach(r => r.onclick = () => pick(r.dataset.bsel));
+  w.querySelectorAll('[data-bstep]').forEach(b => b.onclick = () => { buyQty = Math.max(1, buyQty + (+b.dataset.bystep)); renderBuyWrap(false); });
+  w.querySelectorAll('[data-bq]').forEach(b => b.onclick = () => { buyQty = +b.dataset.bq; renderBuyWrap(false); });
+  w.querySelectorAll('[data-bgo]').forEach(b => b.onclick = buyGo);
+  w.querySelectorAll('.buyq').forEach(inp => {
+    inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); inp.blur(); buyGo(); } };
+    inp.onkeyup = e => e.stopPropagation();
+    inp.onchange = () => { buyQty = Math.max(1, Math.floor(+inp.value) || 1); renderBuyWrap(false); };
+    inp.onfocus = () => inp.select();
+  });
+  w.querySelectorAll('[data-eat]').forEach(b => b.onclick = () => send({ t: 'eat', item: b.dataset.eat }));
+  w.querySelectorAll('[data-sellback]').forEach(b => b.onclick = () => ask(`ขายคืนได้ 🪙${sbValue(b.dataset.sellback)} (ตามสภาพ สูงสุด 70% ของราคา) ยืนยัน?`, () => send({ t: 'sellback', item: b.dataset.sellback })));
+  const list = w.querySelector('.bylist');
+  if (list) list.onkeydown = e => { // PC: ↑↓ เลือกแถว • Enter ซื้อ
+    const ks = [...w.querySelectorAll('.byrow')].map(r => r.dataset.bsel); if (!ks.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); const i = ks.indexOf(buySel); pick(ks[e.key === 'ArrowDown' ? Math.min(ks.length - 1, i + 1) : Math.max(0, i < 0 ? 0 : i - 1)]); }
+    else if (e.key === 'Enter' && buySel) { e.preventDefault(); e.stopPropagation(); buyGo(); }
+  };
+}
 function renderBankTab(el) {
   const coin = inv.coin || 0, room = Math.max(0, bankSt.cap - bankSt.bal);
   let h = `<div class="row"><span>💳 ยอดเงินฝาก</span><b>🪙 ${bankSt.bal} / ${bankSt.cap}</b></div><div class="bar"><i style="width:${Math.round(bankSt.bal / bankSt.cap * 100)}%"></i></div>`
@@ -2108,7 +2163,7 @@ function renderShop() {
   let keys = sellTab || cookTab || craftTab || makeTab ? [] : tabs ? sh.buy.filter(k => buyTabOf(shopKind, k) === farmTab && (shopKind !== 'furn' || furnCatOf(k) === furnSub)) : sh.buy;
   const profitRank = seedTab ? keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a)) : [];
   if (seedTab) keys = keys.slice().sort((a, b) => CROPS[a.slice(5)].lv - CROPS[b.slice(5)].lv || CROPS[a.slice(5)].sell - CROPS[b.slice(5)].sell);
-  let freeHdr = false, craftH = ''; const splitCraft = !!(tabs && farmTab === 'gear'); // แท็บอุปกรณ์: อุปกรณ์ที่ใช้วัสดุคราฟ (ระดับ 8–10) แยกเป็นอีกหมวดใต้รายการซื้อธรรมดา ใช้กับทุกร้านที่มีอุปกรณ์แบบนี้ (ช่างเหมือง/ตกปลา/เมล็ดพันธุ์/ปศุสัตว์/อาหาร/ช่างไม้)
+  let freeHdr = false; const buyList = [], craftList = []; const splitCraft = !!(tabs && farmTab === 'gear'); // แท็บอุปกรณ์: อุปกรณ์ที่ใช้วัสดุคราฟ (ระดับ 8–10) แยกเป็นอีกหมวดใต้รายการซื้อธรรมดา ใช้กับทุกร้านที่มีอุปกรณ์แบบนี้ (ช่างเหมือง/ตกปลา/เมล็ดพันธุ์/ปศุสัตว์/อาหาร/ช่างไม้)
   for (const k of keys) {
     const i = itemInfo(k), locked = i.lv && lvl(i.skill) < i.lv, coin = inv.coin || 0;
     let sub = '';
@@ -2118,8 +2173,8 @@ function renderShop() {
     if (shopKind === 'furn') sub += furnBadgeOf(k) ? '<br>' + furnBadgeOf(k) : '';
     if (seedTab) {
       const cid = k.slice(5), tg = cropSeasonTag(cid), lk = plantLock(cid);
-      if (!tg && !freeHdr) { freeHdr = true; const fl = (Shared.SEASONS && Shared.SEASONS.freeLv) || 0; if (fl) h += `<div class="sec">✅ Lv≤${fl} ปลูกได้ทุกฤดู</div>`; }
-      if (tg && freeHdr === true) { freeHdr = 2; h += '<div class="sec">🌦️ ปลูกตามฤดู</div>'; }
+      if (!tg && !freeHdr) { freeHdr = true; const fl = (Shared.SEASONS && Shared.SEASONS.freeLv) || 0; if (fl) buyList.push({ sec: `✅ Lv≤${fl} ปลูกได้ทุกฤดู` }); }
+      if (tg && freeHdr === true) { freeHdr = 2; buyList.push({ sec: '🌦️ ปลูกตามฤดู' }); }
       const os = offSeason(cid);
       sub += os && !locked ? ' • ' + os : !tg ? '' : locked ? ` • ${tg.emoji} ${tg.name}` : lk ? ` • 🔒 ${tg.emoji} ${tg.name}${lk.txt ? ' รออีก ' + lk.txt : ''} (ซื้อเก็บไว้ได้)` : ` • ${tg.emoji} ${tg.name} 🌟 ปลูกได้ ราคาดี`;
     }
@@ -2145,15 +2200,13 @@ function renderShop() {
     }
     const off = locked || toolBetter || (i.once && inv[k]) || (i.animal && animalCount(i.animal) >= ANIMALS[i.animal].cap);
     const buyCoin = gcInfo ? gcInfo.coin : i.buy; // ราคาเหรียญจริงที่ต้องจ่าย (tier 8–10 ใช้ gcInfo.coin)
-    const ic = tn ? `<span style="font-size:28px;line-height:1;vertical-align:middle;margin-right:2px">${i.emoji}</span>` : i.emoji; // แถวขวาน/คัน: ไอคอนใหญ่ ~28px ให้แยกระดับออก
-    const rowH = `<div class="row${locked ? ' lock' : ''}${gcInfo ? ' craft' : ''}"><span>${ic} ${i.name}${lockTxt}<br><small>${sub}</small></span><span>🪙${gcInfo ? gcInfo.coin : i.buy} `
-      + `<button class="btn small" data-buy="${k}" data-n="1" ${off || coin < buyCoin ? 'disabled' : ''}>${gcInfo ? '🔨 คราฟ' : 'ซื้อ'}</button>`
-      + (i.once || i.animal ? '' : ` <button class="btn small" data-buy="${k}" data-n="5" ${off || coin < buyCoin * 5 ? 'disabled' : ''}>×5</button>`)
-      + (i.food && inv[k] ? ` <button class="btn small" data-eat="${k}" style="background:#2ecc71;border-bottom-color:#1e8f4e" ${hunger >= 99 ? 'disabled' : ''}>🍴 กิน</button>` : '')
-      + (i.once && inv[k] ? ` <button class="btn small muted" data-sellback="${k}">↩️ ขายคืน 🪙${sbValue(k)}</button>` : '') + `</span></div>`;
-    if (splitCraft && gcInfo) craftH += rowH; else h += rowH;
+    const ent = { k, i, sub, locked: !!locked, off: !!off, buyCoin, gc: !!gcInfo, toolBetter: !!toolBetter, ownedOnce: !!(i.once && inv[k]) };
+    if (splitCraft && gcInfo) craftList.push(ent); else buyList.push(ent);
   }
-  if (craftH) h += '<div class="sec">🔨 อุปกรณ์คราฟ (ระดับ 8–10 ใช้วัสดุ)</div><p style="font-size:12px;opacity:.8;margin:2px 0 8px;line-height:1.5">ชุดนี้ <b>ซื้อได้ทันทีในราคาเต็ม</b> หรือเตรียม <b>วัสดุคราฟ</b> (แท่งโลหะ/อัญมณีเจียระไน) มาแลกลดราคา: วัสดุแต่ละชิ้นที่มี ร้านหักราคาให้ รวมสูงสุดราว 25% • วัสดุทำเอง: ⛏️ ขุดแร่ในถ้ำเหมือง → 🔥 หลอมที่ร้านช่างเหมือง (แท็บ "🔥 หลอม" แร่ 3 ชิ้น = วัสดุ 1 ชิ้น) • ต้องมีเลเวลอาชีพถึงที่ระบุ (🔒) • ส่วนที่ขาด จ่ายเป็นเหรียญแทนในราคาอยู่แล้ว</p>' + craftH;
+  if (craftList.length) buyList.push({ sec: '🔨 อุปกรณ์คราฟ (ระดับ 8–10 ใช้วัสดุ)' }, ...craftList);
+  buyNow = {}; for (const e of buyList) if (e.k) buyNow[e.k] = e;
+  if (buySel && !buyNow[buySel]) buySel = null;
+  if (buyList.some(e => e.k)) h += `<div class="bywrap">${buyWrapHtml(buyList)}</div>`;
   if (isFarm && farmTab === 'gear') { // แปลงเช่า
     let rh = '';
     const R = Shared.FARM_RENT, now = Date.now() + timeOffset, myKey = me ? me.name.toLowerCase() : '';
@@ -2239,6 +2292,7 @@ function renderShop() {
   body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook }));
   bindPet(body);
   body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: +b.dataset.n }));
+  { const bw = body.querySelector('.bywrap'); if (bw) bindBuyWrap(bw); }
   { const sw = body.querySelector('.swrap'); if (sw) bindSellWrap(sw); }
   body.querySelectorAll('[data-eat]').forEach(b => b.onclick = () => send({ t: 'eat', item: b.dataset.eat }));
   body.querySelectorAll('[data-repair]').forEach(b => b.onclick = () => send({ t: 'repair', tool: b.dataset.repair }));

@@ -173,6 +173,41 @@
   #shop .sbacts .btn { min-height:36px; white-space:normal; line-height:1.15; font-size:12.5px; padding:3px 8px; }
   #shop .sbacts .btn.muted { background:#9aa0a6; border-bottom-color:#6f757b; }
   #shop .sbacts .btn:disabled { opacity:.45; }
+  /* หน้าซื้อแบบรายการ: แถวเรียบ (ไอคอน ชื่อ มี ราคา) • แตะเลือก • แถบล่างมีรายละเอียด จำนวน ยอดรวม ปุ่มซื้อ (ยอดสูงมีขั้นยืนยัน) */
+  #shop .bylist { border:2px solid var(--edge); background:var(--paper-l); max-height:min(40vh,300px); overflow-y:auto; overscroll-behavior:contain; outline:none; }
+  #shop .bylist:focus-visible { box-shadow:0 0 0 2px var(--accent); }
+  #shop .bysec { font-size:12px; font-weight:800; padding:4px 10px; background:var(--paper-d); }
+  #shop .byrow { display:grid; grid-template-columns:28px minmax(0,1fr) auto auto; align-items:center; column-gap:8px; padding:5px 10px; min-height:42px; border-bottom:1px dashed var(--paper-d); cursor:pointer; }
+  #shop .byrow:last-child { border-bottom:0; }
+  #shop .byrow:hover { background:#ffeaba; }
+  #shop .byrow.sel { background:#ffd98a; box-shadow:inset 3px 0 0 #b9791f; }
+  #shop .byrow.off { opacity:.55; }
+  #shop .byrow .ico { font-size:20px; text-align:center; line-height:1; }
+  #shop .byrow .nm { font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #shop .byrow .nm small { font-weight:600; opacity:.85; }
+  #shop .byrow .have { font-size:11.5px; opacity:.75; white-space:nowrap; }
+  #shop .byrow .pr { font-size:13.5px; font-weight:800; min-width:56px; text-align:right; white-space:nowrap; color:var(--ink); }
+  #shop .bybar { margin-top:8px; border:2px solid var(--edge); background:#fffdf5; padding:8px 10px; }
+  #shop .bybar.none { display:flex; align-items:center; justify-content:center; min-height:70px; font-size:12.5px; opacity:.65; }
+  #shop .byhd { display:flex; align-items:flex-start; gap:9px; }
+  #shop .byhd .ico { font-size:28px; line-height:1.1; }
+  #shop .byhd .t { font-weight:800; font-size:14px; line-height:1.2; }
+  #shop .byhd .s { font-size:11.5px; opacity:.88; line-height:1.4; }
+  #shop .byn { font-size:11px; opacity:.8; line-height:1.45; margin-top:5px; }
+  #shop .bystep { display:flex; align-items:center; gap:5px; margin:7px 0 6px; flex-wrap:wrap; }
+  #shop .bystep .bym { width:32px; height:32px; border:2px solid var(--edge); background:var(--paper-l); font-weight:800; font-size:16px; line-height:1; padding:0; }
+  #shop .bystep .buyq { width:54px; min-height:32px; text-align:center; font-size:14px; font-weight:700; padding:2px 4px; border:2px solid var(--edge); background:#fff; }
+  #shop .bystep .byq { border:2px solid var(--edge); background:var(--paper-l); font-size:11.5px; font-weight:700; padding:3px 7px; min-height:32px; }
+  #shop .bystep .tot { margin-left:auto; font-size:13.5px; font-weight:800; text-align:right; line-height:1.2; }
+  #shop .bystep .tot small { display:block; font-weight:600; opacity:.75; font-size:11px; }
+  #shop .bystep .tot small.bad { color:#c0392b; opacity:1; }
+  #shop .bybar .bygo { width:100%; min-height:38px; margin-top:4px; font-size:13px; white-space:normal; line-height:1.15; }
+  #shop .bybar .bygo.lock { background:#9aa0a6; border-bottom-color:#6f757b; }
+  #shop .bybar .bygo:disabled { opacity:.5; }
+  #shop .bybar .byxr { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  #shop .bybar .byx { min-height:32px; font-size:12px; }
+  #shop .bybar .byx.eat { background:#2ecc71; border-bottom-color:#1e8f4e; }
+  #shop .bybar .byx.muted { background:#9aa0a6; border-bottom-color:#6f757b; }
   #shop .row > .act { display:flex; flex-direction:column; align-items:flex-end; gap:5px; max-width:60vw; }
   #shop .act .pr { font-size:15px; color:#7a4a12; white-space:nowrap; }
   #shop .act .bt { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:6px; }
