@@ -2714,9 +2714,11 @@ function onArc(m) {
   if (t.game === 'react' && t.g) { const ph = arcLast[t.id + ':ph']; arcLast[t.id + ':ph'] = t.g.phase; if (t.g.phase === 'go' && ph !== 'go' && arcOpenNow()) playSfx('go'); }
   const uno = t.game === 'uno', party = PARTY_GAMES.has(t.game);
   const amPlayer = (uno || party) ? t.players.some(p => p.id === myId && !p.out) : (t.xId === myId || t.oId === myId);
+  if (uno && (m.open || (t.state === 'playing' && was !== 'playing' && amPlayer))) { uShown = t; uQ.length = 0; uBusy = false; }
   if (m.open) { arcTable = t; unoWild = -1; openArcade(); return; }
   if (t.state === 'playing' && was !== 'playing' && amPlayer) { arcTable = t; unoWild = -1; openArcade(); toast(uno ? '🃏 เกม UNO เริ่มแล้ว!' : party ? '🎮 เกมเริ่มแล้ว!' : '🎮 เกม XO เริ่มแล้ว!'); return; }
-  if (arcTable && arcTable.id === t.id) { if (uno && t.cur !== myId) unoWild = -1; arcTable = t; if (arcOpenNow()) renderArcade(); }
+  if (uno && arcTable && arcTable.id === t.id) { if (t.cur !== myId) unoWild = -1; unoQueue(t); return; }
+  if (arcTable && arcTable.id === t.id) { arcTable = t; if (arcOpenNow()) renderArcade(); }
 }
 // ----- เกมหลายคน: ไพ่ป๊อก / ใครกดเร็วกว่า / เป่ายิ้งฉุบ (ห้องแบบ UNO: 2–8 คน เริ่มเมื่อ ≥2 • เล่นคนเดียวกับบอท • เติมบอทได้) -----
 const PARTY_GAMES = new Set(['pok', 'react', 'rps']);
@@ -2786,10 +2788,71 @@ const cardLabel = c => (c[1] === 'S' ? '⛔' : c[1] === 'R' ? '🔄' : c[1] === 
 const cardTag = (c, cls = '', attrs = '') => `<button class="uc c${c[0]} ${cls}" ${attrs}>${cardLabel(c)}</button>`;
 const unoOk = (t, c) => c[0] === 'W' || c[0] === t.color || (t.top[0] !== 'W' && c[1] === t.top[1]);
 const UCOL = { R: '#e04b4b', Y: '#f1c40f', G: '#3fae52', B: '#2b7bd6' };
+const unoName = c => { const col = { R: 'แดง', Y: 'เหลือง', G: 'เขียว', B: 'น้ำเงิน' }; return c[0] === 'W' ? (c[1] === 'F' ? 'Wild +4' : 'Wild') : `${col[c[0]]} ${c[1] === 'S' ? 'ข้าม' : c[1] === 'R' ? 'กลับทิศ' : c[1] === 'D' ? '+2' : c[1]}`; };
+// ----- UNO: โต๊ะวงกลม + คิวแอนิเมชัน (แสดงทีละการกระทำ ไม่รัวทับกัน) -----
+let uShown = null, uQ = [], uBusy = false, uPos = {};
+const U_DECK = [40, 50], U_DISC = [60, 50];
+function unoQueue(t) { // ข้อความสถานะจากเซิร์ฟเวอร์: ปุ่มใช้ค่าล่าสุดเสมอ • ภาพบนโต๊ะเดินตามคิวทีละขั้น
+  arcTable = t;
+  if (t.state !== 'playing' || !uShown || uShown.id !== t.id || uShown.state !== 'playing') { uQ.length = 0; uBusy = false; uShown = t; if (arcOpenNow()) renderArcade(); return; }
+  uQ.push(t); if (!uBusy) uPump();
+}
+function uPump() {
+  const next = uQ.shift(); if (!next) { uBusy = false; return; }
+  uBusy = true; const dur = uAnim(uShown, next);
+  setTimeout(() => { uShown = next; if (arcOpenNow() && arcTable && arcTable.id === next.id) renderArcade(); uPump(); }, dur);
+}
+function uFly(from, to, card, back) { // การ์ดบินบนโต๊ะ (พิกัดเป็น %)
+  const T = $('uTable'); if (!T || !from || !to) return;
+  const el = document.createElement('div'); el.className = 'uc uFly ' + (back ? 'back' : 'c' + card[0]); if (!back) el.textContent = cardLabel(card);
+  el.style.left = from[0] + '%'; el.style.top = from[1] + '%'; T.appendChild(el);
+  requestAnimationFrame(() => requestAnimationFrame(() => { el.style.left = to[0] + '%'; el.style.top = to[1] + '%'; }));
+  setTimeout(() => el.remove(), 760);
+}
+function uAnim(prev, next) { // คืนเวลา (ms) ที่ต้องรอก่อนแสดงสถานะถัดไป
+  if (!prev || prev.id !== next.id || next.state !== 'playing') return 0;
+  const actor = prev.players.find(p => p.id === prev.cur); let dur = 0;
+  if (next.top !== prev.top) { uFly(uPos[actor ? actor.id : 0] || U_DISC, U_DISC, next.top, false); dur = 700; }
+  const drew = next.players.filter(q => { const pq = prev.players.find(x => x.id === q.id); return pq && q.n > pq.n; });
+  if (drew.length) { // ลุ้น: กองจั่วสั่นก่อนการ์ดบินไปหาคนที่จั่ว
+    const d = document.querySelector('.uDeck'); if (d) { d.classList.add('shake'); setTimeout(() => d.classList.remove('shake'), 450); }
+    for (const q of drew) uFly(U_DECK, uPos[q.id] || U_DISC, '', true);
+    dur = Math.max(dur, 800);
+  }
+  if (!dur && next.cur !== prev.cur) dur = 380;
+  return dur;
+}
+function uSeatOrder(players) { // ที่นั่ง: ตัวเราอยู่ล่างเสมอ ที่เหลือเรียงตามเข็มนาฬิกา
+  const i = players.findIndex(p => p.id === myId); if (i < 0) return players.slice();
+  return players.slice(i).concat(players.slice(0, i));
+}
+function uTableHtml(t, S0, waiting) { // โต๊ะวงกลม: ที่นั่งรอบโต๊ะ กองจั่ว กองทิ้ง ทิศทาง
+  const seats = uSeatOrder(S0.players), n = Math.max(1, seats.length); uPos = {};
+  const pos = seats.map((q, k) => { const a = (Math.PI / 2) + k * 2 * Math.PI / n; return [50 + 41 * Math.cos(a), 50 + 35 * Math.sin(a)]; });
+  seats.forEach((q, k) => { uPos[q.id] = pos[k]; });
+  const cur = !waiting && S0.state === 'playing' ? S0.cur : 0;
+  const seatHtml = seats.map((q, k) => {
+    const [x, y] = pos[k], hue = [...q.name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+    const crown = !waiting && q.id === t.hostId ? '👑 ' : '';
+    return `<div class="uSeat${q.id === cur ? ' cur' : ''}${q.out ? ' out' : ''}${q.id === myId ? ' me' : ''}" style="left:${x}%;top:${y}%">`
+      + `<div class="uAv" style="background:hsl(${hue} 55% 46%)">${esc(q.name.slice(0, 1))}</div>`
+      + `<div class="uNm">${crown}${esc(q.name)}</div>`
+      + `<div class="uCnt">${waiting ? 'พร้อม' : (q.out ? 'ออก' : '🃏 ' + q.n)}</div></div>`;
+  }).join('');
+  if (waiting) return `<div class="uT">${seatHtml}<div class="uWait">รอผู้เล่น</div></div>`;
+  const myTurn = t.state === 'playing' && t.cur === myId && t.drawn < 0;
+  return `<div class="uT" id="uTable"><div class="uFelt"></div>`
+    + `<div class="uDir${S0.dir === -1 ? ' rev' : ''}">${S0.dir === -1 ? '↺' : '↻'}</div>`
+    + `<button class="uDeck" style="left:${U_DECK[0]}%;top:${U_DECK[1]}%" data-arc="draw" ${myTurn ? '' : 'disabled'} aria-label="จั่วไพ่">🎴</button>`
+    + `<div class="uDisc" style="left:${U_DISC[0]}%;top:${U_DISC[1]}%"><span class="uc c${S0.top[0]} big">${cardLabel(S0.top)}</span></div>`
+    + `<div class="uColor" style="background:${UCOL[S0.color] || '#999'}" title="สีที่ต้องลง"></div>`
+    + seatHtml + `</div>`;
+}
 function renderUno() {
   const t = arcTable, coin = inv.coin || 0;
   if (arcBet > coin) arcBet = [...BETS].reverse().find(b => b <= coin) || 0;
   if (arcBotBet > coin) arcBotBet = [...BOTBET.bets].reverse().find(b => b <= coin) || 0;
+  const S0 = uShown && uShown.id === t.id ? uShown : t; // ภาพบนโต๊ะตามคิว • ปุ่มใช้ t (ค่าจริง)
   const mine = t.players.find(p => p.id === myId), isHost = t.hostId === myId;
   let h = `<div class="center" style="font-size:13px;opacity:.75">🪙 เหรียญของคุณ ${coin}</div>`;
   const lobby = () => `<div class="sec">เลือกเดิมพัน (ต่อคน)</div><div class="chips">${BETS.map(b => `<button class="chip${b === arcBet ? ' sel' : ''}" data-bet="${b}" ${coin < b ? 'disabled' : ''}>${b ? '🪙 ' + b : 'ไม่เดิมพัน'}</button>`).join('')}</div>`
@@ -2799,28 +2862,27 @@ function renderUno() {
     + `<p style="font-size:12px;opacity:.7">สร้างห้องแล้วรอเพื่อนเดินมาที่ตู้กด "เข้าร่วม" • คนแรก (เจ้าของห้อง) กดเริ่มได้เมื่อมีอย่างน้อย 2 คน (เล่นได้หลายคน) • คนแรกที่ไพ่หมดมือชนะ ได้เหรียญเดิมพันของทุกคน • ตาละ 30 วิ ออกกลางคัน = เสียเดิมพัน</p>`;
   if (t.state === 'idle') h += lobby();
   else if (t.state === 'waiting') {
-    h += `<div class="banner" style="background:#e9e0ff">⏳ รอผู้เล่น • ตอนนี้ ${t.players.length} คน • เดิมพัน ${t.bet ? '🪙 ' + t.bet : 'ไม่มี'} ต่อคน</div>`
-      + `<div class="opps">${t.players.map(p => `<div class="opp">${p.id === t.hostId ? '👑 ' : ''}${esc(p.name)}</div>`).join('')}</div>`;
-    if (isHost) h += (t.players.length >= 2 ? `<button class="btn" data-arc="startnow" style="width:100%;margin-top:8px">▶️ เริ่มเลย (${t.players.length} คน)</button>` : '<p class="center" style="font-size:13px">ให้เพื่อนเดินมาที่ตู้นี้แล้วกด "เข้าร่วม" (ต้องมีอย่างน้อย 2 คน) เหรียญเดิมพันถูกกันไว้ ยกเลิกแล้วได้คืน</p>')
+    h += uTableHtml(t, t, true);
+    h += `<div class="center" style="font-size:13px;opacity:.8">${t.players.length} คน • เดิมพัน ${t.bet ? '🪙 ' + t.bet : 'ไม่มี'} ต่อคน</div>`;
+    if (isHost) h += (t.players.length >= 2 ? `<button class="btn" data-arc="startnow" style="width:100%;margin-top:8px">▶️ เริ่มเลย (${t.players.length} คน)</button>` : '<p class="center" style="font-size:13px">ให้เพื่อนเดินมาที่ตู้นี้แล้วกด "เข้าร่วม" (ต้องมีอย่างน้อย 2 คน)</p>')
       + `<button class="btn" data-arc="cancel" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ยกเลิกห้อง</button>`;
     else if (mine) h += `<button class="btn" data-arc="leave" style="width:100%;margin-top:8px;background:#9aa0a6;border-bottom-color:#6f757b">ออกจากห้อง (ได้เหรียญคืน)</button>`;
     else h += `<button class="btn" data-arc="join" style="width:100%;margin-top:8px" ${coin < t.bet || t.players.length >= t.max ? 'disabled' : ''}>🃏 เข้าร่วม</button>${coin < t.bet ? '<p class="center" style="color:#c0392b">เหรียญไม่พอ</p>' : ''}`;
   } else {
     const playing = t.state === 'playing', myTurn = playing && t.cur === myId, drawn = t.drawn;
-    h += `<div class="opps">${t.players.map(p => `<div class="opp${p.id === t.cur && playing ? ' cur' : ''}${p.out ? ' out' : ''}">${p.id === myId ? '⭐ ' : ''}${esc(p.name)}<br>🃏 ×${p.n}${p.out ? ' (ออก)' : ''}</div>`).join('')}</div>`;
-    h += `<div class="utable"><span class="uc c${t.top[0]} big">${cardLabel(t.top)}</span><span style="text-align:center;font-size:12px">สีที่ต้องลง<br><span class="cdot" style="background:${UCOL[t.color] || '#999'}"></span><br>${t.dir === 1 ? '↻ ตามเข็ม' : '↺ ทวนเข็ม'}</span></div>`;
-    h += `<div class="ulog">${esc(t.log || '')}</div>`;
+    h += uTableHtml(t, S0, false);
+    h += `<div class="uLog">${esc(S0.log || '')}</div>`;
     if (t.bet && !t.bot) h += `<div class="center" style="font-size:12px;opacity:.75">เดิมพัน 🪙 ${t.bet} ต่อคน • รางวัลรวม 🪙 ${t.bet * t.players.length}</div>`;
     if (unoWild >= 0 && myTurn) {
       h += `<div class="center" style="font-weight:700;margin-top:8px">เลือกสีที่ต้องการ</div><div class="colorpick">${'RYGB'.split('').map(c => `<button data-color="${c}" style="background:${UCOL[c]}" aria-label="${c}"></button>`).join('')}</div><div class="center"><button class="btn small" data-unocancel="1" style="background:#9aa0a6;border-bottom-color:#6f757b">ยกเลิก</button></div>`;
     } else if (t.hand && mine && !mine.out) {
-      h += `<div class="hand">${t.hand.map((c, i) => { const ok = myTurn && (drawn < 0 || drawn === i) && unoOk(t, c); return cardTag(c, ok ? 'ok' : 'dim', `data-play="${i}" ${ok ? '' : 'disabled'}`); }).join('')}</div>`;
+      h += `<div class="uHandWrap">${myTurn ? `<div class="uTurn">👉 ตาของคุณ <span id="arcTimer"></span></div>` : playing ? `<div class="uWaitTxt">⏳ รอ ${esc((t.players.find(p => p.id === t.cur) || {}).name || '')}… <span id="arcTimer"></span></div>` : ''}`
+        + `<div class="hand">${t.hand.map((c, i) => { const ok = myTurn && (drawn < 0 || drawn === i) && unoOk(t, c); return cardTag(c, ok ? 'ok' : 'dim', `data-play="${i}" ${ok ? '' : 'disabled'}`); }).join('')}</div>`
+        + (drawn >= 0 ? `<div class="uDrawn">🎴 จั่วได้ ${esc(unoName(t.hand[drawn]))} — ลงได้เลย หรือกดผ่าน</div>` : '') + `</div>`;
     }
     if (playing) {
       if (mine && !mine.out) {
-        h += `<div class="center" style="font-weight:700">${myTurn ? '👉 ตาของคุณ' : '⏳ รอ ' + esc((t.players.find(p => p.id === t.cur) || {}).name || '') + '...'} <span id="arcTimer"></span></div>`;
         h += '<div class="center" style="margin-top:8px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
-          + (myTurn && drawn < 0 ? `<button class="btn" data-arc="draw">🎴 จั่วไพ่</button>` : '')
           + (myTurn && drawn >= 0 ? `<button class="btn" data-arc="pass">⏭️ ผ่าน (ไม่ลง)</button>` : '')
           + `<button class="btn small" data-arc="resign" style="background:#9aa0a6;border-bottom-color:#6f757b">🏳️ ยอมแพ้</button></div>`;
       } else h += `<div class="center" style="font-weight:700">${mine && mine.out ? 'คุณออกจากเกมแล้ว' : '👀 กำลังดูเกม'} <span id="arcTimer"></span></div>`;
