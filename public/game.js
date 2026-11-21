@@ -1911,17 +1911,28 @@ function petStatHtml(c, st, out) { // บรรทัดค่าสถานะ
   const eff = !out ? '🏠 พาออกมาถึงจะได้ผล' : st.sick ? '🤒 ป่วย ผลหยุดทำงาน' : b.mood >= 1 ? '✅ ผลทำงานเต็ม' : b.mood > 0 ? '🍖 หิว ผลเหลือครึ่งเดียว ให้อาหารด่วน' : '😣 หิวจัด ผลหยุดทำงาน';
   return `<br><small style="opacity:.9">${stats}</small><br><small><b>${eff}</b></small>`;
 }
+function petCardHtml(c, cur, mode) { // การ์ดสัตว์เลี้ยงหนึ่งตัว: หัว • ค่าสถานะ • ผล • หิว/ผูกพัน • ปุ่มเรียงแถวเดียว
+  const C = COMPANIONS[c], st = petSt[c] || { h: 100, sick: false }, out = cur === c, hp = Math.round(st.h);
+  const stats = Shared.PETSTAT.keys.filter(([k]) => C.st && C.st[k]).map(([k, ic, nm]) => `${ic} ${nm} +${Math.round(C.st[k] * Shared.PETSTAT.unit * 100)}%`).join(' • ');
+  const b = Shared.petBonus(c, st.h, st.sick);
+  const eff = !out ? '🏠 พาออกมาถึงจะได้ผล' : st.sick ? '🤒 ป่วย ผลหยุดทำงาน' : b.mood >= 1 ? '✅ ผลทำงานเต็ม' : b.mood > 0 ? '🍖 หิว ผลเหลือครึ่งเดียว ให้อาหารด่วน' : '😣 หิวจัด ผลหยุดทำงาน';
+  const where = out ? (mode === 'play' ? '🎾 กำลังวิ่งเล่น' : '🚶 เดินตามคุณ') : '🏠 อยู่บ้าน';
+  const btns = out
+    ? `<button class="btn small${mode === 'follow' ? ' muted' : ''}" data-petmode="follow" data-pet="${c}">🚶 เดินตาม</button><button class="btn small${mode === 'play' ? ' muted' : ''}" data-petmode="play" data-pet="${c}">🎾 ปล่อยเล่น</button><button class="btn small muted" data-petmode="store" data-pet="">🏠 เก็บ</button>`
+    : `<button class="btn small" data-petmode="follow" data-pet="${c}">🐾 พาออกมา</button>`;
+  return `<div class="pet-card">
+    <div class="pet-hd"><span class="pet-em">${C.emoji}</span><div><div class="pet-name">${petNames[c] ? esc(petNames[c]) : C.name}${st.sick ? ' <span class="pet-sick">🤒 ป่วย</span>' : ''}</div><div class="pet-sub">${petNames[c] ? C.name + ' • ' : ''}${where}</div></div></div>
+    <div class="pet-stats">${stats}</div>
+    <div class="pet-eff">${eff}</div>
+    <div class="pet-meter"><span>🍖 อิ่ม ${hp}/100${out ? '' : ' (ไม่หิวตอนอยู่บ้าน)'}</span><div class="hbar"><i style="width:${hp}%;${hp <= 25 ? 'background:#e74c3c' : ''}"></i></div>${petBondHtml(st)}</div>
+    <div class="pet-btns">${btns}<button class="btn small muted" data-petname="${c}">✏️ ตั้งชื่อ</button></div>
+  </div>`;
+}
 function petPanelHtml() { // เมนูสัตว์เลี้ยง: พาออกมา/เดินตาม/ปล่อยเล่น/เก็บ + ให้อาหาร + รักษา (ใช้ทั้งในร้านและเมนู 🐾)
   const own = Object.keys(COMPANIONS).filter(c => inv['pet_' + c] > 0), cur = me.pet || '', mode = me.pm || 'follow';
   let h = '<div class="sec">🐾 สัตว์เลี้ยงของคุณ</div>';
   if (!own.length) return h + '<p style="opacity:.7;margin:6px 0">ยังไม่มีสัตว์เลี้ยง ซื้อได้ที่ร้านสัตว์เลี้ยง (36,10) 🐶🐱🐦</p>';
-  for (const c of own) {
-    const C = COMPANIONS[c], st = petSt[c] || { h: 100, sick: false }, out = cur === c, hp = Math.round(st.h);
-    h += `<div class="row"><span>${C.emoji} ${petNames[c] ? esc(petNames[c]) + ' <small>(' + C.name + ')</small>' : C.name}${st.sick ? ' 🤒 <small style="color:#c0392b">ป่วย</small>' : ''}${petStatHtml(c, st, out)}<br><small>${out ? (mode === 'play' ? '🎾 กำลังวิ่งเล่น' : '🚶 เดินตามคุณ') : '🏠 อยู่บ้าน'} • อิ่ม ${hp}/100${out ? '' : ' (ไม่หิวตอนอยู่บ้าน)'}</small><div class="hbar" style="width:120px;height:7px"><i style="width:${hp}%;${hp <= 25 ? 'background:#e74c3c' : ''}"></i></div>${petBondHtml(st)}</span><span>`
-      + (out ? `<button class="btn small${mode === 'follow' ? ' muted' : ''}" data-petmode="follow" data-pet="${c}">🚶 เดินตาม</button> <button class="btn small${mode === 'play' ? ' muted' : ''}" data-petmode="play" data-pet="${c}">🎾 ปล่อยเล่น</button> <button class="btn small muted" data-petmode="store" data-pet="">🏠 เก็บ</button>`
-        : `<button class="btn small" data-petmode="follow" data-pet="${c}">🐾 พาออกมา</button>`)
-      + ` <button class="btn small muted" data-petname="${c}">✏️ ตั้งชื่อ</button></span></div>`;
-  }
+  for (const c of own) h += petCardHtml(c, cur, mode);
   const ci = cur ? petSt[cur] || { h: 100, sick: false } : null;
   h += '<div class="sec">🦴 ดูแลสัตว์เลี้ยง</div>'
     + `<div class="row"><span>🦴 ให้อาหาร<br><small>มีอาหาร ${inv.petfood || 0} ชิ้น • +${PETCARE.food} อิ่ม • ซื้อที่ร้านสัตว์เลี้ยง</small></span><span><button class="btn small" data-petcare="feed" ${cur && inv.petfood > 0 && ci.h < 95 ? '' : 'disabled'}>ให้อาหาร</button></span></div>`

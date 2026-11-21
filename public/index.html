@@ -687,6 +687,19 @@
   body.touch .sw { width:36px; height:36px; }
   body.touch .tab { min-height:44px; } /* WP-30: เป้าแตะแท็บ ≥ 44px */
   body.touch .opt { min-height:44px; }
+  /* การ์ดสัตว์เลี้ยง (เมนู 🐾): หัว • ค่า • ผล • แถบอิ่ม/ผูกพัน • ปุ่มเรียงแถวเดียว */
+  .pet-card { border:2px solid var(--edge); background:var(--paper-l); padding:10px 12px; margin:8px 0; box-shadow:inset 0 2px 0 rgba(255,255,255,.5); }
+  .pet-hd { display:flex; gap:10px; align-items:center; }
+  .pet-em { font-size:34px; line-height:1; }
+  .pet-name { font-size:17px; font-weight:800; line-height:1.2; }
+  .pet-sub { font-size:12px; opacity:.75; margin-top:2px; }
+  .pet-sick { color:#c0392b; font-size:12px; }
+  .pet-stats { font-size:13px; margin:8px 0 2px; opacity:.9; }
+  .pet-eff { font-size:13px; font-weight:700; margin-bottom:8px; }
+  .pet-meter { display:grid; gap:4px; font-size:12px; }
+  .pet-meter .hbar { width:100%; max-width:260px; height:8px; }
+  .pet-btns { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .pet-btns .btn { min-height:34px; }
   /* ===== HUD มินิมอล (มือถือ): ชิปเล็ก โปร่งแสง ไม่มีกรอบหนา/เงา — เหลือเฉพาะที่ต้องดู ===== */
   body.touch #hudTop { gap:5px; align-items:flex-start; }
   /* มือถือ: ปุ่มที่เป็นไอคอนเรียงซ้ายไปขวาในแถวเดียว • ป้ายที่เป็นข้อความยาวขึ้นบรรทัดใหม่แล้วเรียงลงมาทางซ้าย */
