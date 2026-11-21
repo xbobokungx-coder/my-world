@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ตัวอย่างขายหลายอย่าง แบบ A / แบบ B (ร่าง)</title>
+<style>
+  :root { --ink:#4a3322; --paper:#f3e0b6; --paper-l:#fff4d6; --paper-d:#d9bd86; --edge:#2a1b14; --accent:#e8a33d; --accent-d:#b9791f; --good:#1e8f4e; --bad:#c0392b; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; min-height:100vh; background:#2d4a2b; color:var(--ink); font-family:"Noto Sans Thai","Leelawadee UI","Thonburi",Tahoma,sans-serif; display:flex; flex-direction:column; align-items:center; padding:12px; gap:10px; }
+  .toolbar { display:flex; gap:8px; align-items:center; color:#fff3cf; font-size:13px; flex-wrap:wrap; justify-content:center; }
+  .toolbar button { border:2px solid var(--edge); background:var(--paper-l); padding:4px 12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .toolbar button.on { background:var(--accent); color:#fff; }
+  .frame { width:440px; max-width:100%; }
+  .frame.phone { width:375px; }
+  .panel { background:var(--paper); border:3px solid var(--edge); box-shadow:inset 0 3px 0 var(--paper-l), inset 0 -4px 0 var(--paper-d), 4px 4px 0 rgba(42,27,20,.4); padding:14px; position:relative; }
+  h2 { margin:0 0 6px; font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  .close { background:var(--accent); border:2px solid var(--edge); border-bottom-width:4px; padding:2px 12px; font-weight:700; color:#fff; font-size:14px; }
+  .info { font-size:12px; opacity:.8; margin-bottom:8px; }
+  .tabs { display:flex; gap:6px; margin-bottom:8px; }
+  .tab { border:2px solid var(--edge); background:var(--paper-l); padding:4px 10px; font-weight:700; font-size:13px; }
+  .tab.on { background:var(--accent); color:#fff; }
+  .list { border:2px solid var(--edge); background:var(--paper-l); max-height:290px; overflow-y:auto; }
+  .row { display:grid; align-items:center; column-gap:8px; padding:5px 10px; min-height:42px; border-bottom:1px dashed var(--paper-d); cursor:pointer; }
+  .row:last-child { border-bottom:0; }
+  .row:hover { background:#ffeaba; }
+  .row.sel { background:#ffd98a; box-shadow:inset 3px 0 0 var(--accent-d); }
+  /* แบบ A: ช่องติ๊ก + ไอคอน + ชื่อ + จำนวน + ราคา */
+  .A .row { grid-template-columns:22px 30px minmax(0,1fr) auto auto; }
+  .B .row { grid-template-columns:30px minmax(0,1fr) auto auto; }
+  .chk { width:20px; height:20px; border:2px solid var(--edge); background:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; line-height:1; color:#fff; }
+  .row.sel .chk { background:var(--good); }
+  .ico { font-size:20px; text-align:center; line-height:1; }
+  .nm { font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cnt { font-size:12px; opacity:.75; }
+  .pr { font-size:13.5px; font-weight:800; min-width:58px; text-align:right; white-space:nowrap; }
+  /* จำนวนที่จะขายของแถวที่ติ๊ก */
+  .qrow { grid-column:2 / -1; display:flex; align-items:center; gap:6px; font-size:12px; padding:2px 0 3px; }
+  .qrow button { width:26px; height:26px; border:2px solid var(--edge); background:var(--paper-l); font-weight:800; font-size:15px; line-height:1; padding:0; cursor:pointer; }
+  .qrow b { min-width:34px; text-align:center; font-size:13px; }
+  .qrow .sub { margin-left:auto; font-weight:800; }
+  .qrow .all { border:2px solid var(--edge); background:var(--paper-l); font-size:11px; font-weight:700; padding:2px 6px; cursor:pointer; font-family:inherit; }
+  .sbar { margin-top:8px; border:2px solid var(--edge); background:#fffdf5; padding:8px 10px; }
+  .sbar .sum { display:flex; align-items:center; justify-content:space-between; font-size:13.5px; font-weight:800; margin-bottom:6px; }
+  .sbar .sum small { font-weight:600; opacity:.75; }
+  .acts { display:grid; gap:6px; }
+  .A .acts { grid-template-columns:1fr 1fr 1.4fr; }
+  .B .acts { grid-template-columns:1fr; }
+  .btn { background:var(--accent); border:2px solid var(--edge); border-bottom-width:4px; color:#fff; font-weight:700; min-height:36px; font-size:12.5px; padding:2px 8px; cursor:pointer; font-family:inherit; line-height:1.15; }
+  .btn.alt { background:#8a6fd1; border-bottom-color:#5d47a1; }
+  .btn.muted { background:#9aa0a6; border-bottom-color:#6f757b; }
+  .btn:active { transform:translateY(2px); border-bottom-width:2px; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .confirm { display:none; border:2px solid var(--accent-d); background:#fff0c9; padding:8px 10px; margin-top:8px; font-size:13px; }
+  .confirm.show { display:block; }
+  .confirm ul { margin:4px 0 6px; padding-left:18px; font-size:12.5px; }
+  .confirm .acts { grid-template-columns:1fr 1fr; margin-top:6px; }
+  .empty { padding:18px; text-align:center; opacity:.7; font-size:13px; }
+  .note { font-size:11.5px; color:#fff3cf; max-width:440px; line-height:1.55; opacity:.92; }
+  .toast { position:fixed; left:50%; top:10px; transform:translateX(-50%); background:rgba(35,22,14,.88); color:#fff3cf; padding:6px 14px; border-radius:12px; font-size:13px; font-weight:700; opacity:0; transition:opacity .25s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .tag { display:inline-block; background:var(--accent); color:#fff; font-size:11px; font-weight:800; padding:1px 7px; margin-left:6px; border:2px solid var(--edge); }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <span>แบบ:</span><button id="mA" class="on">A ติ๊กเลือกหลายแถว</button><button id="mB">B ปุ่มขายทุกอย่าง</button>
+  <span>ดูเป็น:</span><button id="vPc" class="on">💻 PC</button><button id="vPhone">📱 มือถือ</button><button id="reset">↺ เริ่มใหม่</button>
+</div>
+
+<div class="frame" id="frame">
+  <div class="panel">
+    <h2>🎣 ร้านตกปลา <button class="close">ปิด</button></h2>
+    <div class="info">🎣 ชาวประมง เลเวล 1 • 🪙 <b id="coin">65</b></div>
+    <div class="tabs"><span class="tab">🛒 ซื้อ</span><span class="tab">🧰 อุปกรณ์</span><span class="tab on">💰 ขาย</span></div>
+    <div id="body"></div>
+  </div>
+</div>
+<div class="note" id="note"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const base = [
+  { k:'bass', ico:'🐠', name:'ปลากะพง', n:4, unit:23 },
+  { k:'shrimp', ico:'🦐', name:'กุ้ง', n:5, unit:31 },
+  { k:'crab', ico:'🦀', name:'ปู', n:1, unit:41 },
+  { k:'mack', ico:'🐟', name:'ปลาทู', n:1, unit:34 },
+  { k:'jelly', ico:'🪼', name:'แมงกะพรุน', n:2, unit:229 },
+  { k:'boot', ico:'🥾', name:'รองเท้าเก่า', n:1, unit:1 },
+];
+let items, coin, mode = 'A';
+const picked = {}; // key -> จำนวนที่จะขาย (แบบ A)
+const $ = id => document.getElementById(id);
+const reset = () => { items = base.map(x => ({ ...x })); coin = 65; for (const k in picked) delete picked[k]; $('coin').textContent = coin; render(); };
+// ราคาต่อชิ้นลดทีละ 3% ถึงพื้น 80% (ตัวอย่าง; ของจริงใช้ sellQuote ของเซิร์ฟเวอร์)
+const total = (it, n) => { let s = 0; for (let i = 0; i < n; i++) s += Math.round(it.unit * Math.max(.8, 1 - .03 * i)); return s; };
+function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('show'), 2400); }
+const live = () => items.filter(i => i.n > 0);
+const pickedList = () => live().filter(i => picked[i.k]);
+const pickedTotal = () => pickedList().reduce((s, i) => s + total(i, picked[i.k]), 0);
+const allTotal = () => live().reduce((s, i) => s + total(i, i.n), 0);
+
+function render() {
+  const A = mode === 'A', rows = live();
+  $('body').className = A ? 'A' : 'B';
+  $('note').innerHTML = A
+    ? '<b>แบบ A</b> แตะแถวเพื่อติ๊กเลือก (เลือกได้หลายชนิด) • แถวที่ติ๊กจะมีตัวปรับจำนวนของแถวนั้น (ตั้งต้น = ทั้งหมดที่มี) • กด "ขายที่เลือก" แล้วยืนยันครั้งเดียวทั้งชุด'
+    : '<b>แบบ B</b> เลือกทีละชนิดเหมือนเดิมไม่ได้ติ๊ก แต่มีปุ่ม "ขายทุกอย่างในรายการ" ที่ท้ายรายการ กดแล้วยืนยันก่อนขายทุกชนิดที่ร้านรับ';
+  if (!rows.length) { $('body').innerHTML = '<div class="empty">ไม่มีของที่ร้านนี้รับซื้อแล้ว 🎒</div>'; return; }
+  let h = '<div class="list" id="list">';
+  for (const i of rows) {
+    const on = !!picked[i.k];
+    if (A) {
+      h += `<div class="row${on ? ' sel' : ''}" data-k="${i.k}"><span class="chk">${on ? '✓' : ''}</span><span class="ico">${i.ico}</span><span class="nm">${i.name}</span><span class="cnt">×${i.n}</span><span class="pr">🪙 ${i.unit}</span>`
+        + (on ? `<div class="qrow"><span>ขาย</span><button data-d="-1" data-k="${i.k}">−</button><b>${picked[i.k]}</b><button data-d="1" data-k="${i.k}">+</button><button class="all" data-all="${i.k}">ทั้งหมด</button><span class="sub">รับ 🪙 ${total(i, picked[i.k])}</span></div>` : '') + `</div>`;
+    } else h += `<div class="row${on ? ' sel' : ''}" data-k="${i.k}"><span class="ico">${i.ico}</span><span class="nm">${i.name}</span><span class="cnt">×${i.n}</span><span class="pr">🪙 ${i.unit}</span></div>`;
+  }
+  h += '</div>';
+  if (A) {
+    const n = pickedList().length;
+    h += `<div class="sbar"><div class="sum"><span>เลือกแล้ว ${n} ชนิด</span><span>รับ 🪙 ${pickedTotal()}</span></div>`
+      + `<div class="acts"><button class="btn muted" id="selAll">เลือกทั้งหมด</button><button class="btn muted" id="clr" ${n ? '' : 'disabled'}>ล้าง</button><button class="btn" id="sellSel" ${n ? '' : 'disabled'}>ขายที่เลือก (${n})</button></div></div>`;
+  } else {
+    h += `<div class="sbar"><div class="sum"><span>ในรายการ ${rows.length} ชนิด</span><span>รับ 🪙 ${allTotal()}</span></div>`
+      + `<div class="acts"><button class="btn alt" id="sellAll">💰 ขายทุกอย่างในรายการ</button></div><div style="font-size:11px;opacity:.7;margin-top:6px">แตะแถวเพื่อขายชนิดนั้นทั้งหมด หรือกดปุ่มรวมเพื่อขายทุกอย่าง (หน้าจริงยังมีแถบตั้งจำนวนทีละชนิดตามที่ทำไว้แล้ว)</div></div>`;
+  }
+  h += '<div class="confirm" id="confirm"></div>';
+  $('body').innerHTML = h;
+  bind();
+}
+
+function confirmSell(list, label) {
+  const t = list.reduce((s, x) => s + total(x.it, x.n), 0), c = $('confirm');
+  c.innerHTML = `${label} รับ <b>🪙 ${t}</b> ยืนยัน?<ul>${list.map(x => `<li>${x.it.ico} ${x.it.name} ×${x.n} <b>🪙 ${total(x.it, x.n)}</b></li>`).join('')}</ul><div class="acts"><button class="btn" id="yes">✅ ขาย</button><button class="btn muted" id="no">ยกเลิก</button></div>`;
+  c.classList.add('show'); c.scrollIntoView({ block:'nearest' });
+  $('no').onclick = () => c.classList.remove('show');
+  $('yes').onclick = () => { for (const x of list) { x.it.n -= x.n; delete picked[x.it.k]; } coin += t; $('coin').textContent = coin; toast(`ขาย ${list.length} ชนิด ได้ 🪙${t}`); render(); };
+}
+
+function bind() {
+  const A = mode === 'A';
+  document.querySelectorAll('.row').forEach(r => r.onclick = e => {
+    if (e.target.closest('.qrow')) return;
+    const k = r.dataset.k, it = items.find(x => x.k === k);
+    if (A) { if (picked[k]) delete picked[k]; else picked[k] = it.n; }
+    else { /* แบบ B: แตะแถว = ขายเฉพาะชนิดนั้น (ยืนยันก่อน) */ confirmSell([{ it, n: it.n }], `ขาย ${it.ico} ${it.name} ทั้งหมด`); return; }
+    render();
+  });
+  document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const k = b.dataset.k, it = items.find(x => x.k === k); picked[k] = Math.max(1, Math.min(it.n, picked[k] + (+b.dataset.d))); render(); });
+  document.querySelectorAll('[data-all]').forEach(b => b.onclick = () => { const it = items.find(x => x.k === b.dataset.all); picked[it.k] = it.n; render(); });
+  if (A) {
+    $('selAll').onclick = () => { live().forEach(i => { picked[i.k] = picked[i.k] || i.n; }); render(); };
+    $('clr').onclick = () => { for (const k in picked) delete picked[k]; render(); };
+    $('sellSel').onclick = () => confirmSell(pickedList().map(it => ({ it, n: picked[it.k] })), `ขาย ${pickedList().length} ชนิดที่เลือก`);
+  } else {
+    $('sellAll').onclick = () => confirmSell(live().map(it => ({ it, n: it.n })), 'ขายทุกอย่างในรายการ');
+  }
+}
+$('mA').onclick = () => { mode = 'A'; $('mA').classList.add('on'); $('mB').classList.remove('on'); render(); };
+$('mB').onclick = () => { mode = 'B'; $('mB').classList.add('on'); $('mA').classList.remove('on'); render(); };
+$('vPc').onclick = () => { $('frame').classList.remove('phone'); $('vPc').classList.add('on'); $('vPhone').classList.remove('on'); };
+$('vPhone').onclick = () => { $('frame').classList.add('phone'); $('vPhone').classList.add('on'); $('vPc').classList.remove('on'); };
+$('reset').onclick = reset;
+reset();
+</script>
+</body>
+</html>
