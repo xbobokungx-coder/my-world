@@ -1410,7 +1410,7 @@ addEventListener('pointerdown', e => { if (menuShown() && !e.target.closest('#hu
 }
 // ---------- HUD ----------
 let toastT;
-function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2400); }
+function toast(t) { const el = $('toast'); el.textContent = t; const mnEl = $('mini'), hb = Math.max($('hudTop').getBoundingClientRect().bottom, typeof miniState !== 'undefined' && miniState === 'big' && mnEl ? mnEl.getBoundingClientRect().bottom : 0), z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1; el.style.top = Math.round((hb + 6) / (isTouch ? 1 : z)) + 'px'; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), Math.min(4500, Math.max(2400, 1200 + String(t).length * 70))); } // ข้อความยาวอยู่นานขึ้นตามความยาว (อ่านทัน) • top เลื่อนลงใต้แถบ HUD
 function setHunger(v) {
   hunger = Math.max(0, Math.min(100, Math.round(v)));
   const el = $('hungerChip'); if (!el) return;
@@ -2065,6 +2065,7 @@ function renderShop() {
   const isFarm = shopKind === 'farm', seedTab = isFarm && farmTab === 'buy', tabs = SHOP_TABS[shopKind], sellTab = !!tabs && farmTab === 'sell', cookTab = shopKind === 'food' && farmTab === 'cook', petTab = shopKind === 'animal' && farmTab === 'buy', craftTab = shopKind === 'wood' && farmTab === 'craft', forgeTab = shopKind === 'mine' && farmTab === 'forge', baleTab = isFarm && farmTab === 'bale', makeTab = forgeTab || baleTab; // WP-30
   let h = tabs ? `<div class="tabs">${tabs.map(([c, n]) => `<button class="tab${farmTab === c ? ' on' : ''}" data-ftab="${c}">${n}</button>`).join('')}</div>` : '';
   if (shopKind === 'furn' && farmTab === 'buy') h += `<div class="tabs">${FURN_SUBS.map(([c, n]) => `<button class="tab${furnSub === c ? ' on' : ''}" data-fsub="${c}">${n}</button>`).join('')}</div>`;
+  const rentPos = h.length; // แปลงเช่า (แท็บอุปกรณ์ของร้านเมล็ดพันธุ์) แทรกไว้บนสุดให้เห็นชัด ไม่ต้องเลื่อนหา
   h += sellTab || cookTab || craftTab || makeTab ? '' : seedTab ? '<div class="sec">เมล็ดพันธุ์ (เรียงจากเลเวลต่ำ → สูง)</div>' : '<div class="sec">' + (petTab ? 'ซื้อสัตว์เลี้ยง' : tabs && farmTab === 'gear' ? '🛒 อุปกรณ์ ซื้อด้วยเหรียญได้เลย <small style="font-weight:normal;opacity:.7">(จ่ายเหรียญอย่างเดียว ไม่ต้องมีวัสดุ)</small>' : 'ซื้อ') + '</div>';
   let keys = sellTab || cookTab || craftTab || makeTab ? [] : tabs ? sh.buy.filter(k => buyTabOf(shopKind, k) === farmTab && (shopKind !== 'furn' || furnCatOf(k) === furnSub)) : sh.buy;
   const profitRank = seedTab ? keys.slice().sort((a, b) => seedProfit(b) - seedProfit(a)) : [];
@@ -2116,12 +2117,14 @@ function renderShop() {
   }
   if (craftH) h += '<div class="sec">🔨 อุปกรณ์คราฟ (ระดับ 8–10 ใช้วัสดุ)</div><p style="font-size:12px;opacity:.8;margin:2px 0 8px;line-height:1.5">ชุดนี้ <b>ซื้อได้ทันทีในราคาเต็ม</b> หรือเตรียม <b>วัสดุคราฟ</b> (แท่งโลหะ/อัญมณีเจียระไน) มาแลกลดราคา: วัสดุแต่ละชิ้นที่มี ร้านหักราคาให้ รวมสูงสุดราว 25% • วัสดุทำเอง: ⛏️ ขุดแร่ในถ้ำเหมือง → 🔥 หลอมที่ร้านช่างเหมือง (แท็บ "🔥 หลอม" แร่ 3 ชิ้น = วัสดุ 1 ชิ้น) • ต้องมีเลเวลอาชีพถึงที่ระบุ (🔒) • ส่วนที่ขาด จ่ายเป็นเหรียญแทนในราคาอยู่แล้ว</p>' + craftH;
   if (isFarm && farmTab === 'gear') { // แปลงเช่า
+    let rh = '';
     const R = Shared.FARM_RENT, now = Date.now() + timeOffset, myKey = me ? me.name.toLowerCase() : '';
-    h += `<div class="sec">🏡 แปลงเช่า (แปลงละ 12 ช่อง • 🪙${R.price} / 1 วันจริง)</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px">3 แถวบนของแปลงผัก แบ่ง 4 แปลง ขุด/ปลูกได้เฉพาะคนเช่า ต้นในแปลงตัวเองไม่นับเพดานปลูก เช่าได้คนละแปลง รอบละ 1 วันจริง (24 ชม.) ต่ออายุไม่ได้ หมดรอบแล้วค่อยเช่าใหม่</p>`;
+    rh += `<div class="sec">🏡 แปลงเช่า (แปลงละ 12 ช่อง • 🪙${R.price} / 1 วันจริง)</div><p style="font-size:12px;opacity:.7;margin:2px 0 6px"><b>แถวล่างขุดปลูกฟรีทุกคน</b> (เหมาะมือใหม่) • 3 แถวบนแบ่ง 4 แปลงให้เช่า เช่าได้คนละแปลง รอบละ 1 วันจริง ต้นในแปลงตัวเองไม่นับเพดานปลูก</p>`;
     for (const P of R.plots) {
       const r = rentsSt[P.id], active = r && r.until > now, mine = active && r.key === myKey, left = active ? fmtLeft(r.until - now) : '';
-      h += `<div class="row"><span>🏡 แปลง ${P.id}<br><small>${active ? (mine ? `ของคุณ • เหลือ ${left}` : `${r.name} เช่าอยู่ • เหลือ ${left}`) : 'ว่าง (ล็อกไว้ ยังไม่มีคนเช่า)'}</small></span><span>${active && !mine ? '' : `<button class="btn small" data-rent="${P.id}" ${(inv.coin || 0) < R.price ? 'disabled' : ''}>${mine ? 'ต่อเวลา' : 'เช่า'} 🪙${R.price}</button>`}</span></div>`;
+      rh += `<div class="row"><span>🏡 แปลง ${P.id}<br><small>${active ? (mine ? `ของคุณ • เหลือ ${left}` : `${esc(r.name)} เช่าอยู่ • เหลือ ${left}`) : 'ว่าง (ล็อกไว้ ยังไม่มีคนเช่า)'}</small></span><span>${active && !mine ? '' : `<button class="btn small" data-rent="${P.id}" ${(inv.coin || 0) < R.price ? 'disabled' : ''}>${mine ? 'ต่อเวลา' : 'เช่า'} 🪙${R.price}</button>`}</span></div>`;
     }
+    h = h.slice(0, rentPos) + rh + h.slice(rentPos);
   }
   if (shopKind === 'pet') h += petPanelHtml();
   const tierOf = t => (t === 'rod' ? rodLevel() : t === 'axe' ? axeLevel() : t === 'pick' ? pickLevel() : gearTierOf(t));
@@ -2140,7 +2143,7 @@ function renderShop() {
   const showSell = sh.sell.length && (!tabs || sellTab || cookTab); // ขายอยู่แท็บ 💰 ขายแท็บเดียว (แท็บทำอาหารยังขายจานได้)
   const sellKeys = showSell ? Object.keys(inv).filter(k => shopSells(shopKind, k) && itemInfo(k) && itemInfo(k).sell && !(cookTab && FISH_DISH_SELL_TAB.has(k))) : [];
   if (showSell) h += '<div class="sec">ขาย (เลือกได้ว่าจะขายอะไร)</div>';
-  if (showSell && !sellKeys.length) h += '<p style="opacity:.7;margin:6px 0">ยังไม่มีของที่ร้านนี้รับซื้อ</p>';
+  if (showSell && !sellKeys.length) h += '<p style="opacity:.7;margin:6px 0">ตอนนี้ในกระเป๋ายังไม่มีของที่ร้านนี้รับซื้อ 🎒 ไปเก็บเกี่ยว/ตกปลาก่อน แล้วกลับมาขายได้เลย</p>';
   for (const k of sellKeys) {
     const i = itemInfo(k), m = mult(k), unit = Math.max(1, Math.round(i.sell * m));
     const trend = (m > 1.03 ? `<span style="color:#1e8f4e">▲ ${Math.round((m - 1) * 100)}%</span>` : m < 0.97 ? `<span style="color:#c0392b">▼ ${Math.round((1 - m) * 100)}%</span>` : '') + (m < 0.5 ? ' <span style="color:#c0392b">⚠️ ตลาดอิ่มตัว รอราคากลับก่อนค่อยขาย</span>' : '');
@@ -2274,6 +2277,7 @@ addEventListener('keydown', e => {
   if (c === 'KeyR' && build.on) { rotateBuild(); return; }
   if (c === 'KeyL') { if (inv.lamp > 0) $('lampBtn').onclick(); return; }
   if (c === 'KeyM') { setMini(miniState === 'off' ? 'small' : miniState === 'small' ? 'big' : 'off'); return; }
+  if (c === 'Space' || /^(?:Arrow|Key[WASD])/.test(c)) { if (!$('picker').classList.contains('hidden')) { hidePicker(); if (document.activeElement && document.activeElement.blur && document.activeElement !== document.body && !document.activeElement.matches('input,textarea')) document.activeElement.blur(); } } // เมนูเลือกเครื่องมือเด้งจากปุ่มเลข: Space/เดินปิดเมนูก่อน แล้วทำงานในโลกต่อ (ไม่ค้างโดนเมนู/ปุ่มที่โฟกัสอยู่)
   const dg = /^(?:Digit|Numpad)([1-9])$/.exec(c);
   if (dg && +dg[1] <= SLOTS.length) { pickSlot(+dg[1] - 1); return; }
   if (c === 'Space') { e.preventDefault(); spHeld = true; if (ft) { setReel(true); return; } if (e.repeat) return; act(); holdSpace(); return; } // e.repeat: กดค้างไม่ให้ยิง act ซ้ำ (ไม่งั้นตอนรอปลากินจะดึงเบ็ดกลับเอง ตกไม่ได้) // ชักเย่ออยู่ = กดค้างกรอสาย
@@ -4686,7 +4690,7 @@ function layoutHud() { // แผนที่อยู่มุมบนขวา
 }
 function sizeMini() {
   const dpr = window.devicePixelRatio || 1, cv = $('miniMap');
-  const w = miniState === 'big' ? Math.min(innerWidth * 0.62, 380) : Math.min(innerWidth * (isTouch ? 0.3 : 0.4), isTouch ? 130 : 190), h = w * H / W;
+  const w = miniState === 'big' ? Math.max(120, Math.min(innerWidth * (isTouch ? 0.44 : 0.4), isTouch ? 260 : 380, (innerHeight * 0.5) * W / H)) : Math.min(innerWidth * (isTouch ? 0.3 : 0.4), isTouch ? 130 : 190), h = w * H / W;
   cv.style.width = w + 'px'; cv.style.height = h + 'px';
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
 }
@@ -5466,6 +5470,7 @@ function step(now) {
     const r = rentsSt[P.id], active = r && r.until > Date.now() + timeOffset;
     ctx.save(); ctx.setLineDash([6, 4]); ctx.lineWidth = 2; ctx.strokeStyle = active ? 'rgba(255,214,90,.9)' : winterFlag ? WINTER.rentLine : 'rgba(255,255,255,.35)';
     ctx.strokeRect(P.x0 * TS + 2, P.y0 * TS + 2, (P.x1 - P.x0 + 1) * TS - 4, (P.y1 - P.y0 + 1) * TS - 4); ctx.restore();
+    if (!active) { ctx.font = 'bold 11px sans-serif'; const t = `🔒 แปลงเช่า ${P.id} • 🪙${Shared.FARM_RENT.price}`, w = ctx.measureText(t).width + 8; ctx.fillStyle = 'rgba(42,27,20,.6)'; ctx.fillRect(P.x0 * TS + 4, P.y0 * TS + 4, w, 15); ctx.fillStyle = '#fff'; ctx.fillText(t, P.x0 * TS + 8, P.y0 * TS + 15); } // แปลงว่างที่ยังล็อก: ป้ายบอกว่าต้องเช่า
     if (active) { ctx.font = 'bold 11px sans-serif'; const t = `🏡 ${r.name}`, w = ctx.measureText(t).width + 8; ctx.fillStyle = 'rgba(42,27,20,.75)'; ctx.fillRect(P.x0 * TS + 4, P.y0 * TS + 4, w, 15); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, P.x0 * TS + 8, P.y0 * TS + 15); }
   }
   // ช่องฟาร์ม

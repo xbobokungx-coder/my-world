@@ -28,7 +28,7 @@ module.exports = {
   starterStep(p, ev) { // event starter: sec = วินาทีนับจากเข้าเกมครั้งแรก (รวมเวลาออฟไลน์), ses = วินาทีนับจากเข้าเซสชันนี้
     const st = this.starterOf(p); this.starterStep2(p, ev); if (st.final) return;
     let changed = false;
-    for (const s of S.STARTER) if (s.ev === ev && !st.done[s.id]) { st.done[s.id] = 1; changed = true; logEv(this.room, 'starter', { p: p.key, step: s.id, n: Object.keys(st.done).length, sec: p.rec.firstSeen ? Math.round((Date.now() - p.rec.firstSeen) / 1000) : null, ses: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000), joins: p.rec.joins || 1 }); this.add(p, 'coin', s.coin, 'starter'); this.toast(p, `✅ คู่มือเริ่มต้น: ${s.hint} (+🪙${s.coin})`); }
+    for (const s of S.STARTER) if (s.ev === ev && !st.done[s.id]) { st.done[s.id] = 1; changed = true; logEv(this.room, 'starter', { p: p.key, step: s.id, n: Object.keys(st.done).length, sec: p.rec.firstSeen ? Math.round((Date.now() - p.rec.firstSeen) / 1000) : null, ses: Math.round((Date.now() - (p.joinedAt || Date.now())) / 1000), joins: p.rec.joins || 1 }); this.add(p, 'coin', s.coin, 'starter'); { const nx = S.STARTER.find(x => !st.done[x.id]); this.toast(p, `✅ คู่มือเริ่มต้น ${Object.keys(st.done).length}/${S.STARTER.length}: ${s.hint} (+🪙${s.coin})${nx ? ` 👉 ต่อไป: ${nx.hint}` : ''}`); } }
     if (!changed && !S.STARTER.every(s => st.done[s.id])) return; // ไม่มีข้อใหม่ แต่ครบทุกข้อแล้ว (คู่มือถูกย่อเหลือ 6 ข้อ) ก็ปิดคู่มือให้
     if (S.STARTER.every(s => st.done[s.id])) {
       st.final = true; this.add(p, 'coin', S.STARTER_FINAL.coin, 'starter'); for (const it of S.STARTER_FINAL.items) this.add(p, it, 1);

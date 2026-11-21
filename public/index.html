@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2d4a2b">
 <title>My World</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>
   :root { --ink:#4a3a28; --paper:#fff8e7; --edge:#d9b97a; --accent:#e8a33d; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -69,7 +70,8 @@
   #chatIn { pointer-events:auto; margin-top:4px; width:100%; padding:6px 10px; border-radius:10px; border:3px solid var(--edge); font:inherit; font-size:14px; user-select:text; }
   #toast { position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:50; max-width:min(92vw,460px); box-sizing:border-box; padding:8px 16px; font-weight:700; line-height:1.4; text-align:center; box-shadow:0 4px 0 rgba(0,0,0,.25); pointer-events:none; opacity:0; transition:opacity .25s; }
   #toast.show { opacity:1; }
-  body.touch #toast { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; font-size:13px; line-height:1.35; }
+  #toast { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; }
+  body.touch #toast { -webkit-line-clamp:4; font-size:13px; line-height:1.35; }
   /* เอฟเฟกต์เลเวลอัพ: แบนเนอร์กลางจอเด้งสปริง + แฟลชขอบจอ (ไม่ขวางการเล่น) */
   #lvBanner { position:fixed; left:50%; top:20%; z-index:55; transform:translate(-50%,0) scale(0); opacity:0; pointer-events:none; text-align:center; font-weight:800; color:#fff; text-shadow:0 3px 0 rgba(61,42,26,.9),0 0 14px var(--lc2,#ffd24a); max-width:94vw; }
   #lvBanner .lvT { font-size:clamp(26px,7vw,46px); letter-spacing:2px; -webkit-text-stroke:2px #3d2a1a; paint-order:stroke fill; color:var(--lc1,#ffd24a); }

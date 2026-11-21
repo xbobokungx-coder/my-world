@@ -34,7 +34,7 @@ module.exports = {
     if (!S.rentPlotAt(x, y)) return null;
     const r = this.rentAt(x, y);
     if (r && r.key === p.key) return null;
-    return r ? `🔒 แปลงนี้ ${r.name} เช่าอยู่` : '🔒 แปลงนี้ยังไม่มีคนเช่า ล็อกไว้ก่อน (เช่าได้ที่ร้านเมล็ดพันธุ์)';
+    return r ? `🔒 แปลงนี้ ${r.name} เช่าอยู่` : `🔒 นี่คือแปลงเช่า (เช่า 🪙${S.FARM_RENT.price} ที่ร้านเมล็ดพันธุ์ แท็บอุปกรณ์) • มือใหม่ขุดฟรีได้ที่แถวล่างใต้เส้นประเลย 👇`;
   },
   rentsPub() { const o = {}, now = Date.now(); for (const [id, r] of Object.entries(this.rents)) if (r.until > now) o[id] = { name: r.name, until: r.until, key: r.key }; return o; },
   rentHandle(p, id) { // เช่า/ต่อเวลาแปลง ที่ร้านเมล็ดพันธุ์ • คนละแปลง • จ่ายเหรียญ (หายจากระบบ)

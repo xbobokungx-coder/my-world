@@ -860,6 +860,7 @@ const server = http.createServer((req, res) => {
   if (u === '/healthz') { res.writeHead(200); return res.end('ok'); }
   if (u === '/layout.js') { res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }); return res.end('window.__LAYOUT=' + JSON.stringify(globalThis.__LAYOUT || null) + ';'); }
   if (u === '/api/bug') { if (req.method !== 'POST') { res.writeHead(405, { Allow: 'POST' }); return res.end(); } return handleBug(req, res); }
+  if (u === '/favicon.ico') u = '/favicon.svg'; // เบราว์เซอร์ขอ .ico เสมอ ส่งไอคอน SVG ให้ (ไม่ให้ 404)
   if (u === '/') u = '/index.html';
   if (u.includes('\0') || u.includes('%00')) { res.writeHead(400); return res.end(); } // กัน path แปลกที่เคยทำให้เซิร์ฟล่ม
   const f = path.normalize(path.join(PUB, u));
