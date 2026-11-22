@@ -275,7 +275,10 @@
   const XP_TABLE_MINE = [0, 0, 250, 535, 959, 1442, 2158, 2976, 4189, 5573, 7627, 9970, 13447, 17415, 23301, 30018, 39983, 51355, 68225, 87477, 116038];
   // 6 พ.ย. 2026 (xpv 5): ตารางหลอดมาตรฐานรายเลเวล (Lv1→2 = 15 นาที ถึง Lv20 ≈ 20 ชม.เล่นจริง) ใช้กับชาวประมง • อาชีพต่อไปเพิ่มบรรทัดเดียวใน XP_TABLES + ชื่อใน STD_V5_SKILLS
   const XP_TABLE_STD = [0, 0, 250, 576, 1000, 1552, 2271, 3208, 4428, 6017, 8086, 10780, 14289, 18859, 24810, 32561, 42655, 55801, 72921, 95218, 124256];
-  const XP_TABLES = { mine: XP_TABLE_MINE, fish: XP_TABLE_STD, farm: XP_TABLE_STD, animal: XP_TABLE_STD, wood: XP_TABLE_STD, cook: XP_TABLE_STD }; // 13 พ.ย. 2026 (xpv 7, WP-20): ทุกอาชีพใช้หลอดมาตรฐาน • ไม่ส่ง skill = ตารางเดิม XP_TABLE (ใช้ย้ายเซฟ xpv ≤ 6 เท่านั้น)
+  // 22 พ.ย. 2026 (ซิม tools/jungle-sim.js): หลอดนักสู้ = XP_TABLE_STD × 1.2 (ปัดสิบ) • เดิมใช้ XP_TABLE ท้ายสุด (Lv2 = 700 XP ≈ 88–146 ตัว ≈ 1–2.5 ชม. Lv10 ≈ 33 ชม. เพราะมอนสเตอร์ป่ามี 9 จุดเกิด 90 วิ = XP เพดาน 2,880/ชม. ไม่โตตามเลเวล)
+  // ตอนนี้ Lv2 = 300 XP ≈ 38–63 ตัว (เฉลี่ย ~47) ≈ 10–25 นาที • Lv10 ≈ 5 ชม. Lv15 ≈ 16 ชม. (ฟาร์ม 9 จุดเต็ม ~1,900 XP/ชม.) • Lv16+ ต้องรอมอนสเตอร์/หอคอยที่ให้ XP มากกว่านี้
+  const XP_TABLE_FIGHT = [0, 0, 300, 690, 1200, 1860, 2730, 3850, 5310, 7220, 9700, 12940, 17150, 22630, 29770, 39070, 51190, 66960, 87510, 114260, 149110];
+  const XP_TABLES = { fight: XP_TABLE_FIGHT, mine: XP_TABLE_MINE, fish: XP_TABLE_STD, farm: XP_TABLE_STD, animal: XP_TABLE_STD, wood: XP_TABLE_STD, cook: XP_TABLE_STD }; // 13 พ.ย. 2026 (xpv 7, WP-20): ทุกอาชีพใช้หลอดมาตรฐาน • ไม่ส่ง skill = ตารางเดิม XP_TABLE (ใช้ย้ายเซฟ xpv ≤ 6 เท่านั้น)
   const xpTable = skill => XP_TABLES[skill] || XP_TABLE; // ไม่ส่ง skill = ตารางเดิม
   const xpFor = (lv, skill) => xpTable(skill)[Math.max(1, Math.min(MAX_LV, lv))];
   const levelOf = (xp, skill) => { const T = xpTable(skill); let lv = 1; while (lv < MAX_LV && (xp || 0) >= T[lv + 1]) lv++; return lv; };
@@ -1725,6 +1728,7 @@
     { const bm = /^bar_(.+)$/.exec(k); if (bm && BARS[bm[1]]) { const o = bm[1], B = BARS[o]; return { name: BAR_NAMES[o], emoji: BAR_EMOJI[o], buy: B.shop, std: B.std, cat: 'bar', ore: o }; } } // WP-30: วัสดุแปรรูป — ไม่มี sell (ขายระบบไม่ได้)
     const pm = /^pick_(\d+)$/.exec(k);
     if (pm && PICKS[pm[1]]) return { name: PICKS[pm[1]].name, emoji: PICK_EMOJI[pm[1]], buy: PICKS[pm[1]].price, lv: PICKS[pm[1]].lv, skill: 'mine', once: true, cat: 'gear', pick: +pm[1] };
+    if (Object.hasOwn(JM_ITEMS, k)) return { name: JM_ITEMS[k].name, emoji: JM_ITEMS[k].emoji, once: true, cat: 'mat' }; // ของป่า ไม่ขาย/ไม่เทรด
     if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 58, cat: 'wood' };
     if (k === 'recall') return { name: `ตั๋ววาปกลับกองไฟ (ใช้ในถ้ำชั้น ${MINE.recall.minFloor} ขึ้นไป วาปกลับเมืองทันที ใช้แล้วหมด 1 ใบ/ครั้ง)`, emoji: '🎫', buy: MINE.recall.price, cat: 'tool' };
     if (k === 'lamp') return { name: 'ตะเกียง/ไฟฉาย (สว่างรอบตัว 5 ช่อง)', emoji: '🔦', buy: 120, once: true, cat: 'gear' }; // ซื้อได้ที่ร้านช่างเหมือง (ใช้ส่องถ้ำ) หรือได้จากรางวัลคู่มือเริ่มต้น • ขายต่อไม่ได้
@@ -1738,9 +1742,9 @@
     let am = /^axe_(\d+)$/.exec(k);
     if (am && AXES[am[1]]) return { name: AXES[am[1]].name, emoji: AXE_EMOJI[am[1]], buy: AXES[am[1]].price, lv: AXES[am[1]].lv, skill: 'wood', once: true, cat: 'gear', axe: +am[1] };
     const swm = /^sword_(\d+)$/.exec(k);
-    if (swm && WEAPON.sword[swm[1]]) return { name: WEAPON.sword[swm[1]].name + ' (ยังไม่มีผล รอป่าดงดิบ)', emoji: SWORD_EMOJI[swm[1]], buy: WEAPON.sword[swm[1]].price, once: true, cat: 'gear', sword: +swm[1] };
+    if (swm && WEAPON.sword[swm[1]]) return { name: WEAPON.sword[swm[1]].name + ' (ใช้ฟันมอนสเตอร์ในป่าดงดิบ)', emoji: SWORD_EMOJI[swm[1]], buy: WEAPON.sword[swm[1]].price, once: true, cat: 'gear', sword: +swm[1] };
     const arm = /^armor_(\d+)$/.exec(k);
-    if (arm && ARMOR[arm[1]]) return { name: ARMOR[arm[1]].name + ' (ยังไม่มีผล รอป่าดงดิบ)', emoji: ARMOR_EMOJI[arm[1]], buy: ARMOR[arm[1]].price, once: true, cat: 'gear', armor: +arm[1] };
+    if (arm && ARMOR[arm[1]]) return { name: ARMOR[arm[1]].name + ' (ยังไม่ลดดาเมจ)', emoji: ARMOR_EMOJI[arm[1]], buy: ARMOR[arm[1]].price, once: true, cat: 'gear', armor: +arm[1] };
     if (k === 'egg')  return { name: 'ไข่ไก่', emoji: '🥚', sell: 20, cat: 'animal' };
     if (k === 'duck_egg') return { name: 'ไข่เป็ด', emoji: '🥚', sell: 30, cat: 'animal' };
     if (k === 'wool') return { name: 'ขนแกะ', emoji: '🧶', sell: 60, cat: 'animal' };
@@ -2047,6 +2051,9 @@
     tower: { x0: 9, y0: 36, x1: 12, y1: 38, door: { x: 11, y: 39 } }, // หอคอยล่างซ้าย ยืนหน้าประตูที่ช่อง door
     safe: [{ id: 'camp', x0: 24, y0: 2, x1: 39, y1: 9 }, { id: 'shrine', x0: 34, y0: 24, x1: 40, y1: 28 }, { id: 'tower', x0: 3, y0: 32, x1: 20, y1: 43 }], // เขตปลอดภัย (ขั้น J4+ มอนสเตอร์ไม่เข้า)
     zones: [{ id: 'easy', y0: 3, y1: 14 }, { id: 'mid', y0: 15, y1: 28 }, { id: 'hard', y0: 29, y1: 43 }], // ย่านความยากไล่บนลงล่าง (ใช้เลือกชนิดมอนสเตอร์ ไม่ใช่กำแพง)
+    mon: { on: true, respawnMs: 90000, leash: 7, spots: [['jslime', 24, 14], ['jslime', 12, 9], ['jslime', 46, 12], ['jwasp', 52, 25], ['jwasp', 8, 26], ['jsnake', 14, 29], ['jsnake', 54, 36], ['jstump', 28, 41], ['jstump', 46, 41]] }, // มอนสเตอร์ 9 ตัว [ชนิด, x, y ช่องบ้าน] • on=false: ปิดมอนสเตอร์/ต่อสู้/สมุนไพรทั้งหมด (ป่าเปล่า) • leash = รัศมีจุดบ้าน (ช่อง) ไล่เกินแล้วเลิกกลับบ้าน • ห่างผู้เล่นตอนเกิดใช้ CREATURE.spawnGap
+    sign: { x: 28, y: 7 }, // ป้าย "🏡 กลับหมู่บ้าน" ในค่าย (ช่อง C) หันหาแล้วกด Action = ออกจากป่า
+    herbMs: 120000, herbN: 1, // พุ่มสมุนไพรเกิดใหม่หลังเก็บกี่ ms (ใน RAM) • ได้ jherb กี่ชิ้นต่อครั้ง
     herbs: [[8, 8], [54, 10], [14, 15], [48, 16], [10, 26], [56, 27], [22, 26], [40, 29], [8, 34], [52, 31], [24, 41], [58, 40]], // จุดสมุนไพร 12 จุด (ระบบเก็บทำขั้น J6)
     rows: [
       '##############################EEEE##############################',
@@ -2101,6 +2108,43 @@
   const isMineFloor = f => Number.isInteger(f) && f >= 1 && f <= MINE.floors; // ชั้นถ้ำเหมืองจริง (ไม่ใช่ทะเล 98/99 ไม่ใช่ป่า 97) ใช้ตัดสินว่าวางแร่/มีตั๋ว/HUD ถ้ำไหม
   const JUNGLE_TILE = { '#': T.TREE, t: T.TREE, '.': T.CAVE, h: T.CAVE, '=': T.PATH, '~': T.WATER, F: T.SAND, H: T.BRIDGE, T: T.LANDMARK, C: T.BUILD, S: T.BUILD, R: T.BUILD, E: T.MOUTH };
   function makeJungleMap() { return JUNGLE.rows.map(r => Array.from(r, c => JUNGLE_TILE[c])); }
+  // มอนสเตอร์ป่า (J4–J5, docs/plans/jungle-map.md ข้อ 4): โหมด AI เดิมของ creatures • ตัวเลขร่าง รอ economy-designer ซิม • dmg = HP ที่ตีเรา wind = ง้าง ms spd = ×ความเร็วคน aggro/reach = ช่อง xp = XP นักสู้ตอนฆ่า drop = ของตกต่อคนที่ตีโดน armor = ถูกตีไม่สะดุ้ง (ท่าที่ง้างอยู่ไม่ถูกยกเลิก)
+  const JUNGLE_MON = {
+    jslime: { name: 'สไลม์ใบไม้',  emoji: '🟢', mode: 'chase', hp: 24, dmg: 5,  wind: 700, spd: 0.45, aggro: 3.0, reach: 1.1, stun: 0,   knock: 0.5, xp: 4,  drop: { item: 'jm_gel',   p: 0.60 } },
+    jwasp:  { name: 'แตนยักษ์',    emoji: '🐝', mode: 'dart',  hp: 18, dmg: 6,  wind: 500, spd: 0.85, aggro: 4.0, reach: 1.1, stun: 300, knock: 1.0, xp: 6,  drop: { item: 'jm_sting', p: 0.50 } },
+    jsnake: { name: 'งูเขียว',     emoji: '🐍', mode: 'lunge', hp: 32, dmg: 10, wind: 500, spd: 0.65, aggro: 3.5, reach: 2.2, stun: 400, knock: 1.2, xp: 9,  drop: { item: 'jm_skin',  p: 0.40 } },
+    jstump: { name: 'ภูตตอไม้',    emoji: '🪵', mode: 'smash', hp: 60, dmg: 14, wind: 900, spd: 0.50, aggro: 4.5, reach: 1.8, stun: 800, knock: 1.5, xp: 15, armor: true, drop: { item: 'jm_core', p: 0.35 } },
+  };
+  const crSpec = k => CREATURES[k] || JUNGLE_MON[k]; // ข้อมูลชนิดสัตว์ (ถ้ำ หรือป่า)
+  const crSpeed = (k, f) => JUNGLE_MON[k] ? CREATURE.playerSpd * JUNGLE_MON[k].spd : creatureSpeed(k, f); // พิกเซล/วินาที
+  const crHpOf = (k, f) => JUNGLE_MON[k] ? JUNGLE_MON[k].hp : creatureHp(k, f);
+  // ระบบต่อสู้ในป่า (J5): HP ในฉาก p.cb ไม่เซฟ • ตัวเลขร่าง รอซิม
+  const COMBAT = {
+    hpBase: 100, hpPerLv: 4, // HP เต็ม = hpBase + hpPerLv × (เลเวลนักสู้ − 1)
+    bareDmg: 3, swordDmg: { 1: 10 }, // ดาเมจมือเปล่า / ตามระดับดาบ (sword_N)
+    reach: 1.25, cone: 120, // ระยะฟัน (ช่อง) / มุมกรวยหน้า (องศา)
+    swingGrace: 150, // จังหวะฟันต้อง ≥ SWING_MS − ค่านี้
+    invulnMs: 1500, // อมตะหลังโดน (ใช้ CREATURE.invulnMs เดียวกัน)
+    faintMs: 3000, wakePct: 0.5, // สลบกี่ ms / ตื่นที่ค่ายด้วย HP กี่ส่วน
+    regenIdleMs: 8000, regenRate: 1, regenSafe: 5, // พ้นการต่อสู้กี่ ms เริ่มฟื้น / HP ต่อวินาที / ในเขตปลอดภัย
+    herbHeal: 30, herbCdMs: 5000, // กินสมุนไพร +HP / คูลดาวน์
+    eatPct: 0.5, // กินอาหาร: ฟื้น HP เต็ม × (ความอิ่มของอาหาร × ค่านี้) %
+    pushMs: 250, // ส่ง cb ถี่สุดกี่ ms
+    idleToastMs: 30000, // ฟันลมแล้วแจ้ง "ไม่มีอะไรให้ฟัน" ได้ถี่สุดกี่ ms
+  };
+  const JM_ITEMS = { // ของจากป่า (ไม่ขาย ไม่เทรด ไม่เก็บตู้ ไม่เพิ่มความอิ่ม): jherb กินฟื้น HP ในป่า • jm_* วัสดุเก็บไว้ตีดาบระดับถัดไป (เฟสหลัง)
+    jherb:    { name: 'สมุนไพรป่า (กินฟื้น HP ในป่า)', emoji: '🌿' },
+    jm_gel:   { name: 'เมือกใบไม้', emoji: '🟢' }, jm_sting: { name: 'เหล็กในแตน', emoji: '🐝' },
+    jm_skin:  { name: 'หนังงูเขียว', emoji: '🐍' }, jm_core: { name: 'แก่นไม้ป่า', emoji: '🪵' },
+  };
+  const floorOpen = t => t !== T.TREE && t !== T.BUILD && t !== T.FENCE && t !== T.SHOP && t !== T.FURN && t !== T.LANDMARK && t !== T.WALL && t !== T.VOID && t !== T.CLIFF && t !== T.ROCK && t !== T.ORE; // ช่องที่สายตาผ่านได้ (ต้นไม้/สิ่งก่อสร้างบัง น้ำไม่บัง)
+  const jungleSafe = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return JUNGLE.safe.some(z => tx >= z.x0 && tx <= z.x1 && ty >= z.y0 && ty <= z.y1); }; // พิกัดพิกเซลอยู่ในเขตปลอดภัยของป่าไหม
+  // โปรไฟล์ชั้นของระบบสัตว์ (J4): ค่าที่เคยผูกกับถ้ำเหมือง แยกตามชั้น • null = ชั้นนี้ไม่มีสัตว์ • ชั้นเหมืองได้ค่าเดิมทุกตัว
+  function crProfile(f) {
+    if (isJungle(f)) return { id: 'jungle', get on() { return CREATURE.on && JUNGLE.mon.on; }, open: floorOpen, hit: 'hp', strike: 'sword', wake: 'camp', respawnMs: JUNGLE.mon.respawnMs, leash: JUNGLE.mon.leash, spots: JUNGLE.mon.spots, cap: JUNGLE.mon.spots.length };
+    if (isMineFloor(f)) return { id: 'mine', get on() { return CREATURE.on; }, open: caveOpen, hit: 'hunger', strike: 'pick', wake: 'stairs', respawnMs: CREATURE.respawnMs, cap: creatureCap(f) };
+    return null;
+  }
   // โซนน้ำ (กำหนดปลาที่ตกได้): ตื้น (ใกล้ท่า) • แนวปะการัง • ทะเลเปิด • ทะเลลึก (ฝั่งตะวันออกและขอบนอก)
   const oceanZone = (tx, ty) => oceanLayout().reefs.some(o => (tx - o.x) ** 2 + (ty - o.y) ** 2 <= o.r * o.r) ? 'reef' : tx <= 14 ? 'shallow' : (tx >= 46 || ty <= 6 || ty >= H - 7) ? 'deep' : 'open';
   const OCEAN_ZONE = { shallow: { name: 'ทะเลตื้น', lv: [1, 7] }, reef: { name: 'แนวปะการัง', lv: [5, 15] }, open: { name: 'ทะเลเปิด', lv: [7, 13] }, deep: { name: 'ทะเลลึก', lv: [13, 20] } }; // ปลาระดับในช่วง lv ออกบ่อยขึ้นในโซนนั้น
@@ -2199,12 +2243,12 @@
     reportWhy: [{ id: 'abuse', name: 'พูดจาไม่ดี' }, { id: 'cheat', name: 'โกง' }, { id: 'other', name: 'อื่นๆ' }],
     muteMs: { '10m': 10 * 60000, '1h': 3600000, '1d': 86400000 }, banMs: { '1d': 86400000, '7d': 7 * 86400000 } }; // banMs ไม่มี perm: ถาวร = ระบบแบนเดิม
 
-  const api = { CREATURES, CREATURE, creatureCap, creatureKinds, creaturePick, creatureHp, creatureSpeed, creatureHunger, JGATE, jgateAt, JUNGLE, makeJungleMap, isJungle, isMineFloor, GROVE, groveCells, groveHas, THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, PETLV, petLevel, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, inSeason, OFFSEASON, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, WEAPON, ARMOR, SWORD_EMOJI, ARMOR_EMOJI, swordTier, armorTier, SWORD_IDLE_MS, AXE_MAX, ROD_MAX, AXE_TUNE, ROD_TUNE, chopHit, rodHit, fishTier, AXE_MIG6, ROD_MIG6, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, FLEA, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, SNAKE, SNAKE_DIRS, snakeFood, snakeNew, snakeStep, snakeTurn, snakeMs, ARC_SHOP, VEHICLES, HORN, thaiWeek, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, HOME, storeAccepts, storeCap, storeAge, storeValue, houseComfort, sitMulOf, restMinutes, KINDS, kindOf, jobOf, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, ADMIN_COIN_STEP, ANIMAL_LOCK, animalLockMs, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, treeCutters, treeCapFor, treeGrowMs, WATER_MS, CANS, canTier, GEAR_MAX, GEAR_TUNE, gearHit, HOES, PAILS, PANS, HOE_EMOJI, PAIL_EMOJI, PAN_EMOJI, hoeTier, SELLBACK_MIN_FRAC, pailTier, panTier, cropTier, animalTier, cookTier, hoeHit, hoeBonus, pailHit, pailChance, panHit, panFee, STALL, LUCKY, FLEA, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, AXE_EMOJI, ROD_EMOJI, BUILDINGS, SHOPS, DIRS,
+  const api = { CREATURES, CREATURE, creatureCap, creatureKinds, creaturePick, creatureHp, creatureSpeed, creatureHunger, JGATE, jgateAt, JUNGLE, JUNGLE_MON, COMBAT, JM_ITEMS, crSpec, crSpeed, crHpOf, crProfile, floorOpen, jungleSafe, makeJungleMap, isJungle, isMineFloor, GROVE, groveCells, groveHas, THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, PETLV, petLevel, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, inSeason, OFFSEASON, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, WEAPON, ARMOR, SWORD_EMOJI, ARMOR_EMOJI, swordTier, armorTier, SWORD_IDLE_MS, AXE_MAX, ROD_MAX, AXE_TUNE, ROD_TUNE, chopHit, rodHit, fishTier, AXE_MIG6, ROD_MIG6, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, FLEA, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, SNAKE, SNAKE_DIRS, snakeFood, snakeNew, snakeStep, snakeTurn, snakeMs, ARC_SHOP, VEHICLES, HORN, thaiWeek, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, HOME, storeAccepts, storeCap, storeAge, storeValue, houseComfort, sitMulOf, restMinutes, KINDS, kindOf, jobOf, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, ADMIN_COIN_STEP, ANIMAL_LOCK, animalLockMs, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, treeCutters, treeCapFor, treeGrowMs, WATER_MS, CANS, canTier, GEAR_MAX, GEAR_TUNE, gearHit, HOES, PAILS, PANS, HOE_EMOJI, PAIL_EMOJI, PAN_EMOJI, hoeTier, SELLBACK_MIN_FRAC, pailTier, panTier, cropTier, animalTier, cookTier, hoeHit, hoeBonus, pailHit, pailChance, panHit, panFee, STALL, LUCKY, FLEA, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, AXE_EMOJI, ROD_EMOJI, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
     BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, COOK_ALT, cookUse, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
-    FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, fishNewestLv, fishPoolMul, migrateStdV5, migrateStdV7, unmigrateStdV7, xpUnStdV7, STD_V7_SKILLS, migrateToolsV6, unmigrateToolsV6, migrateDurV8, unmigrateDurV8, DUR_MIG8, tmigLocked, invPub, rareCdMs, xpStdV5,
+    FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, XP_TABLE_FIGHT, fishNewestLv, fishPoolMul, migrateStdV5, migrateStdV7, unmigrateStdV7, xpUnStdV7, STD_V7_SKILLS, migrateToolsV6, unmigrateToolsV6, migrateDurV8, unmigrateDurV8, DUR_MIG8, tmigLocked, invPub, rareCdMs, xpStdV5,
     SELLABLE,
     BAR_TUNE, BARS, BAR_EMOJI, BAR_NAMES, GEAR_BARS, gearBars, gearCost, WORKSHOP, makeCheck }; // WP-30 S1
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Shared = api;

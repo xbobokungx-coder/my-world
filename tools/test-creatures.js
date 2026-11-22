@@ -144,5 +144,9 @@ const setup = (f, k) => { goto(f); const F = w.floorOf(f); F.creatures.clear(); 
   assert.ok(a.faintWarp && a.stunUntil); w.changeScene(a, null, S.SPAWN.x, S.SPAWN.y);
   assert.ok(!a.faintWarp && !a.stunUntil && !a.faintUntil, 'สลบแล้วออกถ้ำ เคลียร์สถานะ'); w.crAt = 0; w.creatureTick(t0 + 1e5); assert.strictEqual(a.scene, null, 'ไม่ถูกวาร์ปเข้าถ้ำ');
 }
+// 13) โปรไฟล์ชั้น (J4): ชั้นเหมืองได้ค่าเดิม • ทะเลไม่มี • ป่าเป็นโปรไฟล์ hp
+for (let f = 1; f <= S.MINE.floors; f++) { const pr = S.crProfile(f); assert.ok(pr && pr.id === 'mine' && pr.on && pr.hit === 'hunger' && pr.strike === 'pick' && pr.wake === 'stairs' && pr.open === S.caveOpen && pr.respawnMs === C.respawnMs && pr.cap === S.creatureCap(f), 'โปรไฟล์ชั้นเหมือง ' + f); assert.ok(w.creatureOn(f)); }
+assert.strictEqual(S.crProfile(S.SEA.floor), null); assert.strictEqual(S.crProfile(S.OCEAN.floor), null); assert.strictEqual(S.crProfile(0), null); assert.ok(S.crProfile(97).id === 'jungle' && S.crProfile(97).hit === 'hp');
+{ C.on = false; try { assert.ok(!w.creatureOn(1) && !w.creatureOn(97)); assert.ok(!S.crProfile(3).on); } finally { C.on = true; } }
 console.log('test-creatures: ผ่านทั้งหมด');
 process.exit(0);

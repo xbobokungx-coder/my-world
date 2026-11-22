@@ -254,7 +254,10 @@ function handle(m) {
     case 'crn': if (cave && m.c) { crPut(m.c); crFirstToast(); } break;
     case 'crd': creatures.delete(m.id); break;
     case 'crm': if (cave) for (const [id, x, y, dir, st, hp] of m.u || []) { const c = creatures.get(id); if (c) { c.x = x; c.y = y; c.dir = dir; if (st !== c.st) { c.st = st; c.stAt = performance.now(); } c.hp = hp; } } break;
-    case 'crh': { const c = creatures.get(m.id); if (c) { c.hp = m.hp; c.hitAt = performance.now(); } break; }
+    case 'crh': { const c = creatures.get(m.id); if (c) { c.hp = m.hp; c.hitAt = performance.now(); if (m.d > 0 && inJungle()) crJHit(c, m); } break; } // ป่า: m.d = ดาเมจ m.by = คนตี
+    case 'cb': cbSet(m); break; // HP ผู้เล่นในป่า {hp,mx,st:'ok'|'faint',ms?}
+    case 'jh': jHerb.clear(); for (const [x, y, r] of m.list || []) jHerb.set(x + ',' + y, !!r); break; // พุ่มสมุนไพรทั้งหมดตอนเข้าป่า [x,y,ready]
+    case 'jh1': { const k = m.x + ',' + m.y, was = jHerb.get(k); jHerb.set(k, !!m.r); if (inJungle() && me && was !== false && !m.r && Math.hypot((m.x + 0.5) * TS - me.x, (m.y + 0.5) * TS - me.y) < TS * 2.6) toast('🌿 เก็บสมุนไพรแล้ว เดี๋ยวพุ่มก็งอกใหม่'); break; }
     case 'cra': if (cave) { crWarn.push({ x: m.x, y: m.y, r: m.r, t0: performance.now(), ms: m.ms || 600 }); if (crWarn.length > 16) crWarn.shift(); } break;
     case 'hurt': crHurt(m); break;
     case 'web': webUntil = performance.now() + (m.ms || 0); break;
@@ -1247,6 +1250,7 @@ const furnKeys = () => Object.keys(inv).filter(k => k.startsWith('furn_') && FUR
 // ---------- บ้านหลังใหญ่: แมพแยก (ฉาก) มุมมองไอโซเมตริก ตกแต่งอิสระ ----------
 // ตอนอยู่ในบ้าน MAP ถูกสลับเป็นแมพบ้านชั่วคราว (ผนัง/พื้น/ประตู) เก็บแถวของแมพเมืองไว้ใน townRows ของเมืองที่มาใหม่ระหว่างนั้น (ต้นไม้/โครงการ) แก้ที่ tmap()
 let houseSt = { fl: 'oak', wp: 'cream' }, houseBgKey = '', scene = null, houseInfo = null, townRows = null, townDirty = false, hboard = null, houseRects = [], houseBg = null, houseGrid = null;
+let cb = null; const jHerb = new Map(); // ป่าดงดิบ: cb = HP ผู้เล่นในป่า {hp,mx,st,until} • jHerb = พุ่มสมุนไพร 'x,y' -> พร้อมเก็บไหม
 const creatures = new Map(), crWarn = [], crFx = [], crSeen = new Set(); let stunUntil = 0, webUntil = 0, crFlash = 0, crShakeT = 0, crMsgT = 0; // สัตว์ในถ้ำ (เซิร์ฟเวอร์ตัดสิน เว็บแค่วาด): creatures id → ตัวสัตว์ • crWarn วงเตือนบนพื้น • crFx ตัวเลขลอย • crSeen ชนิดที่เคยเตือนแล้วในเซสชัน • stunUntil/webUntil เวลาที่ถูกสตัน/ติดใย
 let cave = false, caveFlr = 0, townCache = null; const oreK = new Map(), oreS = new Map(); // caveFlr = ชั้นของถ้ำที่อยู่ • oreS = ขนาดก้อนแร่ (0 เล็ก 1 กลาง 2 ใหญ่)  // ถ้ำเหมือง: cave = อยู่ในถ้ำ (แมพบน แต่ MAP ถูกสลับเป็นผังถ้ำ) • oreK = ก้อนแร่ 'x,y' → ชนิด
 const inTown = () => !scene && !cave;
@@ -2424,7 +2428,46 @@ function houseAct(now) { // ปุ่ม A/Space ในบ้าน: เก้�
 function jungleAct(now, tx, ty) {
   const [fx, fy] = Shared.facing(me.x, me.y, me.dir);
   if (tx === undefined && Shared.JUNGLE.rows[fy] && Shared.JUNGLE.rows[fy][fx] === 'C' && fx === 28 && fy === 7) { lastAct = now; actGap = 600; toast('🪧 ทางออกอยู่ด้านบน เดินขึ้นไปที่ซุ้มหินเพื่อกลับหมู่บ้านได้เลย'); return; } // ป้ายทางออกหน้าค่าย
-  lastAct = now; actGap = 250; const o = { t: 'act', tool: '' }; if (tx !== undefined) { o.tx = tx; o.ty = ty; } send(o);
+  const o = { t: 'act', tool: '' };
+  if (tx !== undefined) { o.tx = tx; o.ty = ty; const [px, py] = myTile(), dx = tx - px, dy = ty - py; if (dx || dy) me.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0); }
+  const k = me.held && me.held.includes('🗡') ? 'chop' : ''; // ถือดาบ = เล่นท่าฟัน (ยืมท่าขวาน) เซิร์ฟเวอร์ตัดสินผลเอง
+  lastAct = now; actGap = k ? PixelAction.dur(k) : 250;
+  if (k) { swing = 0.25; me.useAt = performance.now(); me.useK = k; me.actAt = me.useAt; me.actPt = null; send({ t: 'sw' }); playSfx('chop'); }
+  send(o);
+}
+function jungleCtx() { // บริบทของปุ่ม A ในป่า: ⚔️ มอนสเตอร์ในระยะหน้า • 🌿 หน้าพุ่มพร้อมเก็บ • ✋ อื่นๆ
+  if (!me) return '✋';
+  const v = [[0, 1], [0, -1], [-1, 0], [1, 0]][me.dir] || [0, 1];
+  for (const c of creatures.values()) { const dx = c.dx - me.x, dy = c.dy - me.y, d = Math.hypot(dx, dy); if (d < TS * 1.25 && (d < 8 || (dx * v[0] + dy * v[1]) / d > 0.5)) return '⚔️'; }
+  const [fx, fy] = Shared.facing(me.x, me.y, me.dir);
+  if (Shared.JUNGLE.rows[fy] && Shared.JUNGLE.rows[fy][fx] === 'h' && jHerb.get(fx + ',' + fy) !== false) return '🌿';
+  return '✋';
+}
+function jungleHud(now) { // ทุกเฟรม: ป้ายปุ่ม A ตามบริบท + นับถอยหลังสลบ
+  const ab = $('abtn'), want = inJungle() ? jungleCtx() : 'A';
+  if (ab.textContent !== want) { ab.textContent = want; ab.setAttribute('aria-label', want === '⚔️' ? 'ฟัน' : want === '🌿' ? 'เก็บสมุนไพร' : want === '✋' ? 'ทำงาน' : 'ทำงาน'); }
+  if (cb && cb.faintUntil) { const el = $('cbFaint'), n = Math.ceil((cb.faintUntil - now) / 1000); if (n <= 0) { cb.faintUntil = 0; el.classList.add('hidden'); } else el.textContent = `😵 สลบ ตื่นที่ค่ายใน ${n} วิ`; }
+}
+function cbRender() {
+  const el = $('cbSelf'); if (!cb || !cave || !inJungle()) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden'); const f = Math.max(0, Math.min(1, cb.hp / (cb.mx || 1)));
+  $('cbFill').style.width = (f * 100) + '%'; $('cbFill').style.background = f > 0.55 ? '#6cc04a' : f > 0.25 ? '#f1c40f' : '#e5453a'; $('cbTxt').textContent = Math.ceil(cb.hp) + '/' + cb.mx;
+}
+function cbHide() { $('cbSelf').classList.add('hidden'); $('cbFaint').classList.add('hidden'); const ab = $('abtn'); if (ab.textContent !== 'A') ab.textContent = 'A'; }
+function cbFaint(ms) { const now = performance.now(); stunUntil = Math.max(stunUntil, now + ms); walk = null; if (!cb) cb = { hp: 0, mx: 100, st: 'faint' }; cb.faintUntil = now + ms; const el = $('cbFaint'); el.textContent = `😵 สลบ ตื่นที่ค่ายใน ${Math.ceil(ms / 1000)} วิ`; el.classList.remove('hidden'); }
+function cbSet(m) { // HP ในป่า จากเซิร์ฟเวอร์ (เซิร์ฟเวอร์ตัดสิน)
+  if (!cave) return;
+  const old = cb ? cb.hp : null, was = cb && cb.st;
+  cb = Object.assign(cb || {}, { hp: m.hp | 0, mx: m.mx | 0 || 100, st: m.st || 'ok' });
+  if (cb.st === 'faint') { if (was !== 'faint' || !cb.faintUntil) cbFaint(m.ms || 5000); }
+  else if (was === 'faint' || cb.faintUntil) { cb.faintUntil = 0; $('cbFaint').classList.add('hidden'); stunUntil = 0; toast('💪 ตื่นแล้ว สู้ต่อได้เลย'); }
+  else if (old !== null && cb.hp - old >= 15 && me) { crFx.push({ t: performance.now(), txt: `+${cb.hp - old}`, x: me.x, y: me.y - 8, col: '#7be07b' }); toast('💚 ฟื้น HP แล้ว สบายใจขึ้นเยอะ'); }
+  cbRender();
+}
+function crJHit(c, m) { // ตีมอนสเตอร์ในป่า: ตัวเลขดาเมจลอย + ประกาย (ของเรา = เหลือง ของคนอื่น = ขาว)
+  const mine = m.by === myId, now = performance.now();
+  crFx.push({ t: now, txt: String(m.d), x: c.dx, y: c.dy - 14, col: mine ? '#ffd34a' : '#ffffff', spark: true });
+  if (mine) playSfx('crit', 0.8);
 }
 function act(tx, ty) {
   const now = performance.now();
@@ -2481,7 +2524,7 @@ function interactive(tx, ty) { // ช่องนี้มีอะไรให�
   const id = toolId(), t = MAP[ty][tx], f = farm[tx + ',' + ty];
   if (inSea()) return (t === T.WATER || (inOcean() && t === T.CAVE)) && id === 'rod'; // บนเรือตกปลาได้อย่างเดียว
   if (inTown() && Shared.jgateAt(tx, ty)) return true; // ซุ้มประตูป่า: แตะแล้วเดินไปเข้า
-  if (inJungle()) return false;
+  if (inJungle()) return !!creatureAtTile(tx, ty) || (Shared.JUNGLE.rows[ty] && Shared.JUNGLE.rows[ty][tx] === 'h'); // แตะมอนสเตอร์/พุ่มสมุนไพร = ตี/เก็บ
   if (cave) return (t === T.ORE && id === 'pick') || (id === 'pick' && !!creatureAtTile(tx, ty)); // ในถ้ำมีก้อนแร่ให้ขุด + สัตว์ให้ฟาดไล่
   if (t === T.SHOP || (t === T.BUILD && shopAt(tx, ty)) || animalAt(tx, ty) || cinemaAt(tx, ty)) return true;
   if (seatAt(tx, ty)) return true;
@@ -3854,10 +3897,11 @@ function drawOreHp(tx, ty, k, sz, now) { // แถบ HP เหนือก้�
   mainCtx.fillStyle = 'rgba(255,255,255,.45)'; mainCtx.fillRect(bx, by, Math.round(w * f), 1);
 }
 // ---------- สัตว์ในถ้ำ: เก็บตามข้อความ crs/crn/crm/crd/crh แล้ววาด (ตัวเลขทั้งหมดจาก Shared.CREATURE*) ----------
-function crReset() { creatures.clear(); crWarn.length = 0; crFx.length = 0; stunUntil = 0; webUntil = 0; crFlash = 0; crShakeT = 0; }
-function crPut(a) { const [id, k, x, y, dir, st, hp, hpMax] = a; if (!Shared.CREATURES[k]) return; creatures.set(id, { id, k, x, y, dx: x, dy: y, dir, st, hp, hpMax, hitAt: 0, stAt: performance.now(), seed: id * 1.7 }); }
+function crReset() { creatures.clear(); crWarn.length = 0; crFx.length = 0; stunUntil = 0; webUntil = 0; crFlash = 0; crShakeT = 0; cb = null; cbHide(); }
+const crDef = k => Shared.CREATURES[k] || (Shared.JUNGLE_MON && Shared.JUNGLE_MON[k]); // ข้อมูลสัตว์ถ้ำ หรือมอนสเตอร์ป่า (ชื่อ/อีโมจิ)
+function crPut(a) { const [id, k, x, y, dir, st, hp, hpMax] = a; if (!crDef(k)) return; creatures.set(id, { id, k, x, y, dx: x, dy: y, dir, st, hp, hpMax, hitAt: 0, stAt: performance.now(), seed: id * 1.7 }); }
 function crFirstToast() { // เจอชนิดแรกของเซสชัน บอกวิธีรับมือครั้งเดียว
-  for (const c of creatures.values()) if (!crSeen.has(c.k)) { crSeen.add(c.k); const d = Shared.CREATURES[c.k]; toast(`${d.emoji} ${d.name}! ฟาดไล่ได้ด้วยอีเต้อ หรือเดินหนีก็ได้`); break; }
+  for (const c of creatures.values()) if (!crSeen.has(c.k)) { crSeen.add(c.k); const d = crDef(c.k); toast(inJungle() ? `${d.emoji} ${d.name}! ฟันด้วยดาบ หรือเดินเลี่ยงก็ได้` : `${d.emoji} ${d.name}! ฟาดไล่ได้ด้วยอีเต้อ หรือเดินหนีก็ได้`); break; }
 }
 function creatureAtTile(tx, ty) { for (const c of creatures.values()) if (Math.hypot(c.dx - (tx + 0.5) * TS, c.dy - (ty + 0.5) * TS) < TS * 0.8) return c; return null; }
 function crUpdate(now) { // เลื่อนตำแหน่งวาดเข้าหาตำแหน่งจริงจากเซิร์ฟเวอร์ให้ลื่น
@@ -3873,7 +3917,7 @@ function drawCrWarns(now) { // วงเตือนแดงบนพื้น 
   }
 }
 function drawCreature(c, now) {
-  const x = Math.round(c.dx), y = Math.round(c.dy), d = Shared.CREATURES[c.k], hit = now - c.hitAt < 220;
+  const x = Math.round(c.dx), y = Math.round(c.dy), d = crDef(c.k), hit = now - c.hitAt < 220;
   const sz = PixelCreature.size(c.k) || { w: 24, h: 24 };
   ctx.save(); if (hit) ctx.translate(Math.sin(now / 14) * 2, 0);
   const view = { k: c.k, x, y, dir: c.dir, st: c.st, hp: c.hp, hpMax: c.hpMax };
@@ -3895,9 +3939,10 @@ function crHurt(m) { // โดนสัตว์: จอแดงวาบ + ส
   const now = performance.now(); stunUntil = now + (m.stun || 0); walk = null;
   if (typeof m.x === 'number' && typeof m.y === 'number') { me.x = m.x; me.y = m.y; }
   if (!lvReduced()) { const el = crOverlay(); el.style.transition = 'none'; el.style.opacity = '1'; void el.offsetWidth; el.style.transition = 'opacity .35s'; el.style.opacity = '0'; crShakeT = now; }
-  crFx.push({ t: now, txt: m.h > 0 ? `🍗 −${m.h}` : '💢' }); playSfx('crit');
+  if (inJungle()) crFx.push({ t: now, txt: m.d > 0 ? `−${m.d}` : '💢', x: me.x, y: me.y - 8 }); else crFx.push({ t: now, txt: m.h > 0 ? `🍗 −${m.h}` : '💢' }); playSfx('crit'); // ป่า: ตัวเลข HP ที่เสีย
 }
 function crFaint(m) { // สลบ: ข้อความกลางจอ (เซิร์ฟเวอร์วาร์ปไปบันไดให้ แล้วส่ง tp/scene ตามกลไกเดิม)
+  if (inJungle()) { cbFaint(m.ms || 5000); return; } // ป่า: ข้อความนับถอยหลังของ cb
   const now = performance.now(); stunUntil = Math.max(stunUntil, now + (m.ms || 0)); walk = null;
   let el = $('crMsg'); if (!el) { el = document.createElement('div'); el.id = 'crMsg'; el.style.cssText = 'position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:61;pointer-events:none;background:rgba(20,16,30,.88);color:#fff;font:bold 18px sans-serif;padding:14px 20px;border-radius:12px;text-align:center;max-width:86vw;transition:opacity .4s;opacity:0'; document.body.appendChild(el); }
   el.textContent = '😵 สลบไปครู่ แล้วตื่นที่บันได'; el.style.opacity = '1'; clearTimeout(crMsgT); crMsgT = setTimeout(() => { el.style.opacity = '0'; }, Math.max(2200, m.ms || 0));
@@ -3908,7 +3953,10 @@ function drawCrFx(now) { // ใยใต้เท้า + ตัวเลขล�
   for (let i = crFx.length - 1; i >= 0; i--) {
     const f = crFx[i], t = now - f.t; if (t > 1100 || !me) { crFx.splice(i, 1); continue; }
     ctx.globalAlpha = Math.min(1, 2 - t / 550); ctx.font = `bold 14px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineWidth = 3; ctx.strokeStyle = '#1b1d24'; ctx.strokeText(f.txt, me.x, me.y - 36 - t / 22); ctx.fillStyle = '#ff7a6a'; ctx.fillText(f.txt, me.x, me.y - 36 - t / 22); ctx.globalAlpha = 1;
+    const fx = f.x === undefined ? me.x : f.x, fy = f.x === undefined ? me.y - 36 : f.y - 22;
+    if (f.spark && t < 240) { ctx.strokeStyle = '#fff3a0'; ctx.lineWidth = 2; for (let a = 0; a < 6; a++) { const an = a * 1.047 + f.t % 3, r0 = 3 + t / 24, r1 = r0 + 5; ctx.beginPath(); ctx.moveTo(f.x + Math.cos(an) * r0, f.y + Math.sin(an) * r0); ctx.lineTo(f.x + Math.cos(an) * r1, f.y + Math.sin(an) * r1); ctx.stroke(); } } // ประกายตอนตี
+    if (!f.txt) { ctx.globalAlpha = 1; continue; }
+    ctx.lineWidth = 3; ctx.strokeStyle = '#1b1d24'; ctx.strokeText(f.txt, fx, fy - t / 22); ctx.fillStyle = f.col || '#ff7a6a'; ctx.fillText(f.txt, fx, fy - t / 22); ctx.globalAlpha = 1;
   }
 }
 function drawOreDmg(now) {
@@ -3966,7 +4014,7 @@ function drawJungleObjs(list, now, x0, x1, y0, y1) { // ของในป่า
     const ch = at(tx, ty);
     if (ch === '#' || ch === 't') list.push({ y: ty * TS + 30, f: () => PixelJungle.tree(ctx, tx, ty, ch) });
     else if (ch === 'R') list.push({ y: (ty + 1) * TS - 2, f: () => PixelJungle.ruin(ctx, tx, ty, at(tx, ty - 1) !== 'R') });
-    else if (ch === 'h') list.push({ y: (ty + 1) * TS - 2, f: () => PixelJungle.herb(ctx, tx, ty, true, performance.now()) });
+    else if (ch === 'h') list.push({ y: (ty + 1) * TS - 2, f: () => PixelJungle.herb(ctx, tx, ty, jHerb.get(tx + ',' + ty) !== false, performance.now()) });
     else if (ch === 'S' && at(tx - 1, ty) !== 'S' && at(tx, ty - 1) !== 'S') list.push({ y: (ty + 2) * TS - 2, f: () => PixelJungle.shrine(ctx, tx, ty, performance.now()) });
     else if (ch === 'C') {
       if (at(tx - 1, ty) !== 'C' && at(tx, ty - 1) !== 'C' && at(tx + 1, ty) === 'C') list.push({ y: (ty + 2) * TS - 2, f: () => PixelJungle.tent(ctx, tx, ty) }); // เต็นท์ 3x2
@@ -5502,7 +5550,7 @@ function frameTail(now, wall) { // กลางวัน/กลางคืน +
     const t = inOcean() ? `⛵ ทะเลใหญ่${zn ? ' • ' + zn : ''} ${seaEnd ? ' • เรือเช่าหมดเวลาในอีก ' + cd : ' • ไม่จำกัดเวลา'} • เบ็ด 🎣 • แล่นซ้ายสุดเพื่อกลับท่า` : `🛶 ทะเลลึก (แพ) • เหลือ ${cd} • เบ็ด 🎣 ตกปลาทะเล • เดินไปท้ายแพเพื่อกลับเกาะ`;
     ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; const y0 = tagTop(); ctx.fillRect(10, y0, ctx.measureText(t).width + 16, 26); ctx.fillStyle = '#fff'; ctx.fillText(t, 18, y0 + 18);
   }
-  else if (inJungle()) { const t = '🌿 ป่าดงดิบ • ต้นไม้ตัดไม่ได้ • ทางออกอยู่ขอบบน'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; const w = ctx.measureText(t).width + 16, p = tagRight(w); ctx.fillRect(p.x, p.y, w, 26); ctx.fillStyle = '#d8ffc8'; ctx.fillText(t, p.x + 8, p.y + 19); }
+  else if (inJungle()) { const t = '🌿 ป่าดงดิบ • ฟันมอนสเตอร์ เก็บสมุนไพร • ทางออกอยู่ขอบบน'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; const w = ctx.measureText(t).width + 16, p = tagRight(w); ctx.fillRect(p.x, p.y, w, 26); ctx.fillStyle = '#d8ffc8'; ctx.fillText(t, p.x + 8, p.y + 19); }
   else if (cave) { const t = '⛏️ ถ้ำเหมือง ชั้น ' + caveFlr + '/' + Shared.MINE.floors; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(0,0,0,.55)'; const w = ctx.measureText(t).width + 16, p = tagRight(w); ctx.fillRect(p.x, p.y, w, 26); ctx.fillStyle = '#ffe9a8'; ctx.fillText(t, p.x + 8, p.y + 19); }
   const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60);
   const icon = dark > 0.45 ? '🌙' : hour < 8 || hour >= 17 ? '🌅' : '☀️';
@@ -5619,6 +5667,7 @@ function step(now) {
     if (cand && cand !== c.face) { c.faceT = (c.faceT || 0) + dt; if (c.faceT > 0.3) { c.face = cand; c.faceT = 0; } } else c.faceT = 0; // ทิศใหม่ต้องค้างอย่างน้อย 0.3 วิ ถึงเปลี่ยนท่า
   }
   swing = Math.max(0, swing - dt);
+  jungleHud(now);
   { const he = heldEmoji(); if (he !== lastHeld) { lastHeld = he; me.held = he; send({ t: 'held', e: he }); } } // อุปกรณ์ในมือเปลี่ยน → บอกเซิร์ฟเวอร์
   updateSpeaking(now);
 

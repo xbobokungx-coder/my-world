@@ -91,5 +91,10 @@ w.leaveCave(p); assert.ok(!p.scene);
 stand(); act(); assert.strictEqual(p.scene, '@cave97'); p.x = 40 * TS; p.y = 30 * TS;
 const rec = p.rec; w.leave(p);
 assert.ok(Math.abs(rec.x - front().x) < TS && Math.abs(rec.y - (G.y0 - 0.5) * TS) < 1, `เซฟหน้าประตู ${rec.x},${rec.y}`);
+// J4: มอนสเตอร์เกิดเฉพาะจุดบ้าน ไม่เข้าเขตปลอดภัย รวม ≤ 9 • สวิตช์ JUNGLE.mon.on ปิดแล้วป่าเปล่า
+{ w.warpTo(p, 'jungle'); const cs = [...w.floorOf(97).creatures.values()];
+  assert.ok(cs.length > 0 && cs.length <= 9, 'มอนสเตอร์ในป่ารวม ≤ 9'); assert.ok(cs.every(c => !S.jungleSafe(c.x, c.y) && J.mon.spots[c.spot][0] === c.k && Math.hypot(Math.floor(c.x / TS) - J.mon.spots[c.spot][1], Math.floor(c.y / TS) - J.mon.spots[c.spot][2]) <= J.mon.leash), 'เกิดเฉพาะที่จุดบ้านและนอกเขตปลอดภัย');
+  assert.ok(J.mon.spots.every(([k, x, y]) => S.JUNGLE_MON[k] && at(x, y) === T.CAVE && !S.jungleSafe((x + 0.5) * TS, (y + 0.5) * TS)), 'จุดบ้านทั้ง 9 เป็นพื้นป่านอกเขตปลอดภัย');
+  w.leaveCave(p); }
 console.log('✓ ผ่าน: ป่าดงดิบ J2');
 process.exit(0);

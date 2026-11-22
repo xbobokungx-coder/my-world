@@ -1,12 +1,13 @@
-// สัตว์ในถ้ำเหมือง (14–15 พ.ย. 2026): หนู ค้างคาว แมงมุม งู ยักษ์หิน วาดด้วยโค้ดระบบ PixelArt ไม่ใช้ PixelLab • 1 พิกเซลศิลป์ = 1 พิกเซลเกม
+// (ป่าดงดิบ: jslime jwasp jsnake jstump เพิ่ม 22 พ.ย. ใช้ API เดียวกัน) สัตว์ในถ้ำเหมือง (14–15 พ.ย. 2026): หนู ค้างคาว แมงมุม งู ยักษ์หิน วาดด้วยโค้ดระบบ PixelArt ไม่ใช้ PixelLab • 1 พิกเซลศิลป์ = 1 พิกเซลเกม
 // API: PixelCreature.draw(ctx, c, now) คืน true ถ้าวาดแล้ว (c = {k,x,y,dir,st,id?}; x,y = จุดเท้ากลางตัว) • PixelCreature.size(k) = { w, h }
 // ทิศ 0 ใต้(หน้า) 1 เหนือ(หลัง) 3 ตะวันออก (2 = พลิกจาก 3) • st 0/1 เดิน/ไล่ (4 เฟรมตามเวลา) 2 ง้าง (ย่อ/เงื้อ ตาแดง) 3 โจมตี 4 ตกใจ (ตัวซีด ตาหลับ สั่น)
 // โทนถ้ำ: เทาม่วง ตาเรืองแสงเหลืองอำพัน (ง้าง/โจมตี = แดง) ขอบนุ่ม soft outline แบบเดียวกับมอเตอร์ไซค์/หอคอย • แคชต่อ (ชนิด,ทิศ,ท่า,เฟรม)
 const PixelCreature = (() => {
   const { mk, r, ell, disc, shade, ramp, hash } = PixelArt;
   const SOFT = { soft: ['#2a2033', '#4a3d58'] };
-  const SIZE = { rat: { w: 20, h: 12 }, bat: { w: 24, h: 16 }, spider: { w: 26, h: 16 }, snake: { w: 32, h: 14 }, golem: { w: 40, h: 44 } };
-  const PAL = { rat: ramp('#8f7f90', .3, .2), bat: ramp('#6a5688', .3, .2), spider: ramp('#5a4866', .3, .2), snake: ramp('#b2a27a', .3, .2), golem: ramp('#908c9e', .3, .2) };
+  const SIZE = { rat: { w: 20, h: 12 }, bat: { w: 24, h: 16 }, spider: { w: 26, h: 16 }, snake: { w: 32, h: 14 }, golem: { w: 40, h: 44 }, jslime: { w: 24, h: 18 }, jwasp: { w: 24, h: 18 }, jsnake: { w: 32, h: 14 }, jstump: { w: 44, h: 44 } };
+  const PAL = { rat: ramp('#8f7f90', .3, .2), bat: ramp('#6a5688', .3, .2), spider: ramp('#5a4866', .3, .2), snake: ramp('#b2a27a', .3, .2), golem: ramp('#908c9e', .3, .2), jslime: ramp('#7bc96a', .3, .2), jwasp: ramp('#e8b830', .3, .2), jsnake: ramp('#5f9a4a', .3, .2), jstump: ramp('#8a6a4a', .3, .2) };
+  const SOFTJ = { soft: ['#1f3324', '#3f5a3c'] }; // ขอบนุ่มโทนป่า
   const PINK = '#e6a4ae', PINK2 = '#b8707f', BONE = '#efe6d2', MOSS = '#6f8f5a', MOSS2 = '#527044';
   const pal = (k, pose) => (pose === 'h' ? PAL[k].map(c => shade(c, .38)) : PAL[k]);
   const eyeCol = pose => (pose === 'w' || pose === 'a' ? '#ff3a2a' : '#ffd04a');
@@ -133,8 +134,8 @@ const PixelCreature = (() => {
   }
 
   // ---------- งู ----------
-  function snake(d, fr, pose) {
-    const { w, h } = SIZE.snake, F = pal('snake', pose), E = eyeCol(pose), cx = w / 2, ph = fr * Math.PI / 2;
+  function snake(d, fr, pose, K = 'snake') {
+    const { w, h } = SIZE[K], F = pal(K, pose), E = eyeCol(pose), cx = w / 2, ph = fr * Math.PI / 2;
     return mk(w, h, (x) => {
       const stamp = (X, Y, rad, i) => {
         ell(x, Math.round(X), Math.round(Y) + 1, rad, rad, F[1]); ell(x, Math.round(X), Math.round(Y), rad, rad, i % 5 === 4 ? F[0] : F[2]);
@@ -167,7 +168,7 @@ const PixelCreature = (() => {
           else if (pose !== 'h') { r(x, '#d94a3a', hx, hy + hw, 1, 2); px(x, '#d94a3a', hx - 1 + (fr & 1) * 2, hy + hw + 2); }
         }
       }
-    }, SOFT);
+    }, K === 'snake' ? SOFT : SOFTJ);
   }
 
   // ---------- ยักษ์หิน ----------
@@ -205,8 +206,102 @@ const PixelCreature = (() => {
     }, SOFT);
   }
 
-  const BUILD = { rat, bat, spider, snake, golem };
-  const SH = { rat: [8, 3], bat: [7, 2.5], spider: [10, 3.5], snake: [13, 3.5], golem: [16, 5] }; // เงาครึ่งกว้าง/ครึ่งสูง
+
+  // ====================== ป่าดงดิบ (22 พ.ย. 2026) ======================
+  // โทนเขียวป่า ตาเรืองเหลือง (ง้าง/โจมตี = แดงส้ม) ท่าเดียวกับถ้ำ: n เดิน 4 เฟรม, w ง้าง (เห็นล่วงหน้า), a โจมตี, h โดนตีสีซีด ตาหลับ
+  const leaf = (x, X, Y, fl) => { r(x, '#4f9a45', X, Y, 3, 1); r(x, '#7cc364', X + (fl ? 0 : 1), Y - 1, 2, 1); px(x, '#3a7a38', X + (fl ? 2 : 0), Y + 1); };
+  const DK = '#243a2a';
+
+  // ---------- สไลม์ใบไม้ ----------
+  function jslime(d, fr, pose) {
+    const { w, h } = SIZE.jslime, F = pal('jslime', pose), E = eyeCol(pose), cx = w / 2;
+    const sq = pose === 'w' ? -2 : pose === 'a' ? 2 : pose === 'h' ? 0 : [0, 1, 0, -1][fr & 3];
+    const ry = 6 + sq + (pose === 'a' ? 1 : 0), rx = 9 - sq + (pose === 'w' ? 1 : 0), cy = 16 - ry;
+    return mk(w, h, (x) => {
+      const off = d === 3 ? 1 : 0, bx = cx + off;
+      blob(x, bx, cy, rx, ry, F, 40, .06);
+      ell(x, bx - 3, cy - ry + 3, 2, 1, F[4]); px(x, '#f2ffe8', bx - 4, cy - ry + 2); // ประกายเยลลี่
+      r(x, F[1], bx - rx + 2, 15, rx * 2 - 3, 1);
+      leaf(x, bx - 1 + (pose === 'a' ? 1 : 0), cy - ry - 1 - (pose === 'a' ? 1 : 0), fr & 1); px(x, '#3a7a38', bx, cy - ry);
+      if (d !== 1) {
+        const ex = d === 3 ? [bx + 1, bx + 5] : [bx - 4, bx + 2], ey = cy - 1;
+        for (const X of ex) { if (pose === 'h') closed(x, X, ey - 1); else { r(x, DK, X, ey, 2, 3); px(x, pose === 'w' || pose === 'a' ? '#ff6a3a' : '#fff7d0', X, ey); } }
+        if (pose === 'a') r(x, DK, bx - 1 + off * 2, cy + 3, 3, 2); else if (pose !== 'h') { px(x, DK, bx - 1 + off * 2, cy + 3); px(x, DK, bx + off * 2, cy + 4); px(x, DK, bx + 1 + off * 2, cy + 3); }
+      } else { px(x, F[1], bx - 3, cy); px(x, F[1], bx + 2, cy + 1); }
+    }, SOFTJ);
+  }
+
+  // ---------- แตนยักษ์ ----------
+  function jwasp(d, fr, pose) {
+    const { w, h } = SIZE.jwasp, F = pal('jwasp', pose), E = eyeCol(pose), cx = w / 2, BK = pose === 'h' ? '#8a7a8a' : '#3a2e2a';
+    const wl = pose === 'w' ? 0 : pose === 'a' ? 1 : pose === 'h' ? 2 : [0, 1, 2, 1][fr & 3]; // ปีกยก/กลาง/ลง
+    const WING = pose === 'h' ? '#e8f0f4' : '#cfe8f0', WING2 = '#9bbccb';
+    return mk(w, h, (x) => {
+      if (d === 3) {
+        const dip = pose === 'w' ? 3 : pose === 'a' ? -2 : 0; // ง้าง: ก้นงอลง ชี้เหล็กใน
+        const wy = [1, 4, 7][wl];
+        ell(x, 11, wy + 2, 5, 2, WING2); ell(x, 10, wy + 1, 5, 2, WING); px(x, '#ffffff', 8, wy);
+        ell(x, 5, 10 + dip, 5, 3, F[2]); for (let i = 0; i < 3; i++) r(x, BK, 3 + i * 3 - (i ? 1 : 0), 8 + dip + (i === 1 ? 0 : 0), 1, 5);
+        r(x, F[3], 3, 8 + dip, 5, 1); r(x, F[1], 2, 12 + dip, 7, 1);
+        if (pose === 'w') { tri(x, '#3a2e2a', [0, 13], [3, 11], [3, 14]); r(x, '#ff5a3a', 0, 14, 1, 1); } else tri(x, BK, [0, 11 + dip], [3, 10 + dip], [3, 12 + dip]);
+        blob(x, 12, 9, 3, 3, F, 41); r(x, BK, 11, 8, 1, 3);
+        blob(x, 17, 8, 3, 3, F, 42); r(x, BK, 15, 6, 1, 1);
+        if (pose === 'h') closed(x, 18, 6); else { r(x, E, 18, 6, 2, 2); px(x, '#fff7d0', 18, 6); }
+        px(x, BK, 20, 10); ln(x, BK, 18, 5, 20, 2); px(x, F[3], 20, 2);
+        r(x, BK, 11, 12, 1, 2); r(x, BK, 14, 12, 1, 2);
+      } else {
+        const back = d === 1, wy = [2, 5, 8][wl], dip = pose === 'w' ? 2 : pose === 'a' ? -1 : 0;
+        for (const s of [-1, 1]) { ell(x, cx + s * 6, wy + 1, 4, 2, WING2); ell(x, cx + s * 5, wy, 4, 2, WING); px(x, '#ffffff', cx + s * 4, wy - 1); }
+        blob(x, cx, 12 + dip, 3, 4, F, 43); for (const Y of [11, 14]) r(x, BK, cx - 3, Y + dip, 7, 1);
+        if (back || pose === 'w') { px(x, BK, cx, 17 + dip); px(x, pose === 'w' ? '#ff5a3a' : BK, cx, 18 + dip > 17 ? 17 : 17); }
+        blob(x, cx, 7, 4, 3, F, 44); r(x, F[1], cx - 3, 9, 7, 1);
+        if (!back) {
+          if (pose === 'h') { closed(x, cx - 3, 5); closed(x, cx + 2, 5); } else { r(x, E, cx - 3, 5, 2, 3); r(x, E, cx + 2, 5, 2, 3); px(x, '#fff7d0', cx - 3, 5); px(x, '#fff7d0', cx + 2, 5); }
+          px(x, BK, cx, 9); ln(x, BK, cx - 2, 4, cx - 4, 1); ln(x, BK, cx + 2, 4, cx + 4, 1);
+        } else { ln(x, BK, cx - 2, 4, cx - 4, 1); ln(x, BK, cx + 2, 4, cx + 4, 1); }
+      }
+    }, SOFTJ);
+  }
+
+  // ---------- งูเขียว ----------
+  const jsnake = (d, fr, pose) => snake(d, fr, pose, 'jsnake');
+
+  // ---------- ภูตตอไม้ ----------
+  function jstump(d, fr, pose) {
+    const { w, h } = SIZE.jstump, F = pal('jstump', pose), E = eyeCol(pose), cx = w / 2;
+    const bob = pose === 'n' ? (fr & 1) : 0, up = pose === 'w' ? -3 : pose === 'a' ? 3 : 0, by = bob + up;
+    const RING = pose === 'h' ? '#f4ead8' : '#d9b27a', RING2 = '#b98a54';
+    const lf = fr === 1 ? -2 : 0, rt = fr === 3 ? -2 : 0, spread = pose === 'w' ? 2 : pose === 'a' ? 3 : 0;
+    const bark = (x, X0, X1, Y0, Y1) => { for (let X = X0; X <= X1; X += 4) r(x, F[0], X, Y0, 1, Y1 - Y0); };
+    return mk(w, h, (x) => {
+      const ey = (X, Y, ww) => { if (pose === 'h') closed(x, X, Y - 1); else { r(x, E, X, Y, ww, 4); px(x, '#fffbd0', X, Y); r(x, shade(E, -.25), X, Y + 3, ww, 1); } };
+      if (d === 3) {
+        blob(x, cx - 7, 38 + lf, 4, 5, [F[0], F[0], F[1], F[1], F[2]], 50); // รากไกล
+        blob(x, cx + 5 + spread, 38 + rt, 4, 5, F, 51);
+        blob(x, cx - 1, 24 + by, 11, 13, F, 52); bark(x, cx - 8, cx + 5, 18 + by, 30 + by);
+        ell(x, cx - 1, 12 + by, 10, 4, RING); ell(x, cx - 1, 12 + by, 6, 2, RING2); px(x, RING, cx - 1, 12 + by);
+        leaf(x, cx - 4, 8 + by, 0); px(x, '#3a7a38', cx - 3, 10 + by);
+        ey(cx + 3, 19 + by, 3); r(x, DK, cx + 3, 26 + by, 4, 1);
+        blob(x, cx + 3, 28 + by - (pose === 'a' ? 0 : 0), 3, 3, F, 53); // กิ่งแขน
+        if (pose === 'w') blob(x, cx + 5, 17, 3, 5, F, 54);
+        if (pose === 'a') blob(x, cx + 9, 32, 4, 4, F, 54);
+        px(x, MOSS, cx - 6, 14 + by); r(x, MOSS, cx - 7, 15 + by, 3, 1); r(x, MOSS2, cx - 6, 16 + by, 2, 1);
+      } else {
+        const back = d === 1;
+        blob(x, cx - 7 - spread, 38 + lf, 4, 5, F, 55); blob(x, cx + 7 + spread, 38 + rt, 4, 5, F, 56); px(x, F[3], cx - 9, 35 + lf); px(x, F[3], cx + 5, 35 + rt);
+        blob(x, cx, 24 + by, 13, 13, F, 57); bark(x, cx - 10, cx + 10, 17 + by, 31 + by);
+        ell(x, cx, 12 + by, 12, 4, RING); ell(x, cx, 12 + by, 8, 3, RING2); ell(x, cx, 12 + by, 4, 1, RING); px(x, RING2, cx, 12 + by);
+        leaf(x, cx - 1, 8 + by, 0); leaf(x, cx + 2, 6 + by, 1); r(x, '#4f9a45', cx, 9 + by, 1, 2);
+        r(x, MOSS, cx - 11, 15 + by, 4, 1); r(x, MOSS2, cx - 10, 16 + by, 3, 1); if (back) r(x, MOSS, cx + 3, 28 + by, 5, 1);
+        if (!back) { ey(cx - 8, 19 + by, 4); ey(cx + 4, 19 + by, 4); if (pose === 'a') r(x, DK, cx - 3, 27 + by, 7, 3); else { r(x, DK, cx - 3, 27 + by, 7, 1); px(x, DK, cx - 4, 26 + by); px(x, DK, cx + 4, 26 + by); } }
+        const ar = pose === 'w' ? [[-1, 12, 10], [1, 12, 10]] : pose === 'a' ? [[-1, 31, 36], [1, 31, 36]] : [[-1, 24, 28 + (fr === 0 ? -2 : fr === 2 ? 2 : 0)], [1, 24, 28 + (fr === 2 ? -2 : fr === 0 ? 2 : 0)]];
+        for (const [s, y0, y1] of ar) { ln(x, F[1], cx + s * 13, y0 + by, cx + s * (pose === 'w' ? 17 : 16), y1 + by); ln(x, F[2], cx + s * 14, y0 + by, cx + s * (pose === 'w' ? 18 : 17), y1 + by); blob(x, cx + s * (pose === 'w' ? 17 : 16), y1 + by, 2, 2, F, 58 + s); }
+      }
+    }, SOFTJ);
+  }
+
+  const BUILD = { rat, bat, spider, snake: (d, fr, pose) => snake(d, fr, pose), golem, jslime, jwasp, jsnake, jstump };
+  const SH = { rat: [8, 3], bat: [7, 2.5], spider: [10, 3.5], snake: [13, 3.5], golem: [16, 5], jslime: [9, 3], jwasp: [6, 2], jsnake: [13, 3.5], jstump: [17, 5.5] }; // เงาครึ่งกว้าง/ครึ่งสูง
   const cache = new Map();
   function sprite(k, d, pose, fr) {
     const key = k + '|' + d + '|' + pose + '|' + fr; let s = cache.get(key);
@@ -217,9 +312,9 @@ const PixelCreature = (() => {
     const st = c.st | 0, pose = st === 2 ? 'w' : st === 3 ? 'a' : st === 4 ? 'h' : 'n', dir = c.dir | 0, flip = dir === 2, d = flip ? 3 : dir;
     const fr = pose === 'n' ? (Math.floor(now / (st === 1 ? 100 : 170)) + (c.id | 0)) & 3 : Math.floor(now / 90) & 1;
     const { w, h } = SIZE[c.k], spr = sprite(c.k, d, pose, fr), gx = Math.round(c.x), gy = Math.round(c.y);
-    const lift = c.k === 'bat' ? 9 + Math.round(Math.sin(now / 180 + (c.id | 0)) * 2) : 0, sh = SH[c.k], sw = sh[0] * (d === 3 ? 1 : c.k === 'snake' ? .6 : 1);
+    const lift = c.k === 'bat' ? 9 + Math.round(Math.sin(now / 180 + (c.id | 0)) * 2) : c.k === 'jwasp' ? 5 + Math.round(Math.sin(now / 150 + (c.id | 0)) * 1.5) : 0, sh = SH[c.k], sw = sh[0] * (d === 3 ? 1 : (c.k === 'snake' || c.k === 'jsnake') ? .6 : 1);
     let jx = 0; if (pose === 'w') jx = (fr & 1) ? 1 : -1; else if (pose === 'h') jx = (Math.floor(now / 50) & 1) ? 2 : -2;
-    ctx.fillStyle = 'rgba(24,34,52,' + (c.k === 'bat' ? .22 : .3) + ')'; ctx.beginPath(); ctx.ellipse(gx, gy, sw, sh[1], 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(24,34,52,' + (c.k === 'bat' || c.k === 'jwasp' ? .22 : .3) + ')'; ctx.beginPath(); ctx.ellipse(gx, gy, sw, sh[1], 0, 0, 7); ctx.fill();
     ctx.imageSmoothingEnabled = false;
     const ax = (w >> 1) + 1, top = gy - h - lift;
     if (flip) { ctx.save(); ctx.translate(gx + jx, 0); ctx.scale(-1, 1); ctx.drawImage(spr, -ax, top); ctx.restore(); } else ctx.drawImage(spr, gx + jx - ax, top);

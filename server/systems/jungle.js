@@ -1,5 +1,5 @@
 'use strict';
-// ป่าดงดิบ (แผน docs/plans/jungle-map.md): ฉาก '@cave97' เข้า-ออก ยังไม่มีมอนสเตอร์/ต่อสู้/สมุนไพร (ขั้น J4+) ต่อกลับด้วย mix() (ดู server/mixin.js)
+// ป่าดงดิบ (แผน docs/plans/jungle-map.md): ฉาก '@cave97' เข้า-ออก • มอนสเตอร์ = creatures.js (โปรไฟล์ jungle) ต่อสู้/สมุนไพร = combat.js ต่อกลับด้วย mix() (ดู server/mixin.js)
 const S = require('../../public/shared.js');
 const { TS } = S;
 const { CAVE } = require('../consts.js'); // สตริง '@cave'
@@ -24,7 +24,8 @@ module.exports = {
     if (!S.isJungle(S.caveFloor(p.scene))) return;
     this.leaveCave(p); this.toast(p, msg || '🌿 ออกจากป่าดงดิบแล้ว');
   },
-  jungleAct(p) { // ขั้น J2: ในป่ายังไม่มีอะไรให้กด (ต่อสู้/สมุนไพรทำขั้น J5–J6) กันคลิกถี่เท่านั้น ไม่ตกไป caveAct (อีเต้อ)
-    const now = Date.now(); if (now - p.lastAct < 150) return; p.lastAct = now; // ยังไม่ตั้ง activeAt: ในป่าเฟสนี้ยังไม่มีอะไรให้ทำ กดค้างไม่นับเป็นกิจกรรม (J5 ค่อยตั้งเมื่อทำอะไรจริง)
+  jungleAct(p, m) { // กด Action ในป่า: ฟัน/เก็บสมุนไพร/ป้ายออก ตัดสินใน combatSwing (สวิตช์ JUNGLE.mon.on=false = ไม่ทำอะไร ไม่ตกไป caveAct อีเต้อ)
+    const now = Date.now(); if (now - p.lastAct < 150) return; p.lastAct = now;
+    if (p.cb) this.combatSwing(p, m && typeof m === 'object' ? m : {});
   },
 };

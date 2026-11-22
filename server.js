@@ -611,7 +611,7 @@ class World {
     this.arcTick(now);
     this.cinemaTick(now);
     this.telTick(now);
-    this.npcTick(dt, now); this.petTick(dt); this.creatureTick(now);
+    this.npcTick(dt, now); this.petTick(dt); this.creatureTick(now); this.combatTick(now);
     for (const tr of this.trades.values()) { // เทรดค้าง/อยู่ห่างกันเกินไป = ยกเลิก
       const a = this.players.get(tr.a.id), b = this.players.get(tr.b.id);
       if (!a || !b) { if (a || b) this.tradeCancel(a || b, 'อีกฝ่ายหลุดจากเกม'); else this.trades.delete(tr.id); break; }
@@ -777,6 +777,7 @@ mix(World, require('./server/systems/arcade/duel.js')); // เกม 2 ฝ่า
 mix(World, require('./server/systems/arcade/snake.js')); // เกมงูในตู้ (เล่นคนเดียว จัดอันดับคะแนน)
 mix(World, require('./server/systems/arcade/core.js')); // แกนตู้เกม โต๊ะ เดิมพัน แต้มตู้ (ย้ายไป server/systems/arcade/core.js)
 mix(World, require('./server/systems/creatures.js')); // สัตว์ในถ้ำเหมือง (server/systems/creatures.js)
+mix(World, require('./server/systems/combat.js')); // ต่อสู้ในป่า HP/ดาบ/ฮีล/สลบ/สมุนไพร (server/systems/combat.js)
 mix(World, require('./server/systems/jungle.js')); // ป่าดงดิบ เข้า-ออกฉาก 97 (server/systems/jungle.js)
 mix(World, require('./server/systems/mining.js')); // ถ้ำเหมือง ก้อนแร่ ตั๋วลงเหมือง ขุดแร่ (ย้ายไป server/systems/mining.js)
 mix(World, require('./server/systems/fishing.js')); // ตกปลา ทะเลลึก ชักเย่อ (ย้ายไป server/systems/fishing.js)
