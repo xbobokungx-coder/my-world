@@ -1670,7 +1670,7 @@ function closeOthers(keep) {
   setMenu(false);
 }
 // หน้าต่าง #bag ใช้ร่วมกัน 2 โหมด: กระเป๋า (ของ/กินอาหาร) กับ ตัวละคร (สถานะ/สกิล/สมุด/ตู้เสื้อผ้า) ดูจาก bagTab
-const BAG_TABS = [['items', '🎒 ของ'], ['eat', '🍴 กินอาหาร']], CHAR_TABS = [['status', '📊 สถานะ'], ['skills', '⭐ สกิล'], ['book', '📖 สมุด'], ['look', '👕 ตู้เสื้อผ้า']];
+const BAG_TABS = [['items', '🎒 ของ'], ['wear', '🧥 สวมใส่'], ['eat', '🍴 กินอาหาร']], CHAR_TABS = [['status', '📊 สถานะ'], ['skills', '⭐ สกิล'], ['book', '📖 สมุด'], ['look', '👕 ตู้เสื้อผ้า']];
 const isBagTab = t => BAG_TABS.some(x => x[0] === t);
 function openBag(tab) { closeOthers('bag'); bagTab = tab && (isBagTab(tab) || CHAR_TABS.some(x => x[0] === tab)) ? tab : 'items'; $('bag').classList.remove('hidden'); renderBag(); }
 const openChar = tab => openBag(CHAR_TABS.some(x => x[0] === tab) ? tab : 'status');
@@ -1719,8 +1719,8 @@ $('bagBody').addEventListener('click', e => {
   { const b = e.target.closest('[data-star]'); if (b) { send({ t: 'star', skill: b.dataset.star }); return; } }
   { const sc = e.target.closest('[data-stat]'), ss = e.target.closest('[data-skillsel]'); if (!e.target.closest('button')) { if (sc) { statSel = statSel === 'c' + sc.dataset.stat ? '' : 'c' + sc.dataset.stat; renderBag(); return; } if (ss) { statSel = statSel === 's' + ss.dataset.skillsel ? '' : 's' + ss.dataset.skillsel; renderBag(); return; } } } // เมนูสถานะ: กดอันไหนก็โชว์รายละเอียดในหน้าเดิม ไม่ปิดหน้าต่าง กดอันอื่นต่อได้
   if (e.target.closest('[data-sfx]')) { sfxOn = !sfxOn; ls.set('mw_sfx', sfxOn ? '1' : '0'); if (!sfxOn) hornStopAll(); syncSndUi(); renderBag(); playSfx('coin'); return; }
-  { const bs = e.target.closest('[data-bslot]'); if (bs) { bagSel = bagSel === bs.dataset.bslot ? '' : bs.dataset.bslot; $('bagGridBox').innerHTML = bagGridHtml(); const f = document.querySelector(`[data-bslot="${CSS.escape(bagSel || bs.dataset.bslot)}"]`); if (f && e.detail === 0) f.focus(); if (bagSel) { const dt = $('bagDetail') || document.querySelector('.bdetail'); if (dt && dt.scrollIntoView) dt.scrollIntoView({ block: 'nearest' }); } return; } } // เลือกช่อง/ยกเลิกเลือก (แผงรายละเอียดอยู่ใต้กริด)
-  { const bg = e.target.closest('[data-bgrp]'); if (bg) { bagGrp = bg.dataset.bgrp; ls.set('mw_bag_grp', bagGrp); renderBag(); return; } }
+  { const bs = e.target.closest('[data-bslot]'); if (bs) { bagSel = bagSel === bs.dataset.bslot ? '' : bs.dataset.bslot; $('bagGridBox').innerHTML = bagGridHtml(); const f = document.querySelector(`[data-bslot="${CSS.escape(bagSel || bs.dataset.bslot)}"]`); if (f && e.detail === 0) f.focus({ preventScroll: true }); return; } } // รายละเอียดติดล่างจอ (sticky) ไม่ต้องเลื่อนหน้าตาม // เลือกช่อง/ยกเลิกเลือก (แผงรายละเอียดอยู่ใต้กริด)
+  { const bg = e.target.closest('[data-bgrp]'); if (bg) { if (innerWidth <= 700 && bg.title) toast(bg.title); bagGrp = bg.dataset.bgrp; ls.set('mw_bag_grp', bagGrp); renderBag(); return; } }
   if (e.target.closest('[data-bmode]')) { bagMode = bagMode === 'job' ? 'kind' : 'job'; bagGrp = 'all'; ls.set('mw_bag_mode', bagMode); ls.set('mw_bag_grp', 'all'); renderBag(); return; }
   if (e.target.closest('[data-bsort]')) { bagSort = BAG_SORTS[(BAG_SORTS.findIndex(x => x[0] === bagSort) + 1) % BAG_SORTS.length][0]; ls.set('mw_bag_sort', bagSort); renderBag(); return; }
   { const go = e.target.closest('[data-bgo]'); if (go) { if (go.dataset.bgo === 'gear') { const g = $('bagGear'); if (g) g.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } else { bagTab = go.dataset.bgo; renderBag(); } return; } }
@@ -1847,9 +1847,10 @@ function bagKeys() { // ของที่แสดง: ผ่านค้นห
 }
 function bagGridHtml() {
   const ks = bagKeys();
-  const grid = ks.length ? `<div class="bgrid">` + ks.map(k => { const i = itemInfo(k); return `<div class="bslot g${bagRank(k)}${bagSel === k ? ' sel' : ''}" data-bslot="${esc(k)}" tabindex="0" role="button" aria-label="${esc(i.name)} ${inv[k]}" title="${esc(i.name)} ×${inv[k]}"><b>${i.emoji}</b><span class="cnt">${inv[k]}</span></div>`; }).join('') + '</div>'
+  const grid = ks.length ? `<div class="bgrid">` + ks.map(k => { const i = itemInfo(k); return `<div class="bslot g${bagRank(k)}${bagSel === k ? ' sel' : ''}" data-bslot="${esc(k)}" tabindex="0" role="button" aria-label="${esc(i.name)} ${inv[k]}" title="${esc(i.name)} ×${inv[k]}"><b>${i.emoji}</b><span class="cnt">${inv[k]}</span></div>`; }).join('') + '<i class="bslot empty" aria-hidden="true"></i>'.repeat(Math.max(35, Math.ceil(ks.length / 35) * 35) - ks.length) + '</div>'
     : `<p style="opacity:.7">${Object.keys(inv).some(k => k !== 'coin' && inv[k] > 0) ? 'ไม่เจอของที่ค้นหา ลองเปลี่ยนคำหรือกลุ่มดูนะ' : 'ยังไม่มีของ ลองปลูกผัก ตกปลา หรือเลี้ยงสัตว์ดูนะ'}</p>`;
-  return grid + `<div class="bdetail" id="bagDetail">${bagDetailHtml()}</div>`;
+  const nAll = Object.keys(inv).filter(k => k !== 'coin' && inv[k] > 0 && itemInfo(k)).length;
+  return grid + `<div class="bcount">📦 ${ks.length === nAll ? nAll + ' ชนิด' : ks.length + ' / ' + nAll + ' ชนิด'}</div><div class="bdetail" id="bagDetail">${bagDetailHtml()}</div>`;
 }
 function bagDetailHtml() {
   const i = bagSel && itemInfo(bagSel); if (!i || !(inv[bagSel] > 0)) return '<span style="opacity:.7">แตะช่องเพื่อดูรายละเอียดของ</span>';
@@ -1866,23 +1867,23 @@ function applyLook(wear) { // เปลี่ยนชุดจากแผง�
   if (!me) return; if (!me.wear) me.wear = Object.assign({}, WEAR_DEFAULT); Object.assign(me.wear, wear);
   send({ t: 'look', color: me.color, hat: me.hat, pc: me.pc, wear: me.wear }); renderBag();
 }
-function dollSlotHtml(key, icon, label, sub, cls) { return `<div class="bw dl${cls || ''}${bagDollSel === key ? ' sel' : ''}" data-doll="${key}" tabindex="0" role="button" aria-label="${esc(label)} ${esc(sub)}" title="${esc(label)}: ${esc(sub)}"><b>${icon}</b><span class="dn">${esc(label)}</span><span class="ds">${esc(sub)}</span></div>`; }
+function dollSlotHtml(key, icon, label, sub, cls, emp) { cls = (cls || '') + (emp ? ' emp' : '');
+  return `<div class="bw dl${cls}${bagDollSel === key ? ' sel' : ''}" data-doll="${key}" tabindex="0" role="button" aria-label="${esc(label)} ${esc(sub)}" title="${esc(label)}: ${esc(sub)}"><b>${icon}</b><span class="dn">${esc(label)}</span><span class="ds">${esc(sub)}</span></div>`; }
 function bagWearHtml() { // แผงสวมใส่ตามร่างตัวละคร: กดช่อง = เปิดตัวเลือกใต้ร่าง (ข้อมูลเดิม ไม่เพิ่มข้อความไปเซิร์ฟเวอร์)
-  const hd = `<button class="bhd" data-bdollhd="1" aria-expanded="${bagDoll}">🧍 สวมใส่ ${bagDoll ? '▴' : '▾'}</button>`;
-  if (!bagDoll) return hd;
   const wr = (me && me.wear) || {}, cur = c => (WEAR[c] || []).find(x => x.id === wr[c]);
-  const wslot = c => { const it = cur(c), nm = (WEAR_CATS[c] || {}).name || c; return dollSlotHtml(c, WEAR_CATS[c].emoji, nm, it && it.id !== 'none' ? it.name : 'ไม่ได้ใส่'); };
+  const wslot = c => { const it = cur(c), nm = (WEAR_CATS[c] || {}).name || c; const on = it && it.id !== 'none'; return dollSlotHtml(c, WEAR_CATS[c].emoji, nm, on ? it.name : 'ไม่ได้ใส่', '', !on); };
   const t = selTool, ti = toolLocked(t) ? null : toolInfo(t), tier = { hoe: Shared.hoeTier(inv), water: canTier(inv), rod: rodLevel(), axe: axeLevel(), pick: pickLevel(), sword: swordLevel() }[t] || 0;
   const D = DURABILITY[t], fx = D && dur[t] ? dur[t][2] || 0 : 0, mx = D && tier ? durMax(t, tier, fx) : 0, pct = mx ? Math.max(0, Math.min(100, Math.round((dur[t] ? dur[t][0] : mx) / mx * 100))) : 0;
-  const hand = dollSlotHtml('tool', ti ? ti.e : '✋', 'มือขวา', ti ? TOOL_SHORT[t] + (tier ? ' Lv' + tier : '') : 'มือเปล่า') .replace('</div>', mx ? `<div class="bbar"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div></div>` : '</div>');
+  const hand = dollSlotHtml('tool', ti ? ti.e : '✋', 'มือขวา', ti ? TOOL_SHORT[t] + (tier ? ' Lv' + tier : '') : 'มือเปล่า', '', !ti).replace('</div>', mx ? `<div class="bbar"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div></div>` : '</div>');
   const shield = `<div class="bw dl lockd" data-doll="shield" tabindex="0" role="button" aria-label="โล่ ยังไม่เปิด" title="โล่ (เปิดตอนหอคอย)"><b>🔒</b><span class="dn">มือซ้าย</span><span class="ds">โล่ (เปิดตอนหอคอย)</span></div>`;
-  const aw = (me && me.wear && me.wear.arm) || 0, ao = Shared.armorTier(inv), armor = dollSlotHtml('arm', ao ? Shared.ARMOR_EMOJI[ao] : '🦺', 'เกราะ', aw && Shared.ARMOR[aw] ? Shared.ARMOR[aw].name : ao ? 'ไม่ได้สวม' : 'ยังไม่มี (ร้านชุดเกราะ)');
+  const aw = (me && me.wear && me.wear.arm) || 0, ao = Shared.armorTier(inv), armor = dollSlotHtml('arm', ao ? Shared.ARMOR_EMOJI[ao] : '🦺', 'เกราะ', aw && Shared.ARMOR[aw] ? Shared.ARMOR[aw].name : ao ? 'ไม่ได้สวม' : 'ยังไม่มี (ร้านชุดเกราะ)', '', !(aw && Shared.ARMOR[aw]));
   let strip = '';
   if (bagDollSel === 'arm') strip = `<button class="witem${aw ? '' : ' on'}" data-darm="0"><b>ไม่สวม</b><small>${aw ? 'กดเพื่อถอด' : '✅ ไม่ได้สวม'}</small></button>` + Object.keys(Shared.ARMOR).map(n => { const own = !!inv['armor_' + n], on = aw === +n; return `<button class="witem${on ? ' on' : ''}${own ? '' : ' lockw'}" data-darm="${+n}" ${own ? '' : 'disabled'}><b>${esc(Shared.ARMOR[n].name)}</b><small>${on ? '✅ สวมอยู่' : own ? 'กดเพื่อสวม' : '🔒 ซื้อที่ร้านชุดเกราะ'}</small></button>`; }).join('');
   else if (bagDollSel === 'tool') strip = TOOL_LIST.map(k => { const inf = toolInfo(k), lk = toolLocked(k); return `<button class="witem${selTool === k ? ' on' : ''}${lk ? ' lockw' : ''}" data-dtool="${k}" ${lk ? 'disabled' : ''}><b>${inf.e}</b>${TOOL_SHORT[k]}<small>${lk ? '🔒 ยังไม่มี' : selTool === k ? '✅ ถืออยู่' : 'กดเพื่อถือ'}</small></button>`; }).join('');
   else if (WEAR[bagDollSel]) strip = WEAR[bagDollSel].map(it => { const own = wearHave(bagDollSel, it), on = wr[bagDollSel] === it.id; return `<button class="witem${on ? ' on' : ''}${own ? '' : ' lockw'}" data-dwear="${esc(bagDollSel + ':' + it.id)}" ${own ? '' : 'disabled'}><b>${esc(it.name)}</b><small>${on ? '✅ สวมอยู่' : own ? 'กดเพื่อสวม' : '🔒 ' + it.price + ' 🪙'}</small></button>`; }).join('');
-  return hd + `<div class="doll"><div class="dcol">${DOLL_SLOTS.map(([c]) => wslot(c)).join('')}</div><canvas id="bagDoll" width="96" height="156" aria-label="ตัวละครของคุณ"></canvas><div class="dcol">${hand}${shield}${armor}${wslot('acc')}</div></div>`
-    + (strip ? `<div class="dstrip">${strip}</div>` : '') + `<div class="dlink"><button class="btn small" data-bgo="look">🎨 เลือกสีที่ตู้เสื้อผ้า</button></div>`;
+  return `<div class="doll"><div class="dcol">${DOLL_SLOTS.concat([['acc']]).map(([c]) => wslot(c)).join('')}</div><canvas id="bagDoll" width="96" height="156" aria-label="ตัวละครของคุณ"></canvas><div class="dcol">${hand}${shield}${armor}</div></div>`
+    + (strip ? `<div class="dstrip">${strip}</div>` : '') + `<div class="dlink"><button class="btn small" data-bgo="look">🎨 เลือกสีที่ตู้เสื้อผ้า</button></div>`
+    + `<div class="sec">🔧 อุปกรณ์ (ความทนทาน)</div><div id="bagGear">${bagGearHtml()}</div>`;
 }
 function drawBagDoll() { // วาดร่างตัวละครลงแผงสวมใส่ (แบบเดียวกับพรีวิวตู้เสื้อผ้า) ข้อมูลผิดรูปไม่ทำให้พัง
   const cv = $('bagDoll'); if (!cv || !me) return; const g = cv.getContext('2d'); g.clearRect(0, 0, 96, 156); g.save(); g.translate(48, 108); g.scale(2.8, 2.8);
@@ -1906,7 +1907,7 @@ function bagGearHtml() { // ความทนทานอุปกรณ์ (�
 }
 function renderBag() {
   const tabs = isBagTab(bagTab) ? BAG_TABS : CHAR_TABS; // หัวข้อ+แท็บ+ลิงก์ตามโหมด (กระเป๋า / ตัวละคร)
-  $('bagTitle').textContent = isBagTab(bagTab) ? '🎒 ของของฉัน' : '🧍 ตัวละคร';
+  $('bagTitle').textContent = bagTab === 'wear' ? '🧥 สวมใส่' : isBagTab(bagTab) ? '🎒 ของของฉัน' : '🧍 ตัวละคร';
   $('bagTabs').innerHTML = tabs.map(([c, n]) => `<button class="tab${bagTab === c ? ' on' : ''}" data-btab="${c}">${n}</button>`).join('');
   $('charLinks').classList.toggle('hidden', isBagTab(bagTab));
   const el = $('bagBody');
@@ -1939,6 +1940,9 @@ function renderBag() {
         return `<div class="skill" data-skillsel="${k}" tabindex="0" role="button" style="cursor:pointer${statSel === 's' + k ? ';background:#fff8e0' : ''}"><b>${SKILLS[k].emoji} ${SKILLS[k].name}</b> — เลเวล ${L}${L >= MAX_LV ? ' (สูงสุด)' : ''} ${'⭐'.repeat(st)} <small style="display:inline">XP ${xp}</small><div class="bar"><i style="width:${need ? Math.min(100, Math.round((xp - base) / need * 100)) : 100}%"></i></div>`
           + (statSel === 's' + k ? `<small style="opacity:1">${L >= MAX_LV ? 'เลเวลสูงสุดแล้ว' : `อีก ${(need - (xp - base)).toLocaleString()} XP ถึงเลเวล ${L + 1} (ตอนนี้ ${(xp - base).toLocaleString()}/${need.toLocaleString()})`} • ดาวที่ได้ ${st}/${M.max}</small>` : '') + (nxt ? `<small>ดาวความชำนาญที่ ${st + 1}: XP ${nxt.toLocaleString()} + 🪙${M.costBase * (st + 1)} <button class="btn small" data-star="${k}" ${xp < nxt || (inv.coin || 0) < M.costBase * (st + 1) ? 'disabled' : ''}>รับดาว</button></small>` : '') + '</div>';
       }).join('');
+  } else if (bagTab === 'wear') { // หน้าสวมใส่แยกจากกระเป๋า: ตุ๊กตากลาง ช่องซ้าย-ขวา ตัวเลือกใต้ตุ๊กตา แล้วความทนทานอุปกรณ์
+    el.innerHTML = bagWearHtml();
+    drawBagDoll();
   } else if (bagTab === 'eat') { // กดไอคอนความหิว: แสดงอาหารที่มีในตัวให้กินได้ ถ้าไม่มีก็แสดงเมนูว่าง ๆ
     const ks = Object.keys(inv).filter(k => { const i = itemInfo(k); return i && i.food && inv[k] > 0; });
     let h = `<div class="sec">🍖 ความอิ่ม — ${hunger}/100</div><div class="hbar"><i style="width:${hunger}%;${hunger <= 20 ? 'background:#e74c3c' : ''}"></i></div>`;
@@ -1949,12 +1953,9 @@ function renderBag() {
     const keep = document.activeElement && document.activeElement.id === 'bagQ' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     if (bagSel && !(inv[bagSel] > 0 && itemInfo(bagSel))) bagSel = '';
     el.innerHTML = `<div class="row"><span>🪙 เหรียญ</span><b>${inv.coin || 0}</b></div>`
-      + `<div class="bagwrap"><div class="bwear">${bagWearHtml()}</div><div class="bmain">`
+      + `<div class="bagwrap"><div class="brail" id="bagGrps" role="tablist" aria-label="หมวดของ">${bagChips().map(([k, n]) => { const m = /^(\S+)\s+(.*)$/.exec(n) || ['', '📦', n]; return `<button class="rl${bagGrp === k ? ' sel' : ''}" data-bgrp="${k}" role="tab" aria-selected="${bagGrp === k}" aria-label="${esc(m[2])}" title="${esc(m[2])}"><b>${m[1]}</b><small>${esc(m[2])}</small></button>`; }).join('')}</div><div class="bmain">`
       + `<div class="bsrch"><input id="bagQ" type="search" placeholder="ค้นหาของ..." value="${esc(bagQ)}" autocomplete="off"><button class="btn small" data-bsort="1" title="เปลี่ยนวิธีเรียง">เรียง: ${(BAG_SORTS.find(x => x[0] === bagSort) || BAG_SORTS[0])[1]}</button><button class="btn small" data-bmode="1" title="สลับการจัดกลุ่ม: ตามชนิดของ หรือตามอาชีพ">จัดตาม: ${bagMode === 'job' ? 'อาชีพ' : 'ชนิด'}</button></div>`
-      + `<div class="chips" id="bagGrps">${bagChips().map(([k, n]) => `<button class="chip${bagGrp === k ? ' sel' : ''}" data-bgrp="${k}">${n}</button>`).join('')}</div>`
-      + `<div id="bagGridBox">${bagGridHtml()}</div></div></div>`
-      + `<div class="sec">🎣 อุปกรณ์ (ความทนทาน)</div><div id="bagGear">${bagGearHtml()}</div>`;
-    drawBagDoll();
+      + `<div id="bagGridBox">${bagGridHtml()}</div></div></div>`;
     if (keep) { const q = $('bagQ'); q.focus(); try { q.setSelectionRange(keep[0], keep[1]); } catch (e) {} }
   } else if (bagTab === 'skills') {
     const nextCrop = () => Object.values(CROPS).filter(c => !c.legacy && c.lv > lvl('farm')).sort((a, b) => a.lv - b.lv)[0];
