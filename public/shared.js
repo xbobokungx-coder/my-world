@@ -1285,10 +1285,10 @@
   // เชฟ (อาชีพที่ 5): แต่ละสูตรปลดล็อกตามเลเวลเชฟ (lv) ได้ XP เชฟ (xp) และใช้เวลาทำ (time มิลลิวินาที = เตาต้องพักก่อนทำจานถัดไป)
   // XP สูตร = XP เดิม × (2.3 − 0.08×เลเวลสูตร) (ปรับ 25 ต.ค. 2026) ให้ XP/ชม. ของเชฟรวมเวลาหาวัตถุดิบใกล้ชาวนา ตรวจด้วย node tools/levelsim.js
   const COOK = [
-    // เมนูง่ายทำกินเอง (2 พ.ย. 2026): ใช้ของที่ผลิตเองล้วน อิ่มกว่ากินดิบ ราคาขาย ≈ มูลค่าวัตถุดิบ (ไม่ใช่ทางทำเงิน)
-    { id: 'dish_vegbowl',   name: 'ผัดผักรวม',   emoji: '🥬', sell: 20, food: 35, lv: 1, xp: 16, time: 2000, in: [{ c: 'crop', n: 2 }] },
-    { id: 'dish_boiledegg', name: 'ไข่ต้ม',      emoji: '🥚', sell: 12, food: 25, lv: 1, xp: 4, time: 2000, in: [{ c: 'egg', n: 1 }] },
-    { id: 'dish_saltfish',  name: 'ปลาเผาเกลือ', emoji: '🐟', sell: 15, food: 30, lv: 1, xp: 11, time: 2000, in: [{ c: 'fish', n: 1 }] },
+    // เมนูง่ายทำกินเอง (2 พ.ย. 2026): ใช้ของที่ผลิตเองล้วน อิ่มกว่ากินดิบ • 22 พ.ย. 2026: ราคาขาย = เสมอตัวหลังค่าเตา (sell×0.7 ≥ มูลค่าวัตถุดิบดิบที่ถูกสุด) ไม่ขาดทุนเทียบขายของดิบ (docs/reports/economy-reprice.md)
+    { id: 'dish_vegbowl',   name: 'ผัดผักรวม',   emoji: '🥬', sell: 58, food: 35, lv: 1, xp: 14, time: 2000, in: [{ c: 'crop', n: 2 }] },
+    { id: 'dish_boiledegg', name: 'ไข่ต้ม',      emoji: '🥚', sell: 29, food: 25, lv: 1, xp: 4, time: 4000, in: [{ c: 'egg', n: 1 }] },
+    { id: 'dish_saltfish',  name: 'ปลาเผาเกลือ', emoji: '🐟', sell: 20, food: 30, lv: 1, xp: 11, time: 2000, in: [{ c: 'fish', n: 1 }] },
     { id: 'dish_grill',   name: 'ปลาย่างผักสด',     emoji: '🍱', sell: 56,  food: 45,  lv: 1, xp: 16, time: 3000,  in: [{ c: 'fish', n: 1 }, { c: 'crop', n: 1 }] },
     { id: 'dish_omelet',  name: 'ไข่เจียวผักรวม',    emoji: '🍳', sell: 86,  food: 55,  lv: 3, xp: 18, time: 4000,  in: [{ c: 'egg', n: 2 }, { c: 'crop', n: 1 }] },
     { id: 'dish_seafood', name: 'ซีฟู้ดไข่นุ่ม',     emoji: '🍤', sell: 135, food: 70,  lv: 5, xp: 50, time: 6000,  in: [{ c: 'fish', n: 2 }, { c: 'egg', n: 1 }, { c: 'crop', n: 1 }] },
@@ -1365,6 +1365,38 @@
       rows.push(row);
     }
     return { ok: !bad, use, rows, bad };
+  };
+  // ----- ราคาอาหารตามวัตถุดิบที่ใช้ (B′, 22 พ.ย. 2026: docs/reports/economy-reprice.md ข้อ 3.1) -----
+  // สูตรหมวดกว้าง (in: {c:..}) ใช้ปลา/ผัก/ไข่ชนิดไหนก็ได้ อาหารที่ได้ผูกกับ "มูลค่าวัตถุดิบ" ที่ใช้จริง: ขายได้ sell_ฐาน + ส่วนเกิน (R − R_ถูกสุดของสูตร)/(1 − COOK_FEE) ปัดขึ้นเป็น "ระดับ"
+  // คีย์ในกระเป๋า: dish_<ชื่อ> = ระดับ 0 (ราคาฐาน เซฟเก่าใช้ได้เลย) • dish_<ชื่อ>_q1.. = ระดับที่แพงขึ้น (ห้ามใช้ ':' ใน key) • ส่วนต่างของระดับ t = ceil(base × mul^(t−1)) ปัดขึ้นเสมอ = ไม่มีระดับไหนขาดทุน (เกินได้ไม่เกิน ~mul−1 ของส่วนเกิน)
+  // food (ความอิ่ม) เท่าเดิมทุกระดับ • สูตรเจาะจงชนิด (k ล้วน) ไม่มีระดับ • ตลาดแต่ละระดับใช้ราคาตลาด/ความอิ่มตัวของอาหารชนิดฐานเดียวกัน (mktKey)
+  const COOK_TIER = { base: 5, mul: 1.25 };
+  const cookTierD = t => t > 0 ? Math.ceil(COOK_TIER.base * Math.pow(COOK_TIER.mul, t - 1) - 1e-9) : 0;
+  const cookTierOf = d => { if (!(d > 0)) return 0; let t = Math.max(1, Math.ceil(Math.log(d / COOK_TIER.base) / Math.log(COOK_TIER.mul)) + 1); while (t > 1 && cookTierD(t - 1) >= d) t--; while (cookTierD(t) < d) t++; return t; };
+  const _cookRg = {};
+  const cookRange = r => { // { min, max } มูลค่าขายดิบรวมของช่องหมวดกว้างทุกช่อง (ถูกสุด/แพงสุดที่สูตรนี้รับได้) • null = สูตรเจาะจงชนิด ไม่มีระดับ
+    if (!r || !r.in) return null; if (Object.hasOwn(_cookRg, r.id)) return _cookRg[r.id];
+    let min = 0, max = 0, any = false;
+    for (const need of r.in) if (need.c) {
+      any = true; const ks = need.c === 'fish' ? FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id) : need.c === 'crop' ? Object.keys(CROPS).map(c => 'crop_' + c) : need.c === 'egg' ? ['egg', 'duck_egg'] : [];
+      const v = ks.map(k => itemInfo(k).sell).sort((a, b) => a - b); if (!v.length) continue;
+      if (need.u) { for (const x of v.slice(0, need.n)) min += x; for (const x of v.slice(-need.n)) max += x; } else { min += v[0] * need.n; max += v[v.length - 1] * need.n; }
+    }
+    return _cookRg[r.id] = any ? { min, max, maxQ: cookTierOf((max - min) / (1 - COOK_FEE)) } : null;
+  };
+  const dishParse = k => { // 'dish_saltfish_q3' → { r: สูตร, q: 3 } • คีย์ที่ไม่ใช่อาหาร/ระดับเกินจริง = null
+    if (typeof k !== 'string') return null; const m = /^(dish_\w+?)(?:_q(\d+))?$/.exec(k); if (!m) return null;
+    const r = COOK.find(x => x.id === m[1]); if (!r) return null;
+    if (m[2] === undefined) return { r, q: 0 }; const q = +m[2]; if (String(q) !== m[2] || q < 1) return null;
+    const rg = cookRange(r); return rg && q <= rg.maxQ ? { r, q } : null;
+  };
+  const dishBase = k => { const d = dishParse(k); return d ? d.r.id : k; };
+  const mktKey = dishBase; // คีย์ตลาด (ราคาตลาดกลาง/ส่วนตัว) = อาหารชนิดฐาน ทุกระดับใช้ตลาดเดียวกัน
+  const cookSell = (r, q) => r.sell + cookTierD(q); // ราคาขายฐานของอาหารสูตร r ระดับ q
+  const cookQuote = (r, cu) => { // ระดับ/ราคา/คีย์ที่จะได้จากของที่ cookUse เลือกไว้ (cu = ผล cookUse ที่ ok) • คืน { q, key, sell, R }
+    const rg = cookRange(r); let R = 0; if (rg) for (const row of cu.rows) if (row.need.c) for (const pk of row.picks) R += pk.n * itemInfo(pk.k).sell;
+    const q = rg ? Math.min(rg.maxQ, cookTierOf((R - rg.min) / (1 - COOK_FEE))) : 0;
+    return { q, key: q ? r.id + '_q' + q : r.id, sell: cookSell(r, q), R };
   };
   // โครงการพัฒนาเมือง: ที่เก็บเงินขนาดใหญ่ ทุกคนลงขันที่ตู้เซฟกองกลาง ปลดล็อกตามลำดับ ครบเป้าแล้วขึ้นข่าวและประกาศชื่อผู้ร่วมสร้าง
   const PROJECTS = [
@@ -1644,15 +1676,15 @@
   const CRAFT = [
     { id: 'plank',         in: { log: 2 },                   lv: 1, xp: 4 },
     { id: 'furn_chair',    in: { log: 4 },                   lv: 1, xp: 7 }, // 2 พ.ย. 2026: ลดวัตถุดิบ ~ครึ่ง (เดิมแพงกว่าราคาของ) XP ลดตามสัดส่วน XP ต่อไม้เท่าเดิม
-    { id: 'furn_crate',    in: { plank: 4 },                 lv: 1, xp: 18 },
+    { id: 'furn_crate',    in: { plank: 2 },                 lv: 1, xp: 9 }, // 22 พ.ย. 2026: สูตรที่ร้านก็ขายอยู่ (ซื้อถูกกว่าทำ) ลดวัตถุดิบเหลือ ~0.5–0.6 ของราคาร้าน XP ตามสัดส่วน
     { id: 'furn_table',    in: { log: 8 },                   lv: 2, xp: 14 },
-    { id: 'furn_barrel',   in: { plank: 6 },                 lv: 2, xp: 26 },
-    { id: 'furn_signpost', in: { plank: 5, log: 4 },         lv: 2, xp: 26 },
+    { id: 'furn_barrel',   in: { plank: 3 },                 lv: 2, xp: 13 },
+    { id: 'furn_signpost', in: { plank: 2, log: 4 },         lv: 2, xp: 14 },
     { id: 'furn_shelf',    in: { log: 10 },                  lv: 3, xp: 16 },
-    { id: 'furn_mailbox',  in: { plank: 8 },                 lv: 3, xp: 36 },
-    { id: 'furn_toolbox',  in: { plank: 8, hardwood: 2 },    lv: 4, xp: 46 },
+    { id: 'furn_mailbox',  in: { plank: 5 },                 lv: 3, xp: 23 },
+    { id: 'furn_toolbox',  in: { plank: 3, hardwood: 2 },    lv: 4, xp: 25 },
     { id: 'furn_bed',      in: { log: 14, hardwood: 2 },     lv: 5, xp: 31 },
-    { id: 'furn_hut',      in: { plank: 24, hardwood: 6 },   lv: 6, xp: 110 },
+    { id: 'furn_hut',      in: { plank: 9, hardwood: 6 },    lv: 6, xp: 60 },
     // จากไม้ชนิดใหม่ (B5): XP ≈ 0.27 ต่อเหรียญของวัตถุดิบ เท่ากับลังไม้
     { id: 'furn_screen_bamboo', in: { bamboo: 8 },             lv: 2, xp: 20 },
     { id: 'furn_stool',    in: { pinewood: 2 },               lv: 3, xp: 12 }, // lv ตามต้นที่ให้ไม้ (สน Lv3)
@@ -1717,21 +1749,20 @@
   };
 
   // ข้อมูลของแต่ละไอเทม: buy/sell = ราคา, lv + skill = เงื่อนไขเลเวลตอนซื้อ
-  function itemInfo(k) { const i = itemInfo0(k); if (i && FOOD[k]) i.food = FOOD[k]; return i; }
+  function itemInfo(k) { const i = itemInfo0(k), fk = dishBase(k); if (i && FOOD[fk]) i.food = FOOD[fk]; return i; }
   function itemInfo0(k) {
     let wm = /^wear_(shirt|pants|hat|acc)_(\w+)$/.exec(k);
     if (wm) { const it = WEAR[wm[1]].find(x => x.id === wm[2]); return it ? { name: it.name, emoji: WEAR_CATS[wm[1]].emoji, buy: it.price, once: true, cat: 'wear', wear: { cat: wm[1], id: it.id } } : null; }
     wm = /^meal_(\w+)$/.exec(k);
     if (wm) { const ml = MEALS.find(x => x.id === wm[1]); return ml ? { name: ml.name, emoji: ml.emoji, buy: ml.price, cat: 'food' } : null; }
-    wm = /^dish_(\w+)$/.exec(k);
-    if (wm) { const d = COOK.find(x => x.id === k); return d ? { name: d.name, emoji: d.emoji, sell: d.sell, cat: 'food' } : null; }
+    if (k.startsWith('dish_')) { const d = dishParse(k); return d ? { name: d.q ? `${d.r.name} ✦${d.q}` : d.r.name, emoji: d.r.emoji, sell: cookSell(d.r, d.q), cat: 'food', dishQ: d.q } : null; } // ✦N = ระดับวัตถุดิบ (ใช้ของแพงขึ้น ขายแพงขึ้น)
     if (WOOD_ITEMS[k]) { const w = WOOD_ITEMS[k]; return { name: w.name, emoji: w.emoji, sell: w.sell, cat: 'wood' }; }
     if (ORES[k]) { const o = ORES[k]; return { name: o.name, emoji: o.emoji, sell: o.sell, cat: 'ore' }; }
     { const bm = /^bar_(.+)$/.exec(k); if (bm && BARS[bm[1]]) { const o = bm[1], B = BARS[o]; return { name: BAR_NAMES[o], emoji: BAR_EMOJI[o], buy: B.shop, std: B.std, cat: 'bar', ore: o }; } } // WP-30: วัสดุแปรรูป — ไม่มี sell (ขายระบบไม่ได้)
     const pm = /^pick_(\d+)$/.exec(k);
     if (pm && PICKS[pm[1]]) return { name: PICKS[pm[1]].name, emoji: PICK_EMOJI[pm[1]], buy: PICKS[pm[1]].price, lv: PICKS[pm[1]].lv, skill: 'mine', once: true, cat: 'gear', pick: +pm[1] };
     if (Object.hasOwn(JM_ITEMS, k)) return { name: JM_ITEMS[k].name, emoji: JM_ITEMS[k].emoji, once: true, cat: 'mat' }; // ของป่า ไม่ขาย/ไม่เทรด
-    if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 58, cat: 'wood' };
+    if (k === 'plank') return { name: 'ไม้กระดาน', emoji: '🟧', sell: 44, cat: 'wood' }; // 22 พ.ย. 2026: 58→44 (ไม้ท่อน 2 ท่อน = 36 ขายแปรรูปได้ +22% ไม่ใช่ +61% และไม่มีค่าโรงช่าง)
     if (k === 'recall') return { name: `ตั๋ววาปกลับกองไฟ (ใช้ในถ้ำชั้น ${MINE.recall.minFloor} ขึ้นไป วาปกลับเมืองทันที ใช้แล้วหมด 1 ใบ/ครั้ง)`, emoji: '🎫', buy: MINE.recall.price, cat: 'tool' };
     if (k === 'lamp') return { name: 'ตะเกียง/ไฟฉาย (สว่างรอบตัว 5 ช่อง)', emoji: '🔦', buy: 120, once: true, cat: 'gear' }; // ซื้อได้ที่ร้านช่างเหมือง (ใช้ส่องถ้ำ) หรือได้จากรางวัลคู่มือเริ่มต้น • ขายต่อไม่ได้
     if (k === 'medicine') return { name: 'ยารักษาสัตว์', emoji: '💊', buy: 20, cat: 'feed' };
@@ -2249,7 +2280,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_BATCH_MAX, CRAFT_BATCH_MAX, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, COOK_ALT, cookUse, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
+    COOK_TIER, cookTierD, cookTierOf, cookRange, dishParse, dishBase, mktKey, cookSell, cookQuote, BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_BATCH_MAX, CRAFT_BATCH_MAX, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, COOK_ALT, cookUse, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
     FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, XP_TABLE_FIGHT, fishNewestLv, fishPoolMul, migrateStdV5, migrateStdV7, unmigrateStdV7, xpUnStdV7, STD_V7_SKILLS, migrateToolsV6, unmigrateToolsV6, migrateDurV8, unmigrateDurV8, DUR_MIG8, tmigLocked, invPub, rareCdMs, xpStdV5,
     SELLABLE,
     BAR_TUNE, BARS, BAR_EMOJI, BAR_NAMES, GEAR_BARS, gearBars, gearCost, WORKSHOP, makeCheck }; // WP-30 S1

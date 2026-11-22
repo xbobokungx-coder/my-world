@@ -12,21 +12,22 @@ module.exports = {
     if (this.lv(p, 'cook') < r.lv) return this.toast(p, `สูตรนี้ปลดล็อกที่เชฟเลเวล ${r.lv} (ตอนนี้ ${this.lv(p, 'cook')}) — ทำเมนูง่ายขึ้นก่อนเพื่อเก็บเลเวล`);
     const now = Date.now();
     if (now < (p.cookReady || 0)) return send(p, { t: 'cookcd', ms: p.cookReady - now }), this.toast(p, `เตายังร้อนอยู่ รออีก ${Math.ceil((p.cookReady - now) / 1000)} วินาที`);
-    const inv = p.rec.inv; let made = 0, feeSum = 0, xpSum = 0, why = '', lastFeeR = S.COOK_FEE;
+    const inv = p.rec.inv; let made = 0, feeSum = 0, xpSum = 0, sellSum = 0, hi = 0, why = '', lastFeeR = S.COOK_FEE; // hi = จานที่ได้ระดับสูงสุด (ไว้บอกในข้อความ)
     for (let i = 0; i < want; i++) {
       const cu = S.cookUse(inv, r), use = cu.use; // วัตถุดิบ: ใช้ของหลักก่อน ขาดค่อยใช้ของทางเลือก (S.COOK_ALT) ตัดสินที่ shared ให้เว็บแสดงตรงกัน
       if (!cu.ok) { const u = cu.rows.find(x => !x.ok && x.need.u); why = u ? `วัตถุดิบไม่พอ ต้องใช้ปลาคนละชนิดอย่างน้อย ${u.need.n} ชนิด` : 'วัตถุดิบไม่พอ'; break; }
-      const panOk = this.durCur(p, 'pan') > 0, pTier = S.panTier(inv), feeR = S.panFee(r, pTier, panOk), fee = Math.round(r.sell * feeR); // ค่าเช่าเตา: หายจากระบบทั้งหมด (TOWN.feeShare) กันครัวเป็นช่องสร้างเงินล้วนๆ
+      const qt = S.cookQuote(r, cu); // B′: ระดับ/ราคาขายของจานนี้ตามวัตถุดิบที่ใช้จริง (แต่ละจานในชุดต่างระดับกันได้)
+      const panOk = this.durCur(p, 'pan') > 0, pTier = S.panTier(inv), feeR = S.panFee(r, pTier, panOk), fee = Math.round(qt.sell * feeR); // ค่าเช่าเตา: หายจากระบบทั้งหมด (TOWN.feeShare) กันครัวเป็นช่องสร้างเงินล้วนๆ
       if ((inv.coin || 0) < fee) { why = `ค่าเช่าเตา 🪙 ${fee} เหรียญไม่พอ`; break; }
       for (const [k, c] of Object.entries(use)) this.add(p, k, -c);
-      this.add(p, 'coin', -fee, 'cookfee'); this.toPot(fee); this.add(p, r.id, 1);
-      this.addXp(p, 'cook', r.xp); made++; feeSum += fee; xpSum += r.xp; lastFeeR = feeR;
+      this.add(p, 'coin', -fee, 'cookfee'); this.toPot(fee); this.add(p, qt.key, 1);
+      this.addXp(p, 'cook', r.xp); made++; feeSum += fee; xpSum += r.xp; sellSum += qt.sell; hi = Math.max(hi, qt.q); lastFeeR = feeR;
       const pw = panOk ? S.panHit(r, pTier) : null; if (pw && pw.wear > 0 && pw.bonus > 0) this.durUse(p, 'pan', pw.wear); // กระทะสึกเมื่อทำสำเร็จ (ได้ลดค่าเตาจริงเท่านั้น)
       this.event(p, 'cook');
     }
     if (!made) return this.toast(p, why || 'วัตถุดิบไม่พอ');
     const rest = r.time * made; p.cookReady = now + rest; send(p, { t: 'cookcd', ms: rest }); // บอกเว็บว่าเตาพักอีกกี่ ms (นับจากตอนได้รับ)
-    this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name}${made > 1 ? ' ×' + made : ''} สำเร็จ! (+${xpSum} XP เชฟ • ค่าเตา -🪙${feeSum}${lastFeeR < S.COOK_FEE ? ` (กระทะช่วยลด ${Math.round((1 - lastFeeR / S.COOK_FEE) * 100)}%)` : ''} • ขายได้ราว 🪙${r.sell * made}${made < want ? ` • ทำได้แค่ ${made} จาน: ${why}` : ''})`); this.sfx(p, 'collect');
+    this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name}${made > 1 ? ' ×' + made : ''} สำเร็จ! (+${xpSum} XP เชฟ • ค่าเตา -🪙${feeSum}${lastFeeR < S.COOK_FEE ? ` (กระทะช่วยลด ${Math.round((1 - lastFeeR / S.COOK_FEE) * 100)}%)` : ''} • ขายได้ราว 🪙${sellSum}${hi ? ` • ใช้วัตถุดิบแพง ได้อาหารระดับ ✦${hi}` : ''}${made < want ? ` • ทำได้แค่ ${made} จาน: ${why}` : ''})`); this.sfx(p, 'collect');
   },
   craft(p, id, n) { // ประดิษฐ์ที่ร้านช่างไม้: ใช้ไม้ที่หามาได้ ได้ของ + XP ช่างไม้ • ทำทีละหลายชิ้น (22 พ.ย. 2026): n = 1..S.CRAFT_BATCH_MAX หักไม้/ค่าโรงช่าง/XP ต่อชิ้นเท่าเดิม ของไม่พอกลางทาง = ทำเท่าที่ได้ (ช่างไม้ไม่มีเตาพัก)
     const r = typeof id === 'string' ? S.CRAFT.find(x => x.id === id) : null; if (!r) return;

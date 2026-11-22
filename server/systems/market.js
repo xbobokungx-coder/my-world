@@ -9,7 +9,7 @@ const CAT_NAME = { fish: 'ปลา', crop: 'ผัก/ผลไม้', animal:
 module.exports = {
   // ----- ตลาดราคาไดนามิก: ขายเยอะราคาตก ปล่อยไว้ราคาค่อยๆ กลับ และทุก 1 วันในเกมราคาเป้าหมายสุ่มใหม่ (มีข่าวราคาพุ่ง/ตก) -----
   pmOf(p, k) { const o = p.rec.mk; return o && Number.isFinite(o[k]) ? o[k] : 1; },
-  effMult(p, k) { const g = this.market[k]; return g ? g.m * this.pmOf(p, k) * this.catOf(p, S.sellCat(k)) : 1; }, // ตลาดกลาง × ตลาดส่วนตัว × ความอิ่มตัวของหมวด
+  effMult(p, k) { const mk = S.mktKey(k), g = this.market[mk]; return g ? g.m * this.pmOf(p, mk) * this.catOf(p, S.sellCat(k)) : 1; }, // อาหารทุกระดับ (dish_x_qN) ใช้ตลาดของอาหารชนิดฐาน (S.mktKey) // ตลาดกลาง × ตลาดส่วนตัว × ความอิ่มตัวของหมวด
   mktFor(p) { const o = {}; for (const k of SELLABLE) o[k] = Math.round(this.effMult(p, k) * 100) / 100; return o; },
   mktSend(keys) { for (const p of this.players.values()) { const o = {}; for (const k of keys || SELLABLE) o[k] = Math.round(this.effMult(p, k) * 100) / 100; send(p, { t: 'mkt', m: o }); } },
   mktPub() { const o = {}; for (const k of SELLABLE) o[k] = Math.round(this.market[k].m * 100) / 100; return o; },
@@ -104,7 +104,7 @@ module.exports = {
     const info = S.itemInfo(item), have = p.rec.inv[item] || 0;
     if (!info || !info.sell || !have) return;
     const q = n === 'all' || !(n > 0) ? have : Math.max(1, Math.min(have, n | 0)); // n เป็นเศษ (0.5) ปัดเป็นอย่างน้อย 1 ไม่ให้ q = 0
-    const g = this.market[item], mEff = this.effMult(p, item);
+    const mkey = S.mktKey(item), g = this.market[mkey], mEff = this.effMult(p, item);
     const muls = S.perishable(item) ? S.freshMuls(this.lotsOf(p.rec, item), q, Date.now(), false) : null; // ของเก่าขายก่อน ราคาตามความสด
     const quote = S.sellQuote(info.sell, mEff, q, muls); // ขายหลายชิ้นต่อเนื่อง ราคาต่อชิ้นค่อยๆ ลดลง
     const cat = S.sellCat(item), pay = quote.total; // จ่ายต่อชิ้นตามชนิด ลดชิ้นละ 1% ของราคาฐานจนพื้น 20%
@@ -122,9 +122,9 @@ module.exports = {
       const ri = Math.sqrt(r);
       g.m = Math.min(S.MARKET.max, Math.max(S.MARKET.min, g.m * Math.pow(ri, 1 - S.PMARKET.share)));
       const mk = p.rec.mk = p.rec.mk || {};
-      mk[item] = Math.min(1, Math.max(S.PMARKET.min, this.pmOf(p, item) * Math.pow(ri, S.PMARKET.share)));
+      mk[mkey] = Math.min(1, Math.max(S.PMARKET.min, this.pmOf(p, mkey) * Math.pow(ri, S.PMARKET.share)));
       this.dirty = true; send(p, { t: 'mkt', m: this.mktFor(p) }); // ผู้ขายเห็นราคาใหม่ทุกชนิด
-      for (const q2 of this.players.values()) if (q2 !== p) send(q2, { t: 'mkt', m: { [item]: Math.round(this.effMult(q2, item) * 100) / 100 } });
+      for (const q2 of this.players.values()) if (q2 !== p) send(q2, { t: 'mkt', m: { [mkey]: Math.round(this.effMult(q2, mkey) * 100) / 100 } });
     }
     const fm = muls ? muls.reduce((a, b) => a + b, 0) / q : 1;
     logEv(this.room, 'sell', { p: p.key, item, q, coin: pay, tax, m: Math.round(mEff * 100) / 100, cat, base: info.sell * q, fm: Math.round(fm * 100) / 100 });
