@@ -422,6 +422,60 @@
     .bcount { display:none; } .bdetail { bottom:-8px; max-height:34vh; padding:4px 8px; } .bdetail .btn { min-height:40px; }
     #bag .panel:has(.bagwrap) > .row { display:none; }
   }
+  /* ย่อหน้าต่างกระเป๋า/สวมใส่ ~30%: ปรับสเกลทีหลังที่ --bagS (ขนาดไอคอน/ตุ๊กตา) และ --bagP (padding) ที่เดียว • ตัวหนังสือไม่ต่ำกว่า 11px • ปุ่มกด >= 40px */
+  #bag { --bagS:.7; --bagP:11px; }
+  #bag .panel { padding:var(--bagP); }
+  #bag .panel:has(.bagwrap), #bag .panel:has(.doll) { width:min(94vw,420px); }
+  #bag .panel > h2:first-child { top:calc(-1 * var(--bagP)); margin:calc(-1 * var(--bagP)) calc(-1 * var(--bagP)) 6px; padding:var(--bagP) var(--bagP) 0; font-size:16px; }
+  #bag .tab { min-height:40px; font-size:13px; padding:4px 8px; }
+  .bagwrap { grid-template-columns:58px minmax(0,1fr); gap:5px; }
+  .brail .rl small { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; text-align:center; word-break:break-word; line-height:1.1; }
+  .dstrip .witem small, .bw small, #bagGear small { font-size:11px; }
+  .brail { gap:3px; }
+  .brail .rl { min-height:40px; padding:2px 1px; }
+  .brail .rl b { font-size:calc(24px*var(--bagS)); }
+  .bsrch { gap:5px; margin-bottom:5px; }
+  .bsrch input { min-height:40px; font-size:14px; padding:2px 8px; }
+  .bsrch .btn { min-height:40px; font-size:13px; }
+  .bgrid { gap:3px; }
+  .bslot { min-width:40px; min-height:40px; border-radius:6px; }
+  .bslot b { font-size:calc(24px*var(--bagS)); }
+  .bcount { font-size:11px; margin-top:4px; }
+  .bdetail { bottom:calc(-1 * var(--bagP)); margin-top:6px; padding:6px; font-size:13px; }
+  .bdetail .btn { min-height:44px; }
+  .bdetail .brow { gap:5px; margin-top:4px; }
+  .doll { grid-template-columns:minmax(0,1fr) calc(96px*var(--bagS)) minmax(0,1fr); gap:5px; }
+  .doll canvas { width:calc(96px*var(--bagS)); }
+  .doll .dcol { gap:4px; }
+  .bw.dl { min-height:58px; padding:2px; border-radius:6px; }
+  .bw.dl b { font-size:calc(22px*var(--bagS)); }
+  .bw.dl .dn { font-size:11px; }
+  .bw.dl .ds, .bw.dl.lockd .ds { font-size:11px; }
+  .dstrip { margin-top:6px; }
+  .dstrip .witem { min-width:66px; min-height:40px; }
+  .dlink .btn { min-height:40px; }
+  @media (max-width:700px) {
+    .bagwrap { grid-template-columns:42px minmax(0,1fr); gap:4px; }
+    .brail .rl { min-height:40px; }
+    .bgrid { grid-template-columns:repeat(6,1fr); }
+  }
+  @media (max-width:600px) {
+    #bag { --bagP:9px; }
+    #bag .panel, #bag .panel:has(.bagwrap), #bag .panel:has(.doll) { width:100%; padding:var(--bagP); }
+    #bag .tab { min-height:40px; }
+    .doll { grid-template-columns:minmax(0,1fr) calc(96px*var(--bagS)) minmax(0,1fr); gap:4px; }
+    .doll canvas { width:calc(96px*var(--bagS)); }
+    .bw.dl { min-height:56px; }
+  }
+  @media (max-height:480px) {
+    #bag { --bagP:8px; }
+    #bag .tab, .bsrch input, .bsrch .btn { min-height:36px; }
+    .brail .rl { min-height:36px; }
+    .bdetail { display:flex; align-items:center; flex-wrap:nowrap; gap:8px; max-height:72px; overflow:hidden; }
+    .bdetail > div:nth-child(2), .bdetail > div:nth-child(4) { display:none; }
+    .bdetail .brow { margin-top:0; flex-wrap:nowrap; }
+    .bdetail .btn { min-height:40px; }
+  }
   .bar { height:10px; background:#e8dcc0; border-radius:6px; overflow:hidden; margin:4px 0; }
   .bar i { display:block; height:100%; background:#6cc04a; }
   .skill { padding:8px 0; border-bottom:1px dashed var(--edge); font-size:14px; }
