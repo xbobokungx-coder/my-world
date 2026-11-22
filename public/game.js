@@ -2289,9 +2289,9 @@ function renderShop() {
   if (craftTab) {
     h += '<div class="sec">🔨 โรงงานช่างไม้ (ประดิษฐ์ของจากไม้ที่หามาได้)</div>';
     for (const r of CRAFT) {
-      const i = itemInfo(r.id), locked = lvl('wood') < r.lv, ok = Object.entries(r.in).every(([k, n]) => (inv[k] || 0) >= n);
+      const i = itemInfo(r.id), locked = lvl('wood') < r.lv, ok = Object.entries(r.in).every(([k, n]) => (inv[k] || 0) >= n), cf = craftFee(r.id), mkN = Math.min(Shared.CRAFT_BATCH_MAX, ...Object.entries(r.in).map(([k, n]) => Math.floor((inv[k] || 0) / n)), cf > 0 ? Math.floor((inv.coin || 0) / cf) : 99);
       const need = Object.entries(r.in).map(([k, n]) => { const x = itemInfo(k), have = inv[k] || 0; return x.emoji + n + (have >= n ? '' : ' <small style="color:#c0392b">(มี ' + have + ')</small>'); }).join(' + ');
-      h += `<div class="row${locked ? ' lock' : ''}"><span>${i.emoji} ${i.name}${locked ? ` <small>🔒 Lv${r.lv}</small>` : ''}<br><small>ใช้ ${need} • +${woodXp(r.xp, lvl('wood'))} XP${craftFee(r.id) ? ` • ค่าโรงช่าง 🪙${craftFee(r.id)}` : ''}${i.furn ? ' • วางในบ้านได้' : ''}${furnBadgeOf(r.id) ? '<br>' + furnBadgeOf(r.id) : ''}</small></span><span><button class="btn small" data-craft="${r.id}" ${locked || !ok ? 'disabled' : ''}>🔨 ทำ</button></span></div>`;
+      h += `<div class="row${locked ? ' lock' : ''}"><span>${i.emoji} ${i.name}${locked ? ` <small>🔒 Lv${r.lv}</small>` : ''}<br><small>ใช้ ${need} • +${woodXp(r.xp, lvl('wood'))} XP${craftFee(r.id) ? ` • ค่าโรงช่าง 🪙${craftFee(r.id)}` : ''}${i.furn ? ' • วางในบ้านได้' : ''}${furnBadgeOf(r.id) ? '<br>' + furnBadgeOf(r.id) : ''}</small></span><span><button class="btn small" data-craft="${r.id}" data-n="1" ${locked || !ok ? 'disabled' : ''}>🔨 ทำ</button>${!locked && ok && mkN > 1 ? ' ' + [...new Set([5, mkN].filter(q => q >= 2 && q <= mkN))].map(q => `<button class="btn small" data-craft="${r.id}" data-n="${q}">×${q}${q === mkN && q !== 5 ? ' สูงสุด' : ''}</button>`).join(' ') : ''}</span></div>`;
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ตัดต้นไม้ด้วยขวานได้ไม้ท่อน 🪵 และไม้เนื้อแข็ง 🟫 • ไม้กระดานขายได้แพงกว่าไม้ท่อน • ลังไม้ ถังไม้ ป้ายชี้ทาง ตู้ไปรษณีย์ ตู้เครื่องมือ และกระท่อม ทำได้เฉพาะช่างไม้ (ตะเกียง 🏮 ย้ายไปขายที่ร้านเฟอร์นิเจอร์แล้ว)</p>';
   }
@@ -2300,7 +2300,7 @@ function renderShop() {
   body.querySelectorAll('[data-ftab]').forEach(b => b.onclick = () => { farmTab = b.dataset.ftab; renderShop(); });
   body.querySelectorAll('[data-fsub]').forEach(b => b.onclick = () => { furnSub = b.dataset.fsub; renderShop(); });
   body.querySelectorAll('[data-make]').forEach(b => b.onclick = () => send({ t: 'make', id: b.dataset.make, n: +b.dataset.n })); // WP-30 C1: ส่งคำสั่งทำ
-  body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft }));
+  body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft, n: +b.dataset.n || 1 }));
   body.querySelectorAll('[data-rent]').forEach(b => b.onclick = () => send({ t: 'rent', id: b.dataset.rent }));
   body.querySelectorAll('[data-ckf]').forEach(b => b.onclick = () => { cookFilter = b.dataset.ckf; renderShop(); });
   body.querySelectorAll('[data-ckx]').forEach(b => b.onclick = e => { if (e.target.closest('[data-cook],[data-ckpin]')) return; cookOpen = cookOpen === b.dataset.ckx ? null : b.dataset.ckx; renderShop(); });

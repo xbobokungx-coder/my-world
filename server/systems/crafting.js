@@ -28,17 +28,22 @@ module.exports = {
     const rest = r.time * made; p.cookReady = now + rest; send(p, { t: 'cookcd', ms: rest }); // บอกเว็บว่าเตาพักอีกกี่ ms (นับจากตอนได้รับ)
     this.toast(p, `👨‍🍳 ทำ ${r.emoji} ${r.name}${made > 1 ? ' ×' + made : ''} สำเร็จ! (+${xpSum} XP เชฟ • ค่าเตา -🪙${feeSum}${lastFeeR < S.COOK_FEE ? ` (กระทะช่วยลด ${Math.round((1 - lastFeeR / S.COOK_FEE) * 100)}%)` : ''} • ขายได้ราว 🪙${r.sell * made}${made < want ? ` • ทำได้แค่ ${made} จาน: ${why}` : ''})`); this.sfx(p, 'collect');
   },
-  craft(p, id) { // ประดิษฐ์ที่ร้านช่างไม้: ใช้ไม้ที่หามาได้ ได้ของ + XP ช่างไม้
+  craft(p, id, n) { // ประดิษฐ์ที่ร้านช่างไม้: ใช้ไม้ที่หามาได้ ได้ของ + XP ช่างไม้ • ทำทีละหลายชิ้น (22 พ.ย. 2026): n = 1..S.CRAFT_BATCH_MAX หักไม้/ค่าโรงช่าง/XP ต่อชิ้นเท่าเดิม ของไม่พอกลางทาง = ทำเท่าที่ได้ (ช่างไม้ไม่มีเตาพัก)
     const r = typeof id === 'string' ? S.CRAFT.find(x => x.id === id) : null; if (!r) return;
+    const want = Number.isInteger(n) ? Math.max(1, Math.min(S.CRAFT_BATCH_MAX, n)) : 1;
     if (this.nearShopKind(p) !== 'wood') return this.toast(p, 'ต้องยืนใกล้ประตูร้านช่างไม้ถึงจะประดิษฐ์ได้');
     if (this.lv(p, 'wood') < r.lv) return this.toast(p, `ต้องเป็นช่างไม้เลเวล ${r.lv} ก่อน`);
-    for (const [k, n] of Object.entries(r.in)) if ((p.rec.inv[k] || 0) < n) return this.toast(p, 'วัตถุดิบไม่พอ');
-    const fee = S.craftFee(r.id); if ((p.rec.inv.coin || 0) < fee) return this.toast(p, `ค่าใช้โรงช่างไม้ 🪙 ${fee} เหรียญไม่พอ`);
-    for (const [k, n] of Object.entries(r.in)) this.add(p, k, -n);
-    if (fee) { this.add(p, 'coin', -fee, 'craftfee'); this.toPot(fee); }
-    const gain = S.woodXp(r.xp, this.lv(p, 'wood')); this.add(p, r.id, 1); this.addXp(p, 'wood', gain);
-    const info = S.itemInfo(r.id); this.toast(p, `🔨 ประดิษฐ์ ${info.emoji} ${info.name} สำเร็จ! (+${gain} XP${fee ? ` • ค่าโรงช่าง -🪙${fee}` : ''})`); this.sfx(p, 'collect');
+    const inv = p.rec.inv, fee = S.craftFee(r.id); let made = 0, feeSum = 0, xpSum = 0, why = '';
+    for (let i = 0; i < want; i++) {
+      if (Object.entries(r.in).some(([k, c]) => (inv[k] || 0) < c)) { why = 'วัตถุดิบไม่พอ'; break; }
+      if ((inv.coin || 0) < fee) { why = `ค่าใช้โรงช่างไม้ 🪙 ${fee} เหรียญไม่พอ`; break; }
+      for (const [k, c] of Object.entries(r.in)) this.add(p, k, -c);
+      if (fee) { this.add(p, 'coin', -fee, 'craftfee'); this.toPot(fee); }
+      const gain = S.woodXp(r.xp, this.lv(p, 'wood')); this.add(p, r.id, 1); this.addXp(p, 'wood', gain); made++; feeSum += fee; xpSum += gain;
+      this.event(p, 'craft');
+    }
+    if (!made) return this.toast(p, why || 'วัตถุดิบไม่พอ');
+    const info = S.itemInfo(r.id); this.toast(p, `🔨 ประดิษฐ์ ${info.emoji} ${info.name}${made > 1 ? ' ×' + made : ''} สำเร็จ! (+${xpSum} XP${feeSum ? ` • ค่าโรงช่าง -🪙${feeSum}` : ''}${made < want ? ` • ทำได้แค่ ${made} ชิ้น: ${why}` : ''})`); this.sfx(p, 'collect');
     if (info.furn) this.bookAdd(p, 'furn', info.furn);
-    this.event(p, 'craft');
   },
 };

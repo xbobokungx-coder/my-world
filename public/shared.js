@@ -1271,6 +1271,7 @@
   ];
   // ห้องครัวที่ร้านอาหาร: ทำอาหารจากวัตถุดิบข้ามสาย (ปลา + ผัก + ไข่/นม) ได้ราคาขายสูงกว่าขายของดิบแยกหลายเท่า
   // in: c = หมวด (fish = ปลาชนิดใดก็ได้ [ใช้ชนิดที่ถูกสุดก่อน], crop = ผัก, egg = ไข่ไก่/ไข่เป็ด) หรือ k = ไอเทมระบุชนิด
+  const CRAFT_BATCH_MAX = 20; // ประดิษฐ์ที่ร้านช่างไม้ทีละหลายชิ้น: สูงสุดกี่ชิ้นต่อครั้ง
   const COOK_BATCH_MAX = 10; // ทำอาหารทีละหลายจาน: สูงสุดกี่จานต่อครั้ง (เตาพักรวม = เวลาทำ × จำนวนจาน)
   const COOK_FEE = 0.3; // ค่าเช่าเตา = สัดส่วนของราคาขายอาหาร จ่ายเป็นเหรียญทุกครั้งที่ทำ (0.2 → 0.3 เมื่อ 25 ต.ค. 2026: เชฟได้มากกว่าอาชีพอื่นใน tools/econsim.js)
   // ตัวห่ออุปกรณ์ WP-23 (ใช้ทั้งเซิร์ฟเวอร์และหน้าเว็บ) • ok=false (ไม่มี/ความทน 0) = เกมเดิม
@@ -2248,7 +2249,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_BATCH_MAX, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, COOK_ALT, cookUse, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
+    BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_BATCH_MAX, CRAFT_BATCH_MAX, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, COOK_ALT, cookUse, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
     FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, XP_TABLE_FIGHT, fishNewestLv, fishPoolMul, migrateStdV5, migrateStdV7, unmigrateStdV7, xpUnStdV7, STD_V7_SKILLS, migrateToolsV6, unmigrateToolsV6, migrateDurV8, unmigrateDurV8, DUR_MIG8, tmigLocked, invPub, rareCdMs, xpStdV5,
     SELLABLE,
     BAR_TUNE, BARS, BAR_EMOJI, BAR_NAMES, GEAR_BARS, gearBars, gearCost, WORKSHOP, makeCheck }; // WP-30 S1
