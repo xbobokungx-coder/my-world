@@ -14,12 +14,18 @@ module.exports = {
     if (now < (p.cookReady || 0)) return send(p, { t: 'cookcd', ms: p.cookReady - now }), this.toast(p, `เตายังร้อนอยู่ รออีก ${Math.ceil((p.cookReady - now) / 1000)} วินาที`);
     const inv = p.rec.inv; let made = 0, feeSum = 0, xpSum = 0, sellSum = 0, hi = 0, why = '', lastFeeR = S.COOK_FEE; // hi = จานที่ได้ระดับสูงสุด (ไว้บอกในข้อความ)
     for (let i = 0; i < want; i++) {
-      const cu = S.cookUse(inv, r), use = cu.use; // วัตถุดิบ: ใช้ของหลักก่อน ขาดค่อยใช้ของทางเลือก (S.COOK_ALT) ตัดสินที่ shared ให้เว็บแสดงตรงกัน
+      const lotsMap = {}; for (const k of Object.keys(inv)) if (S.perishable(k) && inv[k] > 0) lotsMap[k] = this.lotsOf(p.rec, k);
+      const cu = S.cookUse(S.cookInv(inv, lotsMap, Date.now()), r), use = cu.use; // วัตถุดิบ (เฉพาะของสด: ค้าง/เก่าทำอาหารไม่ได้ 22 พ.ย. 2026): ใช้ของหลักก่อน ขาดค่อยใช้ของทางเลือก (S.COOK_ALT) ตัดสินที่ shared ให้เว็บแสดงตรงกัน
+      if (!cu.ok && S.cookUse(inv, r).ok) { why = '🟡 วัตถุดิบไม่สด (ค้าง/เก่า) ทำอาหารไม่ได้ ต้องเป็นของสดอายุไม่เกิน 24 ชั่วโมง'; break; }
       if (!cu.ok) { const u = cu.rows.find(x => !x.ok && x.need.u); why = u ? `วัตถุดิบไม่พอ ต้องใช้ปลาคนละชนิดอย่างน้อย ${u.need.n} ชนิด` : 'วัตถุดิบไม่พอ'; break; }
       const qt = S.cookQuote(r, cu); // B′: ระดับ/ราคาขายของจานนี้ตามวัตถุดิบที่ใช้จริง (แต่ละจานในชุดต่างระดับกันได้)
       const panOk = this.durCur(p, 'pan') > 0, pTier = S.panTier(inv), feeR = S.panFee(r, pTier, panOk), fee = Math.round(qt.sell * feeR); // ค่าเช่าเตา: หายจากระบบทั้งหมด (TOWN.feeShare) กันครัวเป็นช่องสร้างเงินล้วนๆ
       if ((inv.coin || 0) < fee) { why = `ค่าเช่าเตา 🪙 ${fee} เหรียญไม่พอ`; break; }
-      for (const [k, c] of Object.entries(use)) this.add(p, k, -c);
+      for (const [k, c] of Object.entries(use)) { // หักจากกองที่สดก่อน (เรียงกองสดไว้หน้า ไม่ใช้กองค้าง/เก่าแทน) แล้วคืนลำดับเก่า→ใหม่
+        const L = S.perishable(k) ? lotsMap[k] : null;
+        if (L && L.length) L.sort((a, b) => (S.freshTier(a[0], Date.now(), false) > S.COOK_FRESH_MAX) - (S.freshTier(b[0], Date.now(), false) > S.COOK_FRESH_MAX) || a[0] - b[0]);
+        this.add(p, k, -c); if (L && L.length) L.sort((a, b) => a[0] - b[0]);
+      }
       this.add(p, 'coin', -fee, 'cookfee'); this.toPot(fee); this.add(p, qt.key, 1);
       this.addXp(p, 'cook', r.xp); made++; feeSum += fee; xpSum += r.xp; sellSum += qt.sell; hi = Math.max(hi, qt.q); lastFeeR = feeR;
       const pw = panOk ? S.panHit(r, pTier) : null; if (pw && pw.wear > 0 && pw.bonus > 0) this.durUse(p, 'pan', pw.wear); // กระทะสึกเมื่อทำสำเร็จ (ได้ลดค่าเตาจริงเท่านั้น)

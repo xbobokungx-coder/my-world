@@ -1344,6 +1344,12 @@
   const COOK_ALT = { crop_mushroom: [{ k: 'truffle', n: 1 }] };
   // คำนวณของที่ใช้ทำสูตร r จากคลัง inv (ไม่แก้คลัง) • คืน { ok, use: { ไอเทม: จำนวนที่หัก }, rows: [{ need, ok, picks: [{k,n}], alt }], bad } • picks = ของที่จะใช้จริงของแถวนั้น, alt = true ถ้าใช้ของทางเลือก (ให้ UI โชว์ชิป/ข้อความ) • bad = 'u' (ปลาไม่ครบชนิด) | 'basic' (ของไม่พอ) | ''
   // เซิร์ฟเวอร์ใช้ตัวนี้ตัดสินและหักของ เว็บเรียกตัวเดียวกันเพื่อแสดง "มีพอไหม/ใช้ตัวไหน" ให้ตรงกัน
+  const COOK_FRESH_MAX = 0; // ทำอาหารใช้ได้เฉพาะวัตถุดิบ "สด" (ระดับความสด ≤ ค่านี้ • 0 = สด, 1 = ค้าง, 2 = เก่า) • 22 พ.ย. 2026 เจ้าของเกมสั่ง วัตถุดิบไม่สดทำอาหารไม่ได้
+  const cookInv = (inv, lots, now) => { // กระเป๋าสมมติที่นับเฉพาะวัตถุดิบเน่าได้ที่ยังสด (ใช้กับ cookUse) • ไม่มีข้อมูล lot ของชนิดนั้น = นับเป็นของใหม่ (ตรงกับ lotsOf ฝั่งเซิร์ฟเวอร์)
+    const o = Object.assign({}, inv);
+    for (const k of Object.keys(o)) { if (!perishable(k) || !(o[k] > 0)) continue; const L = lots && lots[k]; if (!L || !L.length) continue; let c = 0; for (const [tv, n] of L) if (freshTier(tv, now, false) <= COOK_FRESH_MAX) c += n; o[k] = Math.min(o[k], c); }
+    return o;
+  };
   const cookUse = (inv, r) => {
     const use = {}, rows = []; let bad = '';
     const left = k => (inv[k] || 0) - (use[k] || 0);
@@ -2280,7 +2286,7 @@
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,
-    COOK_TIER, cookTierD, cookTierOf, cookRange, dishParse, dishBase, mktKey, cookSell, cookQuote, BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_BATCH_MAX, CRAFT_BATCH_MAX, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, COOK_ALT, cookUse, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
+    COOK_FRESH_MAX, cookInv, COOK_TIER, cookTierD, cookTierOf, cookRange, dishParse, dishBase, mktKey, cookSell, cookQuote, BAIT_PRICE, BAITS, baitWeight, RAKE, MARKET, PMARKET, ENERGY, energyCost, CATFAT, sellDrop, CAT_KEYS, sellCat, FRESH, perishable, freshTier, freshMuls, freshCount, COOK, COOK_BATCH_MAX, CRAFT_BATCH_MAX, COOK_FEE, CRAFT_FEE, craftFee, FURN_CRAFT_ONLY, FURN_LEGACY, COOK_CATS, cookCat, COOK_ALT, cookUse, PROJECTS, sellQuote, GAME_TITLES, CABINETS, BETS, cabinetAt, XP_TABLE, XP_TABLE_MINE, xpMineV4, migrateMineV4, MINE_MIG, xpFor, xpFromV1, levelOf, masteryXp, itemInfo, shopSells, shopAt, cropStage, cropFrame, rng, makeMap, blockedAt, boatSeat, boatHelm, facing, inFarm,
     FISHPOOL, RARE_CD, RARE_SELL, ROD_MIG, STD_V5_SKILLS, XP_TABLES, XP_TABLE_STD, XP_TABLE_FIGHT, fishNewestLv, fishPoolMul, migrateStdV5, migrateStdV7, unmigrateStdV7, xpUnStdV7, STD_V7_SKILLS, migrateToolsV6, unmigrateToolsV6, migrateDurV8, unmigrateDurV8, DUR_MIG8, tmigLocked, invPub, rareCdMs, xpStdV5,
     SELLABLE,
     BAR_TUNE, BARS, BAR_EMOJI, BAR_NAMES, GEAR_BARS, gearBars, gearCost, WORKSHOP, makeCheck }; // WP-30 S1
