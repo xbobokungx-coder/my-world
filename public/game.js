@@ -34,6 +34,7 @@ const players = new Map(), animals = new Map(), npcs = new Map(); const roster =
 const presence = (id, fn) => { for (const p of [players.get(id), roster.get(id)]) if (p) fn(p); }; // roster = ทุกคนออนไลน์ในห้อง (ข้ามฉาก) ใช้รายชื่อและการโทร • players = คนในฉากเดียวกัน (วาดและเสียงรอบตัว) // npcs = ชาวเมือง NPC (ไม่นับเป็นผู้เล่น)
 let farm = {}, inv = {}, skills = { farm: 0, fish: 0, animal: 0 }, market = {}, hunger = 80;
 const furn = new Map();               // เฟอร์นิเจอร์ในบ้านที่เปิดอยู่ (ฉากบ้าน): id -> { i, f, x, y, r, z, on, wl, u } พิกัดหน่วยช่อง
+const ltOpen = new Set(); // งวดย้อนหลังที่กางผู้ถูกรางวัลอยู่ (หน้าหวย)
 let townLog = [], townTab = 'log', lottoSt = null, rankSt = null, rankTab = 'lv', rankSub = 'all', fleaTab = 'sell', bidSt = [];
 // ประกาศถึงผู้เล่น (public/notices.js) ปักหมุดบนสุดของแท็บข่าวเมือง • จำว่าอ่านแล้วต่อเบราว์เซอร์ (localStorage) • ข่าวเมืองซ่อนคนเข้า-ออกได้
 const NOTICES = (window.Notices && window.Notices.NOTICES) || [];
@@ -1123,12 +1124,13 @@ function lottoCard() { // Lucky Lotto 3 แท็บ: กติกา / ซื�
       const d = x.round.split('-');
       h += `<div class="sec">🏆 ผลงวดล่าสุด ${d[2]}/${d[1]}/${d[0]} <small>(ตั๋ว ${x.n} ใบ • กอง 🪙${fmtN(x.pot0)} • จ่ายรวม 🪙${fmtN(sums(x.winners))})</small></div>` + drawn(x.nums) + `<div class="sec">🎉 ผู้ถูกรางวัล</div>` + winners(x.winners);
       if (lt) h += `<p class="ltnote">🔒 ตรวจความโปร่งใส: sha256(<code>${esc(lt.salt)}</code>:${lt.nums.join(',')}) = <span id="lchk">…</span></p>`;
-      if (hist.length > 1) h += `<div class="sec">🔢 เลขที่ออกย้อนหลัง (${hist.length - 1} งวด)</div>` + hist.slice(1).map(y => { const e = y.round.split('-'); return `<div class="ltold"><b>${e[2]}/${e[1]}</b> <span>${PZ[0].e}<b class="ltball">${y.nums[0]}</b> ${PZ[1].e}<b class="ltball">${y.nums[1].slice(1)}</b> ${PZ[2].e}<b class="ltball">${y.nums[2].slice(1)}</b></span><small>${y.winners.length ? 'ถูก ' + y.winners.length + ' รายการ • จ่าย 🪙' + fmtN(sums(y.winners)) : 'ไม่มีผู้ถูก'}</small></div>`; }).join('');
+      if (hist.length > 1) h += `<div class="sec">🔢 เลขที่ออกย้อนหลัง (${hist.length - 1} งวด)</div>` + hist.slice(1).map(y => { const e = y.round.split('-'); const open = ltOpen.has(y.round); return `<div class="ltold ltoldx${open ? ' open' : ''}" data-ltr="${esc(y.round)}" role="button" tabindex="0" aria-expanded="${open}"><b>${e[2]}/${e[1]}</b> <span>${PZ[0].e}<b class="ltball">${y.nums[0]}</b> ${PZ[1].e}<b class="ltball">${y.nums[1].slice(1)}</b> ${PZ[2].e}<b class="ltball">${y.nums[2].slice(1)}</b></span><small>${y.winners.length ? 'ถูก ' + y.winners.length + ' รายการ • จ่าย 🪙' + fmtN(sums(y.winners)) : 'ไม่มีผู้ถูก'} <span class="ltcar">${open ? '▴ ย่อ' : '▾ ดูผู้ถูกรางวัล'}</span></small>${open ? `<div class="ltwins">${winners(y.winners)}</div>` : ''}</div>`; }).join('');
     }
   }
   return h;
 }
 function bindLotto(el) {
+  el.querySelectorAll('[data-ltr]').forEach(b => { const tg = () => { const r = b.dataset.ltr; if (ltOpen.has(r)) ltOpen.delete(r); else ltOpen.add(r); renderTown(); }; b.onclick = tg; b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tg(); } }; }); // กดแถวงวดย้อนหลัง = กาง/ย่อรายชื่อผู้ถูกรางวัล
   el.querySelectorAll('[data-lt]').forEach(b => b.onclick = () => { lottoTab = b.dataset.lt; renderTown(); });
   const buy = nums => send({ t: 'lotto', a: 'buy', nums }), room = lottoSt ? lottoSt.max - lottoSt.mine.length : 0;
   const cl = $('lclaim'); if (cl) cl.onclick = () => { if (!lottoSt.near) return toast('🎟️ ไปยืนใกล้ตู้ Lucky Lotto ที่ลานกองไฟก่อนนะ ถึงจะรับรางวัลได้'); send({ t: 'lotto', a: 'claim' }); };
