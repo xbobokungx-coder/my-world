@@ -25,5 +25,6 @@ console.log(`  ไฟล์ภาพ: ok (${used.size} ไฟล์ ${fs.readdir
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8'), game = fs.readFileSync(path.join(root, 'game.js'), 'utf8');
 assert.ok(html.indexOf('pondart.js') > 0 && html.indexOf('pondart.js') < html.indexOf('src="game.js"'), 'pondart.js ต้องมาก่อน game.js');
 assert.ok(/PondArt\.ready\(\)/.test(game), 'game.js ต้องเช็ก PondArt.ready() ก่อนใช้');
+assert.ok(/typeof PondArt !== 'undefined' && PondArt\.ready\(\)/.test(game), 'ต้องกันกรณีสคริปต์ pondart.js โหลดไม่ขึ้น (PondArt ไม่มีอยู่) ไม่ให้วาดสระพัง');
 assert.ok(/PixelArt\.fish\(i, wag\)/.test(game) && /PixelArt\.lily\(kind\)/.test(game), 'ต้องมีภาพวาดด้วยโค้ดเดิมเป็นทางถอยกลับ (ปลา/ใบบัว)');
 console.log('ผ่าน: สระน้ำจากแพ็ก (ไฟล์ครบ ขนาดตรง มีทางถอยกลับ)');

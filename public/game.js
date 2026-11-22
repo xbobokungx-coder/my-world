@@ -5863,7 +5863,7 @@ function step(now) {
   }
   // สระใหญ่ด้านล่าง (ตรงกับ shared.js: วงรีศูนย์กลาง (43,38) รัศมี 12×5 ช่อง): ปลา 6 ตัว ว่ายแยกกันคนละความเร็วและทิศ
   // ว่ายใต้สะพานได้ แต่สะพานกับเกาะทรายวาดทับ (ตัดตรงนี้ออกจากการวาดปลา)
-  const POND = { cx: 43, cy: 38, rx: 12, ry: 5 }, B = Shared.BRIDGE, I = Shared.ISLAND, pondArt = PondArt.ready();
+  const POND = { cx: 43, cy: 38, rx: 12, ry: 5 }, B = Shared.BRIDGE, I = Shared.ISLAND, pondArt = typeof PondArt !== 'undefined' && PondArt.ready(); // ไม่มี PondArt (สคริปต์โหลดไม่ขึ้น) หรือภาพไม่ครบ = ใช้ภาพเดิม
   ctx.save(); ctx.beginPath(); ctx.rect(camX, camY, vw, vh);
   ctx.rect(B.x0 * TS, B.y0 * TS, (B.x1 - B.x0 + 1) * TS, (B.y1 - B.y0 + 1) * TS);
   ctx.rect(I.x0 * TS, I.y0 * TS, (I.x1 - I.x0 + 1) * TS, (I.y1 - I.y0 + 1) * TS);
