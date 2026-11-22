@@ -12,7 +12,7 @@ module.exports = {
   floorOf(f) {
     let F = this.floors.get(f); if (F) return F;
     const map = S.makeCaveMap(f), ores = new Map();
-    if (!S.isSeaScene(f)) for (const o of S.caveOreSpots(map, f)) { ores.set(o.x + ',' + o.y, { k: o.k, s: o.s }); map[o.y][o.x] = T.ORE; }
+    if (S.isMineFloor(f)) for (const o of S.caveOreSpots(map, f)) { ores.set(o.x + ',' + o.y, { k: o.k, s: o.s }); map[o.y][o.x] = T.ORE; }
     F = { map, ores, hp: new Map(), wait: [], cap: Math.max(1, ores.size) }; this.floors.set(f, F); return F; // cap = จำนวนก้อนเต็มของชั้น (ไว้คิดโควตาชนิดแร่ตอนเกิดใหม่)
   },
   oresPub(f) { return [...this.floorOf(f).ores].map(([k, o]) => { const [x, y] = k.split(',').map(Number); return [x, y, o.k, o.s]; }); },
@@ -90,7 +90,7 @@ module.exports = {
   },
   recallUse(p) { // ตั๋ววาปกลับกองไฟ: ใช้ในถ้ำเหมืองชั้น S.MINE.recall.minFloor ขึ้นไป (ไม่ใช่ทะเล) ใช้แล้วหมด 1 ใบ
     const f = S.caveFloor(p.scene);
-    if (!f || S.isSeaScene(f)) return this.toast(p, 'ตั๋ววาปกลับกองไฟใช้ได้ตอนอยู่ในถ้ำเหมืองเท่านั้น');
+    if (!S.isMineFloor(f)) return this.toast(p, 'ตั๋ววาปกลับกองไฟใช้ได้ตอนอยู่ในถ้ำเหมืองเท่านั้น');
     if (p.veh) return;
     if (f < S.MINE.recall.minFloor || f > S.MINE.floors) return this.toast(p, `ชั้นตื้นเดินขึ้นเองง่ายกว่า ตั๋วใช้ได้ตั้งแต่ชั้น ${S.MINE.recall.minFloor} ลงไป`);
     if (!((p.rec.inv.recall | 0) > 0)) return this.toast(p, 'ไม่มีตั๋ววาปกลับกองไฟ ซื้อได้ที่ร้านช่างเหมือง ⚒️');

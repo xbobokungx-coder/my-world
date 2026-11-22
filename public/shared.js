@@ -800,6 +800,7 @@
   function makeCaveMap(floor) {
     if (floor === SEA.floor) return makeSeaMap(); // ฉากทะเลใช้ระบบฉากเดียวกับถ้ำ
     if (floor === OCEAN.floor) return makeOceanMap();
+    if (floor === JUNGLE.floor) return makeJungleMap(); // ป่าดงดิบ (ฉากพิเศษ 97)
     const f = Math.max(1, Math.min(MINE.floors, floor | 0 || 1)), R = rng(20261030 + f * 7919);
     const m = Array.from({ length: H }, () => new Array(W).fill(T.VOID));
     for (let y = CAVE.y0; y <= CAVE.y1; y++) for (let x = CAVE.x0; x <= CAVE.x1; x++) m[y][x] = T.ROCK;
@@ -1965,7 +1966,7 @@
     if (!bare) for (const c of CABINETS) set(c.x, c.y, T.SHOP); // ตู้เกมเป็นช่องที่เดินผ่านไม่ได้ แต่ใช้งานได้จากช่องติดกัน
     if (!bare) { set(ATM.x, ATM.y, T.SHOP); set(RANKBOARD.x, RANKBOARD.y, T.SHOP); set(BOARD.x, BOARD.y, T.SHOP); set(LUCKY.x, LUCKY.y, T.SHOP); set(FLEA.x, FLEA.y, T.SHOP); } // กระดานข่าว + ตู้เซฟกองกลาง
     if (!bare) set(FIRE.x, FIRE.y, T.BUILD);                    // กองไฟ (เดินผ่านไม่ได้)
-    if (!bare) for (let y = TOWER.y0; y <= TOWER.y1; y++) for (let x = TOWER.x0; x <= TOWER.x1; x++) set(x, y, T.LANDMARK); // ฐานหอคอย 100 ชั้น
+    if (!bare) for (let y = JGATE.y0; y <= JGATE.y1; y++) for (let x = JGATE.x0; x <= JGATE.x1; x++) set(x, y, T.LANDMARK); // ฐานหอคอย 100 ชั้น
     // ต้นไม้ขอบแมพ + กระจายในที่ว่าง
     for (let x = 0; x < W; x++) { set(x, 0, T.TREE); set(x, H - 1, T.TREE); }
     for (let y = 0; y < H; y++) { set(0, y, T.TREE); set(W - 1, y, T.TREE); }
@@ -1977,8 +1978,8 @@
       if (reserved.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3])) continue;
       setIfGrass(x, y, T.TREE);
     }
-    if (!bare) for (let y = TOWER.y1 + 1; y <= TOWER.y1 + 2; y++) for (let x = TOWER.door[0]; x <= TOWER.door[2]; x++) if (m[y][x] === T.TREE) m[y][x] = T.GRASS; // เปิดทางเดินหน้าประตูหอ (ต้นไม้สุ่มเดิมที่ทับอยู่ถอนออก)
-    if (!bare) for (let x = TOWER.x0 - 2; x <= TOWER.x1 + 3; x++) if (m[TOWER.y1 + 3][x] === T.TREE) m[TOWER.y1 + 3][x] = T.GRASS; // ถอนต้นไม้สุ่มบนแถวใต้ป่า (y7) ให้เดินตะวันออก-ตะวันตกผ่านใต้หอได้ ไม่งั้นป่าปิดทางไปสวนฝั่งซ้าย
+    if (!bare) for (let y = JGATE.y1 + 1; y <= JGATE.y1 + 2; y++) for (let x = JGATE.door[0]; x <= JGATE.door[2]; x++) if (m[y][x] === T.TREE) m[y][x] = T.GRASS; // เปิดทางเดินหน้าประตูหอ (ต้นไม้สุ่มเดิมที่ทับอยู่ถอนออก)
+    if (!bare) for (let x = JGATE.x0 - 2; x <= JGATE.x1 + 3; x++) if (m[JGATE.y1 + 3][x] === T.TREE) m[JGATE.y1 + 3][x] = T.GRASS; // ถอนต้นไม้สุ่มบนแถวใต้ป่า (y7) ให้เดินตะวันออก-ตะวันตกผ่านใต้หอได้ ไม่งั้นป่าปิดทางไปสวนฝั่งซ้าย
     if (!bare) for (const [x, y] of groveCells(m)) m[y][x] = T.TREE; // ป่ารอบหอคอย 100 ชั้น ปลูกเต็มทุกช่องว่าง (เว้นทางเดินหน้าประตู)
     for (let y = 1; y <= 7; y++) for (let x = MINE.hill.x0; x <= MINE.hill.x1; x++) if (m[y][x] === T.TREE) m[y][x] = T.GRASS; // ไม่มีต้นไม้ทับภาพภูเขาถ้ำ
     return m;
@@ -1987,14 +1988,14 @@
   // สิ่งก่อสร้างจากโครงการพัฒนาเมือง (PROJECTS): ยอดลงขันครบเป้าเมื่อไร ก็แปลงช่องบนแมพตามตารางนี้ทันที
   // server กับ client เรียก applyProject ตัวเดียวกัน (server ใช้คุมการเดินตัน/ทะลุ client ใช้วาดภาพ) เพิ่มโครงการใหม่ = เพิ่มแถวใน STRUCTS
   const BRIDGE = { x0: 43, y0: 34, x1: 44, y1: 42 };                        // สะพานไม้กว้าง 2 ช่อง พาดเหนือ(y33)→ใต้(y43) กลางสระ
-  const TOWER = { x0: 9, y0: 2, x1: 12, y1: 4, door: [10, 4, 11, 4] }; // หอคอย 100 ชั้น (เตรียมไว้ใช้กับดันเจี้ยน 100 ชั้น ตอนนี้ยังปิด 'เร็วๆ นี้') • ตั้งเหนือถ้ำเหมือง: กึ่งกลางแนวนอนตรงกับกึ่งกลางสวนปลูก FARM (x3–18 → กลาง x=11 ช่อง) กึ่งกลางแนวตั้งอยู่กลางระหว่างขอบแมพบนกับยอดถ้ำ (ดู drawTower) • ฐาน 4x3 ช่องเป็น T.LANDMARK เดินผ่านไม่ได้ ยืนหน้าประตูที่แถว y1+1 แล้วกด Action
+  const JGATE = { x0: 9, y0: 2, x1: 12, y1: 4, door: [10, 4, 11, 4] }; // หอคอย 100 ชั้น (เตรียมไว้ใช้กับดันเจี้ยน 100 ชั้น ตอนนี้ยังปิด 'เร็วๆ นี้') • ตั้งเหนือถ้ำเหมือง: กึ่งกลางแนวนอนตรงกับกึ่งกลางสวนปลูก FARM (x3–18 → กลาง x=11 ช่อง) กึ่งกลางแนวตั้งอยู่กลางระหว่างขอบแมพบนกับยอดถ้ำ (ดู drawTower) • ฐาน 4x3 ช่องเป็น T.LANDMARK เดินผ่านไม่ได้ ยืนหน้าประตูที่แถว y1+1 แล้วกด Action
   // ป่ารอบหอคอย (20 พ.ย. 2026): ต้นไม้ล้อมหอเต็มไม่มีช่องว่าง กรอบ x0-2..x1+2 • y0-1..y1+2 เว้นทางเดินหน้าประตู 2 ช่อง (x10–11, y5–6) • ตัดได้เหมือนต้นไม้ปกติ แต่ งอกคืนที่เดิมเองทีละต้นทุก regrowMs (จำกัดอัตราไม่ให้เป็นที่ปั่นไม้) ไม่นับเข้าเพดานต้นไม้ในแมพ ไม่โดนถอนตามโควตา
   const GROVE = { regrowMs: 15000, clear: 1.2 }; // regrowMs = งอกคืนได้ 1 ต้นต่อรอบ • clear = ห่างผู้เล่นกี่ช่องถึงงอกได้ (ไม่งอกทับตัว)
-  const groveWalk = (x, y) => x >= TOWER.door[0] && x <= TOWER.door[2] && y > TOWER.y1 && y <= TOWER.y1 + 2; // ทางเดินหน้าประตูหอ (ไม่ปลูก)
-  const groveRect = (x, y) => x >= TOWER.x0 - 2 && x <= TOWER.x1 + 2 && y >= TOWER.y0 - 1 && y <= TOWER.y1 + 2 && !towerAt(x, y) && !groveWalk(x, y);
+  const groveWalk = (x, y) => x >= JGATE.door[0] && x <= JGATE.door[2] && y > JGATE.y1 && y <= JGATE.y1 + 2; // ทางเดินหน้าประตูหอ (ไม่ปลูก)
+  const groveRect = (x, y) => x >= JGATE.x0 - 2 && x <= JGATE.x1 + 2 && y >= JGATE.y0 - 1 && y <= JGATE.y1 + 2 && !jgateAt(x, y) && !groveWalk(x, y);
   const groveCells = m => { const out = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (groveRect(x, y) && (m[y][x] === T.GRASS || m[y][x] === T.TREE)) out.push([x, y]); return out; }; // เฉพาะช่องหญ้า/ต้นไม้ (ไม่ทับหิน บ้าน ฯลฯ)
   const groveHas = (x, y) => groveRect(x, y);
-  const towerAt = (tx, ty) => tx >= TOWER.x0 && tx <= TOWER.x1 && ty >= TOWER.y0 && ty <= TOWER.y1;
+  const jgateAt = (tx, ty) => tx >= JGATE.x0 && tx <= JGATE.x1 && ty >= JGATE.y0 && ty <= JGATE.y1;
   const LIGHTHOUSE = { x0: 48, y0: 36, x1: 49, y1: 39 };                    // ประภาคาร 2x4 ช่อง ตั้งกลางน้ำในสระฝั่งขวา (ฐานหินตัน ยืนจากน้ำได้)
   const ISLAND = { x0: 39, y0: 37, x1: 41, y1: 39, walk: { x: 42, y: 38 } }; // เกาะทราย 3x3 ข้างสะพาน + ทางไม้สั้นๆ ต่อกับสะพาน
   // ออกทะเล: เรือที่ท่าบนเกาะลึกลับ (ช่องท่า = SHOP) พาไปฉากทะเล (ฉากเดียวกับถ้ำแต่ชั้น floor=99) ยืนบนดาดฟ้าเรือแล้วตกปลาทะเลลึก • หมดเวลา ms กัปตันพากลับเกาะ
@@ -2036,6 +2037,69 @@
     for (let y = OCEAN.exit.y0; y <= OCEAN.exit.y1; y++) m[y][OCEAN.exit.x] = T.MOUTH;
     return m;
   }
+  // ===== JUNGLE ===== ป่าดงดิบ (แผน docs/plans/jungle-map.md ข้อ 15): ฉากพิเศษในระบบฉากถ้ำ p.scene='@cave97' (ต่อจาก OCEAN 98 / SEA 99 ห้ามให้ถ้ำเหมืองขยายเกิน 96 ชั้น) ไม่ใช่เหมือง: ไม่มีแร่/ตั๋ว/HUD ถ้ำ
+  // ผัง 64x46 ตายตัว (ไม่สุ่ม) ตัวอักษร: # ดงทึบ t ต้นไม้เดี่ยว (ต้นไม้ T.TREE ตัดไม่ได้ ไม่มีชนิด) . พื้นป่า T.CAVE = ถนน T.PATH ~ ลำธาร T.WATER F ที่ข้ามตื้น (T.SAND เดินได้) H สะพาน T.BRIDGE T หอคอย T.LANDMARK C ของในค่าย S ศาลเจ้า R ซากวิหาร (T.BUILD ทึบ) E ทางออก T.MOUTH (ขอบบน) h จุดสมุนไพร (พื้นเดินได้ ตำแหน่งอยู่ใน herbs)
+  const JUNGLE = {
+    floor: 97, open: false, // open=false: ประตูในเมืองขึ้น 'เร็วๆ นี้' (ผู้ดูแลวาปได้) • เปิดจริง = true
+    spawn: { x: 31.5 * TS, y: 5.5 * TS }, // จุดเกิด (ช่อง 31,5) กลางค่ายหน้าป่า
+    exit: { x0: 30, x1: 33, y0: 0, y1: 1 }, // ทางออก T.MOUTH ขอบบน (เดินขึ้นไปถึง = กลับหน้าประตูเมือง)
+    tower: { x0: 9, y0: 36, x1: 12, y1: 38, door: { x: 11, y: 39 } }, // หอคอยล่างซ้าย ยืนหน้าประตูที่ช่อง door
+    safe: [{ id: 'camp', x0: 24, y0: 2, x1: 39, y1: 9 }, { id: 'shrine', x0: 34, y0: 24, x1: 40, y1: 28 }, { id: 'tower', x0: 3, y0: 32, x1: 20, y1: 43 }], // เขตปลอดภัย (ขั้น J4+ มอนสเตอร์ไม่เข้า)
+    zones: [{ id: 'easy', y0: 3, y1: 14 }, { id: 'mid', y0: 15, y1: 28 }, { id: 'hard', y0: 29, y1: 43 }], // ย่านความยากไล่บนลงล่าง (ใช้เลือกชนิดมอนสเตอร์ ไม่ใช่กำแพง)
+    herbs: [[8, 8], [54, 10], [14, 15], [48, 16], [10, 26], [56, 27], [22, 26], [40, 29], [8, 34], [52, 31], [24, 41], [58, 40]], // จุดสมุนไพร 12 จุด (ระบบเก็บทำขั้น J6)
+    rows: [
+      '##############################EEEE##############################',
+      '##############################EEEE##############################',
+      '#####.##.##.##.###.#####................#...##.######.#t##.#####',
+      '##..#.####..##...#######...CCC.............#.#.##..#..####...###',
+      '####......t..........t.....CCC..........................t...#.##',
+      '###.t..t.........t.................C.......................t..##',
+      '###.....#.t...t...............................................##',
+      '####.t......................C................................###',
+      '####....h...t................................................###',
+      '##.t...........................==.......t.t..t..........t....###',
+      '##....t....................###.==.#####...............h...t#####',
+      '##.#........t..t............##.==.####.....................#####',
+      '####...t.t.tt...............##.==.####...t..t...........t.######',
+      '####.....t#...............tt.#.==.t.t.......t........t....######',
+      '####tt.....#..........t........==...t...##.....tt........#######',
+      '####..tt......h.....t..........==.......###.......###.t#########',
+      '###.....t...t....tt..#.........==......#####.t..h.##############',
+      '##.......t.t.tt...######tt.t...===...t.########...##############',
+      '###.tt...t....t.#########t.....====.t..#########################',
+      '###........t...###########......===...t..##################.####',
+      '###......t..t..############......==.....t.#################.####',
+      '###~~FFFFF~~~~~~~~~~~~~~~~~FFFFHHFFF~~~~~~~~~~~~~FFFFFF~~~~~~###',
+      '##.~~FFFFF~~~~~~~~~~~~~~~~~FFFFHHFFF~~~~~~~~~~~~~FFFFFF~~~~~~###',
+      '####..tt..t..#############.....====......t.#####################',
+      '##..t......t.#############.....===..........##########t.########',
+      '###.....t...t...t####...##.....==...SS......t#######..tt.#######',
+      '####......h.t......##.h........==...SS........##.t....t...######',
+      '####.........t................===.....................t.h.######',
+      '###.......t...t......t.......====..............t...........t####',
+      '####...t.......t.t..........====........h.........t........t####',
+      '##.#....tt..t..............====.............................####',
+      '###................tt.....====......................h.##########',
+      '###......................====.........................##########',
+      '###......................===.............t....RRR....######t.t##',
+      '##......h............t..===...................RRR....####...#.##',
+      '##.....................====..tt....t.................###..t.t###',
+      '##.......TTTT.........====...........................#........##',
+      '##.......TTTT......======....................................###',
+      '###......TTTT.....======...................tt...####........#.##',
+      '###..............====.........RRR............t.t####........####',
+      '##t.........========..#.......RRR...........t..######.....h.####',
+      '###.........=======..##.h..................t...######........###',
+      '###..................##...............##.#.#..#t######.####..###',
+      '##...................#####.............#..#.###.#########.#..###',
+      '################################################################',
+      '################################################################',
+    ],
+  };
+  const isJungle = f => f === JUNGLE.floor;
+  const isMineFloor = f => Number.isInteger(f) && f >= 1 && f <= MINE.floors; // ชั้นถ้ำเหมืองจริง (ไม่ใช่ทะเล 98/99 ไม่ใช่ป่า 97) ใช้ตัดสินว่าวางแร่/มีตั๋ว/HUD ถ้ำไหม
+  const JUNGLE_TILE = { '#': T.TREE, t: T.TREE, '.': T.CAVE, h: T.CAVE, '=': T.PATH, '~': T.WATER, F: T.SAND, H: T.BRIDGE, T: T.LANDMARK, C: T.BUILD, S: T.BUILD, R: T.BUILD, E: T.MOUTH };
+  function makeJungleMap() { return JUNGLE.rows.map(r => Array.from(r, c => JUNGLE_TILE[c])); }
   // โซนน้ำ (กำหนดปลาที่ตกได้): ตื้น (ใกล้ท่า) • แนวปะการัง • ทะเลเปิด • ทะเลลึก (ฝั่งตะวันออกและขอบนอก)
   const oceanZone = (tx, ty) => oceanLayout().reefs.some(o => (tx - o.x) ** 2 + (ty - o.y) ** 2 <= o.r * o.r) ? 'reef' : tx <= 14 ? 'shallow' : (tx >= 46 || ty <= 6 || ty >= H - 7) ? 'deep' : 'open';
   const OCEAN_ZONE = { shallow: { name: 'ทะเลตื้น', lv: [1, 7] }, reef: { name: 'แนวปะการัง', lv: [5, 15] }, open: { name: 'ทะเลเปิด', lv: [7, 13] }, deep: { name: 'ทะเลลึก', lv: [13, 20] } }; // ปลาระดับในช่วง lv ออกบ่อยขึ้นในโซนนั้น
@@ -2134,7 +2198,7 @@
     reportWhy: [{ id: 'abuse', name: 'พูดจาไม่ดี' }, { id: 'cheat', name: 'โกง' }, { id: 'other', name: 'อื่นๆ' }],
     muteMs: { '10m': 10 * 60000, '1h': 3600000, '1d': 86400000 }, banMs: { '1d': 86400000, '7d': 7 * 86400000 } }; // banMs ไม่มี perm: ถาวร = ระบบแบนเดิม
 
-  const api = { CREATURES, CREATURE, creatureCap, creatureKinds, creaturePick, creatureHp, creatureSpeed, creatureHunger, TOWER, towerAt, GROVE, groveCells, groveHas, THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, PETLV, petLevel, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, inSeason, OFFSEASON, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, WEAPON, ARMOR, SWORD_EMOJI, ARMOR_EMOJI, swordTier, armorTier, SWORD_IDLE_MS, AXE_MAX, ROD_MAX, AXE_TUNE, ROD_TUNE, chopHit, rodHit, fishTier, AXE_MIG6, ROD_MIG6, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, FLEA, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, SNAKE, SNAKE_DIRS, snakeFood, snakeNew, snakeStep, snakeTurn, snakeMs, ARC_SHOP, VEHICLES, HORN, thaiWeek, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, HOME, storeAccepts, storeCap, storeAge, storeValue, houseComfort, sitMulOf, restMinutes, KINDS, kindOf, jobOf, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, ADMIN_COIN_STEP, ANIMAL_LOCK, animalLockMs, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, treeCutters, treeCapFor, treeGrowMs, WATER_MS, CANS, canTier, GEAR_MAX, GEAR_TUNE, gearHit, HOES, PAILS, PANS, HOE_EMOJI, PAIL_EMOJI, PAN_EMOJI, hoeTier, SELLBACK_MIN_FRAC, pailTier, panTier, cropTier, animalTier, cookTier, hoeHit, hoeBonus, pailHit, pailChance, panHit, panFee, STALL, LUCKY, FLEA, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, AXE_EMOJI, ROD_EMOJI, BUILDINGS, SHOPS, DIRS,
+  const api = { CREATURES, CREATURE, creatureCap, creatureKinds, creaturePick, creatureHp, creatureSpeed, creatureHunger, JGATE, jgateAt, JUNGLE, makeJungleMap, isJungle, isMineFloor, GROVE, groveCells, groveHas, THEME_SNOW, THEME_RAIN, RAIN, rainAt, OCEAN, OCEAN_ZONE, isOcean, isSeaScene, oceanWindow, oceanHour, oceanLayout, makeOceanMap, oceanZone, oceanZoneMul, BOAT, STARTER2, STARTER2_FINAL, PETSTAT, PETLV, petLevel, petBonus, petMood, petStatText, xpFromV2, XP_TABLE_V2, FISH_ALL, LEGACY_FISH, CROP_IDS, ACTION_TUNE, canPlant, inSeason, OFFSEASON, canSpawnTree, plantWait, seasonOf, seasonWaitText, axeTier, rodTier, WEAPON, ARMOR, SWORD_EMOJI, ARMOR_EMOJI, swordTier, armorTier, SWORD_IDLE_MS, AXE_MAX, ROD_MAX, AXE_TUNE, ROD_TUNE, chopHit, rodHit, fishTier, AXE_MIG6, ROD_MIG6, ROD_WAIT, ROD_RARE, perkLv, PERK_LV, gaugeCore, gaugeDist, gaugeHit, FIGHT, fightNew, fightPhase, fightStep, fishClass, WEAR_RATE, CRAFT, ARC_RANGE, STARTER, STARTER_FINAL, NEWBIE, WEEK1, EVENTS, BOOK, BOOK_ENTRY_COIN, bookInfo, WEEKLY, RARE, NPC, BOTBET, playLevel, ATM, RANKBOARD, FLEA, RANK, BANK, VILLAGE, QUESTS, QUEST_NEWBIE, QUEST_PER_DAY, QUEST_ALL, ACH, TITLES, titleFor, POINTS, ARCPTS, SNAKE, SNAKE_DIRS, snakeFood, snakeNew, snakeStep, snakeTurn, snakeMs, ARC_SHOP, VEHICLES, HORN, thaiWeek, WISH_EXTRA, BUFFS, FAME, BOARD, TOWN, townAt, reviveCost, HOUSING, HOUSE, HOUSE_DOOR, HOUSE_BLD, HOUSE_SPAWN, HFLOOR, HKEEP, HOUSE_MAX_ITEMS, isPaved, HOUSE_FLOORS, HOUSE_WALLS, HOUSE_FLOOR_ORDER, HOUSE_WALL_ORDER, HOUSE_STYLE_DEFAULT, snapQ, furnDims, furnRect, seatSpots, houseSolidRects, houseBlockedAt, houseTopAt, houseCheck, houseInside, houseKeep, makeHouseMap, houseScore, holdingsValue, HOME, storeAccepts, storeCap, storeAge, storeValue, houseComfort, sitMulOf, restMinutes, KINDS, kindOf, jobOf, plotAt, plotSignAt, FURN, TS, W, H, T, MAP_PAINT, MOCK_MAX, sanitizeMocks, sanitizeMapOv, FARM, PENS, BEE, SPAWN, START_SPAWN, STARTER_GO, DAY_MS, ADMIN_COIN_STEP, ANIMAL_LOCK, animalLockMs, FARM_REGROW_MS, FARM_CAP, FARM_RENT, rentPlotAt, CLOCK_MS, TREE, treeCutters, treeCapFor, treeGrowMs, WATER_MS, CANS, canTier, GEAR_MAX, GEAR_TUNE, gearHit, HOES, PAILS, PANS, HOE_EMOJI, PAIL_EMOJI, PAN_EMOJI, hoeTier, SELLBACK_MIN_FRAC, pailTier, panTier, cropTier, animalTier, cookTier, hoeHit, hoeBonus, pailHit, pailChance, panHit, panFee, STALL, LUCKY, FLEA, SEA, isSea, makeSeaMap, MARINE, fishPool, TAX, taxCum, heatOf, saleTax, taxRate, LOTTO, MODERATION, ORDERS, SEASONS, seasonAt, cropSeason, MASTERY, FISH_GAUGE, gaugePos, gaugeHit, MAX_LV, SKILLS, CROPS, FISH, ANIMALS, COMPANIONS, PETCARE, RODS, AXE_EMOJI, ROD_EMOJI, BUILDINGS, SHOPS, DIRS,
     DURABILITY, durMax, repairCost, REPAIR, TOOL_PRICE, toolPrice, canRepair, TRADE, TICKET, MOVIES, cinemaAt, CINEMA_CENTER, isTradable, tradeValue,
     SWING_MS, AXES, PICKS, PICK_EMOJI, pickTier, PICK_MAX, mineHit, caveReach, caveOpen, MINE, nearLift, hillTop, hillAt, ORES, ORE_ORDER, ORE_SIZES, oreXp, oreHp, floorMix, sizeMix, SIZE_MIX, rollOre, rollOreQuota, rollSize, rollDrop, caveFloor, CAVE, makeCaveMap, caveOreSpots, oreNear, TREE_HP, WOOD, woodXp, WOOD_ITEMS, TREE_KINDS, treeWhereOk, pickTreeKind, pickTreeSpawn, pickTreeTrim, treeQuota, planTreeMix, SICK, SELLBACK, PLAZA, FIRE, SEATS, LAYOUT_SHIFT, seatAt, sellbackValue, isChoppable, treeSpotOk, BRIDGE, LIGHTHOUSE, ISLAND, projectDone, applyProject,
     ANIMAL_XP, animalXp, ANIMAL_BONUS, ANIMAL_GRACE_MS, ROD_MAXCLASS, RARE_CD_MS, fishWeight, cropCan, PLAYER_HUNGER, WEAR, WEAR_CATS, WEAR_DEFAULT, wearKey, PANTS_COLOR, MEALS, FOOD,

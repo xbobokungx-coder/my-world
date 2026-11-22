@@ -14,6 +14,7 @@ module.exports = {
     p.ret = { x: back.x, y: back.y }; // กลับจากฉากนี้จะไปยืนตรงที่ยืนอยู่ในเมือง
     if (to === 'sea') { p.seaUntil = Date.now() + S.SEA.ms; this.changeScene(p, CAVE + S.SEA.floor, S.SEA.spawn.x, S.SEA.spawn.y); return null; }
     if (to === 'ocean') { p.seaUntil = Date.now() + 10 * 60e3; p.seaW = 0; this.changeScene(p, CAVE + S.OCEAN.floor, S.OCEAN.spawn.x, S.OCEAN.spawn.y); return null; } // ผู้ดูแลวาปไปทะเลใหญ่ (ข้ามเงื่อนไขเวลา/เรือ) อยู่ได้ 10 นาที
+    if (to === 'jungle') { p.ret = this.jungleGateFront(); this.changeScene(p, CAVE + S.JUNGLE.floor, S.JUNGLE.spawn.x, S.JUNGLE.spawn.y); return null; } // ผู้ดูแลวาปเข้าป่าดงดิบ (ข้ามสวิตช์ open) ออกมาหน้าประตูป่าในเมือง
     const cave = /^cave:(\d+)$/.exec(to);
     if (cave) { const f = +cave[1]; if (f < 1 || f > S.MINE.floors) return 'ไม่มีถ้ำชั้นนี้'; const at = this.caveLanding(f); this.changeScene(p, CAVE + f, at.x, at.y); return null; }
     if (to.startsWith('house:')) { const key = to.slice(6); if (!this.saved[key]) return 'ไม่พบบ้านหลังนี้'; if (!this.houses[key]) this.houses[key] = { items: {}, next: 1 }; this.changeScene(p, key, S.HOUSE_SPAWN.x, S.HOUSE_SPAWN.y); return null; }
