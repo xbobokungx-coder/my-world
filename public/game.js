@@ -5863,7 +5863,7 @@ function step(now) {
   }
   // สระใหญ่ด้านล่าง (ตรงกับ shared.js: วงรีศูนย์กลาง (43,38) รัศมี 12×5 ช่อง): ปลา 6 ตัว ว่ายแยกกันคนละความเร็วและทิศ
   // ว่ายใต้สะพานได้ แต่สะพานกับเกาะทรายวาดทับ (ตัดตรงนี้ออกจากการวาดปลา)
-  const POND = { cx: 43, cy: 38, rx: 12, ry: 5 }, B = Shared.BRIDGE, I = Shared.ISLAND;
+  const POND = { cx: 43, cy: 38, rx: 12, ry: 5 }, B = Shared.BRIDGE, I = Shared.ISLAND, pondArt = PondArt.ready();
   ctx.save(); ctx.beginPath(); ctx.rect(camX, camY, vw, vh);
   ctx.rect(B.x0 * TS, B.y0 * TS, (B.x1 - B.x0 + 1) * TS, (B.y1 - B.y0 + 1) * TS);
   ctx.rect(I.x0 * TS, I.y0 * TS, (I.x1 - I.x0 + 1) * TS, (I.y1 - I.y0 + 1) * TS);
@@ -5874,12 +5874,29 @@ function step(now) {
     // ใช้ 0.7·rx กับ 0.6·ry ทำให้ทุกจุดอยู่ในสระแน่นอน (0.7² + 0.6² < 1)
     const fx = (POND.cx + 0.7 * POND.rx * Math.sin(fa) + 0.5) * TS, fy = (POND.cy + 0.6 * POND.ry * Math.sin(fb) + 0.5) * TS;
     if (fx < camX - TS || fx > camX + vw + TS || fy < camY - TS || fy > camY + vh + TS) continue;
-    const fs = PixelArt.fish(i, wag), bob = Math.round(Math.sin(now / 520 + i * 1.7)); // ว่ายขึ้นลงเล็กน้อย
+    const bob = Math.round(Math.sin(now / 520 + i * 1.7)); // ว่ายขึ้นลงเล็กน้อย
+    if (pondArt) { // โคอิจากแพ็กสระ (public/pack/pond): หันหัวตามทางว่ายจริง + ส่ายตัวเล็กน้อย
+      const da = 0.00010 + i * 0.000025, db = 0.00008 + i * 0.00002, K = PondArt.koi(i);
+      const vx = 0.7 * POND.rx * Math.cos(fa) * da, vy = 0.6 * POND.ry * Math.cos(fb) * db;
+      const rot = Math.atan2(vy, vx) - K.head * Math.PI / 180 + Math.sin(now / 260 + i * 1.9) * 0.14;
+      ctx.save(); ctx.translate(Math.round(fx), Math.round(fy) + bob);
+      ctx.fillStyle = 'rgba(8,60,86,.2)'; ctx.beginPath(); ctx.ellipse(0, 7, 15, 4, 0, 0, 7); ctx.fill(); // เงาปลาบนพื้นสระ
+      ctx.rotate(rot); ctx.globalAlpha = 0.93; ctx.drawImage(K.c, -K.c.width / 2, -K.c.height / 2); ctx.globalAlpha = 1;
+      ctx.restore(); continue;
+    }
+    const fs = PixelArt.fish(i, wag);
     ctx.save(); ctx.translate(Math.round(fx), Math.round(fy) + bob); ctx.scale(ahead, 1);
     ctx.fillStyle = 'rgba(8,60,86,.22)'; ctx.fillRect(-12, 6, 24, 3); // เงาปลาบนพื้นสระ
     ctx.globalAlpha = 0.78; ctx.drawImage(fs, -9 * 2, -5 * 2, fs.width * 2, fs.height * 2); // อยู่ใต้น้ำ สีจางอมฟ้า
     ctx.globalAlpha = 1;
     ctx.restore();
+  }
+  if (pondArt && !scene && !lkOn()) for (let j = 0; j < 3; j++) { // เป็ดน้อยลอยช้าๆ 3 ตัว (ใช้ 0.78·rx กับ 0.55·ry อยู่ในสระแน่นอน) ว่ายใต้สะพานได้เหมือนปลา
+    const ta = now * 0.00005 * (1 + j * 0.35) + j * 2.1, tb = now * 0.00004 * (1 + j * 0.25) + j * 1.3, D = PondArt.duck();
+    const dx = (POND.cx + 0.78 * POND.rx * Math.sin(ta) + 0.5) * TS, dy = (POND.cy + 0.55 * POND.ry * Math.sin(tb) + 0.5) * TS;
+    if (dx < camX - TS || dx > camX + vw + TS || dy < camY - TS || dy > camY + vh + TS) continue;
+    ctx.save(); ctx.translate(Math.round(dx), Math.round(dy + Math.sin(now / 700 + j * 2) * 1.2)); ctx.scale(Math.cos(ta) >= 0 ? 1 : -1, 1);
+    ctx.drawImage(D, -D.width / 2, -D.height / 2); ctx.restore();
   }
   ctx.restore();
   // ใบบัวกระจายทั่วสระ มีทั้งใบใหญ่และเล็ก (วางตายตัวตามพิกัดช่อง ไม่ขยับ) อยู่เหนือปลา
@@ -5887,11 +5904,32 @@ function step(now) {
   if (!lkOn()) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { // LOYKRATHONG: ธีมเปิด = ไม่มีใบบัว
     if (MAP[y][x] !== T.WATER || hash(x, y, 9) > 0.09) continue;
     const big = hash(x, y, 11) < 0.5, fl = hash(x, y, 13), kind = big ? (fl < .22 ? 3 : fl < .36 ? 4 : fl < .5 ? 5 : 0) : (hash(x, y, 15) < .5 ? 1 : 2);
-    const ls = PixelArt.lily(kind), px = Math.round((x + 0.5) * TS), py = Math.round((y + 0.5) * TS);
+    const px = Math.round((x + 0.5) * TS), py = Math.round((y + 0.5) * TS);
+    if (pondArt) { // ใบบัวจากแพ็กสระ: ธรรมดา/ตูมขาว/เต่าทอง/กบ + กอบัวชมพูไหวช้า (วางตายตัวตามช่อง)
+      const r = hash(x, y, 17), ls = r < .16 ? PondArt.cluster(now, x * 64 + y) : PondArt.lily(r < .28 ? 1 : r < .36 ? 2 : r < .44 ? 3 : 0);
+      ctx.drawImage(ls, px - Math.round(ls.width / 2), py - Math.round(ls.height / 2)); continue;
+    }
+    const ls = PixelArt.lily(kind);
     ctx.drawImage(ls, px - ls.width, py - ls.height, ls.width * 2, ls.height * 2); // ใบบัวพิกเซล (ใบใหญ่/เล็ก/มีดอกบัว) วางตายตัวตามช่อง
   }
   // LOYKRATHONG: กระทงในสระ + ไฟร้อยสาย/เทียนริมสระ (ใต้ตัวละคร) • ปลา+ใบบัวถูกข้ามด้านบนเมื่อธีมเปิด
   if (lkOn()) { lkDrawWater(now); lkDrawShore(now); }
+  if (pondArt && inTown() && !lkOn()) { // ของตกแต่งสระจากแพ็ก (ธีมลอยกระทงเปิด = ไม่วาด ให้ธีมคุมฉากเอง) (ภาพล้วน ไม่กระทบช่องเดิน): ดอกบัวใหญ่ 2 จุด นกกระยาง 2 ตัวที่ริมน้ำ กกกับหินมอสริมหาด
+    const G = PondArt.giant(), sp = (tx, ty, c, bottom) => { // วางกลางช่อง (bottom = ชิดขอบล่างช่อง) เฉพาะที่เป็นน้ำ/ทรายตามที่เรียก
+      const cx = Math.round((tx + 0.5) * TS), cy = Math.round((ty + (bottom ? 1 : 0.5)) * TS);
+      if (cx + c.width < camX || cx - c.width > camX + vw || cy + c.height < camY || cy - c.height > camY + vh) return;
+      ctx.drawImage(c, cx - Math.round(c.width / 2), bottom ? cy - c.height : cy - Math.round(c.height / 2));
+    };
+    for (const [gx, gy] of [[35, 38], [51, 41]]) if (MAP[gy] && MAP[gy][gx] === T.WATER) sp(gx, gy, G, false);
+    for (const [ex, ey] of [[36, 34], [50, 42]]) if (MAP[ey] && MAP[ey][ex] === T.WATER) sp(ex, ey, PondArt.egret(now, ex * 31 + ey), true);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (MAP[y][x] !== T.SAND || x >= 41 && x <= 46 || y < 31 || y > 45) continue; // เว้นทางลงสะพานและทางไปเกาะทราย
+      const wet = (MAP[y - 1] && MAP[y - 1][x] === T.WATER) || (MAP[y + 1] && MAP[y + 1][x] === T.WATER) || MAP[y][x - 1] === T.WATER || MAP[y][x + 1] === T.WATER;
+      if (!wet) continue;
+      const r = hash(x, y, 31);
+      if (r < .26) sp(x, y, PondArt.reeds(now, x * 17 + y), true); else if (r < .34) sp(x, y, PondArt.rocks(), true);
+    }
+  }
   // แปลงเช่า: เส้นขอบประ + ป้ายชื่อคนเช่า (แปลงว่างเส้นจาง)
   if (inTown()) for (const P of Shared.FARM_RENT.plots) {
     if (P.x1 < x0 || P.x0 > x1 || P.y1 < y0 || P.y0 > y1) continue;
