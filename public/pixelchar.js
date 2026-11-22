@@ -69,6 +69,14 @@ const PixelChar = (() => {
         if (pk === 'plaid') { for (const xx of [9, 12, 14]) r(x, dk(lc), xx, 25, 1, 3); r(x, '#ffffff', 7, 26, 10, 1); }
       }
       if (pk === 'overall') { r(x, pc, tx + 1, 24, tw - 2, 2); r(x, dk(pc), tx + 1, 24, tw - 2, 1); r(x, pc, tx + 1, 22, 1, 2); r(x, pc, tx + tw - 2, 22, 1, 2); if (fr) r(x, '#fff3b0', tx + 1, 24, 1, 1); }
+      // ---- เกราะไม้ (wr.arm > 0): แผ่นไม้ตั้งมัดเชือก ทับเสื้อ ----
+      const WA = wr.arm > 0 ? ['#b98650', '#dba96c', '#8a5a2c', '#e8d6a8'] : null; // [ไม้, ไฮไลต์, เงา, เชือก]
+      if (WA) {
+        r(x, WA[0], tx, 22, tw, 4); r(x, WA[2], tx, 25, tw, 1); r(x, WA[2], tx + tw - 1, 22, 1, 4); r(x, WA[1], tx, 22, 1, 3);
+        for (let i = 1; i < tw - 1; i += 2) r(x, WA[2], tx + i, 22, 1, 3); // รอยต่อแผ่นไม้
+        r(x, WA[3], tx, 23, tw, 1); r(x, dk(WA[3]), tx, 24, tw, 1); // เชือกมัดคาด
+        if (!back && !side) r(x, WA[1], tx + 2, 22, 2, 1);
+      }
       // ---- แขน ----
       const long = LONG.includes(sk);
       const sleeve = long ? ({ royal: GOLD, hoodie: dk(col), vest: '#f4f4f4', farmer: '#f4f4f4', chef: '#f6f6f6', jacket: dk(col) }[sk] || col) : S[0];
@@ -76,6 +84,10 @@ const PixelChar = (() => {
       const arm = (ax, ay, w) => { r(x, sleeve, ax, ay, w, 3); r(x, dk(sleeve), ax + w - 1, ay, 1, 3); if (long) r(x, S[0], ax, ay + 2, w, 1); if (kim) { r(x, col, ax - 1, ay, w + 1, 4); r(x, dk(col), ax - 1, ay + 3, w + 1, 1); } };
       if (side) arm(11 + (f === 1 ? -1 : f === 2 ? 1 : 0), 22, 2);
       else { arm(7, 22 + (f === 1 ? 1 : 0), 2); arm(15, 22 + (f === 2 ? 1 : 0), 2); }
+      if (WA) { // บ่าเกราะ
+        if (side) { r(x, WA[0], 11 + (f === 1 ? -1 : f === 2 ? 1 : 0), 22, 2, 1); r(x, WA[1], 11 + (f === 1 ? -1 : f === 2 ? 1 : 0), 22, 1, 1); }
+        else { r(x, WA[0], 7, 21, 3, 1); r(x, WA[0], 14, 21, 3, 1); r(x, WA[1], 7, 21, 1, 1); r(x, WA[1], 14, 21, 1, 1); r(x, WA[2], 9, 21, 1, 1); r(x, WA[2], 16, 21, 1, 1); }
+      }
       if (back) drawBack();
       // ---- ของเสริมที่คอ ----
       if (ak === 'scarf') { r(x, hat, tx - 1, 21, tw + 2, 2); r(x, dk(hat), tx - 1, 22, tw + 2, 1); if (!back) { r(x, hat, tx + tw - 2, 23, 2, 3); r(x, dk(hat), tx + tw - 2, 25, 2, 1); } }
@@ -139,7 +151,7 @@ const PixelChar = (() => {
     const s = p.moving && !sit ? Math.sin((p.anim || 0) * 14) : 0, f = s > .35 ? 1 : s < -.35 ? 2 : 0;
     const wing = wr.acc === 'wings' ? Math.max(0, Math.min(2, Math.round(1 + Math.sin(now / 170) * (p.moving ? 1 : .5)))) : 0;
     const col = p.color || '#3498db', hat = p.hat || '#e8c66a', pc = p.pc || PANTS_COLOR;
-    const key = [dir === 2 ? 3 : dir, f, sit ? 1 : 0, wr.shirt, wr.pants, wr.hat, wr.acc, col, hat, pc, wing].join('|');
+    const key = [dir === 2 ? 3 : dir, f, sit ? 1 : 0, wr.shirt, wr.pants, wr.hat, wr.acc, wr.arm | 0, col, hat, pc, wing].join('|');
     let spr = cache.get(key);
     if (!spr) { if (cache.size > 400) cache.clear(); spr = build({ dir: dir === 2 ? 3 : dir, f, sit, wr, col, hat, pc, wing }); cache.set(key, spr); }
     ctx.imageSmoothingEnabled = false;

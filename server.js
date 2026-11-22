@@ -29,7 +29,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const DEFAULT_HAT = '#e8c66a';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 const { PARTY } = require('./server/consts.js'); // เกมห้องหลายคน (ย้ายไป server/consts.js)
-const TOOLS = new Set(['hand', 'hoe', 'water', 'rod', 'axe', 'pick', 'medicine', ...Object.values(ANIMALS).map(a => a.feedItem), ...Object.keys(CROPS).map(c => 'seed_' + c)]);
+const TOOLS = new Set(['hand', 'hoe', 'water', 'rod', 'axe', 'pick', 'sword', 'medicine', ...Object.values(ANIMALS).map(a => a.feedItem), ...Object.keys(CROPS).map(c => 'seed_' + c)]);
 // ของที่ตลาดรับซื้อทั้งหมด (ราคาขึ้นลงตามอุปสงค์-อุปทาน)
 const SELLABLE = S.SELLABLE; // รายการเดียวกับ shared.js (เคยก๊อปไว้สองที่แล้วตกหล่น เช่น น้ำผึ้ง)
 const rodOf = inv => S.rodTier(inv);
@@ -193,6 +193,7 @@ class World {
       const it = S.WEAR[cat].find(x => x.id === rec.wear[cat]);
       if (!it || (it.price > 0 && !rec.inv[S.wearKey(cat, it.id)])) rec.wear[cat] = S.WEAR_DEFAULT[cat];
     }
+    if (rec.wear.arm != null) { const an = rec.wear.arm; if (!(Number.isInteger(an) && an > 0 && rec.inv['armor_' + an] > 0)) delete rec.wear.arm; } // เกราะที่สวมต้องมีของจริง
     if (rec.pet && !(S.COMPANIONS[rec.pet] && rec.inv['pet_' + rec.pet])) rec.pet = ''; // พาไปได้เฉพาะสัตว์เลี้ยงที่ซื้อไว้จริง
     rec.pet = rec.pet || ''; rec.pmode = rec.pmode === 'play' ? 'play' : 'follow';
     if (rec.veh && !(S.VEHICLES[rec.veh] && rec.inv['veh_' + rec.veh])) rec.veh = '';
@@ -281,7 +282,7 @@ class World {
         if (now - p.lastAct < 150) return;
         p.lastAct = p.activeAt = now;
         if (p.veh && TOOLS.has(m.tool)) { // ขับยานพาหนะอยู่แล้วทำอย่างอื่น (ปลูก ตัดไม้ ขุด ตกปลา ฯลฯ) = ลงจากรถทันที ไม่ทำการกระทำนั้นรอบนี้ (มือเปล่าที่ช่องร้านยังคุยได้)
-          const [fx, fy] = S.facing(p.x, p.y, p.dir), onShop = m.tool === 'hand' && this.map[fy] && this.map[fy][fx] === T.SHOP;
+          const [fx, fy] = S.facing(p.x, p.y, p.dir), onShop = (m.tool === 'hand' || m.tool === 'sword') && this.map[fy] && this.map[fy][fx] === T.SHOP;
           if (!onShop) { const vn = S.VEHICLES[p.veh] ? S.VEHICLES[p.veh].name : 'ยานพาหนะ'; this.setVeh(p, ''); this.toast(p, `🚶 ลงจาก${vn}แล้ว ทำงานตอนขับไม่ได้ ลองกดอีกครั้งนะ`); send(p, { t: 'veh', id: p.id, v: '', forced: 1 }); return; }
         }
         if (TOOLS.has(m.tool)) { p.workAt = now; if (now - (p.swAt || 0) > 1500) this.broadcast({ t: 'use', id: p.id }, p); } // ใช้เครื่องมือ = กำลังทำกิจกรรม (ความหิวลดเร็วขึ้น) + ให้คนอื่นเห็นท่าแกว่ (ส่ง 'sw' มาก่อนแล้วไม่ต้องซ้ำ)ง
@@ -334,6 +335,10 @@ class World {
             const it = S.WEAR[cat].find(x => x.id === m.wear[cat]);
             if (it && (it.price === 0 || p.rec.inv[S.wearKey(cat, it.id)])) p.rec.wear[cat] = it.id; // สวมได้เฉพาะของฟรีหรือที่ซื้อแล้ว
           }
+        }
+        if (m.wear && typeof m.wear === 'object' && Object.hasOwn(m.wear, 'arm')) { // เกราะ: 0 = ถอด • N = สวมได้เฉพาะที่มีจริง (ค่าอื่นทิ้งเงียบ)
+          const an = m.wear.arm;
+          if (an === 0) delete p.rec.wear.arm; else if (Number.isInteger(an) && an > 0 && p.rec.inv['armor_' + an] > 0) p.rec.wear.arm = an;
         }
         this.broadcastLook(p);
         this.dirty = true;
@@ -557,6 +562,9 @@ class World {
       { const mi = K.drop[0][0], W0 = S.WOOD_ITEMS[mi]; if (this.petLuck(p, W0.emoji + ' ' + W0.name)) { this.add(p, mi, 1); got[mi]++; } }
       this.toast(p, `${K.emoji} ${K.name}ล้ม! ได้ ${Object.entries(got).map(([it, n]) => `${S.WOOD_ITEMS[it].emoji} ${S.WOOD_ITEMS[it].name} x${n}`).join(' ')}`); this.sfx(p, 'fell'); this.event(p, 'chop'); if (got.hardwood) this.event(p, 'hardwood');
       if (kid === 'rose') this.addLog(`🟥 ${p.name} โค่นต้นพะยูงได้!`);
+    } else if (tool === 'sword') {
+      if (!S.swordTier(inv)) return; // ไม่มีดาบ = ไม่ทำอะไร (ฝั่งเว็บล็อกช่องไว้แล้ว)
+      if (now - (p.swordMsgAt || 0) >= S.SWORD_IDLE_MS) { p.swordMsgAt = now; this.toast(p, '🗡️ ยังไม่มีอะไรให้ฟัน รอเปิดป่าดงดิบนะ'); } // ตอนนี้ยังไม่มีศัตรู: เตือนไม่ถี่เกินไป
     } else if (tool === 'medicine') {
       const a = this.animals.filter(a => a.sick && (Math.hypot(a.x - tcx, a.y - tcy) < 52 || Math.hypot(a.x - p.x, a.y - p.y) < 52))
         .sort((a, b) => Math.hypot(a.x - tcx, a.y - tcy) - Math.hypot(b.x - tcx, b.y - tcy))[0];

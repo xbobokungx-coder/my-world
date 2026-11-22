@@ -18,7 +18,7 @@ const SLOTS = [ // ช่อง 1 = เครื่องมือ (จอบ/�
   { id: 'feed', n: 'อาหารสัตว์/ยา', pick: true },
   { id: 'hand', n: 'มือเปล่า' },
 ];
-const TOOL_LIST = ['hoe', 'water', 'rod', 'axe', 'pick'], TOOL_SHORT = { hand: 'มือเปล่า', hoe: 'จอบ', water: 'บัวรดน้ำ', rod: 'เบ็ด', axe: 'ขวาน', pick: 'อุปกรณ์ขุด' };
+const TOOL_LIST = ['hoe', 'water', 'rod', 'axe', 'pick', 'sword'], TOOL_SHORT = { hand: 'มือเปล่า', hoe: 'จอบ', water: 'บัวรดน้ำ', rod: 'เบ็ด', axe: 'ขวาน', pick: 'อุปกรณ์ขุด', sword: 'ดาบ' };
 const FEEDS = ['feed', 'hay', 'slop', 'nectar', 'medicine'], BAIT_KEYS = ['bait', 'bait_2', 'bait_3'];
 let selBait = ls.get('mw_bait') || 'bait';
 let slot = 0, selSeed = 'carrot', selFeed = 'feed';
@@ -67,7 +67,8 @@ const lvl = s => levelOf(skills[s], s);
 const rodLevel = () => Shared.rodTier(inv);
 const axeLevel = () => Shared.axeTier(inv);
 const pickLevel = () => Shared.pickTier(inv);
-const toolLocked = t => (t === 'axe' && !axeLevel()) || (t === 'pick' && !pickLevel());
+const swordLevel = () => Shared.swordTier(inv);
+const toolLocked = t => (t === 'axe' && !axeLevel()) || (t === 'pick' && !pickLevel()) || (t === 'sword' && !swordLevel());
 
 // ---------- login ----------
 let color = ls.get('mw_color') || PALETTE[Math.floor(Math.random() * 8)];
@@ -1554,6 +1555,7 @@ function toolInfo(t) { // ข้อมูลเครื่องมือใน
   if (t === 'water') { const c = CANS[canTier(inv)], cap = buffOn('bigcan') ? Math.round(c.cap * BUFFS.bigcan.capMul) : c.cap; return { e: c.emoji, n: `${c.name} (น้ำ ${wtr}/${cap} • แตะสระเพื่อตักน้ำ)`, sub: `น้ำ ${wtr}/${cap}`, cnt: wtr }; }
   if (t === 'rod') { const b = itemInfo(selBait); return { e: Shared.ROD_EMOJI[rodLevel()] || '🎣', n: RODS[rodLevel()].name + ' ระดับ ' + rodLevel() + '/' + Shared.ROD_MAX + ' • ' + b.name.split(' ')[0] + ' ×' + (inv[selBait] || 0), sub: `ระดับ ${rodLevel()}/${Shared.ROD_MAX} • เหยื่อ ×${inv[selBait] || 0}`, cnt: inv[selBait] || 0 }; }
   if (t === 'pick') { const pk = pickLevel(); return { e: pk ? Shared.PICK_EMOJI[pk] : '⚒️', n: pk ? Shared.PICKS[pk].name : 'อุปกรณ์ขุด (ยังไม่มี ซื้อที่ร้านช่างเหมือง)', sub: pk ? Shared.PICKS[pk].name : 'ยังไม่มี', cnt: pk ? null : 0 }; }
+  if (t === 'sword') { const sw = swordLevel(); return { e: sw ? Shared.SWORD_EMOJI[sw] : '🗡️', n: sw ? Shared.WEAPON.sword[sw].name + ' (ยังไม่มีผลต่อสู้ รอป่าดงดิบ)' : 'ดาบ (ยังไม่มี ซื้อที่ร้านอาวุธ)', sub: sw ? Shared.WEAPON.sword[sw].name : 'ยังไม่มี', cnt: sw ? null : 0 }; }
   const ax = axeLevel(); return { e: Shared.AXE_EMOJI[ax] || '🪓', n: ax ? AXES[ax].name + ' ระดับ ' + ax + '/' + Shared.AXE_MAX : 'ขวาน (ยังไม่มี ซื้อที่ร้านช่างไม้)', sub: ax ? 'ระดับ ' + ax + '/' + Shared.AXE_MAX : 'ยังไม่มี', cnt: ax ? null : 0 };
 }
 function renderHud() {
@@ -1863,14 +1865,16 @@ function bagWearHtml() { // แผงสวมใส่ตามร่างต�
   if (!bagDoll) return hd;
   const wr = (me && me.wear) || {}, cur = c => (WEAR[c] || []).find(x => x.id === wr[c]);
   const wslot = c => { const it = cur(c), nm = (WEAR_CATS[c] || {}).name || c; return dollSlotHtml(c, WEAR_CATS[c].emoji, nm, it && it.id !== 'none' ? it.name : 'ไม่ได้ใส่'); };
-  const t = selTool, ti = toolLocked(t) ? null : toolInfo(t), tier = { hoe: Shared.hoeTier(inv), water: canTier(inv), rod: rodLevel(), axe: axeLevel(), pick: pickLevel() }[t] || 0;
+  const t = selTool, ti = toolLocked(t) ? null : toolInfo(t), tier = { hoe: Shared.hoeTier(inv), water: canTier(inv), rod: rodLevel(), axe: axeLevel(), pick: pickLevel(), sword: swordLevel() }[t] || 0;
   const D = DURABILITY[t], fx = D && dur[t] ? dur[t][2] || 0 : 0, mx = D && tier ? durMax(t, tier, fx) : 0, pct = mx ? Math.max(0, Math.min(100, Math.round((dur[t] ? dur[t][0] : mx) / mx * 100))) : 0;
   const hand = dollSlotHtml('tool', ti ? ti.e : '✋', 'มือขวา', ti ? TOOL_SHORT[t] + (tier ? ' Lv' + tier : '') : 'มือเปล่า') .replace('</div>', mx ? `<div class="bbar"><i style="width:${pct}%;${pct <= 20 ? 'background:#e74c3c' : ''}"></i></div></div>` : '</div>');
   const shield = `<div class="bw dl lockd" data-doll="shield" tabindex="0" role="button" aria-label="โล่ ยังไม่เปิด" title="โล่ (เปิดตอนหอคอย)"><b>🔒</b><span class="dn">มือซ้าย</span><span class="ds">โล่ (เปิดตอนหอคอย)</span></div>`;
+  const aw = (me && me.wear && me.wear.arm) || 0, ao = Shared.armorTier(inv), armor = dollSlotHtml('arm', ao ? Shared.ARMOR_EMOJI[ao] : '🦺', 'เกราะ', aw && Shared.ARMOR[aw] ? Shared.ARMOR[aw].name : ao ? 'ไม่ได้สวม' : 'ยังไม่มี (ร้านชุดเกราะ)');
   let strip = '';
-  if (bagDollSel === 'tool') strip = TOOL_LIST.map(k => { const inf = toolInfo(k), lk = toolLocked(k); return `<button class="witem${selTool === k ? ' on' : ''}${lk ? ' lockw' : ''}" data-dtool="${k}" ${lk ? 'disabled' : ''}><b>${inf.e}</b>${TOOL_SHORT[k]}<small>${lk ? '🔒 ยังไม่มี' : selTool === k ? '✅ ถืออยู่' : 'กดเพื่อถือ'}</small></button>`; }).join('');
+  if (bagDollSel === 'arm') strip = `<button class="witem${aw ? '' : ' on'}" data-darm="0"><b>ไม่สวม</b><small>${aw ? 'กดเพื่อถอด' : '✅ ไม่ได้สวม'}</small></button>` + Object.keys(Shared.ARMOR).map(n => { const own = !!inv['armor_' + n], on = aw === +n; return `<button class="witem${on ? ' on' : ''}${own ? '' : ' lockw'}" data-darm="${+n}" ${own ? '' : 'disabled'}><b>${esc(Shared.ARMOR[n].name)}</b><small>${on ? '✅ สวมอยู่' : own ? 'กดเพื่อสวม' : '🔒 ซื้อที่ร้านชุดเกราะ'}</small></button>`; }).join('');
+  else if (bagDollSel === 'tool') strip = TOOL_LIST.map(k => { const inf = toolInfo(k), lk = toolLocked(k); return `<button class="witem${selTool === k ? ' on' : ''}${lk ? ' lockw' : ''}" data-dtool="${k}" ${lk ? 'disabled' : ''}><b>${inf.e}</b>${TOOL_SHORT[k]}<small>${lk ? '🔒 ยังไม่มี' : selTool === k ? '✅ ถืออยู่' : 'กดเพื่อถือ'}</small></button>`; }).join('');
   else if (WEAR[bagDollSel]) strip = WEAR[bagDollSel].map(it => { const own = wearHave(bagDollSel, it), on = wr[bagDollSel] === it.id; return `<button class="witem${on ? ' on' : ''}${own ? '' : ' lockw'}" data-dwear="${esc(bagDollSel + ':' + it.id)}" ${own ? '' : 'disabled'}><b>${esc(it.name)}</b><small>${on ? '✅ สวมอยู่' : own ? 'กดเพื่อสวม' : '🔒 ' + it.price + ' 🪙'}</small></button>`; }).join('');
-  return hd + `<div class="doll"><div class="dcol">${DOLL_SLOTS.map(([c]) => wslot(c)).join('')}</div><canvas id="bagDoll" width="96" height="156" aria-label="ตัวละครของคุณ"></canvas><div class="dcol">${hand}${shield}${wslot('acc')}</div></div>`
+  return hd + `<div class="doll"><div class="dcol">${DOLL_SLOTS.map(([c]) => wslot(c)).join('')}</div><canvas id="bagDoll" width="96" height="156" aria-label="ตัวละครของคุณ"></canvas><div class="dcol">${hand}${shield}${armor}${wslot('acc')}</div></div>`
     + (strip ? `<div class="dstrip">${strip}</div>` : '') + `<div class="dlink"><button class="btn small" data-bgo="look">🎨 เลือกสีที่ตู้เสื้อผ้า</button></div>`;
 }
 function drawBagDoll() { // วาดร่างตัวละครลงแผงสวมใส่ (แบบเดียวกับพรีวิวตู้เสื้อผ้า) ข้อมูลผิดรูปไม่ทำให้พัง
@@ -1881,6 +1885,7 @@ function drawBagDoll() { // วาดร่างตัวละครลงแ�
 function bagDollClick(e) { // คืน true ถ้าจัดการแล้ว
   const hd = e.target.closest('[data-bdollhd]'); if (hd) { bagDoll = !bagDoll; ls.set('mw_bag_doll', bagDoll ? '1' : '0'); if (!bagDoll) bagDollSel = ''; renderBag(); return true; }
   const dt = e.target.closest('[data-dtool]'); if (dt) { const t = dt.dataset.dtool; if (!TOOL_LIST.includes(t) || toolLocked(t)) return true; selTool = t; ls.set('mw_tool', t); slot = 0; hidePicker(); renderHud(); toast(`${toolInfo(t).e} ${TOOL_SHORT[t]}`); playSfx('click'); renderBag(); return true; }
+  const da = e.target.closest('[data-darm]'); if (da) { const n = +da.dataset.darm; if (n === 0 || inv['armor_' + n]) { applyLook({ arm: n }); playSfx('click'); } return true; }
   const dw = e.target.closest('[data-dwear]'); if (dw) { const [cat, id] = dw.dataset.dwear.split(':'); const it = (WEAR[cat] || []).find(x => x.id === id); if (it && wearHave(cat, it)) { applyLook({ [cat]: id }); playSfx('click'); } return true; }
   const ds = e.target.closest('[data-doll]'); if (ds) { const k = ds.dataset.doll; if (k === 'shield') { toast('🛡️ โล่ยังไม่เปิดนะ ไว้ใช้ตอนหอคอย'); return true; } bagDollSel = bagDollSel === k ? '' : k; renderBag(); { const sp = document.querySelector('.dstrip'); if (sp && sp.scrollIntoView) sp.scrollIntoView({ block: 'nearest' }); } const f = document.querySelector(`[data-doll="${k}"]`); if (f && e.detail === 0) f.focus(); return true; }
   return false;
@@ -4314,9 +4319,11 @@ function drawHeldTool(p, now, ctx = mainCtx) {
   const WOOD = '#9c6a35', WD = '#6b4423', STEEL = '#b9c2cc', STH = '#e8eef3';
   const a0 = dir >= 2 ? 0.95 : 0.3; // มุมถือจอบ/ขวาน/อีเต้อตอนไม่ได้ใช้: ด้านข้างถือเอียงไปข้างหน้ามากกว่า (ไม่พาดหน้า) ตอนใช้ตามเฟรม PixelAction
   const isHoe = HOE_E.has(e), isAxe = AXE_E.has(e), isRod = ROD_E.has(e), isCan = WATER_EMOJIS.has(e), isPick = !isHoe && PixelAction.kindOf(e) === 'mine', ang = F ? F.a : a0;
-  if (isHoe || isAxe || isRod || isCan || isPick) {
+  const isSword = e.replace(/️/g, '') === '🗡'; // ดาบไม้: วาดโดย PixelAction.drawSword (พิกัดเหมือนขวาน มืออยู่ 0,0 ใบดาบชี้ขึ้น)
+  if (isHoe || isAxe || isRod || isCan || isPick || isSword) {
     ctx.save(); ctx.translate(hx, hy); ctx.scale(fx, 1);
-    if (isPick) { // อีเต้อ: ด้ามไม้ + หัวโค้งปลายแหลมสองข้าง สีตามระดับ (PixelUI.PICK_PAL) ขนาดเท่าขวาน
+    if (isSword) { ctx.rotate(ang); PixelAction.drawSword(ctx, OUT, 1, now); }
+    else if (isPick) { // อีเต้อ: ด้ามไม้ + หัวโค้งปลายแหลมสองข้าง สีตามระดับ (PixelUI.PICK_PAL) ขนาดเท่าขวาน
       const [pb, ph, ps] = PixelUI.PICK_PAL[e] || ['#8d99a6', '#c9d3dc', '#6c7782'];
       ctx.rotate(ang); R(-2, -12, 4, 14, OUT); R(-1, -11, 2, 12, WOOD); R(0, -11, 1, 12, WD);
       R(-8, -16, 17, 5, OUT); R(-10, -13, 3, 4, OUT); R(8, -13, 3, 4, OUT); R(-7, -15, 15, 3, pb); R(-7, -15, 15, 1, ph); R(-9, -12, 2, 2, ps); R(8, -12, 2, 2, ps); R(-2, -13, 4, 2, ps);

@@ -92,10 +92,11 @@ module.exports = {
     if (item.startsWith('seed_')) { const sw = S.plantWait(item.slice(5), null, Date.now()); if (sw) this.toast(p, `🔒 ซื้อได้ แต่ปลูกได้ตอน${sw.s.emoji} ${sw.s.name} (อีก ${S.seasonWaitText(sw.ms)}) เก็บเมล็ดไว้ก่อนนะ`); else if (!S.inSeason(item.slice(5), Date.now())) { const sx = S.seasonOf('crops', item.slice(5)); if (sx) this.toast(p, `🍂 ตอนนี้นอกฤดู ปลูกได้แต่ติดผลน้อย (ฤดูที่เหมาะคือ${sx.emoji} ${sx.name}) ปลูกตอนในฤดูจะได้ผลเต็ม`); } } // เมล็ดนอกฤดู: ซื้อเก็บได้ แต่ปลูกไม่ได้
     this.sfxTo(p, 'coin');
     if (info.wear) p.rec.wear[info.wear.cat] = info.wear.id; // ซื้อแล้วสวมให้เลย
+    if (info.armor) p.rec.wear.arm = info.armor;             // ซื้อชุดเกราะแล้วสวมให้เลย
     if (info.pet) this.setPet(p, info.pet);                  // ซื้อสัตว์เลี้ยงแล้วให้เดินตามเลย
     if (info.veh) this.setVeh(p, info.veh);                  // ซื้อยานพาหนะแล้วขี่เลย
     if (item === 'lamp') p.rec.lamp = p.lamp = true;         // ซื้อตะเกียงแล้วจุดให้เลย
-    if (info.wear || item === 'lamp') { this.broadcastLook(p); send(p, { t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }); }
+    if (info.wear || info.armor || item === 'lamp') { this.dirty = true; this.broadcastLook(p); send(p, { t: 'look', id: p.id, color: p.color, hat: p.hat, pc: p.pc, wear: p.wear, lamp: p.lamp }); }
   },
   sell(p, item, n) {
     const kind = this.nearShopKind(p);
@@ -145,6 +146,7 @@ module.exports = {
     if (item === p.rec.giftItem) return this.toast(p, '🎁 ของขวัญต้อนรับขายคืนไม่ได้ เก็บไว้เป็นที่ระลึกนะ');
     this.add(p, item, -1); this.add(p, 'coin', v, 'sellback');
     if (info.wear && p.rec.wear[info.wear.cat] === info.wear.id) p.rec.wear[info.wear.cat] = S.WEAR_DEFAULT[info.wear.cat];
+    if (info.armor && p.rec.wear.arm === info.armor) delete p.rec.wear.arm; // ขายคืนชิ้นที่สวม = ถอด
     if (item === 'lamp') p.rec.lamp = p.lamp = false;
     if (info.veh && p.veh === info.veh) this.setVeh(p, '');
     if (info.pet && p.rec.pet === info.pet) this.setPet(p, Object.keys(S.COMPANIONS).find(c => p.rec.inv['pet_' + c] > 0) || '');

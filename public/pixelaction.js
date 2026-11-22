@@ -23,7 +23,7 @@ const PixelAction = (() => {
   };
   const PICKS = new Set(['🪝', '🧲', '⚓', '🔱', '🏹', '🪃', '💨', '🔌', '🧨', '💣', '⚒', '⛏'].concat(typeof Shared !== 'undefined' ? Object.values(Shared.HOE_EMOJI) : [])); // จอบ 10 ระดับมาจาก Shared.HOE_EMOJI • อุปกรณ์ขุดทุกระดับ (10 ชนิด) (ไอคอนพิกเซลใน pixelui.js) + จอบ
   const AXES_E = new Set(['🪓', '🔪', '🪚', '🏏', '🥍', '🏑', '🏒', '🪄', '🪡', '🪢']), RODS_E = new Set(['🎣', '🥢', '🦯', '🪈', '🎺', '🎸', '🪕', '🎷', '🥁', '🪘']); // ขวาน/คัน 10 ระดับ (ตรงกับ Shared.AXE_EMOJI / ROD_EMOJI)
-  const kindOf = held => { const e = (held || '').replace(/️/g, ''); return PICKS.has(e) ? 'mine' : AXES_E.has(e) ? 'chop' : RODS_E.has(e) ? 'fish' : ''; };
+  const kindOf = held => { const e = (held || '').replace(/️/g, ''); return PICKS.has(e) ? 'mine' : AXES_E.has(e) || e === '🗡' ? 'chop' : RODS_E.has(e) ? 'fish' : ''; };
   // เฟรมปัจจุบันของผู้เล่น: null = ไม่ได้ทำท่า (ใช้ท่าถือปกติ) • t = ms หลังเริ่มท่า
   function frame(p, now) {
     const base = kindOf(p.held), k = p.useK === 'reel' && base === 'fish' ? 'reel' : base, S = SHEETS[k]; if (!S || !p.useAt || p.sit) return null; // p.useK = ท่าที่เลือกตอนเริ่ม (ตกปลาอยู่แล้ว = ดึงเบ็ด)
@@ -117,6 +117,14 @@ const PixelAction = (() => {
     if (t < 550) { const k = t / 550, e = k; return { x: fx + (px - fx) * e, y: fy + (py - fy) * e - Math.sin(Math.PI * k) * 46, rot: Math.round(k * 8) * Math.PI / 4, flip: (Math.round(k * 8) & 2) ? -1 : 1, alpha: 1, held: false }; }
     return { x: px, y: py + (((t - 550) / 160 | 0) & 1 ? -1 : 0), rot: 0, flip: 1, alpha: t > 1400 ? 1 - (t - 1400) / 200 : 1, held: true };
   }
-  return { SHEETS, kindOf, frame, dur, front, burst, BURST, oreShake, crack, shatter, treeSway, treeFall, fishArc };
+  // ดาบไม้ในมือ: เรียกใน drawHeldTool หลัง ctx.translate(hx,hy); ctx.scale(fx,1); ctx.rotate(ang) (ระบบพิกัดเดียวกับขวาน: ด้ามชี้ขึ้น -y, มืออยู่ที่ 0,0)
+  function drawSword(ctx, OUT, tier = 1, now = 0) {
+    const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+    R(-2, -3, 4, 6, OUT); R(-1, -2, 2, 4, '#9c6636'); R(0, -2, 1, 4, '#6b4423'); R(-1, -1, 2, 1, '#e8d6a8'); R(-1, 1, 2, 1, '#e8d6a8'); // ด้ามพันเชือก
+    R(-6, -7, 12, 5, OUT); R(-5, -6, 10, 3, '#8a5a2c'); R(-5, -6, 10, 1, '#b98650'); R(-5, -4, 2, 1, '#6b4423'); // การ์ดกั้น
+    R(-3, -24, 6, 18, OUT); R(-2, -22, 4, 15, '#bd8447'); R(-2, -22, 1, 15, '#dba96c'); R(1, -22, 1, 15, '#8a5a2c'); R(-1, -24, 2, 2, '#bd8447'); R(-2, -23, 2, 1, '#dba96c'); // ใบไม้
+    R(-1, -19, 1, 1, '#f1d4a0'); R(-1, -14, 1, 1, '#f1d4a0');
+  }
+  return { SHEETS, kindOf, drawSword, frame, dur, front, burst, BURST, oreShake, crack, shatter, treeSway, treeFall, fishArc };
 })();
 if (typeof module !== 'undefined') module.exports = PixelAction;

@@ -7,10 +7,15 @@ const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.par
 const w = new World('closedshop');
 const p = w.join(mkWs(), 'Tester', '#fff').p; p.ws2 = p.ws || null;
 const ws = () => w.players.get(p.id) && p.ws;
-const wb = S.BUILDINGS.find(b => b.kind === 'weapon');
-assert.ok(wb && wb.closed, 'ต้องมีร้านอาวุธที่ปิดอยู่');
-assert.ok(!S.SHOPS.weapon, 'ห้ามมี SHOPS.weapon');
-{ const ab = S.BUILDINGS.find(b => b.kind === 'armor'); assert.ok(ab && ab.closed, 'ต้องมีร้านชุดเกราะที่ปิดอยู่'); assert.ok(!S.SHOPS.armor, 'ห้ามมี SHOPS.armor'); assert.strictEqual(ab.x0 - wb.x1, 2, 'ร้านชุดเกราะอยู่ข้างขวาร้านอาวุธ เว้น 1 ช่อง'); assert.strictEqual(ab.y0, wb.y0, 'แถวเดียวกับร้านอาวุธ'); }
+// ร้านอาวุธ/ชุดเกราะเปิดแล้ว (W1 wood-sword-armor) → ทดสอบกลไก closed ด้วยร้านปลอมที่ push ลง BUILDINGS ชั่วคราว (ใช้ตัวอาคารของร้านอาวุธ ไม่มี SHOPS)
+assert.ok(S.SHOPS.weapon && S.SHOPS.armor, 'ร้านอาวุธ/ชุดเกราะต้องเปิดแล้ว');
+const real = S.BUILDINGS.find(b => b.kind === 'weapon'); assert.ok(real && !real.closed, 'ร้านอาวุธจริงไม่มี closed');
+const ab0 = S.BUILDINGS.find(b => b.kind === 'armor'); assert.ok(ab0 && !ab0.closed, 'ร้านชุดเกราะจริงไม่มี closed'); assert.strictEqual(ab0.x0 - real.x1, 2); assert.strictEqual(ab0.y0, real.y0);
+const realIdx = S.BUILDINGS.indexOf(real);
+const wb = Object.assign({}, real, { kind: 'weapon', closed: '🚧 ร้านอาวุธปิดปรับปรุงชั่วคราวน้า แวะมาใหม่เร็วๆ นี้!' });
+const wbSaved = S.SHOPS.weapon; // ปิดร้านชั่วคราวทั้งใน BUILDINGS และ SHOPS
+S.BUILDINGS[realIdx] = wb; delete S.SHOPS.weapon;
+process.on('exit', () => { S.BUILDINGS[realIdx] = real; S.SHOPS.weapon = wbSaved; });
 p.rec.inv = { coin: 5000, seed_carrot: 3, crop_carrot: 5, bait: 2, wood: 4 }; p.rec.hunger = 100;
 const stand = (x, y) => { p.x = (x + 0.5) * TS; p.y = (y + 0.5) * TS; };
 const snap = () => JSON.stringify({ inv: p.rec.inv, sk: p.rec.skills, xp: p.rec.xp, lv: p.rec.level, dur: p.rec.dur, fix: p.rec.fix });
@@ -28,12 +33,6 @@ const [cx, cy] = wb.counter[0];
     assert.ok(!m.some(x => x.t === 'shop'), nm + ' ต้องไม่เปิดร้าน');
   }
   console.log('  (1) act ที่ร้านอาวุธ: toast closed ไม่เปิดร้าน');
-}
-// (1b) ร้านชุดเกราะ (ปิดเหมือนกัน): act ที่ประตู/ตัวอาคาร = toast closed ไม่เปิดร้าน
-{
-  const ab = S.BUILDINGS.find(b => b.kind === 'armor'), [ax, ay] = ab.counter[0], m = msgsOf(); stand(ax, ay + 1);
-  for (const [tx, ty] of [[ax, ay], [ab.x0, ab.y0], [ab.x1, ab.y0]]) { m.length = 0; p.lastAct = 0; act(tx, ty); assert.ok(m.some(x => x.t === 'msg' && x.text === ab.closed), 'ร้านชุดเกราะต้องได้ข้อความร้านปิด'); assert.ok(!m.some(x => x.t === 'shop'), 'ร้านชุดเกราะต้องไม่เปิดร้าน'); }
-  console.log('  (1b) act ที่ร้านชุดเกราะ: toast closed ไม่เปิดร้าน');
 }
 // (2) ส่งข้อความระบบต่างๆ ตรงๆ ที่หน้าร้านอาวุธ: เหรียญ/ของ/XP ไม่เปลี่ยน
 {
