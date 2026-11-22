@@ -3584,38 +3584,6 @@ const FONT = '"Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif';
 // พื้นโลกวาดเป็นพิกเซลที่ครึ่งความละเอียด (16 px ต่อช่อง ดู pixelart.js) แล้วขยาย 2 เท่าตอนวาด
 // ของตกแต่งเดิมวาดที่พิกัดเกมผ่าน g.scale(0.5) จึงกลายเป็นพิกเซลไปด้วย ส่วนตัวหนังสือ/อีโมจิไปอยู่ชั้น baseHi (ความละเอียดเต็ม) จะได้คมชัด
 let baseHi;
-// ชีวิตริมสระ (ภาพจาก PondArt): กอบัวไหวบนน้ำ กอกกริมหาด นกกระยางยืนริมหาด เป็ดลอยน้ำ • ตำแหน่งตายตัวจากแฮชของช่อง ไม่ขวางทาง ไม่เซฟ
-let pondDeco = null;
-function drawPondLife(x0, x1, y0, y1, now, POND) {
-  if (!pondDeco) { // สแกนผังเมืองครั้งเดียว: ช่องหาดทรายที่ติดน้ำในแถบสระ
-    const shore = [];
-    for (let y = POND.cy - POND.ry - 4; y <= POND.cy + POND.ry + 4; y++) for (let x = POND.cx - POND.rx - 4; x <= POND.cx + POND.rx + 4; x++) {
-      if (!MAP[y] || MAP[y][x] !== T.SAND) continue;
-      const IL = Shared.ISLAND; if (x >= IL.x0 - 2 && x <= IL.x1 + 2 && y >= IL.y0 - 3 && y <= IL.y1 + 2) continue; // เกาะทรายมีป้ายออกทะเล ไม่วางของทับ
-      if (![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => MAP[y + b] && MAP[y + b][x + a] === T.WATER)) continue;
-      shore.push({ x, y, h: hash(x, y, 31) });
-    }
-    const reeds = shore.filter(s => s.h < 0.16), egrets = shore.filter(s => s.h > 0.92).sort((a, b) => b.h - a.h).slice(0, 2);
-    pondDeco = { reeds, egrets };
-  }
-  const f4 = Math.floor(now / 260) % 4, vis = (x, y) => x >= x0 - 2 && x <= x1 + 2 && y >= y0 - 2 && y <= y1 + 3;
-  const put = (spr, cx, by) => ctx.drawImage(spr, Math.round(cx - spr.width), Math.round(by - spr.height * 2), spr.width * 2, spr.height * 2); // วางกึ่งกลางแนวนอน ฐานที่ by
-  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { // กอบัวใหญ่ไหวตามระลอก: บนช่องน้ำที่ล้อมด้วยน้ำ (ไม่ชิดฝั่ง/สะพาน)
-    if (MAP[y][x] !== T.WATER || hash(x, y, 21) > 0.022) continue;
-    let all = true; for (let b = -1; b <= 1 && all; b++) for (let a = -1; a <= 1; a++) if (!MAP[y + b] || MAP[y + b][x + a] !== T.WATER) { all = false; break; }
-    if (all) put(PondArt.lotus(Math.floor(now / 340 + hash(x, y, 22) * 4) % 4), (x + 0.5) * TS, (y + 0.5) * TS + 18);
-  }
-  for (const s of pondDeco.reeds) if (vis(s.x, s.y)) put(PondArt.reeds(Math.floor(now / 330 + s.h * 40) % 4), (s.x + 0.5) * TS, (s.y + 1) * TS - 2);
-  for (const s of pondDeco.egrets) if (vis(s.x, s.y)) put(PondArt.egret(Math.floor(now / 520 + s.h * 9) % 4), (s.x + 0.5) * TS, (s.y + 1) * TS - 2);
-  for (let i = 0; i < 2; i++) { // เป็ดสองตัวลอยเอื่อยๆ ทางตะวันออกของสะพาน (ข้ามถ้าไม่ใช่น้ำ)
-    const a = now * (0.00007 + i * 0.00003) + i * 3.1, dx = POND.cx + 8 + i * 2.5 + 2.2 * Math.sin(a), dy = POND.cy + 0.5 - i * 1.2 + 1.1 * Math.sin(a * 1.3 + 1);
-    if (!vis(dx, dy) || !MAP[Math.floor(dy)] || MAP[Math.floor(dy)][Math.floor(dx)] !== T.WATER) continue;
-    const ds = PondArt.duck(Math.floor(now / 240 + i * 2) % 4), px = Math.round((dx + 0.5) * TS), py = Math.round((dy + 0.5) * TS);
-    ctx.fillStyle = 'rgba(8,60,86,.2)'; ctx.fillRect(px - 10, py + 6, 20, 3);
-    if (Math.cos(a) < 0) { ctx.save(); ctx.translate(px, 0); ctx.scale(-1, 1); ctx.drawImage(ds, -ds.width, py - ds.height, ds.width * 2, ds.height * 2); ctx.restore(); }
-    else ctx.drawImage(ds, px - ds.width, py - ds.height, ds.width * 2, ds.height * 2);
-  }
-}
 // ---------- สิ่งก่อสร้างจากโครงการพัฒนาเมือง ----------
 function drawStructures(g, gh) {
   const B = Shared.BRIDGE, wat = (x, y) => !!MAP[y] && MAP[y][x] === T.WATER;
@@ -5662,15 +5630,7 @@ function step(now) {
     // ใช้ 0.7·rx กับ 0.6·ry ทำให้ทุกจุดอยู่ในสระแน่นอน (0.7² + 0.6² < 1)
     const fx = (POND.cx + 0.7 * POND.rx * Math.sin(fa) + 0.5) * TS, fy = (POND.cy + 0.6 * POND.ry * Math.sin(fb) + 0.5) * TS;
     if (fx < camX - TS || fx > camX + vw + TS || fy < camY - TS || fy > camY + vh + TS) continue;
-    const bob = Math.round(Math.sin(now / 520 + i * 1.7)); // ว่ายขึ้นลงเล็กน้อย
-    if (PondArt.ready()) { // ปลาโคอิจากชุดภาพสระ: หันหัวตามทิศที่ว่ายจริง (เวกเตอร์ความเร็วของเส้นทางวงรี) หางส่ายตามเฟรม
-      const vx = 0.7 * POND.rx * Math.cos(fa) * (0.00010 + i * 0.000025), vy = 0.6 * POND.ry * Math.cos(fb) * (0.00008 + i * 0.00002);
-      const d16 = (Math.round(Math.atan2(vx, -vy) / (Math.PI * 2) * 16) + 16) % 16, ks = PondArt.koi(i % 3, Math.floor(now / 160 + i) % 4, d16);
-      ctx.fillStyle = 'rgba(8,60,86,.22)'; ctx.fillRect(Math.round(fx) - 14, Math.round(fy) + bob + 8, 28, 4); // เงาปลาบนพื้นสระ
-      ctx.globalAlpha = 0.88; ctx.drawImage(ks, Math.round(fx) - ks.width, Math.round(fy) + bob - ks.height, ks.width * 2, ks.height * 2); ctx.globalAlpha = 1;
-      continue;
-    }
-    const fs = PixelArt.fish(i, wag);
+    const fs = PixelArt.fish(i, wag), bob = Math.round(Math.sin(now / 520 + i * 1.7)); // ว่ายขึ้นลงเล็กน้อย
     ctx.save(); ctx.translate(Math.round(fx), Math.round(fy) + bob); ctx.scale(ahead, 1);
     ctx.fillStyle = 'rgba(8,60,86,.22)'; ctx.fillRect(-12, 6, 24, 3); // เงาปลาบนพื้นสระ
     ctx.globalAlpha = 0.78; ctx.drawImage(fs, -9 * 2, -5 * 2, fs.width * 2, fs.height * 2); // อยู่ใต้น้ำ สีจางอมฟ้า
@@ -5683,11 +5643,9 @@ function step(now) {
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     if (MAP[y][x] !== T.WATER || hash(x, y, 9) > 0.09) continue;
     const big = hash(x, y, 11) < 0.5, fl = hash(x, y, 13), kind = big ? (fl < .22 ? 3 : fl < .36 ? 4 : fl < .5 ? 5 : 0) : (hash(x, y, 15) < .5 ? 1 : 2);
-    const px = Math.round((x + 0.5) * TS), py = Math.round((y + 0.5) * TS);
-    const ls = big && PondArt.ready() ? PondArt.pad(kind === 0 ? 0 : kind === 3 ? 1 : kind === 4 ? (hash(x, y, 17) < .5 ? 2 : 3) : 0) : PixelArt.lily(kind); // ใบใหญ่ใช้ใบบัวจากชุดสระ (ธรรมดา/ตูม/เต่าทอง/กบ) ใบเล็กยังเป็นของเดิม
+    const ls = PixelArt.lily(kind), px = Math.round((x + 0.5) * TS), py = Math.round((y + 0.5) * TS);
     ctx.drawImage(ls, px - ls.width, py - ls.height, ls.width * 2, ls.height * 2); // ใบบัวพิกเซล (ใบใหญ่/เล็ก/มีดอกบัว) วางตายตัวตามช่อง
   }
-  if (!scene && PondArt.ready()) drawPondLife(x0, x1, y0, y1, now, POND);
   // แปลงเช่า: เส้นขอบประ + ป้ายชื่อคนเช่า (แปลงว่างเส้นจาง)
   if (inTown()) for (const P of Shared.FARM_RENT.plots) {
     if (P.x1 < x0 || P.x0 > x1 || P.y1 < y0 || P.y0 > y1) continue;
