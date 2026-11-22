@@ -189,6 +189,7 @@ function handle(m) {
     case 'pst': petSt = m.pst || {}; petNames = m.names || {}; refreshOpen(); updatePetBtn(); break;
     case 'ore': { if (cave) { const k = m.x + ',' + m.y; if (m.k) { oreK.set(k, m.k); oreS.set(k, m.s | 0); MAP[m.y][m.x] = T.ORE; oreBurst.delete(k); } else { oreBurst.set(k, { t: performance.now(), k: oreK.get(k), s: oreS.get(k) | 0 }); oreK.delete(k); oreS.delete(k); oreHit.delete(k); MAP[m.y][m.x] = T.CAVE; } } break; } // ก้อนแร่ในถ้ำเกิด/แตก
     case 'tree': { const tm = tmap(); if (tm[m.y]) { if (m.on) { if (tm[m.y][m.x] === T.GRASS) tm[m.y][m.x] = T.TREE; if (m.k) treeKinds.set(m.x + ',' + m.y, m.k); } else if (isChoppable(tm, m.x, m.y)) { const tk = m.x + ',' + m.y; if (inTown()) felled.set(tk, { t: performance.now(), k: treeKinds.get(tk), side: me && me.x > (m.x + 0.5) * TS ? -1 : 1 }); tm[m.y][m.x] = T.GRASS; treeKinds.delete(tk); treeHit.delete(tk); } } break; }
+    case 'luck': luckSt = m; openLuck(); break;
     case 'lotto': lottoSt = m.l; updateNoticeDot(); if (townShown()) renderTown(); break;
     case 'cookcd': cookReadyAt = Date.now() + (+m.ms || 0); if (!$('shop').classList.contains('hidden') && shopKind === 'food' && farmTab === 'cook') renderShop(); break;
     case 'mkcd': makeReadyAt[m.st] = Date.now() + (+m.ms || 0); { const stMap = { forge: ['mine', 'forge'], bale: ['farm', 'bale'] }; const sm = stMap[m.st]; if (sm && !$('shop').classList.contains('hidden') && shopKind === sm[0] && farmTab === sm[1]) renderShop(); } break; // WP-30: คูลดาวน์สถานีหลอม/อัดฟาง
@@ -1063,6 +1064,28 @@ const LOTTO_INFO = [ // คำอธิบาย/โอกาสของแต�
   ['เลขมากกว่าหรือน้อยกว่ารางวัล 1 อยู่ 1 (เช่น ออก 123 → 122 / 124)', '1 ใน 500'], ['หลักสุดท้ายตรงรางวัล 1', '1 ใน 10']];
 const fmtN = n => Number(n || 0).toLocaleString('en-US');
 function lottoPrizeAmt(P, pot) { return Math.max(P.min || 0, Math.min(Math.floor(pot * P.pct), P.cap)); } // เงินรางวัลตอนนี้ตามกองจริง
+let luckSt = null;
+function closeLuck() { $('luckBox').classList.add('hidden'); }
+function openLuck() { // หน้าต่างเลขเด็ดจากต้นตะเคียน: แสดงสิ่งที่เซิร์ฟเวอร์ส่งมา ซื้อ = ส่งคำขอ เซิร์ฟเวอร์ตัดเงินเอง
+  const m = luckSt, box = $('luckBox'); if (!m) return; if (box.classList.contains('hidden')) closeOthers('luckBox');
+  const nums = Array.isArray(m.nums) ? m.nums : [], got = new Set((m.bought || []).map(String)), price = m.price | 0, can = m.open && m.lvOk;
+  const pn = $('luckPanel'); pn.textContent = '';
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+  pn.appendChild(el('div', 'luckTitle', '🙏 ต้นตะเคียนให้เลขเด็ด'));
+  if (!m.lvOk) pn.appendChild(el('div', 'luckNote', 'ต้องผ่านคู่มือเริ่มต้นและเลเวลถึงเกณฑ์ก่อน ถึงจะซื้อเลขเด็ดได้นะ'));
+  else if (!m.open) pn.appendChild(el('div', 'luckNote', 'ปิดรับตั๋วงวดนี้ รอหลังออกรางวัลนะ'));
+  for (const n of nums) {
+    const row = el('div', 'luckRow'), has = got.has(String(n));
+    row.appendChild(el('span', 'luckNum', String(n).padStart(3, '0')));
+    const b = el('button', 'btn small' + (has ? ' muted' : ''), has ? '✓ ซื้อแล้ว' : `ซื้อ 🪙${price}`); b.disabled = has || !can;
+    b.onclick = () => send({ t: 'lotto', a: 'buy', nums: [n], luck: 1 }); row.appendChild(b); pn.appendChild(row);
+  }
+  const left = nums.filter(n => !got.has(String(n)));
+  if (left.length > 1) { const b = el('button', 'btn luckAll', `ซื้อทั้งหมด 🪙${left.length * price}`); b.disabled = !can; b.onclick = () => send({ t: 'lotto', a: 'buy', nums: left, luck: 1 }); pn.appendChild(b); }
+  pn.appendChild(el('div', 'luckHint', 'เลขสุ่ม ไม่รับประกันว่าถูกรางวัลนะ'));
+  const c = el('button', 'btn small muted luckClose', 'ปิด'); c.onclick = closeLuck; pn.appendChild(c);
+  box.classList.remove('hidden');
+}
 function lottoCard() { // Lucky Lotto 3 แท็บ: กติกา / ซื้อตั๋ว / ผลรางวัล • เลขชนะสุ่มปิดผนึกไว้ก่อน ตรวจ hash ได้หลังเปิดผล
   const L = lottoSt, esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'), LT = Shared.LOTTO, PZ = LT.prize;
   if (!L) return '<p style="opacity:.7">กำลังโหลด…</p>';
@@ -1662,7 +1685,7 @@ if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
 } else $('fsBtn').remove();
 
 // ---------- กระเป๋า / อาชีพ / ตัวละคร ----------
-const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'settings', 'report', 'ask', 'gift', 'pinBox', 'store'].some(id => !$(id).classList.contains('hidden'));
+const modalOpen = () => ['bag', 'shop', 'people', 'archub', 'status', 'quest', 'ach', 'bug', 'arcade', 'trade', 'cinema', 'town', 'admin', 'mapEdit', 'plots', 'homeChoice', 'settings', 'report', 'ask', 'gift', 'pinBox', 'store', 'luckBox'].some(id => !$(id).classList.contains('hidden'));
 // เปิดหน้าต่างใหม่ = ปิดหน้าต่างอื่นในกลุ่มนี้ + เมนูหลัก (ไม่แตะ ask/pinBox/gift/trade/arcade/cinema/admin/mapEdit ที่มีผลข้างเคียง)
 function closeOthers(keep) {
   const cl = { bag: closeBag, shop: closeShop, people: closePeople, archub: closeHub, status: closeStatus, bug: closeBug, quest: closeQuest, ach: closeAch, town: closeTown, plots: closePlots, store: closeStore, homeChoice: closeHomeChoice, settings: closeSettings };
@@ -2427,8 +2450,16 @@ function houseAct(now) { // ปุ่ม A/Space ในบ้าน: เก้�
   const door = Shared.HOUSE;
   if (me.x >= door.door[0] * TS && me.x <= (door.door[1] + 1) * TS && me.y >= (door.y1 - 1.2) * TS && me.y <= door.y1 * TS + 8) { lastAct = now; actGap = 300; walkHouse(Shared.HOUSE_SPAWN.x, (door.y1 + 0.5) * TS); }
 }
+const luckyAt = (tx, ty) => { const L = Shared.JUNGLE.lucky; return !!L && tx === L.x && ty === L.y; };
+function luckyNear() { // หันหน้าหาต้นตะเคียน (ช่องหน้าเป็นต้น หรืออยู่ในระยะขอ ≤2 ช่องและหันไปทางต้น)
+  const L = Shared.JUNGLE.lucky; if (!L || !me) return false;
+  const [fx, fy] = Shared.facing(me.x, me.y, me.dir); if (luckyAt(fx, fy)) return true;
+  const [px, py] = myTile(), v = [[0, 1], [0, -1], [-1, 0], [1, 0]][me.dir] || [0, 1];
+  return cheb(px, py, L.x, L.y) <= (Shared.JUNGLE.luckyAskR || 2) && ((L.x - px) * v[0] + (L.y - py) * v[1]) > 0;
+}
 function jungleAct(now, tx, ty) {
   const [fx, fy] = Shared.facing(me.x, me.y, me.dir);
+  if (tx !== undefined ? luckyAt(tx, ty) : luckyNear()) { stopWalk(); lastAct = now; actGap = 500; if (tx !== undefined) { const L = Shared.JUNGLE.lucky, [px, py] = myTile(); me.dir = Math.abs(L.x - px) > Math.abs(L.y - py) ? (L.x < px ? 2 : 3) : (L.y < py ? 1 : 0); } send({ t: 'lotto', a: 'luck' }); return; } // ต้นตะเคียน: ขอเลขเด็ด (เซิร์ฟเวอร์ตรวจระยะ/เงื่อนไข)
   if (tx === undefined && Shared.JUNGLE.rows[fy] && Shared.JUNGLE.rows[fy][fx] === 'C' && fx === 28 && fy === 7) { lastAct = now; actGap = 600; toast('🪧 ทางออกอยู่ด้านบน เดินขึ้นไปที่ซุ้มหินเพื่อกลับหมู่บ้านได้เลย'); return; } // ป้ายทางออกหน้าค่าย
   const o = { t: 'act', tool: '' };
   if (tx !== undefined) { o.tx = tx; o.ty = ty; const [px, py] = myTile(), dx = tx - px, dy = ty - py; if (dx || dy) me.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0); }
@@ -2442,12 +2473,13 @@ function jungleCtx() { // บริบทของปุ่ม A ในป่า
   const v = [[0, 1], [0, -1], [-1, 0], [1, 0]][me.dir] || [0, 1];
   for (const c of creatures.values()) { const dx = c.dx - me.x, dy = c.dy - me.y, d = Math.hypot(dx, dy); if (d < TS * 1.25 && (d < 8 || (dx * v[0] + dy * v[1]) / d > 0.5)) return '⚔️'; }
   const [fx, fy] = Shared.facing(me.x, me.y, me.dir);
+  if (luckyNear()) return '🙏';
   if (Shared.JUNGLE.rows[fy] && Shared.JUNGLE.rows[fy][fx] === 'h' && jHerb.get(fx + ',' + fy) !== false) return '🌿';
   return '✋';
 }
 function jungleHud(now) { // ทุกเฟรม: ป้ายปุ่ม A ตามบริบท + นับถอยหลังสลบ
   const ab = $('abtn'), want = inJungle() ? jungleCtx() : 'A';
-  if (ab.textContent !== want) { ab.textContent = want; ab.setAttribute('aria-label', want === '⚔️' ? 'ฟัน' : want === '🌿' ? 'เก็บสมุนไพร' : want === '✋' ? 'ทำงาน' : 'ทำงาน'); }
+  if (ab.textContent !== want) { ab.textContent = want; ab.setAttribute('aria-label', want === '⚔️' ? 'ฟัน' : want === '🌿' ? 'เก็บสมุนไพร' : want === '🙏' ? 'ขอเลขเด็ด' : want === '✋' ? 'ทำงาน' : 'ทำงาน'); }
   if (cb && cb.faintUntil) { const el = $('cbFaint'), n = Math.ceil((cb.faintUntil - now) / 1000); if (n <= 0) { cb.faintUntil = 0; el.classList.add('hidden'); } else el.textContent = `😵 สลบ กลับเมืองใน ${n} วิ`; }
 }
 function cbRender() {
@@ -2526,7 +2558,7 @@ function interactive(tx, ty) { // ช่องนี้มีอะไรให�
   const id = toolId(), t = MAP[ty][tx], f = farm[tx + ',' + ty];
   if (inSea()) return (t === T.WATER || (inOcean() && t === T.CAVE)) && id === 'rod'; // บนเรือตกปลาได้อย่างเดียว
   if (inTown() && Shared.jgateAt(tx, ty)) return true; // ซุ้มประตูป่า: แตะแล้วเดินไปเข้า
-  if (inJungle()) return !!creatureAtTile(tx, ty) || (Shared.JUNGLE.rows[ty] && Shared.JUNGLE.rows[ty][tx] === 'h'); // แตะมอนสเตอร์/พุ่มสมุนไพร = ตี/เก็บ
+  if (inJungle()) return !!creatureAtTile(tx, ty) || luckyAt(tx, ty) || (Shared.JUNGLE.rows[ty] && Shared.JUNGLE.rows[ty][tx] === 'h'); // แตะมอนสเตอร์/พุ่มสมุนไพร = ตี/เก็บ
   if (cave) return (t === T.ORE && id === 'pick') || (id === 'pick' && !!creatureAtTile(tx, ty)); // ในถ้ำมีก้อนแร่ให้ขุด + สัตว์ให้ฟาดไล่
   if (t === T.SHOP || (t === T.BUILD && shopAt(tx, ty)) || animalAt(tx, ty) || cinemaAt(tx, ty)) return true;
   if (seatAt(tx, ty)) return true;
@@ -4026,7 +4058,9 @@ function drawJungleObjs(list, now, x0, x1, y0, y1) { // ของในป่า
     }
   }
   const T0 = J.tower; list.push({ y: (T0.y1 + 1) * TS - 2, f: () => drawTower(ctx, now, T0) });
+  const LK = J.lucky; if (LK && PixelJungle.takhian && LK.x >= x0 - 2 && LK.x <= x1 + 2 && LK.y >= y0 - 1 && LK.y <= y1 + 4) list.push({ y: (LK.y + 1) * TS - 2, f: () => PixelJungle.takhian(ctx, LK.x, LK.y, performance.now(), { night: luckNight() }) }); // ต้นตะเคียนผูกผ้าสามสี (ขอเลขเด็ด)
 }
+function luckNight() { const w = Date.now() + timeOffset; return daylight(((w % Shared.CLOCK_MS) / Shared.CLOCK_MS * 24 + 6) % 24) > 0.45; }
 function drawCaveWorld(now) {
   ctx.drawImage(base, 0, 0, W * TS, H * TS);
   const ocean = inOcean();

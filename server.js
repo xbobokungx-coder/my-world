@@ -247,7 +247,7 @@ class World {
   }
 
   handle(p, m) {
-    if (p.scene && !HOUSE_MSG.has(m.t)) return;
+    if (p.scene && !HOUSE_MSG.has(m.t) && !(m.t === 'lotto' && (m.a === 'luck' || (m.a === 'buy' && (m.luck === 1 || m.luck === true))) && S.isJungle(S.caveFloor(p.scene)))) return; // ยกเว้นขอ/ซื้อเลขต้นตะเคียนในป่า
     if (S.caveFloor(p.scene) && (m.t === 'house' || m.t === 'gift')) return; // ในถ้ำไม่มีบ้าน/ส่งของขวัญ
     switch (m.t) {
       case 'm': {
@@ -387,7 +387,7 @@ class World {
       case 'buy': this.buy(p, m.item, Math.min(10, Math.max(1, m.n | 0))); break;
       case 'sell': this.sell(p, m.item, m.n); break;
       case 'sea': this.seaGo(p); break;
-      case 'lotto': if (m.a === 'buy') this.lottoBuy(p, m); else if (m.a === 'claim') this.lottoClaim(p); send(p, { t: 'lotto', l: this.lottoPub(p) }); break;
+      case 'lotto': if (m.a === 'luck') { this.luckAsk(p); break; } if (m.a === 'buy') this.lottoBuy(p, m); else if (m.a === 'claim') this.lottoClaim(p); send(p, { t: 'lotto', l: this.lottoPub(p) }); break;
     }
   }
 

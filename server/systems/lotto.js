@@ -83,7 +83,7 @@ module.exports = {
     return sum;
   },
   lottoPrizeName(k) { if (!k) return 'รางวัลรวม'; const P = S.LOTTO.prize[k - 1]; return P ? (k <= 3 ? `รางวัลที่ ${k}` : P.e + ' ' + P.name) : `รางวัลที่ ${k}`; }, // ชื่อรางวัลในข้อความ (1–3 เรียกเลขที่ 4+ เรียกชื่อ)
-  nearLucky(p) { return Math.hypot(p.x - (S.LUCKY.x + 0.5) * TS, p.y - (S.LUCKY.y + 0.5) * TS) < 4.5 * TS; },
+  nearLucky(p) { if (p.scene) return false; return Math.hypot(p.x - (S.LUCKY.x + 0.5) * TS, p.y - (S.LUCKY.y + 0.5) * TS) < 4.5 * TS; },
   lottoOk(p) { return !!this.starterOf(p).final && S.playLevel(p.rec.skills) >= S.LOTTO.minLv; },
   // left ใน lottoPub ส่งเฉพาะตอนโควตาเครือข่ายตึงกว่าโควตาบัญชี (ไม่มี = ใช้ max - mine.length)
   lottoIpLeft(p) { const L = this.lotto, ip = p.ip; return ip ? Math.max(0, S.LOTTO.ipMax - ((L.ipTickets || {})[ip] || 0)) : Infinity; }, // โควตาตั๋วที่เหลือของเครือข่าย (ไม่รู้ IP = ไม่จำกัดตามเครือข่าย)
@@ -92,8 +92,26 @@ module.exports = {
     const buyers = Object.entries(L.tickets).map(([k, l]) => [(this.saved[k] && this.saved[k].name) || k, l.length]).sort((a, b) => b[1] - a[1]); // ใครซื้อกี่ใบ (ไม่เผยเลขของแต่ละคน)
     return { buyers, hist: L.hist.map(h => ({ round: h.round, nums: h.nums, n: h.n, pot0: h.pot0, winners: h.winners })), near: this.nearLucky(p), pot: L.pot, drawAt: this.lottoDrawAt(L.round), now, hash: L.sealed.hash, mine: L.tickets[p.key] || [], max: S.LOTTO.maxTickets, ...(this.lottoIpLeft(p) < S.LOTTO.maxTickets - (L.tickets[p.key] || []).length ? { left: this.lottoIpLeft(p) } : {}), price: S.LOTTO.price, minLv: S.LOTTO.minLv, ok: this.lottoOk(p), open: now < this.lottoDrawAt(L.round) - S.LOTTO.closeMs, last: L.last, ...(this.lottoPendSum(p.rec) ? { pend: p.rec.lottoPend.filter(e => Array.isArray(e) && e[2] > 0).map(e => e.slice(0, 3)) } : {}), heat, rate: S.taxRate(heat) };
   },
+  // ----- ต้นตะเคียนในป่า (กิมมิก): ขอเลขเด็ด 3 ชุด/งวด/คน แล้วซื้อตั๋วงวดที่เปิดอยู่ได้เลย • เลขสุ่มอิสระ ไม่เกี่ยวกับเลขที่ปิดผนึก • p.luck อยู่ใน RAM ไม่เซฟ
+  luckNear(p, r) { const J = S.JUNGLE; return !!p.scene && S.isJungle(S.caveFloor(p.scene)) && Math.max(Math.abs(Math.floor(p.x / TS) - J.lucky.x), Math.abs(Math.floor(p.y / TS) - J.lucky.y)) <= r; },
+  luckPub(p) { const L = this.lotto, k = p.luck; return { t: 'luck', nums: k.nums.slice(), round: k.round, bought: k.bought.slice(), price: S.LOTTO.price, open: Date.now() < this.lottoDrawAt(L.round) - S.LOTTO.closeMs, lvOk: this.lottoOk(p) }; },
+  luckAsk(p) {
+    if (!this.luckNear(p, S.JUNGLE.luckyAskR)) return this.toast(p, '🙏 เดินเข้าไปใกล้ต้นตะเคียนอีกนิดนะ');
+    const L = this.lotto;
+    if (p.luck && p.luck.round === L.round) { this.toast(p, `🙏 ท่านรับเลขแล้วนะ ${p.luck.nums.join(' ')} งวดหน้ามาขอใหม่ได้`); return send(p, this.luckPub(p)); }
+    const nums = []; while (nums.length < 3) { const x = String(crypto.randomInt(1000)).padStart(3, '0'); if (!nums.includes(x)) nums.push(x); }
+    p.luck = { round: L.round, nums, bought: [] };
+    this.toast(p, `🙏 ต้นตะเคียนให้เลข ${nums.join(' ')} จะซื้อก็ได้ ไม่ซื้อก็ไม่เป็นไรนะ`); this.sfxTo(p, 'collect');
+    send(p, this.luckPub(p));
+  },
   lottoBuy(p, m) {
-    const L = this.lotto, now = Date.now(), mine = L.tickets[p.key] || [];
+    const L = this.lotto, now = Date.now(), mine = L.tickets[p.key] || [], lk = m.luck === 1 || m.luck === true;
+    if (lk) { // ซื้อจากเลขต้นตะเคียน: ข้ามเงื่อนไขอยู่ใกล้ตู้ แต่ต้องอยู่ในป่าใกล้ต้น + เลขต้องอยู่ในชุดที่ขอ ยังไม่เคยซื้อ ไม่ซ้ำกัน
+      if (!this.luckNear(p, S.JUNGLE.luckyBuyR)) return this.toast(p, '🙏 เดินเข้าไปใกล้ต้นตะเคียนอีกนิดนะ');
+      const k = p.luck, w = Array.isArray(m.nums) ? m.nums : [];
+      if (!k || k.round !== L.round) return this.toast(p, '🙏 ขอเลขจากต้นตะเคียนก่อนนะ');
+      if (!w.length || w.length > k.nums.length || new Set(w).size !== w.length || !w.every(x => typeof x === 'string' && k.nums.includes(x) && !k.bought.includes(x))) return this.toast(p, '🙏 ซื้อได้เฉพาะเลขที่ต้นตะเคียนให้ และซื้อชุดละครั้งเดียวนะ');
+    } else
     if (!this.nearLucky(p)) return this.toast(p, '🎟️ ต้องยืนใกล้ตู้ Lucky Lotto ที่ลานกองไฟ');
     if (now >= this.lottoDrawAt(L.round) - S.LOTTO.closeMs) return this.toast(p, '🎟️ ปิดรับตั๋วงวดนี้แล้ว เปิดขายอีกครั้งหลังออกรางวัล');
     if (!this.lottoOk(p)) return this.toast(p, `🎟️ ซื้อหวยได้เมื่อผ่านคู่มือเริ่มต้นและระดับการเล่นถึง ${S.LOTTO.minLv}`);
@@ -104,6 +122,7 @@ module.exports = {
     const nums = want.slice(0, n).map(w => typeof w === 'string' && /^\d{3}$/.test(w) ? w : String(crypto.randomInt(1000)).padStart(3, '0')); // เลขที่ไม่ถูกรูปแบบ/ว่าง = สุ่มให้
     this.add(p, 'coin', -cost, 'lotto'); this.toPot(cost); L.tickets[p.key] = mine.concat(nums); if (p.ip) { L.ipTickets = L.ipTickets || {}; L.ipTickets[p.ip] = (L.ipTickets[p.ip] || 0) + n; } this.dirty = true;
     this.toast(p, `🎟️ ซื้อ Lucky Lotto ${nums.join(' ')} (🪙 ${cost}) ออกผล ${S.LOTTO.revealHour}:00 น.`); this.sfxTo(p, 'coin');
+    if (lk) { p.luck.bought.push(...nums); send(p, this.luckPub(p)); }
   },
   lottoJoin(p) { // ส่งสถานะหวยตอนเข้าเกม + แจ้งรางวัลที่ถูกตอนออฟไลน์
     this.lottoExpire(p.rec, Date.now());

@@ -5,7 +5,7 @@ const { World } = require('../server.js'), S = require('../public/shared.js'), T
 
 // ผังตายตัว
 assert.strictEqual(J.floor, 97); assert.strictEqual(J.open, true, 'เปิดป่าให้ทุกคนแล้ว');
-assert.strictEqual(J.rows.length, S.H); assert.ok(J.rows.every(r => r.length === S.W && /^[#t.=~FHTCSREh]+$/.test(r)), 'แถวละ 64 ตัวอักษรในชุดที่กำหนด');
+assert.strictEqual(J.rows.length, S.H); assert.ok(J.rows.every(r => r.length === S.W && /^[#t.=~FHTCSREhK]+$/.test(r)), 'แถวละ 64 ตัวอักษรในชุดที่กำหนด');
 const m = S.makeCaveMap(97), m2 = S.makeCaveMap(97);
 assert.strictEqual(m.length, S.H); assert.ok(m.every(r => r.length === S.W)); assert.deepStrictEqual(m, m2, 'ผังตายตัว');
 assert.ok(S.isJungle(97) && !S.isJungle(98) && !S.isMineFloor(97) && !S.isMineFloor(98) && !S.isMineFloor(99) && S.isMineFloor(1) && S.isMineFloor(S.MINE.floors) && !S.isMineFloor(S.MINE.floors + 1));

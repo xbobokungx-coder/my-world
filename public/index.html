@@ -790,6 +790,15 @@
   @keyframes giftShake { 0%,100% { transform:rotate(0); } 25% { transform:rotate(-12deg); } 75% { transform:rotate(12deg); } }
   #greet { position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:25; padding:8px 12px; text-align:center; width:min(92vw,360px); }
   #greet .btn { margin:4px 2px 0; }
+  #luckBox { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:30; }
+  #luckBox .panel { width:min(92vw,320px); padding:14px; text-align:center; max-height:90vh; overflow:auto; }
+  .luckTitle { font-weight:700; font-size:16px; margin-bottom:8px; }
+  .luckNote { background:#fff3cf; border-radius:8px; padding:6px 8px; font-size:13px; margin-bottom:8px; }
+  .luckRow { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:6px 0; }
+  .luckNum { font-size:30px; font-weight:800; letter-spacing:5px; background:#fff; border:2px solid #d9a21e; border-radius:10px; padding:2px 12px; font-variant-numeric:tabular-nums; }
+  #luckBox .btn { min-height:44px; min-width:44px; }
+  .luckAll { width:100%; margin-top:4px; }
+  .luckHint { font-size:12px; opacity:.7; margin:8px 0; }
   #askText { white-space:pre-line; margin-bottom:12px; font-size:15px; }
   #tradeBody { max-height:70vh; overflow:auto; }
 
@@ -881,7 +890,7 @@
   #hudMenu .spk { margin-left:0; color:inherit; }
   /* คอมจอใหญ่: ขยาย UI ตามสเกลจอ (--ui คำนวณใน game.js resize) ให้สัดส่วนกับโลกในเกมเท่ากับจอเล็ก */
   body:not(.touch) :is(#hudTop,#hotbar,#inv,#chat,#mini,#guide,#toast,#picker,#skillbar,#build,#fgauge,#ffight,#callBox) { zoom:var(--ui,1); }
-  body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#ask,#homeChoice) > .panel { zoom:var(--ui,1); }
+  body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#ask,#luckBox,#homeChoice) > .panel { zoom:var(--ui,1); }
   body:not(.touch) :is(#shop,#bag,#people,#archub,#status,#bug,#quest,#ach,#arcade,#trade,#cinema,#town,#admin,#plots,#settings) > .panel { max-height:calc(92dvh / var(--ui,1)); }
   body:not(.touch) #hudMenu { max-height:calc((100dvh - 90px) / var(--ui,1)); }
   body:not(.touch) #build { max-height:calc((100dvh - 24px) / var(--ui,1)); }
@@ -1164,6 +1173,7 @@
   <input id="reportText" maxlength="100" enterkeyhint="send" placeholder="เล่าเพิ่มสั้นๆ (ไม่บังคับ ไม่เกิน 100 ตัวอักษร)" style="width:100%;box-sizing:border-box;padding:8px 10px;margin-top:8px;border-radius:10px;border:3px solid var(--edge);font:inherit;font-size:15px;user-select:text">
   <div class="center" style="margin-top:10px"><button class="btn small muted" id="reportCancel" onclick="document.getElementById('reportClose').click()">ยกเลิก</button> <button class="btn small" id="reportSend" disabled>🚩 ส่งรายงาน</button></div>
 </div></div>
+<div id="luckBox" class="hidden"><div class="panel" id="luckPanel"></div></div>
 <div id="ask" class="hidden"><div class="panel"><div id="askText"></div><div class="center"><button class="btn small muted" id="askNo">ยกเลิก</button> <button class="btn small" id="askYes">ยืนยัน</button></div></div></div>
 <div id="cinema" class="hidden"><div class="panel" style="width:min(96vw,760px)">
   <h2><span>🎬 หนังกลางแปลง</span> <button class="btn small" id="cinClose">ปิด</button></h2>

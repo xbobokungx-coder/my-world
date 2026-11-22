@@ -26,6 +26,7 @@ module.exports = {
   },
   jungleAct(p, m) { // กด Action ในป่า: ฟัน/เก็บสมุนไพร/ป้ายออก ตัดสินใน combatSwing (สวิตช์ JUNGLE.mon.on=false = ไม่ทำอะไร ไม่ตกไป caveAct อีเต้อ)
     const now = Date.now(); if (now - p.lastAct < 150) return; p.lastAct = now;
+    { const J = S.JUNGLE.lucky, hasT = m && Number.isInteger(m.tx) && Number.isInteger(m.ty), [fx, fy] = hasT ? [m.tx, m.ty] : S.facing(p.x, p.y, p.dir); if (fx === J.x && fy === J.y) return this.luckAsk(p); } // ต้นตะเคียน = ขอเลขเด็ด
     if (p.cb) this.combatSwing(p, m && typeof m === 'object' ? m : {});
   },
 };
