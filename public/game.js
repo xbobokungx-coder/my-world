@@ -2446,7 +2446,7 @@ function jungleCtx() { // บริบทของปุ่ม A ในป่า
 function jungleHud(now) { // ทุกเฟรม: ป้ายปุ่ม A ตามบริบท + นับถอยหลังสลบ
   const ab = $('abtn'), want = inJungle() ? jungleCtx() : 'A';
   if (ab.textContent !== want) { ab.textContent = want; ab.setAttribute('aria-label', want === '⚔️' ? 'ฟัน' : want === '🌿' ? 'เก็บสมุนไพร' : want === '✋' ? 'ทำงาน' : 'ทำงาน'); }
-  if (cb && cb.faintUntil) { const el = $('cbFaint'), n = Math.ceil((cb.faintUntil - now) / 1000); if (n <= 0) { cb.faintUntil = 0; el.classList.add('hidden'); } else el.textContent = `😵 สลบ ตื่นที่ค่ายใน ${n} วิ`; }
+  if (cb && cb.faintUntil) { const el = $('cbFaint'), n = Math.ceil((cb.faintUntil - now) / 1000); if (n <= 0) { cb.faintUntil = 0; el.classList.add('hidden'); } else el.textContent = `😵 สลบ กลับเมืองใน ${n} วิ`; }
 }
 function cbRender() {
   const el = $('cbSelf'); if (!cb || !cave || !inJungle()) { el.classList.add('hidden'); return; }

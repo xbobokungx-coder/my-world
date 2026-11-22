@@ -201,7 +201,7 @@ module.exports = {
   creatureWake(p) { // ครบเวลาสลบ: ลุก + วาร์ปไปจุดลงบันไดของชั้น (ชั้น 1 = จุดเกิด)
     p.faintWarp = 0; p.faintUntil = 0; p.stunUntil = 0;
     const f = S.caveFloor(p.scene); if (!f || this.players.get(p.id) !== p) return;
-    if (S.isJungle(f)) { this.changeScene(p, CAVE + f, S.JUNGLE.spawn.x, S.JUNGLE.spawn.y); this.combatWake(p); return; } // ป่า: ตื่นที่ค่าย HP ครึ่งหนึ่ง (ไม่เสียของ)
+    if (S.isJungle(f)) { this.leaveCave(p); this.toast(p, '😵 สลบ! ถูกพากลับเมือง พักก่อนแล้วค่อยเข้าป่าใหม่นะ (ไม่เสียของ)'); return; } // ป่า (22 พ.ย. 2026 เจ้าของเกมสั่ง): สลบแล้วย้ายกลับแมพเมืองหน้าซุ้มประตู ไม่เสียของ เข้าป่าใหม่ HP เต็ม
     const at = f === 1 ? S.CAVE.spawn : this.caveLanding(f);
     this.changeScene(p, CAVE + f, at.x, at.y); this.toast(p, '😵 ตื่นแล้ว! ตื่นที่บันไดนะ เดินระวังหน่อย');
   },

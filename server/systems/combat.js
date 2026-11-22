@@ -39,7 +39,7 @@ module.exports = {
     logEv(this.room, 'creature_hit', { p: p.key, f, k: c.k, d: dmg });
     if (b.hp <= 0) { // สลบ: ไม่เสียของ/เหรียญ/ความทน ครบเวลาแล้ว creatureWake พาไปตื่นที่ค่าย
       b.st = 'faint'; p.faintUntil = now + K.faintMs; p.stunUntil = Math.max(p.stunUntil || 0, p.faintUntil); p.faintWarp = p.faintUntil;
-      send(p, { t: 'faint', ms: K.faintMs }); this.toast(p, '😵 สลบแล้ว! เดี๋ยวตื่นที่ค่ายนะ ของกับเหรียญไม่หายไหน');
+      send(p, { t: 'faint', ms: K.faintMs }); this.toast(p, '😵 สลบแล้ว! เดี๋ยวพากลับเมืองนะ ของกับเหรียญไม่หายไหน');
       logEv(this.room, 'creature_faint', { p: p.key, f, k: c.k }); this.combatPush(p, true);
     } else this.combatPush(p);
   },

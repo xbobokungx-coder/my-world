@@ -58,13 +58,13 @@ a.rec.skills.fight = S.xpFor(2, 'fight'); assert.strictEqual(S.xpFor(2, 'fight')
 { const { f, c } = setup('jslime'); c.x = a.x + TS * 0.6; ws.msgs.length = 0; let now = Date.now(); for (let i = 0; i < 12 && a.cb.hp === 100; i++) { w.creatureTick(now += 260); w.combatTick(now); if (c.st !== 2) a.crInv = 0; }
   const m = types('cra')[0]; assert.ok(m && m.id === c.id && m.ms === 700 && m.r > 0, 'ส่ง cra ง้าง 700ms'); assert.ok(a.cb.hp < 100, 'สไลม์ตีโดน'); assert.strictEqual(a.cb.hp, 95); }
 
-// 5) สลบ: HP 0 → faint 3 วิ → ตื่นที่ค่าย HP 50% ไม่เสียของ/เหรียญ
+// 5) สลบ: HP 0 → faint 3 วิ → ย้ายกลับแมพเมือง (หน้าซุ้มประตู) ไม่เสียของ/เหรียญ
 { const { f, c } = setup('jstump'), JK = S.JUNGLE_MON.jstump, t0 = Date.now(), inv = JSON.stringify(a.rec.inv); a.cb.hp = 10; a.rec.dur = { pick: 5 }; const dur = JSON.stringify(a.rec.dur);
   w.creatureHit(f, 97, c, JK, a, t0); assert.strictEqual(a.cb.hp, 0); assert.strictEqual(a.cb.st, 'faint'); assert.strictEqual(last('faint').ms, 3000); const cb = last('cb'); assert.ok(cb.st === 'faint' && cb.hp === 0 && cb.ms > 0 && cb.ms <= 3000);
   assert.ok(!w.creatureEligible(f, 97, a, t0 + 1), 'สลบแล้วไม่ถูกตีซ้ำ'); swing(); assert.ok(c.hp === JK.hp, 'สลบฟันไม่ได้');
   w.crAt = 0; w.creatureTick(t0 + 1000); assert.strictEqual(a.scene, '@cave97'); assert.strictEqual(a.cb.st, 'faint', 'ยังไม่ครบเวลา');
-  w.crAt = 0; w.creatureTick(a.faintWarp + C.tickMs + 1); assert.strictEqual(a.cb.st, 'ok'); assert.strictEqual(a.cb.hp, 50); assert.ok(a.x === J.spawn.x && a.y === J.spawn.y, 'ตื่นที่ค่าย'); assert.ok(!a.faintWarp && !a.stunUntil);
-  assert.strictEqual(JSON.stringify(a.rec.inv), inv, 'สลบไม่เสียของ/เหรียญ'); assert.strictEqual(JSON.stringify(a.rec.dur), dur, 'ไม่เสียความทน'); assert.deepStrictEqual([last('cb').hp, last('cb').st], [50, 'ok']); assert.ok(S.jungleSafe(a.x, a.y)); }
+  w.crAt = 0; w.creatureTick(a.faintWarp + C.tickMs + 1); assert.ok(!a.scene, 'สลบแล้วกลับแมพเมือง'); assert.ok(!a.faintWarp && !a.stunUntil && !a.cb, 'ล้างสถานะสลบและ HP ป่า'); assert.ok(Math.abs(a.y - (S.JGATE.y0 - 0.5) * TS) < TS, 'ยืนหน้าซุ้มประตูในเมือง');
+  assert.strictEqual(JSON.stringify(a.rec.inv), inv, 'สลบไม่เสียของ/เหรียญ'); assert.strictEqual(JSON.stringify(a.rec.dur), dur, 'ไม่เสียความทน'); }
 
 // 6) ฟื้น HP: พ้นการต่อสู้ 8 วิ +1/วิ • เขตปลอดภัย +5/วิ • ไม่ฟื้นระหว่างต่อสู้
 { setup('jslime'); a.cb.hp = 50; const t = Date.now(); a.cb.last = t; w.cbAt = t - 250; w.combatTick(t); assert.strictEqual(a.cb.hp, 50, 'เพิ่งสู้ ไม่ฟื้น');
