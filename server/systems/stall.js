@@ -48,7 +48,7 @@ module.exports = {
       const item = String(m.item || ''), n = Math.floor(+m.n), price = Math.floor(+m.price), fresh = m.fresh == null ? 0 : Math.floor(+m.fresh), base = S.tradeValue(item);
       if (!S.isTradable(item) || !base) return this.toast(p, 'ของชิ้นนี้เสนอซื้อไม่ได้');
       if (!(n > 0) || n > S.STALL.maxN) return this.toast(p, 'จำนวนไม่ถูกต้อง');
-      const lo = Math.max(1, Math.ceil(base * S.STALL.min)), hi = Math.floor(base * S.STALL.max);
+      const lo = S.stallMin(item), hi = Math.floor(base * S.STALL.max);
       if (!(price >= lo && price <= hi)) return this.toast(p, `ราคาต่อชิ้นต้องอยู่ระหว่าง 🪙${lo}–${hi}`);
       if (![0, 1, 2].includes(fresh)) return this.toast(p, 'ระดับความสดไม่ถูกต้อง');
       if (this.bids.filter(x => x.buyer === p.key).length >= S.STALL.bidSlots) return this.toast(p, `เสนอซื้อได้คนละไม่เกิน ${S.STALL.bidSlots} รายการ`);
@@ -81,7 +81,7 @@ module.exports = {
       const item = String(m.item || ''), n = Math.floor(+m.n), price = Math.floor(+m.price), base = S.tradeValue(item);
       if (!S.isTradable(item) || !base) return this.toast(p, 'ของชิ้นนี้วางขายที่แผงไม่ได้');
       if (!(n > 0) || n > S.STALL.maxN || (p.rec.inv[item] || 0) < n) return this.toast(p, 'จำนวนไม่ถูกต้อง');
-      const lo = Math.max(1, Math.ceil(base * S.STALL.min)), hi = Math.floor(base * S.STALL.max);
+      const lo = S.stallMin(item), hi = Math.floor(base * S.STALL.max);
       if (!(price >= lo && price <= hi)) return this.toast(p, `ราคาต่อชิ้นต้องอยู่ระหว่าง 🪙${lo}–${hi}`);
       if (this.stall.filter(x => x.seller === p.key).length >= S.STALL.slots) return this.toast(p, `วางขายได้คนละไม่เกิน ${S.STALL.slots} รายการ`);
       const lots = this.add(p, item, -n);
