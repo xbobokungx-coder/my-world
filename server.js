@@ -357,7 +357,7 @@ class World {
       case 'trade': this.tradeHandle(p, m); break;
       case 'house': this.houseHandle(p, m); break;
       case 'store': this.storeHandle(p, m); break; // คลังในบ้าน (ตู้เย็น/ลัง) server/systems/storage.js
-      case 'cook': this.cook(p, m.id); break;
+      case 'cook': this.cook(p, m.id, m.n); break;
       case 'craft': this.craft(p, m.id); break;
       case 'make': this.make(p, m.id, m.n); break; // WP-30 S2: โต๊ะแปรรูป
       case 'quest': this.questHandle(p, m); break;
