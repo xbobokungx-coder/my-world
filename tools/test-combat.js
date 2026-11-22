@@ -28,10 +28,10 @@ for (const k of ['jherb', 'jm_gel', 'jm_sting', 'jm_skin', 'jm_core']) { const i
 // ชั้นเหมืองได้โปรไฟล์เดิม ทะเลไม่มี
 assert.strictEqual(S.crProfile(3).hit, 'hunger'); assert.strictEqual(S.crProfile(3).strike, 'pick'); assert.strictEqual(S.crProfile(98), null); assert.strictEqual(S.crProfile(97).hit, 'hp');
 
-// 2) เข้าป่า: HP เต็ม 100 + cb + jh + มอนสเตอร์ 9 ตัวที่จุดบ้าน
+// 2) เข้าป่า: HP เต็ม 100 + cb + jh + มอนสเตอร์ 18 ตัวที่จุดบ้าน
 enter(); assert.strictEqual(a.cb.hp, 100); assert.strictEqual(a.cb.mx, 100);
 assert.deepStrictEqual(last('cb'), { t: 'cb', hp: 100, mx: 100, st: 'ok' }); const jh = last('jh'); assert.strictEqual(jh.list.length, 12); assert.ok(jh.list.every(h => h.length === 3 && h[2] === 1));
-{ const cs = [...F().creatures.values()]; assert.strictEqual(cs.length, 9); const crs = last('crs'); assert.strictEqual(crs.list.length, 9);
+{ const cs = [...F().creatures.values()]; assert.strictEqual(cs.length, 18); const crs = last('crs'); assert.strictEqual(crs.list.length, 18);
   J.mon.spots.forEach(([k, x, y], i) => { const c = cs.find(q => q.spot === i); assert.ok(c && c.k === k, 'ตัวที่ ' + i); assert.strictEqual(Math.floor(c.x / TS), x); assert.strictEqual(Math.floor(c.y / TS), y); assert.strictEqual(c.hp, S.JUNGLE_MON[k].hp); assert.ok(!S.jungleSafe(c.x, c.y)); }); }
 a.rec.skills.fight = S.xpFor(2, 'fight'); assert.strictEqual(S.xpFor(2, 'fight'), 300, 'หลอดนักสู้ Lv2 = 300 XP (22 พ.ย. 2026 ซิม jungle-sim: ≈ 47 ตัว)'); assert.strictEqual(w.combatMax(a), 104, 'Lv2 นักสู้ = 100+4'); a.rec.skills.fight = S.xpFor(2, 'fight') - 1; assert.strictEqual(w.combatMax(a), 100, 'ขาด 1 XP ยัง Lv1'); a.rec.skills.fight = 0;
 
@@ -113,7 +113,7 @@ a.rec.skills.fight = S.xpFor(2, 'fight'); assert.strictEqual(S.xpFor(2, 'fight')
 // 9) ตายคิวเกิดใหม่: เกิดห่างผู้เล่น ≥ 8 ช่อง เฉพาะพื้นป่าในรัศมีบ้าน ไม่ในเขตปลอดภัย • รวม ≤ 9
 { setup('jslime'); const f = F(); f.creatures.clear(); f.crWait = J.mon.spots.map((s, i) => ({ at: 0, spot: i })); a.x = (24 + 0.5) * TS; a.y = (14 + 0.5) * TS; // ยืนทับจุดบ้านสไลม์ A
   w.crAt = 0; w.creatureTick(Date.now() + 1000);
-  assert.ok(f.creatures.size <= 9 && f.creatures.size >= 6, 'ไม่เกิน 9 ' + f.creatures.size); const seen = new Set();
+  assert.ok(f.creatures.size <= 18 && f.creatures.size >= 12, 'ไม่เกิน 18 ' + f.creatures.size); const seen = new Set();
   for (const c of f.creatures.values()) { const s = J.mon.spots[c.spot]; assert.ok(!seen.has(c.spot)); seen.add(c.spot); assert.strictEqual(c.k, s[0]); assert.strictEqual(f.map[Math.floor(c.y / TS)][Math.floor(c.x / TS)], S.T.CAVE, 'เกิดบนพื้นป่า'); assert.ok(Math.hypot(Math.floor(c.x / TS) - s[1], Math.floor(c.y / TS) - s[2]) <= J.mon.leash + 0.01, 'ในรัศมีบ้าน'); assert.ok(!S.jungleSafe(c.x, c.y)); assert.ok(Math.hypot(c.x - a.x, c.y - a.y) >= C.spawnGap * TS - 1, 'ห่างผู้เล่น ≥ 8 ช่อง'); } }
 // เดินเล่นนานๆ: ไม่ทะลุผนัง ไม่เข้าเขตปลอดภัย ไม่ไกลบ้านเกินรัศมี+ผ่อน (ผู้เล่นไม่อยู่ใกล้)
 { enter(); const f = F(); f.creatures.clear(); f.crWait = []; w.creatureFill(f, 97, Date.now()); a.x = 31.5 * TS; a.y = 5.5 * TS; let now = Date.now() + 5e6; w.crAt = now - 260; let far = 0;
