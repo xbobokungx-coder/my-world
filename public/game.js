@@ -2029,7 +2029,7 @@ function renderBag() {
 }
 
 // ---------- ร้านค้า ----------
-function openShop(kind) { closeOthers('shop'); cookFilter = null; cookOpen = null; shopKind = kind; farmTab = SHOP_TABS[kind] ? SHOP_TABS[kind][0][0] : 'gear'; if (kind === 'cloth') { tryWear = Object.assign({}, me.wear); clothTab = 'shirt'; } $('shop').classList.remove('hidden'); renderShop(); }
+function openShop(kind) { closeOthers('shop'); cookFilter = null; cookOpen = null; cookPick = {}; shopKind = kind; farmTab = SHOP_TABS[kind] ? SHOP_TABS[kind][0][0] : 'gear'; if (kind === 'cloth') { tryWear = Object.assign({}, me.wear); clothTab = 'shirt'; } $('shop').classList.remove('hidden'); renderShop(); }
 function closeShop() { shopKind = null; $('shop').classList.add('hidden'); }
 $('shopClose').onclick = closeShop;
 $('shop').addEventListener('pointerdown', e => { if (e.target === $('shop')) closeShop(); });
@@ -2037,6 +2037,7 @@ const animalCount = type => { let n = 0; const my = me && me.name; animals.forEa
 let cookPins = []; try { const a = JSON.parse(ls.get('mw_cookpins') || '[]'); if (Array.isArray(a)) cookPins = a.filter(x => typeof x === 'string').slice(0, 100); } catch (e) {} // สูตรที่ปักหมุด (localStorage)
 let cookReadyAt = 0; // เตาพักถึงเมื่อไร (ms ของเครื่อง) จาก cookcd
 let makeReadyAt = {}; // WP-30: { st: ms } คูลดาวน์สถานีหลอม/อัดฟาง จาก mkcd
+let cookPick = {}; // เลือกวัตถุดิบเอง {สูตร: {ดัชนีแถว: คีย์ไอเท็ม}} (ไม่เก็บถาวร)
 let farmTab = 'gear', cookFilter = null, cookOpen = null; // เมนูเชฟ: ตัวกรอง (null = อัตโนมัติ) / สูตรที่ขยายอยู่
 // ทุกร้านที่รับซื้อมีแท็บ 💰 ขาย ไว้ท้ายสุด (แท็บซื้อของร้านที่ไม่มีแท็บเดิม)
 const SHOP_TABS = { // ทุกร้านที่มีซื้อขายใช้รูปแบบเดียวกัน: 🛒 ซื้อ → 🧰 อุปกรณ์ → (ทำ/ประดิษฐ์) → 💰 ขาย
@@ -2289,7 +2290,8 @@ function renderShop() {
     const hv = n => n.c ? (n.u ? haveU(n.c) : have(n.c)) : (inv[n.k] || 0);
     const panOk = !dur.pan || dur.pan[0] > 0, fee = (r, sell) => Math.round((sell || r.sell) * Shared.panFee(r, Shared.panTier(inv), panOk)), coin = inv.coin || 0, cl = lvl('cook');
     const cinv = Shared.cookInv(inv, freshSt && freshSt.l, Date.now() + timeOffset); // นับเฉพาะวัตถุดิบสด (ค้าง/เก่าทำอาหารไม่ได้)
-    const st = COOK.map((r, i) => { const locked = cl < r.lv, cu = locked ? null : Shared.cookUse(cinv, r), ok = !locked && cu.ok, stale = !locked && !cu.ok && Shared.cookUse(inv, r).ok, qt = ok ? Shared.cookQuote(r, cu) : null; return { r, i, locked, ok, cu, qt, stale, can: ok && coin >= fee(r, qt.sell) }; }); // qt = ระดับ/ราคาขายที่จะได้จากวัตถุดิบที่จะถูกใช้ (B′ ราคาตามวัตถุดิบ) // ตัดสินด้วย Shared.cookUse (รวมวัตถุดิบทางเลือก) ตรงกับเซิร์ฟเวอร์
+    const cleanPick = r => { const m = cookPick[r.id], o = {}; if (m) for (const ri of Object.keys(m)) { const n = r.in[ri]; if (n && n.c && !n.u && !n.k && (cinv[m[ri]] || 0) > 0 && Shared.cookCat(n.c, m[ri])) o[ri] = m[ri]; } if (m && !Object.keys(o).length) delete cookPick[r.id]; else if (m) cookPick[r.id] = o; return o; }; // ล้างตัวเลือกที่ของหมดแล้ว
+    const st = COOK.map((r, i) => { const locked = cl < r.lv, pk = locked ? null : cleanPick(r), cu = locked ? null : Shared.cookUse(cinv, r, pk), ok = !locked && cu.ok, stale = !locked && !cu.ok && Shared.cookUse(inv, r).ok, qt = ok ? Shared.cookQuote(r, cu) : null; return { r, i, locked, ok, cu, qt, pk, stale, can: ok && coin >= fee(r, qt.sell) }; }); // qt = ระดับ/ราคาขายที่จะได้จากวัตถุดิบที่จะถูกใช้ (B′ ราคาตามวัตถุดิบ) // ตัดสินด้วย Shared.cookUse (รวมวัตถุดิบทางเลือก) ตรงกับเซิร์ฟเวอร์
     const hvE = n => { let g = hv(n); if (n.k) for (const a of (Shared.COOK_ALT[n.k] || [])) g += Math.floor((inv[a.k] || 0) / a.n); return g; }; // จำนวนที่มีรวมของทางเลือก
     const catOf = (r, c) => r.in.some(n => n.c ? n.c === c : cookCat(c, n.k));
     const filt = cookFilter || (st.some(x => x.can) ? 'now' : 'all');
@@ -2301,13 +2303,15 @@ function renderShop() {
     list.sort((a, b) => pinN(a) - pinN(b) || grp(a) - grp(b) || a.r.lv - b.r.lv || a.i - b.i);
     const nextLock = st.filter(x => x.locked).reduce((m, x) => !m || x.r.lv < m.r.lv ? x : m, null);
     if (!list.length) h += '<p style="opacity:.7;margin:6px 0">' + (filt === 'now' ? 'ตอนนี้ยังไม่มีสูตรที่ทำได้ ลองดูแท็บ "ทั้งหมด" เพื่อเช็กว่าขาดอะไร' : 'ไม่มีสูตรในหมวดนี้') + '</p>';
+    const pickRows = x => r_pickRows(x);
+    const r_pickRows = x => { const r = x.r; return r.in.map((n, ri) => { if (!n.c || n.u || n.k) return ''; const kinds = Object.keys(cinv).filter(k => cinv[k] > 0 && Shared.cookCat(n.c, k)).sort((a, b) => itemInfo(a).sell - itemInfo(b).sell); if (kinds.length < 2) return ''; const sel = x.pk[ri]; return `<div class="ck-pick"><span class="ck-pk-l">ใช้${COOK_CATS[n.c].emoji}:</span><button class="ck-pk${sel ? '' : ' on'}" data-ckp="${r.id}" data-ri="${ri}" data-k="">อัตโนมัติ (ถูกสุด)</button>${kinds.map(k => { const i = itemInfo(k); return `<button class="ck-pk${sel === k ? ' on' : ''}" data-ckp="${r.id}" data-ri="${ri}" data-k="${k}">${i.emoji} ${i.name.replace(/ \(.*$/, '')} ×${cinv[k]} 🪙${i.sell}</button>`; }).join('')}</div>`; }).join(''); };
     for (const x of list) {
       const r = x.r, qt = x.qt, sellNow = qt ? qt.sell : r.sell, f = fee(r, sellNow), broad = !!Shared.cookRange(r), usedTxt = broad && x.ok ? x.cu.rows.filter(w => w.need.c).flatMap(w => w.picks.map(p => itemInfo(p.k).emoji + itemInfo(p.k).name.replace(/ \(.*$/, '') + ' ×' + p.n)).join(', ') : '';
       if (x.locked) { h += `<div class="ck-card lock${nextLock && nextLock.r.id === r.id ? ' next' : ''}"><div class="ck-head"><span class="ck-ic">${r.emoji}</span><span class="ck-nm">${r.name}<small>🔒 ปลดที่เชฟ Lv ${r.lv}</small></span></div></div>`; continue; }
       const chips = r.in.map((n, ri) => { const emo = n.c ? COOK_CATS[n.c].emoji : itemInfo(n.k).emoji, got = hvE(n), rowOk = x.cu.rows[ri].ok; return `<span class="ck-chip ${rowOk ? 'ok' : 'no'}">${emo}${n.k ? itemInfo(n.k).name.replace(/ \(.*$/, '') : ''}×${n.n}${n.u ? ' คนละชนิด' : ''}${rowOk ? '' : ` (มี ${got})`}</span>`; }).join('') + x.cu.rows.filter(w => w.alt).map(w => { const pk = w.picks.filter(p => p.k !== w.need.k).map(p => itemInfo(p.k).name.replace(/ \(.*$/, '') + ' ×' + p.n).join(', '); return `<span class="ck-chip ok">🔄 ใช้${pk} แทน</span>`; }).join('');
       const mk = Math.min(...r.in.map(n => n.u ? (hv(n) >= n.n ? 1 : 0) : n.c ? Math.floor(hv(n) / r.in.filter(m => m.c === n.c && !m.u).reduce((t, m) => t + m.n, 0)) : Math.floor(hvE(n) / n.n)), f > 0 ? Math.floor(coin / f) : 99), open = cookOpen === r.id;
       h += `<div class="ck-card${x.can ? '' : ' miss'}"><div class="ck-head" data-ckx="${r.id}"><span class="ck-ic">${r.emoji}</span><span class="ck-nm">${r.name}<small>เมนูเชฟ Lv ${r.lv} • ขายได้ราว 🪙${sellNow}${qt && qt.q ? ` ✦${qt.q}` : ''} ${open ? '▴' : '▾'}</small></span><button class="btn small${cookPins.includes(r.id) ? '' : ' muted'}" data-ckpin="${r.id}" title="${cookPins.includes(r.id) ? 'เลิกปักหมุด' : 'ปักหมุดสูตรนี้ไว้บนสุด'}" aria-label="ปักหมุด" style="padding:2px 6px">${cookPins.includes(r.id) ? '📌' : '📍'}</button><button class="btn small" data-cook="${r.id}" data-n="1" style="min-height:44px;min-width:44px" ${x.can && !cd ? '' : 'disabled'}>${cd ? '⏳ รอ' : `ทำ (×${Math.max(0, mk)})`}</button></div>${x.can && !cd && mk > 1 ? `<div class="ck-batch">ทำหลายจาน: ${[...new Set([2, 5, Math.min(mk, Shared.COOK_BATCH_MAX)].filter(q => q >= 2 && q <= Math.min(mk, Shared.COOK_BATCH_MAX)))].map(q => `<button class="btn small" data-cook="${r.id}" data-n="${q}" style="min-height:40px;min-width:44px">×${q}${q === Math.min(mk, Shared.COOK_BATCH_MAX) && q > 5 ? ' สูงสุด' : ''}</button>`).join(' ')} <small style="opacity:.7">• เตาพักรวม ${Math.round(r.time * Math.min(mk, Shared.COOK_BATCH_MAX) / 1000)} วิ ถ้าทำสูงสุด</small></div>` : ''}<div class="ck-chips">${chips}</div>` + (x.stale ? `<div class="ck-more" style="color:#c0392b">🟡 วัตถุดิบไม่สด (ค้าง/เก่า) ทำอาหารไม่ได้ ต้องเป็นของสดอายุไม่เกิน 24 ชม. • ของที่ค้างเอาไปขายก่อนนะ</div>` : '')
-        + (open ? `<div class="ck-more">+${r.xp} XP • เวลาทำ ${Math.round(r.time / 1000)} วิ • ค่าเตา 🪙${f}${coin < f ? ' <b style="color:#c0392b">(เหรียญไม่พอ)</b>' : ''} • กำไรสุทธิ 🪙${sellNow - f} • กินอิ่ม +${r.food}${broad ? `<br>🪙 ราคาขึ้นกับวัตถุดิบที่ใช้ (ใช้ของถูกสุด = 🪙${r.sell}, ของแพงขายแพงขึ้น)${usedTxt ? ' • รอบนี้จะใช้: ' + usedTxt : ''}` : ''}</div>` : '') + '</div>';
+        + (open && x.ok ? pickRows(x) : '') + (open ? `<div class="ck-more">${x.ok ? `🍽️ จะได้ <b>${qt && qt.q ? `ระดับ ✦${qt.q} ` : ''}ขายได้ 🪙${sellNow}</b><br>` : ''}+${r.xp} XP • เวลาทำ ${Math.round(r.time / 1000)} วิ • ค่าเตา 🪙${f}${coin < f ? ' <b style="color:#c0392b">(เหรียญไม่พอ)</b>' : ''} • กำไรสุทธิ 🪙${sellNow - f} • กินอิ่ม +${r.food}${broad ? `<br>🪙 ราคาขึ้นกับวัตถุดิบที่ใช้ (ใช้ของถูกสุด = 🪙${r.sell}, ของแพงขายแพงขึ้น)${usedTxt ? ' • รอบนี้จะใช้: ' + usedTxt : ''}` : ''}</div>` : '') + '</div>';
     }
     h += '<p style="font-size:12px;opacity:.65;margin:8px 0 0">💡 ปลา ผัก ไข่ มาจากคนละสายอาชีพ ลองแลกเปลี่ยนวัตถุดิบกับเพื่อน หรือใช้กระดานใบสั่งซื้อ 📋 • อาหารที่ทำเองขายคืนได้ที่ร้านนี้ (ใช้ชนิดวัตถุดิบที่ถูกที่สุดก่อน)</p>';
   }
@@ -2330,9 +2334,10 @@ function renderShop() {
   body.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => send({ t: 'craft', id: b.dataset.craft, n: +b.dataset.n || 1 }));
   body.querySelectorAll('[data-rent]').forEach(b => b.onclick = () => send({ t: 'rent', id: b.dataset.rent }));
   body.querySelectorAll('[data-ckf]').forEach(b => b.onclick = () => { cookFilter = b.dataset.ckf; renderShop(); });
-  body.querySelectorAll('[data-ckx]').forEach(b => b.onclick = e => { if (e.target.closest('[data-cook],[data-ckpin]')) return; cookOpen = cookOpen === b.dataset.ckx ? null : b.dataset.ckx; renderShop(); });
+  body.querySelectorAll('[data-ckx]').forEach(b => b.onclick = e => { if (e.target.closest('[data-cook],[data-ckpin]')) return; if (cookOpen) delete cookPick[cookOpen]; cookOpen = cookOpen === b.dataset.ckx ? null : b.dataset.ckx; renderShop(); });
+  body.querySelectorAll('[data-ckp]').forEach(b => b.onclick = () => { const id = b.dataset.ckp, ri = b.dataset.ri, k = b.dataset.k, m = cookPick[id] || (cookPick[id] = {}); if (!k || m[ri] === k) delete m[ri]; else m[ri] = k; renderShop(); });
   body.querySelectorAll('[data-ckpin]').forEach(b => b.onclick = () => { const id = b.dataset.ckpin, i = cookPins.indexOf(id); if (i >= 0) cookPins.splice(i, 1); else cookPins.push(id); ls.set('mw_cookpins', JSON.stringify(cookPins)); renderShop(); });
-  body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => send({ t: 'cook', id: b.dataset.cook, n: +b.dataset.n || 1 }));
+  body.querySelectorAll('[data-cook]').forEach(b => b.onclick = () => { const id = b.dataset.cook, m = cookPick[id], msg = { t: 'cook', id, n: +b.dataset.n || 1 }; if (m && Object.keys(m).length) msg.pick = Object.assign({}, m); send(msg); });
   bindPet(body);
   body.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => send({ t: 'buy', item: b.dataset.buy, n: +b.dataset.n }));
   { const bw = body.querySelector('.bywrap'); if (bw) bindBuyWrap(bw); }

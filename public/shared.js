@@ -1351,11 +1351,11 @@
     for (const k of Object.keys(o)) { if (!perishable(k) || !(o[k] > 0)) continue; const L = lots && lots[k]; if (!L || !L.length) continue; let c = 0; for (const [tv, n] of L) if (freshTier(tv, now, false) <= COOK_FRESH_MAX) c += n; o[k] = Math.min(o[k], c); }
     return o;
   };
-  const cookUse = (inv, r) => {
+  const cookUse = (inv, r, pick) => { // pick (ไม่บังคับ) = { [ดัชนีแถว r.in]: 'คีย์ไอเท็ม' } เลือกวัตถุดิบเองเฉพาะแถวหมวด (c ไม่ใช่ k/u) ใช้ชนิดที่เลือกก่อนเท่าที่มี ขาดเติมถูกสุดเหมือนเดิม • row.chosen = true ถ้าชนิดที่เลือกพอครบ
     const use = {}, rows = []; let bad = '';
     const left = k => (inv[k] || 0) - (use[k] || 0);
-    for (const need of r.in) {
-      const row = { need, ok: true, picks: [], alt: false };
+    for (let ri = 0; ri < r.in.length; ri++) {
+      const need = r.in[ri], row = { need, ok: true, picks: [], alt: false };
       if (need.k) {
         const alts = COOK_ALT[need.k] || []; let n = need.n; const take = (k, c) => { if (c > 0) { use[k] = (use[k] || 0) + c; row.picks.push({ k, n: c }); } };
         const own = Math.max(0, Math.min(n, left(need.k))); take(need.k, own); n -= own;
@@ -1365,7 +1365,9 @@
         const kinds = Object.keys(inv).filter(k => left(k) > 0 && cookCat(need.c, k)).sort((x, y) => itemInfo(x).sell - itemInfo(y).sell);
         if (kinds.length < need.n) { row.ok = false; bad = bad || 'u'; } else for (const k of kinds.slice(0, need.n)) { use[k] = (use[k] || 0) + 1; row.picks.push({ k, n: 1 }); }
       } else { // ตามหมวด (ผัก/ไข่ ฯลฯ) ใช้ชนิดที่ถูกที่สุดก่อน
-        const own = Object.keys(inv).filter(k => inv[k] > 0 && cookCat(need.c, k)).sort((x, y) => itemInfo(x).sell - itemInfo(y).sell); let n = need.n;
+        let own = Object.keys(inv).filter(k => inv[k] > 0 && cookCat(need.c, k)).sort((x, y) => itemInfo(x).sell - itemInfo(y).sell); let n = need.n;
+        const pk = pick && typeof pick === 'object' && !Array.isArray(pick) && Object.hasOwn(pick, ri) ? pick[ri] : null; // ชนิดที่ผู้เล่นเลือก (ต้องเป็นหมวดนี้จริง) ขึ้นหน้าสุด
+        if (typeof pk === 'string' && own.includes(pk)) { own = [pk].concat(own.filter(k => k !== pk)); row.chosen = left(pk) >= n; }
         for (const k of own) { const t = Math.min(n, left(k)); if (t > 0) { use[k] = (use[k] || 0) + t; row.picks.push({ k, n: t }); n -= t; } if (!n) break; }
         if (n) { row.ok = false; bad = bad || 'basic'; }
       }

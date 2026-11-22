@@ -4,7 +4,18 @@ const S = require('../../public/shared.js');
 const { send } = require('../util.js');
 
 module.exports = {
-  cook(p, id, n) { // เชฟ (อาชีพที่ 5): ใช้วัตถุดิบข้ามสาย (ชนิดที่ถูกที่สุดก่อน) ทำอาหารขายได้แพงกว่าของดิบ ปลดสูตรตามเลเวลเชฟ ได้ XP เชฟ เตาต้องพักระหว่างจาน
+  cookPick(r, raw) { // ล้าง pick จากเว็บ: อ็อบเจ็กต์ธรรมดา ดัชนี 0..len-1 เฉพาะแถวหมวด (c ไม่ใช่ k/u) ค่า string ≤40 เป็นไอเท็มในหมวดนั้น • ข้อที่ไม่ผ่านข้ามเงียบๆ • คืนอ็อบเจ็กต์ใหม่ (ไม่มี prototype ของผู้ส่ง)
+    const out = {}; if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    let keys; try { keys = Object.keys(raw).slice(0, 8); } catch (e) { return out; }
+    for (const ks of keys) {
+      if (!/^\d{1,2}$/.test(ks)) continue; const i = +ks; if (i >= r.in.length) continue;
+      const need = r.in[i]; if (!need.c || need.k || need.u) continue;
+      const v = raw[ks]; if (typeof v !== 'string' || v.length > 40 || !S.itemInfo(v) || !S.cookCat(need.c, v)) continue;
+      out[i] = v;
+    }
+    return out;
+  },
+  cook(p, id, n, pickRaw) { // เชฟ (อาชีพที่ 5): ใช้วัตถุดิบข้ามสาย (ชนิดที่ถูกที่สุดก่อน) ทำอาหารขายได้แพงกว่าของดิบ ปลดสูตรตามเลเวลเชฟ ได้ XP เชฟ เตาต้องพักระหว่างจาน
     // ทำทีละหลายจาน (22 พ.ย. 2026): n = 1..S.COOK_BATCH_MAX ทำรวดเดียว (หักวัตถุดิบ/ค่าเตา/กระทะสึก/XP ต่อจานเท่าเดิมทุกอย่าง) แล้วเตาพักรวม = เวลาทำ × จำนวนจานที่ได้จริง (อัตราต่อเวลาเท่าทำทีละจาน ไม่โกงเวลา) • วัตถุดิบ/เหรียญ/กระทะไม่พอกลางทาง = ทำเท่าที่ได้
     const r = typeof id === 'string' ? S.COOK.find(x => x.id === id) : null; if (!r) return;
     const want = Number.isInteger(n) ? Math.max(1, Math.min(S.COOK_BATCH_MAX, n)) : 1;
@@ -12,10 +23,10 @@ module.exports = {
     if (this.lv(p, 'cook') < r.lv) return this.toast(p, `สูตรนี้ปลดล็อกที่เชฟเลเวล ${r.lv} (ตอนนี้ ${this.lv(p, 'cook')}) — ทำเมนูง่ายขึ้นก่อนเพื่อเก็บเลเวล`);
     const now = Date.now();
     if (now < (p.cookReady || 0)) return send(p, { t: 'cookcd', ms: p.cookReady - now }), this.toast(p, `เตายังร้อนอยู่ รออีก ${Math.ceil((p.cookReady - now) / 1000)} วินาที`);
-    const inv = p.rec.inv; let made = 0, feeSum = 0, xpSum = 0, sellSum = 0, hi = 0, why = '', lastFeeR = S.COOK_FEE; // hi = จานที่ได้ระดับสูงสุด (ไว้บอกในข้อความ)
+    const pick = this.cookPick(r, pickRaw), inv = p.rec.inv; let made = 0, feeSum = 0, xpSum = 0, sellSum = 0, hi = 0, why = '', lastFeeR = S.COOK_FEE; // hi = จานที่ได้ระดับสูงสุด (ไว้บอกในข้อความ)
     for (let i = 0; i < want; i++) {
       const lotsMap = {}; for (const k of Object.keys(inv)) if (S.perishable(k) && inv[k] > 0) lotsMap[k] = this.lotsOf(p.rec, k);
-      const cu = S.cookUse(S.cookInv(inv, lotsMap, Date.now()), r), use = cu.use; // วัตถุดิบ (เฉพาะของสด: ค้าง/เก่าทำอาหารไม่ได้ 22 พ.ย. 2026): ใช้ของหลักก่อน ขาดค่อยใช้ของทางเลือก (S.COOK_ALT) ตัดสินที่ shared ให้เว็บแสดงตรงกัน
+      const cu = S.cookUse(S.cookInv(inv, lotsMap, Date.now()), r, pick), use = cu.use; // วัตถุดิบ (เฉพาะของสด: ค้าง/เก่าทำอาหารไม่ได้ 22 พ.ย. 2026): ใช้ของหลักก่อน ขาดค่อยใช้ของทางเลือก (S.COOK_ALT) ตัดสินที่ shared ให้เว็บแสดงตรงกัน
       if (!cu.ok && S.cookUse(inv, r).ok) { why = '🟡 วัตถุดิบไม่สด (ค้าง/เก่า) ทำอาหารไม่ได้ ต้องเป็นของสดอายุไม่เกิน 24 ชั่วโมง'; break; }
       if (!cu.ok) { const u = cu.rows.find(x => !x.ok && x.need.u); why = u ? `วัตถุดิบไม่พอ ต้องใช้ปลาคนละชนิดอย่างน้อย ${u.need.n} ชนิด` : 'วัตถุดิบไม่พอ'; break; }
       const qt = S.cookQuote(r, cu); // B′: ระดับ/ราคาขายของจานนี้ตามวัตถุดิบที่ใช้จริง (แต่ละจานในชุดต่างระดับกันได้)
