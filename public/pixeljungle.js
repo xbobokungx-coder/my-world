@@ -164,7 +164,7 @@ const PixelJungle = (() => {
     g.fillStyle = '#ffffff'; g.fillRect(cx - 8, by - 14, 3, 3); g.fillRect(cx + 5 + sw, by - 18, 3, 3); g.fillStyle = '#ffd1e0'; g.fillRect(cx - 1 + sw, by - 22, 3, 3);
   }
 
-  // ---------- ซุ้มประตูป่าในเมือง (ที่ฐานหอคอยเดิม 4x3 ช่อง) ----------
+  // ---------- ซุ้มประตูป่าในเมือง (ขอบล่างของเมือง 4x3 ช่อง x30–33 y43–45 • ช่องลอดกลาง 2 ช่อง) • แยก 2 ชั้น: 'back' = ช่องมืด+หมอก (วาดก่อนผู้เล่น) 'front' = เสา+คาน+ป้าย (วาดทับผู้เล่นที่เดินลอด) ----------
   const gateStatic = () => memo('gate', () => {
     const [c, g] = mk(128, 96), stone = (x, y, w, h) => { for (let yy = y; yy < y + h; yy += 8) for (let xx = x; xx < x + w; xx += 16) { const o = ((yy - y) / 8 & 1) * 8, x0 = Math.max(x, xx - o), x1 = Math.min(x + w, xx - o + 16); if (x1 <= x0) continue; g.fillStyle = hash(xx, yy, 50) > 0.5 ? '#8a9484' : '#767d70'; g.fillRect(x0, yy, x1 - x0, 8); g.fillStyle = '#434a40'; g.fillRect(x0, yy + 6, x1 - x0, 2); g.fillRect(x1 - 2, yy, 2, 8); } };
     g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(64, 92, 62, 6, 0, 0, 7); g.fill();
@@ -180,10 +180,18 @@ const PixelJungle = (() => {
     g.fillStyle = '#2b1b0e'; g.fillRect(36, 8, 56, 16); g.fillStyle = '#4a3a24'; g.fillRect(38, 10, 52, 12); // ป้ายชื่อบนคาน
     return c;
   });
-  function gate(g, x0, y0, wT, hT, now, open) {
-    const s = gateStatic(), X = x0 * TS, Y = y0 * TS; g.imageSmoothingEnabled = false; g.drawImage(s, X, Y + hT * TS - s.height);
-    const by = Y + hT * TS - s.height; // ไอหมอกเรืองลอยในช่องประตู
+  const gateParts = () => memo('gateParts', () => { // แยกภาพซุ้มเป็นช่องมืด (หลัง) กับโครงหิน (หน้า)
+    const s = gateStatic(), [cb, gb] = mk(128, 96), [cf, gf] = mk(128, 96);
+    gb.drawImage(s, 32, 28, 64, 64, 32, 28, 64, 64); gf.drawImage(s, 0, 0); gf.clearRect(32, 28, 64, 64);
+    return { back: cb, front: cf };
+  });
+  function gate(g, x0, y0, wT, hT, now, open, part) {
+    const X = x0 * TS, Y = y0 * TS; g.imageSmoothingEnabled = false;
+    const by = Y + hT * TS - 96, P = gateParts();
+    if (part === 'back') { g.drawImage(P.back, X, by); // ไอหมอกเรืองลอยในช่องประตู
     for (let i = 0; i < 5; i++) { const t = (now / 6000 + i / 5) % 1; g.fillStyle = `rgba(170,240,170,${0.2 * Math.sin(t * Math.PI)})`; g.beginPath(); g.ellipse(X + 40 + ((i * 29) % 48) + Math.sin(now / 1300 + i) * 4, by + 88 - t * 50, 12 + t * 6, 3, 0, 0, 7); g.fill(); }
+    return; }
+    g.drawImage(P.front, X, by);
     for (const lx of [X + 18, X + 110]) { const a = 0.35 + 0.2 * Math.sin(now / 300 + lx); g.fillStyle = `rgba(150,255,170,${a})`; g.beginPath(); g.arc(lx, by + 36, 9, 0, 7); g.fill(); g.fillStyle = '#d8ffd0'; g.fillRect(lx - 2, by + 33, 4, 6); } // โคมหิ่งห้อยบนเสา
     g.font = 'bold 12px "Sukhumvit Set","Thonburi","Noto Sans Thai",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#ffe9a8'; g.fillText('ป่าดงดิบ', X + 64, by + 16);
     if (!open) { g.fillStyle = 'rgba(21,13,34,.55)'; g.fillRect(X + 34, by + 56, 60, 16); g.font = 'bold 10px "Sukhumvit Set","Thonburi","Noto Sans Thai",sans-serif'; g.fillStyle = `rgba(240,225,255,${0.75 + 0.25 * Math.sin(now / 900)})`; g.fillText('เร็วๆ นี้', X + 64, by + 64); }

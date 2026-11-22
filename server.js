@@ -261,6 +261,7 @@ class World {
         p.x = x; p.y = y;
         if (m.d >= 0 && m.d < 4) p.dir = m.d | 0;
         { const cf = S.caveFloor(p.scene); if (cf) { const t = this.floorOf(cf).map[Math.floor(y / TS)][Math.floor(x / TS)]; if (t === T.MOUTH) { if (S.isJungle(cf)) this.jungleLeave(p); else if (S.isSeaScene(cf)) this.seaLeave(p, S.isOcean(cf) ? '⛵ เทียบท่ากลับเกาะแล้ว' : '⛵ ลงเรือเล็กกลับเกาะ'); else if (cf === 1) this.leaveCave(p); else this.caveMove(p, cf, cf - 1); } else if (t === T.DOWN) this.caveMove(p, cf, cf + 1); break; } } // เดินถึงทางออก = ขึ้นชั้นบน (ชั้น 1 = กลับเมือง) • เดินลงบันไดลง = ชั้นถัดไป
+        if (!p.scene && this.jungleDoorAt(x, y)) { this.jungleWalk(p); break; } // เดินทับช่องประตูป่าดงดิบขอบล่างเมือง = เข้าป่า
         if (!p.scene && this.map[Math.floor(y / TS)][Math.floor(x / TS)] === T.MOUTH) { this.enterCave(p); break; } // เดินเข้าปากถ้ำบนหน้าผา
         if (p.scene) { if (Math.floor(y / TS) >= S.HOUSE.y1 && S.HOUSE.door.includes(Math.floor(x / TS))) this.leaveHouse(p); break; } // เดินถึงประตูบ้าน = ออกไปเมือง
         this.arcRangeCheck(p);
@@ -413,7 +414,7 @@ class World {
     const k = tx + ',' + ty;
     const tt = this.map[ty] && this.map[ty][tx];
     const tcx = (tx + 0.5) * TS, tcy = (ty + 0.5) * TS;
-    if (S.jgateAt(tx, ty)) return this.jungleEnter(p); // ประตูป่าดงดิบ (ช่องหอคอยเดิม) ตรวจก่อนด่านหิว/เหนื่อย
+    if (S.jgateAt(tx, ty)) return this.jungleEnter(p); // ประตูป่าดงดิบ (เดิมเป็นช่องฐานหอคอย) ตรวจก่อนด่านหิว/เหนื่อย
     if (this.exhausted(p) && this.heavyAction(tool, k) && tt !== T.SHOP) { const e = this.enOf(p), sec = Math.ceil((S.ENERGY.resume - e.v) * S.ENERGY.regenMs / (p.sit ? S.ENERGY.sitMul : 1) / 1000); return this.toast(p, `😮‍💨 เหนื่อยอยู่ พักอีกราว ${sec} วินาทีถึงทำงานหนักได้ (นั่งม้านั่งฟื้นไว 3 เท่า)`); }
     if (p.rec.hunger <= 0 && tt !== T.SHOP) return this.toast(p, '😵 หิวจนไม่มีแรง! ไปกินอาหารก่อนนะ (ร้านอาหาร หรือกินผลผลิตจากกระเป๋า)');
     // 0) นั่งที่ม้านั่ง/กองฟาง/เก้าอี้ในลานกลางหมู่บ้าน

@@ -5,7 +5,12 @@ const { TS } = S;
 const { CAVE } = require('../consts.js'); // สตริง '@cave'
 
 module.exports = {
-  jungleGateFront() { const G = S.JGATE; return { x: (G.door[0] + G.door[2] + 1) / 2 * TS, y: (G.y1 + 1.5) * TS }; }, // ช่องหน้าประตูป่าในเมือง (ยืนหน้าประตูหอเดิม ไม่ทับช่องประตู)
+  jungleGateFront() { const G = S.JGATE; return { x: (G.door[0] + G.door[2] + 1) / 2 * TS, y: (G.y0 - 0.5) * TS }; }, // ช่องเหนือซุ้มประตูป่า (ไม่ซ้อนช่อง trigger) ออกจากป่ามายืนตรงนี้
+  jungleDoorAt(x, y) { const G = S.JGATE, tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx >= G.door[0] && tx <= G.door[2] && ty >= G.door[1] && ty <= G.door[3]; }, // พิกัดพิกเซลอยู่ในช่องประตู (เดินทับ = เข้า)
+  jungleWalk(p) { // เดินทับช่องประตู: กันยิงรัว (toast ตอนปิดสวิตช์) • ตอนเพิ่งออกจากป่ายืนที่ช่องเหนือซุ้ม ไม่ซ้อน trigger จึงไม่วนเข้าซ้ำ
+    const now = Date.now(); if (now - (p.jgWalkAt || 0) < 1500) return; p.jgWalkAt = now;
+    this.jungleEnter(p);
+  },
   jungleEnter(p) { // เรียกตอน act ที่ช่อง jgateAt (ก่อนด่านหิว/เหนื่อย)
     if (p.scene) return;
     if (!S.JUNGLE.open) return this.toast(p, '🌿 ป่าดงดิบกำลังเตรียมตัว เร็วๆ นี้!');
@@ -20,6 +25,6 @@ module.exports = {
     this.leaveCave(p); this.toast(p, msg || '🌿 ออกจากป่าดงดิบแล้ว');
   },
   jungleAct(p) { // ขั้น J2: ในป่ายังไม่มีอะไรให้กด (ต่อสู้/สมุนไพรทำขั้น J5–J6) กันคลิกถี่เท่านั้น ไม่ตกไป caveAct (อีเต้อ)
-    const now = Date.now(); if (now - p.lastAct < 150) return; p.lastAct = p.activeAt = now;
+    const now = Date.now(); if (now - p.lastAct < 150) return; p.lastAct = now; // ยังไม่ตั้ง activeAt: ในป่าเฟสนี้ยังไม่มีอะไรให้ทำ กดค้างไม่นับเป็นกิจกรรม (J5 ค่อยตั้งเมื่อทำอะไรจริง)
   },
 };

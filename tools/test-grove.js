@@ -1,14 +1,14 @@
 // ทดสอบป่ารอบหอคอย 100 ชั้น: ปลูกเต็มทุกช่อง เว้นทางเดินหน้าประตู • ตัดแล้วงอกคืนที่เดิมทีละต้น • ไม่นับเพดาน/ไม่โดนถอนตามโควตา • ไม่งอกทับตัวผู้เล่น
 const assert = require('assert');
 process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-grove-');
-const { World } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS, T = S.T, G = S.GROVE, TW = S.JGATE;
+const { World } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS, T = S.T, G = S.GROVE, TW = G.glade;
 
 // แมพใหม่: ทุกช่องในกรอบป่า (ยกเว้นฐานหอ/ทางเดินหน้าประตู) เป็นต้นไม้ ทางเดินหน้าประตูโล่ง
 {
   const m = S.makeMap(); let n = 0;
   for (let y = TW.y0 - 1; y <= TW.y1 + 2; y++) for (let x = TW.x0 - 2; x <= TW.x1 + 2; x++) {
-    const base = S.jgateAt(x, y), walk = x >= TW.door[0] && x <= TW.door[2] && y > TW.y1;
-    if (base) assert.strictEqual(m[y][x], T.LANDMARK, 'ฐานหอ'); else if (walk) assert.strictEqual(m[y][x], T.GRASS, `ทางเดินหน้าประตู ${x},${y} ต้องโล่ง`);
+    const base = x >= TW.x0 && x <= TW.x1 && y >= TW.y0 && y <= TW.y1, walk = x >= TW.door[0] && x <= TW.door[2] && y > TW.y1;
+    if (base) assert.strictEqual(m[y][x], T.GRASS, 'ลานหญ้าที่ตั้งหอเดิม ไม่มี LANDMARK/ต้นไม้'); else if (walk) assert.strictEqual(m[y][x], T.GRASS, `ทางเดินหน้าประตู ${x},${y} ต้องโล่ง`);
     else { assert.strictEqual(m[y][x], T.TREE, `ช่อง ${x},${y} ต้องเป็นต้นไม้`); n++; }
     assert.strictEqual(S.groveHas(x, y), !base && !walk);
   }

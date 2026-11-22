@@ -4,7 +4,7 @@ process.env.DATA_DIR = require('./testlib').tmpDataDir('mw-jungle-');
 const { World } = require('../server.js'), S = require('../public/shared.js'), TS = S.TS, T = S.T, J = S.JUNGLE;
 
 // ผังตายตัว
-assert.strictEqual(J.floor, 97); assert.strictEqual(J.open, false);
+assert.strictEqual(J.floor, 97); assert.strictEqual(J.open, true, 'เปิดป่าให้ทุกคนแล้ว');
 assert.strictEqual(J.rows.length, S.H); assert.ok(J.rows.every(r => r.length === S.W && /^[#t.=~FHTCSREh]+$/.test(r)), 'แถวละ 64 ตัวอักษรในชุดที่กำหนด');
 const m = S.makeCaveMap(97), m2 = S.makeCaveMap(97);
 assert.strictEqual(m.length, S.H); assert.ok(m.every(r => r.length === S.W)); assert.deepStrictEqual(m, m2, 'ผังตายตัว');
@@ -36,15 +36,29 @@ const mkWs = () => ({ readyState: 1, msgs: [], send(s) { this.msgs.push(JSON.par
 const w = new World('jungle');
 assert.ok(Object.keys(w.houses).every(k => k[0] !== '@'), 'houses ไม่มีคีย์ @');
 const p = w.join(mkWs(), 'Jun', '#fff').p, G = S.JGATE;
-const front = () => ({ x: (G.door[0] + 0.5) * TS, y: (G.y1 + 1.5) * TS });
-const stand = () => { const f = front(); p.x = f.x; p.y = f.y; p.dir = 1; p.lastAct = 0; p.exhausted = 0; };
-const act = (tool = 'hand') => { p.lastAct = 0; w.handle(p, { t: 'act', tool, tx: G.door[0], ty: G.y1 }); };
+const front = () => ({ x: (G.door[0] + 1) * TS, y: (G.y0 - 0.5) * TS });
+const stand = () => { const f = front(); p.x = f.x; p.y = f.y; p.dir = 3; p.lastAct = 0; p.exhausted = 0; p.jgWalkAt = 0; };
+const act = (tool = 'hand') => { p.lastAct = 0; w.handle(p, { t: 'act', tool, tx: G.door[0], ty: G.y0 }); };
+// ซุ้มประตูขอบล่างเมือง: เสาทึบ ช่องกลางเดินได้ jgateAt ครอบทั้งสี่เหลี่ยม
+assert.deepStrictEqual(G, { x0: 30, y0: 43, x1: 33, y1: 45, door: [31, 45, 32, 45] });
+for (let y = G.y0; y <= G.y1; y++) for (let x = G.x0; x <= G.x1; x++) { assert.ok(S.jgateAt(x, y)); const pillar = x === G.x0 || x === G.x1; assert.strictEqual(w0map()[y][x], pillar ? T.LANDMARK : T.PATH, `ซุ้ม ${x},${y}`); }
+assert.ok(!S.jgateAt(29, 44) && !S.jgateAt(31, 42) && !S.jgateAt(34, 44));
+function w0map() { return S.makeMap(); }
+{ const wm = S.makeMap(); // หน้าซุ้มและจุดเกิดเดินได้ ไม่มีต้นไม้ขวาง
+  for (let y = 40; y <= 42; y++) for (let x = 28; x <= 35; x++) if (wm[y][x] === T.WATER) continue; else assert.ok(!S.blockedAt(wm, (x + 0.5) * TS, (y + 0.5) * TS), `เดินได้ ${x},${y}`);
+  assert.ok(!S.blockedAt(wm, S.SPAWN.x, S.SPAWN.y), 'จุดเกิดไม่ชนซุ้ม');
+  assert.ok(!S.blockedAt(wm, (G.door[0] + 1) * TS, (G.y1 + 0.5) * TS), 'ยืนบนช่องประตูได้');
+  assert.ok(S.blockedAt(wm, (G.x0 + 0.5) * TS, (G.y0 + 0.5) * TS), 'เสาทึบ'); }
+
 const toasts = () => p.ws.msgs.filter(x => x.t === 'toast' || x.t === 'msg').map(x => JSON.stringify(x)).join('|');
 
-// open=false: เข้าไม่ได้ ขึ้นข้อความเร็วๆ นี้ แม้หิวจนตัน
-stand(); p.rec.hunger = 0; act();
+// สวิตช์ปิด: เข้าไม่ได้ ขึ้นข้อความเร็วๆ นี้ (ทั้ง Action และเดินทับ) เดินทับรัวไม่ toast ซ้ำ
+J.open = false; stand(); act();
 assert.ok(!p.scene, 'open=false เข้าไม่ได้'); assert.ok(toasts().includes('ป่าดงดิบกำลังเตรียมตัว'), 'toast เร็วๆ นี้');
-p.rec.hunger = 100;
+p.ws.msgs.length = 0; p.jgWalkAt = 0; p.x = (G.door[0] + 0.5) * TS; p.y = (G.y1 + 0.5) * TS;
+for (let i = 0; i < 5; i++) w.handle(p, { t: 'm', x: p.x, y: p.y + (i % 2), d: 0 });
+assert.ok(!p.scene && p.ws.msgs.filter(x => x.t === 'toast' || x.t === 'msg').length <= 1, 'เดินทับตอนปิดไม่ยิงรัว');
+J.open = true; p.rec.hunger = 100;
 // ผู้ดูแลวาปได้
 assert.strictEqual(w.warpTo(p, 'jungle'), null); assert.strictEqual(p.scene, '@cave97');
 assert.ok(p.ws.msgs.some(x => x.t === 'scene' && x.sc === '@cave97' && x.cave === 97 && x.ores.length === 0), 'ส่ง scene 97 ไม่มีแร่');
@@ -53,10 +67,9 @@ w.handle(p, { t: 'm', x: 10 * TS, y: 5 * TS }); // เดินในฉาก (
 w.leaveCave(p); assert.ok(!p.scene);
 
 // เปิดสวิตช์: เข้าด้วย act ที่ช่อง jgate
-J.open = true;
 stand(); act();
 assert.strictEqual(p.scene, '@cave97', 'act ที่ประตู = เข้าป่า'); assert.deepStrictEqual([Math.floor(p.x / TS), Math.floor(p.y / TS)], [31, 5]);
-assert.ok(!S.blockedAt(w.map, p.ret.x, p.ret.y), 'ret ยืนได้ในเมือง'); assert.strictEqual(Math.floor(p.ret.y / TS), G.y1 + 1);
+assert.ok(!S.blockedAt(w.map, p.ret.x, p.ret.y), 'ret ยืนได้ในเมือง'); assert.strictEqual(Math.floor(p.ret.y / TS), G.y0 - 1); assert.ok(!S.jgateAt(Math.floor(p.ret.x / TS), Math.floor(p.ret.y / TS)), 'ret ไม่ซ้อนช่องประตู'); assert.ok(!w.jungleDoorAt(p.ret.x, p.ret.y));
 assert.strictEqual(w.floorOf(97).ores.size, 0, 'ไม่วางแร่'); assert.strictEqual(w.oresPub(97).length, 0);
 // อีเต้อ/ขวานในป่า ไม่ทำอะไร ต้นไม้ไม่หาย
 { const F = w.floorOf(97); let tx, ty; for (let y = 10; y < 20 && !tx; y++) for (let x = 4; x < 60 && !tx; x++) if (F.map[y][x] === T.TREE && F.map[y][x - 1] === T.CAVE) { tx = x; ty = y; }
@@ -67,11 +80,16 @@ assert.strictEqual(w.floorOf(97).ores.size, 0, 'ไม่วางแร่'); a
 p.rec.inv.recall = 1; w.recallUse(p); assert.strictEqual(p.scene, '@cave97'); assert.strictEqual(p.rec.inv.recall, 1);
 // ออกด้วยการเดินถึง T.MOUTH ขอบบน
 p.x = 31.5 * TS; p.y = 2.5 * TS; p.lastMove = 0; w.handle(p, { t: 'm', x: 31.5 * TS, y: 1.5 * TS, d: 1 });
-assert.ok(!p.scene, 'เดินถึงทางออก = กลับเมือง'); assert.ok(Math.abs(p.y - (G.y1 + 1.5) * TS) < 1 && !p.ret, 'กลับมาหน้าประตูเมือง');
+assert.ok(!p.scene, 'เดินถึงทางออก = กลับเมือง'); assert.ok(Math.abs(p.y - (G.y0 - 0.5) * TS) < 1 && !p.ret, 'กลับมาหน้าประตูเมือง (เหนือซุ้ม)');
+// ออกมาแล้วไม่วนเข้าซ้ำ แม้ส่งตำแหน่งที่ยืนอยู่
+w.handle(p, { t: 'm', x: p.x, y: p.y, d: 1 }); assert.ok(!p.scene, 'ยืนหน้าซุ้มไม่เข้าซ้ำ');
+// เดินทับช่องประตู = เข้าป่าอัตโนมัติ
+p.jgWalkAt = 0; p.x = (G.door[0] + 1) * TS; p.y = (G.y1 + 0.5) * TS - 2; w.handle(p, { t: 'm', x: p.x, y: (G.y1 + 0.5) * TS, d: 0 });
+assert.strictEqual(p.scene, '@cave97', 'เดินทับช่องประตู = เข้าป่า'); assert.deepStrictEqual([Math.floor(p.x / TS), Math.floor(p.y / TS)], [31, 5]);
+w.leaveCave(p); assert.ok(!p.scene);
 // ออฟไลน์ในป่า = เซฟตำแหน่งหน้าประตู
 stand(); act(); assert.strictEqual(p.scene, '@cave97'); p.x = 40 * TS; p.y = 30 * TS;
 const rec = p.rec; w.leave(p);
-assert.ok(Math.abs(rec.x - front().x) < TS && Math.abs(rec.y - (G.y1 + 1.5) * TS) < 1, `เซฟหน้าประตู ${rec.x},${rec.y}`);
-J.open = false;
+assert.ok(Math.abs(rec.x - front().x) < TS && Math.abs(rec.y - (G.y0 - 0.5) * TS) < 1, `เซฟหน้าประตู ${rec.x},${rec.y}`);
 console.log('✓ ผ่าน: ป่าดงดิบ J2');
 process.exit(0);

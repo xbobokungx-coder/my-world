@@ -1966,11 +1966,11 @@
     if (!bare) for (const c of CABINETS) set(c.x, c.y, T.SHOP); // ตู้เกมเป็นช่องที่เดินผ่านไม่ได้ แต่ใช้งานได้จากช่องติดกัน
     if (!bare) { set(ATM.x, ATM.y, T.SHOP); set(RANKBOARD.x, RANKBOARD.y, T.SHOP); set(BOARD.x, BOARD.y, T.SHOP); set(LUCKY.x, LUCKY.y, T.SHOP); set(FLEA.x, FLEA.y, T.SHOP); } // กระดานข่าว + ตู้เซฟกองกลาง
     if (!bare) set(FIRE.x, FIRE.y, T.BUILD);                    // กองไฟ (เดินผ่านไม่ได้)
-    if (!bare) for (let y = JGATE.y0; y <= JGATE.y1; y++) for (let x = JGATE.x0; x <= JGATE.x1; x++) set(x, y, T.LANDMARK); // ฐานหอคอย 100 ชั้น
     // ต้นไม้ขอบแมพ + กระจายในที่ว่าง
     for (let x = 0; x < W; x++) { set(x, 0, T.TREE); set(x, H - 1, T.TREE); }
     for (let y = 0; y < H; y++) { set(0, y, T.TREE); set(W - 1, y, T.TREE); }
     for (const P of Object.values(PENS)) for (const [x, y] of P.edgeR) set(x, y, T.PATH); // แถบทางเดินแคบที่ขอบ x63 ต่อประตูขวาของเล้าคอลัมน์ขวาสุดเข้าถนน (ทับต้นไม้ขอบ)
+    if (!bare) { for (let y = JGATE.y0; y <= JGATE.y1; y++) for (let x = JGATE.x0; x <= JGATE.x1; x++) set(x, y, T.LANDMARK); for (let y = JGATE.y0; y <= JGATE.y1; y++) for (let x = JGATE.door[0]; x <= JGATE.door[2]; x++) set(x, y, T.PATH); } // ซุ้มประตูป่าดงดิบที่ขอบล่าง: เสา 2 ข้างทึบ ช่องกลางเดินลอดลงไปทับแนวต้นไม้ขอบ (เดินทับช่อง door = เข้าป่า)
     const r = rng(11);
     const reserved = [[2, 9, 20, 26], [19, 9, 34, 33], [35, 9, 46, 34], [21, 0, 63, 8], [29, 30, 57, 45], [44, 8, 63, 46], [10, 27, 26, 31]]; // ที่โล่งของเมือง (ต้นไม้ขึ้นได้ที่ป่าตะวันตกเฉียงใต้ ที่ราบเหนือฝั่งซ้าย และมุมตะวันออกเฉียงใต้)
     for (let i = 0; i < 330; i++) {
@@ -1978,8 +1978,9 @@
       if (reserved.some(b => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3])) continue;
       setIfGrass(x, y, T.TREE);
     }
-    if (!bare) for (let y = JGATE.y1 + 1; y <= JGATE.y1 + 2; y++) for (let x = JGATE.door[0]; x <= JGATE.door[2]; x++) if (m[y][x] === T.TREE) m[y][x] = T.GRASS; // เปิดทางเดินหน้าประตูหอ (ต้นไม้สุ่มเดิมที่ทับอยู่ถอนออก)
-    if (!bare) for (let x = JGATE.x0 - 2; x <= JGATE.x1 + 3; x++) if (m[JGATE.y1 + 3][x] === T.TREE) m[JGATE.y1 + 3][x] = T.GRASS; // ถอนต้นไม้สุ่มบนแถวใต้ป่า (y7) ให้เดินตะวันออก-ตะวันตกผ่านใต้หอได้ ไม่งั้นป่าปิดทางไปสวนฝั่งซ้าย
+    if (!bare) for (let y = GROVE.glade.y1 + 1; y <= GROVE.glade.y1 + 2; y++) for (let x = GROVE.glade.door[0]; x <= GROVE.glade.door[2]; x++) if (m[y][x] === T.TREE) m[y][x] = T.GRASS; // เปิดทางเดินหน้าประตูหอ (ต้นไม้สุ่มเดิมที่ทับอยู่ถอนออก)
+    if (!bare) for (let x = GROVE.glade.x0 - 2; x <= GROVE.glade.x1 + 3; x++) if (m[GROVE.glade.y1 + 3][x] === T.TREE) m[GROVE.glade.y1 + 3][x] = T.GRASS; // ถอนต้นไม้สุ่มบนแถวใต้ป่า (y7) ให้เดินตะวันออก-ตะวันตกผ่านใต้หอได้ ไม่งั้นป่าปิดทางไปสวนฝั่งซ้าย
+    if (!bare) for (let y = GROVE.glade.y0; y <= GROVE.glade.y1; y++) for (let x = GROVE.glade.x0; x <= GROVE.glade.x1; x++) if (m[y][x] === T.TREE) m[y][x] = T.GRASS; // ลานหญ้าที่ตั้งหอเดิม ถอนต้นไม้สุ่มที่ทับออก
     if (!bare) for (const [x, y] of groveCells(m)) m[y][x] = T.TREE; // ป่ารอบหอคอย 100 ชั้น ปลูกเต็มทุกช่องว่าง (เว้นทางเดินหน้าประตู)
     for (let y = 1; y <= 7; y++) for (let x = MINE.hill.x0; x <= MINE.hill.x1; x++) if (m[y][x] === T.TREE) m[y][x] = T.GRASS; // ไม่มีต้นไม้ทับภาพภูเขาถ้ำ
     return m;
@@ -1988,11 +1989,11 @@
   // สิ่งก่อสร้างจากโครงการพัฒนาเมือง (PROJECTS): ยอดลงขันครบเป้าเมื่อไร ก็แปลงช่องบนแมพตามตารางนี้ทันที
   // server กับ client เรียก applyProject ตัวเดียวกัน (server ใช้คุมการเดินตัน/ทะลุ client ใช้วาดภาพ) เพิ่มโครงการใหม่ = เพิ่มแถวใน STRUCTS
   const BRIDGE = { x0: 43, y0: 34, x1: 44, y1: 42 };                        // สะพานไม้กว้าง 2 ช่อง พาดเหนือ(y33)→ใต้(y43) กลางสระ
-  const JGATE = { x0: 9, y0: 2, x1: 12, y1: 4, door: [10, 4, 11, 4] }; // หอคอย 100 ชั้น (เตรียมไว้ใช้กับดันเจี้ยน 100 ชั้น ตอนนี้ยังปิด 'เร็วๆ นี้') • ตั้งเหนือถ้ำเหมือง: กึ่งกลางแนวนอนตรงกับกึ่งกลางสวนปลูก FARM (x3–18 → กลาง x=11 ช่อง) กึ่งกลางแนวตั้งอยู่กลางระหว่างขอบแมพบนกับยอดถ้ำ (ดู drawTower) • ฐาน 4x3 ช่องเป็น T.LANDMARK เดินผ่านไม่ได้ ยืนหน้าประตูที่แถว y1+1 แล้วกด Action
+  const JGATE = { x0: 30, y0: 43, x1: 33, y1: 45, door: [31, 45, 32, 45] }; // ซุ้มประตูป่าดงดิบที่ขอบล่างของเมือง (ย้ายจากหอคอยมุมซ้ายบน 22 พ.ย. 2026) • เสา x30 กับ x33 ช่วง y43–45 เป็น T.LANDMARK ทึบ • ช่อง x31–32 y43–45 เป็น T.PATH ลอดซุ้มลงล่าง • เดินทับช่อง door (y45) = เข้าป่าอัตโนมัติ • กด Action/แตะช่องใดๆ ใน jgateAt ก็เข้าได้ • ยืนหน้าซุ้มที่แถว y42
   // ป่ารอบหอคอย (20 พ.ย. 2026): ต้นไม้ล้อมหอเต็มไม่มีช่องว่าง กรอบ x0-2..x1+2 • y0-1..y1+2 เว้นทางเดินหน้าประตู 2 ช่อง (x10–11, y5–6) • ตัดได้เหมือนต้นไม้ปกติ แต่ งอกคืนที่เดิมเองทีละต้นทุก regrowMs (จำกัดอัตราไม่ให้เป็นที่ปั่นไม้) ไม่นับเข้าเพดานต้นไม้ในแมพ ไม่โดนถอนตามโควตา
-  const GROVE = { regrowMs: 15000, clear: 1.2 }; // regrowMs = งอกคืนได้ 1 ต้นต่อรอบ • clear = ห่างผู้เล่นกี่ช่องถึงงอกได้ (ไม่งอกทับตัว)
-  const groveWalk = (x, y) => x >= JGATE.door[0] && x <= JGATE.door[2] && y > JGATE.y1 && y <= JGATE.y1 + 2; // ทางเดินหน้าประตูหอ (ไม่ปลูก)
-  const groveRect = (x, y) => x >= JGATE.x0 - 2 && x <= JGATE.x1 + 2 && y >= JGATE.y0 - 1 && y <= JGATE.y1 + 2 && !jgateAt(x, y) && !groveWalk(x, y);
+  const GROVE = { regrowMs: 15000, clear: 1.2, glade: { x0: 9, y0: 2, x1: 12, y1: 4, door: [10, 4, 11, 4] } }; // regrowMs = งอกคืนได้ 1 ต้นต่อรอบ • clear = ห่างผู้เล่นกี่ช่องถึงงอกได้ • glade = ลานหญ้าเปล่ากลางป่า (ที่ตั้งหอคอยเดิม ย้ายประตูป่าไปขอบล่างแล้ว เหลือเป็นป่าล้อมลานโล่ง) door = ทางเดินเข้าลาน
+  const groveWalk = (x, y) => { const g = GROVE.glade; return x >= g.door[0] && x <= g.door[2] && y > g.y1 && y <= g.y1 + 2; }; // ทางเดินหน้าลาน (ไม่ปลูก)
+  const groveRect = (x, y) => { const g = GROVE.glade; return x >= g.x0 - 2 && x <= g.x1 + 2 && y >= g.y0 - 1 && y <= g.y1 + 2 && !(x >= g.x0 && x <= g.x1 && y >= g.y0 && y <= g.y1) && !groveWalk(x, y); };
   const groveCells = m => { const out = []; for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (groveRect(x, y) && (m[y][x] === T.GRASS || m[y][x] === T.TREE)) out.push([x, y]); return out; }; // เฉพาะช่องหญ้า/ต้นไม้ (ไม่ทับหิน บ้าน ฯลฯ)
   const groveHas = (x, y) => groveRect(x, y);
   const jgateAt = (tx, ty) => tx >= JGATE.x0 && tx <= JGATE.x1 && ty >= JGATE.y0 && ty <= JGATE.y1;
@@ -2040,7 +2041,7 @@
   // ===== JUNGLE ===== ป่าดงดิบ (แผน docs/plans/jungle-map.md ข้อ 15): ฉากพิเศษในระบบฉากถ้ำ p.scene='@cave97' (ต่อจาก OCEAN 98 / SEA 99 ห้ามให้ถ้ำเหมืองขยายเกิน 96 ชั้น) ไม่ใช่เหมือง: ไม่มีแร่/ตั๋ว/HUD ถ้ำ
   // ผัง 64x46 ตายตัว (ไม่สุ่ม) ตัวอักษร: # ดงทึบ t ต้นไม้เดี่ยว (ต้นไม้ T.TREE ตัดไม่ได้ ไม่มีชนิด) . พื้นป่า T.CAVE = ถนน T.PATH ~ ลำธาร T.WATER F ที่ข้ามตื้น (T.SAND เดินได้) H สะพาน T.BRIDGE T หอคอย T.LANDMARK C ของในค่าย S ศาลเจ้า R ซากวิหาร (T.BUILD ทึบ) E ทางออก T.MOUTH (ขอบบน) h จุดสมุนไพร (พื้นเดินได้ ตำแหน่งอยู่ใน herbs)
   const JUNGLE = {
-    floor: 97, open: false, // open=false: ประตูในเมืองขึ้น 'เร็วๆ นี้' (ผู้ดูแลวาปได้) • เปิดจริง = true
+    floor: 97, open: true, // open=false: ประตูในเมืองขึ้น 'เร็วๆ นี้' (ผู้ดูแลวาปได้) • เปิดจริง = true
     spawn: { x: 31.5 * TS, y: 5.5 * TS }, // จุดเกิด (ช่อง 31,5) กลางค่ายหน้าป่า
     exit: { x0: 30, x1: 33, y0: 0, y1: 1 }, // ทางออก T.MOUTH ขอบบน (เดินขึ้นไปถึง = กลับหน้าประตูเมือง)
     tower: { x0: 9, y0: 36, x1: 12, y1: 38, door: { x: 11, y: 39 } }, // หอคอยล่างซ้าย ยืนหน้าประตูที่ช่อง door
