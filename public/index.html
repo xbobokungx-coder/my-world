@@ -476,6 +476,50 @@
     .bdetail .brow { margin-top:0; flex-wrap:nowrap; }
     .bdetail .btn { min-height:40px; }
   }
+  /* รอบ "พอดีจอ": ย่อลงอีก ไม่มีแถบเลื่อนที่มองเห็น มือถือเป็นหน้าต่างลอยกลางจอ (แตะนอกกรอบปิดได้ ผ่าน pointerdown เดิมของ #bag) */
+  #bag, #bag * { scrollbar-width:none; -ms-overflow-style:none; }
+  #bag *::-webkit-scrollbar, #bag::-webkit-scrollbar { display:none; width:0; height:0; }
+  #bag { --bagS:.6; }
+  #bag .panel:has(.bagwrap), #bag .panel:has(.doll) { width:min(94vw,390px); }
+  .bagwrap { grid-template-columns:54px minmax(0,1fr); }
+  .brail { max-height:min(320px,48dvh); overflow-y:auto; position:static !important; }
+  .bgrid { max-height:min(236px,36dvh); overflow-y:auto; overscroll-behavior:contain; }
+  .bdetail { position:static; max-height:130px; box-shadow:none; }
+  .doll .dcol { gap:3px; }
+  .bw.dl { min-height:52px; }
+  .bw.dl b { font-size:calc(26px*var(--bagS)); }
+  #bagGear .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; }
+  #bagGear .card { padding:4px 6px; font-size:12px; line-height:1.2; }
+  #bagGear .card b { font-size:16px; }
+  #bagGear > p { font-size:11px; margin:4px 0 0; }
+  @media (max-width:700px) { .bagwrap { grid-template-columns:38px minmax(0,1fr); gap:4px; } .brail .rl { min-height:38px; } .bslot.empty:nth-child(n+31) { display:none; } }
+  @media (max-width:600px) {
+    #bag { --bagP:8px; }
+    #bag .panel, #bag .panel:has(.bagwrap), #bag .panel:has(.doll) { width:min(94vw,360px); height:auto; max-height:92vh; max-height:92dvh; border-radius:14px; box-shadow:0 6px 0 rgba(0,0,0,.25), 0 0 0 2px rgba(0,0,0,.15); padding:var(--bagP); }
+    #bag .panel > h2:first-child { font-size:15px; margin-bottom:4px; }
+    #bag .tab { min-height:38px; font-size:12px; padding:3px 4px; }
+    .bsrch input, .bsrch .btn { min-height:38px; }
+    #bagBody > .row:has(+ .bagwrap) { display:none; }
+    .bw.dl { min-height:50px; }
+    .doll .dcol { gap:3px; }
+    .bdetail .btn { min-height:44px; }
+  }
+  @media (max-width:600px) {
+    #bagGear > p { display:none; }
+    #bagGear .grid { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); gap:4px; }
+    #bagGear .card { display:flex; flex-direction:column; align-items:center; padding:3px 2px; font-size:11px; line-height:1.15; }
+    #bagGear .card .gn, #bagGear .card small, #bagGear .card br { display:none; }
+    #bagGear .card b { font-size:15px; }
+    #bagGear .hbar { width:90%; margin:2px 0 0; }
+    .dlink + .sec { font-size:12px; margin:4px 0 2px; }
+    .dlink { margin-top:4px; } .dlink .btn { min-height:38px; padding:4px 10px; }
+    .bw.dl { display:grid; grid-template-columns:20px minmax(0,1fr); grid-template-rows:auto 1fr; align-content:center; column-gap:4px; min-height:46px; text-align:left; padding:2px 4px; }
+    .bw.dl b { grid-row:1 / span 2; align-self:center; text-align:center; }
+    .bw.dl .dn { grid-column:2; } .bw.dl .ds { grid-column:2; }
+    .bw.dl .bbar { grid-column:1 / -1; }
+    .doll .dcol { gap:3px; }
+  }
+  @media (max-height:480px) { .bdetail { max-height:72px; } .bgrid { max-height:none; overflow:visible; } .brail { max-height:none; overflow:visible; } }
   .bar { height:10px; background:#e8dcc0; border-radius:6px; overflow:hidden; margin:4px 0; }
   .bar i { display:block; height:100%; background:#6cc04a; }
   .skill { padding:8px 0; border-bottom:1px dashed var(--edge); font-size:14px; }
