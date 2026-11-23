@@ -14,7 +14,7 @@ const PixelJungle = (() => {
     im.decoding = 'async';
     im.onload = () => { if (!im.naturalWidth) return; bgImg = im; bgReady = true; bgWaiters.splice(0).forEach(fn => fn()); };
     im.onerror = () => { bgReady = false; };
-    im.src = 'pack/jungle-bg.png?v=jbg5'; // พื้นอย่างเดียว (ไม่มีต้นไม้/วัตถุ) ต้นไม้ยังเป็นสไปรต์ทับ + ชนตามช่องแมพ
+    im.src = 'pack/jungle-bg.jpg?v=jbg6'; // พื้นอย่างเดียว ไม่มีต้นไม้/วัตถุ/จุดเศษใบไม้ — ต้นไม้ยังเป็นสไปรต์ทับ + ชนตามช่อง
   }
   function whenBgReady(fn) { if (bgReady) fn(); else bgWaiters.push(fn); }
   function packBase(W, H) {
