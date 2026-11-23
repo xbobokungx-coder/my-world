@@ -1,11 +1,31 @@
-// ป่าดงดิบ (J3, 22 พ.ย. 2026): พื้นป่า ต้นไม้ทึบ ค่าย ศาลเจ้า ซากวิหาร พุ่มสมุนไพร ซุ้มประตูป่า วาดด้วยโค้ดทั้งหมด (ไม่ใช้ PNG) • 1 พิกเซลศิลป์ = 2 พิกเซลเกม ช่องละ 32 พิกเซล
-// API: PixelJungle.base(rows, W, H, J) = ภาพพื้นทั้งแมพ • tree/tent/fire/sign/shrine/ruin/herb ตั้งฐานที่ขอบล่างของช่อง (วาดเรียงตาม y เอง) • gate = ซุ้มประตูป่าในเมือง
+// ป่าดงดิบ (J3, 22 พ.ย. 2026): พื้นป่า + ต้นไม้ทึบ/ค่าย/ศาลเจ้า ฯลฯ • 1 พิกเซลศิลป์ = 2 พิกเซลเกม ช่องละ 32 พิกเซล
+// API: PixelJungle.base(rows, W, H, J) = ภาพพื้นทั้งแมพ (ถ้ามี pack/jungle-bg.jpg ใช้ภาพทั้งใบ ไม่งั้นวาดโค้ด) • tree/tent/fire/sign/shrine/ruin/herb • gate = ซุ้มประตูป่าในเมือง
 // สไปรต์ที่ไม่ขยับแคชไว้ครั้งเดียว • ต้นไม้ในป่า "ทึบ เข้ม มีรากค้ำ เถาวัลย์ห้อย" ต่างจากต้นไม้ฟาร์ม (สว่าง กลมๆ) ให้รู้ทันทีว่าตัดไม่ได้
 const PixelJungle = (() => {
   const TS = 32, U = 2, hash = (x, y, s = 0) => PixelArt.hash(x, y, s);
   const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; return [c, g]; };
   const cache = new Map(), memo = (k, f) => { let v = cache.get(k); if (!v) { v = f(); cache.set(k, v); } return v; };
   const px = (g, col, x, y, w = 1, h = 1) => { g.fillStyle = col; g.fillRect(x * U, y * U, w * U, h * U); }; // วาดเป็นหน่วย 2 พิกเซล
+  // พื้นทั้งใบจาก pack (โทนเดียวกับเมือง ขอบมน น่ากลัวนิดๆ) — โหลดแล้ว base() ใช้ภาพแทนการวาดโค้ด
+  let bgImg = null, bgReady = false;
+  const bgWaiters = [];
+  function loadBg() {
+    const im = new Image();
+    im.decoding = 'async';
+    im.onload = () => { if (!im.naturalWidth) return; bgImg = im; bgReady = true; bgWaiters.splice(0).forEach(fn => fn()); };
+    im.onerror = () => { bgReady = false; };
+    im.src = 'pack/jungle-bg.jpg?v=jbg4';
+  }
+  function whenBgReady(fn) { if (bgReady) fn(); else bgWaiters.push(fn); }
+  function packBase(W, H) {
+    if (!bgReady || !bgImg) return null;
+    const [oc, g] = mk(W * TS, H * TS);
+    g.imageSmoothingEnabled = false;
+    g.drawImage(bgImg, 0, 0, oc.width, oc.height);
+    oc.packBg = true; // บอกฝั่งเกมว่าต้นไม้ในภาพมีแล้ว ไม่ต้องวาด tree สไปรต์ซ้ำ
+    return oc;
+  }
+  loadBg();
 
   // ---------- ต้นไม้ทึบ ----------
   const CANOPY = ['', '#0e2615', '#1a3f22', '#2a5a2f', '#3f7d3b', '#4a3422', '#33241a', '#5e4630', '#3b7a36', '#e8a23a', '#07140b'];
@@ -55,6 +75,7 @@ const PixelJungle = (() => {
   // ---------- พื้น ----------
   const FLOOR = ['#2f5a2e', '#2a5129', '#34622f'], FDARK = '#16301a', DIRT = ['#8a6a46', '#80613f', '#94744c'], WATER = ['#2b6a73', '#2a6470', '#2f727b'], SHALLOW = ['#a89a74', '#9a8c68', '#b0a47e'];
   function base(rows, W, H, J) {
+    const packed = packBase(W, H); if (packed) return packed;
     const [oc, g] = mk(W * TS, H * TS), at = (x, y) => (rows[y] && rows[y][x]) || '#', isW = ch => ch === '~' || ch === 'H', isTr = ch => ch === '#' || ch === 't';
     const zoneOf = (x, y) => { for (const s of J.safe) if (x >= s.x0 && x <= s.x1 && y >= s.y0 && y <= s.y1) return s.id; return ''; };
     for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) {
@@ -279,5 +300,5 @@ const PixelJungle = (() => {
       const sm = (tt * 0.5 + i * 0.33) % 1; g.fillStyle = `rgba(230,230,230,${0.28 * (1 - sm)})`; g.fillRect(Math.round(ix + Math.sin(tt * 1.4 + i + sm * 5) * 2), Math.round(top - 2 - sm * 14), 2, 2);
     }
   }
-  return { base, tree, takhian, tent, fire, sign, shrine, ruin, herb, gate };
+  return { base, tree, takhian, tent, fire, sign, shrine, ruin, herb, gate, whenBgReady, bgReady: () => bgReady };
 })();

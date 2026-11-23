@@ -3849,9 +3849,10 @@ function drawBoat(p, now, layer) { // เรือไม้ใต้ตัวล
   { const [mx, my] = pt(-16, 0); ctx.fillStyle = '#4a2a10'; ctx.fillRect(mx - 1, my - 15, 3, 15); ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.moveTo(mx + 2, my - 15); ctx.lineTo(mx + 11 + Math.sin(now / 200 + (p.id || 0)) * 1.5, my - 12); ctx.lineTo(mx + 2, my - 9); ctx.closePath(); ctx.fill(); } // ธงท้ายเรือ
   ctx.restore();
 }
-function buildJungleBase() { // ป่าดงดิบ: พื้นใบไม้/ทางดิน/ลำธาร/สะพาน/ที่ข้ามตื้น วาดครั้งเดียว (ของตั้งพื้นวาดเรียงตาม y ใน drawJungleObjs)
+function buildJungleBase() { // ป่าดงดิบ: พื้นจาก pack/jungle-bg.jpg ถ้ามี ไม่งั้นวาดโค้ด (ของตั้งพื้นวาดเรียงตาม y ใน drawJungleObjs)
   base = PixelJungle.base(Shared.JUNGLE.rows, W, H, Shared.JUNGLE); baseHi = document.createElement('canvas'); baseHi.width = baseHi.height = 1; caveTorches = [];
 }
+if (typeof PixelJungle !== 'undefined' && PixelJungle.whenBgReady) PixelJungle.whenBgReady(() => { if (inJungle()) buildJungleBase(); }); // ภาพ pack โหลดช้า: อยู่ป่าอยู่แล้วให้รีเฟรชพื้น
 function buildCaveBase() {
   const oc = document.createElement('canvas'); oc.width = W * TS; oc.height = H * TS; const g = oc.getContext('2d'); g.imageSmoothingEnabled = false;
   g.fillStyle = '#0b0a10'; g.fillRect(0, 0, oc.width, oc.height);
@@ -4053,7 +4054,7 @@ function drawJungleObjs(list, now, x0, x1, y0, y1) { // ของในป่า
   const rows = Shared.JUNGLE.rows, J = Shared.JUNGLE, at = (x, y) => (rows[y] && rows[y][x]) || '#';
   for (let ty = Math.max(0, y0 - 3); ty <= Math.min(H - 1, y1 + 3); ty++) for (let tx = x0; tx <= x1; tx++) {
     const ch = at(tx, ty);
-    if (ch === '#' || ch === 't') list.push({ y: ty * TS + 30, f: () => PixelJungle.tree(ctx, tx, ty, ch) });
+    if ((ch === '#' || ch === 't') && !(base && base.packBg)) list.push({ y: ty * TS + 30, f: () => PixelJungle.tree(ctx, tx, ty, ch) }); // pack พื้นมีต้นไม้ในภาพแล้ว ไม่ซ้อนสไปรต์
     else if (ch === 'R') list.push({ y: (ty + 1) * TS - 2, f: () => PixelJungle.ruin(ctx, tx, ty, at(tx, ty - 1) !== 'R') });
     else if (ch === 'h') list.push({ y: (ty + 1) * TS - 2, f: () => PixelJungle.herb(ctx, tx, ty, jHerb.get(tx + ',' + ty) !== false, performance.now()) });
     else if (ch === 'S' && at(tx - 1, ty) !== 'S' && at(tx, ty - 1) !== 'S') list.push({ y: (ty + 2) * TS - 2, f: () => PixelJungle.shrine(ctx, tx, ty, performance.now()) });
