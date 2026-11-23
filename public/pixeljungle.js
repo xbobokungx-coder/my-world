@@ -6,7 +6,7 @@ const PixelJungle = (() => {
   const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; return [c, g]; };
   const cache = new Map(), memo = (k, f) => { let v = cache.get(k); if (!v) { v = f(); cache.set(k, v); } return v; };
   const px = (g, col, x, y, w = 1, h = 1) => { g.fillStyle = col; g.fillRect(x * U, y * U, w * U, h * U); }; // วาดเป็นหน่วย 2 พิกเซล
-  // พื้นทั้งใบจาก pack (โทนเดียวกับเมือง ขอบมน น่ากลัวนิดๆ) — โหลดแล้ว base() ใช้ภาพแทนการวาดโค้ด
+  // พื้นทั้งใบจาก pack (ถ้ามี) — รับเฉพาะขนาดตรงแมพ W*TS × H*TS (เช่น 2048×1472) กันขยายเบลอ • ไม่มีต้นไม้ในภาพ
   let bgImg = null, bgReady = false;
   const bgWaiters = [];
   function loadBg() {
@@ -14,15 +14,17 @@ const PixelJungle = (() => {
     im.decoding = 'async';
     im.onload = () => { if (!im.naturalWidth) return; bgImg = im; bgReady = true; bgWaiters.splice(0).forEach(fn => fn()); };
     im.onerror = () => { bgReady = false; };
-    im.src = 'pack/jungle-bg.jpg?v=jbg6'; // พื้นอย่างเดียว ไม่มีต้นไม้/วัตถุ/จุดเศษใบไม้ — ต้นไม้ยังเป็นสไปรต์ทับ + ชนตามช่อง
+    im.src = 'pack/jungle-bg.png?v=jbg7';
   }
   function whenBgReady(fn) { if (bgReady) fn(); else bgWaiters.push(fn); }
   function packBase(W, H) {
     if (!bgReady || !bgImg) return null;
-    const [oc, g] = mk(W * TS, H * TS);
+    const tw = W * TS, th = H * TS;
+    if (bgImg.naturalWidth !== tw || bgImg.naturalHeight !== th) return null; // ขนาดไม่ตรง = วาดโค้ดแทน ไม่ยืดภาพ
+    const [oc, g] = mk(tw, th);
     g.imageSmoothingEnabled = false;
-    g.drawImage(bgImg, 0, 0, oc.width, oc.height);
-    oc.packBg = true; // พื้นจาก pack • ต้นไม้/วัตถุยังวาดสไปรต์ทับตามผัง (ชนตามช่อง)
+    g.drawImage(bgImg, 0, 0);
+    oc.packBg = true;
     return oc;
   }
   loadBg();
@@ -72,45 +74,42 @@ const PixelJungle = (() => {
     g.imageSmoothingEnabled = false; g.drawImage(spr, Math.round(tx * TS + TS / 2 - spr.width / 2), (ty + 1) * TS + 2 - spr.height);
   }
 
-  // ---------- พื้น ----------
-  const FLOOR = ['#2f5a2e', '#2a5129', '#34622f'], FDARK = '#16301a', DIRT = ['#8a6a46', '#80613f', '#94744c'], WATER = ['#2b6a73', '#2a6470', '#2f727b'], SHALLOW = ['#a89a74', '#9a8c68', '#b0a47e'];
-  function base(rows, W, H, J) {
-    const packed = packBase(W, H); if (packed) return packed;
+  // ---------- พื้น (โทนเดียวกับสไปรต์ต้นไม้ CANOPY — เขียวเข้มใต้พุ่ม ไม่จุดเศษใบไม้รก) ----------
+  const FLOOR = ['#1a3f22', '#2a5a2f', '#2f5a2e'], FDARK = '#0e2615', DIRT = ['#8a6a46', '#80613f', '#94744c'], WATER = ['#2b6a73', '#2a6470', '#2f727b'], SHALLOW = ['#a89a74', '#9a8c68', '#b0a47e'];
+  function paintBase(rows, W, H, J) { // วาดพื้นโค้ดอย่างเดียว (ใช้ทั้งเกมและตอนสร้าง pack คมที่ขนาดจริง)
     const [oc, g] = mk(W * TS, H * TS), at = (x, y) => (rows[y] && rows[y][x]) || '#', isW = ch => ch === '~' || ch === 'H', isTr = ch => ch === '#' || ch === 't';
     const zoneOf = (x, y) => { for (const s of J.safe) if (x >= s.x0 && x <= s.x1 && y >= s.y0 && y <= s.y1) return s.id; return ''; };
     for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) {
       const ch = at(tx, ty), X = tx * TS, Y = ty * TS, h1 = hash(tx, ty, 1);
       if (ch === '~' || ch === 'H') { // ลำธาร
         g.fillStyle = WATER[(h1 * 3) | 0]; g.fillRect(X, Y, TS, TS);
-        for (let i = 0; i < 3; i++) { const a = hash(tx * 3 + i, ty, 2), b = hash(tx, ty * 3 + i, 3); g.fillStyle = 'rgba(190,235,240,.22)'; g.fillRect(X + ((a * 12) | 0) * 2, Y + ((b * 14) | 0) * 2, 8 + ((a * 3) | 0) * 4, 2); }
+        for (let i = 0; i < 2; i++) { const a = hash(tx * 3 + i, ty, 2), b = hash(tx, ty * 3 + i, 3); g.fillStyle = 'rgba(190,235,240,.18)'; g.fillRect(X + ((a * 12) | 0) * 2, Y + ((b * 14) | 0) * 2, 8 + ((a * 3) | 0) * 4, 2); }
         if (!isW(at(tx, ty - 1))) { g.fillStyle = '#1f4f4f'; g.fillRect(X, Y, TS, 4); g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(X, Y + 4, TS, 4); } // ตลิ่งเงาริมน้ำ
         if (!isW(at(tx, ty + 1))) { g.fillStyle = '#1f4f4f'; g.fillRect(X, Y + TS - 4, TS, 4); }
       } else if (ch === 'F') { // ที่ข้ามตื้น: เห็นพื้นกรวด น้ำใสบางๆ ทับ
         g.fillStyle = SHALLOW[(h1 * 3) | 0]; g.fillRect(X, Y, TS, TS);
-        for (let i = 0; i < 6; i++) { const a = hash(tx * 5 + i, ty, 4), b = hash(tx, ty * 5 + i, 5); g.fillStyle = i & 1 ? '#7d7152' : '#c9bd96'; g.fillRect(X + ((a * 14) | 0) * 2, Y + ((b * 14) | 0) * 2, 4, 2); }
+        for (let i = 0; i < 3; i++) { const a = hash(tx * 5 + i, ty, 4), b = hash(tx, ty * 5 + i, 5); g.fillStyle = i & 1 ? '#7d7152' : '#c9bd96'; g.fillRect(X + ((a * 14) | 0) * 2, Y + ((b * 14) | 0) * 2, 4, 2); }
         g.fillStyle = 'rgba(110,190,200,.42)'; g.fillRect(X, Y, TS, TS);
-        for (let i = 0; i < 2; i++) { const a = hash(tx * 3 + i, ty, 6), b = hash(tx, ty * 3 + i, 7); g.fillStyle = 'rgba(255,255,255,.3)'; g.fillRect(X + ((a * 10) | 0) * 2, Y + ((b * 14) | 0) * 2, 8, 2); }
+        for (let i = 0; i < 1; i++) { const a = hash(tx * 3 + i, ty, 6), b = hash(tx, ty * 3 + i, 7); g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(X + ((a * 10) | 0) * 2, Y + ((b * 14) | 0) * 2, 8, 2); }
         if (at(tx, ty - 1) === '~') { g.fillStyle = 'rgba(30,90,100,.35)'; g.fillRect(X, Y, TS, 6); } if (at(tx, ty + 1) === '~') { g.fillStyle = 'rgba(30,90,100,.35)'; g.fillRect(X, Y + TS - 6, TS, 6); }
       } else if (ch === '=') { // ทางดิน
         g.fillStyle = DIRT[(h1 * 3) | 0]; g.fillRect(X, Y, TS, TS);
-        for (let i = 0; i < 5; i++) { const a = hash(tx * 5 + i, ty, 8), b = hash(tx, ty * 5 + i, 9); g.fillStyle = i & 1 ? '#a8885e' : '#5f4630'; g.fillRect(X + ((a * 14) | 0) * 2, Y + ((b * 14) | 0) * 2, 2 + (i & 1) * 2, 2); }
-        if (at(tx - 1, ty) !== '=' && at(tx - 1, ty) !== 'H') { g.fillStyle = '#4a3a24'; g.fillRect(X, Y, 4, TS); g.fillStyle = '#2f5a2e'; for (let i = 0; i < 4; i++) g.fillRect(X - 2 + (i & 1) * 2, Y + 4 + ((hash(tx, ty + i, 10) * 6) | 0) * 4, 4, 2); }
-        if (at(tx + 1, ty) !== '=' && at(tx + 1, ty) !== 'H') { g.fillStyle = '#4a3a24'; g.fillRect(X + TS - 4, Y, 4, TS); g.fillStyle = '#2f5a2e'; for (let i = 0; i < 4; i++) g.fillRect(X + TS - 2 - (i & 1) * 2, Y + 4 + ((hash(tx, ty + i, 11) * 6) | 0) * 4, 4, 2); }
+        for (let i = 0; i < 3; i++) { const a = hash(tx * 5 + i, ty, 8), b = hash(tx, ty * 5 + i, 9); g.fillStyle = i & 1 ? '#a8885e' : '#5f4630'; g.fillRect(X + ((a * 14) | 0) * 2, Y + ((b * 14) | 0) * 2, 2 + (i & 1) * 2, 2); }
+        if (at(tx - 1, ty) !== '=' && at(tx - 1, ty) !== 'H') { g.fillStyle = '#4a3a24'; g.fillRect(X, Y, 4, TS); g.fillStyle = '#2a5a2f'; for (let i = 0; i < 3; i++) g.fillRect(X - 2 + (i & 1) * 2, Y + 4 + ((hash(tx, ty + i, 10) * 6) | 0) * 4, 4, 2); }
+        if (at(tx + 1, ty) !== '=' && at(tx + 1, ty) !== 'H') { g.fillStyle = '#4a3a24'; g.fillRect(X + TS - 4, Y, 4, TS); g.fillStyle = '#2a5a2f'; for (let i = 0; i < 3; i++) g.fillRect(X + TS - 2 - (i & 1) * 2, Y + 4 + ((hash(tx, ty + i, 11) * 6) | 0) * 4, 4, 2); }
       } else {
         const zone = ch === 'E' ? '' : zoneOf(tx, ty), tr = isTr(ch);
         g.fillStyle = tr ? FDARK : FLOOR[(h1 * 3) | 0]; g.fillRect(X, Y, TS, TS);
-        if (zone === 'camp') { g.fillStyle = 'rgba(120,92,56,.55)'; g.fillRect(X, Y, TS, TS); for (let i = 0; i < 3; i++) { g.fillStyle = '#5a4630'; g.fillRect(X + ((hash(tx * 3 + i, ty, 12) * 14) | 0) * 2, Y + ((hash(tx, ty * 3 + i, 13) * 14) | 0) * 2, 4, 2); } } // ลานค่าย = ดินอัดแน่น
+        if (zone === 'camp') { g.fillStyle = 'rgba(120,92,56,.55)'; g.fillRect(X, Y, TS, TS); for (let i = 0; i < 2; i++) { g.fillStyle = '#5a4630'; g.fillRect(X + ((hash(tx * 3 + i, ty, 12) * 14) | 0) * 2, Y + ((hash(tx, ty * 3 + i, 13) * 14) | 0) * 2, 4, 2); } } // ลานค่าย = ดินอัดแน่น
         else if (zone === 'shrine' || zone === 'tower') { g.fillStyle = 'rgba(130,140,120,.5)'; g.fillRect(X, Y, TS, TS); g.fillStyle = 'rgba(40,60,40,.45)'; g.fillRect(X, Y, TS, 2); g.fillRect(X, Y, 2, TS); if ((tx + ty) % 2) { g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(X + 2, Y + 2, TS - 4, TS - 4); } } // ลานหิน (เขตปลอดภัย)
         if (!tr) {
-          for (let i = 0; i < 6; i++) { // เศษใบไม้
-            const a = hash(tx * 7 + i, ty, 14), b = hash(tx, ty * 7 + i, 15), k = hash(tx + i, ty * 2, 16); g.fillStyle = k < 0.3 ? '#6e5a2e' : k < 0.6 ? '#4d8a38' : k < 0.85 ? '#1f4423' : '#a08a3c';
-            g.fillRect(X + ((a * 14) | 0) * 2, Y + ((b * 14) | 0) * 2, 4, 2);
-          }
+          // จุดตกแต่งเบาๆ (ไม่เต็มช่อง) ให้พื้นไม่แข่งกับสไปรต์ต้นไม้
+          if (hash(tx, ty, 14) < 0.18) { const a = hash(tx, ty, 15), b = hash(tx, ty, 16); g.fillStyle = '#16301a'; g.fillRect(X + ((a * 12) | 0) * 2, Y + ((b * 12) | 0) * 2, 4, 2); }
           const d = hash(tx, ty, 21);
-          if (d < 0.07) { g.fillStyle = '#3e7a34'; g.fillRect(X + 10, Y + 18, 12, 2); g.fillRect(X + 8, Y + 20, 4, 2); g.fillRect(X + 20, Y + 20, 4, 2); g.fillRect(X + 14, Y + 14, 4, 4); } // เฟิร์นเล็ก
-          else if (d < 0.1) { g.fillStyle = '#7a8a5a'; g.fillRect(X + 8, Y + 16, 10, 6); g.fillStyle = '#566a3e'; g.fillRect(X + 10, Y + 14, 6, 4); } // ก้อนหินมีตะไคร่
+          if (d < 0.03) { g.fillStyle = '#3f7d3b'; g.fillRect(X + 10, Y + 18, 12, 2); g.fillRect(X + 8, Y + 20, 4, 2); g.fillRect(X + 20, Y + 20, 4, 2); g.fillRect(X + 14, Y + 14, 4, 4); } // เฟิร์นเล็กนานๆ ที
+          else if (d < 0.045) { g.fillStyle = '#5e4630'; g.fillRect(X + 8, Y + 16, 10, 6); g.fillStyle = '#33241a'; g.fillRect(X + 10, Y + 14, 6, 4); } // ก้อนหินโทนเปลือกต้น
           if (isW(at(tx, ty - 1)) || at(tx, ty - 1) === 'F') { g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(X, Y, TS, 6); } // ริมตลิ่ง
-        } else if (hash(tx, ty, 22) > 0.5) { g.fillStyle = '#0e2113'; g.fillRect(X + ((hash(tx, ty, 23) * 12) | 0) * 2, Y + ((hash(tx, ty, 24) * 12) | 0) * 2, 6, 4); }
+        } else if (hash(tx, ty, 22) > 0.55) { g.fillStyle = '#07140b'; g.fillRect(X + ((hash(tx, ty, 23) * 12) | 0) * 2, Y + ((hash(tx, ty, 24) * 12) | 0) * 2, 6, 4); }
       }
       if (ch === 'H') { // สะพานไม้: ไม้พาดขวางทางเดิน ราวกั้นสองข้าง
         const L = at(tx - 1, ty) !== 'H', R = at(tx + 1, ty) !== 'H';
@@ -127,6 +126,10 @@ const PixelJungle = (() => {
     g.fillStyle = '#3b7a36'; for (let x = ex0 - 4; x < ex1 + 4; x += 10) { const l = 6 + ((hash(x, 5, 30) * 4) | 0) * 4; g.fillRect(x, ey0 + 12, 2, l); g.fillRect(x + 2, ey0 + 12 + l - 4, 2, 2); } // เถาวัลย์ห้อยจากคาน
     g.font = 'bold 11px "Sukhumvit Set","Thonburi","Noto Sans Thai",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 3; g.strokeStyle = 'rgba(10,30,15,.85)'; g.strokeText('ทางออก ▲', (ex0 + ex1) / 2, ey1 - 12); g.fillStyle = '#eaffd8'; g.fillText('ทางออก ▲', (ex0 + ex1) / 2, ey1 - 12);
     return oc;
+  }
+  function base(rows, W, H, J) {
+    const packed = packBase(W, H); if (packed) return packed;
+    return paintBase(rows, W, H, J);
   }
 
   // ---------- ของในค่าย / ศาลเจ้า / ซากวิหาร / สมุนไพร ----------
@@ -300,5 +303,5 @@ const PixelJungle = (() => {
       const sm = (tt * 0.5 + i * 0.33) % 1; g.fillStyle = `rgba(230,230,230,${0.28 * (1 - sm)})`; g.fillRect(Math.round(ix + Math.sin(tt * 1.4 + i + sm * 5) * 2), Math.round(top - 2 - sm * 14), 2, 2);
     }
   }
-  return { base, tree, takhian, tent, fire, sign, shrine, ruin, herb, gate, whenBgReady, bgReady: () => bgReady };
+  return { base, paintBase, tree, takhian, tent, fire, sign, shrine, ruin, herb, gate, whenBgReady, bgReady: () => bgReady };
 })();
