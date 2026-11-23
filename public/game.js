@@ -4054,7 +4054,7 @@ function drawJungleObjs(list, now, x0, x1, y0, y1) { // ของในป่า
   const rows = Shared.JUNGLE.rows, J = Shared.JUNGLE, at = (x, y) => (rows[y] && rows[y][x]) || '#';
   for (let ty = Math.max(0, y0 - 3); ty <= Math.min(H - 1, y1 + 3); ty++) for (let tx = x0; tx <= x1; tx++) {
     const ch = at(tx, ty);
-    if ((ch === '#' || ch === 't') && !(base && base.packBg)) list.push({ y: ty * TS + 30, f: () => PixelJungle.tree(ctx, tx, ty, ch) }); // pack พื้นมีต้นไม้ในภาพแล้ว ไม่ซ้อนสไปรต์
+    if (ch === '#' || ch === 't') list.push({ y: ty * TS + 30, f: () => PixelJungle.tree(ctx, tx, ty, ch) }); // ต้นไม้เป็นสไปรต์ชิ้น (ชนตามช่อง) แม้พื้นมาจาก pack
     else if (ch === 'R') list.push({ y: (ty + 1) * TS - 2, f: () => PixelJungle.ruin(ctx, tx, ty, at(tx, ty - 1) !== 'R') });
     else if (ch === 'h') list.push({ y: (ty + 1) * TS - 2, f: () => PixelJungle.herb(ctx, tx, ty, jHerb.get(tx + ',' + ty) !== false, performance.now()) });
     else if (ch === 'S' && at(tx - 1, ty) !== 'S' && at(tx, ty - 1) !== 'S') list.push({ y: (ty + 2) * TS - 2, f: () => PixelJungle.shrine(ctx, tx, ty, performance.now()) });

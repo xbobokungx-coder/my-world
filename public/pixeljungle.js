@@ -14,7 +14,7 @@ const PixelJungle = (() => {
     im.decoding = 'async';
     im.onload = () => { if (!im.naturalWidth) return; bgImg = im; bgReady = true; bgWaiters.splice(0).forEach(fn => fn()); };
     im.onerror = () => { bgReady = false; };
-    im.src = 'pack/jungle-bg.jpg?v=jbg4';
+    im.src = 'pack/jungle-bg.png?v=jbg5'; // พื้นอย่างเดียว (ไม่มีต้นไม้/วัตถุ) ต้นไม้ยังเป็นสไปรต์ทับ + ชนตามช่องแมพ
   }
   function whenBgReady(fn) { if (bgReady) fn(); else bgWaiters.push(fn); }
   function packBase(W, H) {
@@ -22,7 +22,7 @@ const PixelJungle = (() => {
     const [oc, g] = mk(W * TS, H * TS);
     g.imageSmoothingEnabled = false;
     g.drawImage(bgImg, 0, 0, oc.width, oc.height);
-    oc.packBg = true; // บอกฝั่งเกมว่าต้นไม้ในภาพมีแล้ว ไม่ต้องวาด tree สไปรต์ซ้ำ
+    oc.packBg = true; // พื้นจาก pack • ต้นไม้/วัตถุยังวาดสไปรต์ทับตามผัง (ชนตามช่อง)
     return oc;
   }
   loadBg();
