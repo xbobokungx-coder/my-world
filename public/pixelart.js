@@ -108,14 +108,14 @@ const PixelArt = (() => {
 
   // พื้นโลก: วาดที่ความละเอียด K เท่าของสไปรต์ (K=2 → 32 px ต่อช่อง = 1 พิกเซลพื้น 1 พิกเซลเกม) ขอบดิน/หญ้า/ทรายเรียบละเอียดขึ้น • ของตกแต่ง (ดอกไม้ กอหญ้า กรวดใหญ่) ยังเป็นก้อนเท่าพิกเซลสไปรต์ให้เข้ากับอาคาร/ต้นไม้
   // สนามสัญญาณสุ่มคำนวณบนกริดพิกเซลศิลป์แล้ว interpolate (เร็วกว่าคำนวณทุกพิกเซลละเอียด)
-  // SUNLIT TERRAIN V4: calm color areas, sparse clusters, no per-pixel grain/dither.
+  // SUNLIT TERRAIN V5: richer path scallops, plaza wear, shore foam, denser tufts/decor — still no MAP mutation.
   // K retains the original API; optional density [0..1] controls accent groups only.
   function ground(MAP, K=1, options={}) {
     if(!Number.isInteger(K)||K<1||K>4)throw new RangeError('ground K must be an integer 1..4');
     if(MAP.length!==H||MAP.some(row=>row.length!==W))throw new Error('Unexpected map dimensions');
     const AW=W*U,AH=H*U,N=AW*AH,base=cv(AW,AH),ctx=base.getContext('2d');
     const types=new Uint8Array(N),paved=new Uint8Array(N),cells=new Uint8Array(W*H);
-    const density=Math.max(0,Math.min(1,Number.isFinite(options.density)?options.density:.55));
+    const density=Math.max(0,Math.min(1,Number.isFinite(options.density)?options.density:.68));
     for(let y=0;y<H;y++)for(let x=0;x<W;x++)cells[y*W+x]=gtype(MAP[y][x]);
     const cell=(x,y)=>x<0||y<0||x>=W||y>=H?G:cells[y*W+x];
     // Round only exposed terrain corners, within the original tile footprint.
@@ -127,11 +127,10 @@ const PixelArt = (() => {
         const sx=lx<radius?-1:lx>=16-radius?1:0,sy=ly<radius?-1:ly>=16-radius?1:0;
         if(sx&&sy){const a=cell(tx+sx,ty),b=cell(tx,ty+sy);if(a===b&&a!==t&&a!==FL){const dx=sx<0?radius-lx:lx-(15-radius),dy=sy<0?radius-ly:ly-(15-radius);if(dx*dx+dy*dy>radius*radius)out=a;}}
       }
-      // Coherent scallops 1–3 pixels deep; no independent pixel noise.
-      // Dirt/sand only: traversable visual edge, never change the map grid.
+      // Coherent scallops 1–4 px deep along longer edge spans; dirt/sand only — never change the map grid.
       if(!pv&&(t===P||t===SA)){
-        const ex=1+Math.floor(hash(Math.floor(x/5),Math.floor(y/16),810)*3);
-        const ey=1+Math.floor(hash(Math.floor(x/16),Math.floor(y/5),811)*3);
+        const ex=1+Math.floor(hash(Math.floor(x/7),Math.floor(y/16),810)*4);
+        const ey=1+Math.floor(hash(Math.floor(x/16),Math.floor(y/7),811)*4);
         if((cell(tx,ty-1)===G&&ly<ex)||(cell(tx,ty+1)===G&&ly>15-ex)||(cell(tx-1,ty)===G&&lx<ey)||(cell(tx+1,ty)===G&&lx>15-ey))out=G;
       }
       types[y*AW+x]=out;paved[y*AW+x]=pv?1:0;
@@ -153,11 +152,14 @@ const PixelArt = (() => {
         c=colors.grass[n<.40?0:n>.64?2:1];
         if(near(x,y,P,1)||near(x,y,SA,1))c='#4f8136';else if(near(x,y,P,3)||near(x,y,SA,3))c='#a1c45d';
       }else if(t===P&&paved[i]){
-        // Large staggered slabs: low-contrast grout, no speckle inside stones.
-        const row=Math.floor(y/16),xx=x+(row%2)*12,lx=xx%24,ly=y%16;
-        c=colors.stone[Math.floor(hash(Math.floor(xx/24),row,703)*3)];
+        // Large staggered slabs + light wear inside; moss only on grass-facing plaza edges.
+        const row=Math.floor(y/16),xx=x+(row%2)*12,lx=xx%24,ly=y%16,sx=Math.floor(xx/24);
+        c=colors.stone[Math.floor(hash(sx,row,703)*3)];
         if(lx===0||ly===0)c='#a4a78a';else if(ly===1)c='#e1ddbf';else if(lx===23||ly===15)c='#b4b69a';
-        if((x>0&&!paved[i-1])||(x<AW-1&&!paved[i+1])||(y>0&&!paved[i-AW])||(y<AH-1&&!paved[i+AW]))c='#969f7a';
+        const edgeG=(x>0&&!paved[i-1]&&at(x-1,y)===G)||(x<AW-1&&!paved[i+1]&&at(x+1,y)===G)||(y>0&&!paved[i-AW]&&at(x,y-1)===G)||(y<AH-1&&!paved[i+AW]&&at(x,y+1)===G);
+        if(edgeG)c=hash(x,y,704)<.55?'#8fa870':'#969f7a';
+        else if((x>0&&!paved[i-1])||(x<AW-1&&!paved[i+1])||(y>0&&!paved[i-AW])||(y<AH-1&&!paved[i+AW]))c='#969f7a';
+        else if(lx>2&&lx<21&&ly>2&&ly<14&&hash(x,y,705)<.045)c=hash(x,y,706)<.5?'#b8b59a':'#ddd9bc';
       }else if(t===P){
         const n=vnoise(x,y,66,710);c=colors.path[n<.38?0:n>.63?2:1];
         if(near(x,y,G,1))c='#b78e53';else if(near(x,y,G,3))c='#cda364';
@@ -166,7 +168,8 @@ const PixelArt = (() => {
         if(near(x,y,WA,2))c='#b7c28b';else if(near(x,y,WA,5))c='#d8c17f';
       }else if(t===WA){
         const d=distance[i];c=colors.water[d<3?0:d<10?1:d<23?2:d<43?3:4];
-        if(d===1&&(at(x,y-1)!==WA||at(x-1,y)!==WA))c='#def2cf';
+        // Broken foam along the shore (d 1–2), not a solid ring.
+        if(d<=2&&(at(x,y-1)!==WA||at(x-1,y)!==WA||at(x,y+1)!==WA||at(x+1,y)!==WA)&&hash(x,y,707)<(d===1?.72:.38))c=d===1?'#def2cf':'#a0ded1';
       }else{
         const row=Math.floor(y/8),off=row%2*16,lx=(x+off)%32,ly=y%8;
         c=colors.wood[Math.floor(hash(Math.floor((x+off)/32),row,730)*2)];
@@ -176,24 +179,24 @@ const PixelArt = (() => {
     // Accents are placed by coarse world cells, never by independent pixel chance.
     let groups=0;
     const stamp=(x,y,w,h,c,t)=>{for(let j=0;j<h;j++)for(let i=0;i<w;i++)if(x+i>=0&&y+j>=0&&x+i<AW&&y+j<AH&&at(x+i,y+j)===t)set(x+i,y+j,c);};
-    for(let by=0;by<AH;by+=64)for(let bx=0;bx<AW;bx+=64){
-      if(hash(bx,by,740)>density*.68)continue;
-      const x=bx+12+Math.floor(hash(bx,by,741)*36),y=by+12+Math.floor(hash(bx,by,742)*36);
-      if(x>=AW-5||y>=AH-5||at(x,y)!==G||near(x,y,P,8)||near(x,y,SA,8))continue;
+    for(let by=0;by<AH;by+=48)for(let bx=0;bx<AW;bx+=48){
+      if(hash(bx,by,740)>density*.78)continue;
+      const x=bx+8+Math.floor(hash(bx,by,741)*28),y=by+8+Math.floor(hash(bx,by,742)*28);
+      if(x>=AW-5||y>=AH-5||at(x,y)!==G||near(x,y,P,6)||near(x,y,SA,6))continue;
       const tile=MAP[y>>4][x>>4];if(tile===T.BUILD||tile===T.SHOP||tile===T.FENCE)continue;
-      // One quiet 3-blade tuft with a soft contact shadow.
       stamp(x-4,y+2,10,2,'#6e9c3e',G);stamp(x-3,y-1,2,4,'#a5c85e',G);stamp(x,y-3,2,6,'#a5c85e',G);stamp(x+3,y,2,3,'#96bd53',G);groups++;
     }
-    // Water ripples: short paired strokes with large empty areas between groups.
-    for(let by=12;by<AH;by+=40)for(let bx=12;bx<AW;bx+=48){
-      const x=bx+Math.floor(hash(bx,by,750)*20),y=by+Math.floor(hash(bx,by,751)*14);
-      if(at(x,y)!==WA||distance[y*AW+x]<8||hash(bx,by,752)>.45*density)continue;
+    // Water ripples: denser in deep water, still grouped strokes.
+    for(let by=10;by<AH;by+=32)for(let bx=10;bx<AW;bx+=36){
+      const x=bx+Math.floor(hash(bx,by,750)*18),y=by+Math.floor(hash(bx,by,751)*12);
+      if(at(x,y)!==WA||distance[y*AW+x]<8||hash(bx,by,752)>.55*density)continue;
       stamp(x,y,9,1,'#a0ded1',WA);stamp(x+2,y+2,5,1,'#83d3cd',WA);
     }
-    // Broad sand strokes, very sparse; not grains or individual dots.
-    for(let by=10;by<AH;by+=48)for(let bx=10;bx<AW;bx+=48){
-      const x=bx+Math.floor(hash(bx,by,760)*18),y=by+Math.floor(hash(bx,by,761)*18);
-      if(at(x,y)!==SA||hash(bx,by,762)>density*.42)continue;
+    // Sand strokes denser near water (shallow band).
+    for(let by=8;by<AH;by+=36)for(let bx=8;bx<AW;bx+=36){
+      const x=bx+Math.floor(hash(bx,by,760)*16),y=by+Math.floor(hash(bx,by,761)*16);
+      if(at(x,y)!==SA)continue;
+      const nearW=near(x,y,WA,6);if(hash(bx,by,762)>(nearW?density*.72:density*.38))continue;
       stamp(x,y,8,1,'#d9ba73',SA);stamp(x+2,y+1,6,1,'#f5dfa3',SA);
     }
     ctx.putImageData(img,0,0);
@@ -206,7 +209,7 @@ const PixelArt = (() => {
       if(x===left)ctx.fillRect(x*U,y*U,2,U);if(x===left+HOUSING.w-1)ctx.fillRect(x*U+U-2,y*U,2,U);
     }
     // Metadata is diagnostic only; renderer never writes MAP or Shared.
-    base.cleanTerrain={version:4,tuftGroups:groups,density};
+    base.cleanTerrain={version:5,tuftGroups:groups,density};
     if(K===1)return base;const out=cv(AW*K,AH*K),g=out.getContext('2d');g.imageSmoothingEnabled=false;g.drawImage(base,0,0,out.width,out.height);out.cleanTerrain=base.cleanTerrain;return out;
   }
 
@@ -228,14 +231,26 @@ const PixelArt = (() => {
       if(kind===2){leaf(x-15,y+2,7);leaf(x+14,y-1,9);oval(x,y+3,8,5,'#535e58');oval(x-1,y+1,7,4,'#8f9c8c');px(x-4,y-2,6,2,'#bdc6ad');bloom(x+14,y-5,'#ffdc68');}
       if(kind===3){for(let i=0;i<4;i++){leaf(x-13+i*9,y+(i%2)*4,7);bloom(x-13+i*9,y-2+(i%2)*4,'#fff0bf');}}
     }
+    // Tiny single tuft + dotted blooms (pink / white / yellow) between large pockets.
+    function sprig(x,y,kind){
+      px(x-2,y+1,5,2,'#6e9c3e');px(x-1,y-2,2,4,'#a5c85e');px(x+1,y-1,2,3,'#96bd53');
+      const cols=['#dfa1d4','#fff0ca','#ffdc68'];
+      if(kind!==0)bloom(x+(kind===1?-3:3),y-4,cols[kind%3]);
+    }
     const inside=(tx,ty,b,pad=1)=>b&&tx>=b.x0-pad&&tx<=b.x1+pad&&ty>=b.y0-pad&&ty<=b.y1+pad;
     const reserved=(tx,ty)=>inside(tx,ty,Shared.FARM,1)||inside(tx,ty,Shared.HOUSE_BLD,0)||Object.values(Shared.PENS||{}).some(b=>inside(tx,ty,b,1))|| (Shared.BUILDINGS||[]).some(b=>inside(tx,ty,b,0));
     const safe=(tx,ty)=>{if(tx<2||ty<2||tx>W-3||ty>H-3||reserved(tx,ty))return false;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)if(MAP[ty+dy][tx+dx]!==T.GRASS)return false;return true;};
-    // Spaced garden pockets. Stable placement; never put foliage on paths/gates.
-    for(let ty=3;ty<H-2;ty+=3)for(let tx=3;tx<W-2;tx+=3){
+    // Denser garden pockets (step 2); still never on paths/gates/reserved.
+    for(let ty=3;ty<H-2;ty+=2)for(let tx=3;tx<W-2;tx+=2){
       const x=tx+Math.floor(hash(tx,ty,840)*3)-1,y=ty+Math.floor(hash(tx,ty,841)*3)-1;
-      if(!safe(x,y)||hash(tx,ty,842)>.65)continue;
+      if(!safe(x,y)||hash(tx,ty,842)>.48)continue;
       const kind=Math.floor(hash(tx,ty,843)*4);cluster(x*U+8,y*U+8,kind);placements.push({tx:x,ty:y,kind,solid:false});
+    }
+    // Small sprigs filling gaps between clusters.
+    for(let ty=2;ty<H-2;ty+=2)for(let tx=2;tx<W-2;tx+=2){
+      if(!safe(tx,ty)||hash(tx,ty,850)>.34)continue;
+      if(placements.some(p=>Math.abs(p.tx-tx)<=1&&Math.abs(p.ty-ty)<=1))continue;
+      const kind=Math.floor(hash(tx,ty,851)*3);sprig(tx*U+8,ty*U+10,kind);placements.push({tx,ty,kind:10+kind,solid:false});
     }
     c.placements=placements;return c;
   }

@@ -4,7 +4,8 @@
   "description": "เกมฟาร์มสบายๆ ออนไลน์ เข้าเล่นผ่านลิงก์",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node tools/check.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

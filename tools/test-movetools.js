@@ -182,7 +182,7 @@ assert.ok(!fs.existsSync(dup + '.tmp') && !fs.existsSync(srv + '.tmp'), 'ต้�
   fs.copyFileSync(path.join(ROOT, 'public', 'shared.js'), path.join(d, 'public', 'shared.js'));
   fs.cpSync(path.join(ROOT, 'server'), path.join(d, 'server'), { recursive: true });
   for (const f of ['check-moved.js', 'move-methods.js', 'testlib.js']) fs.copyFileSync(path.join(ROOT, 'tools', f), path.join(d, 'tools', f));
-  fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(d, 'node_modules'));
+  try { fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(d, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir'); } catch (e) { fs.cpSync(path.join(ROOT, 'node_modules'), path.join(d, 'node_modules'), { recursive: true }); }
   fs.writeFileSync(path.join(d, 'package.json'), '{}');
   const sn = path.join(d, 'snap.json');
   r = runIn(d, 'check-moved.js', '--snap', sn);
