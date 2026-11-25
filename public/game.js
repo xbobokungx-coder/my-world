@@ -4951,7 +4951,7 @@ function drawNight(dark, now) {
   const fx = FIRE.x * TS + 16, fy = FIRE.y * TS + 12, fr = TS * 10.5 * (1 + Math.sin(now / 130) * 0.02 + Math.sin(now / 71) * 0.015);
   if (inTown()) hole(fx, fy, fr, 0.3);
   const [hl, hy] = caveLamp; if (inTown()) hole(hl, hy, TS * 2, 0.35); // ตะเกียงหน้าถ้ำเหมือง
-  if (inTown()) for (const k of KRATHONG) { const [kx, ky] = krXY(k, now); hole(kx, ky - 6, TS * 1.7 * k.s, 0.3); } // แสงเทียนกระทงในสระ
+  if (lkOn()) for (const [qx, qy, qr] of lkLights(now)) hole(qx, qy, qr, 0.3); // LOYKRATHONG: แสงเทียนกระทง/โคมสะพาน/เทียนริมสระ
   const LH = inTown() && builtProj.has('lighthouse') && Shared.LIGHTHOUSE, lx = LH ? (LH.x0 + (LH.x1 - LH.x0 + 1) / 2) * TS : 0, ly = LH ? LH.y0 * TS + 39 : 0, lAng = now / 1800; // ประภาคาร: ห้องตะเกียงอยู่ใกล้ยอดหอ ลำแสงหมุนรอบ ~11 วินาที
   const beam = (r, half, ang, a0) => { const g = lctx.createRadialGradient(lx, ly, 0, lx, ly, r); g.addColorStop(0, `rgba(0,0,0,${a0})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(lx, ly); lctx.arc(lx, ly, r, ang - half, ang + half); lctx.closePath(); lctx.fill(); };
   if (LH) { hole(lx, ly, TS * 7 * (1 + Math.sin(now / 400) * 0.02), 0.25); beam(TS * 18, 0.2, lAng, 0.95); beam(TS * 18, 0.2, lAng + Math.PI, 0.95); }
@@ -4978,7 +4978,7 @@ function drawNight(dark, now) {
   }
   if (inJungle()) { warm(35.5 * TS, 5.5 * TS, TS * 4.5, 0.26 * Math.min(1, dark * 1.2)); warm(37 * TS, 26 * TS, TS * 3, 0.14 * Math.min(1, dark * 1.2)); }
   if (cave) for (const [x, y] of caveTorches) { warm(x, y, TS * 3.2, 0.22 + Math.sin(now / 90 + y) * 0.03); ctx.fillStyle = 'rgba(255,190,90,.55)'; ctx.fillRect(x - 3, y - 6 - (Math.sin(now / 80 + x) > 0 ? 2 : 0), 6, 6); } // แสงอุ่น + ไฟวูบ
-  if (inTown()) for (const k of KRATHONG) { const [kx, ky] = krXY(k, now); warm(kx, ky - 6, TS * 1.4 * k.s, 0.2 * Math.min(1, dark * 1.2)); }
+  if (lkOn()) for (const [qx, qy, qr] of lkLights(now)) warm(qx, qy, qr * 0.8, 0.2 * Math.min(1, dark * 1.2)); // LOYKRATHONG
   if (inTown()) { warm(fx, fy, fr * 0.8, 0.28 * Math.min(1, dark * 1.2)); warm(hl, hy, TS * 1.8, 0.25 * Math.min(1, dark * 1.2)); } for (const p of players.values()) if (p.lamp) warm(...pj(p.x, p.y, 4), TS * 5, 0.16 * Math.min(1, dark * 1.2));
   ctx.globalCompositeOperation = 'source-over'; ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
@@ -5616,14 +5616,104 @@ function reportClientErr(tag, e) {
 }
 window.addEventListener('error', e => /^ResizeObserver/.test(e.message || '') || reportClientErr('win', (e.message || '') + ' @' + String(e.filename || '').split('/').pop() + ':' + (e.lineno || 0)));
 const safeDraw = (o, tag) => { ctx.save(); try { o.f(); } catch (e) { reportClientErr(tag, e); } finally { ctx.restore(); } };
-// กระทงลอยในสระใหญ่ (วาดใน step ก่อนแปลงเช่า): x,y = จุดกลาง (ช่อง) ax = แกว่งซ้ายขวา (ช่อง) sp = ความเร็ว s = ขนาด • ทุกจุดอยู่ในน้ำ (วงรีสระ (43,38) 12×5 ระยะ ≤ 0.93) และตัดสะพาน/เกาะออกตอนวาด
-const KR_IMGS = [1, 2, 3].map(n => { const im = new Image(); im.src = `/pack/loykrathong/krathong-${n}.png`; return im; });
-const krXY = (k, now) => [(k.x + k.ax * Math.sin(now * k.sp + k.ph) + 0.5) * TS, (k.y + 0.3 * Math.sin(now * k.sp * 1.7 + k.ph * 2) + 0.5) * TS]; // ตำแหน่งกระทง (px) ณ เวลา now • ใช้ทั้งตอนวาดและแสงเทียนตอนกลางคืน
-const KR_MQ = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : null;
-const KRATHONG = [
+// ======================================================================
+// ธีมลอยกระทง (ฉากเมืองหลัก) — โค้ดทั้งหมดของธีมอยู่ในบล็อกนี้ + จุดเรียก 5 จุด (ค้นหา "LOYKRATHONG")
+// สวิตช์เดียว: THEME_LOYKRATHONG = false → ฉากเดิมทุกอย่าง (ปลา + ใบบัวกลับมา ไม่มีกระทง/โคม/ไฟ/เทียน) • วาดอย่างเดียว ไม่แตะ MAP/การชน/การเดิน/input/server/shared
+// จุดเรียก: step() ข้ามปลา+ใบบัวเมื่อธีมเปิด • step() lkDrawWater+lkDrawShore (ใต้ตัวละคร) • step() lkPushDepth (โคมสะพาน เรียงลึกตื้นกับตัวละคร) • drawNight() lkLights ×2 (ช่องแสง + แสงอุ่น)
+// ภาพจาก My_Art (ไม่มีไฟล์ = ใช้ placeholder ที่วาดด้วยโค้ด): /pack/loykrathong/krathong-1..3.png • /pack/loykrathong-town/bridge-lantern.png (โคมบนเสา) • /pack/loykrathong-town/candle.png (เทียนริมสระ) — ทั้งสองวางฐานกลางภาพที่จุดวาง ขนาด 2x (แสดงครึ่งหนึ่ง)
+// ลดการเคลื่อนไหว (prefers-reduced-motion หรือปิดแอนิเมชัน Windows): กระทงยังลอยช้าๆ แต่ตัดการโยก ริ้วน้ำ โคมแกว่ง ไฟ/เทียนกะพริบ
+// ======================================================================
+const THEME_LOYKRATHONG = true;
+const lkOn = () => THEME_LOYKRATHONG && inTown();
+const LK_MQ = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+const lkStill = () => !!(LK_MQ && LK_MQ.matches);
+const LK_KR_IMGS = [1, 2, 3].map(n => { const im = new Image(); im.src = `/pack/loykrathong/krathong-${n}.png`; return im; });
+const lkArt = {}; // ภาพเสริมจาก My_Art (โหลดตอนเรียกครั้งแรก ไม่มีไฟล์ = null → ใช้ placeholder)
+const lkImg = n => { let im = lkArt[n]; if (!im) { im = lkArt[n] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `/pack/loykrathong-town/${n}.png`; } return im.complete && im.naturalWidth && !im.bad ? im : null; };
+// กระทงในสระ: x,y = จุดกลาง (ช่อง) ax = แกว่งซ้ายขวา (ช่อง) sp = ความเร็ว s = ขนาด • ทุกจุดอยู่ในน้ำ (วงรีสระ (43,38) 12×5 ระยะ ≤ 0.93) ตัดสะพาน/เกาะออกตอนวาด
+const LK_KRATHONG = [
   { img: 0, x: 34.5, y: 36.5, ax: 2.0, sp: 0.00007, ph: 0.4, s: 1 }, { img: 1, x: 36, y: 40.5, ax: 2.0, sp: 0.00009, ph: 2.1, s: 1.1 }, { img: 2, x: 46.5, y: 41.2, ax: 3.0, sp: 0.00006, ph: 4.0, s: 0.9 },
   { img: 0, x: 51.5, y: 38.8, ax: 2.0, sp: 0.00008, ph: 5.2, s: 1 }, { img: 1, x: 36.5, y: 35.3, ax: 1.5, sp: 0.00010, ph: 1.3, s: 0.85 },
 ];
+const lkKrXY = (k, now) => [(k.x + k.ax * Math.sin(now * k.sp + k.ph) + 0.5) * TS, (k.y + 0.3 * Math.sin(now * k.sp * 1.7 + k.ph * 2) + 0.5) * TS];
+const LK_POND = { cx: 43.5, cy: 38.5, rx: 12, ry: 5 }; // ศูนย์กลางสระ (ช่อง) ตรงกับวงรีสระใน shared.js
+const lkRing = (r, th) => [(LK_POND.cx + LK_POND.rx * r * Math.cos(th)) * TS, (LK_POND.cy + LK_POND.ry * r * Math.sin(th)) * TS]; // จุดบนวงรี r เท่าของสระ (r > 1 = ริมฝั่งทราย)
+const lkBridgeGap = x => Math.abs(x / TS - 44) < 1.7; // เว้นปลายสะพาน ไม่พาดสายไฟข้ามทางเดิน
+let lkCache = null;
+const lkStatic = () => lkCache || (lkCache = (() => { // ตำแหน่งตายตัว (px) คำนวณครั้งเดียว
+  const B = Shared.BRIDGE, lanterns = [], strand = [], candles = [];
+  for (const ty of [35, 37, 39, 41]) for (const x of [B.x0 * TS + 2, (B.x1 + 1) * TS - 2]) lanterns.push({ x, y: ty * TS + 18 }); // โคมบนราวสะพาน 4 คู่
+  for (let i = 0, N = 30; i < N; i++) { const [x, y] = lkRing(1.18, i / N * 2 * Math.PI); strand.push({ x, y, gap: lkBridgeGap(x), pole: i % 3 === 0 }); } // ไฟร้อยสายรอบสระ
+  for (let j = 0, N = 22; j < N; j++) { const [x, y] = lkRing(1.1, (j + 0.5) / N * 2 * Math.PI + 0.08); if (!lkBridgeGap(x)) candles.push({ x, y, ph: j * 1.7 }); } // เทียนริมน้ำ
+  return { lanterns, strand, candles };
+})());
+const lkVis = (x, y, m) => x > camX - m && x < camX + vw + m && y > camY - m && y < camY + vh + m;
+function lkDrawWater(now) { // กระทงลอยในสระ: ลอยซ้ายขวาช้าๆ + โยกเบาๆ + ริ้วน้ำ + แสงเทียน
+  if (!LK_KR_IMGS.every(im => im.complete && im.naturalWidth)) return;
+  const still = lkStill(), B = Shared.BRIDGE, I = Shared.ISLAND;
+  ctx.save(); ctx.beginPath(); ctx.rect(camX, camY, vw, vh);
+  ctx.rect(B.x0 * TS, B.y0 * TS, (B.x1 - B.x0 + 1) * TS, (B.y1 - B.y0 + 1) * TS);
+  ctx.rect(I.x0 * TS, I.y0 * TS, (I.x1 - I.x0 + 1) * TS, (I.y1 - I.y0 + 1) * TS);
+  ctx.clip('evenodd');
+  LK_KRATHONG.forEach((k, i) => {
+    const [kx, ky] = lkKrXY(k, now);
+    if (kx < camX - TS * 2 || kx > camX + vw + TS * 2 || ky < camY - TS * 2 || ky > camY + vh + TS * 2) return;
+    const im = LK_KR_IMGS[k.img], w = im.naturalWidth * 0.5 * k.s, h = im.naturalHeight * 0.5 * k.s, bob = still ? 0 : Math.sin(now / 700 + i * 1.9) * 1.2, fl = still ? 0.3 : 0.3 + 0.1 * Math.sin(now / 130 + i * 3.1);
+    ctx.fillStyle = 'rgba(8,60,86,.22)'; ctx.beginPath(); ctx.ellipse(Math.round(kx), Math.round(ky + h * 0.32), w * 0.46, h * 0.16, 0, 0, 7); ctx.fill(); // เงาบนน้ำ
+    if (!still) { ctx.strokeStyle = `rgba(232,253,255,${0.16 + 0.1 * Math.sin(now / 900 + i)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(Math.round(kx), Math.round(ky + h * 0.3), w * (0.55 + 0.05 * Math.sin(now / 900 + i)), h * 0.2, 0, 0, 7); ctx.stroke(); } // ริ้วน้ำรอบกระทง
+    ctx.drawImage(im, Math.round(kx - w / 2), Math.round(ky - h / 2 + bob), w, h);
+    const gx = Math.round(kx), gy = Math.round(ky - h * 0.2 + bob), gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, 16 * k.s);
+    gr.addColorStop(0, `rgba(255,214,120,${fl})`); gr.addColorStop(1, 'rgba(255,214,120,0)'); ctx.fillStyle = gr; ctx.fillRect(gx - 16 * k.s, gy - 16 * k.s, 32 * k.s, 32 * k.s); // แสงเทียน
+  });
+  ctx.restore();
+}
+function lkDrawShore(now) { // ไฟร้อยสายรอบสระ (เสาเล็ก + สาย + หลอดไฟกะพริบ) + เทียนริมน้ำ • วาดใต้ตัวละคร
+  const { strand, candles } = lkStatic(), still = lkStill(), n = strand.length, cols = ['#ffd36a', '#ff9a4a', '#ff8fb8', '#fff2b0'];
+  for (let i = 0; i < n; i++) {
+    const a = strand[i], b = strand[(i + 1) % n];
+    if (!lkVis(a.x, a.y, 50)) continue;
+    if (a.pole && !a.gap) { const px = Math.round(a.x), py = Math.round(a.y); ctx.fillStyle = '#3f2814'; ctx.fillRect(px - 1, py - 18, 3, 18); ctx.fillStyle = '#a8703a'; ctx.fillRect(px - 1, py - 18, 3, 2); }
+    if (a.gap || b.gap) continue;
+    const ax = a.x, ay = a.y - 16, bx = b.x, by = b.y - 16, cx = (ax + bx) / 2, cy = (ay + by) / 2 + 10; // จุดควบคุมโค้งสายหย่อน
+    ctx.strokeStyle = 'rgba(40,24,12,.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(cx, cy, bx, by); ctx.stroke();
+    for (let k = 0; k < 2; k++) {
+      const t = k * 0.5, u = 1 - t, x = u * u * ax + 2 * u * t * cx + t * t * bx, y = u * u * ay + 2 * u * t * cy + t * t * by, tw = still ? 0.9 : 0.65 + 0.35 * Math.sin(now / 350 + i * 1.7 + k * 2.3);
+      ctx.fillStyle = cols[(i * 2 + k) % 4]; ctx.globalAlpha = tw * 0.3; ctx.beginPath(); ctx.arc(x, y + 2, 5, 0, 7); ctx.fill(); ctx.globalAlpha = tw; ctx.fillRect(Math.round(x) - 1, Math.round(y), 3, 3); ctx.globalAlpha = 1;
+    }
+  }
+  const art = lkImg('candle');
+  for (const c of candles) {
+    if (!lkVis(c.x, c.y, 30)) continue;
+    const x = Math.round(c.x), y = Math.round(c.y);
+    ctx.fillStyle = 'rgba(8,40,60,.25)'; ctx.beginPath(); ctx.ellipse(x + 1, y, 4, 1.6, 0, 0, 7); ctx.fill();
+    if (art) { ctx.drawImage(art, Math.round(c.x - art.naturalWidth / 4), Math.round(c.y - art.naturalHeight / 2), art.naturalWidth / 2, art.naturalHeight / 2); continue; }
+    const fl = still ? 0 : Math.sin(now / 110 + c.ph);
+    ctx.fillStyle = '#fff3d6'; ctx.fillRect(x - 2, y - 8, 4, 8); ctx.fillStyle = '#e8d3a6'; ctx.fillRect(x + 1, y - 8, 1, 8); // ตัวเทียน
+    ctx.fillStyle = 'rgba(255,179,71,.28)'; ctx.beginPath(); ctx.arc(x, y - 11, 7 + fl, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffcf5a'; ctx.beginPath(); ctx.ellipse(x, y - 11, 1.8, 3 + fl * 0.4, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#fff6c8'; ctx.fillRect(x, y - 12, 1, 2); // เปลวไฟ
+  }
+}
+function lkDrawLantern(L, now) { // โคมกระดาษบนเสาที่ราวสะพาน (ฐานเสาอยู่ที่ L.x,L.y)
+  const art = lkImg('bridge-lantern'), x = Math.round(L.x), y = Math.round(L.y);
+  if (art) { ctx.drawImage(art, Math.round(L.x - art.naturalWidth / 4), Math.round(L.y - art.naturalHeight / 2), art.naturalWidth / 2, art.naturalHeight / 2); return; }
+  const still = lkStill(), sw = still ? 0 : Math.sin(now / 900 + L.x * 0.05 + L.y * 0.1) * 1.2, cx = x + sw, cy = y - 19;
+  ctx.fillStyle = '#3f2814'; ctx.fillRect(x - 1, y - 30, 3, 30); ctx.fillStyle = '#a8703a'; ctx.fillRect(x - 1, y - 31, 3, 2); // เสา
+  ctx.strokeStyle = '#3f2814'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y - 30); ctx.lineTo(cx, y - 27); ctx.stroke();
+  const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, 20), fl = still ? 0.34 : 0.34 + 0.05 * Math.sin(now / 160 + L.y);
+  gl.addColorStop(0, `rgba(255,170,70,${fl})`); gl.addColorStop(1, 'rgba(255,170,70,0)'); ctx.fillStyle = gl; ctx.fillRect(cx - 20, cy - 20, 40, 40); // แสงรอบโคม
+  ctx.fillStyle = '#d8381f'; ctx.beginPath(); ctx.ellipse(cx, cy, 7, 9, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#ff9a3c'; ctx.beginPath(); ctx.ellipse(cx - 1.5, cy - 1.5, 4.5, 6.5, 0, 0, 7); ctx.fill(); // ตัวโคม
+  ctx.fillStyle = 'rgba(120,20,10,.45)'; ctx.fillRect(Math.round(cx), cy - 8, 1, 16);
+  ctx.fillStyle = '#ffd36a'; ctx.fillRect(Math.round(cx) - 4, cy - 10, 8, 2); ctx.fillRect(Math.round(cx) - 4, cy + 8, 8, 2); ctx.fillRect(Math.round(cx), cy + 10, 1, 5); // ฝาบนล่างกับพู่
+}
+function lkPushDepth(list, now) { for (const L of lkStatic().lanterns) if (lkVis(L.x, L.y, 40)) list.push({ y: L.y, f: () => lkDrawLantern(L, now) }); }
+function lkLights(now) { // จุดแสงกลางคืน [x, y, รัศมี] เฉพาะที่อยู่ในจอ: เทียนกระทง โคมสะพาน เทียนริมสระ
+  const out = [], S = lkStatic();
+  for (const k of LK_KRATHONG) { const [x, y] = lkKrXY(k, now); if (lkVis(x, y, 80)) out.push([x, y - 6, TS * 1.7 * k.s]); }
+  for (const L of S.lanterns) if (lkVis(L.x, L.y, 90)) out.push([L.x, L.y - 19, TS * 2.2]);
+  for (const c of S.candles) if (lkVis(c.x, c.y, 60)) out.push([c.x, c.y - 9, TS * 0.9]);
+  return out;
+}
+// ====================== จบบล็อกธีมลอยกระทง ======================
 function step(now) {
   requestAnimationFrame(step);
   stepT0 = perf.m = performance.now(); perfFrame(now);
@@ -5778,7 +5868,7 @@ function step(now) {
   ctx.rect(B.x0 * TS, B.y0 * TS, (B.x1 - B.x0 + 1) * TS, (B.y1 - B.y0 + 1) * TS);
   ctx.rect(I.x0 * TS, I.y0 * TS, (I.x1 - I.x0 + 1) * TS, (I.y1 - I.y0 + 1) * TS);
   ctx.clip('evenodd');
-  for (let i = 0; i < (scene ? 0 : 6); i++) {
+  for (let i = 0; i < (scene || lkOn() ? 0 : 6); i++) { // LOYKRATHONG: ธีมเปิด = ไม่มีปลา
     const ph = i * 2.3 + 0.7, fa = now * (0.00010 + i * 0.000025) + ph, fb = now * (0.00008 + i * 0.00002) + ph * 1.7;
     const ahead = Math.cos(fa) > 0 ? 1 : -1, wag = Math.sin(now / 150 + i) > 0 ? 1 : 0; // หางกระดิกสลับไปมา
     // ใช้ 0.7·rx กับ 0.6·ry ทำให้ทุกจุดอยู่ในสระแน่นอน (0.7² + 0.6² < 1)
@@ -5794,31 +5884,14 @@ function step(now) {
   ctx.restore();
   // ใบบัวกระจายทั่วสระ มีทั้งใบใหญ่และเล็ก (วางตายตัวตามพิกัดช่อง ไม่ขยับ) อยู่เหนือปลา
   // ใบใหญ่มีแฉกเว้าเป็นรูปตัววี (ตัดออกจากขอบด้านขวา) ส่วนใบเล็กเป็นวงรีเต็ม
-  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+  if (!lkOn()) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { // LOYKRATHONG: ธีมเปิด = ไม่มีใบบัว
     if (MAP[y][x] !== T.WATER || hash(x, y, 9) > 0.09) continue;
     const big = hash(x, y, 11) < 0.5, fl = hash(x, y, 13), kind = big ? (fl < .22 ? 3 : fl < .36 ? 4 : fl < .5 ? 5 : 0) : (hash(x, y, 15) < .5 ? 1 : 2);
     const ls = PixelArt.lily(kind), px = Math.round((x + 0.5) * TS), py = Math.round((y + 0.5) * TS);
     ctx.drawImage(ls, px - ls.width, py - ls.height, ls.width * 2, ls.height * 2); // ใบบัวพิกเซล (ใบใหญ่/เล็ก/มีดอกบัว) วางตายตัวตามช่อง
   }
-  // กระทงลอยในสระใหญ่ (เทศกาลลอยกระทง): ภาพ My_Art 5 ใบ ลอยซ้ายขวาช้าๆ + โยกเบาๆ + แสงเทียนกะพริบ • แค่ตกแต่ง ไม่มีผลกับการเดิน/ชน (ไม่แตะ MAP) • ตัดสะพาน/เกาะออกเหมือนปลา • เปิด "ลดการเคลื่อนไหว" (หรือปิดแอนิเมชัน Windows) = ยังลอยช้าๆ แต่ตัดการโยก/ริ้วน้ำ/เทียนกะพริบ
-  if (inTown() && !inSea() && KR_IMGS.every(im => im.complete && im.naturalWidth)) {
-    const still = !!(KR_MQ && KR_MQ.matches);
-    ctx.save(); ctx.beginPath(); ctx.rect(camX, camY, vw, vh);
-    ctx.rect(B.x0 * TS, B.y0 * TS, (B.x1 - B.x0 + 1) * TS, (B.y1 - B.y0 + 1) * TS);
-    ctx.rect(I.x0 * TS, I.y0 * TS, (I.x1 - I.x0 + 1) * TS, (I.y1 - I.y0 + 1) * TS);
-    ctx.clip('evenodd');
-    KRATHONG.forEach((k, i) => {
-      const [kx, ky] = krXY(k, now);
-      if (kx < camX - TS * 2 || kx > camX + vw + TS * 2 || ky < camY - TS * 2 || ky > camY + vh + TS * 2) return;
-      const im = KR_IMGS[k.img], w = im.naturalWidth * 0.5 * k.s, h = im.naturalHeight * 0.5 * k.s, bob = still ? 0 : Math.sin(now / 700 + i * 1.9) * 1.2, fl = still ? 0.3 : 0.3 + 0.1 * Math.sin(now / 130 + i * 3.1);
-      ctx.fillStyle = 'rgba(8,60,86,.22)'; ctx.beginPath(); ctx.ellipse(Math.round(kx), Math.round(ky + h * 0.32), w * 0.46, h * 0.16, 0, 0, 7); ctx.fill(); // เงาบนน้ำ
-      if (!still) { ctx.strokeStyle = `rgba(232,253,255,${0.16 + 0.1 * Math.sin(now / 900 + i)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(Math.round(kx), Math.round(ky + h * 0.3), w * (0.55 + 0.05 * Math.sin(now / 900 + i)), h * 0.2, 0, 0, 7); ctx.stroke(); } // ริ้วน้ำรอบกระทง
-      ctx.drawImage(im, Math.round(kx - w / 2), Math.round(ky - h / 2 + bob), w, h);
-      const gx = Math.round(kx), gy = Math.round(ky - h * 0.2 + bob), gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, 16 * k.s);
-      gr.addColorStop(0, `rgba(255,214,120,${fl})`); gr.addColorStop(1, 'rgba(255,214,120,0)'); ctx.fillStyle = gr; ctx.fillRect(gx - 16 * k.s, gy - 16 * k.s, 32 * k.s, 32 * k.s); // แสงเทียน
-    });
-    ctx.restore();
-  }
+  // LOYKRATHONG: กระทงในสระ + ไฟร้อยสาย/เทียนริมสระ (ใต้ตัวละคร) • ปลา+ใบบัวถูกข้ามด้านบนเมื่อธีมเปิด
+  if (lkOn()) { lkDrawWater(now); lkDrawShore(now); }
   // แปลงเช่า: เส้นขอบประ + ป้ายชื่อคนเช่า (แปลงว่างเส้นจาง)
   if (inTown()) for (const P of Shared.FARM_RENT.plots) {
     if (P.x1 < x0 || P.x0 > x1 || P.y1 < y0 || P.y0 > y1) continue;
@@ -5852,6 +5925,7 @@ function step(now) {
   for (const [k, f] of felled) { const ty = +k.split(',')[1]; list.push({ y: ty * TS + 30, f: () => drawFelled(k, f, now) }); } // ต้นไม้กำลังล้ม
   if (inTown()) { const G = Shared.JGATE, gw = G.x1 - G.x0 + 1, gh = G.y1 - G.y0 + 1; list.push({ y: G.y0 * TS, f: () => PixelJungle.gate(ctx, G.x0, G.y0, gw, gh, now, Shared.JUNGLE.open, 'back') }); list.push({ y: (G.y1 + 1) * TS - 2, f: () => PixelJungle.gate(ctx, G.x0, G.y0, gw, gh, now, Shared.JUNGLE.open, 'front') }); } // ซุ้มประตูป่าที่ขอบล่างเมือง: ช่องมืดวาดก่อน (ผู้เล่นเดินลอดไม่โดนบัง) เสา/คาน/ป้ายวาดทับตามแถวฐาน
   if (inTown()) for (const b of BUILDINGS) if (b.kind !== 'sign' && b.kind !== 'cinema' && b.x1 >= x0 - 1 && b.x0 <= x1 + 1 && b.y1 >= y0 - 1 && b.y0 <= y1 + 2) list.push({ y: (b.y1 + 1) * TS - 2, f: () => drawBuilding(b) });
+  if (lkOn()) lkPushDepth(list, now); // LOYKRATHONG: โคมบนสะพาน (เรียงลึกตื้นกับตัวละคร)
   // กองไฟ + ที่นั่งในลานกลางหมู่บ้าน (ที่นั่งไม่ใช่สิ่งกีดขวาง วาดอยู่ใต้ตัวละคร)
   if (inTown()) for (const s of SEATS) if (s.x >= x0 - 1 && s.x <= x1 + 1 && s.y >= y0 - 1 && s.y <= y1 + 1) list.push({ y: s.y * TS + 12, f: () => drawSeat(s) });
   if (inTown()) if (FIRE.x >= x0 - 1 && FIRE.x <= x1 + 1 && FIRE.y >= y0 - 1 && FIRE.y <= y1 + 1) list.push({ y: FIRE.y * TS + 28, f: () => drawFire(now) });
