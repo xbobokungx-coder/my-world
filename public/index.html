@@ -34,28 +34,83 @@
   .btn.spk.off { background:#9aa0a6; border-bottom-color:#6f757b; }
   #stage { cursor:crosshair; }
 
-  #login { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden;
-    background:linear-gradient(#5db8f0 0%,#a9ddf7 38%,#e6f6d0 62%,#9bd36e 63%,#6fb84a 100%); z-index:20; }
-  #login .sun { position:absolute; top:6%; right:12%; width:74px; height:74px; border-radius:50%; background:#ffe27a; box-shadow:0 0 0 12px rgba(255,226,122,.35),0 0 0 28px rgba(255,226,122,.18); animation:lgSun 6s ease-in-out infinite; }
-  #login .cloud { position:absolute; left:-140px; height:34px; width:100px; border-radius:30px; background:#fff; opacity:.9; animation:lgCloud 60s linear infinite; }
-  #login .cloud::before, #login .cloud::after { content:''; position:absolute; background:#fff; border-radius:50%; }
-  #login .cloud::before { width:46px; height:46px; left:14px; top:-22px; } #login .cloud::after { width:34px; height:34px; left:52px; top:-14px; }
-  #login .c1 { top:12%; } #login .c2 { top:26%; transform:scale(.7); animation-duration:85s; animation-delay:-30s; } #login .c3 { top:7%; transform:scale(.5); animation-duration:110s; animation-delay:-70s; }
-  #login .hill { position:absolute; bottom:0; left:-10%; width:120%; height:30%; background:radial-gradient(ellipse at 30% 100%,#7cc552 0 55%,transparent 56%),radial-gradient(ellipse at 78% 100%,#5fae3e 0 50%,transparent 51%); }
-  #login .crops { position:absolute; bottom:5%; left:0; right:0; text-align:center; font-size:26px; letter-spacing:10px; opacity:.95; white-space:nowrap; overflow:hidden; }
-  #login .panel { position:relative; }
-  @keyframes lgCloud { to { transform:translateX(calc(100vw + 280px)); } }
-  @keyframes lgSun { 50% { transform:scale(1.07); } }
-  @keyframes lgBob { 50% { transform:translateY(-6px) rotate(-3deg); } }
-  @keyframes lgPulse { 50% { box-shadow:0 0 0 6px rgba(232,163,61,.35); } }
-  @media (prefers-reduced-motion:reduce) { #login .cloud, #login .sun, #login h1 .lg, #login #go { animation:none; } }
-  #login .panel { width:min(92vw,360px); padding:22px; text-align:center; }
-  #login h1 { margin:0 0 4px; font-size:36px; letter-spacing:1px; text-shadow:0 3px 0 rgba(0,0,0,.15); } #login h1 .lg { display:inline-block; animation:lgBob 2.6s ease-in-out infinite; }
-  #login #go { animation:lgPulse 2.4s ease-in-out infinite; }
-  #login p { margin:0 0 16px; opacity:.8; font-size:15px; }
-  #login input[type=text], #login input[type=password] { width:100%; padding:10px 12px; font:inherit; font-size:17px; border:3px solid var(--edge);
-    border-radius:10px; background:#fff; text-align:center; user-select:text; margin-bottom:10px; }
-  #login label { display:block; font-size:13px; text-align:left; margin:4px 0 2px; opacity:.7; }
+  /* ---------- หน้า Login ธีมลอยกระทง (ค่ำคืนริมน้ำ แสงทองอุ่น) ----------
+     ช่องใส่ภาพจาก My_Art: โฟลเดอร์ /pack/loykrathong/ (ไม่มีไฟล์ = ใช้ placeholder ที่วาดด้วย CSS)
+       bg.png (พื้นหลังเต็มจอ) • krathong-1..3.png (กระทงลอย) • frame.png (กรอบแผง ยืดเต็มแผง) • btn.png (ปุ่มเข้าเกม ยืดเต็มปุ่ม) */
+  #login { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; z-index:20; color:#fff1cf;
+    background:linear-gradient(#070b24 0%,#141c4a 30%,#2c2a5e 52%,#8a4a4c 59%,#e0954a 60.5%,#0f2236 61%,#0b1a2c 80%,#07101c 100%); }
+  #login .scene { position:fixed; inset:0; overflow:hidden; pointer-events:none; }
+  #login .bgimg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center bottom; }
+  #login.bgart .moon, #login.bgart .water { display:none; }
+  #login .stars { position:absolute; left:0; right:0; top:0; height:56%; opacity:.85; animation:lgTwinkle 5s ease-in-out infinite;
+    background:radial-gradient(1.5px 1.5px at 8% 14%,#fff 50%,transparent),radial-gradient(1px 1px at 17% 32%,#ffe9b0 50%,transparent),radial-gradient(1.5px 1.5px at 29% 8%,#fff 50%,transparent),
+      radial-gradient(1px 1px at 38% 24%,#fff 50%,transparent),radial-gradient(1.5px 1.5px at 52% 12%,#ffe9b0 50%,transparent),radial-gradient(1px 1px at 63% 30%,#fff 50%,transparent),
+      radial-gradient(1.5px 1.5px at 74% 6%,#fff 50%,transparent),radial-gradient(1px 1px at 86% 22%,#ffe9b0 50%,transparent),radial-gradient(1.5px 1.5px at 93% 38%,#fff 50%,transparent),
+      radial-gradient(1px 1px at 46% 40%,#fff 50%,transparent),radial-gradient(1px 1px at 4% 44%,#fff 50%,transparent),radial-gradient(1px 1px at 70% 46%,#ffe9b0 50%,transparent); }
+  #login .moon { position:absolute; top:7%; right:12%; width:76px; height:76px; border-radius:50%; background:radial-gradient(circle at 38% 36%,#fffbe6 0 45%,#ffe9a8 100%);
+    box-shadow:0 0 0 12px rgba(255,226,140,.18),0 0 0 30px rgba(255,200,100,.10),0 0 90px 30px rgba(255,190,90,.35); animation:lgMoon 7s ease-in-out infinite; }
+  #login .water { position:absolute; left:0; right:0; bottom:0; height:40%; overflow:hidden; }
+  #login .water::before { content:''; position:absolute; left:0; right:0; top:0; height:100%; background:
+    radial-gradient(ellipse 22% 7% at 78% 3%,rgba(255,215,140,.55),transparent 70%),radial-gradient(ellipse 40% 5% at 30% 12%,rgba(255,170,80,.28),transparent 70%),
+    radial-gradient(ellipse 30% 4% at 62% 28%,rgba(255,200,120,.22),transparent 70%),radial-gradient(ellipse 25% 3% at 18% 46%,rgba(255,200,120,.16),transparent 70%); animation:lgRipple 6s ease-in-out infinite; }
+  #login .kom { position:absolute; bottom:-30px; width:16px; height:22px; border-radius:50% 50% 45% 45%; background:radial-gradient(ellipse at 50% 70%,#fff3c0,#ffb347 60%,#e67e22);
+    box-shadow:0 0 18px 6px rgba(255,170,60,.55); opacity:0; animation:lgRise 28s linear infinite; }
+  #login .kom { --sx:26px; }
+  #login .kom.m1 { left:12%; animation-delay:-4s; } #login .kom.m2 { left:34%; scale:.7; --sx:-30px; animation-duration:30s; animation-delay:-20s; }
+  #login .kom.m3 { left:68%; animation-duration:26s; animation-delay:-12s; } #login .kom.m4 { left:88%; scale:.6; --sx:-22px; animation-duration:34s; animation-delay:-30s; }
+  #login .kom.m5 { left:23%; scale:.5; --sx:20px; animation-duration:38s; animation-delay:-8s; } #login .kom.m6 { left:52%; scale:.85; --sx:-34px; animation-duration:24s; animation-delay:-16s; }
+  #login .kom.m7 { left:79%; scale:.55; --sx:28px; animation-duration:32s; animation-delay:-26s; }
+  #login .kt { position:absolute; left:-130px; width:84px; height:63px; animation:lgDrift 70s linear infinite; }
+  #login .kt .in { position:absolute; inset:0; animation:lgBob 3.2s ease-in-out infinite; }
+  #login .kt img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  #login .kt .fb { position:absolute; inset:0; }
+  #login .kt.art .fb { display:none; }
+  #login .kt .fb::before { content:''; position:absolute; left:0; right:0; bottom:0; height:22px; border-radius:4px 4px 34px 34px/4px 4px 22px 22px;
+    background:linear-gradient(#8fc45f,#3f7d3a); box-shadow:0 0 16px 4px rgba(255,190,80,.5),inset 0 2px 0 rgba(255,255,255,.3); }
+  #login .kt .fb::after { content:''; position:absolute; left:50%; bottom:15px; width:38px; height:22px; margin-left:-19px;
+    background:radial-gradient(ellipse at 50% 100%,#fff0f5 0 28%,#f7a3c2 30% 62%,#e0709a 64% 80%,transparent 82%); }
+  #login .kt .fb i { position:absolute; left:50%; bottom:30px; width:8px; height:15px; margin-left:-4px; border-radius:50% 50% 45% 45%;
+    background:radial-gradient(ellipse at 50% 75%,#fff6c8,#ffb52e 65%,#ff7a18); box-shadow:0 0 16px 7px rgba(255,170,60,.65); animation:lgFlame .9s ease-in-out infinite alternate; }
+  #login .kt.k1 { bottom:19%; animation-duration:48s; animation-delay:-8s; }
+  #login .kt.k2 { bottom:11%; width:108px; height:81px; animation-duration:38s; animation-delay:-24s; }
+  #login .kt.k3 { bottom:27%; width:60px; height:45px; animation-duration:62s; animation-delay:-40s; opacity:.9; }
+  #login .kt.k4 { bottom:6%; width:96px; height:72px; animation-duration:44s; animation-delay:-14s; }
+  #login .kt.k5 { bottom:23%; width:52px; height:39px; animation-duration:70s; animation-delay:-52s; opacity:.85; }
+  #login .kt.k6 { bottom:15%; width:72px; height:54px; animation-duration:52s; animation-delay:-34s; }
+  #login .kt.k7 { bottom:3%; width:120px; height:90px; animation-duration:36s; animation-delay:-6s; }
+  #login .kt.k8 { bottom:30%; width:44px; height:33px; animation-duration:80s; animation-delay:-60s; opacity:.8; }
+  /* ประกายแสงทองไหลบนผิวน้ำ (ทับทั้งภาพ My_Art และ placeholder) */
+  #login .shimmer { position:absolute; left:0; right:0; bottom:0; height:46%; -webkit-mask-image:linear-gradient(transparent,#000 30%); mask-image:linear-gradient(transparent,#000 30%);
+    background:radial-gradient(ellipse 34px 2px at 30% 50%,rgba(255,215,140,.6),transparent) 0 0/230px 44px,radial-gradient(ellipse 22px 1.5px at 75% 25%,rgba(255,200,120,.5),transparent) 0 0/170px 36px,radial-gradient(ellipse 46px 2px at 55% 80%,rgba(255,230,170,.35),transparent) 0 0/310px 52px;
+    animation:lgShimmer 7s linear infinite; }
+  @keyframes lgShimmer { to { background-position:230px 0,-170px 0,310px 0; } }
+  /* กรอบ 9-slice ของ My_Art (frame.png 96x96 @2x): slice 28 = 14px @1x • ไม่มีไฟล์ = ขอบทอง 14px */
+  #login .panel { position:relative; width:min(92vw,360px); padding:8px 10px 8px; text-align:center; color:#5a3d22; background:#fff4d6; background-clip:padding-box;
+    border:14px solid #e8b04a; border-image:url(/pack/loykrathong/frame.png) 28 fill/14px stretch; filter:drop-shadow(0 0 22px rgba(255,170,70,.45)) drop-shadow(0 6px 0 rgba(0,0,0,.3)); }
+  #login .panel > * { position:relative; }
+  @keyframes lgDrift { to { transform:translateX(calc(100vw + 180px)); } }
+  @keyframes lgBob { 50% { transform:translateY(-4px) rotate(2deg); } }
+  @keyframes lgFlame { to { transform:scale(1.12,.92); opacity:.9; } }
+  @keyframes lgRise { 0% { transform:translate(0,0); opacity:0; } 8% { opacity:.95; } 50% { transform:translate(calc(var(--sx,0px) * -1),-52vh); } 85% { opacity:.8; } 100% { transform:translate(var(--sx,0px),-105vh); opacity:0; } }
+  @keyframes lgTwinkle { 50% { opacity:.55; } }
+  @keyframes lgMoon { 50% { transform:scale(1.05); } }
+  @keyframes lgRipple { 50% { transform:translateX(14px); opacity:.8; } }
+  /* เปิด "ลดการเคลื่อนไหว" (หรือปิดแอนิเมชัน Windows) ยังให้ฉากหลังลอยช้าๆ ได้ (ช้า ไม่กะพริบ ไม่ขยับตามเมาส์) ตัดเฉพาะของเล็กที่เด้ง/กะพริบ */
+  @media (prefers-reduced-motion:reduce) { #login h1 .lg, #login #go, #login .kt .fb i { animation:none; } }
+  #login h1 { margin:0 0 2px; font-size:32px; letter-spacing:1px; color:#c27a1c; text-shadow:0 2px 0 rgba(255,255,255,.7); }
+  #login h1 .logo { display:block; width:240px; max-width:100%; height:auto; margin:0 auto; }
+  #login h1.art .ht { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  #login h1 .lg { display:inline-block; animation:lgBob 2.6s ease-in-out infinite; }
+  #login p { margin:0 0 12px; color:#6a4a2a; opacity:.95; font-size:15px; }
+  #login p small { display:block; margin-top:2px; font-size:12.5px; color:#b04a74; letter-spacing:.5px; }
+  #login .panel input[type=text], #login .panel input[type=password] { width:100%; padding:10px 12px; font:inherit; font-size:17px; border:3px solid #e8b04a; color:#4a3322;
+    border-radius:0; background:#fff4d6; text-align:center; user-select:text; margin-bottom:10px; }
+  #login .panel input::placeholder { color:#8a6a44; opacity:.85; }
+  #login .panel input:focus { outline:none; border-color:#c27a1c; box-shadow:0 0 0 3px rgba(255,190,80,.5); }
+  #login label { display:block; font-size:13px; text-align:left; margin:4px 0 2px; opacity:.8; }
+  /* ปุ่ม 9-slice (btn.png 192x96 @2x, slice 28 = 14px) • กดค้าง = btn-pressed.png • ไม่มีไฟล์ = ไล่สีทองใน padding-box */
+  #login #go { margin:2px 0 0; padding:4px 8px; border:14px solid transparent; border-image:url(/pack/loykrathong/btn.png) 28 fill/14px stretch; border-radius:0; background:linear-gradient(#f6b64a,#e08a1e); background-clip:padding-box; color:#3a2008; text-shadow:0 1px 0 rgba(255,235,190,.6); animation:none; }
+  #login #go:active { border-width:14px; border-image-source:url(/pack/loykrathong/btn-pressed.png); transform:none; }
   .sw { width:30px; height:30px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 2px rgba(0,0,0,.2); cursor:pointer; }
   .sw.sel { box-shadow:0 0 0 3px var(--ink); transform:scale(1.12); }
   #loginErr { color:#c0392b; min-height:20px; font-size:14px; margin-bottom:6px; }
@@ -980,10 +1035,23 @@
 <canvas id="c"></canvas>
 
 <div id="login">
-  <div class="sun"></div><div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div><div class="hill"></div><div class="crops" aria-hidden="true">🌾🥕🌽🐔🌻🐄🍅🌾🥕🌽🐑🌻🌾🥕</div>
+  <div class="scene" aria-hidden="true">
+    <img class="bgimg" src="/pack/loykrathong/bg.png" alt="" onload="document.getElementById('login').classList.add('bgart')" onerror="this.remove()"><div class="stars"></div><div class="moon"></div>
+    <div class="kom m1"></div><div class="kom m2"></div><div class="kom m3"></div><div class="kom m4"></div><div class="kom m5"></div><div class="kom m6"></div><div class="kom m7"></div>
+    <div class="water"></div><div class="shimmer"></div>
+    <!-- กระทงลอย: ใส่ภาพ My_Art ที่ /pack/loykrathong/krathong-N.png (ไม่มีไฟล์ = ใช้กระทง CSS แทน) -->
+    <div class="kt k1"><div class="in"><span class="fb"><i></i></span><img src="/pack/loykrathong/krathong-1.png" alt="" onload="this.parentNode.parentNode.classList.add('art')" onerror="this.remove()"></div></div>
+    <div class="kt k2"><div class="in"><span class="fb"><i></i></span><img src="/pack/loykrathong/krathong-2.png" alt="" onload="this.parentNode.parentNode.classList.add('art')" onerror="this.remove()"></div></div>
+    <div class="kt k3"><div class="in"><span class="fb"><i></i></span><img src="/pack/loykrathong/krathong-3.png" alt="" onload="this.parentNode.parentNode.classList.add('art')" onerror="this.remove()"></div></div>
+    <div class="kt k4"><div class="in"><span class="fb"><i></i></span><img src="/pack/loykrathong/krathong-1.png" alt="" onload="this.parentNode.parentNode.classList.add('art')" onerror="this.remove()"></div></div>
+    <div class="kt k5"><div class="in"><span class="fb"><i></i></span><img src="/pack/loykrathong/krathong-2.png" alt="" onload="this.parentNode.parentNode.classList.add('art')" onerror="this.remove()"></div></div>
+    <div class="kt k6"><div class="in"><span class="fb"><i></i></span><img src="/pack/loykrathong/krathong-3.png" alt="" onload="this.parentNode.parentNode.classList.add('art')" onerror="this.remove()"></div></div>
+    <div class="kt k7"><div class="in"><span class="fb"><i></i></span><img src="/pack/loykrathong/krathong-1.png" alt="" onload="this.parentNode.parentNode.classList.add('art')" onerror="this.remove()"></div></div>
+    <div class="kt k8"><div class="in"><span class="fb"><i></i></span><img src="/pack/loykrathong/krathong-2.png" alt="" onload="this.parentNode.parentNode.classList.add('art')" onerror="this.remove()"></div></div>
+  </div>
   <div class="panel">
-    <h1><span class="lg">🌾</span> My World</h1>
-    <p>ฟาร์มเล็กๆ ที่เพื่อนๆ มาอยู่ด้วยกันได้</p>
+    <h1><img class="logo" src="/pack/loykrathong/logo.png" alt="" onload="this.parentNode.classList.add('art')" onerror="this.remove()"><span class="ht"><span class="lg">🏮</span> My World</span></h1>
+    <p>ฟาร์มเล็กๆ ที่เพื่อนๆ มาอยู่ด้วยกันได้<small>🪷 ค่ำคืนลอยกระทงริมน้ำ 🪷</small></p>
     <div id="loginErr"></div>
     <input id="name" type="text" maxlength="12" placeholder="ชื่อตัวละครของคุณ" autocomplete="off">
     <input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="PIN 4–6 หลัก (ต้องใส่)" aria-label="PIN 4–6 หลัก ตั้งไว้กันคนอื่นใช้ชื่อคุณ" autocomplete="off" style="margin-top:8px">
