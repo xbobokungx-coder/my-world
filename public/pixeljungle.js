@@ -221,87 +221,206 @@ const PixelJungle = (() => {
     if (!open) { g.fillStyle = 'rgba(21,13,34,.55)'; g.fillRect(X + 34, by + 56, 60, 16); g.font = 'bold 10px "Sukhumvit Set","Thonburi","Noto Sans Thai",sans-serif'; g.fillStyle = `rgba(240,225,255,${0.75 + 0.25 * Math.sin(now / 900)})`; g.fillText('เร็วๆ นี้', X + 64, by + 64); }
   }
 
-  // ---------- ต้นตะเคียนผูกผ้าสามสี (ต้นไม้ศักดิ์สิทธิ์) ----------
-  // สไปรต์ 96x100 px (3x~3 ช่อง) ฐานอยู่ที่ y=96 กลางภาพ (x=48) • ส่วนที่ไม่ขยับแคชไว้ ชายผ้ากับธูปวาดต่อเฟรม
-  const TK_W = 96, TK_H = 100, TK_CX = 24, TK_BY = 48; // หน่วย 2 พิกเซล
+  // ---------- ต้นตะเคียนผูกผ้าสามสี (ต้นไม้ศักดิ์สิทธิ์ - ฉบับปรับปรุง ต้นใหญ่ ออร่าขลัง ผ้าสามสีเด่นชัด) ----------
+  // สไปรต์ขนาดใหญ่ 160x160 px (5x5 ช่อง) ฐานอยู่ที่ y=150 กลางภาพ (x=80)
+  const TK_W = 160, TK_H = 160, TK_CX = 40, TK_BY = 75; // หน่วย 2 พิกเซล (80x80 grid)
   const takhianStatic = () => memo('takhian', () => {
     const [c, g] = mk(TK_W, TK_H), GW = TK_W / U, GH = TK_H / U, m = new Uint8Array(GW * GH);
     const set = (x, y, i) => { if (x >= 0 && y >= 0 && x < GW && y < GH) m[y * GW + x] = i; };
-    g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(48, 94, 40, 6, 0, 0, 7); g.fill();
-    // ราก + ลำต้น (ดัชนี 5 เปลือก 6 เงา 7 ไฮไลต์)
-    for (let y = 20; y <= 46; y++) {
-      const t = (y - 20) / 26, hw = 4 + t * t * 3 + (y > 40 ? (y - 40) * 1.6 : 0), wob = Math.sin(y * 0.5) * 0.6;
+    // เงาใต้ต้นไม้ใหญ่
+    g.fillStyle = 'rgba(0,0,0,.32)'; g.beginPath(); g.ellipse(80, 150, 68, 9, 0, 0, 7); g.fill();
+
+    // 1. ลำต้นตะเคียนโบราณใหญ่โต + รากพูพอนแผ่กว้าง (5 เปลือกไม้ 6 เงา 7 ไฮไลต์ 8 ตะไคร่ศักดิ์สิทธิ์)
+    for (let y = 24; y <= 74; y++) {
+      const prog = (y - 24) / 50, flare = prog * prog * 9 + (prog > 0.7 ? Math.pow(prog, 4) * 11 : 0), hw = 6 + flare, wob = Math.sin(y * 0.3) * 0.8;
       for (let x = Math.round(TK_CX - hw + wob); x <= Math.round(TK_CX + hw + wob); x++) {
-        const u = (x - (TK_CX - hw)) / (2 * hw); let i = 5; if (u < 0.28) i = 7; else if (u > 0.68) i = 6; if (hash(x, y, 7) > 0.86) i = u < 0.5 ? 5 : 6; set(x, y, i);
+        const u = (x - (TK_CX - hw)) / (2 * hw);
+        let i = 5; if (u < 0.22) i = 7; else if (u > 0.72) i = 6;
+        if (hash(x, y, 7) > 0.84) i = u < 0.5 ? 5 : 6;
+        if (hash(x, y, 13) < 0.12 && y > 45) i = 8; // ตะไคร่น้ำโบราณ
+        set(x, y, i);
       }
     }
-    for (const [dx, sgn] of [[-1, -1], [1, 1]]) for (let k = 0; k < 7; k++) { const x = TK_CX + sgn * (10 + k), y = 46 - Math.round(k * 0.5); set(x, y, 5); set(x, y + 1, 6); } // รากค้ำนอก
-    for (let k = 0; k < 6; k++) { set(TK_CX - 9 - k, 45 + (k > 3 ? 1 : 0), 5); set(TK_CX + 9 + k, 45 + (k > 3 ? 1 : 0), 6); }
-    // กิ่งใหญ่
-    for (let k = 0; k < 9; k++) { set(TK_CX - 5 - k, 22 - Math.round(k * 0.9), k % 3 ? 5 : 7); set(TK_CX - 5 - k, 23 - Math.round(k * 0.9), 6); set(TK_CX + 5 + k, 21 - Math.round(k * 0.9), 5); set(TK_CX + 5 + k, 22 - Math.round(k * 0.9), 6); }
-    // เรือนยอด: ก้อนวงรีซ้อนกัน 1 มืด 2 กลาง 3 สว่าง 4 ไฮไลต์
-    const blobs = [[24, 12, 21, 11], [10, 15, 10, 8], [38, 15, 10, 8], [24, 5, 14, 6], [15, 8, 9, 6], [33, 8, 9, 6], [4, 19, 6, 5], [44, 19, 6, 5]], cm = new Uint8Array(GW * GH);
-    for (const [bx, by, rx, ry] of blobs) for (let y = by - ry; y <= by + ry; y++) for (let x = bx - rx; x <= bx + rx; x++) {
-      const dx = (x - bx) / rx, dy = (y - by) / ry, d = dx * dx + dy * dy; if (d > 1 || x < 0 || y < 0 || x >= GW || y >= GH) continue;
-      const lit = -dx * 0.6 - dy * 0.8 + (hash(x, y, 3) - 0.5) * 0.55 - d * 0.25; cm[y * GW + x] = lit > 0.62 ? 4 : lit > 0.28 ? 3 : lit > -0.25 ? 2 : 1;
+    // รากพูพอนแผ่ซ้าย-ขวา 3 คู่
+    for (const [sgn] of [[-1], [1]]) {
+      for (const [sy, rlen, crv] of [[58, 14, 0.45], [63, 17, 0.6], [67, 13, 0.8]]) {
+        for (let k = 0; k < rlen; k++) {
+          const rx = Math.round(TK_CX + sgn * (9 + k * 1.1)), ry = Math.round(sy + k * crv);
+          set(rx, ry, 5); set(rx, ry + 1, 6);
+          if (k < rlen - 3) set(rx + (sgn > 0 ? -1 : 1), ry, 5);
+        }
+      }
+    }
+    // กิ่งใหญ่ค้ำเรือนยอด
+    for (const [sgn] of [[-1], [1]]) {
+      for (let k = 0; k < 18; k++) {
+        const bx = Math.round(TK_CX + sgn * (4 + k * 1.1)), by = Math.round(29 - k * 0.65);
+        set(bx, by, sgn < 0 ? 7 : 5); set(bx, by + 1, 6);
+        if (k < 12) set(bx, by + 2, 6);
+      }
+    }
+
+    // 2. เรือนยอดพุ่มใบตะเคียนทองหนาแน่น ยิ่งใหญ่
+    const blobs = [
+      [40, 18, 24, 14], [24, 21, 16, 12], [56, 20, 16, 12],
+      [40, 10, 19, 9], [18, 25, 12, 9], [62, 24, 12, 9],
+      [31, 9, 13, 8], [49, 8, 13, 8], [12, 28, 8, 7], [68, 27, 8, 7]
+    ], cm = new Uint8Array(GW * GH);
+    for (const [bx, by, rx, ry] of blobs) {
+      for (let y = by - ry; y <= by + ry; y++) {
+        for (let x = bx - rx; x <= bx + rx; x++) {
+          const dx = (x - bx) / rx, dy = (y - by) / ry, d = dx * dx + dy * dy;
+          if (d > 1 || x < 0 || y < 0 || x >= GW || y >= GH) continue;
+          const lit = -dx * 0.65 - dy * 0.75 + (hash(x, y, 3) - 0.5) * 0.58 - d * 0.28;
+          cm[y * GW + x] = lit > 0.65 ? 4 : lit > 0.26 ? 3 : lit > -0.22 ? 2 : 1;
+        }
+      }
     }
     for (let i = 0; i < cm.length; i++) if (cm[i]) m[i] = cm[i];
-    // ใบหนาแน่นด้านล่างเป็นรอยหยัก + ขอบมืด
-    const get = (x, y) => (x >= 0 && y >= 0 && x < GW && y < GH ? m[y * GW + x] : 0), COL = ['', '#1a3f22', '#24502a', '#336b34', '#4d8a42', '#5a3f28', '#3a281b', '#7a5a3a'];
+
+    // วาดพิกเซลต้นไม้และใบไม้
+    const get = (x, y) => (x >= 0 && y >= 0 && x < GW && y < GH ? m[y * GW + x] : 0);
+    const COL = ['', '#112b17', '#1c4524', '#2d6332', '#4b9144', '#4e3422', '#301e12', '#735236', '#3b6c38'];
     for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { const i = m[y * GW + x]; if (i) px(g, COL[i], x, y); }
-    g.fillStyle = '#0c2112';
-    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (!m[y * GW + x] && (get(x - 1, y) || get(x + 1, y) || get(x, y - 1) || get(x, y + 1))) px(g, '#0c2112', x, y);
-    // ผ้าสามสีพันลำต้น: แถบเฉียงต่อเนื่อง 3 รอบ (แดง เหลือง เขียว สลับ)
-    const CL = [['#c8342b', '#e8564a', '#8e2420'], ['#f0c02e', '#ffe066', '#b48a1a'], ['#3f9a46', '#66c46c', '#2a6e32']];
-    for (let n = 0; n < 9; n++) {
-      const y0 = 24 + n * 2, cl = CL[n % 3];
-      for (let y = y0; y < y0 + 2; y++) { const t = (y - 20) / 26, hw = 4 + t * t * 3, wob = Math.sin(y * 0.5) * 0.6, sl = (y - y0) - 0.5 + (n % 2 ? 1 : 0);
-        for (let x = Math.round(TK_CX - hw - 1 + wob); x <= Math.round(TK_CX + hw + 1 + wob); x++) { const u = (x - (TK_CX - hw)) / (2 * hw); px(g, u < 0.3 ? cl[1] : u > 0.7 ? cl[2] : cl[0], x, y + (sl > 0 ? (x > TK_CX ? 0 : 1) : (x > TK_CX ? 1 : 0))); } }
-      px(g, '#3a281b', Math.round(TK_CX - 6 - n * 0.2), y0, 1, 1);
+    // ขอบมืดรอบพุ่มใบ
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (!m[y * GW + x] && (get(x - 1, y) || get(x + 1, y) || get(x, y - 1) || get(x, y + 1))) px(g, '#091c0e', x, y);
+
+    // เถาวัลย์ห้อยย้อย
+    for (const [vx, vy, vl] of [[18, 31, 9], [26, 28, 13], [34, 25, 11], [47, 26, 12], [56, 29, 10], [64, 31, 8]]) {
+      for (let k = 0; k < vl; k++) {
+        const sw = Math.round(Math.sin(k * 0.4 + vx) * 0.8);
+        px(g, k % 3 === 0 ? '#2d6332' : '#1c4524', vx + sw, vy + k);
+        if (k === vl - 1) px(g, '#4b9144', vx + sw, vy + k);
+      }
     }
-    // พวงมาลัยดอกไม้: พันลำต้น + ห้อยจากกิ่ง
-    const F = ['#f08a1e', '#ffc83a', '#ffffff', '#f4a6b8'];
-    const garland = (x0, y0, x1, y1, sag, seed) => { const n = Math.abs(x1 - x0) + 1; for (let k = 0; k < n; k++) { const t = k / (n - 1 || 1), x = Math.round(x0 + (x1 - x0) * t), y = Math.round(y0 + (y1 - y0) * t + Math.sin(t * Math.PI) * sag); px(g, '#2f6a30', x, y); px(g, F[(hash(k, seed, 5) * 4) | 0], x, y + 1); if (k % 2 === 0) px(g, F[(hash(k, seed, 9) * 4) | 0], x, y - 1 + (k % 4 ? 1 : 0)); } };
-    garland(TK_CX - 8, 38, TK_CX + 8, 39, 4, 1); garland(TK_CX - 12, 13 + 8, TK_CX - 3, 22, 3, 2); garland(TK_CX + 3, 22, TK_CX + 13, 14 + 6, 3, 3);
-    for (let k = 0; k < 3; k++) for (let j = 0; j < 3 + k % 2; j++) px(g, F[(j + k) % 4], TK_CX - 11 + k * 11 + (k === 1 ? 2 : 0), 21 + j + (k === 1 ? 2 : 0)); // พวงห้อยจากกิ่ง
-    // แท่นเล็กที่โคนต้น
-    const ax = TK_CX - 8; px(g, '#4a4f48', ax, 44, 16, 4); px(g, '#8f988a', ax, 44, 16, 1); px(g, '#6c7568', ax + 1, 45, 14, 2); px(g, '#3a3f38', ax, 47, 16, 1); px(g, '#2a2f28', ax - 1, 44, 1, 4); px(g, '#2a2f28', ax + 16, 44, 1, 4);
-    // กระถางทองเหลือง (ซ้าย)
-    px(g, '#7a5a1e', ax + 1, 41, 4, 3); px(g, '#d9a838', ax + 1, 41, 4, 1); px(g, '#d9a838', ax + 2, 40, 2, 1); px(g, '#4a3410', ax + 1, 43, 4, 1);
-    // กระถางธูป (กลาง) + ทรายขาว
-    px(g, '#8a4a2a', ax + 6, 42, 5, 2); px(g, '#b8683c', ax + 6, 42, 5, 1); px(g, '#e8dcc0', ax + 7, 41, 3, 1);
-    // แจกันดอกไม้ (ขวา)
-    px(g, '#3f7fa6', ax + 12, 42, 3, 2); px(g, '#6fb0d0', ax + 12, 42, 3, 1); px(g, '#2f6a30', ax + 13, 40, 1, 2); px(g, '#f4a6b8', ax + 12, 39, 1, 1); px(g, '#ffc83a', ax + 14, 40, 1, 1); px(g, '#ffffff', ax + 13, 39, 1, 1);
-    // ดอกไม้บนพื้นหน้าแท่น
-    px(g, '#ffc83a', ax - 2, 47, 1, 1); px(g, '#f08a1e', ax + 17, 47, 1, 1);
+
+    // 3. ผ้าสามสีพันลำต้นอย่างสง่างาม ชัดเจน (แดง / เหลืองทอง / เขียวมรกต) พร้อมดิ้นทอง
+    const CL = [
+      ['#d32f2f', '#ef5350', '#8b1b18', '#ffe082'], // แดงชาด + ไฮไลต์ + ขอบมืด + ดิ้นทอง
+      ['#fbc02d', '#fff176', '#c49000', '#ffffff'], // เหลืองทอง
+      ['#2e7d32', '#66bb6a', '#1b5e20', '#c8e6c9']  // เขียวมรกต
+    ];
+    for (let n = 0; n < 12; n++) {
+      const y0 = 36 + n * 2, cl = CL[n % 3];
+      for (let y = y0; y < y0 + 2; y++) {
+        const prog = (y - 24) / 50, hw = 6 + prog * prog * 9 + (prog > 0.7 ? Math.pow(prog, 4) * 11 : 0), wob = Math.sin(y * 0.3) * 0.8;
+        const sl = (y - y0) - 0.5 + (n % 2 ? 0.8 : 0);
+        for (let x = Math.round(TK_CX - hw - 1 + wob); x <= Math.round(TK_CX + hw + 1 + wob); x++) {
+          const u = (x - (TK_CX - hw)) / (2 * hw);
+          let col = cl[0];
+          if (y === y0) col = cl[1]; // ขอบบนสว่าง
+          else if (u < 0.25) col = cl[1];
+          else if (u > 0.75) col = cl[2];
+          if (x % 3 === 0 && y === y0) col = cl[3]; // ดิ้นทองปักประกาย
+          px(g, col, x, y + (sl > 0 ? (x > TK_CX ? 0 : 1) : (x > TK_CX ? 1 : 0)));
+        }
+      }
+      px(g, '#24140b', Math.round(TK_CX - 8 - n * 0.15), y0, 1, 1);
+    }
+
+    // 4. พวงมาลัยดอกไม้สด (มะลิ, ดาวเรือง, อุบะจำปา)
+    const F = ['#ff9800', '#ffeb3b', '#ffffff', '#e91e63'];
+    const garland = (x0, y0, x1, y1, sag, seed) => {
+      const n = Math.abs(x1 - x0) + 1;
+      for (let k = 0; k < n; k++) {
+        const t = k / (n - 1 || 1), x = Math.round(x0 + (x1 - x0) * t), y = Math.round(y0 + (y1 - y0) * t + Math.sin(t * Math.PI) * sag);
+        px(g, '#2e7d32', x, y); px(g, F[(hash(k, seed, 5) * 4) | 0], x, y + 1);
+        if (k % 2 === 0) px(g, F[(hash(k, seed, 9) * 4) | 0], x, y - 1);
+      }
+    };
+    garland(TK_CX - 9, 40, TK_CX + 9, 41, 3, 1);
+    garland(TK_CX - 12, 48, TK_CX + 12, 49, 4, 2);
+    garland(TK_CX - 14, 56, TK_CX + 14, 57, 4, 3);
+    for (const [tx, ty] of [[TK_CX - 6, 59], [TK_CX, 60], [TK_CX + 7, 59]]) {
+      for (let j = 0; j < 5; j++) px(g, F[j % 4], tx, ty + j);
+    }
+
+    // 5. แท่นบูชาหินแกรนิต & เครื่องสักการะ (กระถางธูปทองเหลือง เชิงเทียนคู่ พานพุ่ม)
+    const ax = TK_CX - 11;
+    px(g, '#464b48', ax, 71, 22, 4); px(g, '#848d86', ax, 71, 22, 1); px(g, '#5f6660', ax + 1, 72, 20, 2); px(g, '#2b302c', ax, 74, 22, 1);
+    // เชิงเทียนซ้าย
+    px(g, '#cda02c', ax + 2, 69, 2, 2); px(g, '#fffde7', ax + 2, 67, 2, 2); px(g, '#ff5722', ax + 2, 66, 1, 1); px(g, '#ffeb3b', ax + 3, 66, 1, 1);
+    // เชิงเทียนขวา
+    px(g, '#cda02c', ax + 18, 69, 2, 2); px(g, '#fffde7', ax + 18, 67, 2, 2); px(g, '#ff5722', ax + 18, 66, 1, 1); px(g, '#ffeb3b', ax + 19, 66, 1, 1);
+    // กระถางธูปทองเหลืองกลางแท่น + ทรายขาว
+    px(g, '#b8861e', ax + 7, 69, 8, 3); px(g, '#f5c646', ax + 7, 69, 8, 1); px(g, '#e0d8c2', ax + 8, 68, 6, 1);
+    // พานพุ่มดอกบัวซ้าย-ขวา
+    px(g, '#d4af37', ax + 4, 69, 3, 2); px(g, '#f06292', ax + 5, 68, 1, 1);
+    px(g, '#d4af37', ax + 15, 69, 3, 2); px(g, '#f06292', ax + 16, 68, 1, 1);
     return c;
   });
-  const TK_INC = [8, 10, 12]; // ตำแหน่ง x ธูป 3 ดอก (หน่วย) เทียบ ax
-  function takhian(g, x, y, now = 0, opts = {}) { // ฐานที่ขอบล่างของช่อง (x,y) เหมือน tree/shrine • สูง ~96px กว้าง 96px
-    const s = takhianStatic(), ox = x * TS + 16 - TK_W / 2, oy = (y + 1) * TS - 2 - 96; // ฐาน y=96 ในสไปรต์
-    g.imageSmoothingEnabled = false; g.drawImage(s, ox, oy);
+
+  const TK_INC = [9, 11, 13]; // ตำแหน่ง x ธูป 3 ดอก เทียบ ax
+  function takhian(g, x, y, now = 0, opts = {}) { // ฐานอยู่ที่ขอบล่างของช่อง (x,y)
+    const s = takhianStatic(), ox = x * TS + 16 - TK_W / 2, oy = (y + 1) * TS - 2 - 150;
     const tt = now / 1000;
-    if (opts.night) { // ไอศักดิ์สิทธิ์เรืองจาง
-      const a = 0.16 + 0.05 * Math.sin(tt * 1.3), gr = g.createRadialGradient(ox + 48, oy + 66, 4, ox + 48, oy + 66, 46); gr.addColorStop(0, `rgba(255,214,120,${a + 0.1})`); gr.addColorStop(1, 'rgba(255,214,120,0)');
-      g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(ox, oy + 20, TK_W, 80); g.restore();
-    }
-    // ชายผ้า 3 สี ปลิวเบาๆ จากรอบลำต้น (ขวา) และด้านซ้าย
-    const tails = [['#c8342b', '#e8564a', 13, 12, 1, 0], ['#f0c02e', '#ffe066', 14, 14, 1, 1.7], ['#3f9a46', '#66c46c', 15, 11, 1, 3.1], ['#e8564a', '#c8342b', -15, 10, -1, 4.4]];
+
+    // ออร่าศักดิ์สิทธิ์เรืองแสง (กลางวันมีไอทิพย์ละมุน กลางคืนเรืองทองสว่างขลัง)
+    const night = !!opts.night;
+    const aBase = night ? 0.32 : 0.16, aWave = (night ? 0.1 : 0.05) * Math.sin(tt * 1.4);
+    const gr = g.createRadialGradient(ox + 80, oy + 95, 8, ox + 80, oy + 95, night ? 76 : 58);
+    gr.addColorStop(0, `rgba(255,225,120,${aBase + aWave + 0.15})`);
+    gr.addColorStop(0.5, `rgba(110,240,165,${aBase + aWave})`);
+    gr.addColorStop(1, 'rgba(80,220,150,0)');
+    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = gr;
+    g.fillRect(ox, oy + 20, TK_W, 140);
+    g.restore();
+
+    // วาดต้นไม้ตะเคียนพิกเซลอาร์ต
+    g.imageSmoothingEnabled = false;
+    g.drawImage(s, ox, oy);
+
+    // ชายผ้าสามสีทอดยาว ปลิวไสวสวยงามพลิ้วไหวตามลม (ขวาและซ้าย)
+    const tails = [
+      ['#d32f2f', '#ef5350', 22, 16, 1, 0],
+      ['#fbc02d', '#fff176', 24, 18, 1, 1.8],
+      ['#2e7d32', '#66bb6a', 25, 15, 1, 3.2],
+      ['#ef5350', '#d32f2f', -24, 15, -1, 4.5],
+      ['#fff176', '#fbc02d', -26, 17, -1, 0.9],
+      ['#66bb6a', '#2e7d32', -27, 14, -1, 2.6]
+    ];
     for (const [c1, c2, dx, len, dir, ph] of tails) {
-      const sx = ox + (TK_CX + dx * 0.5) * U + (dir > 0 ? 6 : 0), sy = oy + (dir > 0 ? 70 : 74) + (dx % 3) * 2;
-      for (let k = 0; k < len; k++) { const sw = Math.sin(tt * 2.2 + ph + k * 0.45) * (0.8 + k * 0.28), px0 = Math.round(sx + dir * k * 0.4 + sw), py0 = Math.round(sy + k * 2.2);
-        g.fillStyle = '#3a281b'; g.fillRect(px0 - 1, py0, 6, 2); g.fillStyle = k % 3 === 0 ? c2 : c1; g.fillRect(px0, py0, 4, 2); }
-      const k = len; g.fillStyle = c1; g.fillRect(Math.round(sx + dir * k * 0.4 + Math.sin(tt * 2.2 + ph + k * 0.45) * (0.8 + k * 0.28)), Math.round(sy + k * 2.2), 4, 1);
+      const sx = ox + (TK_CX + dx * 0.5) * U + (dir > 0 ? 8 : -4), sy = oy + 92 + (Math.abs(dx) % 4) * 3;
+      for (let k = 0; k < len; k++) {
+        const sw = Math.sin(tt * 2.3 + ph + k * 0.4) * (1.2 + k * 0.35);
+        const px0 = Math.round(sx + dir * k * 0.45 + sw), py0 = Math.round(sy + k * 2.4);
+        g.fillStyle = '#24140b'; g.fillRect(px0 - 1, py0, 6, 2);
+        g.fillStyle = k % 3 === 0 ? c2 : c1; g.fillRect(px0, py0, 4, 2);
+      }
     }
-    // ธูป 3 ดอก ปลายเรืองแดงกะพริบช้าๆ + ควันบาง
-    const ax = (TK_CX - 8) * U;
+
+    // ธูป 3 ดอก: ปลายเรืองแสงแดงทองกะพริบ + ควันธูปลอยกรุ่นเป็นสาย
+    const ax = (TK_CX - 11) * U;
     for (let i = 0; i < 3; i++) {
-      const ix = ox + ax + (TK_INC[i] - 0.2) * U - 2 + i, top = oy + 70 - 2 * (i % 2);
-      g.fillStyle = '#7a3a1c'; g.fillRect(ix, top + 2, 2, 12 - 2 * (i % 2)); g.fillStyle = '#a85a30'; g.fillRect(ix, top + 2, 1, 12 - 2 * (i % 2));
-      const gl = 0.6 + 0.4 * Math.sin(tt * 1.6 + i * 2.1); g.fillStyle = `rgba(255,${70 + gl * 60 | 0},40,${0.55 + gl * 0.45})`; g.fillRect(ix, top, 2, 2);
-      if (gl > 0.85) { g.fillStyle = 'rgba(255,230,160,.9)'; g.fillRect(ix, top, 1, 1); }
-      const sm = (tt * 0.5 + i * 0.33) % 1; g.fillStyle = `rgba(230,230,230,${0.28 * (1 - sm)})`; g.fillRect(Math.round(ix + Math.sin(tt * 1.4 + i + sm * 5) * 2), Math.round(top - 2 - sm * 14), 2, 2);
+      const ix = ox + ax + (TK_INC[i] * U), top = oy + 130 - 2 * (i % 2);
+      g.fillStyle = '#7a3a1c'; g.fillRect(ix, top + 2, 2, 14);
+      g.fillStyle = '#a85a30'; g.fillRect(ix, top + 2, 1, 14);
+      const gl = 0.6 + 0.4 * Math.sin(tt * 1.8 + i * 2.1);
+      g.fillStyle = `rgba(255,${80 + gl * 60 | 0},30,${0.6 + gl * 0.4})`; g.fillRect(ix, top, 2, 2);
+      if (gl > 0.82) { g.fillStyle = '#fffde7'; g.fillRect(ix, top, 1, 1); }
+      // ควันธูปม้วนลอยสูงขึ้น
+      for (let sm = 0; sm < 3; sm++) {
+        const prog = ((tt * 0.4 + i * 0.3 + sm * 0.33) % 1);
+        const sw = Math.sin(tt * 1.6 + i + prog * 6) * (2 + prog * 4);
+        g.fillStyle = `rgba(235,235,240,${0.28 * (1 - prog)})`;
+        g.fillRect(Math.round(ix + sw), Math.round(top - 2 - prog * 24), 2, 2);
+      }
+    }
+
+    // ละอองไอทิพย์ / ประกายออร่าทองลอยวนรอบต้น (Mystical Sparkles)
+    for (let i = 0; i < 7; i++) {
+      const sp = (tt * 0.35 + i / 7) % 1;
+      const sx = ox + 80 + Math.sin(tt * 0.8 + i * 1.3) * (36 + i * 4);
+      const sy = oy + 135 - sp * 105;
+      const sa = Math.sin(sp * Math.PI) * (night ? 0.9 : 0.65);
+      if (sa > 0.05) {
+        g.fillStyle = `rgba(255,240,140,${sa})`;
+        g.fillRect(Math.round(sx), Math.round(sy), 2, 2);
+        g.fillStyle = `rgba(255,255,220,${sa * 0.8})`;
+        g.fillRect(Math.round(sx), Math.round(sy), 1, 1);
+      }
     }
   }
-  return { base, paintBase, tree, takhian, tent, fire, sign, shrine, ruin, herb, gate, whenBgReady, bgReady: () => bgReady };
+
+    return { base, paintBase, tree, takhian, tent, fire, sign, shrine, ruin, herb, gate, whenBgReady, bgReady: () => bgReady };
 })();
