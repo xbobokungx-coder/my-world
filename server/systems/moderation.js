@@ -60,13 +60,16 @@ module.exports = {
     p.lastChat = now;
     if (this.modMuted(p)) { this.toast(p, `🔇 คุณถูกปิดเสียงอยู่ (อีก ${this.modLeftText(p.rec.muteUntil - now)}) ข้อความนี้ไม่ถึงคนอื่นนะ`); return; }
     const clean = Array.from(this.modFilter(text)).slice(0, M.chatMax).join('');
-    this.chatLog.push({ name: p.name, text: clean, t: now }); if (this.chatLog.length > 10) this.chatLog.shift();
+    this.chatLog.push({ name: p.name, text: clean, t: now, scene: p.scene || '' }); if (this.chatLog.length > 10) this.chatLog.shift();
     this.modLogChat(p, clean, now);
     const s = JSON.stringify({ t: 'chat', id: p.id, name: p.name, text: clean });
-    for (const q of this.players.values()) if (q.ws.readyState === 1 && (q === p || !this.modBlocked(p, q))) q.ws.send(s);
+    for (const q of this.modChatAudience(p)) if (q.ws.readyState === 1 && (q === p || !this.modBlocked(p, q))) q.ws.send(s);
+  },
+  modChatAudience(p) { // ใครเห็นแชตของ p: เปิด M.chatScene = เฉพาะคนที่อยู่แมพเดียวกัน (เมือง / บ้านหลังเดียวกัน / ถ้ำชั้นเดียวกัน / ป่า / ทะเล) • ปิด = ทั้งห้องเหมือนเดิม
+    return M.chatScene ? [p, ...this.sceneMates(p.scene, p)] : [...this.players.values()];
   },
   modLogChat(p, text, now) { // data/chatlog/YYYY-MM-DD.jsonl (เวลา ห้อง ชื่อ ข้อความหลังกรอง) เข้าถึงได้เฉพาะผู้ดูแล
-    try { fs.mkdirSync(dirOf('chatlog'), { recursive: true }); fs.appendFile(path.join(dirOf('chatlog'), dayStr(now) + '.jsonl'), JSON.stringify({ t: now, room: this.room, name: p.name, text }) + '\n', () => {}); } catch (e) { /* บันทึกไม่ได้ก็ไม่ทำให้แชตล้ม */ }
+    try { fs.mkdirSync(dirOf('chatlog'), { recursive: true }); fs.appendFile(path.join(dirOf('chatlog'), dayStr(now) + '.jsonl'), JSON.stringify({ t: now, room: this.room, scene: p.scene || '', name: p.name, text }) + '\n', () => {}); } catch (e) { /* บันทึกไม่ได้ก็ไม่ทำให้แชตล้ม */ }
   },
   modLeftText(ms) { const m = Math.max(1, Math.ceil(ms / 60000)); return m >= 1440 ? Math.ceil(m / 1440) + ' วัน' : m >= 60 ? Math.ceil(m / 60) + ' ชม.' : m + ' นาที'; },
   modMuted(p) { return Number.isFinite(p.rec.muteUntil) && p.rec.muteUntil > Date.now(); },
@@ -113,7 +116,7 @@ module.exports = {
     if (hits.length && now - hits[hits.length - 1] < M.reportGapMs) return this.toast(p, 'รายงานถี่ไปหน่อย รอสักครู่แล้วค่อยส่งใหม่นะ');
     if (hits.length >= M.reportPerHour) return this.toast(p, 'ชั่วโมงนี้รายงานครบแล้ว รอสักพักค่อยส่งใหม่นะ');
     const id = now.toString(36) + crypto.randomBytes(3).toString('hex');
-    const r = { id, time: now, room: this.room, by: p.name, byKey: p.key, target: rec.name || tkey, targetKey: tkey, why: why.id, text: clip(m.text, M.reportTextMax), chat: this.chatLog.slice(-M.reportChatLines).map(c => ({ name: c.name, text: c.text, t: c.t })) };
+    const r = { id, time: now, room: this.room, by: p.name, byKey: p.key, target: rec.name || tkey, targetKey: tkey, why: why.id, text: clip(m.text, M.reportTextMax), chat: this.chatLog.slice(-M.reportChatLines).map(c => ({ name: c.name, text: c.text, t: c.t, scene: c.scene || '' })) };
     try { fs.mkdirSync(dirOf('reports'), { recursive: true }); fs.writeFileSync(path.join(dirOf('reports'), id + '.json'), JSON.stringify(r, null, 1)); }
     catch (e) { console.error('บันทึกรายงานผู้เล่นไม่ได้', e.message); return this.toast(p, 'บันทึกไม่ได้ ลองใหม่อีกครั้งนะ'); }
     hits.push(now); this._repHits.set(p.key, hits); // (ผู้ที่ไม่เคยรายงานไม่มีคีย์ในแมป)

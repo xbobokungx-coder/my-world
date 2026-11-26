@@ -25,7 +25,7 @@ module.exports = {
     const text = n.lines[i]
       .replace('{online}', this.players.size)
       .replace('{village}', `${this.village.n}/${this.villageGoal()}`).replace('{hour}', String(hour).padStart(2, '0') + ':00');
-    this.broadcast({ t: 'chat', id: n.id, name: n.name, text, npc: 1 });
+    const nm = { t: 'chat', id: n.id, name: n.name, text, npc: 1 }; if (S.MODERATION.chatScene) this.sceneBroadcast(null, nm); else this.broadcast(nm); // NPC อยู่ในเมือง: คนในบ้าน/ถ้ำไม่ได้ยิน
   },
   npcWalkable(x, y) { // ช่องที่ NPC เดินได้: ไม่ชน ไม่ใช่พื้นบ้าน (ไม่เดินเข้าบ้านคนอื่น) ไม่ใช่น้ำ
     if (x < 0 || y < 0 || x >= S.W || y >= S.H) return false;

@@ -332,7 +332,7 @@ function handle(m) {
 // ---------- บล็อก/รายงานผู้เล่น + สถานะถูกปิดเสียง (เซิร์ฟเวอร์ตัดสิน ฝั่งเว็บแค่แสดงและซ่อน) ----------
 let blockList = [], blockKeys = new Set(), myMuteUntil = 0;
 const MOD = Shared.MODERATION;
-{ const n = $('chatNote'); if (n && MOD) n.textContent = '💬 แชตถูกบันทึกไว้ ' + MOD.chatlogDays + ' วัน ผู้ดูแลเท่านั้นที่เปิดดูได้'; }
+{ const n = $('chatNote'); if (n && MOD) n.textContent = '💬 ' + (MOD.chatScene ? 'แชตเห็นเฉพาะคนที่อยู่แมพเดียวกับคุณ • ' : '') + 'แชตถูกบันทึกไว้ ' + MOD.chatlogDays + ' วัน ผู้ดูแลเท่านั้นที่เปิดดูได้'; }
 const isBlockedName = n => !!n && blockKeys.has(String(n).toLowerCase());
 function onBlocks(m) {
   blockList = Array.isArray(m.list) ? m.list : []; blockKeys = new Set(blockList.map(x => x.key));

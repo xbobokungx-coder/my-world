@@ -2288,7 +2288,7 @@
   const SELLABLE = [...Object.keys(CROPS).map(c => 'crop_' + c), ...FISH_ALL.filter(f => f.id !== 'boot').map(f => 'fish_' + f.id), 'egg', 'duck_egg', 'milk', 'wool', 'truffle', 'honey', 'alpaca_wool', 'horse_milk', 'chestnut', 'turkey_egg', 'goat_milk', ...Object.keys(WOOD_ITEMS), 'plank', ...Object.keys(ORES), ...COOK.map(c => c.id)]; // honey: เดิมตกหล่น ขายทีละชิ้นได้ราคาเต็มตลอด (แก้ 25 ต.ค. 2026)
 
   // ----- ดูแลชุมชน (WP-06): ตัวเลขทั้งหมดของกรองคำ/บล็อก/รายงาน/แชตย้อนหลัง/ปิดเสียง/แบนตามเวลา (ฝั่งเซิร์ฟเวอร์ตัดสิน) -----
-  const MODERATION = { chatlogDays: 14, chatMax: 80, blockMax: 50, reportTextMax: 100, reportGapMs: 30000, reportPerHour: 10, reportChatLines: 10, reportKeep: 300, chatlogRows: 200, chatlogQueryMax: 24, wordsRefreshMs: 60000, mask: '***',
+  const MODERATION = { chatScene: true, chatlogDays: 14, chatMax: 80, blockMax: 50, reportTextMax: 100, reportGapMs: 30000, reportPerHour: 10, reportChatLines: 10, reportKeep: 300, chatlogRows: 200, chatlogQueryMax: 24, wordsRefreshMs: 60000, mask: '***',
     reportWhy: [{ id: 'abuse', name: 'พูดจาไม่ดี' }, { id: 'cheat', name: 'โกง' }, { id: 'other', name: 'อื่นๆ' }],
     muteMs: { '10m': 10 * 60000, '1h': 3600000, '1d': 86400000 }, banMs: { '1d': 86400000, '7d': 7 * 86400000 } }; // banMs ไม่มี perm: ถาวร = ระบบแบนเดิม
 
