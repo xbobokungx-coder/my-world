@@ -227,7 +227,11 @@ const PixelUI = (() => {
     '🥃'(x) { pan(x, ['#8fe8ff', '#ffffff', '#3fa8c8', '#1a4a6a'], { inner: '#6ac8e8', h: '#6a8cb0', hh: '#b8d4f0', gem: ['#ffffff', '#d4f8ff'], stars: [[2, 5], [7, 3]] }); }, // 9 เพชร
     '🥨'(x) { pan(x, ['#c8302c', '#ff8a70', '#7a1a18', '#2a0808'], { inner: '#5a1010', h: '#f2c14e', hh: '#fff0a8', gem: ['#f2c14e', '#fff0a8'], rivet: '#f2c14e', glow: [[1, 1], [9, 2], [6, 11]], glowC: '#ffd070' }); } // 10 มังกร (แดงขอบทอง)
   });
-  const norm = e => e.replace(/️/g, '');
+  // ไอคอน PNG ของแร่/แท่งโลหะ (My_Art 32x32 ที่ /pack/items/): shared.js ต่ออีโมจิของไอเทมพวกนี้ด้วยตัวคั่นล่องหน ICO (U+2063) เป็นเครื่องหมาย
+  // dom() เจออีโมจิ+ICO แล้วใช้ภาพ PNG แทน (อีโมจิเดียวกันที่ผู้เล่นพิมพ์ในแชทไม่มี ICO จึงไม่ถูกแทน) • โหลดภาพไม่ได้ = ถอยกลับไปวาดอีโมจิเดิมเป็นพิกเซล
+  const ICO = String.fromCharCode(0x2063);
+  const ITEM_PNG = { '💠': 'bar_stone', '🏺': 'bar_copper', '🩶': 'bar_silver', '💜': 'bar_amethyst', '💚': 'bar_emerald', '🫧': 'bar_opal', '💙': 'bar_sapphire', '🫛': 'bar_jade', '🌛': 'bar_moonstone', '⚡': 'bar_mythril', '🤍': 'ore_opal', '🍀': 'ore_jade' };
+  const norm = e => e.split(ICO).join('').replace(/️/g, '');
   const cache = new Map();
   const FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif';
   // แปลงอีโมจิเป็นพิกเซลอาร์ต: วาดลงผืนเล็ก ตัดขอบโปร่งใส ลดจำนวนสี แล้วใส่เส้นขอบเข้ม 1 px
@@ -274,8 +278,12 @@ const PixelUI = (() => {
       const frag = document.createDocumentFragment(); let last = 0, m;
       while ((m = EMO.exec(s))) {
         if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
-        const img = document.createElement('img'); img.className = 'pxe'; img.alt = m[0]; img.draggable = false; img.src = dataUrl(m[0]); frag.appendChild(img);
-        last = m.index + m[0].length;
+        const img = document.createElement('img'); img.className = 'pxe'; img.alt = m[0]; img.draggable = false;
+        const mark = s.charAt(m.index + m[0].length) === ICO, png = mark && ITEM_PNG[norm(m[0])]; // อีโมจิ+ICO = ไอเทมที่มีไอคอน PNG
+        // em จับไว้ในตัวแปรของรอบนี้ (m เป็น null เมื่อจบลูป) — โหลด PNG ไม่ได้ = ถอยกลับไปใช้อีโมจิเดิมเป็นพิกเซล
+        if (png) { const em = m[0]; img.onerror = () => { img.onerror = null; img.src = dataUrl(em); }; img.src = '/pack/items/' + png + '.png'; } else img.src = dataUrl(m[0]);
+        frag.appendChild(img);
+        last = m.index + m[0].length + (mark ? 1 : 0); // ตัดตัวคั่นออกจากข้อความ
       }
       if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
       n.parentNode.replaceChild(frag, n);

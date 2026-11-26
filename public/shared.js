@@ -732,15 +732,17 @@
   // แร่ 10 ระดับ (ขายที่ร้านช่างเหมือง หมวด "แร่" ไม่เสื่อม) • lv = เลเวลนักขุดแร่ที่ต้องมี • pick = ระดับอีเต้อต่ำสุด • sell/xp = ต่อ 1 ชิ้น (ปรับให้เหรียญและ XP ต่อชม. ใกล้ชาวนา ดู tools/levelsim.js)
   // 31 ต.ค. 2026: เหลือแร่ที่ขุดได้ 10 ชนิด = ถ้ำ 10 ชั้น (ชั้น f = แร่ลำดับ f เป็นหลัก) ปลดทุก 2 เลเวลนักขุดแร่ (Lv1,3,5,…,19) • ชั้นล่างขึ้นมาแทนที่ชั้นเก่า 2 ชั้นต่อ 1 ชั้น
   // แร่ที่เลิกขุด (legacy) ยังขายได้ที่ร้านช่างเหมือง แต่ไม่ปรากฏในถ้ำ hpm = ตัวคูณ HP ของแร่ตัวที่สองในคู่อีเต้อเดียวกัน
+  // ICO = ตัวคั่นล่องหน (U+2063) ต่อท้ายอีโมจิของแร่/แท่งโลหะ = เครื่องหมายให้ pixelui.js เปลี่ยนเป็นไอคอน PNG ของไอเทมนั้น (/pack/items/*.png) • ผู้เล่นพิมพ์ 💜💙💚 ในแชทตามปกติจะไม่ถูกแทน • ไม่มีไฟล์ = ใช้อีโมจิเดิม
+  const ICO = '\u2063';
   const ORES = {
     stone:     { name: 'หิน',       emoji: '🪨', lv: 1,  pick: 1, sell: 5, xp: 3.6 },
     copper:    { name: 'ทองแดง',    emoji: '🟠', lv: 3,  pick: 2, sell: 9, xp: 4.8 },
     silver:    { name: 'เงิน',       emoji: '🥈', lv: 5,  pick: 3, sell: 13, xp: 6.2 },
     amethyst:  { name: 'อเมทิสต์',   emoji: '🟣', lv: 7,  pick: 4, sell: 18, xp: 7.9 },
     emerald:   { name: 'มรกต',      emoji: '🟢', lv: 9,  pick: 5, sell: 24, xp: 10.2 },
-    opal:      { name: 'โอปอล',      emoji: '🤍', lv: 11, pick: 6, sell: 29, xp: 13.1 },
+    opal:      { name: 'โอปอล',      emoji: '🤍' + ICO, lv: 11, pick: 6, sell: 29, xp: 13.1 },
     sapphire:  { name: 'ไพลิน',      emoji: '🔵', lv: 13, pick: 7, sell: 33, xp: 16.9 },
-    jade:      { name: 'หยก',        emoji: '🍀', lv: 15, pick: 8, sell: 37, xp: 21.9 },
+    jade:      { name: 'หยก',        emoji: '🍀' + ICO, lv: 15, pick: 8, sell: 37, xp: 21.9 },
     moonstone: { name: 'มูนสโตน',    emoji: '🌙', lv: 17, pick: 9, sell: 39, xp: 28.2 },
     mythril:   { name: 'มิทริล',      emoji: '🔷', lv: 19, pick: 10, sell: 40, xp: 35.2 },
     // legacy (ไม่อยู่ในถ้ำแล้ว)
@@ -761,7 +763,7 @@
   for (const o of Object.values(ORES)) o.hp = Math.round(MINE.hpBase * ACTION_TUNE.mine * o.pick * (o.hpm || 1));
   // === WP-30 S1: วัสดุแปรรูป (bar_*) ===
   const BAR_TUNE = { ore: 3, feePct: 0.15, shopMul: 1.5, ms: 2000, xp: 0 }; // ore = แร่ต่อ 1 แท่ง • feePct = ค่าเตา/std • shopMul = ร้านเทียบ std
-  const BAR_EMOJI = { stone: '💠', copper: '🏺', silver: '🩶', amethyst: '💜', emerald: '💚', opal: '🫧', sapphire: '💙', jade: '🫛', moonstone: '🌛', mythril: '⚡' }; // ไม่ซ้ำ PICK/AXE/HOE/PAIL/PAN/ROD/CANS/ORE emoji
+  const BAR_EMOJI = { stone: '💠' + ICO, copper: '🏺' + ICO, silver: '🩶' + ICO, amethyst: '💜' + ICO, emerald: '💚' + ICO, opal: '🫧' + ICO, sapphire: '💙' + ICO, jade: '🫛' + ICO, moonstone: '🌛' + ICO, mythril: '⚡' + ICO }; // ไม่ซ้ำ PICK/AXE/HOE/PAIL/PAN/ROD/CANS/ORE emoji
   const BAR_NAMES = { stone: 'อิฐหินขัด', copper: 'แท่งทองแดง', silver: 'แท่งเงิน', amethyst: 'อเมทิสต์เจียระไน', emerald: 'มรกตเจียระไน', opal: 'โอปอลเจียระไน', sapphire: 'ไพลินเจียระไน', jade: 'หยกขัดเงา', moonstone: 'มูนสโตนเจียระไน', mythril: 'แท่งมิทริล' };
   const BARS = {}; // สร้างจาก ORE_ORDER: { fee, std, shop, shape }
   for (const o of ORE_ORDER) {
