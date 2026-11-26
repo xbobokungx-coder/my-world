@@ -5623,7 +5623,7 @@ const safeDraw = (o, tag) => { ctx.save(); try { o.f(); } catch (e) { reportClie
 // ภาพจาก My_Art (ไม่มีไฟล์ = ใช้ placeholder ที่วาดด้วยโค้ด): /pack/loykrathong/krathong-1..3.png • /pack/loykrathong-town/bridge-lantern.png (โคมบนเสา) • /pack/loykrathong-town/candle.png (เทียนริมสระ) — ทั้งสองวางฐานกลางภาพที่จุดวาง ขนาด 2x (แสดงครึ่งหนึ่ง)
 // ลดการเคลื่อนไหว (prefers-reduced-motion หรือปิดแอนิเมชัน Windows): กระทงยังลอยช้าๆ แต่ตัดการโยก ริ้วน้ำ โคมแกว่ง ไฟ/เทียนกะพริบ
 // ======================================================================
-const THEME_LOYKRATHONG = true;
+const THEME_LOYKRATHONG = false;
 const lkOn = () => THEME_LOYKRATHONG && inTown();
 const LK_MQ = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : null;
 const lkStill = () => !!(LK_MQ && LK_MQ.matches);
