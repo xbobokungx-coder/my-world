@@ -5875,15 +5875,6 @@ function step(now) {
     const fx = (POND.cx + 0.7 * POND.rx * Math.sin(fa) + 0.5) * TS, fy = (POND.cy + 0.6 * POND.ry * Math.sin(fb) + 0.5) * TS;
     if (fx < camX - TS || fx > camX + vw + TS || fy < camY - TS || fy > camY + vh + TS) continue;
     const bob = Math.round(Math.sin(now / 520 + i * 1.7)); // ว่ายขึ้นลงเล็กน้อย
-    if (pondArt) { // โคอิจากแพ็กสระ (public/pack/pond): หันหัวตามทางว่ายจริง + ส่ายตัวเล็กน้อย
-      const da = 0.00010 + i * 0.000025, db = 0.00008 + i * 0.00002, K = PondArt.koi(i);
-      const vx = 0.7 * POND.rx * Math.cos(fa) * da, vy = 0.6 * POND.ry * Math.cos(fb) * db;
-      const rot = Math.atan2(vy, vx) - K.head * Math.PI / 180 + Math.sin(now / 260 + i * 1.9) * 0.14;
-      ctx.save(); ctx.translate(Math.round(fx), Math.round(fy) + bob);
-      ctx.fillStyle = 'rgba(8,60,86,.2)'; ctx.beginPath(); ctx.ellipse(0, 7, 15, 4, 0, 0, 7); ctx.fill(); // เงาปลาบนพื้นสระ
-      ctx.rotate(rot); ctx.globalAlpha = 0.93; ctx.drawImage(K.c, -K.c.width / 2, -K.c.height / 2); ctx.globalAlpha = 1;
-      ctx.restore(); continue;
-    }
     const fs = PixelArt.fish(i, wag);
     ctx.save(); ctx.translate(Math.round(fx), Math.round(fy) + bob); ctx.scale(ahead, 1);
     ctx.fillStyle = 'rgba(8,60,86,.22)'; ctx.fillRect(-12, 6, 24, 3); // เงาปลาบนพื้นสระ
@@ -5914,14 +5905,13 @@ function step(now) {
   }
   // LOYKRATHONG: กระทงในสระ + ไฟร้อยสาย/เทียนริมสระ (ใต้ตัวละคร) • ปลา+ใบบัวถูกข้ามด้านบนเมื่อธีมเปิด
   if (lkOn()) { lkDrawWater(now); lkDrawShore(now); }
-  if (pondArt && inTown() && !lkOn()) { // ของตกแต่งสระจากแพ็ก (ธีมลอยกระทงเปิด = ไม่วาด ให้ธีมคุมฉากเอง) (ภาพล้วน ไม่กระทบช่องเดิน): ดอกบัวใหญ่ 2 จุด นกกระยาง 2 ตัวที่ริมน้ำ กกกับหินมอสริมหาด
+  if (pondArt && inTown() && !lkOn()) { // ของตกแต่งสระจากแพ็ก (ธีมลอยกระทงเปิด = ไม่วาด ให้ธีมคุมฉากเอง) (ภาพล้วน ไม่กระทบช่องเดิน): ดอกบัวใหญ่ 2 จุด กกกับหินมอสริมหาด
     const G = PondArt.giant(), sp = (tx, ty, c, bottom) => { // วางกลางช่อง (bottom = ชิดขอบล่างช่อง) เฉพาะที่เป็นน้ำ/ทรายตามที่เรียก
       const cx = Math.round((tx + 0.5) * TS), cy = Math.round((ty + (bottom ? 1 : 0.5)) * TS);
       if (cx + c.width < camX || cx - c.width > camX + vw || cy + c.height < camY || cy - c.height > camY + vh) return;
       ctx.drawImage(c, cx - Math.round(c.width / 2), bottom ? cy - c.height : cy - Math.round(c.height / 2));
     };
     for (const [gx, gy] of [[35, 38], [51, 41]]) if (MAP[gy] && MAP[gy][gx] === T.WATER) sp(gx, gy, G, false);
-    for (const [ex, ey] of [[36, 34], [50, 42]]) if (MAP[ey] && MAP[ey][ex] === T.WATER) sp(ex, ey, PondArt.egret(now, ex * 31 + ey), true);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
       if (MAP[y][x] !== T.SAND || x >= 41 && x <= 46 || y < 31 || y > 45) continue; // เว้นทางลงสะพานและทางไปเกาะทราย
       const wet = (MAP[y - 1] && MAP[y - 1][x] === T.WATER) || (MAP[y + 1] && MAP[y + 1][x] === T.WATER) || MAP[y][x - 1] === T.WATER || MAP[y][x + 1] === T.WATER;
